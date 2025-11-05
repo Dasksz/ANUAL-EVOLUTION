@@ -685,7 +685,7 @@
                 });
             });
 
-            // 5. ADICIONADO: Nova função para enviar dados
+            // 5. MODIFICADO: Nova função para enviar dados em partes (evita timeout)
             async function enviarDadosParaSupabase(data) {
                 const SUPABASE_URL = supabaseUrlInput.value;
                 const SUPABASE_KEY = supabaseKeyInput.value;
@@ -701,22 +701,92 @@
                     const { createClient } = supabase; // Usa a biblioteca global do Supabase
                     const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-                    statusText.textContent = 'Conectado! Atualizando dados no banco...';
+                    statusText.textContent = 'Conectado! (1/8) Enviando Vendas Atuais...';
+                    progressBar.style.width = '12%';
+                    const now = new Date().toISOString();
 
-                    // Usamos .upsert() para inserir ou atualizar a linha com id=1
-                    const { error } = await supabaseClient
-                        .from('dashboard_data')
-                        .upsert({ 
-                            id: 1, 
-                            data: data, // Coloca todo o objeto JSON na coluna 'data'
-                            updated_at: new Date().toISOString() 
-                        });
+                    // 1. Vendas Detalhadas (O maior)
+                    const { error: detailedError } = await supabaseClient
+                        .from('data_detailed')
+                        .upsert({ id: 1, data: data.detailed, updated_at: now });
+                    if (detailedError) throw new Error(`data_detailed: ${detailedError.message}`);
+                    
+                    statusText.textContent = 'OK! (2/8) Enviando Histórico...';
+                    progressBar.style.width = '25%';
 
-                    if (error) {
-                        throw error;
-                    }
+                    // 2. Histórico (O segundo maior)
+                    const { error: historyError } = await supabaseClient
+                        .from('data_history')
+                        .upsert({ id: 1, data: data.history, updated_at: now });
+                    if (historyError) throw new Error(`data_history: ${historyError.message}`);
+                    
+                    statusText.textContent = 'OK! (3/8) Enviando Clientes...';
+                    progressBar.style.width = '37%';
 
-                    statusText.innerHTML = `<p class="text-green-500">Sucesso! Dados do dashboard atualizados.</p>`;
+                    // 3. Clientes (O terceiro maior)
+                    const { error: clientsError } = await supabaseClient
+                        .from('data_clients')
+                        .upsert({ id: 1, data: data.clients, updated_at: now });
+                    if (clientsError) throw new Error(`data_clients: ${clientsError.message}`);
+
+                    statusText.textContent = 'OK! (4/8) Enviando Pedidos...';
+                    progressBar.style.width = '50%';
+
+                    // 4. Pedidos Agregados
+                    const { error: ordersError } = await supabaseClient
+                        .from('data_orders')
+                        .upsert({ id: 1, data: data.byOrder, updated_at: now });
+                    if (ordersError) throw new Error(`data_orders: ${ordersError.message}`);
+
+                    statusText.textContent = 'OK! (5/8) Enviando Produtos...';
+                    progressBar.style.width = '62%';
+
+                    // 5. Produtos (Combinados)
+                    const productData = {
+                        activeProductCodes: data.activeProductCodes,
+                        productDetails: data.productDetails
+                    };
+                    const { error: productsError } = await supabaseClient
+                        .from('data_products')
+                        .upsert({ id: 1, data: productData, updated_at: now });
+                    if (productsError) throw new Error(`data_products: ${productsError.message}`);
+
+                    statusText.textContent = 'OK! (6/8) Enviando Estoque...';
+                    progressBar.style.width = '75%';
+
+                    // 6. Estoque (Combinados)
+                    const stockData = {
+                        stockMap05: data.stockMap05,
+                        stockMap08: data.stockMap08
+                    };
+                    const { error: stockError } = await supabaseClient
+                        .from('data_stock')
+                        .upsert({ id: 1, data: stockData, updated_at: now });
+                    if (stockError) throw new Error(`data_stock: ${stockError.message}`);
+                    
+                    statusText.textContent = 'OK! (7/8) Enviando Inovações...';
+                    progressBar.style.width = '87%';
+
+                    // 7. Inovações
+                    const { error: innovationsError } = await supabaseClient
+                        .from('data_innovations')
+                        .upsert({ id: 1, data: data.innovationsMonth, updated_at: now });
+                    if (innovationsError) throw new Error(`data_innovations: ${innovationsError.message}`);
+
+                    statusText.textContent = 'OK! (8/8) Enviando Metadados...';
+                    progressBar.style.width = '95%';
+
+                    // 8. Metadados
+                    const metadata = {
+                        passedWorkingDaysCurrentMonth: data.passedWorkingDaysCurrentMonth
+                    };
+                    const { error: metaError } = await supabaseClient
+                        .from('data_metadata')
+                        .upsert({ id: 1, data: metadata, updated_at: now });
+                    if (metaError) throw new Error(`data_metadata: ${metaError.message}`);
+
+                    // SUCESSO!
+                    statusText.innerHTML = `<p class="text-green-500">Sucesso! Dados do dashboard atualizados (8/8).</p>`;
                     progressBar.style.width = '100%';
                     generateBtn.disabled = false;
                     
@@ -731,6 +801,7 @@
 
                 } catch (error) {
                     console.error('Erro no Supabase:', error);
+                    // O erro vai aparecer com o nome da tabela, ex: "Erro ao enviar: data_detailed: ..."
                     statusText.innerHTML = `<p class="text-red-500">Erro ao enviar: ${error.message}</p>`;
                     progressBar.style.width = '0%';
                     generateBtn.disabled = false;
@@ -740,4 +811,3 @@
     </script>
 </body>
 </html>
-
