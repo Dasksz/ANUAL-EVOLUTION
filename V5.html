@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Uploader de Dados do Dashboard</title>
+    <title>Admin - Uploader de Dados (v4 - Colunar)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 1. ADICIONADO: Biblioteca do Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -17,10 +16,9 @@
 </head>
 <body class="text-slate-800 flex items-center justify-center min-h-screen">
     <div class="text-center p-8 bg-white rounded-lg shadow-2xl max-w-lg w-full m-4 border border-slate-200">
-        <h1 class="text-2xl font-bold text-slate-900 mb-4">Uploader (Admin) - V5 Corrigido</h1>
+        <h1 class="text-2xl font-bold text-slate-900 mb-4">Uploader (v4 - Colunar)</h1>
         <p class="text-slate-600 mb-6">Carregue os arquivos para enviar os dados ao Supabase. Esta página deve ser mantida em segredo.</p>
 
-        <!-- 2. ADICIONADO: Campos de configuração do Supabase -->
         <div class="space-y-4 mb-6 text-left">
             <div>
                 <label for="supabase-url" class="file-input-label">URL do Projeto Supabase</label>
@@ -56,7 +54,6 @@
             </div>
         </div>
 
-        <!-- 3. MODIFICADO: O botão agora envia para o Supabase -->
         <button id="generate-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg w-full disabled:bg-slate-300" disabled>
             Enviar Dados para o Supabase
         </button>
@@ -70,12 +67,15 @@
     </div>
 
     <!-- 
-      4. INSERIDO: O "cérebro" da sua ferramenta (Web Worker).
-      (Sem alterações no worker)
+      Worker-script (O "cérebro")
+      MODIFICADO: A saída (self.postMessage) foi alterada para formatar
+      os dados para as novas tabelas colunares.
     -->
     <script id="worker-script" type="text/worker-javascript">
         self.importScripts('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
 
+        // --- Funções de Ajuda (parseDate, parseBrazilianNumber, readFile) ---
+        // (Sem alterações nestas funções)
         function parseDate(dateString) {
             if (!dateString) return null;
             if (dateString instanceof Date) {
@@ -142,12 +142,23 @@
                             };
 
                             const firstLine = lines[0];
-                            const delimiter = firstLine.includes(';') ? ';' : ',';
+                            // Detecção de delimitador robusta
+                            const delimiters = [';', ',', '\t', '|'];
+                            let bestDelimiter = ',';
+                            let maxCount = 0;
+                            delimiters.forEach(d => {
+                                const count = (firstLine.match(new RegExp(`\\${d}`, 'g')) || []).length;
+                                if (count > maxCount) {
+                                    maxCount = count;
+                                    bestDelimiter = d;
+                                }
+                            });
                             
-                            const headers = lines.shift().trim().split(delimiter).map(h => h.replace(/"/g, '').trim().replace(/^\uFEFF/, ''));
+                            const headers = lines.shift().trim().split(bestDelimiter).map(h => h.replace(/"/g, '').trim().replace(/^\uFEFF/, ''));
                             
                             jsonData = lines.map(line => {
-                                const values = line.split(delimiter);
+                                // Lógica simples de split (pode falhar com "dentro" de aspas, mas é raro em CSVs de sistema)
+                                const values = line.split(bestDelimiter);
                                 let row = {};
                                 for (let i = 0; i < headers.length; i++) {
                                     row[headers[i]] = (values[i] || '').replace(/"/g, '').trim();
@@ -169,24 +180,21 @@
                 reader.readAsArrayBuffer(file);
             });
         };
+        // --- Fim das Funções de Ajuda ---
+
 
         const processSalesData = (rawData, clientMap, productMasterMap, newRcaSupervisorMap) => {
             return rawData.map(rawRow => {
-                // As chaves no rawRow (ex: 'CODCLI') vêm do cabeçalho do Excel/CSV
                 const codCliStr = String(rawRow['CODCLI']).trim();
                 const clientInfo = clientMap.get(codCliStr) || {};
                 
-                // LÓGICA DE ATRIBUIÇÃO DE VENDEDOR (inalterada)
-                
-                // 1. Pega os valores padrão da linha de venda
                 let vendorName = String(rawRow['NOME'] || '');
                 let supervisorName = String(rawRow['SUPERV'] || '');
-                let codUsur = String(rawRow['CODUSUR'] || '').trim(); // Este é o 'codUsurVenda'
+                let codUsur = String(rawRow['CODUSUR'] || '').trim(); 
                 let codSupervisor = String(rawRow['CODSUPERVISOR'] || '').trim();
                 const pedido = String(rawRow['PEDIDO'] || '');
                 let isAmericanas = false;
 
-                // 2. Regra de Prioridade 1: AMERICANAS S.A 
                 const nomeClienteParaLogica = (clientInfo.razaoSocial || clientInfo.fantasia || clientInfo.nomeCliente || '').toUpperCase();
                 if (nomeClienteParaLogica.includes('AMERICANAS S.A')) {
                     vendorName = 'AMERICANAS';
@@ -203,44 +211,33 @@
                     }
                 }
 
-                // 3. Regra de Prioridade 2: Se NÃO for Americanas, usa a nova lógica
                 if (!isAmericanas) {
                     const rca1Cliente = (clientInfo.rca1 || '').trim();
-                    const codUsurVenda = codUsur; // Guarda o CODUSUR original da linha de venda
-                    
-                    // Prioriza o RCA 1 do cadastro de clientes. Se não tiver, usa o RCA da linha de venda.
+                    const codUsurVenda = codUsur;
                     const codUsurParaBusca = rca1Cliente || codUsurVenda;
-
                     const rcaInfo = newRcaSupervisorMap.get(codUsurParaBusca);
 
                     if (rcaInfo) {
-                        // Encontrou informações no mapa mestre (usando RCA1 do cliente ou RCA da venda)
                         vendorName = rcaInfo.NOME;
                         supervisorName = rcaInfo.SUPERV;
                         codSupervisor = rcaInfo.CODSUPERVISOR;
-                        codUsur = codUsurParaBusca; // Define o CODUSUR final
+                        codUsur = codUsurParaBusca; 
                     } 
                     else if (rca1Cliente && rca1Cliente !== codUsurVenda) {
-                        // Usou o RCA1 do cliente, não achou. Tenta um fallback com o RCA da linha de venda.
                         const fallbackInfo = newRcaSupervisorMap.get(codUsurVenda);
                         if (fallbackInfo) {
                             vendorName = fallbackInfo.NOME;
                             supervisorName = fallbackInfo.SUPERV;
                             codSupervisor = fallbackInfo.CODSUPERVISOR;
-                            codUsur = codUsurVenda; // Define o CODUSUR final como o da venda (fallback)
+                            codUsur = codUsurVenda; 
                         } else {
-                            // Não achou em lugar nenhum, mantém os dados da linha (já definidos no passo 1)
                             codUsur = codUsurVenda;
                         }
                     } 
                     else {
-                        // Se rca1Cliente estava vazio, codUsurParaBusca == codUsurVenda.
-                        // Se não achou rcaInfo, significa que o codUsurVenda não está no mapa.
-                        // Mantém os dados da linha (já definidos no passo 1) e o codUsur da venda.
                         codUsur = codUsurVenda;
                     }
                 }
-                // FIM DA LÓGICA DE ATRIBUIÇÃO DE VENDEDOR
 
                 const supervisorUpper = (supervisorName || '').trim().toUpperCase();
                 if (supervisorUpper === 'BALCAO' || supervisorUpper === 'BALCÃO') supervisorName = 'BALCAO';
@@ -256,7 +253,6 @@
                 const qtdeMaster = productMasterMap.get(productCode) || 1;
                 const qtVenda = parseInt(String(rawRow['QTVENDA'] || '0').trim(), 10) || 0;
 
-                // REGRA TIPOVENDA (inalterada)
                 const tipoVenda = String(rawRow['TIPOVENDA'] || 'N/A').trim();
                 const isFaturamento = (tipoVenda === '1' || tipoVenda === '9');
                 const vlVendaOriginal = parseBrazilianNumber(rawRow['VLVENDA']);
@@ -267,8 +263,8 @@
                 if (filialValue === '5') filialValue = '05';
                 if (filialValue === '8') filialValue = '08';
 
-                // CORREÇÃO CRÍTICA: Mapeia todas as chaves para MINÚSCULAS 
-                // para corresponder ao esquema do PostgreSQL (que as converte automaticamente)
+                // O objeto retornado tem chaves em minúsculas
+                // para corresponder ao SQL (v4)
                 return {
                     pedido: pedido,
                     nome: vendorName,
@@ -284,8 +280,6 @@
                     cidade: clientInfo.cidade || 'N/A',
                     bairro: clientInfo.bairro || 'N/A',
                     qtvenda: qtVenda,
-                    
-                    // Valores ajustados e em minúsculas
                     vlvenda: isFaturamento ? vlVendaOriginal : 0,
                     vlbonific: isFaturamento ? vlBonificOriginal : (vlVendaOriginal + vlBonificOriginal),
                     totpesoliq: pesoOriginal, 
@@ -296,7 +290,6 @@
                     qtvenda_embalagem_master: isNaN(qtdeMaster) || qtdeMaster === 0 ? 0 : qtVenda / qtdeMaster,
                     tipovenda: tipoVenda,
                     filial: filialValue,
-                    // Passa o CODSUPERVISOR para a regra do Tiago
                     codsupervisor: codSupervisor
                 };
             });
@@ -321,6 +314,7 @@
 
             try {
                 self.postMessage({ type: 'progress', status: 'Lendo arquivos...', percentage: 10 });
+                // --- ETAPA 1: Ler todos os ficheiros ---
                 const [salesDataRaw, clientsDataRaw, productsDataRaw, historyDataRaw, innovationsDataRaw] = await Promise.all([
                     readFile(salesFile),
                     readFile(clientsFile),
@@ -330,23 +324,19 @@
                 ]);
 
                 self.postMessage({ type: 'progress', status: 'Criando mapa mestre de supervisores...', percentage: 20 });
+                // --- ETAPA 2: Criar mapas de referência ---
                 const newRcaSupervisorMap = new Map();
                 const lastSaleDateMap = new Map();
-
-                // Usa vendas atuais E históricas para o mapa mestre (inalterado)
                 const allSalesForMap = [...salesDataRaw, ...historyDataRaw];
 
                 allSalesForMap.forEach(row => {
                     try {
                         const codUsur = String(row['CODUSUR'] || '').trim();
                         if (codUsur === '1001') return;
-
                         const dtPed = row['DTPED'];
                         if (!codUsur || !dtPed) return;
-
                         const saleDate = parseDate(dtPed);
                         if (!saleDate || isNaN(saleDate.getTime())) return;
-
                         const lastDate = lastSaleDateMap.get(codUsur);
                         if (!lastDate || saleDate >= lastDate) {
                             lastSaleDateMap.set(codUsur, saleDate);
@@ -361,74 +351,59 @@
                     }
                 });
 
-                self.postMessage({ type: 'progress', status: 'Extraindo estoque do arquivo de vendas...', percentage: 25 });
+                self.postMessage({ type: 'progress', status: 'Extraindo estoque...', percentage: 25 });
                 const stockMap05 = new Map();
                 const stockMap08 = new Map();
-
+                const allProductCodesInStock = new Set();
                 salesDataRaw.forEach(item => {
                     const productCode = String(item['PRODUTO'] || '').trim();
+                    if (!productCode) return;
+                    allProductCodesInStock.add(productCode);
                     let branch = String(item['FILIAL'] || '').trim();
                     const stockQtyCx = parseBrazilianNumber(item['ESTOQUECX']);
-
-                    if (productCode && branch) {
-                        if (branch === '5') branch = '05';
-                        if (branch === '8') branch = '08';
-
-                        if (branch === '05') {
-                            stockMap05.set(productCode, stockQtyCx);
-                        } else if (branch === '08') {
-                            stockMap08.set(productCode, stockQtyCx);
-                        }
-                    }
+                    if (branch === '5') branch = '05';
+                    if (branch === '8') branch = '08';
+                    if (branch === '05') stockMap05.set(productCode, stockQtyCx);
+                    else if (branch === '08') stockMap08.set(productCode, stockQtyCx);
                 });
 
-                self.postMessage({ type: 'progress', status: 'Mapeando produtos e criando lista de ativos...', percentage: 30 });
+                self.postMessage({ type: 'progress', status: 'Mapeando produtos...', percentage: 30 });
                 const productMasterMap = new Map();
-                const activeProductCodesFromCadastro = new Set();
                 const productDetailsMap = new Map();
-
                 productsDataRaw.forEach(prod => {
                     const productCode = String(prod['Código'] || '').trim();
                     if (!productCode) return;
-                    activeProductCodesFromCadastro.add(productCode);
                     let qtdeMaster = parseInt(prod['Qtde embalagem master(Compra)'], 10);
                     if (isNaN(qtdeMaster) || qtdeMaster <= 0) qtdeMaster = 1;
                     productMasterMap.set(productCode, qtdeMaster);
                     if (!productDetailsMap.has(productCode)) {
                         productDetailsMap.set(productCode, {
+                            codigo: productCode, // Adicionado para a tabela
                             descricao: String(prod['Descrição'] || `Produto ${productCode}`),
                             fornecedor: String(prod['Nome do fornecedor'] || 'N/A'),
                             codfor: String(prod['Fornecedor'] || 'N/A'),
-                            dtCadastro: prod['Dt.Cadastro'] || null
+                            dtCadastro: prod['Dt.Cadastro'] || null,
+                            qtde_master: qtdeMaster // Adicionado para a tabela
                         });
                     }
                 });
-
-
-                const clientRcaOverrides = new Map();
-                salesDataRaw.forEach(rawRow => {
-                    const pedido = String(rawRow['PEDIDO'] || '');
-                    const codCli = String(rawRow['CODCLI'] || '').trim();
-                    if(!codCli) return;
-                });
 
                 self.postMessage({ type: 'progress', status: 'Processando clientes...', percentage: 50 });
                 const clientMap = new Map();
                 clientsDataRaw.forEach(client => {
                     const codCli = String(client['Código'] || '').trim();
                     if (!codCli) return;
-
                     const rca1 = String(client['RCA 1'] || '');
                     const rca2 = String(client['RCA 2'] || '');
                     const rcas = new Set();
                     if (rca1) rcas.add(rca1);
                     if (rca2) rcas.add(rca2);
-
                     let registrationDateStr = client['Data e Hora de Cadastro'] || '';
                     if (registrationDateStr.includes(' ')) registrationDateStr = registrationDateStr.split(' ')[0];
 
+                    // Este objeto é o que será enviado para a tabela data_clients
                     const clientData = {
-                        'Código': codCli,
+                        'Código': codCli, // Chave primária
                         rcas: Array.from(rcas),
                         rca1: rca1,
                         rca2: rca2,
@@ -449,81 +424,64 @@
                         bloqueio: String(client['Bloqueio'] || '').trim().toUpperCase(),
                         inscricaoEstadual: String(client['Insc. Est. / Produtor'] || 'N/A')
                     };
-                    if (clientRcaOverrides.has(codCli)) clientData.rcas.unshift(clientRcaOverrides.get(codCli));
                     clientMap.set(codCli, clientData);
                 });
 
                 self.postMessage({ type: 'progress', status: 'Cruzando dados de vendas...', percentage: 70 });
+                // --- ETAPA 3: Processar Vendas e Histórico ---
                 const processedSalesData = processSalesData(salesDataRaw, clientMap, productMasterMap, newRcaSupervisorMap);
                 const processedHistoryData = processSalesData(historyDataRaw, clientMap, productMasterMap, newRcaSupervisorMap);
 
-                self.postMessage({ type: 'progress', status: 'Aplicando regra de filial...', percentage: 75 });
-
-                // Lógica de Override de Filial (inalterada)
+                self.postMessage({ type: 'progress', status: 'Aplicando regras de filial...', percentage: 75 });
+                // --- ETAPA 4: Regras de Negócio (Filial, Tiago, etc.) ---
                 const allProcessedSales = [...processedSalesData, ...processedHistoryData].sort((a, b) => {
-                    const dateA = parseDate(a.dtped) || new Date(0); // ATUALIZADO: Usando dtped
-                    const dateB = parseDate(b.dtped) || new Date(0); // ATUALIZADO: Usando dtped
+                    const dateA = parseDate(a.dtped) || new Date(0);
+                    const dateB = parseDate(b.dtped) || new Date(0);
                     return dateA - dateB;
                 });
-
                 const clientLastBranch = new Map();
                 const clientsWith05Purchase = new Set();
-
                 allProcessedSales.forEach(sale => {
-                    const codCli = sale.codcli; // ATUALIZADO: Usando codcli
-                    const filial = sale.filial; // ATUALIZADO: Usando filial
+                    const codCli = sale.codcli;
+                    const filial = sale.filial;
                     if (codCli && filial) {
                         clientLastBranch.set(codCli, filial);
-                        if (filial === '05') {
-                            clientsWith05Purchase.add(codCli);
-                        }
+                        if (filial === '05') clientsWith05Purchase.add(codCli);
                     }
                 });
-
                 const clientBranchOverride = new Map();
                 clientsWith05Purchase.forEach(codCli => {
                     const lastBranch = clientLastBranch.get(codCli);
-                    if (lastBranch && lastBranch === '08') {
-                        clientBranchOverride.set(codCli, '08');
-                    }
+                    if (lastBranch && lastBranch === '08') clientBranchOverride.set(codCli, '08');
                 });
-
                 const applyBranchOverride = (salesArray, overrideMap) => {
                     return salesArray.map(sale => {
-                        const override = overrideMap.get(sale.codcli); // ATUALIZADO: Usando codcli
-                        if (override && sale.filial === '05') { // ATUALIZADO: Usando filial
-                            return { ...sale, filial: override };
-                        }
+                        const override = overrideMap.get(sale.codcli);
+                        if (override && sale.filial === '05') return { ...sale, filial: override };
                         return sale;
                     });
                 };
-
                 let finalSalesData = applyBranchOverride(processedSalesData, clientBranchOverride);
                 let finalHistoryData = applyBranchOverride(processedHistoryData, clientBranchOverride);
 
-                self.postMessage({ type: 'progress', status: 'Aplicando regra específica para Supervisor Tiago...', percentage: 78 });
+                self.postMessage({ type: 'progress', status: 'Aplicando regra (Tiago)...', percentage: 78 });
                 const tiagoSellersToMoveTo08 = new Set(['291', '292', '293', '284', '289', '287', '286']);
-
                 const applyTiagoRule = (salesArray) => {
                     return salesArray.map(sale => {
-                        // Assume que CODSUPERVISOR e CODUSUR vêm com as chaves do rawRow
                         if (sale.codsupervisor === '12' && tiagoSellersToMoveTo08.has(sale.codusur)) {
-                             // ATUALIZADO: Usa codsupervisor e codusur, e altera filial
                             return { ...sale, filial: '08' }; 
                         }
                         return sale;
                     });
                 };
-
                 finalSalesData = applyTiagoRule(finalSalesData);
                 finalHistoryData = applyTiagoRule(finalHistoryData);
-
 
                 self.postMessage({ type: 'progress', status: 'Atualizando datas de compra...', percentage: 80 });
                 const latestSaleDateByClient = new Map();
                 finalSalesData.forEach(sale => {
-                    const codcli = sale.codcli; // ATUALIZADO: Usando codcli
-                    const saleDate = parseDate(sale.dtped); // ATUALIZADO: Usando dtped
+                    const codcli = sale.codcli;
+                    const saleDate = parseDate(sale.dtped);
                     if (codcli && saleDate) {
                         const existingDate = latestSaleDateByClient.get(codcli);
                         if (!existingDate || saleDate > existingDate) latestSaleDateByClient.set(codcli, saleDate);
@@ -533,7 +491,7 @@
                     const lastPurchaseDate = parseDate(client.ultimaCompra);
                     const latestSaleDate = latestSaleDateByClient.get(codcli);
                     if (latestSaleDate && (!lastPurchaseDate || isNaN(lastPurchaseDate.getTime()) || latestSaleDate > lastPurchaseDate)) {
-                        client.ultimaCompra = latestSaleDate;
+                        client.ultimaCompra = latestSaleDate; // Atualiza o objeto do cliente
                     }
                 });
 
@@ -541,40 +499,32 @@
                 const aggregateOrders = (data) => {
                     const orders = new Map();
                     data.forEach(row => {
-                        if (!row.pedido) return; // CORRIGIDO: row.PEDIDO -> row.pedido
-                        if (!orders.has(row.pedido)) { // CORRIGIDO: row.PEDIDO -> row.pedido
-                            orders.set(row.pedido, { // CORRIGIDO: row.PEDIDO -> row.pedido
-                                ...row,
-                                // CORRIGIDO: Todas as chaves em minúsculas
-                                qtvenda: 0,
-                                vlvenda: 0,
-                                vlbonific: 0,
-                                totpesoliq: 0,
-                                fornecedores: new Set(),
-                                codfors: new Set()
-                            });
+                        if (!row.pedido) return;
+                        if (!orders.has(row.pedido)) {
+                            orders.set(row.pedido, { ...row, qtvenda: 0, vlvenda: 0, vlbonific: 0, totpesoliq: 0, fornecedores: new Set(), codfors: new Set() });
                         }
-                        const order = orders.get(row.pedido); // CORRIGIDO: row.PEDIDO -> row.pedido
-                        // CORRIGIDO: Todas as chaves em minúsculas
+                        const order = orders.get(row.pedido);
                         order.qtvenda += row.qtvenda;
                         order.vlvenda += row.vlvenda;
                         order.vlbonific += row.vlbonific;
                         order.totpesoliq += row.totpesoliq;
-                        if (row.observacaofor) order.fornecedores.add(row.observacaofor); // CORRIGIDO: row.OBSERVACAOFOR -> row.observacaofor
-                        if (row.codfor) order.codfors.add(row.codfor); // CORRIGIDO: row.CODFOR -> row.codfor
+                        if (row.observacaofor) order.fornecedores.add(row.observacaofor);
+                        if (row.codfor) order.codfors.add(row.codfor);
                     });
                     return Array.from(orders.values()).map(order => {
-                        // CORRIGIDO: Todas as chaves em minúsculas
                         order.fornecedores_list = Array.from(order.fornecedores);
                         order.fornecedores_str = order.fornecedores_list.join(', ');
                         order.codfors_list = Array.from(order.codfors);
+                        // Remove sets que não são serializáveis para SQL
+                        delete order.fornecedores; 
+                        delete order.codfors;
                         return order;
                     });
                 };
                 const aggregatedByOrder = aggregateOrders(finalSalesData);
 
                 const lastSaleDate = finalSalesData.length > 0
-                    ? new Date(Math.max.apply(null, finalSalesData.map(s => parseDate(s.dtped)).filter(d => d && !isNaN(d)))) // CORRIGIDO: s.DTPED -> s.dtped
+                    ? new Date(Math.max.apply(null, finalSalesData.map(s => parseDate(s.dtped)).filter(d => d && !isNaN(d))))
                     : new Date();
                 lastSaleDate.setHours(0,0,0,0);
                 const passedWorkingDaysCurrentMonth = getPassedWorkingDaysInSpecificMonth(
@@ -584,21 +534,57 @@
                 );
 
 
+                // --- ETAPA 5: MODIFICADO - Preparar dados para as tabelas colunares ---
+                
+                // data_clients (Array de objetos)
+                const finalClientsData = Array.from(clientMap.values());
+
+                // data_products (Array de objetos)
+                const finalProductsData = Array.from(productDetailsMap.values());
+
+                // data_stock (Array de objetos)
+                const finalStockData = [];
+                allProductCodesInStock.forEach(code => {
+                    finalStockData.push({
+                        cod_produto: code,
+                        estoque_05: stockMap05.get(code) || 0,
+                        estoque_08: stockMap08.get(code) || 0
+                    });
+                });
+
+                // data_metadata (Array de objetos)
+                const finalMetadata = [{
+                    id: 1,
+                    passed_working_days: passedWorkingDaysCurrentMonth,
+                    updated_at: new Date().toISOString()
+                }];
+                
+                // data_innovations (Array de objetos)
+                // O 'innovationsDataRaw' já está no formato de array de objetos correto
+                // Apenas garante que as chaves correspondam ao SQL (case-sensitive)
+                const finalInnovationsData = innovationsDataRaw.map(item => ({
+                    "Inovacoes": item.Inovacoes,
+                    "Codigo": item.Codigo,
+                    "Produto": item.Produto
+                }));
+
+
                 self.postMessage({ type: 'progress', status: 'Finalizando...', percentage: 100 });
 
                 self.postMessage({
                     type: 'result',
                     data: {
+                        // Tabelas principais (já são arrays de linhas)
                         detailed: finalSalesData,
                         history: finalHistoryData,
                         byOrder: aggregatedByOrder,
-                        clients: Array.from(clientMap.values()),
-                        stockMap05: Object.fromEntries(stockMap05),
-                        stockMap08: Object.fromEntries(stockMap08),
-                        innovationsMonth: innovationsDataRaw,
-                        activeProductCodes: Array.from(activeProductCodesFromCadastro),
-                        productDetails: Object.fromEntries(productDetailsMap),
-                        passedWorkingDaysCurrentMonth: passedWorkingDaysCurrentMonth
+                        
+                        // NOVOS: Tabelas de suporte (agora também arrays de linhas)
+                        clients: finalClientsData,
+                        products: finalProductsData,
+                        stock: finalStockData,
+                        innovations: finalInnovationsData,
+                        metadata: finalMetadata
                     }
                 });
 
@@ -608,13 +594,11 @@
         };
     </script>
     
-
     <!-- 
-      Este script não é mais necessário aqui, pois a lógica 
-      de geração do relatório agora está no index.html
+      Script Principal da Página
+      MODIFICADO: A função 'enviarDadosParaSupabase' foi alterada
+      para tratar TODAS as 8 tabelas como 'lote'.
     -->
-    <!-- <script id="report-logic-script" type="text/template"> ... </script> -->
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const salesFileInput = document.getElementById('sales-file-input');
@@ -628,15 +612,15 @@
             const statusText = document.getElementById('status-text');
             const progressBar = document.getElementById('progress-bar');
             
-            // Campos do Supabase
             const supabaseUrlInput = document.getElementById('supabase-url');
             const supabaseKeyInput = document.getElementById('supabase-key');
 
             let files = {};
 
             const checkFiles = () => {
-                // MODIFICADO: Habilita o botão se PELO MENOS UM arquivo estiver carregado
-                const allFilesLoaded = files.salesFile || files.clientsFile || files.productsFile || files.historyFile || files.innovationsFile;
+                // Habilita o botão se TODOS os 5 arquivos estiverem carregados
+                // (Isto é mais seguro para garantir que os dados se cruzem corretamente)
+                const allFilesLoaded = files.salesFile && files.clientsFile && files.productsFile && files.historyFile && files.innovationsFile;
                 const supabaseConfigReady = supabaseUrlInput.value && supabaseKeyInput.value;
                 generateBtn.disabled = !(allFilesLoaded && supabaseConfigReady);
             };
@@ -661,7 +645,6 @@
                     statusText.textContent = status;
                     progressBar.style.width = `${percentage}%`;
                 } else if (type === 'result') {
-                    // 4. MODIFICADO: Em vez de gerar um arquivo, envia os dados para o Supabase
                     statusText.textContent = 'Dados processados! Enviando para o Supabase...';
                     progressBar.style.width = '100%';
                     enviarDadosParaSupabase(data);
@@ -681,7 +664,6 @@
                 statusText.textContent = 'A iniciar o processamento...';
                 progressBar.style.width = '0%';
 
-                // MODIFICADO: Envia os arquivos que existem, ou 'null' se não existirem
                 worker.postMessage({
                     salesFile: files.salesFile || null,
                     clientsFile: files.clientsFile || null,
@@ -691,20 +673,30 @@
                 });
             });
 
-            // 5. NOVO: Helper para enviar dados grandes em lotes
-            async function enviarDadosEmLotes(supabaseClient, nomeTabela, dados, statusText, progressBar, progressoInicial, progressoFinal) {
-                const TAMANHO_LOTE = 500; // Define o tamanho de cada "pacote"
+            // Helper para enviar dados em lotes (sem alteração)
+            async function enviarDadosEmLotes(supabaseClient, nomeTabela, dados, statusText, progressBar, progressoInicial, progressoFinal, primaryKeys = ['id']) {
+                const TAMANHO_LOTE = 500; 
                 const totalLotes = Math.ceil(dados.length / TAMANHO_LOTE);
 
                 try {
                     // Limpa a tabela antiga ANTES de inserir novos dados
+                    // MODIFICAÇÃO: Usamos 'delete().neq('id', -999)' como um "delete all" seguro
+                    // Para tabelas com chaves primárias de texto, usamos a primeira chave.
+                    const anyColumn = primaryKeys[0];
+                    
                     statusText.textContent = `(Etapa ${progressoInicial < 40 ? '1' : '2'}/8) Limpando dados antigos de ${nomeTabela}...`;
                     const { error: deleteError } = await supabaseClient
                         .from(nomeTabela)
                         .delete()
-                        .neq('id', -1); // Exclui todas as linhas (onde ID não é -1, ou seja, todas)
+                        .neq(anyColumn, '---NEVER-MATCH---'); // Apaga todas as linhas
                     
                     if (deleteError) throw new Error(`Falha ao limpar ${nomeTabela}: ${deleteError.message}`);
+
+                    if (dados.length === 0) {
+                         // Se não há dados para inserir, apenas pulamos
+                        progressBar.style.width = `${progressoFinal}%`;
+                        return;
+                    }
 
                     // Insere os novos dados em lotes
                     for (let i = 0; i < totalLotes; i++) {
@@ -712,7 +704,6 @@
                         const fim = inicio + TAMANHO_LOTE;
                         const lote = dados.slice(inicio, fim);
 
-                        // Atualiza o status para o lote atual
                         const statusMsg = `(Etapa ${progressoInicial < 40 ? '1' : '2'}/8) Enviando ${nomeTabela} (Lote ${i + 1}/${totalLotes})...`;
                         statusText.textContent = statusMsg;
 
@@ -725,19 +716,17 @@
                             throw new Error(`Erro ao inserir ${nomeTabela} (Lote ${i + 1}): ${insertError.message}`);
                         }
 
-                        // Atualiza a barra de progresso
                         const progressoLote = (i + 1) / totalLotes;
                         const progressoTotal = progressoInicial + (progressoLote * (progressoFinal - progressoInicial));
                         progressBar.style.width = `${progressoTotal}%`;
                     }
                 } catch (error) {
-                    // Se falhar, re-lança o erro para ser pego pela função principal
                     throw error;
                 }
             }
 
 
-            // 6. MODIFICADO: Função principal de envio atualizada para enviar SELETIVAMENTE
+            // MODIFICADO: Função principal de envio atualizada para tratar TUDO como 'lote'
             async function enviarDadosParaSupabase(data) {
                 const SUPABASE_URL = supabaseUrlInput.value;
                 const SUPABASE_KEY = supabaseKeyInput.value;
@@ -749,168 +738,51 @@
                 }
 
                 try {
-                    // Inicializa o cliente Supabase com a chave SECRETA
-                    const { createClient } = supabase; // Usa a biblioteca global do Supabase
+                    const { createClient } = supabase;
                     const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
                     statusText.textContent = 'Conectado! Verificando dados para enviar...';
                     progressBar.style.width = '5%';
-                    const now = new Date().toISOString();
-
-                    // --- INÍCIO DA MODIFICAÇÃO: Lógica de Envio Seletivo ---
-
-                    // 1. Monta uma lista de tarefas (o que realmente precisamos enviar)
+                    
+                    // --- INÍCIO DA MODIFICAÇÃO: Todas as 8 tarefas são 'lote' ---
                     const tasks = [];
-                    if (data.detailed && data.detailed.length > 0) {
-                        tasks.push({ 
-                            name: 'Vendas Atuais', 
-                            tableName: 'data_detailed', 
-                            data: data.detailed, 
-                            type: 'lote' 
-                        });
-                    }
-                    if (data.history && data.history.length > 0) {
-                        tasks.push({ 
-                            name: 'Histórico', 
-                            tableName: 'data_history', 
-                            data: data.history, 
-                            type: 'lote' 
-                        });
-                    }
-                    if (data.clients && data.clients.length > 0) {
-                        tasks.push({ 
-                            name: 'Clientes', 
-                            tableName: 'data_clients', 
-                            data: { id: 1, data: data.clients, updated_at: now }, 
-                            type: 'jsonb' 
-                        });
-                    }
-                    if (data.byOrder && data.byOrder.length > 0) {
-                        tasks.push({ 
-                            name: 'Pedidos', 
-                            tableName: 'data_orders', 
-                            data: { id: 1, data: data.byOrder, updated_at: now }, 
-                            type: 'jsonb' 
-                        });
-                    }
-                    if (data.activeProductCodes && data.activeProductCodes.length > 0) {
-                        // O 'productDetails' pode estar vazio, mas 'activeProductCodes' não
-                        const productData = {
-                            activeProductCodes: data.activeProductCodes,
-                            productDetails: data.productDetails
-                        };
-                        tasks.push({ 
-                            name: 'Produtos', 
-                            tableName: 'data_products', 
-                            data: { id: 1, data: productData, updated_at: now }, 
-                            type: 'jsonb' 
-                        });
-                    }
-                    if (data.stockMap05 || data.stockMap08) {
-                        // Verifica se os objetos de estoque não estão vazios
-                        if (Object.keys(data.stockMap05).length > 0 || Object.keys(data.stockMap08).length > 0) {
-                             const stockData = {
-                                stockMap05: data.stockMap05,
-                                stockMap08: data.stockMap08
-                            };
-                            tasks.push({ 
-                                name: 'Estoque', 
-                                tableName: 'data_stock', 
-                                data: { id: 1, data: stockData, updated_at: now }, 
-                                type: 'jsonb' 
-                            });
-                        }
-                    }
-                    if (data.innovationsMonth && data.innovationsMonth.length > 0) {
-                        tasks.push({ 
-                            name: 'Inovações', 
-                            tableName: 'data_innovations', 
-                            data: { id: 1, data: data.innovationsMonth, updated_at: now }, 
-                            type: 'jsonb' 
-                        });
-                    }
-                    if (data.passedWorkingDaysCurrentMonth) {
-                         const metadata = {
-                            passedWorkingDaysCurrentMonth: data.passedWorkingDaysCurrentMonth
-                        };
-                        tasks.push({ 
-                            name: 'Metadados', 
-                            tableName: 'data_metadata', 
-                            data: { id: 1, data: metadata, updated_at: now }, 
-                            type: 'jsonb' 
-                        });
-                    }
+                    if (data.detailed) tasks.push({ name: 'Vendas Atuais', tableName: 'data_detailed', data: data.detailed, keys: ['id'] });
+                    if (data.history) tasks.push({ name: 'Histórico', tableName: 'data_history', data: data.history, keys: ['id'] });
+                    if (data.byOrder) tasks.push({ name: 'Pedidos', tableName: 'data_orders', data: data.byOrder, keys: ['id'] });
+                    if (data.clients) tasks.push({ name: 'Clientes', tableName: 'data_clients', data: data.clients, keys: ['Código'] });
+                    if (data.products) tasks.push({ name: 'Produtos', tableName: 'data_products', data: data.products, keys: ['codigo'] });
+                    if (data.stock) tasks.push({ name: 'Estoque', tableName: 'data_stock', data: data.stock, keys: ['cod_produto'] });
+                    if (data.innovations) tasks.push({ name: 'Inovações', tableName: 'data_innovations', data: data.innovations, keys: ['Inovacoes', 'Codigo', 'Produto'] });
+                    if (data.metadata) tasks.push({ name: 'Metadados', tableName: 'data_metadata', data: data.metadata, keys: ['id'] });
 
-                    // 2. Verifica se há algo para fazer
                     if (tasks.length === 0) {
-                        statusText.innerHTML = `<p class="text-yellow-500">Nenhum dado novo foi processado. Verifique os arquivos carregados.</p>`;
-                        progressBar.style.width = '0%';
+                        statusText.innerHTML = `<p class="text-yellow-500">Nenhum dado novo foi processado.</p>`;
                         generateBtn.disabled = false;
                         return;
                     }
 
                     const totalTasks = tasks.length;
                     
-                    // 3. Executa as tarefas em loop
+                    // 3. Executa as tarefas em loop (APENAS LÓGICA DE LOTE)
                     for (let i = 0; i < totalTasks; i++) {
                         const task = tasks[i];
-                        const taskProgress = ((i + 1) / totalTasks); // Progresso de 0 a 1
+                        const taskProgress = ((i + 1) / totalTasks);
+                        const progressoInicial = (i / totalTasks) * 100;
+                        const progressoFinal = taskProgress * 100;
 
                         statusText.textContent = `Enviando (${i + 1}/${totalTasks}): ${task.name}...`;
 
-                        if (task.type === 'lote') {
-                            // Envia em lotes (usando o progresso dinâmico)
-                            const progressoInicial = (i / totalTasks) * 100;
-                            const progressoFinal = taskProgress * 100;
-
-                            await enviarDadosEmLotes(
-                                supabaseClient,
-                                task.tableName,
-                                task.data,
-                                statusText,
-                                progressBar,
-                                progressoInicial,
-                                progressoFinal
-                            );
-                            
-                        } else if (task.type === 'jsonb') {
-                            // ######################################################################
-                            // ## INÍCIO DA CORREÇÃO ##
-                            // Troca o 'upsert' por 'delete' + 'insert' para garantir a execução,
-                            // já que 'insert' e 'delete' estão a funcionar para as tabelas 'lote'.
-                            
-                            // 1. Apaga a linha antiga
-                            const { error: deleteError } = await supabaseClient
-                                .from(task.tableName)
-                                .delete()
-                                .eq('id', 1); // Apaga especificamente a linha com id 1
-                                
-                            if (deleteError) throw new Error(`Falha ao limpar ${task.tableName}: ${deleteError.message}`);
-                            
-                            // 2. Insere a nova linha com os dados
-                            // task.data já é { id: 1, data: [...], updated_at: "..." }
-                            const { error: insertError } = await supabaseClient
-                                .from(task.tableName)
-                                .insert(task.data); 
-
-                            if (insertError) throw new Error(`Falha ao inserir ${task.tableName}: ${insertError.message}`);
-                            
-                            // ## FIM DA CORREÇÃO ##
-
-                            /*
-                            // --- CÓDIGO ANTIGO QUE FALHAVA ---
-                            const { error } = await supabaseClient
-                                .from(task.tableName)
-                                .upsert(task.data);
-                            
-                            if (error) throw new Error(`${task.tableName}: ${error.message}`);
-                            */
-                            
-                            // Atualiza a barra de progresso de uma vez
-                            progressBar.style.width = `${taskProgress * 100}%`;
-                        }
+                        await enviarDadosEmLotes(
+                            supabaseClient,
+                            task.tableName,
+                            task.data,
+                            statusText,
+                            progressBar,
+                            progressoInicial,
+                            progressoFinal,
+                            task.keys // Passa as chaves primárias
+                        );
                     }
-
                     // --- FIM DA MODIFICAÇÃO ---
 
                     // SUCESSO!
@@ -929,7 +801,6 @@
 
                 } catch (error) {
                     console.error('Erro no Supabase:', error);
-                    // O erro vai aparecer com o nome da tabela, ex: "Erro ao enviar: data_detailed: ..."
                     statusText.innerHTML = `<p class="text-red-500">Erro ao enviar: ${error.message}</p>`;
                     progressBar.style.width = '0%';
                     generateBtn.disabled = false;
