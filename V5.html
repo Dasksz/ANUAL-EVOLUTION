@@ -715,7 +715,8 @@
                     const { error: deleteError } = await supabaseClient
                         .from(nomeTabela)
                         .delete()
-                        .neq(anyColumn, '---NEVER-MATCH---'); // Apaga todas as linhas
+                        // .neq(anyColumn, '---NEVER-MATCH---'); // Errado: Causa erro de tipo bigint vs string
+                        .not(anyColumn, 'is', null); // CORRIGIDO: Seguro para apagar tudo (funciona para texto e números)
                     
                     if (deleteError) throw new Error(`Falha ao limpar ${nomeTabela}: ${deleteError.message}`);
 
