@@ -520,10 +520,10 @@
                         }
                     });
                     clientMap.forEach((client, codcli) => {
-                        const lastPurchaseDate = parseDate(client.ultimaCompra);
+                        const lastPurchaseDate = parseDate(client.ultimacompra);
                         const latestSaleDate = latestSaleDateByClient.get(codcli);
                         if (latestSaleDate && (!lastPurchaseDate || isNaN(lastPurchaseDate.getTime()) || latestSaleDate > lastPurchaseDate)) {
-                            client.ultimaCompra = latestSaleDate; 
+                            client.ultimacompra = latestSaleDate; 
                         }
                     });
                 }
