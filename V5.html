@@ -404,7 +404,7 @@
                                 fornecedor: String(prod['Nome do fornecedor'] || 'N/A'),
                                 codfor: String(prod['Fornecedor'] || 'N/A'),
                                 // CORREÇÃO: Removido o '1,' que estava a causar o SyntaxError
-                                dtCadastro: prod['Dt.Cadastro'] || null
+                                dtcadastro: prod['Dt.Cadastro'] || null
                             });
                         }
                     });
@@ -431,9 +431,9 @@
                             rca1: rca1,
                             rca2: rca2,
                             cidade: String(client['Nome da Cidade'] || 'N/A'),
-                            nomeCliente: String(client['Fantasia'] || client['Cliente'] || 'N/A'),
+                            nomecliente: String(client['Fantasia'] || client['Cliente'] || 'N/A'),
                             bairro: String(client['Bairro'] || 'N/A'),
-                            razaoSocial: String(client['Cliente'] || 'N/A'),
+                            razaosocial: String(client['Cliente'] || 'N/A'),
                             fantasia: String(client['Fantasia'] || 'N/A'),
                             cnpj_cpf: String(client['CNPJ/CPF'] || 'N/A'),
                             endereco: String(client['Endereço Comercial'] || client['Endereço'] || 'N/A'),
@@ -442,10 +442,10 @@
                             telefone: String(client['Telefone Comercial'] || 'N/A'),
                             email: String(client['E-mail'] || 'N/A'),
                             ramo: String(client['Descricao'] || 'N/A'),
-                            ultimaCompra: client['Data da Última Compra'],
-                            "dataCadastro": registrationDateStr, // Mantém aspas por causa do 'C'
+                            ultimacompra: client['Data da Última Compra'],
+                            datacadastro: registrationDateStr,
                             bloqueio: String(client['Bloqueio'] || '').trim().toUpperCase(),
-                            "inscricaoEstadual": String(client['Insc. Est. / Produtor'] || 'N/A') // Mantém aspas por causa do 'E'
+                            inscricaoestadual: String(client['Insc. Est. / Produtor'] || 'N/A')
                         };
                         // O clientMap agora usa o 'codCli' (ex: "11465") como chave
                         // e armazena o objeto 'clientData' (que tem 'codigo_cliente' dentro)
