@@ -204,7 +204,7 @@
                 const pedido = String(rawRow['PEDIDO'] || '');
                 let isAmericanas = false;
 
-                const nomeClienteParaLogica = (clientInfo.razaoSocial || clientInfo.fantasia || clientInfo.nomeCliente || '').toUpperCase();
+                const nomeClienteParaLogica = (clientInfo.razaosocial || clientInfo.fantasia || clientInfo.nomecliente || '').trim().toUpperCase();
                 if (nomeClienteParaLogica.includes('AMERICANAS S.A')) {
                     vendorName = 'AMERICANAS';
                     codUsur = '1001';
@@ -326,13 +326,32 @@
                 self.postMessage({ type: 'progress', status: 'Lendo arquivos...', percentage: 10 });
                 // Graças à função 'readFile', se um arquivo não for fornecido (ex: clientsFile = null),
                 // a variável (ex: clientsDataRaw) será apenas um array vazio [].
-                const [salesDataRaw, clientsDataRaw, productsDataRaw, historyDataRaw, innovationsDataRaw] = await Promise.all([
+                const [salesDataRaw, clientsDataRaw, productsDataRaw, unfilteredHistoryData, innovationsDataRaw] = await Promise.all([
                     readFile(salesFile),
                     readFile(clientsFile),
                     readFile(productsFile),
                     readFile(historyFile),
                     readFile(innovationsFile)
                 ]);
+
+                self.postMessage({ type: 'progress', status: 'Filtrando histórico de vendas (últimos 3 meses)...', percentage: 15 });
+                const today = new Date();
+                const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+                threeMonthsAgo.setHours(0, 0, 0, 0);
+
+                const historyDataRaw = unfilteredHistoryData.filter(row => {
+                    let dtPed = row['DTPED'];
+                    const dtSaida = row['DTSAIDA'];
+                    const parsedDtPed = parseDate(dtPed);
+                    const parsedDtSaida = parseDate(dtSaida);
+                    let effectiveDate = parsedDtPed;
+
+                    if (parsedDtPed && parsedDtSaida && (parsedDtPed.getFullYear() < parsedDtSaida.getFullYear() || (parsedDtPed.getFullYear() === parsedDtSaida.getFullYear() && parsedDtPed.getMonth() < parsedDtSaida.getMonth()))) {
+                        effectiveDate = parsedDtSaida;
+                    }
+                    
+                    return effectiveDate && effectiveDate >= threeMonthsAgo;
+                });
 
                 // Se houver dados de vendas OU histórico, o mapa de supervisores é necessário.
                 // Se não, pulamos esta etapa.
