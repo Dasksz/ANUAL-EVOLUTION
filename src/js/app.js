@@ -81,9 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             console.log('Iniciando busca de perfil no Supabase...');
 
-            // Timeout promise to prevent hanging
+            // Timeout promise to prevent hanging (Aligned with reference: 15s)
             const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Timeout ao verificar perfil (10s)')), 10000)
+                setTimeout(() => reject(new Error('Tempo limite de conexão excedido. Verifique sua internet.')), 15000)
             );
 
             const profileQuery = supabase
@@ -103,38 +103,18 @@ document.addEventListener('DOMContentLoaded', () => {
             let { data: profile, error } = result;
             console.log('Busca finalizada. Dados:', profile, 'Erro:', error);
 
+            // Ignore PGRST116 (Row not found) as per reference project
+            // The application relies on the server-side trigger to eventually create the profile.
             if (error) {
-                console.warn('Erro ao buscar perfil:', error.code, error.message);
-            }
-
-            // Handle case where profile doesn't exist (e.g. trigger failed)
-            if (error && error.code === 'PGRST116') {
-                console.log('Perfil não encontrado (PGRST116), tentando criar manualmente...');
-
-                const { data: newProfile, error: insertError } = await supabase
-                    .from('profiles')
-                    .insert([{ id: user.id, email: user.email, status: 'pendente' }])
-                    .select('status')
-                    .single();
-
-                console.log('Resultado da criação manual:', newProfile, insertError);
-
-                if (insertError) {
-                    console.error('FALHA ao criar perfil (insert):', insertError);
-                    // Fallback visual
-                    profile = { status: 'pendente' };
-                    error = null;
+                if (error.code !== 'PGRST116') {
+                    console.error('Erro crítico ao verificar perfil:', error);
+                    showScreen('login-view');
+                    return;
                 } else {
-                    console.log('Perfil criado com sucesso:', newProfile);
-                    profile = newProfile;
+                    console.warn('Perfil não encontrado (PGRST116). Ignorando erro e tratando como pendente.');
                     error = null;
+                    profile = null;
                 }
-            }
-
-            if (error) {
-                console.error('Erro crítico ao verificar perfil (não recuperável):', error);
-                showScreen('login-view');
-                return;
             }
 
             // Status handling
