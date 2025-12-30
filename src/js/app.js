@@ -173,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.href
+                redirectTo: window.location.origin
             }
         });
 
