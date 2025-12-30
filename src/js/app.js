@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Auth & Navigation Elements ---
     const loginView = document.getElementById('login-view');
     const appLayout = document.getElementById('app-layout');
-    const loginForm = document.getElementById('login-form');
+    const googleLoginBtn = document.getElementById('google-login-btn');
     const loginError = document.getElementById('login-error');
     const logoutBtn = document.getElementById('logout-btn');
 
@@ -62,23 +62,21 @@ document.addEventListener('DOMContentLoaded', () => {
         initDashboard(); // Load data
     }
 
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
+    googleLoginBtn.addEventListener('click', async () => {
         loginError.classList.add('hidden');
 
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password
+        const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.href // Redirect back to this page
+            }
         });
 
         if (error) {
-            loginError.textContent = 'Erro ao entrar: ' + error.message;
+            loginError.textContent = 'Erro ao iniciar login: ' + error.message;
             loginError.classList.remove('hidden');
-        } else {
-            showApp();
         }
+        // Redirect happens automatically
     });
 
     logoutBtn.addEventListener('click', async () => {
