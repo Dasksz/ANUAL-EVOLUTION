@@ -80,9 +80,9 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Verificando perfil para ID:', user.id);
         try {
             console.log('Iniciando busca de perfil no Supabase...');
-
+            
             // Timeout promise to prevent hanging (Aligned with reference: 15s)
-            const timeoutPromise = new Promise((_, reject) =>
+            const timeoutPromise = new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('Tempo limite de conexão excedido. Verifique sua internet.')), 15000)
             );
 
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Handle case where profile doesn't exist (e.g. trigger failed)
             if (error && error.code === 'PGRST116') {
                 console.log('Perfil não encontrado (PGRST116), tentando criar manualmente...');
-
+                
                 const { data: newProfile, error: insertError } = await supabase
                     .from('profiles')
                     .insert([{ id: user.id, email: user.email, status: 'pendente' }])
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('FALHA ao criar perfil (insert):', insertError);
                     // Fallback visual
                     profile = { status: 'pendente' };
-                    error = null;
+                    error = null; 
                 } else {
                     console.log('Perfil criado com sucesso:', newProfile);
                     profile = newProfile;
@@ -145,9 +145,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('Acesso pendente ou bloqueado. Redirecionando para tela de espera.');
                 // Pendente, Bloqueado ou Desconhecido -> Tela de Espera
                 showScreen('tela-pendente');
-
+                
                 if (status === 'bloqueado') {
-                     const statusMsg = document.getElementById('status-text-pendente');
+                     const statusMsg = document.getElementById('status-text-pendente'); 
                      if(statusMsg) statusMsg.textContent = "Acesso Bloqueado";
                 }
 
