@@ -69,12 +69,6 @@ BEGIN
         AND (p_fornecedor IS NULL OR p_fornecedor = '' OR s.codfor = p_fornecedor);
 
     -- 4. KPI: Clients Attended (Positive Sales > 1) in the selected period
-    -- Logic: Count unique CODCLI where (SUM(VLVENDA) - SUM(VLDEVOLUCAO)) > 1
-    -- Period: If Month selected, that month. If not, maybe whole year or last month?
-    -- Index.html logic: "referenceMonthForKPI". If no month selected, last month with sales.
-    -- Here, for simplicity, if no month selected, we calculate for the whole Current Year (or handle in Front).
-    -- But dashboard usually shows "Month vs Last Year Month".
-    -- Let's try to detect the "last active month" if p_mes is null.
 
     IF v_target_month IS NULL THEN
          SELECT MAX(EXTRACT(MONTH FROM dtped))::int INTO v_target_month
@@ -82,7 +76,7 @@ BEGIN
          WHERE EXTRACT(YEAR FROM dtped) = v_current_year;
     END IF;
 
-    IF v_target_month IS NULL THEN v_target_month := 11; END IF; -- Default to Dec (11 index? No, SQL is 1-12. JS is 0-11). Let's assume input p_mes is 0-based from JS, so we add 1.
+    IF v_target_month IS NULL THEN v_target_month := 12; END IF;
 
     -- Adjust p_mes input which is likely 0-11 from JS
     IF p_mes IS NOT NULL AND p_mes != '' THEN
@@ -101,10 +95,6 @@ BEGIN
     WHERE val > 1;
 
     -- KPI: Base Clients (Filtered)
-    -- This is tricky because it depends on Client Filters.
-    -- "Eligible Clients": Active status, and matching RCA of supervisor/vendor if selected.
-    -- Simplified: Count clients in `data_clients` that match City/RCA filters.
-    -- If Supervisor/Vendedor selected, we need their RCAs.
     WITH relevant_rcas AS (
         SELECT DISTINCT codusur
         FROM temp_filtered_sales
@@ -122,30 +112,30 @@ BEGIN
         );
 
     -- 5. Monthly Data for Chart & Table
-    -- We need sums for every month of Current and Previous Year
-    WITH monthly_agg AS (
-        SELECT
-            EXTRACT(YEAR FROM dtped)::int as yr,
-            EXTRACT(MONTH FROM dtped)::int as mth,
-            SUM(vlvenda) as faturamento,
-            SUM(totpesoliq) as peso,
-            SUM(vlbonific) as bonificacao,
-            SUM(COALESCE(vldevolucao,0)) as devolucao,
-            COUNT(DISTINCT CASE WHEN (vlvenda - COALESCE(vldevolucao,0)) > 1 THEN codcli END) as positivacao
-        FROM temp_filtered_sales
-        WHERE EXTRACT(YEAR FROM dtped) IN (v_current_year, v_previous_year)
-        GROUP BY 1, 2
-    )
+    -- Use a temporary table for aggregation results to allow multiple selects
+    CREATE TEMPORARY TABLE temp_monthly_agg AS
+    SELECT
+        EXTRACT(YEAR FROM dtped)::int as yr,
+        EXTRACT(MONTH FROM dtped)::int as mth,
+        SUM(vlvenda) as faturamento,
+        SUM(totpesoliq) as peso,
+        SUM(vlbonific) as bonificacao,
+        SUM(COALESCE(vldevolucao,0)) as devolucao,
+        COUNT(DISTINCT CASE WHEN (vlvenda - COALESCE(vldevolucao,0)) > 1 THEN codcli END) as positivacao
+    FROM temp_filtered_sales
+    WHERE EXTRACT(YEAR FROM dtped) IN (v_current_year, v_previous_year)
+    GROUP BY 1, 2;
+
     SELECT json_agg(row_to_json(t)) INTO v_monthly_chart_current
     FROM (
         SELECT mth - 1 as month_index, faturamento, peso, bonificacao, devolucao, positivacao
-        FROM monthly_agg WHERE yr = v_current_year ORDER BY mth
+        FROM temp_monthly_agg WHERE yr = v_current_year ORDER BY mth
     ) t;
 
     SELECT json_agg(row_to_json(t)) INTO v_monthly_chart_previous
     FROM (
         SELECT mth - 1 as month_index, faturamento, peso, bonificacao, devolucao, positivacao
-        FROM monthly_agg WHERE yr = v_previous_year ORDER BY mth
+        FROM temp_monthly_agg WHERE yr = v_previous_year ORDER BY mth
     ) t;
 
     -- 6. Construct Result
@@ -160,6 +150,7 @@ BEGIN
     );
 
     DROP TABLE temp_filtered_sales;
+    DROP TABLE temp_monthly_agg;
     RETURN v_result;
 END;
 $$;
@@ -233,12 +224,7 @@ BEGIN
     FROM client_totals ct
     JOIN public.data_clients c ON c.codigo_cliente = ct.codcli;
 
-    -- Inactive Clients (No sales in target month, but active in DB)
-    -- Must respect filters. If "Supervisor" selected, show clients of that supervisor (via RCA)
-    -- This part is complex due to RCA mapping.
-    -- Simplified: Return clients matching City/Supervisor(via RCA) who are NOT in client_totals.
-
-    -- Filter Clients logic similar to KPI Base
+    -- Inactive Clients
     WITH relevant_rcas AS (
         SELECT DISTINCT codusur
         FROM public.all_sales s
@@ -296,7 +282,8 @@ BEGIN
     ) t INTO v_fornecedores;
     SELECT ARRAY_AGG(DISTINCT cidade ORDER BY cidade) INTO v_cidades FROM public.all_sales WHERE cidade IS NOT NULL;
     SELECT ARRAY_AGG(DISTINCT filial ORDER BY filial) INTO v_filiais FROM public.all_sales WHERE filial IS NOT NULL;
-    SELECT ARRAY_AGG(DISTINCT EXTRACT(YEAR FROM dtped)::int ORDER BY 1 DESC) INTO v_anos FROM public.all_sales WHERE dtped IS NOT NULL;
+    -- Fix: Use full expression in ORDER BY
+    SELECT ARRAY_AGG(DISTINCT EXTRACT(YEAR FROM dtped)::int ORDER BY EXTRACT(YEAR FROM dtped)::int DESC) INTO v_anos FROM public.all_sales WHERE dtped IS NOT NULL;
 
     RETURN json_build_object(
         'supervisors', v_supervisors,
