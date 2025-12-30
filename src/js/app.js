@@ -98,16 +98,18 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 console.log(`Tentativa ${attempts}/${maxAttempts} de busca de perfil...`);
                 
-                // Timeout promise (Increased to 20s)
+                // Timeout promise (Increased to 30s)
                 const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Tempo limite de conexão excedido (20s). Verifique sua internet.')), 20000)
+                    setTimeout(() => reject(new Error('Tempo limite de conexão excedido (30s). Verifique sua internet.')), 30000)
                 );
 
                 const profileQuery = supabase
                     .from('profiles')
                     .select('status')
                     .eq('id', user.id)
-                    .single();
+                    .single()
+                    .then(res => res)
+                    .catch(err => ({ error: err, data: null }));
 
                 const result = await Promise.race([profileQuery, timeoutPromise]);
                 
@@ -130,6 +132,18 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 console.error(`Erro na tentativa ${attempts}:`, err);
                 finalError = err;
+
+                // Check for specific "message channel closed" error (often caused by extensions)
+                const isChannelError = err.message && (
+                    err.message.includes('message channel closed') ||
+                    err.message.includes('returning true')
+                );
+
+                if (isChannelError) {
+                    console.warn('Erro de canal detectado (extensão/browser), tentando novamente imediatamente...');
+                    continue;
+                }
+
                 if (attempts < maxAttempts) {
                     console.log('Aguardando 2s antes de tentar novamente...');
                     await new Promise(r => setTimeout(r, 2000));
