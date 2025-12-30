@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     let checkProfileLock = false;
+    let isAppReady = false;
 
     async function checkSession() {
         console.log('Iniciando verificação de sessão...');
@@ -64,12 +65,19 @@ document.addEventListener('DOMContentLoaded', () => {
         supabase.auth.onAuthStateChange(async (event, session) => {
             console.log('Auth Event:', event);
             if (event === 'SIGNED_OUT') {
+                isAppReady = false;
                 showScreen('login-view');
                 return;
             }
 
             if (session) {
                 console.log('Sessão encontrada para usuário:', session.user.email);
+                
+                if (isAppReady) {
+                    console.log('App já inicializado. Ignorando re-verificação.');
+                    return;
+                }
+
                 // Debounce/Lock to prevent overlapping checks causing disconnects
                 if (!checkProfileLock) {
                     await checkProfileStatus(session.user);
@@ -84,6 +92,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function checkProfileStatus(user) {
+        if (isAppReady) return;
+
         checkProfileLock = true;
         console.log('Verificando perfil para ID:', user.id);
         
@@ -105,14 +115,16 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Status do perfil:', status);
 
             if (status === 'aprovado') {
-            const currentScreen = document.getElementById('app-layout');
-            if (currentScreen.classList.contains('hidden')) {
-                console.log('Acesso aprovado. Carregando dashboard...');
-                showScreen('app-layout');
-                initDashboard();
-            } else {
-                console.log('Acesso já aprovado e dashboard visível.');
-            }
+                const currentScreen = document.getElementById('app-layout');
+                if (currentScreen.classList.contains('hidden')) {
+                    console.log('Acesso aprovado. Carregando dashboard...');
+                    isAppReady = true;
+                    showScreen('app-layout');
+                    initDashboard();
+                } else {
+                    console.log('Acesso já aprovado e dashboard visível.');
+                    isAppReady = true;
+                }
             } else {
                 console.log('Acesso pendente ou bloqueado. Redirecionando para tela de espera.');
                 showScreen('tela-pendente');
@@ -128,9 +140,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error checking profile:', err);
             checkProfileLock = false;
             
-            // Show error in the loading screen or alert
-            alert("Erro de conexão: " + (err.message || 'Erro desconhecido'));
-            showScreen('login-view');
+            // Only show error if app is not ready (initial load)
+            if (!isAppReady) {
+                alert("Erro de conexão: " + (err.message || 'Erro desconhecido'));
+                showScreen('login-view');
+            }
         } finally {
             checkProfileLock = false;
         }
