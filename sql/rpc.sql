@@ -76,84 +76,24 @@ BEGIN
          INTO v_target_month;
     END IF;
 
-    -- 3. KPIs Calculation
-    -- KPI: Active Clients (Positive Sales > 1) in Target Month
-    -- Optimized: UNION ALL of direct tables instead of View to help planner push down predicates
-    SELECT COUNT(*) INTO v_kpi_clients_attended
-    FROM (
-        SELECT codcli, SUM(vlvenda) as sum_venda, SUM(COALESCE(vldevolucao, 0)) as sum_dev
-        FROM (
-            SELECT codcli, vlvenda, vldevolucao FROM public.data_detailed
-            WHERE dtped >= make_date(v_current_year, v_target_month, 1)
-              AND dtped <  (make_date(v_current_year, v_target_month, 1) + interval '1 month')
-              AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
-              AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
-              AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
-              AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
-              AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-            UNION ALL
-            SELECT codcli, vlvenda, vldevolucao FROM public.data_history
-            WHERE dtped >= make_date(v_current_year, v_target_month, 1)
-              AND dtped <  (make_date(v_current_year, v_target_month, 1) + interval '1 month')
-              AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
-              AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
-              AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
-              AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
-              AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-        ) combined
-        GROUP BY codcli
-        HAVING (SUM(vlvenda) - SUM(COALESCE(vldevolucao, 0))) > 1
-    ) t;
-
-    -- KPI: Base Clients
-    -- Optimized: Skip 'relevant_rcas' scan if no specific Supervisor/Vendor filters are applied.
-    -- This avoids scanning millions of rows to find "Active RCAs" when we just want the base client count.
-    
-    IF (p_supervisor IS NULL OR p_supervisor = '') AND (p_vendedor IS NULL OR p_vendedor = '') THEN
-        SELECT COUNT(*) INTO v_kpi_clients_base
-        FROM public.data_clients c
-        WHERE c.bloqueio != 'S'
-          AND (p_cidade IS NULL OR p_cidade = '' OR c.cidade = p_cidade);
-    ELSE
-        -- Complex filtering: Only count clients belonging to RCAs active in the period
-        WITH relevant_rcas AS (
-            SELECT DISTINCT codusur
-            FROM (
-                SELECT codusur FROM public.data_detailed
-                WHERE dtped >= v_start_date_curr AND dtped < v_end_date_curr
-                  AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
-                  AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
-                  AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
-                UNION
-                SELECT codusur FROM public.data_history
-                WHERE dtped >= v_start_date_curr AND dtped < v_end_date_curr
-                  AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
-                  AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
-                  AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
-            ) t
-        )
-        SELECT COUNT(*) INTO v_kpi_clients_base
-        FROM public.data_clients c
-        WHERE
-            (p_cidade IS NULL OR p_cidade = '' OR c.cidade = p_cidade)
-            AND c.bloqueio != 'S'
-            AND (c.rca1 IN (SELECT codusur FROM relevant_rcas));
-    END IF;
-
-    -- 4. Monthly Data for Charts
-    -- Optimized: Pre-aggregate by month per table to reduce rows before UNION
-    -- We calculate distinct active clients PER TABLE.
-    -- Assumption: Detailed and History data do not overlap for the same month (disjoint sets).
-    -- This avoids the extremely expensive array_agg of all clients.
-    WITH pre_agg_detailed AS (
-        SELECT
-            EXTRACT(YEAR FROM dtped)::int as yr,
-            EXTRACT(MONTH FROM dtped)::int as mth,
-            SUM(vlvenda) as faturamento,
-            SUM(totpesoliq) as peso,
-            SUM(vlbonific) as bonificacao,
-            SUM(COALESCE(vldevolucao,0)) as devolucao,
-            COUNT(DISTINCT CASE WHEN (vlvenda - COALESCE(vldevolucao,0)) > 1 THEN codcli END) as positivacao
+    -- 3. Optimization: Pre-filter data using CTE
+    -- We filter 'data_detailed' and 'data_history' once for the relevant period (Prev + Curr Year)
+    -- and store relevant columns for aggregation.
+    -- This avoids scanning the full tables multiple times for different KPIs.
+    WITH filtered_sales AS (
+        SELECT 
+            dtped, 
+            vlvenda, 
+            vldevolucao, 
+            codcli, 
+            codusur, 
+            vlbonific, 
+            totpesoliq,
+            filial,
+            cidade,
+            superv,
+            nome,
+            codfor
         FROM public.data_detailed
         WHERE dtped >= v_start_date_prev AND dtped < v_end_date_curr
           AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
@@ -161,9 +101,30 @@ BEGIN
           AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
           AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
           AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-        GROUP BY 1, 2
+        UNION ALL
+        SELECT 
+            dtped, 
+            vlvenda, 
+            vldevolucao, 
+            codcli, 
+            codusur, 
+            vlbonific, 
+            totpesoliq,
+            filial,
+            cidade,
+            superv,
+            nome,
+            codfor
+        FROM public.data_history
+        WHERE dtped >= v_start_date_prev AND dtped < v_end_date_curr
+          AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
+          AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
+          AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
+          AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
+          AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
     ),
-    pre_agg_history AS (
+    -- 4. Monthly Aggregation (from CTE)
+    monthly_agg AS (
         SELECT
             EXTRACT(YEAR FROM dtped)::int as yr,
             EXTRACT(MONTH FROM dtped)::int as mth,
@@ -172,32 +133,35 @@ BEGIN
             SUM(vlbonific) as bonificacao,
             SUM(COALESCE(vldevolucao,0)) as devolucao,
             COUNT(DISTINCT CASE WHEN (vlvenda - COALESCE(vldevolucao,0)) > 1 THEN codcli END) as positivacao
-        FROM public.data_history
-        WHERE dtped >= v_start_date_prev AND dtped < v_end_date_curr
-          AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
-          AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
-          AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
-          AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
-          AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
+        FROM filtered_sales
         GROUP BY 1, 2
     ),
-    monthly_agg AS (
-        SELECT
-            yr,
-            mth,
-            SUM(faturamento) as faturamento,
-            SUM(peso) as peso,
-            SUM(bonificacao) as bonificacao,
-            SUM(devolucao) as devolucao,
-            SUM(positivacao) as positivacao
+    -- 5. KPI: Active Clients (from CTE)
+    kpi_active AS (
+        SELECT COUNT(*) as val
         FROM (
-            SELECT * FROM pre_agg_detailed
-            UNION ALL
-            SELECT * FROM pre_agg_history
-        ) combined_agg
-        GROUP BY 1, 2
+            SELECT codcli
+            FROM filtered_sales
+            WHERE dtped >= make_date(v_current_year, v_target_month, 1)
+              AND dtped <  (make_date(v_current_year, v_target_month, 1) + interval '1 month')
+            GROUP BY codcli
+            HAVING (SUM(vlvenda) - SUM(COALESCE(vldevolucao, 0))) > 1
+        ) t
+    ),
+    -- 6. KPI: Base Clients (complex logic)
+    relevant_rcas AS (
+        SELECT DISTINCT codusur
+        FROM filtered_sales
+        WHERE dtped >= v_start_date_curr AND dtped < v_end_date_curr
     )
     SELECT
+        (SELECT val FROM kpi_active),
+        CASE 
+            WHEN (p_supervisor IS NULL OR p_supervisor = '') AND (p_vendedor IS NULL OR p_vendedor = '') THEN
+                (SELECT COUNT(*) FROM public.data_clients c WHERE c.bloqueio != 'S' AND (p_cidade IS NULL OR p_cidade = '' OR c.cidade = p_cidade))
+            ELSE
+                (SELECT COUNT(*) FROM public.data_clients c WHERE (p_cidade IS NULL OR p_cidade = '' OR c.cidade = p_cidade) AND c.bloqueio != 'S' AND c.rca1 IN (SELECT codusur FROM relevant_rcas))
+        END,
         COALESCE(json_agg(json_build_object(
             'month_index', mth - 1,
             'faturamento', faturamento,
@@ -214,7 +178,7 @@ BEGIN
             'devolucao', devolucao,
             'positivacao', positivacao
         ) ORDER BY mth) FILTER (WHERE yr = v_previous_year), '[]'::json)
-    INTO v_monthly_chart_current, v_monthly_chart_previous
+    INTO v_kpi_clients_attended, v_kpi_clients_base, v_monthly_chart_current, v_monthly_chart_previous
     FROM monthly_agg;
 
     -- 5. Result
