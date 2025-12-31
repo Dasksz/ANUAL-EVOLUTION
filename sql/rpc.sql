@@ -142,6 +142,9 @@ BEGIN
 
     -- 4. Monthly Data for Charts
     -- Optimized: Pre-aggregate by month per table to reduce rows before UNION
+    -- We calculate distinct active clients PER TABLE.
+    -- Assumption: Detailed and History data do not overlap for the same month (disjoint sets).
+    -- This avoids the extremely expensive array_agg of all clients.
     WITH pre_agg_detailed AS (
         SELECT
             EXTRACT(YEAR FROM dtped)::int as yr,
@@ -150,7 +153,7 @@ BEGIN
             SUM(totpesoliq) as peso,
             SUM(vlbonific) as bonificacao,
             SUM(COALESCE(vldevolucao,0)) as devolucao,
-            array_agg(DISTINCT CASE WHEN (vlvenda - COALESCE(vldevolucao,0)) > 1 THEN codcli END) as active_clients_arr
+            COUNT(DISTINCT CASE WHEN (vlvenda - COALESCE(vldevolucao,0)) > 1 THEN codcli END) as positivacao
         FROM public.data_detailed
         WHERE dtped >= v_start_date_prev AND dtped < v_end_date_curr
           AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
@@ -168,7 +171,7 @@ BEGIN
             SUM(totpesoliq) as peso,
             SUM(vlbonific) as bonificacao,
             SUM(COALESCE(vldevolucao,0)) as devolucao,
-            array_agg(DISTINCT CASE WHEN (vlvenda - COALESCE(vldevolucao,0)) > 1 THEN codcli END) as active_clients_arr
+            COUNT(DISTINCT CASE WHEN (vlvenda - COALESCE(vldevolucao,0)) > 1 THEN codcli END) as positivacao
         FROM public.data_history
         WHERE dtped >= v_start_date_prev AND dtped < v_end_date_curr
           AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
@@ -186,16 +189,13 @@ BEGIN
             SUM(peso) as peso,
             SUM(bonificacao) as bonificacao,
             SUM(devolucao) as devolucao,
-            -- Calculate distinct clients across both tables by unnesting and counting distinct again
-            (SELECT count(DISTINCT c) FROM unnest(array_cat(agg1.active_clients_arr, agg2.active_clients_arr)) as c) as positivacao
+            SUM(positivacao) as positivacao
         FROM (
             SELECT * FROM pre_agg_detailed
             UNION ALL
             SELECT * FROM pre_agg_history
         ) combined_agg
-        LEFT JOIN pre_agg_detailed agg1 ON combined_agg.yr = agg1.yr AND combined_agg.mth = agg1.mth
-        LEFT JOIN pre_agg_history agg2 ON combined_agg.yr = agg2.yr AND combined_agg.mth = agg2.mth
-        GROUP BY 1, 2, agg1.active_clients_arr, agg2.active_clients_arr
+        GROUP BY 1, 2
     )
     SELECT
         COALESCE(json_agg(json_build_object(
