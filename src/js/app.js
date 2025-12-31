@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cityView = document.getElementById('city-view');
 
     // Buttons in Dashboard
+    const clearFiltersBtn = document.getElementById('clear-filters-btn');
     const showCityBtn = document.getElementById('show-city-btn');
     const backToMainBtn = document.getElementById('back-to-main-btn');
 
@@ -297,6 +298,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Dashboard Internal Navigation ---
+    clearFiltersBtn.addEventListener('click', () => {
+        supervisorFilter.value = '';
+        vendedorFilter.value = '';
+        fornecedorFilter.value = '';
+        cidadeFilter.value = '';
+        filialFilter.value = '';
+        anoFilter.value = 'todos';
+        mesFilter.value = '';
+        loadMainDashboardData();
+    });
+
     showCityBtn.addEventListener('click', () => {
         mainDashboardContent.classList.add('hidden');
         cityView.classList.remove('hidden');
@@ -561,8 +573,15 @@ document.addEventListener('DOMContentLoaded', () => {
             baseEl.classList.add('hidden');
         }
 
-        const currentData = data.monthly_data_current || [];
-        const previousData = data.monthly_data_previous || [];
+        let currentData = data.monthly_data_current || [];
+        let previousData = data.monthly_data_previous || [];
+
+        // Apply Month Filter to Chart and Table Data
+        if (mesFilter.value !== '') {
+            const selectedMonthIndex = parseInt(mesFilter.value);
+            currentData = currentData.filter(d => d.month_index === selectedMonthIndex);
+            previousData = previousData.filter(d => d.month_index === selectedMonthIndex);
+        }
 
         const targetIndex = data.target_month_index;
 
