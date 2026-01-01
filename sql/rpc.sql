@@ -419,84 +419,72 @@ BEGIN
         END IF;
     END IF;
 
-    -- Optimization: Single Pass Aggregation
-    -- Instead of 5 separate queries (scanning the table/index 5 times), we scan ONCE and filter during aggregation.
-    -- This is significantly faster for large datasets.
+    -- Optimization: Use Cache Table (public.cache_filters)
+    -- This table contains pre-computed distinct combinations of all filters.
+    -- Querying this small table is exponentially faster than scanning the large transaction tables.
 
     SELECT
-        -- 1. Supervisors (Exclude p_supervisor)
+        -- 1. Supervisors
         ARRAY_AGG(DISTINCT superv ORDER BY superv) FILTER (WHERE
             (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
             AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
             AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
             AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-            AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
+            AND (v_filter_month IS NULL OR mes = v_filter_month)
         ),
-        -- 2. Vendedores (Exclude p_vendedor)
+        -- 2. Vendedores
         ARRAY_AGG(DISTINCT nome ORDER BY nome) FILTER (WHERE
             (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
             AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
             AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
             AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-            AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
+            AND (v_filter_month IS NULL OR mes = v_filter_month)
         ),
-        -- 3. Cidades (Exclude p_cidade)
+        -- 3. Cidades
         ARRAY_AGG(DISTINCT cidade ORDER BY cidade) FILTER (WHERE
             (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
             AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
             AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
             AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-            AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
+            AND (v_filter_month IS NULL OR mes = v_filter_month)
         ),
-        -- 5. Filiais (Exclude p_filial)
+        -- 4. Filiais
         ARRAY_AGG(DISTINCT filial ORDER BY filial) FILTER (WHERE
             (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
             AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
             AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
             AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-            AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
+            AND (v_filter_month IS NULL OR mes = v_filter_month)
         )
     INTO v_supervisors, v_vendedores, v_cidades, v_filiais
-    FROM (
-        SELECT superv, nome, cidade, filial, dtped, codfor, fornecedor
-        FROM public.data_detailed
-        WHERE dtped >= v_min_date AND dtped < v_max_date
-        UNION ALL
-        SELECT superv, nome, cidade, filial, dtped, codfor, fornecedor
-        FROM public.data_history
-        WHERE dtped >= v_min_date AND dtped < v_max_date
-    ) all_data;
+    FROM public.cache_filters
+    WHERE ano = v_filter_year; -- Use Index on Year
 
-    -- 5. Fornecedores (Exclude p_fornecedor)
-    -- Complex objects are aggregated separately to keep the main query scalar and fast.
+    -- 5. Fornecedores (From Cache)
     SELECT json_agg(json_build_object('cod', codfor, 'name', fornecedor) ORDER BY fornecedor) INTO v_fornecedores
     FROM (
         SELECT DISTINCT codfor, fornecedor
-        FROM (
-             SELECT codfor, fornecedor, filial, cidade, superv, nome, dtped FROM public.data_detailed WHERE dtped >= v_min_date AND dtped < v_max_date
-             UNION ALL
-             SELECT codfor, fornecedor, filial, cidade, superv, nome, dtped FROM public.data_history WHERE dtped >= v_min_date AND dtped < v_max_date
-        ) t
+        FROM public.cache_filters
         WHERE
-            (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
+            ano = v_filter_year
+            AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
             AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
             AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
             AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
-            AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
+            AND (v_filter_month IS NULL OR mes = v_filter_month)
             AND codfor IS NOT NULL
     ) t;
 
-    -- 6. Anos (Exclude p_ano, but include p_mes)
-    -- We can keep scanning public.all_sales here as it is less frequent to update years list and it's small result
-    SELECT ARRAY_AGG(DISTINCT EXTRACT(YEAR FROM dtped)::int ORDER BY EXTRACT(YEAR FROM dtped)::int DESC) INTO v_anos
-    FROM public.all_sales
+    -- 6. Anos (From Cache - very fast distinct scan)
+    SELECT ARRAY_AGG(DISTINCT ano ORDER BY ano DESC) INTO v_anos
+    FROM public.cache_filters
     WHERE
         (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
         AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
         AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
         AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
         AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-        AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month);
+        AND (v_filter_month IS NULL OR mes = v_filter_month);
 
     RETURN json_build_object(
         'supervisors', COALESCE(v_supervisors, '{}'),
