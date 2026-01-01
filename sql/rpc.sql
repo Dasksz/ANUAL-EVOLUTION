@@ -419,106 +419,71 @@ BEGIN
         END IF;
     END IF;
 
-    -- 1. Supervisors (Exclude p_supervisor)
-    SELECT ARRAY_AGG(DISTINCT superv ORDER BY superv) INTO v_supervisors
-    FROM (
-        SELECT superv FROM public.data_detailed
-        WHERE dtped >= v_min_date AND dtped < v_max_date
-          AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
-          AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
-          AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
-          AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-          AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
-        UNION
-        SELECT superv FROM public.data_history
-        WHERE dtped >= v_min_date AND dtped < v_max_date
-          AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
-          AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
-          AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
-          AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-          AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
-    ) t;
+    -- Optimization: Single Pass Aggregation
+    -- Instead of 5 separate queries (scanning the table/index 5 times), we scan ONCE and filter during aggregation.
+    -- This is significantly faster for large datasets.
 
-    -- 2. Vendedores (Exclude p_vendedor)
-    SELECT ARRAY_AGG(DISTINCT nome ORDER BY nome) INTO v_vendedores
+    SELECT
+        -- 1. Supervisors (Exclude p_supervisor)
+        ARRAY_AGG(DISTINCT superv ORDER BY superv) FILTER (WHERE
+            (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
+            AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
+            AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
+            AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
+            AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
+        ),
+        -- 2. Vendedores (Exclude p_vendedor)
+        ARRAY_AGG(DISTINCT nome ORDER BY nome) FILTER (WHERE
+            (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
+            AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
+            AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
+            AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
+            AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
+        ),
+        -- 3. Cidades (Exclude p_cidade)
+        ARRAY_AGG(DISTINCT cidade ORDER BY cidade) FILTER (WHERE
+            (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
+            AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
+            AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
+            AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
+            AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
+        ),
+        -- 5. Filiais (Exclude p_filial)
+        ARRAY_AGG(DISTINCT filial ORDER BY filial) FILTER (WHERE
+            (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
+            AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
+            AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
+            AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
+            AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
+        )
+    INTO v_supervisors, v_vendedores, v_cidades, v_filiais
     FROM (
-        SELECT nome FROM public.data_detailed
+        SELECT superv, nome, cidade, filial, dtped, codfor, fornecedor
+        FROM public.data_detailed
         WHERE dtped >= v_min_date AND dtped < v_max_date
-          AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
-          AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
-          AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
-          AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-          AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
-        UNION
-        SELECT nome FROM public.data_history
+        UNION ALL
+        SELECT superv, nome, cidade, filial, dtped, codfor, fornecedor
+        FROM public.data_history
         WHERE dtped >= v_min_date AND dtped < v_max_date
-          AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
-          AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
-          AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
-          AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-          AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
-    ) t;
+    ) all_data;
 
-    -- 3. Fornecedores (Exclude p_fornecedor)
+    -- 5. Fornecedores (Exclude p_fornecedor)
+    -- Complex objects are aggregated separately to keep the main query scalar and fast.
     SELECT json_agg(json_build_object('cod', codfor, 'name', fornecedor) ORDER BY fornecedor) INTO v_fornecedores
     FROM (
-        SELECT DISTINCT codfor, fornecedor FROM public.data_detailed
-        WHERE dtped >= v_min_date AND dtped < v_max_date
-          AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
-          AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
-          AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
-          AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
-          AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
-          AND codfor IS NOT NULL
-        UNION
-        SELECT DISTINCT codfor, fornecedor FROM public.data_history
-        WHERE dtped >= v_min_date AND dtped < v_max_date
-          AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
-          AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
-          AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
-          AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
-          AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
-          AND codfor IS NOT NULL
-    ) t;
-
-    -- 4. Cidades (Exclude p_cidade)
-    SELECT ARRAY_AGG(DISTINCT cidade ORDER BY cidade) INTO v_cidades
-    FROM (
-        SELECT cidade FROM public.data_detailed
-        WHERE dtped >= v_min_date AND dtped < v_max_date
-          AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
-          AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
-          AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
-          AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-          AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
-        UNION
-        SELECT cidade FROM public.data_history
-        WHERE dtped >= v_min_date AND dtped < v_max_date
-          AND (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
-          AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
-          AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
-          AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-          AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
-    ) t;
-
-    -- 5. Filiais (Exclude p_filial)
-    SELECT ARRAY_AGG(DISTINCT filial ORDER BY filial) INTO v_filiais
-    FROM (
-        SELECT filial FROM public.data_detailed
-        WHERE dtped >= v_min_date AND dtped < v_max_date
-          AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
-          AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
-          AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
-          AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-          AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
-        UNION
-        SELECT filial FROM public.data_history
-        WHERE dtped >= v_min_date AND dtped < v_max_date
-          AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
-          AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
-          AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
-          AND (p_fornecedor IS NULL OR p_fornecedor = '' OR codfor = p_fornecedor)
-          AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
+        SELECT DISTINCT codfor, fornecedor
+        FROM (
+             SELECT codfor, fornecedor, filial, cidade, superv, nome, dtped FROM public.data_detailed WHERE dtped >= v_min_date AND dtped < v_max_date
+             UNION ALL
+             SELECT codfor, fornecedor, filial, cidade, superv, nome, dtped FROM public.data_history WHERE dtped >= v_min_date AND dtped < v_max_date
+        ) t
+        WHERE
+            (p_filial IS NULL OR p_filial = '' OR filial = p_filial)
+            AND (p_cidade IS NULL OR p_cidade = '' OR cidade = p_cidade)
+            AND (p_supervisor IS NULL OR p_supervisor = '' OR superv = p_supervisor)
+            AND (p_vendedor IS NULL OR p_vendedor = '' OR nome = p_vendedor)
+            AND (v_filter_month IS NULL OR EXTRACT(MONTH FROM dtped)::int = v_filter_month)
+            AND codfor IS NOT NULL
     ) t;
 
     -- 6. Anos (Exclude p_ano, but include p_mes)
