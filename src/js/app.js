@@ -478,6 +478,11 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadMainDashboardData();
     }
 
+    function getSelectedValues(selectElement) {
+        if (!selectElement) return [];
+        return Array.from(selectElement.selectedOptions).map(option => option.value).filter(v => v !== '');
+    }
+
     function getCurrentFilters() {
         return {
             p_filial: getSelectedValues(filialFilter),
@@ -527,7 +532,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             element.innerHTML = '';
-
+            
             const allOpt = document.createElement('option');
             allOpt.value = (element.id === 'ano-filter') ? 'todos' : '';
             allOpt.textContent = 'Todos';
@@ -546,7 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     element.appendChild(opt);
                 });
             }
-
+            
             // Restore selections
             if (currentValues.length > 0) {
                 let hasSelection = false;
@@ -569,6 +574,8 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSelect(filialFilter, data.filiais);
         updateSelect(anoFilter, data.anos);
         updateSelect(fornecedorFilter, data.fornecedores, true);
+        const tipovendaFilter = document.getElementById('tipovenda-filter');
+        updateSelect(tipovendaFilter, data.tipos_venda);
 
         // Meses (Static - No changes needed unless we want to filter months dynamically)
         if (mesFilter.options.length <= 1) { 
