@@ -28,7 +28,7 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
     -- Limpa o cache atual
-    DELETE FROM public.cache_filters;
+    TRUNCATE TABLE public.cache_filters;
     
     -- Preenche com dados únicos de ambas as tabelas (Histórico e Detalhado)
     INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, ano, mes)
