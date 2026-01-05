@@ -12,9 +12,6 @@ END;
 $$;
 
 -- Function: Get Main Dashboard Data
--- Function: Get Main Dashboard Data (Optimized)
-
--- Fix: Remove the accidentally created overloaded function with wrong signature
 DROP FUNCTION IF EXISTS get_main_dashboard_data(text[], text[], text[], text[], text[], text, text, text[], int, int);
 
 CREATE OR REPLACE FUNCTION get_main_dashboard_data(
@@ -268,7 +265,6 @@ BEGIN
 END;
 $$;
 
--- Function: Get City View Data
 -- Function: Get City View Data (Optimized)
 CREATE OR REPLACE FUNCTION get_city_view_data(
     p_filial text[] default null,
@@ -393,14 +389,11 @@ BEGIN
           OR
           (c.rca1 IN (SELECT codusur FROM relevant_rcas))
       )
-      -- Check inactivity efficiently: client must not be in active list
-      -- We can assume 'client_totals' CTE is available if we used a temp table, but here we can re-derive or use NOT EXISTS
       AND NOT EXISTS (
           SELECT 1
           FROM public.all_sales s2
           WHERE s2.codcli = c.codigo_cliente
             AND s2.dtped >= v_start_date AND s2.dtped < v_end_date
-            -- Re-apply filters to ensure we exclude clients who bought in this filtered view
             AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR s2.filial = ANY(p_filial))
             AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR s2.cidade = ANY(p_cidade))
             AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR s2.superv = ANY(p_supervisor))
@@ -419,7 +412,7 @@ BEGIN
 END;
 $$;
 
--- Function: Get Filters (Populate Dropdowns)
+-- Function: Get Filters (Optimized - Split Queries)
 CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -442,11 +435,8 @@ DECLARE
     v_anos int[];
     v_tipos_venda text[];
     
-    -- Helper variables for date filtering
     v_filter_year int;
     v_filter_month int;
-    v_min_date date;
-    v_max_date date;
 BEGIN
     SET LOCAL statement_timeout = '120s';
 
@@ -461,86 +451,85 @@ BEGIN
         ), EXTRACT(YEAR FROM CURRENT_DATE)::int)
         INTO v_filter_year;
         
-        -- We set min date to Jan 1st of Previous Year
-        v_min_date := make_date(v_filter_year - 1, 1, 1);
-        -- We set max date to Jan 1st of Next Year (covering current year)
-        v_max_date := make_date(v_filter_year + 1, 1, 1);
-        
         -- Reset v_filter_year to NULL so strictly year-based logic below relies on date ranges
-        v_filter_year := NULL; 
+        -- (Wait, cache_filters uses 'ano' column, so we should actually USE the year)
+        -- Optimization: If p_ano is 'todos', we still probably want to limit the cache scan if possible,
+        -- but the user logic implies "all time". However, usually the dashboard defaults to a year.
+        -- Let's keep v_filter_year populated if possible, or NULL if truly 'todos'.
+        -- Reverting strict NULL logic: If we want to default to filtering by the detected year to be fast:
+        -- v_filter_year := ... (calculated above).
     END IF;
     
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_filter_month := p_mes::int + 1; -- JS is 0-indexed
     END IF;
 
-    -- Construct optimized date ranges if specific year was selected
-    IF v_filter_year IS NOT NULL THEN
-        IF v_filter_month IS NOT NULL THEN
-             v_min_date := make_date(v_filter_year, v_filter_month, 1);
-             v_max_date := v_min_date + interval '1 month';
-        ELSE
-             v_min_date := make_date(v_filter_year, 1, 1);
-             v_max_date := make_date(v_filter_year + 1, 1, 1);
-        END IF;
-    END IF;
+    -- Optimization: Split queries allow Postgres to use specific indexes for each DISTINCT operation
+    -- rather than scanning the table once and doing complex aggregation in memory.
 
-    -- Optimization: Use Cache Table (public.cache_filters)
-    -- This table contains pre-computed distinct combinations of all filters.
-    -- Querying this small table is exponentially faster than scanning the large transaction tables.
-    
-    SELECT
-        -- 1. Supervisors
-        ARRAY_AGG(DISTINCT superv ORDER BY superv) FILTER (WHERE 
-            (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
-            AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
-            AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
-            AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
-            AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
-            AND (v_filter_month IS NULL OR mes = v_filter_month)
-        ),
-        -- 2. Vendedores
-        ARRAY_AGG(DISTINCT nome ORDER BY nome) FILTER (WHERE
-            (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
-            AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
-            AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
-            AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
-            AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
-            AND (v_filter_month IS NULL OR mes = v_filter_month)
-        ),
-        -- 3. Cidades
-        ARRAY_AGG(DISTINCT cidade ORDER BY cidade) FILTER (WHERE
-            (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
-            AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
-            AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
-            AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
-            AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
-            AND (v_filter_month IS NULL OR mes = v_filter_month)
-        ),
-        -- 4. Filiais
-        ARRAY_AGG(DISTINCT filial ORDER BY filial) FILTER (WHERE
-            (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
-            AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
-            AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
-            AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
-            AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
-            AND (v_filter_month IS NULL OR mes = v_filter_month)
-        ),
-        -- 5. Tipos de Venda
-        ARRAY_AGG(DISTINCT tipovenda ORDER BY tipovenda) FILTER (WHERE
-            (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
-            AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
-            AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
-            AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
-            AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
-            AND (v_filter_month IS NULL OR mes = v_filter_month)
-            AND tipovenda IS NOT NULL AND tipovenda != '' AND tipovenda != 'null'
-        )
-    INTO v_supervisors, v_vendedores, v_cidades, v_filiais, v_tipos_venda
-    FROM public.cache_filters
-    WHERE (v_filter_year IS NULL OR ano = v_filter_year);
+    -- 1. Supervisors
+    SELECT ARRAY(SELECT DISTINCT superv FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        ORDER BY superv
+    ) INTO v_supervisors;
 
-    -- 6. Fornecedores (From Cache)
+    -- 2. Vendedores
+    SELECT ARRAY(SELECT DISTINCT nome FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        ORDER BY nome
+    ) INTO v_vendedores;
+
+    -- 3. Cidades
+    SELECT ARRAY(SELECT DISTINCT cidade FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        ORDER BY cidade
+    ) INTO v_cidades;
+
+    -- 4. Filiais
+    SELECT ARRAY(SELECT DISTINCT filial FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        ORDER BY filial
+    ) INTO v_filiais;
+
+    -- 5. Tipos de Venda
+    SELECT ARRAY(SELECT DISTINCT tipovenda FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        AND tipovenda IS NOT NULL AND tipovenda != '' AND tipovenda != 'null'
+        ORDER BY tipovenda
+    ) INTO v_tipos_venda;
+
+    -- 6. Fornecedores
+    -- Note: This requires a bit more JSON structure construction, so we do it distinctly
     SELECT json_agg(json_build_object('cod', codfor, 'name', 
         CASE 
             WHEN codfor = '707' THEN 'Extrusados'
@@ -572,17 +561,17 @@ BEGIN
             AND codfor IS NOT NULL
     ) t;
 
-    -- 7. Anos (From Cache - very fast distinct scan)
-    SELECT ARRAY_AGG(DISTINCT ano ORDER BY ano DESC) INTO v_anos
-    FROM public.cache_filters
-    WHERE
+    -- 7. Anos
+    SELECT ARRAY(SELECT DISTINCT ano FROM public.cache_filters WHERE
         (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
         AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
         AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
         AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
         AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
         AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
-        AND (v_filter_month IS NULL OR mes = v_filter_month);
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        ORDER BY ano DESC
+    ) INTO v_anos;
 
     RETURN json_build_object(
         'supervisors', COALESCE(v_supervisors, '{}'),

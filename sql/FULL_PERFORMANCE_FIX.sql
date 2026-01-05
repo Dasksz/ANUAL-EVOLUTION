@@ -61,6 +61,172 @@ BEGIN
 END;
 $$;
 
+-- Function: Get Filters (Optimized - Split Queries for Better Index Usage)
+CREATE OR REPLACE FUNCTION get_dashboard_filters(
+    p_filial text[] default null,
+    p_cidade text[] default null,
+    p_supervisor text[] default null,
+    p_vendedor text[] default null,
+    p_fornecedor text[] default null,
+    p_ano text default null,
+    p_mes text default null,
+    p_tipovenda text[] default null
+)
+RETURNS JSON
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_supervisors text[];
+    v_vendedores text[];
+    v_fornecedores json;
+    v_cidades text[];
+    v_filiais text[];
+    v_anos int[];
+    v_tipos_venda text[];
+
+    v_filter_year int;
+    v_filter_month int;
+BEGIN
+    SET LOCAL statement_timeout = '120s';
+
+    IF p_ano IS NOT NULL AND p_ano != '' AND p_ano != 'todos' THEN
+        v_filter_year := p_ano::int;
+    ELSE
+        SELECT COALESCE(GREATEST(
+            (SELECT MAX(EXTRACT(YEAR FROM dtped))::int FROM public.data_detailed),
+            (SELECT MAX(EXTRACT(YEAR FROM dtped))::int FROM public.data_history)
+        ), EXTRACT(YEAR FROM CURRENT_DATE)::int)
+        INTO v_filter_year;
+
+        -- Default to null if not explicit, but use date range implicitly in cache if needed.
+        -- Actually, cache_filters has 'ano', so we use v_filter_year.
+        -- However, if user wants ALL years, we should keep v_filter_year NULL if p_ano was 'todos'.
+        -- Re-evaluating: The logic in RPC was to use NULL for 'todos'.
+        -- If p_ano IS 'todos', v_filter_year remains NULL.
+        IF p_ano = 'todos' THEN v_filter_year := NULL; END IF;
+    END IF;
+
+    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
+        v_filter_month := p_mes::int + 1;
+    END IF;
+
+    -- 1. Supervisors
+    SELECT ARRAY(SELECT DISTINCT superv FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        ORDER BY superv
+    ) INTO v_supervisors;
+
+    -- 2. Vendedores
+    SELECT ARRAY(SELECT DISTINCT nome FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        ORDER BY nome
+    ) INTO v_vendedores;
+
+    -- 3. Cidades
+    SELECT ARRAY(SELECT DISTINCT cidade FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        ORDER BY cidade
+    ) INTO v_cidades;
+
+    -- 4. Filiais
+    SELECT ARRAY(SELECT DISTINCT filial FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        ORDER BY filial
+    ) INTO v_filiais;
+
+    -- 5. Tipos de Venda
+    SELECT ARRAY(SELECT DISTINCT tipovenda FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        AND tipovenda IS NOT NULL AND tipovenda != '' AND tipovenda != 'null'
+        ORDER BY tipovenda
+    ) INTO v_tipos_venda;
+
+    -- 6. Fornecedores
+    SELECT json_agg(json_build_object('cod', codfor, 'name',
+        CASE
+            WHEN codfor = '707' THEN 'Extrusados'
+            WHEN codfor = '708' THEN 'Ñ Extrusados'
+            WHEN codfor = '752' THEN 'Torcida'
+            WHEN codfor = '1119' THEN 'Foods'
+            ELSE fornecedor
+        END
+    ) ORDER BY
+        CASE
+            WHEN codfor = '707' THEN 'Extrusados'
+            WHEN codfor = '708' THEN 'Ñ Extrusados'
+            WHEN codfor = '752' THEN 'Torcida'
+            WHEN codfor = '1119' THEN 'Foods'
+            ELSE fornecedor
+        END
+    ) INTO v_fornecedores
+    FROM (
+        SELECT DISTINCT codfor, fornecedor
+        FROM public.cache_filters
+        WHERE
+            (v_filter_year IS NULL OR ano = v_filter_year)
+            AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+            AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+            AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+            AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+            AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+            AND (v_filter_month IS NULL OR mes = v_filter_month)
+            AND codfor IS NOT NULL
+    ) t;
+
+    -- 7. Anos
+    SELECT ARRAY(SELECT DISTINCT ano FROM public.cache_filters WHERE
+        (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        ORDER BY ano DESC
+    ) INTO v_anos;
+
+    RETURN json_build_object(
+        'supervisors', COALESCE(v_supervisors, '{}'),
+        'vendedores', COALESCE(v_vendedores, '{}'),
+        'fornecedores', COALESCE(v_fornecedores, '[]'::json),
+        'cidades', COALESCE(v_cidades, '{}'),
+        'filiais', COALESCE(v_filiais, '{}'),
+        'anos', COALESCE(v_anos, '{}'),
+        'tipos_venda', COALESCE(v_tipos_venda, '{}')
+    );
+END;
+$$;
+
 -- 3. SUPABASE WARNINGS: Fix Duplicates and Security
 -- ------------------------------------------------------------------------------
 
