@@ -697,11 +697,19 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(filterDebounceTimer);
         filterDebounceTimer = setTimeout(async () => {
             // 1. Update Filters (Dropdowns) based on new selection (Dependent Filtering)
-            // This ensures that selecting a Supervisor filters the Vendedores list, etc.
-            await loadFilters(filters);
+            try {
+                // We use dependent filtering to ensure selecting a Supervisor filters the Vendedores list, etc.
+                await loadFilters(filters);
+            } catch (err) {
+                console.error("Failed to load filters:", err);
+            }
 
             // 2. Reload Main Data
-            await loadMainDashboardData();
+            try {
+                await loadMainDashboardData();
+            } catch (err) {
+                console.error("Failed to load dashboard data:", err);
+            }
         }, 500);
     };
 
