@@ -13,6 +13,10 @@ $$;
 
 -- Function: Get Main Dashboard Data
 -- Function: Get Main Dashboard Data (Optimized)
+
+-- Fix: Remove the accidentally created overloaded function with wrong signature
+DROP FUNCTION IF EXISTS get_main_dashboard_data(text[], text[], text[], text[], text[], text, text, text[], int, int);
+
 CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -274,7 +278,9 @@ CREATE OR REPLACE FUNCTION get_city_view_data(
     p_fornecedor text[] default null,
     p_ano text default null,
     p_mes text default null,
-    p_tipovenda text[] default null
+    p_tipovenda text[] default null,
+    p_page int default 0,
+    p_limit int default 50
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -287,6 +293,7 @@ DECLARE
     v_result json;
     v_active_clients json;
     v_inactive_clients json;
+    v_total_active_count int;
 BEGIN
     -- Defaults
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
@@ -312,8 +319,9 @@ BEGIN
     v_start_date := make_date(v_current_year, v_target_month, 1);
     v_end_date := v_start_date + interval '1 month';
 
-    -- Active Clients in Target Month
-    -- Optimized: No full SELECT *, only aggregation
+    -- Active Clients (Paginated)
+    -- 1. Calculate Totals (Heavy Aggregation, but needed for sorting by Revenue)
+    --    Note: Ideally this should be pre-aggregated, but for now we aggregate on the fly.
     WITH client_totals AS (
         SELECT codcli, SUM(vlvenda) as total_fat
         FROM public.all_sales
@@ -325,21 +333,35 @@ BEGIN
           AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
         GROUP BY codcli
         HAVING SUM(vlvenda) > 0
+    ),
+    -- 2. Count Total
+    count_cte AS (
+        SELECT COUNT(*) as cnt FROM client_totals
+    ),
+    -- 3. Paginate
+    paginated_clients AS (
+        SELECT ct.codcli, ct.total_fat, c.fantasia, c.razaosocial, c.cidade, c.bairro, c.rca1, c.rca2
+        FROM client_totals ct
+        JOIN public.data_clients c ON c.codigo_cliente = ct.codcli
+        ORDER BY ct.total_fat DESC
+        LIMIT p_limit OFFSET (p_page * p_limit)
     )
-    SELECT json_agg(
-        json_build_object(
-            'Código', c.codigo_cliente,
-            'fantasia', c.fantasia,
-            'razaoSocial', c.razaosocial,
-            'totalFaturamento', ct.total_fat,
-            'cidade', c.cidade,
-            'bairro', c.bairro,
-            'rca1', c.rca1,
-            'rca2', c.rca2
-        ) ORDER BY ct.total_fat DESC
-    ) INTO v_active_clients
-    FROM client_totals ct
-    JOIN public.data_clients c ON c.codigo_cliente = ct.codcli;
+    SELECT
+        (SELECT cnt FROM count_cte),
+        json_agg(
+            json_build_object(
+                'Código', pc.codcli,
+                'fantasia', pc.fantasia,
+                'razaoSocial', pc.razaosocial,
+                'totalFaturamento', pc.total_fat,
+                'cidade', pc.cidade,
+                'bairro', pc.bairro,
+                'rca1', pc.rca1,
+                'rca2', pc.rca2
+            ) ORDER BY pc.total_fat DESC
+        )
+    INTO v_total_active_count, v_active_clients
+    FROM paginated_clients pc;
 
     -- Inactive Clients
     -- Optimized: Avoid distinct scan of full sales if possible
@@ -389,6 +411,7 @@ BEGIN
 
     v_result := json_build_object(
         'active_clients', COALESCE(v_active_clients, '[]'::json),
+        'total_active_count', COALESCE(v_total_active_count, 0),
         'inactive_clients', COALESCE(v_inactive_clients, '[]'::json)
     );
 

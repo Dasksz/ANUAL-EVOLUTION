@@ -482,6 +482,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const tipovendaFilterBtn = document.getElementById('tipovenda-filter-btn');
     const tipovendaFilterDropdown = document.getElementById('tipovenda-filter-dropdown');
 
+    // City View Pagination State
+    let currentCityPage = 0;
+    const cityPageSize = 50;
+    let totalActiveClients = 0;
+
     let selectedFiliais = [];
     let selectedCidades = [];
     let selectedSupervisores = [];
@@ -710,6 +715,12 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 console.error("Failed to load dashboard data:", err);
             }
+
+            // 3. Reload City View if visible (Resetting Page)
+            if (!cityView.classList.contains('hidden')) {
+                currentCityPage = 0;
+                await loadCityView();
+            }
         }, 500);
     };
 
@@ -935,35 +946,96 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadCityView() {
         const filters = getCurrentFilters();
+        // Add pagination params
+        filters.p_page = currentCityPage;
+        filters.p_limit = cityPageSize;
 
         const { data, error } = await supabase.rpc('get_city_view_data', filters);
         if(error) { console.error(error); return; }
 
-        const activeTableBody = document.getElementById('city-active-detail-table-body');
-        activeTableBody.innerHTML = data.active_clients.map(c => `
-            <tr class="table-row">
-                <td class="p-2">${c['Código']}</td>
-                <td class="p-2">${c.fantasia || c.razaoSocial}</td>
-                <td class="p-2 text-right">${(c.totalFaturamento || 0).toLocaleString('pt-BR', {style:'currency', currency: 'BRL'})}</td>
-                <td class="p-2">${c.cidade}</td>
-                <td class="p-2">${c.bairro}</td>
-                <td class="p-2">${c.rca1 || '-'}</td>
-                <td class="p-2">${c.rca2 || '-'}</td>
-            </tr>
-        `).join('');
+        totalActiveClients = data.total_active_count || 0;
 
+        // Update Active Table
+        const activeTableBody = document.getElementById('city-active-detail-table-body');
+        if (data.active_clients && data.active_clients.length > 0) {
+            activeTableBody.innerHTML = data.active_clients.map(c => `
+                <tr class="table-row">
+                    <td class="p-2">${c['Código']}</td>
+                    <td class="p-2">${c.fantasia || c.razaoSocial}</td>
+                    <td class="p-2 text-right">${(c.totalFaturamento || 0).toLocaleString('pt-BR', {style:'currency', currency: 'BRL'})}</td>
+                    <td class="p-2">${c.cidade}</td>
+                    <td class="p-2">${c.bairro}</td>
+                    <td class="p-2">${c.rca1 || '-'}</td>
+                    <td class="p-2">${c.rca2 || '-'}</td>
+                </tr>
+            `).join('');
+        } else {
+            activeTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>';
+        }
+
+        // Render Pagination UI
+        renderCityPaginationControls();
+
+        // Update Inactive Table (No pagination implemented yet per request, but good to handle empty state)
         const inactiveTableBody = document.getElementById('city-inactive-detail-table-body');
-        inactiveTableBody.innerHTML = data.inactive_clients.map(c => `
-            <tr class="table-row">
-                <td class="p-2">${c['Código']}</td>
-                <td class="p-2">${c.fantasia || c.razaoSocial}</td>
-                <td class="p-2">${c.cidade}</td>
-                <td class="p-2">${c.bairro}</td>
-                <td class="p-2 text-center">${c.ultimaCompra ? new Date(c.ultimaCompra).toLocaleDateString('pt-BR') : '-'}</td>
-                <td class="p-2">${c.rca1 || '-'}</td>
-                <td class="p-2">${c.rca2 || '-'}</td>
-            </tr>
-        `).join('');
+        if (data.inactive_clients && data.inactive_clients.length > 0) {
+            inactiveTableBody.innerHTML = data.inactive_clients.map(c => `
+                <tr class="table-row">
+                    <td class="p-2">${c['Código']}</td>
+                    <td class="p-2">${c.fantasia || c.razaoSocial}</td>
+                    <td class="p-2">${c.cidade}</td>
+                    <td class="p-2">${c.bairro}</td>
+                    <td class="p-2 text-center">${c.ultimaCompra ? new Date(c.ultimaCompra).toLocaleDateString('pt-BR') : '-'}</td>
+                    <td class="p-2">${c.rca1 || '-'}</td>
+                    <td class="p-2">${c.rca2 || '-'}</td>
+                </tr>
+            `).join('');
+        } else {
+            inactiveTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>';
+        }
+    }
+
+    function renderCityPaginationControls() {
+        const containerId = 'city-pagination-container';
+        let container = document.getElementById(containerId);
+
+        // Ensure container exists
+        if (!container) {
+            const tableContainer = document.getElementById('city-active-detail-table-body').parentElement.parentElement;
+            container = document.createElement('div');
+            container.id = containerId;
+            container.className = 'flex justify-between items-center mt-4 px-4';
+            tableContainer.appendChild(container);
+        }
+
+        const totalPages = Math.ceil(totalActiveClients / cityPageSize);
+        const startItem = (currentCityPage * cityPageSize) + 1;
+        const endItem = Math.min((currentCityPage + 1) * cityPageSize, totalActiveClients);
+
+        container.innerHTML = `
+            <div class="text-sm text-slate-400">
+                Mostrando ${totalActiveClients > 0 ? startItem : 0} a ${endItem} de ${totalActiveClients} clientes
+            </div>
+            <div class="flex gap-2">
+                <button id="city-prev-btn" class="px-3 py-1 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed" ${currentCityPage === 0 ? 'disabled' : ''}>Anterior</button>
+                <span class="px-2 py-1 text-slate-300">Pág. ${currentCityPage + 1} de ${totalPages || 1}</span>
+                <button id="city-next-btn" class="px-3 py-1 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed" ${currentCityPage >= totalPages - 1 ? 'disabled' : ''}>Próxima</button>
+            </div>
+        `;
+
+        document.getElementById('city-prev-btn').addEventListener('click', () => {
+            if (currentCityPage > 0) {
+                currentCityPage--;
+                loadCityView();
+            }
+        });
+
+        document.getElementById('city-next-btn').addEventListener('click', () => {
+            if (currentCityPage < totalPages - 1) {
+                currentCityPage++;
+                loadCityView();
+            }
+        });
     }
 
 });
