@@ -411,8 +411,27 @@ self.onmessage = async (event) => {
         const processedCurrYearHist = processSalesData(reattributedCurrYearHist, clientMap, productMasterMap);
         const processedCurrMonth = processSalesData(reattributedCurrMonth, clientMap, productMasterMap);
 
+        // Fix: Apply Bonification Logic (Type 5 and 11) - Move VLVENDA to VLBONIFIC if positive
+        const applyBonificationLogic = (salesArray) => salesArray.map(sale => {
+            const tipo = sale.tipovenda;
+            if ((tipo === '5' || tipo === '11') && sale.vlvenda > 0) {
+                // If VLVENDA is positive, move to VLBONIFIC and zero VLVENDA
+                // Note: We add to existing VLBONIFIC in case it has value (usually 0 if VLVENDA has value)
+                return {
+                    ...sale,
+                    vlbonific: (sale.vlbonific || 0) + sale.vlvenda,
+                    vlvenda: 0
+                };
+            }
+            return sale;
+        });
+
+        const fixedPrevYear = applyBonificationLogic(processedPrevYear);
+        const fixedCurrYearHist = applyBonificationLogic(processedCurrYearHist);
+        const fixedCurrMonth = applyBonificationLogic(processedCurrMonth);
+
         // Branch Override Logic
-        const allProcessedSales = [...processedPrevYear, ...processedCurrYearHist, ...processedCurrMonth];
+        const allProcessedSales = [...fixedPrevYear, ...fixedCurrYearHist, ...fixedCurrMonth];
         const clientLastBranch = new Map();
         const clientsWith05Purchase = new Set();
         allProcessedSales.forEach(sale => {
@@ -438,9 +457,33 @@ self.onmessage = async (event) => {
 
         const applyAllRules = (salesData) => applyTiagoRule(applyBranchOverride(salesData));
 
-        const finalPrevYear = applyAllRules(processedPrevYear);
-        const finalCurrYearHist = applyAllRules(processedCurrYearHist);
-        const finalCurrMonth = applyAllRules(processedCurrMonth);
+        let finalPrevYear = applyAllRules(fixedPrevYear);
+        let finalCurrYearHist = applyAllRules(fixedCurrYearHist);
+        const finalCurrMonth = applyAllRules(fixedCurrMonth);
+
+        // Fix: Prevent Overlap between History and Current Month
+        // Identify Month/Year of Current Month Data
+        if (finalCurrMonth.length > 0) {
+            // Assume predominantly one month. Take the first valid date.
+            const sampleDateStr = finalCurrMonth.find(s => s.dtped)?.dtped;
+            if (sampleDateStr) {
+                const sampleDate = new Date(sampleDateStr);
+                const targetMonth = sampleDate.getMonth();
+                const targetYear = sampleDate.getFullYear();
+
+                // Filter History to exclude this Month/Year
+                const initialCount = finalCurrYearHist.length;
+                finalCurrYearHist = finalCurrYearHist.filter(sale => {
+                    if (!sale.dtped) return true;
+                    const d = new Date(sale.dtped);
+                    return d.getMonth() !== targetMonth || d.getFullYear() !== targetYear;
+                });
+                const removedCount = initialCount - finalCurrYearHist.length;
+                if (removedCount > 0) {
+                     console.log(`Removed ${removedCount} overlapping rows from History matching ${targetMonth+1}/${targetYear}`);
+                }
+            }
+        }
 
         self.postMessage({ type: 'progress', status: 'Preparando dados para envio...', percentage: 90 });
 
