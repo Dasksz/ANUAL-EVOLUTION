@@ -317,8 +317,7 @@ BEGIN
     WITH client_totals AS (
         SELECT codcli, SUM(vlvenda) as total_fat
         FROM public.all_sales
-        WHERE dtped >= v_start_date AND dtped < v_end_date
-          AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        WHERE (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
           AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
           AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
           AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
