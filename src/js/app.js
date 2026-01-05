@@ -528,16 +528,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const { data, error } = await supabase.rpc('get_dashboard_filters', currentFilters);
         if (error) {
             console.error('Error loading filters:', error);
+
             // Enhanced error feedback & Retry Logic
             if (error.code === '57014' || error.message.includes('timeout')) {
                  console.error('Filter query timed out.');
                  if (retryCount < 1) {
                      console.log('Retrying filters load...');
-                     await new Promise(r => setTimeout(r, 1000));
+                     // Show temporary toast/status to user
+                     const statusText = document.getElementById('status-text');
+                     const statusContainer = document.getElementById('status-container');
+                     if(statusText && statusContainer) {
+                         statusText.textContent = "Otimizando filtros... aguarde.";
+                         statusContainer.classList.remove('hidden');
+                     }
+
+                     await new Promise(r => setTimeout(r, 2000));
                      return loadFilters(currentFilters, retryCount + 1);
+                 } else {
+                     alert("O sistema está demorando para responder. Por favor, recarregue a página em instantes.");
                  }
             }
             return;
+        }
+
+        // Hide status if it was shown
+        const statusContainer = document.getElementById('status-container');
+        if(statusContainer && !statusContainer.classList.contains('hidden') && document.getElementById('uploader-modal').classList.contains('hidden')) {
+             statusContainer.classList.add('hidden');
         }
 
         applyFiltersData(data);
