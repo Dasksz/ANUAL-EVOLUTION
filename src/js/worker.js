@@ -457,33 +457,9 @@ self.onmessage = async (event) => {
 
         const applyAllRules = (salesData) => applyTiagoRule(applyBranchOverride(salesData));
 
-        let finalPrevYear = applyAllRules(fixedPrevYear);
-        let finalCurrYearHist = applyAllRules(fixedCurrYearHist);
+        const finalPrevYear = applyAllRules(fixedPrevYear);
+        const finalCurrYearHist = applyAllRules(fixedCurrYearHist);
         const finalCurrMonth = applyAllRules(fixedCurrMonth);
-
-        // Fix: Prevent Overlap between History and Current Month
-        // Identify Month/Year of Current Month Data
-        if (finalCurrMonth.length > 0) {
-            // Assume predominantly one month. Take the first valid date.
-            const sampleDateStr = finalCurrMonth.find(s => s.dtped)?.dtped;
-            if (sampleDateStr) {
-                const sampleDate = new Date(sampleDateStr);
-                const targetMonth = sampleDate.getMonth();
-                const targetYear = sampleDate.getFullYear();
-
-                // Filter History to exclude this Month/Year
-                const initialCount = finalCurrYearHist.length;
-                finalCurrYearHist = finalCurrYearHist.filter(sale => {
-                    if (!sale.dtped) return true;
-                    const d = new Date(sale.dtped);
-                    return d.getMonth() !== targetMonth || d.getFullYear() !== targetYear;
-                });
-                const removedCount = initialCount - finalCurrYearHist.length;
-                if (removedCount > 0) {
-                     console.log(`Removed ${removedCount} overlapping rows from History matching ${targetMonth+1}/${targetYear}`);
-                }
-            }
-        }
 
         self.postMessage({ type: 'progress', status: 'Preparando dados para envio...', percentage: 90 });
 
