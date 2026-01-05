@@ -79,15 +79,22 @@ BEGIN
 
     -- 3. Optimization: Aggregate separately then Union
     -- Instead of filtering raw rows into a huge CTE, we aggregate each table then sum up.
-    WITH detailed_agg AS (
+    WITH detailed_base AS (
         SELECT
             EXTRACT(YEAR FROM dtped)::int as yr,
             EXTRACT(MONTH FROM dtped)::int as mth,
-            SUM(vlvenda) as faturamento,
-            SUM(totpesoliq) as peso,
-            SUM(vlbonific) as bonificacao,
-            SUM(COALESCE(vldevolucao,0)) as devolucao,
-            COUNT(DISTINCT CASE WHEN vlvenda >= 1 THEN codcli END) as positivacao
+            codcli,
+            -- Logic Change: If no Type filter selected, ONLY sum Types 1 and 9 for Revenue (Matching Reference Project)
+            SUM(CASE
+                WHEN (p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0) THEN vlvenda
+                WHEN tipovenda IN ('1', '9') THEN vlvenda
+                ELSE 0
+            END) as val_venda,
+            -- Maintain total sum for Positivation (which uses all types in Reference Project)
+            SUM(vlvenda) as val_venda_total,
+            SUM(totpesoliq) as val_peso,
+            SUM(vlbonific) as val_bonif,
+            SUM(COALESCE(vldevolucao,0)) as val_devol
         FROM public.data_detailed
         WHERE dtped >= v_start_date_prev AND dtped < v_end_date_curr
           AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
@@ -96,17 +103,37 @@ BEGIN
           AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
           AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
           AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        GROUP BY 1, 2, 3
+    ),
+    detailed_agg AS (
+        SELECT
+            yr,
+            mth,
+            SUM(val_venda) as faturamento,
+            SUM(val_peso) as peso,
+            SUM(val_bonif) as bonificacao,
+            SUM(val_devol) as devolucao,
+            -- Use val_venda_total (all types) for Positivacao to match Reference Logic
+            COUNT(DISTINCT CASE WHEN val_venda_total >= 1 THEN codcli END) as positivacao
+        FROM detailed_base
         GROUP BY 1, 2
     ),
-    history_agg AS (
+    history_base AS (
         SELECT
             EXTRACT(YEAR FROM dtped)::int as yr,
             EXTRACT(MONTH FROM dtped)::int as mth,
-            SUM(vlvenda) as faturamento,
-            SUM(totpesoliq) as peso,
-            SUM(vlbonific) as bonificacao,
-            SUM(COALESCE(vldevolucao,0)) as devolucao,
-            COUNT(DISTINCT CASE WHEN vlvenda >= 1 THEN codcli END) as positivacao
+            codcli,
+            -- Logic Change: If no Type filter selected, ONLY sum Types 1 and 9 for Revenue (Matching Reference Project)
+            SUM(CASE
+                WHEN (p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0) THEN vlvenda
+                WHEN tipovenda IN ('1', '9') THEN vlvenda
+                ELSE 0
+            END) as val_venda,
+            -- Maintain total sum for Positivation (which uses all types in Reference Project)
+            SUM(vlvenda) as val_venda_total,
+            SUM(totpesoliq) as val_peso,
+            SUM(vlbonific) as val_bonif,
+            SUM(COALESCE(vldevolucao,0)) as val_devol
         FROM public.data_history
         WHERE dtped >= v_start_date_prev AND dtped < v_end_date_curr
           AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
@@ -115,6 +142,19 @@ BEGIN
           AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
           AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
           AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        GROUP BY 1, 2, 3
+    ),
+    history_agg AS (
+        SELECT
+            yr,
+            mth,
+            SUM(val_venda) as faturamento,
+            SUM(val_peso) as peso,
+            SUM(val_bonif) as bonificacao,
+            SUM(val_devol) as devolucao,
+            -- Use val_venda_total (all types) for Positivacao to match Reference Logic
+            COUNT(DISTINCT CASE WHEN val_venda_total >= 1 THEN codcli END) as positivacao
+        FROM history_base
         GROUP BY 1, 2
     ),
     combined_agg AS (
@@ -472,13 +512,30 @@ BEGIN
             AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
             AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
             AND (v_filter_month IS NULL OR mes = v_filter_month)
+            AND tipovenda IS NOT NULL AND tipovenda != '' AND tipovenda != 'null'
         )
     INTO v_supervisors, v_vendedores, v_cidades, v_filiais, v_tipos_venda
     FROM public.cache_filters
     WHERE (v_filter_year IS NULL OR ano = v_filter_year);
 
     -- 6. Fornecedores (From Cache)
-    SELECT json_agg(json_build_object('cod', codfor, 'name', fornecedor) ORDER BY fornecedor) INTO v_fornecedores
+    SELECT json_agg(json_build_object('cod', codfor, 'name',
+        CASE
+            WHEN codfor = '707' THEN 'Extrusados'
+            WHEN codfor = '708' THEN 'Ñ Extrusados'
+            WHEN codfor = '752' THEN 'Torcida'
+            WHEN codfor = '1119' THEN 'Foods'
+            ELSE fornecedor
+        END
+    ) ORDER BY
+        CASE
+            WHEN codfor = '707' THEN 'Extrusados'
+            WHEN codfor = '708' THEN 'Ñ Extrusados'
+            WHEN codfor = '752' THEN 'Torcida'
+            WHEN codfor = '1119' THEN 'Foods'
+            ELSE fornecedor
+        END
+    ) INTO v_fornecedores
     FROM (
         SELECT DISTINCT codfor, fornecedor
         FROM public.cache_filters
