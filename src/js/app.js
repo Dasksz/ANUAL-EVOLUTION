@@ -462,13 +462,40 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Dashboard Data Logic ---
 
     // Filter Elements
-    const supervisorFilter = document.getElementById('supervisor-filter');
-    const vendedorFilter = document.getElementById('vendedor-filter');
-    const fornecedorFilter = document.getElementById('fornecedor-filter');
-    const cidadeFilter = document.getElementById('cidade-filter');
-    const filialFilter = document.getElementById('filial-filter');
     const anoFilter = document.getElementById('ano-filter');
     const mesFilter = document.getElementById('mes-filter');
+
+    // Multi-Select Elements (Button & Dropdown)
+    const filialFilterBtn = document.getElementById('filial-filter-btn');
+    const filialFilterDropdown = document.getElementById('filial-filter-dropdown');
+    
+    const cidadeFilterBtn = document.getElementById('cidade-filter-btn');
+    const cidadeFilterDropdown = document.getElementById('cidade-filter-dropdown');
+    const cidadeFilterList = document.getElementById('cidade-filter-list');
+    const cidadeFilterSearch = document.getElementById('cidade-filter-search');
+
+    const supervisorFilterBtn = document.getElementById('supervisor-filter-btn');
+    const supervisorFilterDropdown = document.getElementById('supervisor-filter-dropdown');
+
+    const vendedorFilterBtn = document.getElementById('vendedor-filter-btn');
+    const vendedorFilterDropdown = document.getElementById('vendedor-filter-dropdown');
+    const vendedorFilterList = document.getElementById('vendedor-filter-list');
+    const vendedorFilterSearch = document.getElementById('vendedor-filter-search');
+
+    const fornecedorFilterBtn = document.getElementById('fornecedor-filter-btn');
+    const fornecedorFilterDropdown = document.getElementById('fornecedor-filter-dropdown');
+    const fornecedorFilterList = document.getElementById('fornecedor-filter-list');
+    const fornecedorFilterSearch = document.getElementById('fornecedor-filter-search');
+
+    const tipovendaFilterBtn = document.getElementById('tipovenda-filter-btn');
+    const tipovendaFilterDropdown = document.getElementById('tipovenda-filter-dropdown');
+
+    let selectedFiliais = [];
+    let selectedCidades = [];
+    let selectedSupervisores = [];
+    let selectedVendedores = [];
+    let selectedFornecedores = [];
+    let selectedTiposVenda = [];
 
     let currentCharts = {};
 
@@ -478,21 +505,21 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadMainDashboardData();
     }
 
-    function getSelectedValues(selectElement) {
-        if (!selectElement) return [];
-        return Array.from(selectElement.selectedOptions).map(option => option.value).filter(v => v !== '');
+    function getSelectedValues(containerId) {
+        // Not used directly anymore, relying on state variables (selected*)
+        return [];
     }
 
     function getCurrentFilters() {
         return {
-            p_filial: getSelectedValues(filialFilter),
-            p_cidade: getSelectedValues(cidadeFilter),
-            p_supervisor: getSelectedValues(supervisorFilter),
-            p_vendedor: getSelectedValues(vendedorFilter),
-            p_fornecedor: getSelectedValues(fornecedorFilter),
+            p_filial: selectedFiliais,
+            p_cidade: selectedCidades,
+            p_supervisor: selectedSupervisores,
+            p_vendedor: selectedVendedores,
+            p_fornecedor: selectedFornecedores,
             p_ano: anoFilter.value,
             p_mes: mesFilter.value,
-            p_tipovenda: getSelectedValues(document.getElementById('tipovenda-filter'))
+            p_tipovenda: selectedTiposVenda
         };
     }
 
@@ -519,20 +546,104 @@ document.addEventListener('DOMContentLoaded', () => {
         applyFiltersData(data);
     }
 
-    function applyFiltersData(data) {
-        // Helper to preserve selection
-        const updateSelect = (element, items, isObject = false) => {
-            // Determine if element is multiple select
-            const isMultiple = element.hasAttribute('multiple');
-            let currentValues = [];
-            if (isMultiple) {
-                currentValues = getSelectedValues(element);
-            } else {
-                currentValues = [element.value];
+    // Helper function to setup multi-select logic
+    function setupMultiSelect(btn, dropdown, container, items, selectedArray, labelCallback, isObject = false, searchInput = null) {
+        // Toggle dropdown visibility
+        btn.onclick = (e) => {
+            e.stopPropagation(); // Prevent immediate closing
+            dropdown.classList.toggle('hidden');
+        };
+
+        // Render items
+        const renderItems = (filterText = '') => {
+            container.innerHTML = '';
+            
+            // Filter items if search is active
+            let filteredItems = items || [];
+            if (filterText) {
+                const lower = filterText.toLowerCase();
+                filteredItems = filteredItems.filter(item => {
+                    const val = isObject ? item.name : item;
+                    return String(val).toLowerCase().includes(lower);
+                });
             }
 
+            filteredItems.forEach(item => {
+                const value = isObject ? item.cod : item;
+                const label = isObject ? item.name : item;
+                const isSelected = selectedArray.includes(String(value));
+
+                const div = document.createElement('div');
+                div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
+                div.innerHTML = `
+                    <input type="checkbox" value="${value}" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2">
+                    <label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${label}</label>
+                `;
+                
+                // Click handler for the whole row
+                div.onclick = (e) => {
+                    e.stopPropagation(); // Prevent dropdown close
+                    const checkbox = div.querySelector('input');
+                    // Toggle if clicking div (unless clicking checkbox directly)
+                    if (e.target !== checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                    }
+                    
+                    const val = String(value);
+                    if (checkbox.checked) {
+                        if (!selectedArray.includes(val)) selectedArray.push(val);
+                    } else {
+                        const idx = selectedArray.indexOf(val);
+                        if (idx > -1) selectedArray.splice(idx, 1);
+                    }
+                    
+                    updateBtnLabel();
+                    handleFilterChange();
+                };
+
+                container.appendChild(div);
+            });
+
+            if (filteredItems.length === 0) {
+                container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
+            }
+        };
+
+        const updateBtnLabel = () => {
+            const span = btn.querySelector('span');
+            if (selectedArray.length === 0) {
+                span.textContent = 'Todas'; // Or "Todos" depending on context, handled by caller logic usually
+                if(btn.id.includes('vendedor') || btn.id.includes('fornecedor') || btn.id.includes('supervisor') || btn.id.includes('tipovenda')) span.textContent = 'Todos';
+            } else if (selectedArray.length === 1) {
+                // Find label
+                const val = selectedArray[0];
+                let found;
+                if (isObject) found = items.find(i => String(i.cod) === val);
+                else found = items.find(i => String(i) === val);
+                
+                if (found) span.textContent = isObject ? found.name : found;
+                else span.textContent = val;
+            } else {
+                span.textContent = `${selectedArray.length} selecionados`;
+            }
+        };
+
+        // Initial Render
+        renderItems();
+        updateBtnLabel();
+
+        // Search Listener
+        if (searchInput) {
+            searchInput.oninput = (e) => renderItems(e.target.value);
+            searchInput.onclick = (e) => e.stopPropagation();
+        }
+    }
+
+    function applyFiltersData(data) {
+        // --- Single Selects (Ano, Mes) ---
+        const updateSingleSelect = (element, items) => {
+            const currentVal = element.value;
             element.innerHTML = '';
-            
             const allOpt = document.createElement('option');
             allOpt.value = (element.id === 'ano-filter') ? 'todos' : '';
             allOpt.textContent = 'Todos';
@@ -541,43 +652,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (items) {
                 items.forEach(item => {
                     const opt = document.createElement('option');
-                    if (isObject) {
-                        opt.value = item.cod;
-                        opt.textContent = item.name;
-                    } else {
-                        opt.value = item;
-                        opt.textContent = item;
-                    }
+                    opt.value = item;
+                    opt.textContent = item;
                     element.appendChild(opt);
                 });
             }
-            
-            // Restore selections
-            if (currentValues.length > 0) {
-                let hasSelection = false;
-                Array.from(element.options).forEach(opt => {
-                    if (currentValues.includes(opt.value)) {
-                        opt.selected = true;
-                        hasSelection = true;
-                    }
-                });
-                // If previously "todos" was selected explicitly (like in Ano), ensure it stays if valid
-                if (!hasSelection && currentValues.includes('todos')) {
-                     if (element.options.length > 0) element.options[0].selected = true;
-                }
+            if (currentVal && Array.from(element.options).some(o => o.value === currentVal)) {
+                element.value = currentVal;
             }
         };
 
-        updateSelect(supervisorFilter, data.supervisors);
-        updateSelect(vendedorFilter, data.vendedores);
-        updateSelect(cidadeFilter, data.cidades);
-        updateSelect(filialFilter, data.filiais);
-        updateSelect(anoFilter, data.anos);
-        updateSelect(fornecedorFilter, data.fornecedores, true);
-        const tipovendaFilter = document.getElementById('tipovenda-filter');
-        updateSelect(tipovendaFilter, data.tipos_venda);
-
-        // Meses (Static - No changes needed unless we want to filter months dynamically)
+        updateSingleSelect(anoFilter, data.anos);
+        // Meses Logic (Static)
         if (mesFilter.options.length <= 1) { 
             mesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -588,20 +674,65 @@ document.addEventListener('DOMContentLoaded', () => {
                 mesFilter.appendChild(opt);
             });
         }
+
+        // --- Multi Selects ---
+        setupMultiSelect(filialFilterBtn, filialFilterDropdown, filialFilterDropdown, data.filiais, selectedFiliais, () => {});
+        setupMultiSelect(cidadeFilterBtn, cidadeFilterDropdown, cidadeFilterList, data.cidades, selectedCidades, () => {}, false, cidadeFilterSearch);
+        setupMultiSelect(supervisorFilterBtn, supervisorFilterDropdown, supervisorFilterDropdown, data.supervisors, selectedSupervisores, () => {});
+        setupMultiSelect(vendedorFilterBtn, vendedorFilterDropdown, vendedorFilterList, data.vendedores, selectedVendedores, () => {}, false, vendedorFilterSearch);
+        setupMultiSelect(fornecedorFilterBtn, fornecedorFilterDropdown, fornecedorFilterList, data.fornecedores, selectedFornecedores, () => {}, true, fornecedorFilterSearch);
+        setupMultiSelect(tipovendaFilterBtn, tipovendaFilterDropdown, tipovendaFilterDropdown, data.tipos_venda, selectedTiposVenda, () => {});
     }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', (e) => {
+        const dropdowns = [filialFilterDropdown, cidadeFilterDropdown, supervisorFilterDropdown, vendedorFilterDropdown, fornecedorFilterDropdown, tipovendaFilterDropdown];
+        const btns = [filialFilterBtn, cidadeFilterBtn, supervisorFilterBtn, vendedorFilterBtn, fornecedorFilterBtn, tipovendaFilterBtn];
+        
+        dropdowns.forEach((dd, idx) => {
+            if (!dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) {
+                dd.classList.add('hidden');
+            }
+        });
+    });
 
     // Unified Change Handler
     const handleFilterChange = async () => {
         const filters = getCurrentFilters();
-        // 1. Update Filters (Dropdowns) based on new selection
-        await loadFilters(filters);
-        // 2. Load Data based on new selection (which might be slightly adjusted by loadFilters if values became invalid)
+        // 1. Update Filters (Dropdowns) based on new selection (Might be recursive/cyclic if not careful, but okay for dependent filters)
+        // Note: Re-rendering multi-selects completely might lose scroll position or search text. 
+        // Ideally we only update data if we want dependent filtering (e.g. selecting Supervisor filters Vendedores).
+        // For now, let's keep it simple: Reload data.
         await loadMainDashboardData();
     };
 
-    // Event Listeners
-    [supervisorFilter, vendedorFilter, fornecedorFilter, cidadeFilter, filialFilter, anoFilter, mesFilter].forEach(el => {
-        el.onchange = handleFilterChange;
+    // Event Listeners for Single Selects
+    anoFilter.onchange = handleFilterChange;
+    mesFilter.onchange = handleFilterChange;
+
+    // --- Clear Filters Logic ---
+    clearFiltersBtn.addEventListener('click', async () => {
+        // Reset State
+        selectedFiliais = [];
+        selectedCidades = [];
+        selectedSupervisores = [];
+        selectedVendedores = [];
+        selectedFornecedores = [];
+        selectedTiposVenda = [];
+        
+        anoFilter.innerHTML = '<option value="todos">Todos</option>';
+        anoFilter.value = 'todos';
+        mesFilter.value = '';
+
+        // Reset UI Text
+        [filialFilterBtn, cidadeFilterBtn, supervisorFilterBtn, vendedorFilterBtn, fornecedorFilterBtn, tipovendaFilterBtn].forEach(btn => {
+            const span = btn.querySelector('span');
+            if (span) span.textContent = (btn.id.includes('filial') || btn.id.includes('cidade')) ? 'Todas' : 'Todos';
+        });
+
+        // Reload to initial state
+        await loadFilters(getCurrentFilters());
+        await loadMainDashboardData();
     });
 
     // PopulateSelect Removed (merged into updateSelect inside applyFiltersData)
@@ -829,3 +960,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
