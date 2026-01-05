@@ -689,13 +689,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Unified Change Handler
+    let filterDebounceTimer;
     const handleFilterChange = async () => {
         const filters = getCurrentFilters();
-        // 1. Update Filters (Dropdowns) based on new selection (Might be recursive/cyclic if not careful, but okay for dependent filters)
-        // Note: Re-rendering multi-selects completely might lose scroll position or search text. 
-        // Ideally we only update data if we want dependent filtering (e.g. selecting Supervisor filters Vendedores).
-        // For now, let's keep it simple: Reload data.
-        await loadMainDashboardData();
+
+        // Debounce to prevent request flooding and timeouts
+        clearTimeout(filterDebounceTimer);
+        filterDebounceTimer = setTimeout(async () => {
+            // 1. Update Filters (Dropdowns) based on new selection (Dependent Filtering)
+            // This ensures that selecting a Supervisor filters the Vendedores list, etc.
+            await loadFilters(filters);
+
+            // 2. Reload Main Data
+            await loadMainDashboardData();
+        }, 500);
     };
 
     // Event Listeners for Single Selects
