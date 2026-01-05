@@ -13,6 +13,10 @@ $$;
 
 -- Function: Get Main Dashboard Data
 -- Function: Get Main Dashboard Data (Optimized)
+
+-- Fix: Remove the accidentally created overloaded function with wrong signature
+DROP FUNCTION IF EXISTS get_main_dashboard_data(text[], text[], text[], text[], text[], text, text, text[], int, int);
+
 CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -21,9 +25,7 @@ CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_fornecedor text[] default null,
     p_ano text default null,
     p_mes text default null,
-    p_tipovenda text[] default null,
-    p_page int default 0,
-    p_limit int default 50
+    p_tipovenda text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -276,7 +278,9 @@ CREATE OR REPLACE FUNCTION get_city_view_data(
     p_fornecedor text[] default null,
     p_ano text default null,
     p_mes text default null,
-    p_tipovenda text[] default null
+    p_tipovenda text[] default null,
+    p_page int default 0,
+    p_limit int default 50
 )
 RETURNS JSON
 LANGUAGE plpgsql
