@@ -300,15 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Dashboard Internal Navigation ---
     clearFiltersBtn.addEventListener('click', async () => {
         // Immediately reset UI for better responsiveness
-        const resetSelect = (el) => {
-            el.innerHTML = '<option value="">Todos</option>';
-            el.value = '';
-        };
-        resetSelect(supervisorFilter);
-        resetSelect(vendedorFilter);
-        resetSelect(fornecedorFilter);
-        resetSelect(cidadeFilter);
-        resetSelect(filialFilter);
+        // Note: Multi-selects (supervisor, vendedor, etc.) are custom elements, not <select>, so we reset their state variables below.
         
         anoFilter.innerHTML = '<option value="todos">Todos</option>';
         anoFilter.value = 'todos';
