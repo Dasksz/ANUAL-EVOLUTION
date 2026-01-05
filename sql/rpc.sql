@@ -87,7 +87,7 @@ BEGIN
             SUM(totpesoliq) as peso,
             SUM(vlbonific) as bonificacao,
             SUM(COALESCE(vldevolucao,0)) as devolucao,
-            COUNT(DISTINCT CASE WHEN (vlvenda + COALESCE(vlbonific,0)) > 0 THEN codcli END) as positivacao
+            COUNT(DISTINCT CASE WHEN vlvenda >= 1 THEN codcli END) as positivacao
         FROM public.data_detailed
         WHERE dtped >= v_start_date_prev AND dtped < v_end_date_curr
           AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
@@ -106,7 +106,7 @@ BEGIN
             SUM(totpesoliq) as peso,
             SUM(vlbonific) as bonificacao,
             SUM(COALESCE(vldevolucao,0)) as devolucao,
-            COUNT(DISTINCT CASE WHEN (vlvenda + COALESCE(vlbonific,0)) > 0 THEN codcli END) as positivacao
+            COUNT(DISTINCT CASE WHEN vlvenda >= 1 THEN codcli END) as positivacao
         FROM public.data_history
         WHERE dtped >= v_start_date_prev AND dtped < v_end_date_curr
           AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
@@ -144,7 +144,7 @@ BEGIN
                AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
                AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
              GROUP BY codcli
-             HAVING (SUM(vlvenda) + SUM(COALESCE(vlbonific, 0))) > 0
+             HAVING SUM(vlvenda) >= 1
              UNION
              SELECT codcli
              FROM public.data_history
@@ -157,7 +157,7 @@ BEGIN
                AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
                AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
              GROUP BY codcli
-             HAVING (SUM(vlvenda) + SUM(COALESCE(vlbonific, 0))) > 0
+             HAVING SUM(vlvenda) >= 1
         ) t
     ),
     -- 6. KPI: Base Clients (Optimized - Avoid scanning full sales if possible)
