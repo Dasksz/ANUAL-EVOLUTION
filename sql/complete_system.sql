@@ -224,17 +224,27 @@ END $$;
 -- Define Secure Policies
 
 -- Profiles
-DROP POLICY IF EXISTS "Profiles Visibility" ON public.profiles;
-CREATE POLICY "Profiles Visibility" ON public.profiles FOR SELECT USING ((select auth.uid()) = id OR public.is_admin());
+-- Consolidated policies to avoid "Multiple Permissive Policies" performance warning
 
-DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
-CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK ((select auth.uid()) = id);
+-- 1. Select
+DROP POLICY IF EXISTS "Profiles Visibility" ON public.profiles; -- Old name
+DROP POLICY IF EXISTS "Profiles Select" ON public.profiles;     -- New name
+CREATE POLICY "Profiles Select" ON public.profiles FOR SELECT USING ((select auth.uid()) = id OR public.is_admin());
 
-DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
-CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING ((select auth.uid()) = id) WITH CHECK ((select auth.uid()) = id);
+-- 2. Insert
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles; -- Old name
+DROP POLICY IF EXISTS "Profiles Insert" ON public.profiles;                    -- New name
+CREATE POLICY "Profiles Insert" ON public.profiles FOR INSERT WITH CHECK ((select auth.uid()) = id OR public.is_admin());
 
-DROP POLICY IF EXISTS "Admin Manage Profiles" ON public.profiles;
-CREATE POLICY "Admin Manage Profiles" ON public.profiles FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+-- 3. Update
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles; -- Old name
+DROP POLICY IF EXISTS "Profiles Update" ON public.profiles;              -- New name
+CREATE POLICY "Profiles Update" ON public.profiles FOR UPDATE USING ((select auth.uid()) = id OR public.is_admin()) WITH CHECK ((select auth.uid()) = id OR public.is_admin());
+
+-- 4. Delete (Admin only)
+DROP POLICY IF EXISTS "Admin Manage Profiles" ON public.profiles; -- Old name (covered all)
+DROP POLICY IF EXISTS "Profiles Delete" ON public.profiles;       -- New name
+CREATE POLICY "Profiles Delete" ON public.profiles FOR DELETE USING (public.is_admin());
 
 -- Data Tables (Detailed, History, Clients, Summary, Cache)
 DO $$
