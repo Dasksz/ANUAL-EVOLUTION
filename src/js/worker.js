@@ -330,7 +330,7 @@ self.onmessage = async (event) => {
         self.postMessage({ type: 'progress', status: 'Processando e Reatribuindo vendas...', percentage: 50 });
 
         const reattributeSales = (salesData, isCurrMonth = false) => {
-            const balcaoSpecialClients = new Set(['6421', '7706', '9814', '11405', '9763']);
+            const balcaoSpecialClients = new Set(['6421', '7706', '9814', '11405', '9763', '6769', '11625']);
             return salesData.map(sale => {
                 const originalCodCli = String(sale['CODCLI'] || '').trim();
                 const originalCodUsur = String(sale['CODUSUR'] || '').trim();
