@@ -442,13 +442,32 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const BATCH_SIZE = 1000;
+        const CONCURRENT_REQUESTS = 5;
+
         const uploadBatch = async (table, items) => {
-            for (let i = 0; i < items.length; i += BATCH_SIZE) {
-                const batch = items.slice(i, i + BATCH_SIZE);
+            const totalBatches = Math.ceil(items.length / BATCH_SIZE);
+            let processedBatches = 0;
+
+            const processChunk = async (chunkIndex) => {
+                const start = chunkIndex * BATCH_SIZE;
+                const end = start + BATCH_SIZE;
+                const batch = items.slice(start, end);
                 await performUpsert(table, batch);
-                const progress = Math.round((i / items.length) * 100);
+                processedBatches++;
+                const progress = Math.round((processedBatches / totalBatches) * 100);
                 updateStatus(`Enviando ${table}... ${progress}%`, progress);
-            }
+            };
+
+             // Simple Pool Implementation
+             const queue = Array.from({ length: totalBatches }, (_, i) => i);
+             const worker = async () => {
+                 while (queue.length > 0) {
+                     const chunkIndex = queue.shift();
+                     await processChunk(chunkIndex);
+                 }
+             };
+
+             await Promise.all(Array.from({ length: Math.min(CONCURRENT_REQUESTS, totalBatches) }, worker));
         };
 
         try {
