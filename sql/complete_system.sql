@@ -165,11 +165,12 @@ DROP INDEX IF EXISTS idx_history_dtped_composite;
 DROP INDEX IF EXISTS idx_summary_main;
 
 -- Sales Table Indexes (Covering for KPI Base Clients & General Lookups)
-CREATE INDEX idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, superv, nome, codfor) INCLUDE (vlvenda, vldevolucao, totpesoliq, vlbonific, codcli, codusur, tipovenda);
-CREATE INDEX idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, superv, nome, codfor) INCLUDE (vlvenda, vldevolucao, totpesoliq, vlbonific, codcli, codusur, tipovenda);
+-- Optimized: Removed INCLUDE clauses to save space (approx 50% reduction)
+CREATE INDEX idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, superv, nome, codfor);
+CREATE INDEX idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, superv, nome, codfor);
 
 -- Summary Table Index (For Main Dashboard)
-CREATE INDEX idx_summary_main ON public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda) INCLUDE (vlvenda, peso, bonificacao, devolucao, codcli);
+CREATE INDEX idx_summary_main ON public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda);
 
 -- Cache Filters Indexes (For Dropdowns)
 CREATE INDEX idx_cache_filters_composite ON public.cache_filters (ano, mes, filial, cidade, superv, nome, codfor, tipovenda);
@@ -359,6 +360,36 @@ AS $$
 BEGIN
     PERFORM refresh_cache_filters();
     PERFORM refresh_cache_summary();
+END;
+$$;
+
+-- Database Optimization Function (To be called from App)
+-- Security Definer required to allow Drop/Create Index operations
+CREATE OR REPLACE FUNCTION optimize_database()
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    -- Check if user is admin (redundant with RLS but good for safety)
+    IF NOT public.is_admin() THEN
+        RETURN 'Acesso negado: Apenas administradores podem otimizar o banco.';
+    END IF;
+
+    -- Drop heavy indexes if they exist (old versions with INCLUDE)
+    DROP INDEX IF EXISTS public.idx_detailed_dtped_composite;
+    DROP INDEX IF EXISTS public.idx_history_dtped_composite;
+    DROP INDEX IF EXISTS public.idx_summary_main;
+
+    -- Recreate optimized indexes (without INCLUDE)
+    CREATE INDEX idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, superv, nome, codfor);
+    CREATE INDEX idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, superv, nome, codfor);
+    CREATE INDEX idx_summary_main ON public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda);
+
+    RETURN 'Banco de dados otimizado com sucesso! Índices reconstruídos.';
+EXCEPTION WHEN OTHERS THEN
+    RETURN 'Erro ao otimizar banco: ' || SQLERRM;
 END;
 $$;
 
