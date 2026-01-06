@@ -318,7 +318,7 @@ self.onmessage = async (event) => {
              return americanasBranchCodes.get(filial);
         };
 
-        const reattributeSales = (salesData) => {
+        const reattributeSales = (salesData, isCurrMonth = false) => {
             const balcaoSpecialClients = new Set(['6421', '7706', '9814', '11405', '9763']);
             return salesData.map(sale => {
                 const originalCodCli = String(sale['CODCLI'] || '').trim();
@@ -376,6 +376,10 @@ self.onmessage = async (event) => {
                 const isInactive = !clientData || isRca53;
 
                 if (isInactive) {
+                    if (isCurrMonth) {
+                        return newSale;
+                    }
+
                     if (mapSupervisor) {
                         newSale['CODUSUR'] = `INATIVOS_${mapFilial}`;
                         newSale['NOME'] = `INATIVOS ${mapFilial}`;
@@ -403,9 +407,9 @@ self.onmessage = async (event) => {
             });
         };
 
-        const reattributedPrevYear = reattributeSales(salesPrevYearDataRaw);
-        const reattributedCurrYearHist = reattributeSales(salesCurrYearHistDataRaw);
-        const reattributedCurrMonth = reattributeSales(salesCurrMonthDataRaw);
+        const reattributedPrevYear = reattributeSales(salesPrevYearDataRaw, false);
+        const reattributedCurrYearHist = reattributeSales(salesCurrYearHistDataRaw, false);
+        const reattributedCurrMonth = reattributeSales(salesCurrMonthDataRaw, true);
 
         const processedPrevYear = processSalesData(reattributedPrevYear, clientMap, productMasterMap);
         const processedCurrYearHist = processSalesData(reattributedCurrYearHist, clientMap, productMasterMap);
