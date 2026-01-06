@@ -305,7 +305,7 @@ RETURNS void
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    SET LOCAL statement_timeout = '300s';
+    SET LOCAL statement_timeout = '600s';
     
     -- 1. Refresh Filters Cache (Distinct Values)
     TRUNCATE TABLE public.cache_filters;
@@ -366,7 +366,7 @@ DECLARE
     v_monthly_chart_previous json;
     v_result json;
 BEGIN
-    SET LOCAL statement_timeout = '300s';
+    SET LOCAL statement_timeout = '600s';
 
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
         SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
