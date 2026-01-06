@@ -401,7 +401,36 @@ BEGIN
          SELECT COALESCE(MAX(mes), 12) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year;
     END IF;
 
-    WITH agg_data AS (
+    WITH filtered_summary AS (
+        SELECT *
+        FROM public.data_summary
+        WHERE ano IN (v_current_year, v_previous_year)
+          AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+          AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+          AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+          AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+          AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+          AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+    ),
+    client_monthly_stats AS (
+        SELECT 
+            ano, 
+            mes, 
+            codcli, 
+            SUM(vlvenda) as total_val
+        FROM filtered_summary
+        GROUP BY 1, 2, 3
+    ),
+    monthly_positivation AS (
+        SELECT 
+            ano, 
+            mes, 
+            COUNT(DISTINCT codcli) as positivacao_count
+        FROM client_monthly_stats
+        WHERE total_val >= 1
+        GROUP BY 1, 2
+    ),
+    agg_data AS (
         SELECT
             ano,
             mes,
@@ -412,37 +441,28 @@ BEGIN
             END) as faturamento,
             SUM(peso) as peso,
             SUM(bonificacao) as bonificacao,
-            SUM(devolucao) as devolucao,
-            COUNT(DISTINCT CASE WHEN vlvenda >= 1 THEN codcli END) as positivacao
-        FROM public.data_summary
-        WHERE ano IN (v_current_year, v_previous_year)
-          AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
-          AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
-          AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
-          AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
-          AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
-          AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+            SUM(devolucao) as devolucao
+        FROM filtered_summary
         GROUP BY 1, 2
     ),
-    kpi_active AS (
-        SELECT COUNT(DISTINCT codcli) as val
-        FROM public.data_summary
-        WHERE ano = v_current_year AND mes = v_target_month
-          AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
-          AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
-          AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
-          AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
-          AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
-          AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
-          AND vlvenda >= 1
+    kpi_active_count AS (
+        SELECT COUNT(*) as val
+        FROM (
+             SELECT codcli 
+             FROM filtered_summary 
+             WHERE ano = v_current_year AND mes = v_target_month 
+             GROUP BY codcli 
+             HAVING SUM(vlvenda) >= 1
+        ) t
     )
     SELECT
-        (SELECT val FROM kpi_active),
+        (SELECT val FROM kpi_active_count),
         (SELECT COUNT(*) FROM public.data_clients c WHERE c.bloqueio != 'S' AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR c.cidade = ANY(p_cidade))),
-        COALESCE(json_agg(json_build_object('month_index', mes - 1, 'faturamento', faturamento, 'peso', peso, 'bonificacao', bonificacao, 'devolucao', devolucao, 'positivacao', positivacao) ORDER BY mes) FILTER (WHERE ano = v_current_year), '[]'::json),
-        COALESCE(json_agg(json_build_object('month_index', mes - 1, 'faturamento', faturamento, 'peso', peso, 'bonificacao', bonificacao, 'devolucao', devolucao, 'positivacao', positivacao) ORDER BY mes) FILTER (WHERE ano = v_previous_year), '[]'::json)
+        COALESCE(json_agg(json_build_object('month_index', a.mes - 1, 'faturamento', a.faturamento, 'peso', a.peso, 'bonificacao', a.bonificacao, 'devolucao', a.devolucao, 'positivacao', COALESCE(p.positivacao_count, 0)) ORDER BY a.mes) FILTER (WHERE a.ano = v_current_year), '[]'::json),
+        COALESCE(json_agg(json_build_object('month_index', a.mes - 1, 'faturamento', a.faturamento, 'peso', a.peso, 'bonificacao', a.bonificacao, 'devolucao', a.devolucao, 'positivacao', COALESCE(p.positivacao_count, 0)) ORDER BY a.mes) FILTER (WHERE a.ano = v_previous_year), '[]'::json)
     INTO v_kpi_clients_attended, v_kpi_clients_base, v_monthly_chart_current, v_monthly_chart_previous
-    FROM agg_data;
+    FROM agg_data a
+    LEFT JOIN monthly_positivation p ON a.ano = p.ano AND a.mes = p.mes;
 
     v_result := json_build_object(
         'current_year', v_current_year,
@@ -635,7 +655,7 @@ BEGIN
           AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
           AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
         GROUP BY codcli
-        HAVING SUM(vlvenda) > 0
+        HAVING SUM(vlvenda) >= 1
     ),
     count_cte AS (SELECT COUNT(*) as cnt FROM client_totals),
     paginated_clients AS (
