@@ -449,7 +449,7 @@ self.onmessage = async (event) => {
 
         const tiagoSellersToMoveTo08 = new Set(['291', '292', '293', '284', '289', '287', '286']);
 
-        const finalizeSalesData = (salesArray) => {
+        const finalizeSalesData = (salesArray, isHistory = false) => {
              return salesArray.map(sale => {
                 let newSale = { ...sale };
 
@@ -471,13 +471,26 @@ self.onmessage = async (event) => {
                     newSale.filial = '08';
                 }
 
+                // 4. Data Optimization (Strip unused fields for History)
+                // This reduces JSON payload size and potentially DB size if columns are nullable/dropped
+                if (isHistory) {
+                    delete newSale.pedido;
+                    delete newSale.descricao;
+                    delete newSale.observacaofor;
+                    delete newSale.estoqueunit;
+                    delete newSale.posicao;
+                    delete newSale.qtvenda_embalagem_master;
+                    // Product code 'produto' is kept just in case, but could be removed if confirmed unused.
+                    // delete newSale.produto;
+                }
+
                 return newSale;
              });
         };
 
-        const finalPrevYear = finalizeSalesData(processedPrevYear);
-        const finalCurrYearHist = finalizeSalesData(processedCurrYearHist);
-        const finalCurrMonth = finalizeSalesData(processedCurrMonth);
+        const finalPrevYear = finalizeSalesData(processedPrevYear, true);
+        const finalCurrYearHist = finalizeSalesData(processedCurrYearHist, true);
+        const finalCurrMonth = finalizeSalesData(processedCurrMonth, false);
 
         self.postMessage({ type: 'progress', status: 'Preparando dados para envio...', percentage: 90 });
 
