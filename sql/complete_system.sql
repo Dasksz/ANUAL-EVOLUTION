@@ -162,6 +162,7 @@ DROP INDEX IF EXISTS idx_cache_filters_nome_composite;
 DROP INDEX IF EXISTS idx_cache_filters_cidade_composite;
 DROP INDEX IF EXISTS idx_detailed_dtped_composite;
 DROP INDEX IF EXISTS idx_history_dtped_composite;
+DROP INDEX IF EXISTS idx_summary_main;
 
 -- Sales Table Indexes (Covering for KPI Base Clients & General Lookups)
 CREATE INDEX idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, superv, nome, codfor) INCLUDE (vlvenda, vldevolucao, totpesoliq, vlbonific, codcli, codusur, tipovenda);
