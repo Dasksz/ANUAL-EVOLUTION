@@ -149,6 +149,28 @@ document.addEventListener('DOMContentLoaded', () => {
     async function checkProfileStatus(user) {
         if (isAppReady) return;
 
+        // --- Cache Check Start ---
+        const cacheKey = `user_auth_cache_${user.id}`;
+        const cachedAuth = localStorage.getItem(cacheKey);
+
+        if (cachedAuth) {
+            try {
+                const { status, role } = JSON.parse(cachedAuth);
+                if (status === 'aprovado') {
+                    console.log('Usando status de perfil em cache: aprovado');
+                    window.userRole = role;
+                    isAppReady = true;
+                    showScreen('app-layout');
+                    initDashboard();
+                    return;
+                }
+            } catch (e) {
+                console.warn('Erro ao ler cache de autenticação, prosseguindo com verificação normal.', e);
+                localStorage.removeItem(cacheKey);
+            }
+        }
+        // --- Cache Check End ---
+
         checkProfileLock = true;
         console.log('Verificando perfil para ID:', user.id);
         
@@ -173,6 +195,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Status do perfil:', status);
 
             if (status === 'aprovado') {
+                // Save to cache
+                localStorage.setItem(cacheKey, JSON.stringify({ status: 'aprovado', role: profile?.role }));
+
                 const currentScreen = document.getElementById('app-layout');
                 if (currentScreen.classList.contains('hidden')) {
                     console.log('Acesso aprovado. Carregando dashboard...');
@@ -256,6 +281,12 @@ document.addEventListener('DOMContentLoaded', () => {
             supabase.removeChannel(statusListener);
             statusListener = null;
         }
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+            localStorage.removeItem(`user_auth_cache_${session.user.id}`);
+        }
+
         await supabase.auth.signOut();
         // onAuthStateChange handles the UI update
     };
