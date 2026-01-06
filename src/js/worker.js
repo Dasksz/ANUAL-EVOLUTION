@@ -415,55 +415,58 @@ self.onmessage = async (event) => {
         const processedCurrYearHist = processSalesData(reattributedCurrYearHist, clientMap, productMasterMap);
         const processedCurrMonth = processSalesData(reattributedCurrMonth, clientMap, productMasterMap);
 
-        // Fix: Apply Bonification Logic (Type 5 and 11) - Move VLVENDA to VLBONIFIC if positive
-        const applyBonificationLogic = (salesArray) => salesArray.map(sale => {
-            const tipo = sale.tipovenda;
-            if ((tipo === '5' || tipo === '11') && sale.vlvenda > 0) {
-                // If VLVENDA is positive, move to VLBONIFIC and zero VLVENDA
-                // Note: We add to existing VLBONIFIC in case it has value (usually 0 if VLVENDA has value)
-                return {
-                    ...sale,
-                    vlbonific: (sale.vlbonific || 0) + sale.vlvenda,
-                    vlvenda: 0
-                };
-            }
-            return sale;
-        });
-
-        const fixedPrevYear = applyBonificationLogic(processedPrevYear);
-        const fixedCurrYearHist = applyBonificationLogic(processedCurrYearHist);
-        const fixedCurrMonth = applyBonificationLogic(processedCurrMonth);
-
-        // Branch Override Logic
-        const allProcessedSales = [...fixedPrevYear, ...fixedCurrYearHist, ...fixedCurrMonth];
+        // --- Final Processing (Bonification + Branch Override + Tiago Rule) ---
+        // Pre-calculation for Branch Override
+        // Note: Branch override depends on the entire dataset state, so we must calculate the map first.
+        // We use 'processed*' arrays for this map calculation to ensure we have the correct filial/client info.
+        
+        const allProcessedSales = [...processedPrevYear, ...processedCurrYearHist, ...processedCurrMonth];
         const clientLastBranch = new Map();
         const clientsWith05Purchase = new Set();
+        
         allProcessedSales.forEach(sale => {
             if (sale.codcli && sale.filial) {
                 clientLastBranch.set(sale.codcli, sale.filial);
                 if (sale.filial === '05') clientsWith05Purchase.add(sale.codcli);
             }
         });
+        
         const clientBranchOverride = new Map();
         clientsWith05Purchase.forEach(codCli => {
             if (clientLastBranch.get(codCli) === '08') clientBranchOverride.set(codCli, '08');
         });
 
-        const applyBranchOverride = (salesArray) => salesArray.map(sale => {
-            const override = clientBranchOverride.get(sale.codcli);
-            return (override && sale.filial === '05') ? { ...sale, filial: override } : sale;
-        });
-
         const tiagoSellersToMoveTo08 = new Set(['291', '292', '293', '284', '289', '287', '286']);
-        const applyTiagoRule = (salesArray) => salesArray.map(sale =>
-            (sale.codsupervisor === '12' && tiagoSellersToMoveTo08.has(sale.codusur)) ? { ...sale, filial: '08' } : sale
-        );
 
-        const applyAllRules = (salesData) => applyTiagoRule(applyBranchOverride(salesData));
+        const finalizeSalesData = (salesArray) => {
+             return salesArray.map(sale => {
+                let newSale = { ...sale };
 
-        const finalPrevYear = applyAllRules(fixedPrevYear);
-        const finalCurrYearHist = applyAllRules(fixedCurrYearHist);
-        const finalCurrMonth = applyAllRules(fixedCurrMonth);
+                // 1. Bonification Logic
+                const tipo = newSale.tipovenda;
+                if ((tipo === '5' || tipo === '11') && newSale.vlvenda > 0) {
+                    newSale.vlbonific = (newSale.vlbonific || 0) + newSale.vlvenda;
+                    newSale.vlvenda = 0;
+                }
+
+                // 2. Branch Override Logic
+                const override = clientBranchOverride.get(newSale.codcli);
+                if (override && newSale.filial === '05') {
+                    newSale.filial = override;
+                }
+
+                // 3. Tiago Rule
+                if (newSale.codsupervisor === '12' && tiagoSellersToMoveTo08.has(newSale.codusur)) {
+                    newSale.filial = '08';
+                }
+
+                return newSale;
+             });
+        };
+
+        const finalPrevYear = finalizeSalesData(processedPrevYear);
+        const finalCurrYearHist = finalizeSalesData(processedCurrYearHist);
+        const finalCurrMonth = finalizeSalesData(processedCurrMonth);
 
         self.postMessage({ type: 'progress', status: 'Preparando dados para envio...', percentage: 90 });
 
