@@ -312,16 +312,25 @@ BEGIN
     TRUNCATE TABLE public.cache_filters;
     INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes)
     SELECT DISTINCT 
-        filial, cidade, superv, nome, codfor, fornecedor, tipovenda, yr, mth
+        t.filial,
+        COALESCE(t.cidade, c.cidade) as cidade,
+        t.superv,
+        t.nome,
+        t.codfor,
+        t.fornecedor,
+        t.tipovenda,
+        t.yr,
+        t.mth
     FROM (
-        SELECT filial, cidade, superv, nome, codfor, fornecedor, tipovenda, 
+        SELECT filial, cidade, superv, nome, codfor, fornecedor, tipovenda, codcli,
                EXTRACT(YEAR FROM dtped)::int as yr, EXTRACT(MONTH FROM dtped)::int as mth 
         FROM public.data_detailed
         UNION ALL
-        SELECT filial, cidade, superv, nome, codfor, fornecedor, tipovenda, 
+        SELECT filial, cidade, superv, nome, codfor, fornecedor, tipovenda, codcli,
                EXTRACT(YEAR FROM dtped)::int as yr, EXTRACT(MONTH FROM dtped)::int as mth 
         FROM public.data_history
-    ) t;
+    ) t
+    LEFT JOIN public.data_clients c ON t.codcli = c.codigo_cliente;
 END;
 $$;
 
@@ -336,18 +345,25 @@ BEGIN
     TRUNCATE TABLE public.data_summary;
     INSERT INTO public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, peso, bonificacao, devolucao)
     SELECT 
-        EXTRACT(YEAR FROM dtped)::int,
-        EXTRACT(MONTH FROM dtped)::int,
-        filial, cidade, superv, nome, codfor, tipovenda, codcli,
-        SUM(vlvenda),
-        SUM(totpesoliq),
-        SUM(vlbonific),
-        SUM(COALESCE(vldevolucao, 0))
+        EXTRACT(YEAR FROM s.dtped)::int,
+        EXTRACT(MONTH FROM s.dtped)::int,
+        s.filial,
+        COALESCE(s.cidade, c.cidade), -- Recover city from clients if missing in history
+        s.superv,
+        s.nome,
+        s.codfor,
+        s.tipovenda,
+        s.codcli,
+        SUM(s.vlvenda),
+        SUM(s.totpesoliq),
+        SUM(s.vlbonific),
+        SUM(COALESCE(s.vldevolucao, 0))
     FROM (
         SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao FROM public.data_detailed
         UNION ALL
         SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao FROM public.data_history
-    ) all_sales
+    ) s
+    LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9;
 END;
 $$;

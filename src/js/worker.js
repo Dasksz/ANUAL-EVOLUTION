@@ -480,8 +480,11 @@ self.onmessage = async (event) => {
                     delete newSale.estoqueunit;
                     delete newSale.posicao;
                     delete newSale.qtvenda_embalagem_master;
-                    // Product code 'produto' is kept just in case, but could be removed if confirmed unused.
-                    // delete newSale.produto;
+                    // Deep optimization: Remove fields available in data_clients or unused
+                    delete newSale.cidade;
+                    delete newSale.bairro;
+                    delete newSale.cliente_nome;
+                    delete newSale.produto;
                 }
 
                 return newSale;
