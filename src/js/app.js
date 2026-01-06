@@ -442,7 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const BATCH_SIZE = 1000;
-        const CONCURRENT_REQUESTS = 5;
+        const CONCURRENT_REQUESTS = 15;
 
         const uploadBatch = async (table, items) => {
             const totalBatches = Math.ceil(items.length / BATCH_SIZE);
@@ -488,11 +488,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Refresh Cache (Important for performance)
-            updateStatus('Atualizando cache de filtros...', 90);
-            const { error: cacheError } = await supabase.rpc('refresh_dashboard_cache');
+            updateStatus('Atualizando cache de filtros (pode demorar)...', 90);
+
+            // Helper for Retry Logic
+            const retryRPC = async (rpcName, params = {}, retries = 3, delay = 5000) => {
+                for (let i = 0; i < retries; i++) {
+                    try {
+                        const { error } = await supabase.rpc(rpcName, params);
+                        if (!error) return null; // Success
+                        throw error;
+                    } catch (err) {
+                        console.warn(`Tentativa ${i + 1} de ${retries} para ${rpcName} falhou:`, err);
+                        if (i < retries - 1) {
+                            await new Promise(res => setTimeout(res, delay));
+                        } else {
+                            return err;
+                        }
+                    }
+                }
+            };
+
+            const cacheError = await retryRPC('refresh_dashboard_cache');
             if (cacheError) {
-                console.error("Cache refresh failed:", cacheError);
-                // Non-fatal, but good to know
+                console.error("Cache refresh failed after retries:", cacheError);
+                updateStatus(`Aviso: Cache não atualizado automaticamente. Erro: ${cacheError.message}`, 100);
+            } else {
+                 console.log("Cache atualizado com sucesso!");
             }
 
         } catch (error) {
