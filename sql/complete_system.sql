@@ -306,20 +306,24 @@ RETURNS void
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    SET LOCAL statement_timeout = '600s';
+    SET LOCAL statement_timeout = '1200s';
     
     TRUNCATE TABLE public.cache_filters;
     INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes)
-    SELECT DISTINCT 
-        filial, cidade, superv, nome, codfor, fornecedor, tipovenda, yr, mth
+    SELECT filial, cidade, superv, nome, codfor, fornecedor, tipovenda, yr, mth
     FROM (
+        -- Group by in subqueries to reduce data volume before UNION
         SELECT filial, cidade, superv, nome, codfor, fornecedor, tipovenda, 
                EXTRACT(YEAR FROM dtped)::int as yr, EXTRACT(MONTH FROM dtped)::int as mth 
         FROM public.data_detailed
-        UNION ALL
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
+
+        UNION
+
         SELECT filial, cidade, superv, nome, codfor, fornecedor, tipovenda, 
                EXTRACT(YEAR FROM dtped)::int as yr, EXTRACT(MONTH FROM dtped)::int as mth 
         FROM public.data_history
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
     ) t;
 END;
 $$;
@@ -330,23 +334,31 @@ RETURNS void
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    SET LOCAL statement_timeout = '600s';
+    SET LOCAL statement_timeout = '1200s';
 
     TRUNCATE TABLE public.data_summary;
     INSERT INTO public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, peso, bonificacao, devolucao)
     SELECT 
-        EXTRACT(YEAR FROM dtped)::int,
-        EXTRACT(MONTH FROM dtped)::int,
-        filial, cidade, superv, nome, codfor, tipovenda, codcli,
-        SUM(vlvenda),
-        SUM(totpesoliq),
-        SUM(vlbonific),
-        SUM(COALESCE(vldevolucao, 0))
+        yr, mth, filial, cidade, superv, nome, codfor, tipovenda, codcli,
+        SUM(vlvenda), SUM(peso), SUM(bonificacao), SUM(devolucao)
     FROM (
-        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao FROM public.data_detailed
+        -- Aggregate per table first to reduce rows for UNION ALL
+        SELECT
+            EXTRACT(YEAR FROM dtped)::int as yr, EXTRACT(MONTH FROM dtped)::int as mth,
+            filial, cidade, superv, nome, codfor, tipovenda, codcli,
+            SUM(vlvenda) as vlvenda, SUM(totpesoliq) as peso, SUM(vlbonific) as bonificacao, SUM(COALESCE(vldevolucao, 0)) as devolucao
+        FROM public.data_detailed
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
+
         UNION ALL
-        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao FROM public.data_history
-    ) all_sales
+
+        SELECT
+            EXTRACT(YEAR FROM dtped)::int as yr, EXTRACT(MONTH FROM dtped)::int as mth,
+            filial, cidade, superv, nome, codfor, tipovenda, codcli,
+            SUM(vlvenda) as vlvenda, SUM(totpesoliq) as peso, SUM(vlbonific) as bonificacao, SUM(COALESCE(vldevolucao, 0)) as devolucao
+        FROM public.data_history
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
+    ) t
     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9;
 END;
 $$;
