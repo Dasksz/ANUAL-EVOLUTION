@@ -300,14 +300,14 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION public.truncate_table(text) TO authenticated;
 
 -- Refresh Cache & Summary Function (Optimized)
-CREATE OR REPLACE FUNCTION refresh_dashboard_cache()
+-- Refresh Filters Cache Function
+CREATE OR REPLACE FUNCTION refresh_cache_filters()
 RETURNS void
 LANGUAGE plpgsql
 AS $$
 BEGIN
     SET LOCAL statement_timeout = '600s';
     
-    -- 1. Refresh Filters Cache (Distinct Values)
     TRUNCATE TABLE public.cache_filters;
     INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes)
     SELECT DISTINCT 
@@ -321,8 +321,17 @@ BEGIN
                EXTRACT(YEAR FROM dtped)::int as yr, EXTRACT(MONTH FROM dtped)::int as mth 
         FROM public.data_history
     ) t;
+END;
+$$;
 
-    -- 2. Refresh Data Summary (Aggregated Metrics)
+-- Refresh Summary Cache Function
+CREATE OR REPLACE FUNCTION refresh_cache_summary()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SET LOCAL statement_timeout = '600s';
+
     TRUNCATE TABLE public.data_summary;
     INSERT INTO public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, peso, bonificacao, devolucao)
     SELECT 
@@ -339,6 +348,17 @@ BEGIN
         SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao FROM public.data_history
     ) all_sales
     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9;
+END;
+$$;
+
+-- Refresh Cache & Summary Function (Legacy Wrapper)
+CREATE OR REPLACE FUNCTION refresh_dashboard_cache()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    PERFORM refresh_cache_filters();
+    PERFORM refresh_cache_summary();
 END;
 $$;
 
