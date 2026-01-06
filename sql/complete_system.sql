@@ -162,6 +162,7 @@ DROP INDEX IF EXISTS idx_cache_filters_nome_composite;
 DROP INDEX IF EXISTS idx_cache_filters_cidade_composite;
 DROP INDEX IF EXISTS idx_detailed_dtped_composite;
 DROP INDEX IF EXISTS idx_history_dtped_composite;
+DROP INDEX IF EXISTS idx_summary_main;
 
 -- Sales Table Indexes (Covering for KPI Base Clients & General Lookups)
 CREATE INDEX idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, superv, nome, codfor) INCLUDE (vlvenda, vldevolucao, totpesoliq, vlbonific, codcli, codusur, tipovenda);
@@ -304,6 +305,8 @@ RETURNS void
 LANGUAGE plpgsql
 AS $$
 BEGIN
+    SET LOCAL statement_timeout = '300s';
+    
     -- 1. Refresh Filters Cache (Distinct Values)
     TRUNCATE TABLE public.cache_filters;
     INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes)
@@ -363,7 +366,7 @@ DECLARE
     v_monthly_chart_previous json;
     v_result json;
 BEGIN
-    SET LOCAL statement_timeout = '60s';
+    SET LOCAL statement_timeout = '300s';
 
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
         SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
@@ -459,7 +462,7 @@ DECLARE
     v_filter_year int;
     v_filter_month int;
 BEGIN
-    SET LOCAL statement_timeout = '120s';
+    SET LOCAL statement_timeout = '300s';
 
     IF p_ano IS NOT NULL AND p_ano != '' AND p_ano != 'todos' THEN
         v_filter_year := p_ano::int;
