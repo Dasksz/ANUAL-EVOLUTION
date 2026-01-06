@@ -38,7 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const clientsFileInput = document.getElementById('clients-file-input');
     const productsFileInput = document.getElementById('products-file-input');
     const generateBtn = document.getElementById('generate-btn');
-    const optimizeDbBtn = document.getElementById('optimize-db-btn');
     const statusContainer = document.getElementById('status-container');
     const statusText = document.getElementById('status-text');
     const progressBar = document.getElementById('progress-bar');
@@ -369,42 +368,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if(salesCurrMonthInput) salesCurrMonthInput.addEventListener('change', (e) => { files.salesCurrMonthFile = e.target.files[0]; checkFiles(); });
     if(clientsFileInput) clientsFileInput.addEventListener('change', (e) => { files.clientsFile = e.target.files[0]; checkFiles(); });
     if(productsFileInput) productsFileInput.addEventListener('change', (e) => { files.productsFile = e.target.files[0]; checkFiles(); });
-
-    if(optimizeDbBtn) optimizeDbBtn.addEventListener('click', async () => {
-        if (window.userRole !== 'adm') {
-            alert('Apenas administradores podem executar esta ação.');
-            return;
-        }
-
-        const confirmOpt = confirm('Esta ação irá recriar os índices do banco de dados para liberar espaço. Isso pode levar alguns minutos. Deseja continuar?');
-        if (!confirmOpt) return;
-
-        optimizeDbBtn.disabled = true;
-        optimizeDbBtn.textContent = 'Otimizando...';
-        statusContainer.classList.remove('hidden');
-        statusText.textContent = 'Solicitando otimização ao banco de dados...';
-        progressBar.style.width = '50%';
-
-        try {
-            const { data, error } = await supabase.rpc('optimize_database');
-
-            if (error) throw error;
-
-            statusText.textContent = data || 'Otimização concluída!';
-            progressBar.style.width = '100%';
-            alert(data || 'Otimização concluída!');
-        } catch (e) {
-            console.error(e);
-            statusText.textContent = 'Erro: ' + (e.message || 'Falha na otimização.');
-            alert('Erro: ' + e.message + '\n\nCertifique-se de que você rodou o script SQL atualizado no Supabase para criar a função optimize_database.');
-        } finally {
-            optimizeDbBtn.disabled = false;
-            optimizeDbBtn.textContent = 'Otimizar Banco de Dados (Reduzir Espaço)';
-            setTimeout(() => {
-                statusContainer.classList.add('hidden');
-            }, 5000);
-        }
-    });
 
     if(generateBtn) generateBtn.addEventListener('click', () => {
         if (!files.salesPrevYearFile || !files.salesCurrYearFile || !files.salesCurrMonthFile || !files.clientsFile || !files.productsFile) return;

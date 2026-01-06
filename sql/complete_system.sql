@@ -315,7 +315,7 @@ BEGIN
         t.filial,
         COALESCE(t.cidade, c.cidade) as cidade,
         t.superv,
-        t.nome,
+        COALESCE(t.nome, c.nomecliente) as nome,
         t.codfor,
         t.fornecedor,
         t.tipovenda,
@@ -350,7 +350,7 @@ BEGIN
         s.filial,
         COALESCE(s.cidade, c.cidade), -- Recover city from clients if missing in history
         s.superv,
-        s.nome,
+        COALESCE(s.nome, c.nomecliente), -- Recover client name from clients if missing
         s.codfor,
         s.tipovenda,
         s.codcli,
