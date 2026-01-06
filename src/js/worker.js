@@ -101,10 +101,11 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
 
         let dtPed = rawRow['DTPED'];
         const dtSaida = rawRow['DTSAIDA'];
-        const parsedDtPed = parseDate(dtPed);
+        let parsedDtPed = parseDate(dtPed);
         const parsedDtSaida = parseDate(dtSaida);
         if (parsedDtPed && parsedDtSaida && (parsedDtPed.getFullYear() < parsedDtSaida.getFullYear() || (parsedDtPed.getFullYear() === parsedDtSaida.getFullYear() && parsedDtPed.getMonth() < parsedDtSaida.getMonth()))) {
             dtPed = dtSaida;
+            parsedDtPed = parsedDtSaida;
         }
         const productCode = String(rawRow['PRODUTO'] || '').trim();
         const qtdeMaster = productMasterMap.get(productCode) || 1;
