@@ -290,6 +290,26 @@ self.onmessage = async (event) => {
             return dateA - dateB;
         });
 
+        // Build Americanas Recent Branch Map (for reattribution logic)
+        const americanasRecentBranchMap = new Map();
+        for (const row of allSalesRaw) {
+             const codCli = String(row['CODCLI'] || '').trim();
+             const clientData = clientMap.get(codCli);
+             const rawName = String(row['CLIENTE'] || row['NOMECLIENTE'] || row['RAZAOSOCIAL'] || '').toUpperCase();
+             const clientName = clientData ? clientData.nomeCliente.toUpperCase() : rawName;
+             const clientRazao = clientData ? clientData.razaosocial.toUpperCase() : '';
+             
+             if (clientName.includes('AMERICANAS') || clientName.includes('AMERICANAS S.A') || clientRazao.includes('AMERICANAS') || clientRazao.includes('AMERICANAS S.A')) {
+                 let filial = String(row['FILIAL'] || '').trim();
+                 if (filial === '5') filial = '05';
+                 if (filial === '8') filial = '08';
+                 
+                 if (filial) {
+                     americanasRecentBranchMap.set(codCli, filial);
+                 }
+             }
+        }
+
         for (const row of allSalesRaw) {
             const codusur = String(row['CODUSUR'] || '').trim();
             if (!codusur) continue;
@@ -308,16 +328,6 @@ self.onmessage = async (event) => {
         }
 
         self.postMessage({ type: 'progress', status: 'Processando e Reatribuindo vendas...', percentage: 50 });
-        
-        const americanasBranchCodes = new Map();
-        let nextAmericanasCode = 1001;
-
-        const getAmericanasCode = (filial) => {
-             if (!americanasBranchCodes.has(filial)) {
-                 americanasBranchCodes.set(filial, String(nextAmericanasCode++));
-             }
-             return americanasBranchCodes.get(filial);
-        };
 
         const reattributeSales = (salesData, isCurrMonth = false) => {
             const balcaoSpecialClients = new Set(['6421', '7706', '9814', '11405', '9763']);
@@ -356,17 +366,17 @@ self.onmessage = async (event) => {
                 const clientRazao = clientData ? clientData.razaosocial.toUpperCase() : '';
 
                 if (clientName.includes('AMERICANAS') || clientName.includes('AMERICANAS S.A') || clientRazao.includes('AMERICANAS') || clientRazao.includes('AMERICANAS S.A')) {
-                    if (mapFilial) {
-                        newSale['CODUSUR'] = getAmericanasCode(mapFilial);
-                        newSale['NOME'] = `AMERICANAS ${mapFilial}`;
-                        newSale['SUPERV'] = mapSupervisor;
+                    newSale['CODUSUR'] = 'AMERICANAS';
+                    newSale['NOME'] = 'AMERICANAS';
+                    newSale['SUPERV'] = 'SV AMERICANAS';
+
+                    // Reattribute branch based on the most recent sale for this client
+                    const recentFilial = americanasRecentBranchMap.get(originalCodCli);
+                    if (recentFilial) {
+                        newSale['FILIAL'] = recentFilial;
+                    } else if (mapFilial) {
+                        // Fallback: Use city map logic if no history found (rare case)
                         newSale['FILIAL'] = mapFilial;
-                    } else {
-                        // Fallback if map fails (e.g. unknown city)
-                        newSale['CODUSUR'] = '1001';
-                        newSale['NOME'] = 'AMERICANAS';
-                        if (mapSupervisor) newSale['SUPERV'] = mapSupervisor; 
-                        else if (!newSale['SUPERV']) newSale['SUPERV'] = 'N/A';
                     }
                     return newSale;
                 }
