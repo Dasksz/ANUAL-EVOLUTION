@@ -441,8 +441,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        const BATCH_SIZE = 1000;
-        const CONCURRENT_REQUESTS = 15;
+        const BATCH_SIZE = 2000;
+        const CONCURRENT_REQUESTS = 6;
 
         const uploadBatch = async (table, items) => {
             const totalBatches = Math.ceil(items.length / BATCH_SIZE);
@@ -487,9 +487,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 await uploadBatch('data_clients', data.clients);
             }
 
-            // Refresh Cache (Important for performance)
-            updateStatus('Atualizando cache de filtros (pode demorar)...', 90);
-
             // Helper for Retry Logic
             const retryRPC = async (rpcName, params = {}, retries = 3, delay = 5000) => {
                 for (let i = 0; i < retries; i++) {
@@ -508,11 +505,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
-            const cacheError = await retryRPC('refresh_dashboard_cache');
-            if (cacheError) {
-                console.error("Cache refresh failed after retries:", cacheError);
-                updateStatus(`Aviso: Cache não atualizado automaticamente. Erro: ${cacheError.message}`, 100);
-            } else {
+            // Refresh Cache (Sequential & Split for reliability)
+            updateStatus('Atualizando cache de filtros...', 90);
+            const filterError = await retryRPC('refresh_cache_filters');
+            if (filterError) {
+                console.error("Filters refresh failed:", filterError);
+                updateStatus(`Erro filtros: ${filterError.message}. Tentando resumo...`, 92);
+            }
+
+            updateStatus('Atualizando resumo de dados...', 95);
+            const summaryError = await retryRPC('refresh_cache_summary');
+            if (summaryError) {
+                 console.error("Summary refresh failed:", summaryError);
+                 updateStatus(`Erro resumo: ${summaryError.message}`, 100);
+            }
+
+            if (!filterError && !summaryError) {
                  console.log("Cache atualizado com sucesso!");
             }
 
