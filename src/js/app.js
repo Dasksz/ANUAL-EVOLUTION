@@ -441,8 +441,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        const BATCH_SIZE = 2000;
-        const CONCURRENT_REQUESTS = 6;
+        const BATCH_SIZE = 1000;
+        const CONCURRENT_REQUESTS = 10;
 
         const uploadBatch = async (table, items) => {
             const totalBatches = Math.ceil(items.length / BATCH_SIZE);
