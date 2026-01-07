@@ -14,8 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const sideMenu = document.getElementById('side-menu');
     const openSidebarMobileBtn = document.getElementById('open-sidebar-mobile');
     const closeSidebarMobileBtn = document.getElementById('close-sidebar-mobile');
+    const toggleSidebarDesktopBtn = document.getElementById('toggle-sidebar-desktop');
     const navDashboardBtn = document.getElementById('nav-dashboard');
+    const navCityAnalysisBtn = document.getElementById('nav-city-analysis');
     const navUploaderBtn = document.getElementById('nav-uploader');
+    const sidebarCalendarContainer = document.getElementById('sidebar-calendar-container');
 
     // Views
     const dashboardContainer = document.getElementById('dashboard-container');
@@ -28,8 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Buttons in Dashboard
     const clearFiltersBtn = document.getElementById('clear-filters-btn');
-    const showCityBtn = document.getElementById('show-city-btn');
-    const backToMainBtn = document.getElementById('back-to-main-btn');
 
     // Uploader Elements
     const salesPrevYearInput = document.getElementById('sales-prev-year-input');
@@ -97,17 +98,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Visibility & Reconnection Logic ---
     document.addEventListener('visibilitychange', async () => {
         if (document.visibilityState === 'visible') {
-            console.log('Tab visible. Checking connection status...');
             const { data } = await supabase.auth.getSession();
             if (data && data.session) {
                 if (!isAppReady) {
-                     console.log('Session active but app not ready. Retrying profile check...');
                      checkProfileStatus(data.session.user);
                 }
             } else {
-                // If no session and we thought we were logged in, reload might be needed or just let onAuthStateChange handle it
                 if (isAppReady) {
-                     console.warn('Session lost while backgrounded. Reloading...');
                      window.location.reload();
                 }
             }
@@ -115,11 +112,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function checkSession() {
-        console.log('Iniciando verificação de sessão...');
         showScreen('tela-loading');
 
         supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('Auth Event:', event);
             if (event === 'SIGNED_OUT') {
                 isAppReady = false;
                 showScreen('login-view');
@@ -127,21 +122,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (session) {
-                console.log('Sessão encontrada para usuário:', session.user.email);
-                
-                if (isAppReady) {
-                    console.log('App já inicializado. Ignorando re-verificação.');
-                    return;
-                }
+                if (isAppReady) return;
 
-                // Debounce/Lock to prevent overlapping checks causing disconnects
                 if (!checkProfileLock) {
                     await checkProfileStatus(session.user);
-                } else {
-                    console.log('Verificação de perfil já em andamento, ignorando evento duplicado.');
                 }
             } else {
-                console.log('Nenhuma sessão ativa.');
                 showScreen('login-view');
             }
         });
@@ -150,7 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function checkProfileStatus(user) {
         if (isAppReady) return;
 
-        // --- Cache Check Start ---
         const cacheKey = `user_auth_cache_${user.id}`;
         const cachedAuth = localStorage.getItem(cacheKey);
 
@@ -158,7 +143,6 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const { status, role } = JSON.parse(cachedAuth);
                 if (status === 'aprovado') {
-                    console.log('Usando status de perfil em cache: aprovado');
                     window.userRole = role;
                     isAppReady = true;
                     showScreen('app-layout');
@@ -166,72 +150,47 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
             } catch (e) {
-                console.warn('Erro ao ler cache de autenticação, prosseguindo com verificação normal.', e);
                 localStorage.removeItem(cacheKey);
             }
         }
-        // --- Cache Check End ---
 
         checkProfileLock = true;
-        console.log('Verificando perfil para ID:', user.id);
         
         try {
-            // Check Profile with Timeout - 10s (Modified per user request)
             const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Tempo limite de conexão excedido. Verifique sua internet.')), 10000));
             const profileQuery = supabase.from('profiles').select('status, role').eq('id', user.id).single();
 
             const { data: profile, error } = await Promise.race([profileQuery, timeout]);
 
-            if (error) {
-                if (error.code !== 'PGRST116') {
-                    throw error;
-                }
-            }
+            if (error && error.code !== 'PGRST116') throw error;
 
-            // Status & Role handling
             const status = profile?.status || 'pendente';
-            if (profile?.role) {
-                window.userRole = profile.role;
-            }
-            console.log('Status do perfil:', status);
+            if (profile?.role) window.userRole = profile.role;
 
             if (status === 'aprovado') {
-                // Save to cache
                 localStorage.setItem(cacheKey, JSON.stringify({ status: 'aprovado', role: profile?.role }));
-
                 const currentScreen = document.getElementById('app-layout');
                 if (currentScreen.classList.contains('hidden')) {
-                    console.log('Acesso aprovado. Carregando dashboard...');
                     isAppReady = true;
                     showScreen('app-layout');
                     initDashboard();
                 } else {
-                    console.log('Acesso já aprovado e dashboard visível.');
                     isAppReady = true;
                 }
             } else {
-                console.log('Acesso pendente ou bloqueado. Redirecionando para tela de espera.');
                 showScreen('tela-pendente');
-                
                 if (status === 'bloqueado') {
                         const statusMsg = document.getElementById('status-text-pendente'); 
                         if(statusMsg) statusMsg.textContent = "Acesso Bloqueado";
                 }
-
                 startStatusListener(user.id);
             }
         } catch (err) {
-            console.error('Error checking profile:', err);
             checkProfileLock = false;
-            
-            // Only show error if app is not ready (initial load)
             if (!isAppReady) {
-                // Suppress timeout error as per user request
                 if (err.message !== 'Tempo limite de conexão excedido. Verifique sua internet.') {
                     alert("Erro de conexão: " + (err.message || 'Erro desconhecido'));
                     showScreen('login-view');
-                } else {
-                    console.warn('Timeout de conexão suprimido. Aguardando recuperação...');
                 }
             }
         } finally {
@@ -241,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let statusListener = null;
     function startStatusListener(userId) {
-        if (statusListener) return; // Already listening
+        if (statusListener) return;
 
         statusListener = supabase
             .channel(`public:profiles:id=eq.${userId}`)
@@ -263,14 +222,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     googleLoginBtn.addEventListener('click', async () => {
         loginError.classList.add('hidden');
-
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
-            options: {
-                redirectTo: window.location.origin + window.location.pathname
-            }
+            options: { redirectTo: window.location.origin + window.location.pathname }
         });
-
         if (error) {
             loginError.textContent = 'Erro ao iniciar login: ' + error.message;
             loginError.classList.remove('hidden');
@@ -282,38 +237,74 @@ document.addEventListener('DOMContentLoaded', () => {
             supabase.removeChannel(statusListener);
             statusListener = null;
         }
-        
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user?.id) {
             localStorage.removeItem(`user_auth_cache_${session.user.id}`);
         }
-
         await supabase.auth.signOut();
-        // onAuthStateChange handles the UI update
     };
 
     logoutBtn.addEventListener('click', handleLogout);
     if(logoutBtnPendente) logoutBtnPendente.addEventListener('click', handleLogout);
 
-    // Check session on start
     checkSession();
 
     // --- Navigation Logic ---
 
-    function toggleSidebar() {
+    // Mobile Toggle
+    function toggleSidebarMobile() {
         sideMenu.classList.toggle('-translate-x-full');
     }
+    openSidebarMobileBtn.addEventListener('click', toggleSidebarMobile);
+    closeSidebarMobileBtn.addEventListener('click', toggleSidebarMobile);
 
-    openSidebarMobileBtn.addEventListener('click', toggleSidebar);
-    closeSidebarMobileBtn.addEventListener('click', toggleSidebar);
+    // Desktop Toggle
+    let isSidebarCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
+    if (isSidebarCollapsed) {
+        sideMenu.classList.add('sidebar-collapsed');
+        sidebarCalendarContainer.classList.add('hidden'); // Hide calendar when collapsed
+    }
 
-    navDashboardBtn.addEventListener('click', () => {
+    toggleSidebarDesktopBtn.addEventListener('click', () => {
+        sideMenu.classList.toggle('sidebar-collapsed');
+        isSidebarCollapsed = sideMenu.classList.contains('sidebar-collapsed');
+        localStorage.setItem('sidebar_collapsed', isSidebarCollapsed);
+        
+        if (isSidebarCollapsed) {
+            sidebarCalendarContainer.classList.add('hidden');
+        } else {
+            sidebarCalendarContainer.classList.remove('hidden');
+        }
+        
+        // Resize charts if needed
+        setTimeout(() => {
+            Object.values(currentCharts).forEach(chart => chart.resize());
+        }, 305);
+    });
+
+    // Nav Links
+    const resetViews = () => {
         dashboardContainer.classList.remove('hidden');
         uploaderModal.classList.add('hidden');
-        // Reset to main dashboard view
-        mainDashboardContent.classList.remove('hidden');
+        mainDashboardContent.classList.add('hidden');
         cityView.classList.add('hidden');
-        if (window.innerWidth < 768) toggleSidebar();
+        // Reset active state styles (simple)
+        [navDashboardBtn, navCityAnalysisBtn, navUploaderBtn].forEach(btn => btn.classList.remove('bg-slate-700', 'text-white'));
+    };
+
+    navDashboardBtn.addEventListener('click', () => {
+        resetViews();
+        mainDashboardContent.classList.remove('hidden');
+        navDashboardBtn.classList.add('bg-slate-700', 'text-white');
+        if (window.innerWidth < 768) toggleSidebarMobile();
+    });
+
+    navCityAnalysisBtn.addEventListener('click', () => {
+        resetViews();
+        cityView.classList.remove('hidden');
+        navCityAnalysisBtn.classList.add('bg-slate-700', 'text-white');
+        loadCityView();
+        if (window.innerWidth < 768) toggleSidebarMobile();
     });
 
     navUploaderBtn.addEventListener('click', () => {
@@ -322,44 +313,29 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         uploaderModal.classList.remove('hidden');
-        if (window.innerWidth < 768) toggleSidebar();
+        if (window.innerWidth < 768) toggleSidebarMobile();
     });
 
     closeUploaderBtn.addEventListener('click', () => {
         uploaderModal.classList.add('hidden');
     });
 
+    // Set initial active state
+    navDashboardBtn.classList.add('bg-slate-700', 'text-white');
+
+
     // --- Dashboard Internal Navigation ---
     clearFiltersBtn.addEventListener('click', async () => {
-        // Immediately reset UI for better responsiveness
-        // Note: Multi-selects (supervisor, vendedor, etc.) are custom elements, not <select>, so we reset their state variables below.
-        
         anoFilter.innerHTML = '<option value="todos">Todos</option>';
         anoFilter.value = 'todos';
         mesFilter.value = '';
-
-        // Reload filters to reset dropdown options to full lists
         await loadFilters(getCurrentFilters());
         loadMainDashboardData();
     });
 
-    showCityBtn.addEventListener('click', () => {
-        mainDashboardContent.classList.add('hidden');
-        cityView.classList.remove('hidden');
-        loadCityView();
-    });
-
-    backToMainBtn.addEventListener('click', () => {
-        cityView.classList.add('hidden');
-        mainDashboardContent.classList.remove('hidden');
-    });
-
-
     // --- Uploader Logic ---
     let files = {};
-
     const checkFiles = () => {
-        // No longer need credentials check, they are handled by auth session
         const hasFiles = files.salesPrevYearFile && files.salesCurrYearFile && files.salesCurrMonthFile && files.clientsFile && files.productsFile;
         generateBtn.disabled = !hasFiles;
     };
@@ -375,57 +351,40 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Apenas administradores podem executar esta ação.');
             return;
         }
-
-        const confirmOpt = confirm('Esta ação irá recriar os índices do banco de dados para liberar espaço. Isso pode levar alguns minutos. Deseja continuar?');
-        if (!confirmOpt) return;
+        if (!confirm('Recriar índices do banco de dados?')) return;
 
         optimizeDbBtn.disabled = true;
         optimizeDbBtn.textContent = 'Otimizando...';
         statusContainer.classList.remove('hidden');
-        statusText.textContent = 'Solicitando otimização ao banco de dados...';
+        statusText.textContent = 'Otimizando...';
         progressBar.style.width = '50%';
 
         try {
             const { data, error } = await supabase.rpc('optimize_database');
-
             if (error) throw error;
-
-            statusText.textContent = data || 'Otimização concluída!';
+            statusText.textContent = data || 'Concluído!';
             progressBar.style.width = '100%';
-            alert(data || 'Otimização concluída!');
+            alert(data);
         } catch (e) {
-            console.error(e);
-            statusText.textContent = 'Erro: ' + (e.message || 'Falha na otimização.');
-            alert('Erro: ' + e.message + '\n\nCertifique-se de que você rodou o script SQL atualizado no Supabase para criar a função optimize_database.');
+            statusText.textContent = 'Erro: ' + e.message;
+            alert('Erro: ' + e.message);
         } finally {
             optimizeDbBtn.disabled = false;
             optimizeDbBtn.textContent = 'Otimizar Banco de Dados (Reduzir Espaço)';
-            setTimeout(() => {
-                statusContainer.classList.add('hidden');
-            }, 5000);
+            setTimeout(() => { statusContainer.classList.add('hidden'); }, 5000);
         }
     });
 
     if(generateBtn) generateBtn.addEventListener('click', () => {
         if (!files.salesPrevYearFile || !files.salesCurrYearFile || !files.salesCurrMonthFile || !files.clientsFile || !files.productsFile) return;
 
-        // Credentials are no longer passed to worker. 
-        // Authentication is handled via session token in enviarDadosParaSupabase.
-
         generateBtn.disabled = true;
         statusContainer.classList.remove('hidden');
-        statusText.textContent = 'Iniciando processamento...';
+        statusText.textContent = 'Processando...';
         progressBar.style.width = '0%';
 
         const worker = new Worker('src/js/worker.js');
-
-        worker.postMessage({
-            salesPrevYearFile: files.salesPrevYearFile,
-            salesCurrYearFile: files.salesCurrYearFile,
-            salesCurrMonthFile: files.salesCurrMonthFile,
-            clientsFile: files.clientsFile,
-            productsFile: files.productsFile
-        });
+        worker.postMessage(files);
 
         worker.onmessage = async (event) => {
             const { type, data, status, percentage, message } = event.data;
@@ -433,21 +392,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusText.textContent = status;
                 progressBar.style.width = `${percentage}%`;
             } else if (type === 'result') {
-                statusText.textContent = 'Processamento concluído. Iniciando upload...';
+                statusText.textContent = 'Upload...';
                 try {
                     await enviarDadosParaSupabase(data);
-                    
-                    statusText.textContent = 'Dados atualizados com sucesso!';
+                    statusText.textContent = 'Sucesso!';
                     progressBar.style.width = '100%';
                     setTimeout(() => {
                         uploaderModal.classList.add('hidden');
                         statusContainer.classList.add('hidden');
                         generateBtn.disabled = false;
-                        initDashboard(); // Reload data
+                        initDashboard();
                     }, 1500);
                 } catch (e) {
-                    console.error(e);
-                    statusText.innerHTML = `<span class="text-red-500">Erro no upload: ${e.message}</span>`;
+                    statusText.innerHTML = `<span class="text-red-500">Erro: ${e.message}</span>`;
                     generateBtn.disabled = false;
                 }
             } else if (type === 'error') {
@@ -462,20 +419,13 @@ document.addEventListener('DOMContentLoaded', () => {
             statusText.textContent = msg;
             progressBar.style.width = `${percent}%`;
         };
-
         const performUpsert = async (table, batch) => {
-            const { error } = await supabase.from(table).insert(batch); // Use insert as per original logic, or upsert if needed
-            if (error) {
-                throw new Error(`Erro Supabase em ${table}: ${error.message}`);
-            }
+            const { error } = await supabase.from(table).insert(batch);
+            if (error) throw new Error(`Erro ${table}: ${error.message}`);
         };
-
         const clearTable = async (table) => {
-            // Use RPC for safe truncation (checks is_admin)
             const { error } = await supabase.rpc('truncate_table', { table_name: table });
-            if (error) {
-                throw new Error(`Erro ao limpar tabela ${table}: ${error.message}`);
-            }
+            if (error) throw new Error(`Erro clear ${table}: ${error.message}`);
         };
 
         const BATCH_SIZE = 1000;
@@ -484,7 +434,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const uploadBatch = async (table, items) => {
             const totalBatches = Math.ceil(items.length / BATCH_SIZE);
             let processedBatches = 0;
-
             const processChunk = async (chunkIndex) => {
                 const start = chunkIndex * BATCH_SIZE;
                 const end = start + BATCH_SIZE;
@@ -494,8 +443,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const progress = Math.round((processedBatches / totalBatches) * 100);
                 updateStatus(`Enviando ${table}... ${progress}%`, progress);
             };
-
-             // Simple Pool Implementation
              const queue = Array.from({ length: totalBatches }, (_, i) => i);
              const worker = async () => {
                  while (queue.length > 0) {
@@ -503,66 +450,20 @@ document.addEventListener('DOMContentLoaded', () => {
                      await processChunk(chunkIndex);
                  }
              };
-
              await Promise.all(Array.from({ length: Math.min(CONCURRENT_REQUESTS, totalBatches) }, worker));
         };
 
         try {
-            if (data.history && data.history.length > 0) {
-                updateStatus('Limpando histórico...', 10);
-                await clearTable('data_history');
-                await uploadBatch('data_history', data.history);
-            }
-            if (data.detailed && data.detailed.length > 0) {
-                updateStatus('Limpando detalhado...', 40);
-                await clearTable('data_detailed');
-                await uploadBatch('data_detailed', data.detailed);
-            }
-            if (data.clients && data.clients.length > 0) {
-                updateStatus('Limpando clientes...', 70);
-                await clearTable('data_clients');
-                await uploadBatch('data_clients', data.clients);
-            }
+            if (data.history?.length) { updateStatus('Limpar hist...', 10); await clearTable('data_history'); await uploadBatch('data_history', data.history); }
+            if (data.detailed?.length) { updateStatus('Limpar det...', 40); await clearTable('data_detailed'); await uploadBatch('data_detailed', data.detailed); }
+            if (data.clients?.length) { updateStatus('Limpar cli...', 70); await clearTable('data_clients'); await uploadBatch('data_clients', data.clients); }
 
-            // Helper for Retry Logic
-            const retryRPC = async (rpcName, params = {}, retries = 3, delay = 5000) => {
-                for (let i = 0; i < retries; i++) {
-                    try {
-                        const { error } = await supabase.rpc(rpcName, params);
-                        if (!error) return null; // Success
-                        throw error;
-                    } catch (err) {
-                        console.warn(`Tentativa ${i + 1} de ${retries} para ${rpcName} falhou:`, err);
-                        if (i < retries - 1) {
-                            await new Promise(res => setTimeout(res, delay));
-                        } else {
-                            return err;
-                        }
-                    }
-                }
-            };
-
-            // Refresh Cache (Sequential & Split for reliability)
-            updateStatus('Atualizando cache de filtros...', 90);
-            const filterError = await retryRPC('refresh_cache_filters');
-            if (filterError) {
-                console.error("Filters refresh failed:", filterError);
-                updateStatus(`Erro filtros: ${filterError.message}. Tentando resumo...`, 92);
-            }
-
-            updateStatus('Atualizando resumo de dados...', 95);
-            const summaryError = await retryRPC('refresh_cache_summary');
-            if (summaryError) {
-                 console.error("Summary refresh failed:", summaryError);
-                 updateStatus(`Erro resumo: ${summaryError.message}`, 100);
-            }
-
-            if (!filterError && !summaryError) {
-                 console.log("Cache atualizado com sucesso!");
-            }
+            updateStatus('Atualizando cache...', 90);
+            await supabase.rpc('refresh_cache_filters');
+            await supabase.rpc('refresh_cache_summary');
 
         } catch (error) {
-            console.error("Upload error:", error);
+            console.error(error);
             throw error;
         }
     }
@@ -572,37 +473,29 @@ document.addEventListener('DOMContentLoaded', () => {
     // Filter Elements
     const anoFilter = document.getElementById('ano-filter');
     const mesFilter = document.getElementById('mes-filter');
-
-    // Multi-Select Elements (Button & Dropdown)
     const filialFilterBtn = document.getElementById('filial-filter-btn');
     const filialFilterDropdown = document.getElementById('filial-filter-dropdown');
-    
     const cidadeFilterBtn = document.getElementById('cidade-filter-btn');
     const cidadeFilterDropdown = document.getElementById('cidade-filter-dropdown');
     const cidadeFilterList = document.getElementById('cidade-filter-list');
     const cidadeFilterSearch = document.getElementById('cidade-filter-search');
-
     const supervisorFilterBtn = document.getElementById('supervisor-filter-btn');
     const supervisorFilterDropdown = document.getElementById('supervisor-filter-dropdown');
-
     const vendedorFilterBtn = document.getElementById('vendedor-filter-btn');
     const vendedorFilterDropdown = document.getElementById('vendedor-filter-dropdown');
     const vendedorFilterList = document.getElementById('vendedor-filter-list');
     const vendedorFilterSearch = document.getElementById('vendedor-filter-search');
-
     const fornecedorFilterBtn = document.getElementById('fornecedor-filter-btn');
     const fornecedorFilterDropdown = document.getElementById('fornecedor-filter-dropdown');
     const fornecedorFilterList = document.getElementById('fornecedor-filter-list');
     const fornecedorFilterSearch = document.getElementById('fornecedor-filter-search');
-
     const tipovendaFilterBtn = document.getElementById('tipovenda-filter-btn');
     const tipovendaFilterDropdown = document.getElementById('tipovenda-filter-dropdown');
 
-    // City View Pagination State
+    // State
     let currentCityPage = 0;
     const cityPageSize = 50;
     let totalActiveClients = 0;
-
     let currentCityInactivePage = 0;
     const cityInactivePageSize = 50;
     let totalInactiveClients = 0;
@@ -613,18 +506,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedVendedores = [];
     let selectedFornecedores = [];
     let selectedTiposVenda = [];
-
     let currentCharts = {};
+    let holidays = [];
 
     async function initDashboard() {
         const filters = getCurrentFilters();
         await loadFilters(filters);
         await loadMainDashboardData();
-    }
-
-    function getSelectedValues(containerId) {
-        // Not used directly anymore, relying on state variables (selected*)
-        return [];
     }
 
     function getCurrentFilters() {
@@ -641,41 +529,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadFilters(currentFilters, retryCount = 0) {
-        // With dependent filters, caching is complex because every combination is unique.
-        // For now, we skip cache for filters or cache by key. Given the number of combinations, simplified to fetch fresh.
-        // If performance is an issue, we can cache specific common combinations.
-        
         const { data, error } = await supabase.rpc('get_dashboard_filters', currentFilters);
         if (error) {
-            console.error('Error loading filters:', error);
-            // Enhanced error feedback & Retry Logic
-            if (error.code === '57014' || error.message.includes('timeout')) {
-                 console.error('Filter query timed out.');
-                 if (retryCount < 1) {
-                     console.log('Retrying filters load...');
-                     await new Promise(r => setTimeout(r, 1000));
-                     return loadFilters(currentFilters, retryCount + 1);
-                 }
+            if (retryCount < 1) {
+                 await new Promise(r => setTimeout(r, 1000));
+                 return loadFilters(currentFilters, retryCount + 1);
             }
             return;
         }
-
         applyFiltersData(data);
     }
 
-    // Helper function to setup multi-select logic
     function setupMultiSelect(btn, dropdown, container, items, selectedArray, labelCallback, isObject = false, searchInput = null) {
-        // Toggle dropdown visibility
-        btn.onclick = (e) => {
-            e.stopPropagation(); // Prevent immediate closing
-            dropdown.classList.toggle('hidden');
-        };
-
-        // Render items
+        btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
         const renderItems = (filterText = '') => {
             container.innerHTML = '';
-            
-            // Filter items if search is active
             let filteredItems = items || [];
             if (filterText) {
                 const lower = filterText.toLowerCase();
@@ -684,80 +552,44 @@ document.addEventListener('DOMContentLoaded', () => {
                     return String(val).toLowerCase().includes(lower);
                 });
             }
-
             filteredItems.forEach(item => {
                 const value = isObject ? item.cod : item;
                 const label = isObject ? item.name : item;
                 const isSelected = selectedArray.includes(String(value));
-
                 const div = document.createElement('div');
                 div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
-                div.innerHTML = `
-                    <input type="checkbox" value="${value}" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2">
-                    <label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${label}</label>
-                `;
-                
-                // Click handler for the whole row
+                div.innerHTML = `<input type="checkbox" value="${value}" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2"><label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${label}</label>`;
                 div.onclick = (e) => {
-                    e.stopPropagation(); // Prevent dropdown close
+                    e.stopPropagation();
                     const checkbox = div.querySelector('input');
-                    // Toggle if clicking div (unless clicking checkbox directly)
-                    if (e.target !== checkbox) {
-                        checkbox.checked = !checkbox.checked;
-                    }
-                    
+                    if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
                     const val = String(value);
-                    if (checkbox.checked) {
-                        if (!selectedArray.includes(val)) selectedArray.push(val);
-                    } else {
-                        const idx = selectedArray.indexOf(val);
-                        if (idx > -1) selectedArray.splice(idx, 1);
-                    }
-                    
+                    if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
                     updateBtnLabel();
                     handleFilterChange();
                 };
-
                 container.appendChild(div);
             });
-
-            if (filteredItems.length === 0) {
-                container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
-            }
+            if (filteredItems.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
         };
-
         const updateBtnLabel = () => {
             const span = btn.querySelector('span');
             if (selectedArray.length === 0) {
-                span.textContent = 'Todas'; // Or "Todos" depending on context, handled by caller logic usually
+                span.textContent = 'Todas';
                 if(btn.id.includes('vendedor') || btn.id.includes('fornecedor') || btn.id.includes('supervisor') || btn.id.includes('tipovenda')) span.textContent = 'Todos';
             } else if (selectedArray.length === 1) {
-                // Find label
                 const val = selectedArray[0];
                 let found;
-                if (isObject) found = items.find(i => String(i.cod) === val);
-                else found = items.find(i => String(i) === val);
-                
-                if (found) span.textContent = isObject ? found.name : found;
-                else span.textContent = val;
-            } else {
-                span.textContent = `${selectedArray.length} selecionados`;
-            }
+                if (isObject) found = items.find(i => String(i.cod) === val); else found = items.find(i => String(i) === val);
+                if (found) span.textContent = isObject ? found.name : found; else span.textContent = val;
+            } else { span.textContent = `${selectedArray.length} selecionados`; }
         };
-
-        // Initial Render
         renderItems();
         updateBtnLabel();
-
-        // Search Listener
-        if (searchInput) {
-            searchInput.oninput = (e) => renderItems(e.target.value);
-            searchInput.onclick = (e) => e.stopPropagation();
-        }
+        if (searchInput) { searchInput.oninput = (e) => renderItems(e.target.value); searchInput.onclick = (e) => e.stopPropagation(); }
     }
 
     function applyFiltersData(data) {
-        // --- Single Selects (Ano, Mes) ---
         const updateSingleSelect = (element, items) => {
             const currentVal = element.value;
             element.innerHTML = '';
@@ -765,34 +597,15 @@ document.addEventListener('DOMContentLoaded', () => {
             allOpt.value = (element.id === 'ano-filter') ? 'todos' : '';
             allOpt.textContent = 'Todos';
             element.appendChild(allOpt);
-
-            if (items) {
-                items.forEach(item => {
-                    const opt = document.createElement('option');
-                    opt.value = item;
-                    opt.textContent = item;
-                    element.appendChild(opt);
-                });
-            }
-            if (currentVal && Array.from(element.options).some(o => o.value === currentVal)) {
-                element.value = currentVal;
-            }
+            if (items) { items.forEach(item => { const opt = document.createElement('option'); opt.value = item; opt.textContent = item; element.appendChild(opt); }); }
+            if (currentVal && Array.from(element.options).some(o => o.value === currentVal)) element.value = currentVal;
         };
-
         updateSingleSelect(anoFilter, data.anos);
-        // Meses Logic (Static)
         if (mesFilter.options.length <= 1) { 
             mesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-            meses.forEach((m, i) => {
-                const opt = document.createElement('option');
-                opt.value = i;
-                opt.textContent = m;
-                mesFilter.appendChild(opt);
-            });
+            meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; mesFilter.appendChild(opt); });
         }
-
-        // --- Multi Selects ---
         setupMultiSelect(filialFilterBtn, filialFilterDropdown, filialFilterDropdown, data.filiais, selectedFiliais, () => {});
         setupMultiSelect(cidadeFilterBtn, cidadeFilterDropdown, cidadeFilterList, data.cidades, selectedCidades, () => {}, false, cidadeFilterSearch);
         setupMultiSelect(supervisorFilterBtn, supervisorFilterDropdown, supervisorFilterDropdown, data.supervisors, selectedSupervisores, () => {});
@@ -801,123 +614,53 @@ document.addEventListener('DOMContentLoaded', () => {
         setupMultiSelect(tipovendaFilterBtn, tipovendaFilterDropdown, tipovendaFilterDropdown, data.tipos_venda, selectedTiposVenda, () => {});
     }
 
-    // Close dropdowns when clicking outside
     document.addEventListener('click', (e) => {
         const dropdowns = [filialFilterDropdown, cidadeFilterDropdown, supervisorFilterDropdown, vendedorFilterDropdown, fornecedorFilterDropdown, tipovendaFilterDropdown];
         const btns = [filialFilterBtn, cidadeFilterBtn, supervisorFilterBtn, vendedorFilterBtn, fornecedorFilterBtn, tipovendaFilterBtn];
-        
-        dropdowns.forEach((dd, idx) => {
-            if (!dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) {
-                dd.classList.add('hidden');
-            }
-        });
+        dropdowns.forEach((dd, idx) => { if (!dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) dd.classList.add('hidden'); });
     });
 
-    // Unified Change Handler
     let filterDebounceTimer;
     const handleFilterChange = async () => {
         const filters = getCurrentFilters();
-        
-        // Debounce to prevent request flooding and timeouts
         clearTimeout(filterDebounceTimer);
         filterDebounceTimer = setTimeout(async () => {
-            // 1. Update Filters (Dropdowns) based on new selection (Dependent Filtering)
-            try {
-                // We use dependent filtering to ensure selecting a Supervisor filters the Vendedores list, etc.
-                await loadFilters(filters);
-            } catch (err) {
-                console.error("Failed to load filters:", err);
-            }
-            
-            // 2. Reload Main Data
-            try {
-                await loadMainDashboardData();
-            } catch (err) {
-                console.error("Failed to load dashboard data:", err);
-            }
-
-            // 3. Reload City View if visible (Resetting Page)
-            if (!cityView.classList.contains('hidden')) {
-                currentCityPage = 0;
-                currentCityInactivePage = 0;
-                await loadCityView();
-            }
+            try { await loadFilters(filters); } catch (err) { console.error("Failed to load filters:", err); }
+            try { await loadMainDashboardData(); } catch (err) { console.error("Failed to load dashboard data:", err); }
+            if (!cityView.classList.contains('hidden')) { currentCityPage = 0; currentCityInactivePage = 0; await loadCityView(); }
         }, 500);
     };
-
-    // Event Listeners for Single Selects
     anoFilter.onchange = handleFilterChange;
     mesFilter.onchange = handleFilterChange;
 
-    // --- Clear Filters Logic ---
-    clearFiltersBtn.addEventListener('click', async () => {
-        // Reset State
-        selectedFiliais = [];
-        selectedCidades = [];
-        selectedSupervisores = [];
-        selectedVendedores = [];
-        selectedFornecedores = [];
-        selectedTiposVenda = [];
-        
-        anoFilter.innerHTML = '<option value="todos">Todos</option>';
-        anoFilter.value = 'todos';
-        mesFilter.value = '';
-
-        // Reset UI Text
-        [filialFilterBtn, cidadeFilterBtn, supervisorFilterBtn, vendedorFilterBtn, fornecedorFilterBtn, tipovendaFilterBtn].forEach(btn => {
-            const span = btn.querySelector('span');
-            if (span) span.textContent = (btn.id.includes('filial') || btn.id.includes('cidade')) ? 'Todas' : 'Todos';
-        });
-
-        // Reload to initial state
-        await loadFilters(getCurrentFilters());
-        await loadMainDashboardData();
-    });
-
-    // PopulateSelect Removed (merged into updateSelect inside applyFiltersData)
-    /* 
-    function populateSelect(element, items) { ... } 
-    */
-
     async function loadMainDashboardData() {
         const filters = getCurrentFilters();
-
-        // Cache Key based on filters (simple stringify)
         const cacheKey = `dashboard_data_${JSON.stringify(filters)}`;
-
-        // Try Cache First
         const cachedData = await getFromCache(cacheKey);
-        if (cachedData) {
-            renderDashboard(cachedData);
-        }
+        if (cachedData) renderDashboard(cachedData);
 
         const { data, error } = await supabase.rpc('get_main_dashboard_data', filters);
+        if (error) { console.error('Error fetching dashboard data:', error); return; }
 
-        if (error) {
-            console.error('Error fetching dashboard data:', error);
-            return;
-        }
-
-        // Save fresh data
         await saveToCache(cacheKey, data);
         renderDashboard(data);
     }
 
     function renderDashboard(data) {
-        // KPIs
+        // Init Holidays
+        holidays = data.holidays || [];
+        renderCalendar();
+
         document.getElementById('kpi-clients-attended').textContent = data.kpi_clients_attended.toLocaleString('pt-BR');
         const baseEl = document.getElementById('kpi-clients-base');
         if (data.kpi_clients_base > 0) {
             baseEl.textContent = `de ${data.kpi_clients_base.toLocaleString('pt-BR')} na base`;
             baseEl.classList.remove('hidden');
-        } else {
-            baseEl.classList.add('hidden');
-        }
+        } else { baseEl.classList.add('hidden'); }
 
         let currentData = data.monthly_data_current || [];
         let previousData = data.monthly_data_previous || [];
 
-        // Apply Month Filter to Chart and Table Data
         if (mesFilter.value !== '') {
             const selectedMonthIndex = parseInt(mesFilter.value);
             currentData = currentData.filter(d => d.month_index === selectedMonthIndex);
@@ -925,59 +668,51 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const targetIndex = data.target_month_index;
-
         const currMonthData = currentData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
         const prevMonthData = previousData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
 
         const calcEvo = (curr, prev) => prev > 0 ? ((curr / prev) - 1) * 100 : (curr > 0 ? 100 : 0);
-
-        const fatEvo = calcEvo(currMonthData.faturamento, prevMonthData.faturamento);
-        const pesoEvo = calcEvo(currMonthData.peso, prevMonthData.peso);
-
-        updateKpi('kpi-evo-vs-ano-fat', fatEvo);
-        updateKpi('kpi-evo-vs-ano-kg', pesoEvo);
+        updateKpi('kpi-evo-vs-ano-fat', calcEvo(currMonthData.faturamento, prevMonthData.faturamento));
+        updateKpi('kpi-evo-vs-ano-kg', calcEvo(currMonthData.peso, prevMonthData.peso));
 
         // Trimestral
         let triSumFat = 0, triSumPeso = 0, triCount = 0;
         for (let i = 1; i <= 3; i++) {
             const idx = targetIndex - i;
             const mData = currentData.find(d => d.month_index === idx);
-            if (mData) {
-                triSumFat += mData.faturamento;
-                triSumPeso += mData.peso;
-                triCount++;
-            }
+            if (mData) { triSumFat += mData.faturamento; triSumPeso += mData.peso; triCount++; }
         }
         const triAvgFat = triCount > 0 ? triSumFat / triCount : 0;
         const triAvgPeso = triCount > 0 ? triSumPeso / triCount : 0;
+        updateKpi('kpi-evo-vs-tri-fat', calcEvo(currMonthData.faturamento, triAvgFat));
+        updateKpi('kpi-evo-vs-tri-kg', calcEvo(currMonthData.peso, triAvgPeso));
 
-        const fatEvoTri = calcEvo(currMonthData.faturamento, triAvgFat);
-        const pesoEvoTri = calcEvo(currMonthData.peso, triAvgPeso);
-
-        updateKpi('kpi-evo-vs-tri-fat', fatEvoTri);
-        updateKpi('kpi-evo-vs-tri-kg', pesoEvoTri);
-
-        // Titles
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         const mName = monthNames[targetIndex]?.toUpperCase() || "";
         document.getElementById('kpi-title-evo-ano-fat').textContent = `FAT ${mName} vs Ano Ant.`;
         document.getElementById('kpi-title-evo-ano-kg').textContent = `TON ${mName} vs Ano Ant.`;
 
-        // Chart
-        const chartLabels = monthNames;
-        const mapTo12 = (arr) => {
-            const res = new Array(12).fill(0);
-            arr.forEach(d => res[d.month_index] = d.faturamento);
-            return res;
-        };
-
-        createChart('main-chart', 'bar', chartLabels, [
+        // Chart Data Prep
+        const mapTo12 = (arr) => { const res = new Array(12).fill(0); arr.forEach(d => res[d.month_index] = d.faturamento); return res; };
+        
+        const datasets = [
             { label: `Ano ${data.previous_year}`, data: mapTo12(previousData) },
             { label: `Ano ${data.current_year}`, data: mapTo12(currentData) }
-        ]);
+        ];
 
-        // Table
-        updateTable(currentData, previousData, data.current_year, data.previous_year);
+        // Trend Logic (Chart)
+        if (data.trend_allowed && data.trend_data) {
+            const trendArray = new Array(12).fill(null);
+            trendArray[data.trend_data.month_index] = data.trend_data.faturamento;
+            datasets.push({ 
+                label: `Tendência ${monthNames[data.trend_data.month_index]}`, 
+                data: trendArray,
+                isTrend: true 
+            });
+        }
+
+        createChart('main-chart', 'bar', monthNames, datasets);
+        updateTable(currentData, previousData, data.current_year, data.previous_year, data.trend_allowed ? data.trend_data : null);
     }
 
     function updateKpi(id, value) {
@@ -989,22 +724,27 @@ document.addEventListener('DOMContentLoaded', () => {
     function createChart(canvasId, type, labels, datasetsData) {
         const container = document.getElementById(canvasId + 'Container');
         if (!container) return;
-
         container.innerHTML = '';
         const newCanvas = document.createElement('canvas');
         newCanvas.id = canvasId;
         container.appendChild(newCanvas);
 
         const ctx = newCanvas.getContext('2d');
-        const professionalPalette = { 'current': '#06b6d4', 'previous': '#f97316' };
+        const professionalPalette = { 'current': '#06b6d4', 'previous': '#f97316', 'trend': '#8b5cf6' };
 
-        const datasets = datasetsData.map((d, i) => ({
-            label: d.label,
-            data: d.data,
-            backgroundColor: i === 1 ? professionalPalette.current : professionalPalette.previous,
-            borderColor: i === 1 ? professionalPalette.current : professionalPalette.previous,
-            borderWidth: 1
-        }));
+        const datasets = datasetsData.map((d, i) => {
+            let color = professionalPalette.previous;
+            if (i === 1) color = professionalPalette.current;
+            if (d.isTrend) color = professionalPalette.trend;
+            return {
+                label: d.label,
+                data: d.data,
+                backgroundColor: color,
+                borderColor: color,
+                borderWidth: 1,
+                skipNull: true
+            };
+        });
 
         if (currentCharts[canvasId]) currentCharts[canvasId].destroy();
 
@@ -1023,7 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         offset: 4,
                         color: '#cbd5e1',
                         font: { size: 9, weight: 'bold' },
-                        formatter: (v) => (v > 1000 ? (v/1000).toFixed(0) + 'k' : v.toFixed(0))
+                        formatter: (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''))
                     }
                 },
                 scales: {
@@ -1035,7 +775,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function updateTable(currData, prevData, currYear, prevYear) {
+    function updateTable(currData, prevData, currYear, prevYear, trendData) {
         const tableBody = document.getElementById('monthly-summary-table-body');
         const tableHead = document.querySelector('#monthly-summary-table thead tr');
         tableBody.innerHTML = '';
@@ -1043,6 +783,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         let headerHTML = '<th class="px-2 py-2 text-left">INDICADOR</th>';
         monthNames.forEach(m => headerHTML += `<th class="px-2 py-2 text-center">${m}</th>`);
+        if (trendData) {
+            headerHTML += `<th class="px-2 py-2 text-center bg-purple-900/30 text-purple-200">Tendência ${monthNames[trendData.month_index]}</th>`;
+        }
         tableHead.innerHTML = headerHTML;
 
         const indicators = [
@@ -1060,6 +803,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const val = d[ind.key] || 0;
                 rowHTML += `<td class="px-2 py-1.5 text-center">${ind.fmt(val)}</td>`;
             }
+            if (trendData) {
+                 const tVal = trendData[ind.key] || 0;
+                 rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-purple-300 bg-purple-900/20">${ind.fmt(tVal)}</td>`;
+            }
             rowHTML += '</tr>';
             tableBody.innerHTML += rowHTML;
         });
@@ -1067,7 +814,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadCityView() {
         const filters = getCurrentFilters();
-        // Add pagination params
         filters.p_page = currentCityPage;
         filters.p_limit = cityPageSize;
         filters.p_inactive_page = currentCityInactivePage;
@@ -1079,133 +825,135 @@ document.addEventListener('DOMContentLoaded', () => {
         totalActiveClients = data.total_active_count || 0;
         totalInactiveClients = data.total_inactive_count || 0;
 
-        // Update Active Table
-        const activeTableBody = document.getElementById('city-active-detail-table-body');
-        if (data.active_clients && data.active_clients.length > 0) {
-            activeTableBody.innerHTML = data.active_clients.map(c => `
-                <tr class="table-row">
-                    <td class="p-2">${c['Código']}</td>
-                    <td class="p-2">${c.fantasia || c.razaoSocial}</td>
-                    <td class="p-2 text-right">${(c.totalFaturamento || 0).toLocaleString('pt-BR', {style:'currency', currency: 'BRL'})}</td>
-                    <td class="p-2">${c.cidade}</td>
-                    <td class="p-2">${c.bairro}</td>
-                    <td class="p-2">${c.rca1 || '-'}</td>
-                    <td class="p-2">${c.rca2 || '-'}</td>
-                </tr>
-            `).join('');
-        } else {
-            activeTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>';
-        }
+        const renderTable = (bodyId, items) => {
+            const body = document.getElementById(bodyId);
+            if (items && items.length > 0) {
+                body.innerHTML = items.map(c => `
+                    <tr class="table-row">
+                        <td class="p-2">${c['Código']}</td>
+                        <td class="p-2">${c.fantasia || c.razaoSocial}</td>
+                        ${c.totalFaturamento !== undefined ? `<td class="p-2 text-right">${c.totalFaturamento.toLocaleString('pt-BR', {style:'currency', currency: 'BRL'})}</td>` : ''}
+                        <td class="p-2">${c.cidade}</td>
+                        <td class="p-2">${c.bairro}</td>
+                        ${c.ultimaCompra ? `<td class="p-2 text-center">${new Date(c.ultimaCompra).toLocaleDateString('pt-BR')}</td>` : ''}
+                        <td class="p-2">${c.rca1 || '-'}</td>
+                    </tr>
+                `).join('');
+            } else {
+                body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>';
+            }
+        };
 
-        // Render Pagination UI
+        renderTable('city-active-detail-table-body', data.active_clients);
+        renderTable('city-inactive-detail-table-body', data.inactive_clients);
+
         renderCityPaginationControls();
-
-        // Update Inactive Table
-        const inactiveTableBody = document.getElementById('city-inactive-detail-table-body');
-        if (data.inactive_clients && data.inactive_clients.length > 0) {
-            inactiveTableBody.innerHTML = data.inactive_clients.map(c => `
-                <tr class="table-row">
-                    <td class="p-2">${c['Código']}</td>
-                    <td class="p-2">${c.fantasia || c.razaoSocial}</td>
-                    <td class="p-2">${c.cidade}</td>
-                    <td class="p-2">${c.bairro}</td>
-                    <td class="p-2 text-center">${c.ultimaCompra ? new Date(c.ultimaCompra).toLocaleDateString('pt-BR') : '-'}</td>
-                    <td class="p-2">${c.rca1 || '-'}</td>
-                    <td class="p-2">${c.rca2 || '-'}</td>
-                </tr>
-            `).join('');
-        } else {
-            inactiveTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>';
-        }
-
         renderCityInactivePaginationControls();
     }
 
     function renderCityPaginationControls() {
-        const containerId = 'city-pagination-container';
-        let container = document.getElementById(containerId);
-        
-        // Ensure container exists
-        if (!container) {
-            const tableContainer = document.getElementById('city-active-detail-table-body').parentElement.parentElement;
-            container = document.createElement('div');
-            container.id = containerId;
-            container.className = 'flex justify-between items-center mt-4 px-4';
-            tableContainer.appendChild(container);
-        }
-
+        const container = document.getElementById('city-pagination-container');
         const totalPages = Math.ceil(totalActiveClients / cityPageSize);
         const startItem = (currentCityPage * cityPageSize) + 1;
         const endItem = Math.min((currentCityPage + 1) * cityPageSize, totalActiveClients);
 
         container.innerHTML = `
-            <div class="text-sm text-slate-400">
-                Mostrando ${totalActiveClients > 0 ? startItem : 0} a ${endItem} de ${totalActiveClients} clientes
-            </div>
-            <div class="flex gap-2">
-                <button id="city-prev-btn" class="px-3 py-1 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed" ${currentCityPage === 0 ? 'disabled' : ''}>Anterior</button>
-                <span class="px-2 py-1 text-slate-300">Pág. ${currentCityPage + 1} de ${totalPages || 1}</span>
-                <button id="city-next-btn" class="px-3 py-1 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed" ${currentCityPage >= totalPages - 1 ? 'disabled' : ''}>Próxima</button>
+            <div class="flex justify-between items-center mt-4 px-4 text-sm text-slate-400">
+                <div>Mostrando ${totalActiveClients > 0 ? startItem : 0} a ${endItem} de ${totalActiveClients}</div>
+                <div class="flex gap-2">
+                    <button id="city-prev-btn" class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50" ${currentCityPage === 0 ? 'disabled' : ''}>Anterior</button>
+                    <span>${currentCityPage + 1} / ${totalPages || 1}</span>
+                    <button id="city-next-btn" class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50" ${currentCityPage >= totalPages - 1 ? 'disabled' : ''}>Próxima</button>
+                </div>
             </div>
         `;
-
-        document.getElementById('city-prev-btn').addEventListener('click', () => {
-            if (currentCityPage > 0) {
-                currentCityPage--;
-                loadCityView();
-            }
-        });
-
-        document.getElementById('city-next-btn').addEventListener('click', () => {
-            if (currentCityPage < totalPages - 1) {
-                currentCityPage++;
-                loadCityView();
-            }
-        });
+        document.getElementById('city-prev-btn')?.addEventListener('click', () => { if(currentCityPage > 0) { currentCityPage--; loadCityView(); }});
+        document.getElementById('city-next-btn')?.addEventListener('click', () => { if(currentCityPage < totalPages-1) { currentCityPage++; loadCityView(); }});
     }
 
     function renderCityInactivePaginationControls() {
-        const containerId = 'city-inactive-pagination-container';
-        let container = document.getElementById(containerId);
-        
-        // Ensure container exists
-        if (!container) {
-            const tableContainer = document.getElementById('city-inactive-detail-table-body').parentElement.parentElement;
-            container = document.createElement('div');
-            container.id = containerId;
-            container.className = 'flex justify-between items-center mt-4 px-4';
-            tableContainer.appendChild(container);
-        }
-
+        const container = document.getElementById('city-inactive-pagination-container');
         const totalPages = Math.ceil(totalInactiveClients / cityInactivePageSize);
         const startItem = (currentCityInactivePage * cityInactivePageSize) + 1;
         const endItem = Math.min((currentCityInactivePage + 1) * cityInactivePageSize, totalInactiveClients);
 
         container.innerHTML = `
-            <div class="text-sm text-slate-400">
-                Mostrando ${totalInactiveClients > 0 ? startItem : 0} a ${endItem} de ${totalInactiveClients} clientes
-            </div>
-            <div class="flex gap-2">
-                <button id="city-inactive-prev-btn" class="px-3 py-1 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed" ${currentCityInactivePage === 0 ? 'disabled' : ''}>Anterior</button>
-                <span class="px-2 py-1 text-slate-300">Pág. ${currentCityInactivePage + 1} de ${totalPages || 1}</span>
-                <button id="city-inactive-next-btn" class="px-3 py-1 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed" ${currentCityInactivePage >= totalPages - 1 ? 'disabled' : ''}>Próxima</button>
+            <div class="flex justify-between items-center mt-4 px-4 text-sm text-slate-400">
+                <div>Mostrando ${totalInactiveClients > 0 ? startItem : 0} a ${endItem} de ${totalInactiveClients}</div>
+                <div class="flex gap-2">
+                    <button id="city-inactive-prev-btn" class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50" ${currentCityInactivePage === 0 ? 'disabled' : ''}>Anterior</button>
+                    <span>${currentCityInactivePage + 1} / ${totalPages || 1}</span>
+                    <button id="city-inactive-next-btn" class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50" ${currentCityInactivePage >= totalPages - 1 ? 'disabled' : ''}>Próxima</button>
+                </div>
             </div>
         `;
-
-        document.getElementById('city-inactive-prev-btn').addEventListener('click', () => {
-            if (currentCityInactivePage > 0) {
-                currentCityInactivePage--;
-                loadCityView();
-            }
-        });
-
-        document.getElementById('city-inactive-next-btn').addEventListener('click', () => {
-            if (currentCityInactivePage < totalPages - 1) {
-                currentCityInactivePage++;
-                loadCityView();
-            }
-        });
+        document.getElementById('city-inactive-prev-btn')?.addEventListener('click', () => { if(currentCityInactivePage > 0) { currentCityInactivePage--; loadCityView(); }});
+        document.getElementById('city-inactive-next-btn')?.addEventListener('click', () => { if(currentCityInactivePage < totalPages-1) { currentCityInactivePage++; loadCityView(); }});
     }
 
-});
+    // --- Calendar Logic ---
+    function renderCalendar() {
+        const calendarContainer = document.getElementById('mini-calendar');
+        if (!calendarContainer) return;
 
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        
+        const daysInMonth = lastDay.getDate();
+        const startingDay = firstDay.getDay(); // 0 = Sunday
+
+        const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+        let html = `<div class="mb-2 font-bold text-slate-300">${monthNames[month]} ${year}</div>`;
+        html += `<div class="grid grid-cols-7 gap-1 text-center">`;
+        
+        const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+        weekDays.forEach(day => html += `<div class="calendar-day header">${day}</div>`);
+
+        // Empty cells for starting day
+        for (let i = 0; i < startingDay; i++) {
+            html += `<div></div>`;
+        }
+
+        // Days
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const isHoliday = holidays.includes(dateStr);
+            const isToday = day === now.getDate();
+            
+            let classes = 'calendar-day';
+            if (isHoliday) classes += ' selected';
+            if (isToday) classes += ' today';
+            
+            html += `<div class="${classes}" data-date="${dateStr}">${day}</div>`;
+        }
+        
+        html += `</div>`;
+        calendarContainer.innerHTML = html;
+
+        // Add Click Listeners
+        calendarContainer.querySelectorAll('.calendar-day[data-date]').forEach(el => {
+            el.addEventListener('click', async () => {
+                if (window.userRole !== 'adm') return;
+                const date = el.getAttribute('data-date');
+                // Optimistic UI Update
+                el.classList.toggle('selected');
+                
+                // Call RPC
+                const { data: result, error } = await supabase.rpc('toggle_holiday', { p_date: date });
+                if (error) {
+                    console.error("Error toggling holiday:", error);
+                    el.classList.toggle('selected'); // Revert
+                    alert("Erro ao alterar feriado.");
+                } else {
+                    // Reload Data to update trend
+                    loadMainDashboardData();
+                }
+            });
+        });
+    }
+});
