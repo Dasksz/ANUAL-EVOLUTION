@@ -182,17 +182,24 @@ self.onmessage = async (event) => {
             readFile(productsFile)
         ]);
 
-        self.postMessage({ type: 'progress', status: 'Filtrando vendas Pepsico...', percentage: 15 });
+        self.postMessage({ type: 'progress', status: 'Filtrando vendas Pepsico e linhas inválidas...', percentage: 15 });
         const pepsicoFilter = (sale) => String(sale['OBSERVACAOFOR'] || '').trim().toUpperCase() === 'PEPSICO';
+        // Filter out rows where MUNICIPIO is empty/null (Stock pages/Invalid rows)
+        const validRowFilter = (sale) => {
+            const municipio = sale['MUNICIPIO'];
+            return municipio && String(municipio).trim() !== '';
+        };
 
-        salesPrevYearDataRaw = salesPrevYearDataRaw.filter(pepsicoFilter);
-        salesCurrYearHistDataRaw = salesCurrYearHistDataRaw.filter(pepsicoFilter);
-        salesCurrMonthDataRaw = salesCurrMonthDataRaw.filter(pepsicoFilter);
+        const combinedFilter = (sale) => pepsicoFilter(sale) && validRowFilter(sale);
+
+        salesPrevYearDataRaw = salesPrevYearDataRaw.filter(combinedFilter);
+        salesCurrYearHistDataRaw = salesCurrYearHistDataRaw.filter(combinedFilter);
+        salesCurrMonthDataRaw = salesCurrMonthDataRaw.filter(combinedFilter);
 
         // --- IBGE Code Resolution ---
         self.postMessage({ type: 'progress', status: 'Verificando códigos IBGE...', percentage: 18 });
         
-        // Collect all potential codes from sales and clients
+        // Collect all potential codes from sales only (Clients city ignored)
         const potentialCodes = new Set();
         
         const collectCodes = (row, field) => {
@@ -201,7 +208,7 @@ self.onmessage = async (event) => {
         };
 
         [...salesPrevYearDataRaw, ...salesCurrYearHistDataRaw, ...salesCurrMonthDataRaw].forEach(r => collectCodes(r, 'MUNICIPIO'));
-        clientsDataRaw.forEach(r => collectCodes(r, 'Nome da Cidade'));
+        // Removed client code collection
 
         let ibgeMap = {};
         if (potentialCodes.size > 0) {
@@ -224,8 +231,22 @@ self.onmessage = async (event) => {
             salesPrevYearDataRaw.forEach(r => replaceIbgeCode(r, 'MUNICIPIO'));
             salesCurrYearHistDataRaw.forEach(r => replaceIbgeCode(r, 'MUNICIPIO'));
             salesCurrMonthDataRaw.forEach(r => replaceIbgeCode(r, 'MUNICIPIO'));
-            clientsDataRaw.forEach(r => replaceIbgeCode(r, 'Nome da Cidade'));
+            // Removed client code replacement
         }
+
+        // --- Create Sales City Map ---
+        self.postMessage({ type: 'progress', status: 'Mapeando cidades pelas vendas...', percentage: 19.5 });
+        const salesCityMap = new Map();
+
+        // Iterate all sales to build map: CODCLI -> MUNICIPIO
+        // Use sequential order: PrevYear -> CurrHist -> CurrMonth so latest wins if diff
+        [...salesPrevYearDataRaw, ...salesCurrYearHistDataRaw, ...salesCurrMonthDataRaw].forEach(row => {
+            const codCli = String(row['CODCLI'] || '').trim();
+            const municipio = String(row['MUNICIPIO'] || '').trim().toUpperCase();
+            if (codCli && municipio) {
+                salesCityMap.set(codCli, municipio);
+            }
+        });
 
         // Process Clients
         self.postMessage({ type: 'progress', status: 'Processando clientes...', percentage: 20 });
@@ -241,11 +262,15 @@ self.onmessage = async (event) => {
             const ultimaCompraRaw = client['Data da Última Compra'];
             const ultimaCompra = parseDate(ultimaCompraRaw);
 
+            // Use city from sales map
+            const salesCity = salesCityMap.get(codCli);
+            const finalCity = salesCity || 'N/A';
+
             const clientData = {
                 codigo_cliente: codCli,
                 rca1: rca1,
                 // rca2: rca2, -- Removed
-                cidade: String(client['Nome da Cidade'] || 'N/A'),
+                cidade: finalCity, // Was: String(client['Nome da Cidade'] || 'N/A'),
                 nomecliente: String(client['Fantasia'] || client['Cliente'] || 'N/A'),
                 bairro: String(client['Bairro'] || 'N/A'),
                 razaosocial: String(client['Cliente'] || 'N/A'),
