@@ -653,7 +653,7 @@ END;
 $$;
 
 -- Function: Get City View (Keeping as is, it's generally fine, but could be optimized to use summary if needed. 
--- For now, relying on the new composite indexes on data tables)
+-- Function: Get City View (Paginated for both Active and Inactive)
 CREATE OR REPLACE FUNCTION get_city_view_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -664,7 +664,9 @@ CREATE OR REPLACE FUNCTION get_city_view_data(
     p_mes text default null,
     p_tipovenda text[] default null,
     p_page int default 0,
-    p_limit int default 50
+    p_limit int default 50,
+    p_inactive_page int default 0,
+    p_inactive_limit int default 50
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -678,6 +680,7 @@ DECLARE
     v_active_clients json;
     v_inactive_clients json;
     v_total_active_count int;
+    v_total_inactive_count int;
 BEGIN
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
          SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
@@ -717,29 +720,43 @@ BEGIN
     INTO v_total_active_count, v_active_clients
     FROM paginated_clients pc;
 
-    -- Inactive Clients (Optimized using Summary table for existence check)
-    -- This is still heavy as it scans data_clients, but avoiding data_detailed scan is a win.
-    SELECT json_agg(
-        json_build_object('Código', c.codigo_cliente, 'fantasia', c.fantasia, 'razaoSocial', c.razaosocial, 'cidade', c.cidade, 'bairro', c.bairro, 'ultimaCompra', c.ultimacompra, 'rca1', c.rca1, 'rca2', c.rca2) 
-        ORDER BY c.ultimacompra DESC NULLS LAST
-    ) INTO v_inactive_clients
-    FROM public.data_clients c
-    WHERE c.bloqueio != 'S'
-      AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR c.cidade = ANY(p_cidade))
-      AND NOT EXISTS (
-          SELECT 1 FROM public.data_summary s2
-          WHERE s2.codcli = c.codigo_cliente
-            AND s2.ano = v_current_year
-            AND (p_mes IS NULL OR p_mes = '' OR p_mes = 'todos' OR s2.mes = (p_mes::int + 1))
-            AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR s2.filial = ANY(p_filial))
-            AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR s2.cidade = ANY(p_cidade))
-            AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR s2.superv = ANY(p_supervisor))
-            AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR s2.nome = ANY(p_vendedor))
-            AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR s2.codfor = ANY(p_fornecedor))
-            AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR s2.tipovenda = ANY(p_tipovenda))
-      );
+    -- Inactive Clients (Paginated)
+    WITH inactive_cte AS (
+        SELECT c.codigo_cliente, c.fantasia, c.razaosocial, c.cidade, c.bairro, c.ultimacompra, c.rca1, c.rca2
+        FROM public.data_clients c
+        WHERE c.bloqueio != 'S'
+          AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR c.cidade = ANY(p_cidade))
+          AND NOT EXISTS (
+              SELECT 1 FROM public.data_summary s2
+              WHERE s2.codcli = c.codigo_cliente
+                AND s2.ano = v_current_year
+                AND (p_mes IS NULL OR p_mes = '' OR p_mes = 'todos' OR s2.mes = (p_mes::int + 1))
+                AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR s2.filial = ANY(p_filial))
+                AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR s2.cidade = ANY(p_cidade))
+                AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR s2.superv = ANY(p_supervisor))
+                AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR s2.nome = ANY(p_vendedor))
+                AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR s2.codfor = ANY(p_fornecedor))
+                AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR s2.tipovenda = ANY(p_tipovenda))
+          )
+    ),
+    count_inactive AS (SELECT COUNT(*) as cnt FROM inactive_cte),
+    paginated_inactive AS (
+        SELECT * FROM inactive_cte
+        ORDER BY ultimacompra DESC NULLS LAST
+        LIMIT p_inactive_limit OFFSET (p_inactive_page * p_inactive_limit)
+    )
+    SELECT (SELECT cnt FROM count_inactive), json_agg(
+        json_build_object('Código', pi.codigo_cliente, 'fantasia', pi.fantasia, 'razaoSocial', pi.razaosocial, 'cidade', pi.cidade, 'bairro', pi.bairro, 'ultimaCompra', pi.ultimacompra, 'rca1', pi.rca1, 'rca2', pi.rca2)
+        ORDER BY pi.ultimacompra DESC NULLS LAST
+    ) INTO v_total_inactive_count, v_inactive_clients
+    FROM paginated_inactive pi;
 
-    v_result := json_build_object('active_clients', COALESCE(v_active_clients, '[]'::json), 'total_active_count', COALESCE(v_total_active_count, 0), 'inactive_clients', COALESCE(v_inactive_clients, '[]'::json));
+    v_result := json_build_object(
+        'active_clients', COALESCE(v_active_clients, '[]'::json),
+        'total_active_count', COALESCE(v_total_active_count, 0),
+        'inactive_clients', COALESCE(v_inactive_clients, '[]'::json),
+        'total_inactive_count', COALESCE(v_total_inactive_count, 0)
+    );
     RETURN v_result;
 END;
 $$;
