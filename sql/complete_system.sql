@@ -1,7 +1,7 @@
 
 -- ==============================================================================
--- UNIFIED DATABASE SETUP & MIGRATION SCRIPT
--- Contains: Tables, Optimized Indexes, Summary Tables, RLS Policies, and RPCs
+-- UNIFIED DATABASE SETUP & MIGRATION SCRIPT v2
+-- Contains: Tables, Optimized Indexes, Summary Tables, RLS Policies, Trend Logic, Holidays, Pagination
 -- ==============================================================================
 
 -- Enable UUID extension
@@ -75,12 +75,12 @@ create table if not exists public.data_history (
   created_at timestamp with time zone default now()
 );
 
--- Clients
+-- Clients (Optimized: No RCA2)
 create table if not exists public.data_clients (
   id uuid default uuid_generate_v4 () primary key,
   codigo_cliente text unique,
   rca1 text,
-  rca2 text,
+  -- rca2 text, -- Removed in v2
   cidade text,
   nomecliente text,
   bairro text,
@@ -90,6 +90,20 @@ create table if not exists public.data_clients (
   ultimacompra timestamp with time zone,
   bloqueio text,
   created_at timestamp with time zone default now()
+);
+
+-- Remove RCA 2 Column if it exists (for migration support)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_clients' AND column_name = 'rca2') THEN
+        ALTER TABLE public.data_clients DROP COLUMN rca2;
+    END IF;
+END $$;
+
+-- Holidays Table
+create table if not exists public.data_holidays (
+    date date PRIMARY KEY,
+    description text
 );
 
 -- Profiles
@@ -165,7 +179,6 @@ DROP INDEX IF EXISTS idx_history_dtped_composite;
 DROP INDEX IF EXISTS idx_summary_main;
 
 -- Sales Table Indexes (Covering for KPI Base Clients & General Lookups)
--- Optimized: Removed INCLUDE clauses to save space (approx 50% reduction)
 CREATE INDEX idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, superv, nome, codfor);
 CREATE INDEX idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, superv, nome, codfor);
 
@@ -184,6 +197,11 @@ CREATE INDEX IF NOT EXISTS idx_cache_ano_cidade ON public.cache_filters (ano, ci
 CREATE INDEX IF NOT EXISTS idx_cache_ano_filial ON public.cache_filters (ano, filial);
 CREATE INDEX IF NOT EXISTS idx_cache_ano_tipovenda ON public.cache_filters (ano, tipovenda);
 CREATE INDEX IF NOT EXISTS idx_cache_ano_fornecedor ON public.cache_filters (ano, fornecedor, codfor);
+
+-- Performance Optimization Indexes (v2)
+CREATE INDEX IF NOT EXISTS idx_summary_codcli ON public.data_summary(codcli);
+CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
+CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
 
 -- ==============================================================================
 -- 3. SECURITY & RLS POLICIES
@@ -211,12 +229,13 @@ ALTER TABLE public.data_clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.data_summary ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cache_filters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.data_holidays ENABLE ROW LEVEL SECURITY;
 
 -- Clean up Insecure Policies
 DO $$
 DECLARE t text;
 BEGIN
-    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_clients', 'data_detailed', 'data_history', 'profiles', 'data_summary', 'cache_filters')
+    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_clients', 'data_detailed', 'data_history', 'profiles', 'data_summary', 'cache_filters', 'data_holidays')
     LOOP
         EXECUTE format('DROP POLICY IF EXISTS "Enable access for all users" ON public.%I;', t);
         EXECUTE format('DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.%I;', t);
@@ -226,27 +245,31 @@ END $$;
 -- Define Secure Policies
 
 -- Profiles
--- Consolidated policies to avoid "Multiple Permissive Policies" performance warning
-
--- 1. Select
-DROP POLICY IF EXISTS "Profiles Visibility" ON public.profiles; -- Old name
-DROP POLICY IF EXISTS "Profiles Select" ON public.profiles;     -- New name
+DROP POLICY IF EXISTS "Profiles Visibility" ON public.profiles;
+DROP POLICY IF EXISTS "Profiles Select" ON public.profiles;
 CREATE POLICY "Profiles Select" ON public.profiles FOR SELECT USING ((select auth.uid()) = id OR public.is_admin());
 
--- 2. Insert
-DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles; -- Old name
-DROP POLICY IF EXISTS "Profiles Insert" ON public.profiles;                    -- New name
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Profiles Insert" ON public.profiles;
 CREATE POLICY "Profiles Insert" ON public.profiles FOR INSERT WITH CHECK ((select auth.uid()) = id OR public.is_admin());
 
--- 3. Update
-DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles; -- Old name
-DROP POLICY IF EXISTS "Profiles Update" ON public.profiles;              -- New name
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Profiles Update" ON public.profiles;
 CREATE POLICY "Profiles Update" ON public.profiles FOR UPDATE USING ((select auth.uid()) = id OR public.is_admin()) WITH CHECK ((select auth.uid()) = id OR public.is_admin());
 
--- 4. Delete (Admin only)
-DROP POLICY IF EXISTS "Admin Manage Profiles" ON public.profiles; -- Old name (covered all)
-DROP POLICY IF EXISTS "Profiles Delete" ON public.profiles;       -- New name
+DROP POLICY IF EXISTS "Admin Manage Profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Profiles Delete" ON public.profiles;
 CREATE POLICY "Profiles Delete" ON public.profiles FOR DELETE USING (public.is_admin());
+
+-- Holidays Policies
+DROP POLICY IF EXISTS "Read Access Approved" ON public.data_holidays;
+CREATE POLICY "Read Access Approved" ON public.data_holidays FOR SELECT USING (public.is_approved());
+
+DROP POLICY IF EXISTS "Write Access Admin" ON public.data_holidays;
+CREATE POLICY "Write Access Admin" ON public.data_holidays FOR INSERT WITH CHECK (public.is_admin());
+
+DROP POLICY IF EXISTS "Delete Access Admin" ON public.data_holidays;
+CREATE POLICY "Delete Access Admin" ON public.data_holidays FOR DELETE USING (public.is_admin());
 
 -- Data Tables (Detailed, History, Clients, Summary, Cache)
 DO $$
@@ -379,8 +402,8 @@ BEGIN
 END;
 $$;
 
--- Database Optimization Function (To be called from App)
--- Security Definer required to allow Drop/Create Index operations
+-- Database Optimization Function
+-- Updated to include new performance indexes
 CREATE OR REPLACE FUNCTION optimize_database()
 RETURNS text
 LANGUAGE plpgsql
@@ -388,20 +411,24 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    -- Check if user is admin (redundant with RLS but good for safety)
     IF NOT public.is_admin() THEN
         RETURN 'Acesso negado: Apenas administradores podem otimizar o banco.';
     END IF;
 
-    -- Drop heavy indexes if they exist (old versions with INCLUDE)
+    -- Drop heavy indexes if they exist
     DROP INDEX IF EXISTS public.idx_detailed_dtped_composite;
     DROP INDEX IF EXISTS public.idx_history_dtped_composite;
     DROP INDEX IF EXISTS public.idx_summary_main;
 
-    -- Recreate optimized indexes (without INCLUDE)
+    -- Recreate optimized indexes
     CREATE INDEX idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, superv, nome, codfor);
     CREATE INDEX idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, superv, nome, codfor);
     CREATE INDEX idx_summary_main ON public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda);
+    
+    -- Recreate performance indexes
+    CREATE INDEX IF NOT EXISTS idx_summary_codcli ON public.data_summary(codcli);
+    CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
+    CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
 
     RETURN 'Banco de dados otimizado com sucesso! Índices reconstruídos.';
 EXCEPTION WHEN OTHERS THEN
@@ -409,7 +436,46 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- Get Main Dashboard Data (Using Summary Table)
+-- Toggle Holiday RPC
+CREATE OR REPLACE FUNCTION toggle_holiday(p_date date)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    IF NOT public.is_admin() THEN
+        RETURN 'Acesso negado.';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM public.data_holidays WHERE date = p_date) THEN
+        DELETE FROM public.data_holidays WHERE date = p_date;
+        RETURN 'Feriado removido.';
+    ELSE
+        INSERT INTO public.data_holidays (date, description) VALUES (p_date, 'Feriado Manual');
+        RETURN 'Feriado adicionado.';
+    END IF;
+END;
+$$;
+
+-- Helper: Calculate Working Days
+CREATE OR REPLACE FUNCTION calc_working_days(start_date date, end_date date)
+RETURNS int
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    days int;
+BEGIN
+    SELECT COUNT(*)
+    INTO days
+    FROM generate_series(start_date, end_date, '1 day'::interval) AS d
+    WHERE EXTRACT(ISODOW FROM d) < 6 -- Mon-Fri (1-5)
+      AND d::date NOT IN (SELECT date FROM public.data_holidays);
+    
+    RETURN days;
+END;
+$$;
+
+-- Get Main Dashboard Data (Using Summary Table, with Trend Logic)
 CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -432,6 +498,17 @@ DECLARE
     v_monthly_chart_current json;
     v_monthly_chart_previous json;
     v_result json;
+    
+    -- Trend Vars
+    v_max_sale_date date;
+    v_trend_allowed boolean;
+    v_work_days_passed int;
+    v_work_days_total int;
+    v_trend_factor numeric;
+    v_trend_data json;
+    v_month_start date;
+    v_month_end date;
+    v_holidays json;
 BEGIN
     SET LOCAL statement_timeout = '600s';
 
@@ -446,6 +523,36 @@ BEGIN
         v_target_month := p_mes::int + 1;
     ELSE
          SELECT COALESCE(MAX(mes), 12) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year;
+    END IF;
+
+    -- Trend Calculation Logic
+    SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
+    IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
+
+    v_trend_allowed := (v_current_year = EXTRACT(YEAR FROM v_max_sale_date)::int);
+    
+    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
+       IF (p_mes::int + 1) != EXTRACT(MONTH FROM v_max_sale_date)::int THEN
+           v_trend_allowed := false;
+       END IF;
+    END IF;
+
+    IF v_trend_allowed THEN
+        v_month_start := make_date(v_current_year, EXTRACT(MONTH FROM v_max_sale_date)::int, 1);
+        v_month_end := (v_month_start + interval '1 month' - interval '1 day')::date;
+        
+        IF v_max_sale_date > v_month_end THEN v_max_sale_date := v_month_end; END IF;
+        
+        v_work_days_passed := public.calc_working_days(v_month_start, v_max_sale_date);
+        v_work_days_total := public.calc_working_days(v_month_start, v_month_end);
+        
+        IF v_work_days_passed > 0 AND v_work_days_total > 0 THEN
+            v_trend_factor := v_work_days_total::numeric / v_work_days_passed::numeric;
+        ELSE
+            v_trend_factor := 1;
+        END IF;
+    ELSE
+        v_trend_factor := 0;
     END IF;
 
     WITH filtered_summary AS (
@@ -511,6 +618,22 @@ BEGIN
     FROM agg_data a
     LEFT JOIN monthly_positivation p ON a.ano = p.ano AND a.mes = p.mes;
 
+    IF v_trend_allowed THEN
+        SELECT json_build_object(
+            'month_index', EXTRACT(MONTH FROM v_max_sale_date)::int - 1,
+            'faturamento', (d.faturamento * v_trend_factor),
+            'peso', (d.peso * v_trend_factor),
+            'bonificacao', (d.bonificacao * v_trend_factor),
+            'devolucao', (d.devolucao * v_trend_factor),
+            'positivacao', (COALESCE(p.positivacao_count, 0) * v_trend_factor)::int
+        ) INTO v_trend_data
+        FROM agg_data d
+        LEFT JOIN monthly_positivation p ON d.ano = p.ano AND d.mes = p.mes
+        WHERE d.ano = v_current_year AND d.mes = EXTRACT(MONTH FROM v_max_sale_date)::int;
+    END IF;
+
+    SELECT json_agg(date) INTO v_holidays FROM public.data_holidays;
+
     v_result := json_build_object(
         'current_year', v_current_year,
         'previous_year', v_previous_year,
@@ -518,7 +641,10 @@ BEGIN
         'kpi_clients_attended', COALESCE(v_kpi_clients_attended, 0),
         'kpi_clients_base', COALESCE(v_kpi_clients_base, 0),
         'monthly_data_current', v_monthly_chart_current,
-        'monthly_data_previous', v_monthly_chart_previous
+        'monthly_data_previous', v_monthly_chart_previous,
+        'trend_data', v_trend_data,
+        'trend_allowed', v_trend_allowed,
+        'holidays', COALESCE(v_holidays, '[]'::json)
     );
     RETURN v_result;
 END;
@@ -652,8 +778,7 @@ BEGIN
 END;
 $$;
 
--- Function: Get City View (Keeping as is, it's generally fine, but could be optimized to use summary if needed. 
--- Function: Get City View (Paginated for both Active and Inactive)
+-- Function: Get City View (Paginated for both Active and Inactive, No RCA2)
 CREATE OR REPLACE FUNCTION get_city_view_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -710,19 +835,19 @@ BEGIN
     ),
     count_cte AS (SELECT COUNT(*) as cnt FROM client_totals),
     paginated_clients AS (
-        SELECT ct.codcli, ct.total_fat, c.fantasia, c.razaosocial, c.cidade, c.bairro, c.rca1, c.rca2
+        SELECT ct.codcli, ct.total_fat, c.fantasia, c.razaosocial, c.cidade, c.bairro, c.rca1
         FROM client_totals ct
         JOIN public.data_clients c ON c.codigo_cliente = ct.codcli
         ORDER BY ct.total_fat DESC
         LIMIT p_limit OFFSET (p_page * p_limit)
     )
-    SELECT (SELECT cnt FROM count_cte), json_agg(json_build_object('Código', pc.codcli, 'fantasia', pc.fantasia, 'razaoSocial', pc.razaosocial, 'totalFaturamento', pc.total_fat, 'cidade', pc.cidade, 'bairro', pc.bairro, 'rca1', pc.rca1, 'rca2', pc.rca2) ORDER BY pc.total_fat DESC) 
+    SELECT (SELECT cnt FROM count_cte), json_agg(json_build_object('Código', pc.codcli, 'fantasia', pc.fantasia, 'razaoSocial', pc.razaosocial, 'totalFaturamento', pc.total_fat, 'cidade', pc.cidade, 'bairro', pc.bairro, 'rca1', pc.rca1) ORDER BY pc.total_fat DESC) 
     INTO v_total_active_count, v_active_clients
     FROM paginated_clients pc;
 
     -- Inactive Clients (Paginated)
     WITH inactive_cte AS (
-        SELECT c.codigo_cliente, c.fantasia, c.razaosocial, c.cidade, c.bairro, c.ultimacompra, c.rca1, c.rca2
+        SELECT c.codigo_cliente, c.fantasia, c.razaosocial, c.cidade, c.bairro, c.ultimacompra, c.rca1
         FROM public.data_clients c
         WHERE c.bloqueio != 'S'
           AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR c.cidade = ANY(p_cidade))
@@ -746,7 +871,7 @@ BEGIN
         LIMIT p_inactive_limit OFFSET (p_inactive_page * p_inactive_limit)
     )
     SELECT (SELECT cnt FROM count_inactive), json_agg(
-        json_build_object('Código', pi.codigo_cliente, 'fantasia', pi.fantasia, 'razaoSocial', pi.razaosocial, 'cidade', pi.cidade, 'bairro', pi.bairro, 'ultimaCompra', pi.ultimacompra, 'rca1', pi.rca1, 'rca2', pi.rca2) 
+        json_build_object('Código', pi.codigo_cliente, 'fantasia', pi.fantasia, 'razaoSocial', pi.razaosocial, 'cidade', pi.cidade, 'bairro', pi.bairro, 'ultimaCompra', pi.ultimacompra, 'rca1', pi.rca1) 
         ORDER BY pi.ultimacompra DESC NULLS LAST
     ) INTO v_total_inactive_count, v_inactive_clients
     FROM paginated_inactive pi;
