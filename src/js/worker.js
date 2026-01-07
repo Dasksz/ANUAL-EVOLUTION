@@ -34,6 +34,28 @@ function parseBrazilianNumber(value) {
     return isNaN(number) ? 0 : number;
 }
 
+function isIbgeCode(value) {
+    if (!value) return false;
+    const str = String(value).trim();
+    return /^\d{6,7}$/.test(str);
+}
+
+async function fetchIbgeMapping() {
+    try {
+        const response = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/municipios');
+        if (!response.ok) throw new Error('Falha ao buscar dados do IBGE');
+        const data = await response.json();
+        const map = {};
+        data.forEach(city => {
+            map[String(city.id)] = city.nome.toUpperCase();
+        });
+        return map;
+    } catch (e) {
+        console.warn('Erro API IBGE:', e);
+        return {};
+    }
+}
+
 const readFile = (file) => {
     return new Promise((resolve, reject) => {
         if (!file) {
@@ -184,7 +206,11 @@ self.onmessage = async (event) => {
         let ibgeMap = {};
         if (potentialCodes.size > 0) {
             self.postMessage({ type: 'progress', status: 'Buscando nomes de cidades (IBGE)...', percentage: 19 });
-            ibgeMap = await fetchIbgeMapping();
+            try {
+                ibgeMap = await fetchIbgeMapping();
+            } catch (err) {
+                console.error("Failed to fetch IBGE mapping:", err);
+            }
         }
 
         const replaceIbgeCode = (row, field) => {
