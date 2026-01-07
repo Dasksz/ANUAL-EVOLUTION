@@ -51,7 +51,7 @@ async function fetchIbgeMapping() {
         });
         return map;
     } catch (e) {
-        console.warn('Erro API IBGE:', e);
+        // console.warn('Erro API IBGE:', e);
         return {};
     }
 }
