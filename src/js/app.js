@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusContainer = document.getElementById('status-container');
     const statusText = document.getElementById('status-text');
     const progressBar = document.getElementById('progress-bar');
+    const missingBranchesNotification = document.getElementById('missing-branches-notification');
 
     // --- Auth Logic ---
     const telaLoading = document.getElementById('tela-loading');
@@ -379,16 +380,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    if(generateBtn) generateBtn.addEventListener('click', () => {
+    // --- Config City Branches Logic ---
+    async function fetchCityBranchMap() {
+        const { data, error } = await supabase.from('config_city_branches').select('cidade, filial');
+        if (error) {
+            console.error("Erro ao buscar mapa de cidades:", error);
+            return {};
+        }
+        const map = {};
+        data.forEach(item => {
+            if (item.cidade) map[item.cidade.toUpperCase()] = item.filial;
+        });
+        return map;
+    }
+
+    async function checkMissingBranches() {
+        const { data, error } = await supabase
+            .from('config_city_branches')
+            .select('cidade')
+            .or('filial.is.null,filial.eq.""');
+
+        if (!error && data && data.length > 0) {
+            missingBranchesNotification.classList.remove('hidden');
+        } else {
+            missingBranchesNotification.classList.add('hidden');
+        }
+    }
+
+    if(navUploaderBtn) navUploaderBtn.addEventListener('click', async () => {
+        if (window.userRole !== 'adm') {
+            alert('Acesso negado: Apenas administradores podem acessar o uploader.');
+            return;
+        }
+        uploaderModal.classList.remove('hidden');
+        closeSidebar();
+        checkMissingBranches();
+    });
+
+    if(generateBtn) generateBtn.addEventListener('click', async () => {
         if (!files.salesPrevYearFile || !files.salesCurrYearFile || !files.salesCurrMonthFile || !files.clientsFile || !files.productsFile) return;
 
         generateBtn.disabled = true;
         statusContainer.classList.remove('hidden');
+        statusText.textContent = 'Carregando configurações...';
+        progressBar.style.width = '2%';
+
+        // Fetch current city map
+        const cityBranchMap = await fetchCityBranchMap();
+
         statusText.textContent = 'Processando...';
-        progressBar.style.width = '0%';
 
         const worker = new Worker('src/js/worker.js');
-        worker.postMessage(files);
+        // Pass files AND the city map
+        worker.postMessage({ ...files, cityBranchMap });
 
         worker.onmessage = async (event) => {
             const { type, data, status, percentage, message } = event.data;
@@ -398,7 +442,20 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (type === 'result') {
                 statusText.textContent = 'Upload...';
                 try {
+                    // 1. Insert New Cities if any
+                    if (data.newCities && data.newCities.length > 0) {
+                        statusText.textContent = 'Atualizando Cidades...';
+                        const newCityBatch = data.newCities.map(c => ({ cidade: c, filial: null })); // Insert with null filial
+                        // Use upsert to avoid conflicts if logic overlaps
+                        const { error: cityErr } = await supabase.from('config_city_branches').upsert(newCityBatch, { onConflict: 'cidade', ignoreDuplicates: true });
+                        if (cityErr) console.warn('Erro ao inserir novas cidades:', cityErr);
+                    }
+
                     await enviarDadosParaSupabase(data);
+
+                    // Re-check missing branches after upload
+                    await checkMissingBranches();
+
                     statusText.textContent = 'Sucesso!';
                     progressBar.style.width = '100%';
                     setTimeout(() => {

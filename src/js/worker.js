@@ -148,7 +148,7 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
 
 self.onmessage = async (event) => {
     // Removed credential requirements since worker no longer interacts with Supabase
-    const { salesPrevYearFile, salesCurrYearFile, salesCurrMonthFile, clientsFile, productsFile } = event.data;
+    const { salesPrevYearFile, salesCurrYearFile, salesCurrMonthFile, clientsFile, productsFile, cityBranchMap } = event.data;
 
     try {
         self.postMessage({ type: 'progress', status: 'Lendo arquivos...', percentage: 5 });
@@ -216,36 +216,19 @@ self.onmessage = async (event) => {
         });
 
         // --- Logic for Inactive Clients (City -> Filial -> Supervisor) ---
-        // 1. Build City Predominance Map (City -> Filial) using Curr Year History + Curr Month
-        const cityFilialStats = new Map();
-        const relevantSalesForCity = [...salesCurrYearHistDataRaw, ...salesCurrMonthDataRaw];
+        // 1. Identify New Cities and Use Provided Branch Map
+        const newCitiesSet = new Set();
+        const existingCityMap = cityBranchMap || {}; // Format: { "CITY NAME": "FILIAL" }
 
-        relevantSalesForCity.forEach(row => {
+        // Helper to check and collect new cities
+        const checkCity = (row) => {
             const cidade = String(row['MUNICIPIO'] || '').trim().toUpperCase();
-            let filial = String(row['FILIAL'] || '').trim();
-            if (!cidade || !filial) return;
-            if (filial === '5') filial = '05';
-            if (filial === '8') filial = '08';
-
-            if (!cityFilialStats.has(cidade)) {
-                cityFilialStats.set(cidade, {});
+            if (cidade && !existingCityMap.hasOwnProperty(cidade)) {
+                newCitiesSet.add(cidade);
             }
-            const stats = cityFilialStats.get(cidade);
-            stats[filial] = (stats[filial] || 0) + 1;
-        });
+        };
 
-        const cityPredominantFilialMap = new Map();
-        cityFilialStats.forEach((stats, cidade) => {
-            let maxOrders = -1;
-            let bestFilial = null;
-            Object.keys(stats).forEach(filial => {
-                if (stats[filial] > maxOrders) {
-                    maxOrders = stats[filial];
-                    bestFilial = filial;
-                }
-            });
-            if (bestFilial) cityPredominantFilialMap.set(cidade, bestFilial);
-        });
+        [...salesPrevYearDataRaw, ...salesCurrYearHistDataRaw, ...salesCurrMonthDataRaw].forEach(checkCity);
 
         // 2. Identify Current Supervisor for Branch (Filial -> Supervisor) using Curr Month only
         const branchSupervisorMap = new Map();
@@ -348,13 +331,17 @@ self.onmessage = async (event) => {
 
                 // Prepare City Map Logic (Used for Americanas and Inactives/RCA53)
                 const municipio = String(newSale['MUNICIPIO'] || '').trim().toUpperCase();
-                const predominantFilial = cityPredominantFilialMap.get(municipio);
+
+                // Use the provided map instead of dynamic calculation
+                // If it's a new city (not in map), it won't have a branch yet, so it defaults to null/logic fallback
+                const configuredFilial = existingCityMap[municipio];
+
                 let mapSupervisor = null;
                 let mapFilial = null;
 
-                if (predominantFilial) {
-                    mapSupervisor = branchSupervisorMap.get(predominantFilial);
-                    mapFilial = predominantFilial;
+                if (configuredFilial) {
+                    mapSupervisor = branchSupervisorMap.get(configuredFilial);
+                    mapFilial = configuredFilial;
                 }
 
                 const clientData = clientMap.get(originalCodCli);
@@ -501,7 +488,8 @@ self.onmessage = async (event) => {
         const resultPayload = {
             history: [...finalPrevYear, ...finalCurrYearHist],
             detailed: finalCurrMonth,
-            clients: clientsToInsert
+            clients: clientsToInsert,
+            newCities: Array.from(newCitiesSet)
         };
 
         self.postMessage({ type: 'result', data: resultPayload });
