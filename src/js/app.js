@@ -754,10 +754,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (d.isTrend) color = professionalPalette.trend;
             
             return {
+                ...d,
                 label: d.label,
                 data: d.data,
-                backgroundColor: color,
-                borderColor: color,
+                backgroundColor: d.backgroundColor || color,
+                borderColor: d.borderColor || color,
                 borderWidth: 1,
                 skipNull: true
             };
