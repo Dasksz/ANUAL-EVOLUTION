@@ -12,13 +12,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Sidebar
     const sideMenu = document.getElementById('side-menu');
-    const openSidebarMobileBtn = document.getElementById('open-sidebar-mobile');
-    const closeSidebarMobileBtn = document.getElementById('close-sidebar-mobile');
-    const toggleSidebarDesktopBtn = document.getElementById('toggle-sidebar-desktop');
+    const openSidebarBtn = document.getElementById('open-sidebar-btn'); // Main Header Hamburger
+    // No close button explicit in new design, clicking outside handles it
+    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+
     const navDashboardBtn = document.getElementById('nav-dashboard');
     const navCityAnalysisBtn = document.getElementById('nav-city-analysis');
     const navUploaderBtn = document.getElementById('nav-uploader');
-    const sidebarCalendarContainer = document.getElementById('sidebar-calendar-container');
 
     // Views
     const dashboardContainer = document.getElementById('dashboard-container');
@@ -31,6 +31,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Buttons in Dashboard
     const clearFiltersBtn = document.getElementById('clear-filters-btn');
+    const calendarBtn = document.getElementById('calendar-btn'); // New Calendar Button
+
+    // Calendar Modal Elements
+    const calendarModal = document.getElementById('calendar-modal');
+    const calendarModalBackdrop = document.getElementById('calendar-modal-backdrop');
+    const closeCalendarModalBtn = document.getElementById('close-calendar-modal-btn');
+    const calendarModalContent = document.getElementById('calendar-modal-content');
 
     // Uploader Elements
     const salesPrevYearInput = document.getElementById('sales-prev-year-input');
@@ -249,40 +256,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     checkSession();
 
-    // --- Navigation Logic ---
+    // --- Navigation & Sidebar Logic ---
 
-    // Mobile Toggle
-    function toggleSidebarMobile() {
-        sideMenu.classList.toggle('-translate-x-full');
-    }
-    openSidebarMobileBtn.addEventListener('click', toggleSidebarMobile);
-    closeSidebarMobileBtn.addEventListener('click', toggleSidebarMobile);
-
-    // Desktop Toggle
-    let isSidebarCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
-    if (isSidebarCollapsed) {
-        sideMenu.classList.add('sidebar-collapsed');
-        sidebarCalendarContainer.classList.add('hidden'); // Hide calendar when collapsed
+    function openSidebar() {
+        sideMenu.classList.remove('-translate-x-full');
+        sidebarBackdrop.classList.remove('hidden');
     }
 
-    toggleSidebarDesktopBtn.addEventListener('click', () => {
-        sideMenu.classList.toggle('sidebar-collapsed');
-        isSidebarCollapsed = sideMenu.classList.contains('sidebar-collapsed');
-        localStorage.setItem('sidebar_collapsed', isSidebarCollapsed);
+    function closeSidebar() {
+        sideMenu.classList.add('-translate-x-full');
+        sidebarBackdrop.classList.add('hidden');
+    }
 
-        if (isSidebarCollapsed) {
-            sidebarCalendarContainer.classList.add('hidden');
-        } else {
-            sidebarCalendarContainer.classList.remove('hidden');
-        }
+    openSidebarBtn.addEventListener('click', openSidebar);
+    sidebarBackdrop.addEventListener('click', closeSidebar);
 
-        // Resize charts if needed
-        setTimeout(() => {
-            Object.values(currentCharts).forEach(chart => chart.resize());
-        }, 305);
-    });
-
-    // Nav Links
+    // Nav Links (Close sidebar on click)
     const resetViews = () => {
         dashboardContainer.classList.remove('hidden');
         uploaderModal.classList.add('hidden');
@@ -296,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
         resetViews();
         mainDashboardContent.classList.remove('hidden');
         navDashboardBtn.classList.add('bg-slate-700', 'text-white');
-        if (window.innerWidth < 768) toggleSidebarMobile();
+        closeSidebar();
     });
 
     navCityAnalysisBtn.addEventListener('click', () => {
@@ -304,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cityView.classList.remove('hidden');
         navCityAnalysisBtn.classList.add('bg-slate-700', 'text-white');
         loadCityView();
-        if (window.innerWidth < 768) toggleSidebarMobile();
+        closeSidebar();
     });
 
     navUploaderBtn.addEventListener('click', () => {
@@ -313,7 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         uploaderModal.classList.remove('hidden');
-        if (window.innerWidth < 768) toggleSidebarMobile();
+        closeSidebar();
     });
 
     closeUploaderBtn.addEventListener('click', () => {
@@ -332,6 +321,21 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadFilters(getCurrentFilters());
         loadMainDashboardData();
     });
+
+    // --- Calendar Modal Logic ---
+    function openCalendar() {
+        calendarModal.classList.remove('hidden');
+        renderCalendar();
+    }
+
+    function closeCalendar() {
+        calendarModal.classList.add('hidden');
+    }
+
+    if(calendarBtn) calendarBtn.addEventListener('click', openCalendar);
+    if(closeCalendarModalBtn) closeCalendarModalBtn.addEventListener('click', closeCalendar);
+    if(calendarModalBackdrop) calendarModalBackdrop.addEventListener('click', closeCalendar);
+
 
     // --- Uploader Logic ---
     let files = {};
@@ -649,7 +653,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderDashboard(data) {
         // Init Holidays
         holidays = data.holidays || [];
-        renderCalendar();
+        // Calendar is now rendered on modal open
 
         document.getElementById('kpi-clients-attended').textContent = data.kpi_clients_attended.toLocaleString('pt-BR');
         const baseEl = document.getElementById('kpi-clients-base');
@@ -893,8 +897,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Calendar Logic ---
     function renderCalendar() {
-        const calendarContainer = document.getElementById('mini-calendar');
-        if (!calendarContainer) return;
+        if (!calendarModalContent) return;
 
         const now = new Date();
         const year = now.getFullYear();
@@ -908,7 +911,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
-        let html = `<div class="mb-2 font-bold text-slate-300">${monthNames[month]} ${year}</div>`;
+        let html = `<div class="mb-2 font-bold text-slate-300 text-center">${monthNames[month]} ${year}</div>`;
         html += `<div class="grid grid-cols-7 gap-1 text-center">`;
 
         const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
@@ -933,10 +936,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         html += `</div>`;
-        calendarContainer.innerHTML = html;
+        calendarModalContent.innerHTML = html;
 
         // Add Click Listeners
-        calendarContainer.querySelectorAll('.calendar-day[data-date]').forEach(el => {
+        calendarModalContent.querySelectorAll('.calendar-day[data-date]').forEach(el => {
             el.addEventListener('click', async () => {
                 if (window.userRole !== 'adm') return;
                 const date = el.getAttribute('data-date');
