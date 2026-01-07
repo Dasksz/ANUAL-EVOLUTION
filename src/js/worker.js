@@ -177,14 +177,14 @@ self.onmessage = async (event) => {
             if (!codCli) return;
 
             const rca1 = String(client['RCA 1'] || '');
-            const rca2 = String(client['RCA 2'] || '');
+            // RCA 2 Removed
             const ultimaCompraRaw = client['Data da Última Compra'];
             const ultimaCompra = parseDate(ultimaCompraRaw);
 
             const clientData = {
                 codigo_cliente: codCli,
                 rca1: rca1,
-                rca2: rca2,
+                // rca2: rca2, -- Removed
                 cidade: String(client['Nome da Cidade'] || 'N/A'),
                 nomecliente: String(client['Fantasia'] || client['Cliente'] || 'N/A'),
                 bairro: String(client['Bairro'] || 'N/A'),

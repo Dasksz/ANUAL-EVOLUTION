@@ -40,6 +40,35 @@
         .table-header { background-color: #334155; }
         .table-row:nth-child(even) { background-color: #1e293b; }
         .sticky-header th { position: sticky; top: 0; z-index: 10; background-color: #334155; }
+
+        /* Sidebar transition */
+        #side-menu {
+            transition: width 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+        .sidebar-collapsed {
+            width: 5rem !important; /* 80px */
+        }
+        .sidebar-collapsed .nav-text {
+            display: none;
+        }
+        .sidebar-collapsed .nav-icon {
+            margin-left: 0;
+            margin-right: 0;
+        }
+
+        /* Calendar Styles */
+        .calendar-day {
+            @apply w-8 h-8 flex items-center justify-center rounded cursor-pointer hover:bg-slate-600 text-xs text-slate-300;
+        }
+        .calendar-day.selected {
+            @apply bg-red-600 text-white font-bold;
+        }
+        .calendar-day.today {
+            @apply border border-cyan-500;
+        }
+        .calendar-day.header {
+             @apply font-bold text-slate-500 cursor-default hover:bg-transparent;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -89,7 +118,10 @@
         <!-- Sidebar -->
         <aside id="side-menu" class="w-64 bg-[#1d2347] border-r border-slate-700 flex flex-col transition-transform transform -translate-x-full md:translate-x-0 fixed md:relative z-50 h-full">
             <div class="p-6 border-b border-slate-700 flex justify-between items-center">
-                <span class="text-xl font-bold text-white">Menu</span>
+                <span class="text-xl font-bold text-white nav-text">Menu</span>
+                <button id="toggle-sidebar-desktop" class="hidden md:block text-slate-400 hover:text-white focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
                 <button id="close-sidebar-mobile" class="md:hidden text-slate-400 hover:text-white">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
@@ -98,21 +130,38 @@
             <nav class="flex-1 overflow-y-auto py-4">
                 <ul class="space-y-2 px-4">
                     <li>
-                        <button id="nav-dashboard" class="w-full flex items-center p-2 text-slate-300 rounded-lg hover:bg-slate-700 hover:text-white transition-colors">
-                            <span class="ml-3">Dashboard</span>
+                        <button id="nav-dashboard" class="w-full flex items-center p-2 text-slate-300 rounded-lg hover:bg-slate-700 hover:text-white transition-colors" title="Dashboard">
+                            <svg class="w-6 h-6 nav-icon min-w-[24px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                            <span class="ml-3 nav-text">Dashboard</span>
                         </button>
                     </li>
                     <li>
-                        <button id="nav-uploader" class="w-full flex items-center p-2 text-slate-300 rounded-lg hover:bg-slate-700 hover:text-white transition-colors">
-                            <span class="ml-3">Uploader (Admin)</span>
+                        <button id="nav-city-analysis" class="w-full flex items-center p-2 text-slate-300 rounded-lg hover:bg-slate-700 hover:text-white transition-colors" title="Análise por Cidade">
+                            <svg class="w-6 h-6 nav-icon min-w-[24px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                            <span class="ml-3 nav-text">Análise por Cidade</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button id="nav-uploader" class="w-full flex items-center p-2 text-slate-300 rounded-lg hover:bg-slate-700 hover:text-white transition-colors" title="Uploader">
+                            <svg class="w-6 h-6 nav-icon min-w-[24px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                            <span class="ml-3 nav-text">Uploader (Admin)</span>
                         </button>
                     </li>
                 </ul>
+
+                <!-- Calendar Widget -->
+                <div id="sidebar-calendar-container" class="mt-8 px-4 nav-text">
+                    <div class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Feriados</div>
+                    <div id="mini-calendar" class="bg-slate-800 rounded p-2 text-center shadow-lg border border-slate-700">
+                        <!-- Calendar Rendered by JS -->
+                    </div>
+                </div>
             </nav>
 
             <div class="p-4 border-t border-slate-700">
-                <button id="logout-btn" class="w-full flex items-center p-2 text-slate-400 rounded-lg hover:bg-red-900/20 hover:text-red-400 transition-colors">
-                    <span class="ml-3">Sair</span>
+                <button id="logout-btn" class="w-full flex items-center p-2 text-slate-400 rounded-lg hover:bg-red-900/20 hover:text-red-400 transition-colors" title="Sair">
+                    <svg class="w-6 h-6 nav-icon min-w-[24px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    <span class="ml-3 nav-text">Sair</span>
                 </button>
             </div>
         </aside>
@@ -209,8 +258,8 @@
                     </div>
 
                     <div class="flex gap-4 mb-4">
-                        <button id="clear-filters-btn" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg transition-colors">Limpar Filtros</button>
-                        <button id="show-city-btn" class="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Análise por Cidade</button>
+                        <button id="clear-filters-btn" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full md:w-auto">Limpar Filtros</button>
+                        <!-- Button "Análise por Cidade" removed from here -->
                     </div>
 
                     <!-- Main Dashboard Content -->
@@ -256,19 +305,21 @@
                     <div id="city-view" class="hidden">
                         <div class="flex justify-between items-center mb-6">
                             <h2 class="text-2xl font-bold text-white">Análise de Vendas por Cidade</h2>
-                            <button id="back-to-main-btn" class="bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-4 rounded-lg">Voltar</button>
+                            <!-- Back Button Removed -->
                         </div>
                          <div class="bg-[#1d2347] p-4 rounded-lg mt-6 border border-slate-700">
                             <h3 class="text-lg font-semibold text-white mb-4 px-4">Clientes Ativos (Selecionado)</h3>
                             <div class="overflow-x-auto" style="max-height: 40vh;">
-                                <table class="min-w-full text-sm text-left text-slate-300"><thead class="text-xs text-slate-300 uppercase sticky-header"><tr><th class="px-4 py-3">Código</th><th class="px-4 py-3">Nome Fantasia</th><th class="px-4 py-3 text-right">Faturamento</th><th class="px-4 py-3">Cidade</th><th class="px-4 py-3">Bairro</th><th class="px-4 py-3">RCA 1</th><th class="px-4 py-3">RCA 2</th></tr></thead><tbody id="city-active-detail-table-body" class="divide-y divide-slate-700"></tbody></table>
+                                <table class="min-w-full text-sm text-left text-slate-300"><thead class="text-xs text-slate-300 uppercase sticky-header"><tr><th class="px-4 py-3">Código</th><th class="px-4 py-3">Nome Fantasia</th><th class="px-4 py-3 text-right">Faturamento</th><th class="px-4 py-3">Cidade</th><th class="px-4 py-3">Bairro</th><th class="px-4 py-3">RCA 1</th></tr></thead><tbody id="city-active-detail-table-body" class="divide-y divide-slate-700"></tbody></table>
                             </div>
+                            <div id="city-pagination-container"></div>
                          </div>
                          <div class="bg-[#1d2347] p-4 rounded-lg mt-6 border border-slate-700">
                             <h3 class="text-lg font-semibold text-white mb-4 px-4">Clientes S/ Vendas (Selecionado)</h3>
                             <div class="overflow-x-auto" style="max-height: 40vh;">
-                                <table class="min-w-full text-sm text-left text-slate-300"><thead class="text-xs text-slate-300 uppercase sticky-header"><tr><th class="px-4 py-3">Código</th><th class="px-4 py-3">Nome Fantasia</th><th class="px-4 py-3">Cidade</th><th class="px-4 py-3">Bairro</th><th class="px-4 py-3 text-center">Última Compra</th><th class="px-4 py-3">RCA 1</th><th class="px-4 py-3">RCA 2</th></tr></thead><tbody id="city-inactive-detail-table-body" class="divide-y divide-slate-700"></tbody></table>
+                                <table class="min-w-full text-sm text-left text-slate-300"><thead class="text-xs text-slate-300 uppercase sticky-header"><tr><th class="px-4 py-3">Código</th><th class="px-4 py-3">Nome Fantasia</th><th class="px-4 py-3">Cidade</th><th class="px-4 py-3">Bairro</th><th class="px-4 py-3 text-center">Última Compra</th><th class="px-4 py-3">RCA 1</th></tr></thead><tbody id="city-inactive-detail-table-body" class="divide-y divide-slate-700"></tbody></table>
                             </div>
+                            <div id="city-inactive-pagination-container"></div>
                          </div>
                     </div>
                 </div>
