@@ -316,9 +316,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Dashboard Internal Navigation ---
     clearFiltersBtn.addEventListener('click', async () => {
-        anoFilter.innerHTML = '<option value="todos">Todos</option>';
+        // Reset Single Selects
         anoFilter.value = 'todos';
         mesFilter.value = '';
+
+        // Reset Multi Select Arrays
+        selectedFiliais = [];
+        selectedCidades = [];
+        selectedSupervisores = [];
+        selectedVendedores = [];
+        selectedFornecedores = [];
+        selectedTiposVenda = [];
+
+        // Note: loadFilters will re-render the dropdowns with checked status based on these empty arrays,
+        // effectively clearing the checkboxes visually.
+        
         await loadFilters(getCurrentFilters());
         loadMainDashboardData();
     });
@@ -399,7 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .from('config_city_branches')
             .select('cidade')
             .or('filial.is.null,filial.eq.""');
-
+        
         if (!error && data && data.length > 0) {
             missingBranchesNotification.classList.remove('hidden');
         } else {
@@ -429,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cityBranchMap = await fetchCityBranchMap();
 
         statusText.textContent = 'Processando...';
-
+        
         const worker = new Worker('src/js/worker.js');
         // Pass files AND the city map
         worker.postMessage({ ...files, cityBranchMap });
@@ -452,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     await enviarDadosParaSupabase(data);
-
+                    
                     // Re-check missing branches after upload
                     await checkMissingBranches();
 
