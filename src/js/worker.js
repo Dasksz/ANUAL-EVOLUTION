@@ -329,13 +329,16 @@ self.onmessage = async (event) => {
                     newSale['CODUSUR'] = 'BALCAO_SP'; newSale['NOME'] = 'BALCAO'; newSale['SUPERV'] = 'BALCAO'; return newSale;
                 }
 
-                // Prepare City Map Logic (Used for Americanas and Inactives/RCA53)
+                // Prepare City Map Logic (Universal Override)
                 const municipio = String(newSale['MUNICIPIO'] || '').trim().toUpperCase();
 
-                // Use the provided map instead of dynamic calculation
-                // If it's a new city (not in map), it won't have a branch yet, so it defaults to null/logic fallback
+                // Global Branch Override based on City Table
                 const configuredFilial = existingCityMap[municipio];
+                if (configuredFilial) {
+                    newSale['FILIAL'] = configuredFilial;
+                }
 
+                // Prepare Supervisor Map for Inactives/Branch Changes
                 let mapSupervisor = null;
                 let mapFilial = null;
 
@@ -413,28 +416,8 @@ self.onmessage = async (event) => {
         const processedCurrYearHist = processSalesData(reattributedCurrYearHist, clientMap, productMasterMap);
         const processedCurrMonth = processSalesData(reattributedCurrMonth, clientMap, productMasterMap);
 
-        // --- Final Processing (Bonification + Branch Override + Tiago Rule) ---
-        // Pre-calculation for Branch Override
-        // Note: Branch override depends on the entire dataset state, so we must calculate the map first.
-        // We use 'processed*' arrays for this map calculation to ensure we have the correct filial/client info.
-        
-        const allProcessedSales = [...processedPrevYear, ...processedCurrYearHist, ...processedCurrMonth];
-        const clientLastBranch = new Map();
-        const clientsWith05Purchase = new Set();
-        
-        allProcessedSales.forEach(sale => {
-            if (sale.codcli && sale.filial) {
-                clientLastBranch.set(sale.codcli, sale.filial);
-                if (sale.filial === '05') clientsWith05Purchase.add(sale.codcli);
-            }
-        });
-        
-        const clientBranchOverride = new Map();
-        clientsWith05Purchase.forEach(codCli => {
-            if (clientLastBranch.get(codCli) === '08') clientBranchOverride.set(codCli, '08');
-        });
-
-        const tiagoSellersToMoveTo08 = new Set(['291', '292', '293', '284', '289', '287', '286']);
+        // --- Final Processing (Bonification Only) ---
+        // Note: Branch Override and Tiago Rule removed as City Map now dictates branch assignment.
 
         const finalizeSalesData = (salesArray, isHistory = false) => {
              return salesArray.map(sale => {
@@ -447,18 +430,7 @@ self.onmessage = async (event) => {
                     newSale.vlvenda = 0;
                 }
 
-                // 2. Branch Override Logic
-                const override = clientBranchOverride.get(newSale.codcli);
-                if (override && newSale.filial === '05') {
-                    newSale.filial = override;
-                }
-
-                // 3. Tiago Rule
-                if (newSale.codsupervisor === '12' && tiagoSellersToMoveTo08.has(newSale.codusur)) {
-                    newSale.filial = '08';
-                }
-
-                // 4. Data Optimization (Strip unused fields for History)
+                // 2. Data Optimization (Strip unused fields for History)
                 // This reduces JSON payload size and potentially DB size if columns are nullable/dropped
                 if (isHistory) {
                     delete newSale.pedido;
