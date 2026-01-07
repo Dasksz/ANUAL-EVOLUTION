@@ -603,6 +603,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const cityPageSize = 50;
     let totalActiveClients = 0;
 
+    let currentCityInactivePage = 0;
+    const cityInactivePageSize = 50;
+    let totalInactiveClients = 0;
+
     let selectedFiliais = [];
     let selectedCidades = [];
     let selectedSupervisores = [];
@@ -835,6 +839,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 3. Reload City View if visible (Resetting Page)
             if (!cityView.classList.contains('hidden')) {
                 currentCityPage = 0;
+                currentCityInactivePage = 0;
                 await loadCityView();
             }
         }, 500);
@@ -1065,11 +1070,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Add pagination params
         filters.p_page = currentCityPage;
         filters.p_limit = cityPageSize;
+        filters.p_inactive_page = currentCityInactivePage;
+        filters.p_inactive_limit = cityInactivePageSize;
 
         const { data, error } = await supabase.rpc('get_city_view_data', filters);
         if(error) { console.error(error); return; }
 
         totalActiveClients = data.total_active_count || 0;
+        totalInactiveClients = data.total_inactive_count || 0;
 
         // Update Active Table
         const activeTableBody = document.getElementById('city-active-detail-table-body');
@@ -1092,7 +1100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Render Pagination UI
         renderCityPaginationControls();
 
-        // Update Inactive Table (No pagination implemented yet per request, but good to handle empty state)
+        // Update Inactive Table
         const inactiveTableBody = document.getElementById('city-inactive-detail-table-body');
         if (data.inactive_clients && data.inactive_clients.length > 0) {
             inactiveTableBody.innerHTML = data.inactive_clients.map(c => `
@@ -1109,6 +1117,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             inactiveTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>';
         }
+
+        renderCityInactivePaginationControls();
     }
 
     function renderCityPaginationControls() {
@@ -1149,6 +1159,49 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('city-next-btn').addEventListener('click', () => {
             if (currentCityPage < totalPages - 1) {
                 currentCityPage++;
+                loadCityView();
+            }
+        });
+    }
+
+    function renderCityInactivePaginationControls() {
+        const containerId = 'city-inactive-pagination-container';
+        let container = document.getElementById(containerId);
+        
+        // Ensure container exists
+        if (!container) {
+            const tableContainer = document.getElementById('city-inactive-detail-table-body').parentElement.parentElement;
+            container = document.createElement('div');
+            container.id = containerId;
+            container.className = 'flex justify-between items-center mt-4 px-4';
+            tableContainer.appendChild(container);
+        }
+
+        const totalPages = Math.ceil(totalInactiveClients / cityInactivePageSize);
+        const startItem = (currentCityInactivePage * cityInactivePageSize) + 1;
+        const endItem = Math.min((currentCityInactivePage + 1) * cityInactivePageSize, totalInactiveClients);
+
+        container.innerHTML = `
+            <div class="text-sm text-slate-400">
+                Mostrando ${totalInactiveClients > 0 ? startItem : 0} a ${endItem} de ${totalInactiveClients} clientes
+            </div>
+            <div class="flex gap-2">
+                <button id="city-inactive-prev-btn" class="px-3 py-1 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed" ${currentCityInactivePage === 0 ? 'disabled' : ''}>Anterior</button>
+                <span class="px-2 py-1 text-slate-300">Pág. ${currentCityInactivePage + 1} de ${totalPages || 1}</span>
+                <button id="city-inactive-next-btn" class="px-3 py-1 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed" ${currentCityInactivePage >= totalPages - 1 ? 'disabled' : ''}>Próxima</button>
+            </div>
+        `;
+
+        document.getElementById('city-inactive-prev-btn').addEventListener('click', () => {
+            if (currentCityInactivePage > 0) {
+                currentCityInactivePage--;
+                loadCityView();
+            }
+        });
+
+        document.getElementById('city-inactive-next-btn').addEventListener('click', () => {
+            if (currentCityInactivePage < totalPages - 1) {
+                currentCityInactivePage++;
                 loadCityView();
             }
         });
