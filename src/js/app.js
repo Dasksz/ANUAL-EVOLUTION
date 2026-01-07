@@ -699,15 +699,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // Chart Data Prep
         const mapTo12 = (arr) => { const res = new Array(12).fill(0); arr.forEach(d => res[d.month_index] = d.faturamento); return res; };
         
-        const datasets = [
-            { label: `Ano ${data.previous_year}`, data: mapTo12(previousData) },
-            { label: `Ano ${data.current_year}`, data: mapTo12(currentData) }
-        ];
+        const datasets = [];
+
+        // Only show previous year if "Todos" is selected (Default View)
+        if (anoFilter.value === 'todos') {
+            datasets.push({ label: `Ano ${data.previous_year}`, data: mapTo12(previousData), isPrevious: true });
+        }
+
+        datasets.push({ label: `Ano ${data.current_year}`, data: mapTo12(currentData), isCurrent: true });
 
         // Trend Logic (Chart)
         if (data.trend_allowed && data.trend_data) {
-            const trendArray = new Array(12).fill(null);
-            trendArray[data.trend_data.month_index] = data.trend_data.faturamento;
+            const trendArray = new Array(13).fill(null); // Increased to 13 to separate trend
+            // Pad previous datasets to 13
+            datasets.forEach(ds => ds.data.push(null));
+            
+            trendArray[12] = data.trend_data.faturamento; // Use 13th slot
+            
             datasets.push({ 
                 label: `Tendência ${monthNames[data.trend_data.month_index]}`, 
                 data: trendArray,
@@ -715,7 +723,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        createChart('main-chart', 'bar', monthNames, datasets);
+        const chartLabels = [...monthNames];
+        if (data.trend_allowed) chartLabels.push('Tendência');
+
+        createChart('main-chart', 'bar', chartLabels, datasets);
         updateTable(currentData, previousData, data.current_year, data.previous_year, data.trend_allowed ? data.trend_data : null);
     }
 
@@ -737,9 +748,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const professionalPalette = { 'current': '#06b6d4', 'previous': '#f97316', 'trend': '#8b5cf6' };
 
         const datasets = datasetsData.map((d, i) => {
-            let color = professionalPalette.previous;
-            if (i === 1) color = professionalPalette.current;
+            let color = '#94a3b8'; // default
+            if (d.isPrevious) color = professionalPalette.previous;
+            if (d.isCurrent) color = professionalPalette.current;
             if (d.isTrend) color = professionalPalette.trend;
+            
             return {
                 label: d.label,
                 data: d.data,
@@ -771,8 +784,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 },
                 scales: {
-                    y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
-                    x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+                    y: { 
+                        ticks: { color: '#94a3b8' }, 
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        afterFit: (axis) => { axis.width = 150; } // Force Y-axis width to match table first column
+                    },
+                    x: { 
+                        ticks: { color: '#94a3b8' }, 
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' } 
+                    }
                 }
             },
             plugins: [ChartDataLabels]
@@ -788,7 +808,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let headerHTML = '<th class="px-2 py-2 text-left">INDICADOR</th>';
         monthNames.forEach(m => headerHTML += `<th class="px-2 py-2 text-center">${m}</th>`);
         if (trendData) {
-            headerHTML += `<th class="px-2 py-2 text-center bg-purple-900/30 text-purple-200">Tendência ${monthNames[trendData.month_index]}</th>`;
+            headerHTML += `<th class="px-2 py-2 text-center bg-purple-900/30 text-purple-200">Tendência</th>`;
         }
         tableHead.innerHTML = headerHTML;
 
@@ -941,7 +961,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // Add Click Listeners
         calendarModalContent.querySelectorAll('.calendar-day[data-date]').forEach(el => {
             el.addEventListener('click', async () => {
-                if (window.userRole !== 'adm') return;
+                console.log("Calendar day clicked:", el.getAttribute('data-date'));
+                
+                // Allow click even if role is unknown for debugging, but ideally check permissions
+                if (window.userRole !== 'adm') {
+                    console.warn("User role not adm:", window.userRole);
+                    alert("Apenas administradores podem alterar feriados.");
+                    return;
+                }
+                
                 const date = el.getAttribute('data-date');
                 // Optimistic UI Update
                 el.classList.toggle('selected');
@@ -951,8 +979,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (error) {
                     console.error("Error toggling holiday:", error);
                     el.classList.toggle('selected'); // Revert
-                    alert("Erro ao alterar feriado.");
+                    alert("Erro ao alterar feriado: " + error.message);
                 } else {
+                    console.log("Holiday toggled successfully.");
                     // Reload Data to update trend
                     loadMainDashboardData();
                 }
