@@ -675,12 +675,40 @@ document.addEventListener('DOMContentLoaded', () => {
         const currMonthData = currentData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
         const prevMonthData = previousData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
 
-        const calcEvo = (curr, prev) => prev > 0 ? ((curr / prev) - 1) * 100 : (curr > 0 ? 100 : 0);
-        updateKpi('kpi-evo-vs-ano-fat', calcEvo(currMonthData.faturamento, prevMonthData.faturamento));
-        updateKpi('kpi-evo-vs-ano-kg', calcEvo(currMonthData.peso, prevMonthData.peso));
+        // Helper for Trend Logic
+        const getTrendValue = (key, baseValue) => {
+            if (data.trend_allowed && data.trend_data && data.trend_data.month_index === targetIndex) {
+                return data.trend_data[key] || 0;
+            }
+            return baseValue;
+        };
 
-        // Trimestral
+        const currFat = getTrendValue('faturamento', currMonthData.faturamento);
+        const currKg = getTrendValue('peso', currMonthData.peso);
+
+        // Variation Calc
+        const calcEvo = (curr, prev) => prev > 0 ? ((curr / prev) - 1) * 100 : (curr > 0 ? 100 : 0);
+
+        // --- KPI Month vs Year ---
+        updateKpiCard({
+            prefix: 'fat',
+            trendVal: currFat,
+            prevVal: prevMonthData.faturamento,
+            fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+            calcEvo
+        });
+        
+        updateKpiCard({
+            prefix: 'kg',
+            trendVal: currKg,
+            prevVal: prevMonthData.peso,
+            fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Ton`,
+            calcEvo
+        });
+
+        // --- KPI Month vs Trimester ---
         let triSumFat = 0, triSumPeso = 0, triCount = 0;
+        // Trimestral logic: Previous 3 months average
         for (let i = 1; i <= 3; i++) {
             const idx = targetIndex - i;
             const mData = currentData.find(d => d.month_index === idx);
@@ -688,13 +716,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const triAvgFat = triCount > 0 ? triSumFat / triCount : 0;
         const triAvgPeso = triCount > 0 ? triSumPeso / triCount : 0;
-        updateKpi('kpi-evo-vs-tri-fat', calcEvo(currMonthData.faturamento, triAvgFat));
-        updateKpi('kpi-evo-vs-tri-kg', calcEvo(currMonthData.peso, triAvgPeso));
+
+        updateKpiCard({
+            prefix: 'tri-fat',
+            trendVal: currFat,
+            prevVal: triAvgFat,
+            fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+            calcEvo
+        });
+
+        updateKpiCard({
+            prefix: 'tri-kg',
+            trendVal: currKg,
+            prevVal: triAvgPeso,
+            fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Ton`,
+            calcEvo
+        });
 
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         const mName = monthNames[targetIndex]?.toUpperCase() || "";
-        document.getElementById('kpi-title-evo-ano-fat').textContent = `FAT ${mName} vs Ano Ant.`;
-        document.getElementById('kpi-title-evo-ano-kg').textContent = `TON ${mName} vs Ano Ant.`;
+        
+        // Update Titles
+        document.getElementById('kpi-title-evo-ano-fat').textContent = `Tend. FAT ${mName} vs Ano Ant.`;
+        document.getElementById('kpi-title-evo-ano-kg').textContent = `Tend. TON ${mName} vs Ano Ant.`;
+        document.getElementById('kpi-title-evo-tri-fat').textContent = `Tend. FAT ${mName} vs Trim. Ant.`;
+        document.getElementById('kpi-title-evo-tri-kg').textContent = `Tend. TON ${mName} vs Trim. Ant.`;
 
         // Chart Data Prep
         const mapTo12 = (arr) => { const res = new Array(12).fill(0); arr.forEach(d => res[d.month_index] = d.faturamento); return res; };
@@ -732,8 +778,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateKpi(id, value) {
         const el = document.getElementById(id);
+        if(!el) return;
         el.textContent = `${value.toFixed(1)}%`;
         el.className = `text-2xl font-bold ${value >= 0 ? 'text-green-400' : 'text-red-400'}`;
+    }
+
+    function updateKpiCard({ prefix, trendVal, prevVal, fmt, calcEvo }) {
+        const evo = calcEvo(trendVal, prevVal);
+        
+        const elTrend = document.getElementById(`kpi-value-trend-${prefix}`);
+        const elPrev = document.getElementById(`kpi-value-prev-${prefix}`);
+        const elVar = document.getElementById(`kpi-var-${prefix}`);
+
+        if (elTrend) elTrend.textContent = fmt(trendVal);
+        if (elPrev) elPrev.textContent = fmt(prevVal);
+        if (elVar) {
+            elVar.textContent = `${evo > 0 ? '+' : ''}${evo.toFixed(1)}%`;
+            elVar.className = `font-bold ${evo >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+        }
     }
 
     function createChart(canvasId, type, labels, datasetsData) {
