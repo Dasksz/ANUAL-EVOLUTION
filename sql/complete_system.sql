@@ -529,7 +529,7 @@ DECLARE
     v_range_end date;
 BEGIN
     -- Increase timeout for heavy aggregation
-    SET LOCAL statement_timeout = '60s';
+    SET LOCAL statement_timeout = '120s';
 
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
         SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
@@ -628,10 +628,16 @@ BEGIN
             EXTRACT(MONTH FROM s.dtped)::int as mes,
             s.codcli,
             COUNT(DISTINCT s.produto) as unique_prods
-        FROM public.all_sales s
-        WHERE s.codfor IN ('707', '708') -- Pepsico Focus
-          AND s.dtped >= v_range_start AND s.dtped < v_range_end -- Optimized Range Scan
-          AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR s.filial = ANY(p_filial))
+        FROM (
+            SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, produto, vlvenda 
+            FROM public.data_detailed 
+            WHERE codfor IN ('707', '708') AND dtped >= v_range_start AND dtped < v_range_end
+            UNION ALL
+            SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, produto, vlvenda 
+            FROM public.data_history 
+            WHERE codfor IN ('707', '708') AND dtped >= v_range_start AND dtped < v_range_end
+        ) s
+        WHERE (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR s.filial = ANY(p_filial))
           AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR s.cidade = ANY(p_cidade))
           AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR s.superv = ANY(p_supervisor))
           AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR s.nome = ANY(p_vendedor))
