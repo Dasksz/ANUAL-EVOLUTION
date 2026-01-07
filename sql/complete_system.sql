@@ -509,6 +509,14 @@ DECLARE
     v_month_start date;
     v_month_end date;
     v_holidays json;
+    
+    -- Temp Vars for Calculation
+    v_curr_month_idx int;
+    v_curr_faturamento numeric;
+    v_curr_peso numeric;
+    v_curr_bonificacao numeric;
+    v_curr_devolucao numeric;
+    v_curr_positivacao int;
 BEGIN
     SET LOCAL statement_timeout = '600s';
 
@@ -619,17 +627,29 @@ BEGIN
     LEFT JOIN monthly_positivation p ON a.ano = p.ano AND a.mes = p.mes;
 
     IF v_trend_allowed THEN
-        SELECT json_build_object(
-            'month_index', EXTRACT(MONTH FROM v_max_sale_date)::int - 1,
-            'faturamento', (d.faturamento * v_trend_factor),
-            'peso', (d.peso * v_trend_factor),
-            'bonificacao', (d.bonificacao * v_trend_factor),
-            'devolucao', (d.devolucao * v_trend_factor),
-            'positivacao', (COALESCE(p.positivacao_count, 0) * v_trend_factor)::int
-        ) INTO v_trend_data
-        FROM agg_data d
-        LEFT JOIN monthly_positivation p ON d.ano = p.ano AND d.mes = p.mes
-        WHERE d.ano = v_current_year AND d.mes = EXTRACT(MONTH FROM v_max_sale_date)::int;
+        v_curr_month_idx := EXTRACT(MONTH FROM v_max_sale_date)::int - 1;
+        
+        -- Use json_array_elements to unpack the current year data and find the month
+        SELECT 
+            (elem->>'faturamento')::numeric,
+            (elem->>'peso')::numeric,
+            (elem->>'bonificacao')::numeric,
+            (elem->>'devolucao')::numeric,
+            (elem->>'positivacao')::int
+        INTO v_curr_faturamento, v_curr_peso, v_curr_bonificacao, v_curr_devolucao, v_curr_positivacao
+        FROM json_array_elements(v_monthly_chart_current) elem
+        WHERE (elem->>'month_index')::int = v_curr_month_idx;
+        
+        IF v_curr_faturamento IS NOT NULL THEN
+            v_trend_data := json_build_object(
+                'month_index', v_curr_month_idx,
+                'faturamento', (v_curr_faturamento * v_trend_factor),
+                'peso', (v_curr_peso * v_trend_factor),
+                'bonificacao', (v_curr_bonificacao * v_trend_factor),
+                'devolucao', (v_curr_devolucao * v_trend_factor),
+                'positivacao', (v_curr_positivacao * v_trend_factor)::int
+            );
+        END IF;
     END IF;
 
     SELECT json_agg(date) INTO v_holidays FROM public.data_holidays;
