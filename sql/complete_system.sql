@@ -458,9 +458,11 @@ END;
 $$;
 
 -- Helper: Calculate Working Days
+-- Helper: Calculate Working Days (Optimized)
 CREATE OR REPLACE FUNCTION calc_working_days(start_date date, end_date date)
 RETURNS int
 LANGUAGE plpgsql
+STABLE
 AS $$
 DECLARE
     days int;
@@ -469,13 +471,13 @@ BEGIN
     INTO days
     FROM generate_series(start_date, end_date, '1 day'::interval) AS d
     WHERE EXTRACT(ISODOW FROM d) < 6 -- Mon-Fri (1-5)
-      AND d::date NOT IN (SELECT date FROM public.data_holidays);
+      AND NOT EXISTS (SELECT 1 FROM public.data_holidays h WHERE h.date = d::date);
 
     RETURN days;
 END;
 $$;
 
--- Get Main Dashboard Data (Using Summary Table, with Trend Logic)
+-- Get Main Dashboard Data (Using Summary Table, with Trend Logic, Optimized)
 CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -518,7 +520,8 @@ DECLARE
     v_curr_devolucao numeric;
     v_curr_positivacao int;
 BEGIN
-    SET LOCAL statement_timeout = '600s';
+    -- Increase timeout for heavy aggregation
+    SET LOCAL statement_timeout = '60s';
 
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
         SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
