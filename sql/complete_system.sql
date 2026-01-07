@@ -519,6 +519,7 @@ DECLARE
     v_curr_bonificacao numeric;
     v_curr_devolucao numeric;
     v_curr_positivacao int;
+    v_curr_mix_pdv numeric;
 BEGIN
     -- Increase timeout for heavy aggregation
     SET LOCAL statement_timeout = '60s';
@@ -610,6 +611,33 @@ BEGIN
         FROM filtered_summary
         GROUP BY 1, 2
     ),
+    mix_raw_data AS (
+        SELECT
+            EXTRACT(YEAR FROM s.dtped)::int as ano,
+            EXTRACT(MONTH FROM s.dtped)::int as mes,
+            s.codcli,
+            COUNT(DISTINCT s.produto) as unique_prods
+        FROM public.all_sales s
+        WHERE s.codfor IN ('707', '708') -- Pepsico Focus
+          AND EXTRACT(YEAR FROM s.dtped)::int IN (v_current_year, v_previous_year)
+          AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR s.filial = ANY(p_filial))
+          AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR s.cidade = ANY(p_cidade))
+          AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR s.superv = ANY(p_supervisor))
+          AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR s.nome = ANY(p_vendedor))
+          AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR s.codfor = ANY(p_fornecedor))
+          AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR s.tipovenda = ANY(p_tipovenda))
+        GROUP BY 1, 2, 3
+        HAVING SUM(s.vlvenda) >= 1
+    ),
+    monthly_mix_stats AS (
+        SELECT
+            ano,
+            mes,
+            SUM(unique_prods) as total_mix_sum,
+            COUNT(codcli) as mix_client_count
+        FROM mix_raw_data
+        GROUP BY 1, 2
+    ),
     kpi_active_count AS (
         SELECT COUNT(*) as val
         FROM (
@@ -623,11 +651,12 @@ BEGIN
     SELECT
         (SELECT val FROM kpi_active_count),
         (SELECT COUNT(*) FROM public.data_clients c WHERE c.bloqueio != 'S' AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR c.cidade = ANY(p_cidade))),
-        COALESCE(json_agg(json_build_object('month_index', a.mes - 1, 'faturamento', a.faturamento, 'peso', a.peso, 'bonificacao', a.bonificacao, 'devolucao', a.devolucao, 'positivacao', COALESCE(p.positivacao_count, 0)) ORDER BY a.mes) FILTER (WHERE a.ano = v_current_year), '[]'::json),
-        COALESCE(json_agg(json_build_object('month_index', a.mes - 1, 'faturamento', a.faturamento, 'peso', a.peso, 'bonificacao', a.bonificacao, 'devolucao', a.devolucao, 'positivacao', COALESCE(p.positivacao_count, 0)) ORDER BY a.mes) FILTER (WHERE a.ano = v_previous_year), '[]'::json)
+        COALESCE(json_agg(json_build_object('month_index', a.mes - 1, 'faturamento', a.faturamento, 'peso', a.peso, 'bonificacao', a.bonificacao, 'devolucao', a.devolucao, 'positivacao', COALESCE(p.positivacao_count, 0), 'mix_pdv', CASE WHEN mm.mix_client_count > 0 THEN mm.total_mix_sum::numeric / mm.mix_client_count ELSE 0 END) ORDER BY a.mes) FILTER (WHERE a.ano = v_current_year), '[]'::json),
+        COALESCE(json_agg(json_build_object('month_index', a.mes - 1, 'faturamento', a.faturamento, 'peso', a.peso, 'bonificacao', a.bonificacao, 'devolucao', a.devolucao, 'positivacao', COALESCE(p.positivacao_count, 0), 'mix_pdv', CASE WHEN mm.mix_client_count > 0 THEN mm.total_mix_sum::numeric / mm.mix_client_count ELSE 0 END) ORDER BY a.mes) FILTER (WHERE a.ano = v_previous_year), '[]'::json)
     INTO v_kpi_clients_attended, v_kpi_clients_base, v_monthly_chart_current, v_monthly_chart_previous
     FROM agg_data a
-    LEFT JOIN monthly_positivation p ON a.ano = p.ano AND a.mes = p.mes;
+    LEFT JOIN monthly_positivation p ON a.ano = p.ano AND a.mes = p.mes
+    LEFT JOIN monthly_mix_stats mm ON a.ano = mm.ano AND a.mes = mm.mes;
 
     IF v_trend_allowed THEN
         v_curr_month_idx := EXTRACT(MONTH FROM v_max_sale_date)::int - 1;
@@ -638,8 +667,9 @@ BEGIN
             (elem->>'peso')::numeric,
             (elem->>'bonificacao')::numeric,
             (elem->>'devolucao')::numeric,
-            (elem->>'positivacao')::int
-        INTO v_curr_faturamento, v_curr_peso, v_curr_bonificacao, v_curr_devolucao, v_curr_positivacao
+            (elem->>'positivacao')::int,
+            (elem->>'mix_pdv')::numeric
+        INTO v_curr_faturamento, v_curr_peso, v_curr_bonificacao, v_curr_devolucao, v_curr_positivacao, v_curr_mix_pdv
         FROM json_array_elements(v_monthly_chart_current) elem
         WHERE (elem->>'month_index')::int = v_curr_month_idx;
         
@@ -650,7 +680,8 @@ BEGIN
                 'peso', (v_curr_peso * v_trend_factor),
                 'bonificacao', (v_curr_bonificacao * v_trend_factor),
                 'devolucao', (v_curr_devolucao * v_trend_factor),
-                'positivacao', (v_curr_positivacao * v_trend_factor)::int
+                'positivacao', (v_curr_positivacao * v_trend_factor)::int,
+                'mix_pdv', v_curr_mix_pdv
             );
         END IF;
     END IF;
