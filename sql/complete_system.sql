@@ -202,6 +202,8 @@ CREATE INDEX IF NOT EXISTS idx_cache_ano_fornecedor ON public.cache_filters (ano
 CREATE INDEX IF NOT EXISTS idx_summary_codcli ON public.data_summary(codcli);
 CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
 CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
+CREATE INDEX IF NOT EXISTS idx_detailed_codfor_dtped ON public.data_detailed (codfor, dtped);
+CREATE INDEX IF NOT EXISTS idx_history_codfor_dtped ON public.data_history (codfor, dtped);
 
 -- ==============================================================================
 -- 3. SECURITY & RLS POLICIES
@@ -429,6 +431,8 @@ BEGIN
     CREATE INDEX IF NOT EXISTS idx_summary_codcli ON public.data_summary(codcli);
     CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
     CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
+    CREATE INDEX IF NOT EXISTS idx_detailed_codfor_dtped ON public.data_detailed (codfor, dtped);
+    CREATE INDEX IF NOT EXISTS idx_history_codfor_dtped ON public.data_history (codfor, dtped);
 
     RETURN 'Banco de dados otimizado com sucesso! Índices reconstruídos.';
 EXCEPTION WHEN OTHERS THEN
@@ -520,6 +524,9 @@ DECLARE
     v_curr_devolucao numeric;
     v_curr_positivacao int;
     v_curr_mix_pdv numeric;
+    v_curr_ticket_medio numeric;
+    v_range_start date;
+    v_range_end date;
 BEGIN
     -- Increase timeout for heavy aggregation
     SET LOCAL statement_timeout = '60s';
@@ -530,6 +537,10 @@ BEGIN
         v_current_year := p_ano::int;
     END IF;
     v_previous_year := v_current_year - 1;
+
+    -- Date ranges for optimization (index usage)
+    v_range_start := make_date(v_previous_year, 1, 1);
+    v_range_end := make_date(v_current_year + 1, 1, 1);
 
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_target_month := p_mes::int + 1;
@@ -619,7 +630,7 @@ BEGIN
             COUNT(DISTINCT s.produto) as unique_prods
         FROM public.all_sales s
         WHERE s.codfor IN ('707', '708') -- Pepsico Focus
-          AND EXTRACT(YEAR FROM s.dtped)::int IN (v_current_year, v_previous_year)
+          AND s.dtped >= v_range_start AND s.dtped < v_range_end -- Optimized Range Scan
           AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR s.filial = ANY(p_filial))
           AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR s.cidade = ANY(p_cidade))
           AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR s.superv = ANY(p_supervisor))
@@ -651,8 +662,8 @@ BEGIN
     SELECT
         (SELECT val FROM kpi_active_count),
         (SELECT COUNT(*) FROM public.data_clients c WHERE c.bloqueio != 'S' AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR c.cidade = ANY(p_cidade))),
-        COALESCE(json_agg(json_build_object('month_index', a.mes - 1, 'faturamento', a.faturamento, 'peso', a.peso, 'bonificacao', a.bonificacao, 'devolucao', a.devolucao, 'positivacao', COALESCE(p.positivacao_count, 0), 'mix_pdv', CASE WHEN mm.mix_client_count > 0 THEN mm.total_mix_sum::numeric / mm.mix_client_count ELSE 0 END) ORDER BY a.mes) FILTER (WHERE a.ano = v_current_year), '[]'::json),
-        COALESCE(json_agg(json_build_object('month_index', a.mes - 1, 'faturamento', a.faturamento, 'peso', a.peso, 'bonificacao', a.bonificacao, 'devolucao', a.devolucao, 'positivacao', COALESCE(p.positivacao_count, 0), 'mix_pdv', CASE WHEN mm.mix_client_count > 0 THEN mm.total_mix_sum::numeric / mm.mix_client_count ELSE 0 END) ORDER BY a.mes) FILTER (WHERE a.ano = v_previous_year), '[]'::json)
+        COALESCE(json_agg(json_build_object('month_index', a.mes - 1, 'faturamento', a.faturamento, 'peso', a.peso, 'bonificacao', a.bonificacao, 'devolucao', a.devolucao, 'positivacao', COALESCE(p.positivacao_count, 0), 'mix_pdv', CASE WHEN mm.mix_client_count > 0 THEN mm.total_mix_sum::numeric / mm.mix_client_count ELSE 0 END, 'ticket_medio', CASE WHEN COALESCE(p.positivacao_count, 0) > 0 THEN a.faturamento / p.positivacao_count ELSE 0 END) ORDER BY a.mes) FILTER (WHERE a.ano = v_current_year), '[]'::json),
+        COALESCE(json_agg(json_build_object('month_index', a.mes - 1, 'faturamento', a.faturamento, 'peso', a.peso, 'bonificacao', a.bonificacao, 'devolucao', a.devolucao, 'positivacao', COALESCE(p.positivacao_count, 0), 'mix_pdv', CASE WHEN mm.mix_client_count > 0 THEN mm.total_mix_sum::numeric / mm.mix_client_count ELSE 0 END, 'ticket_medio', CASE WHEN COALESCE(p.positivacao_count, 0) > 0 THEN a.faturamento / p.positivacao_count ELSE 0 END) ORDER BY a.mes) FILTER (WHERE a.ano = v_previous_year), '[]'::json)
     INTO v_kpi_clients_attended, v_kpi_clients_base, v_monthly_chart_current, v_monthly_chart_previous
     FROM agg_data a
     LEFT JOIN monthly_positivation p ON a.ano = p.ano AND a.mes = p.mes
@@ -668,8 +679,9 @@ BEGIN
             (elem->>'bonificacao')::numeric,
             (elem->>'devolucao')::numeric,
             (elem->>'positivacao')::int,
-            (elem->>'mix_pdv')::numeric
-        INTO v_curr_faturamento, v_curr_peso, v_curr_bonificacao, v_curr_devolucao, v_curr_positivacao, v_curr_mix_pdv
+            (elem->>'mix_pdv')::numeric,
+            (elem->>'ticket_medio')::numeric
+        INTO v_curr_faturamento, v_curr_peso, v_curr_bonificacao, v_curr_devolucao, v_curr_positivacao, v_curr_mix_pdv, v_curr_ticket_medio
         FROM json_array_elements(v_monthly_chart_current) elem
         WHERE (elem->>'month_index')::int = v_curr_month_idx;
         
@@ -681,7 +693,8 @@ BEGIN
                 'bonificacao', (v_curr_bonificacao * v_trend_factor),
                 'devolucao', (v_curr_devolucao * v_trend_factor),
                 'positivacao', (v_curr_positivacao * v_trend_factor)::int,
-                'mix_pdv', v_curr_mix_pdv
+                'mix_pdv', v_curr_mix_pdv, -- Mix is a rate/average, so we project it flat (no factor)
+                'ticket_medio', v_curr_ticket_medio -- Ticket medio is a rate/average, so we project it flat
             );
         END IF;
     END IF;
