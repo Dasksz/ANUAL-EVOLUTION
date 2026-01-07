@@ -784,8 +784,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 },
                 scales: {
-                    y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
-                    x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+                    y: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        afterFit: (axis) => { axis.width = 150; } // Force Y-axis width to match table first column
+                    },
+                    x: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    }
                 }
             },
             plugins: [ChartDataLabels]
