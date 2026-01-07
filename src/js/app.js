@@ -316,9 +316,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Dashboard Internal Navigation ---
     clearFiltersBtn.addEventListener('click', async () => {
-        anoFilter.innerHTML = '<option value="todos">Todos</option>';
+        // Reset Single Selects
         anoFilter.value = 'todos';
         mesFilter.value = '';
+
+        // Reset Multi Select Arrays
+        selectedFiliais = [];
+        selectedCidades = [];
+        selectedSupervisores = [];
+        selectedVendedores = [];
+        selectedFornecedores = [];
+        selectedTiposVenda = [];
+
+        // Note: loadFilters will re-render the dropdowns with checked status based on these empty arrays,
+        // effectively clearing the checkboxes visually.
+
         await loadFilters(getCurrentFilters());
         loadMainDashboardData();
     });
