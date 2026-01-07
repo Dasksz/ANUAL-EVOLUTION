@@ -167,6 +167,40 @@ self.onmessage = async (event) => {
         salesCurrYearHistDataRaw = salesCurrYearHistDataRaw.filter(pepsicoFilter);
         salesCurrMonthDataRaw = salesCurrMonthDataRaw.filter(pepsicoFilter);
 
+        // --- IBGE Code Resolution ---
+        self.postMessage({ type: 'progress', status: 'Verificando códigos IBGE...', percentage: 18 });
+
+        // Collect all potential codes from sales and clients
+        const potentialCodes = new Set();
+
+        const collectCodes = (row, field) => {
+            const val = row[field];
+            if (isIbgeCode(val)) potentialCodes.add(String(val).trim());
+        };
+
+        [...salesPrevYearDataRaw, ...salesCurrYearHistDataRaw, ...salesCurrMonthDataRaw].forEach(r => collectCodes(r, 'MUNICIPIO'));
+        clientsDataRaw.forEach(r => collectCodes(r, 'Nome da Cidade'));
+
+        let ibgeMap = {};
+        if (potentialCodes.size > 0) {
+            self.postMessage({ type: 'progress', status: 'Buscando nomes de cidades (IBGE)...', percentage: 19 });
+            ibgeMap = await fetchIbgeMapping();
+        }
+
+        const replaceIbgeCode = (row, field) => {
+            const val = String(row[field] || '').trim();
+            if (isIbgeCode(val) && ibgeMap[val]) {
+                row[field] = ibgeMap[val];
+            }
+        };
+
+        if (Object.keys(ibgeMap).length > 0) {
+            salesPrevYearDataRaw.forEach(r => replaceIbgeCode(r, 'MUNICIPIO'));
+            salesCurrYearHistDataRaw.forEach(r => replaceIbgeCode(r, 'MUNICIPIO'));
+            salesCurrMonthDataRaw.forEach(r => replaceIbgeCode(r, 'MUNICIPIO'));
+            clientsDataRaw.forEach(r => replaceIbgeCode(r, 'Nome da Cidade'));
+        }
+
         // Process Clients
         self.postMessage({ type: 'progress', status: 'Processando clientes...', percentage: 20 });
         const clientMap = new Map();
