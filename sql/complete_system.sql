@@ -99,6 +99,14 @@ BEGIN
     END IF;
 END $$;
 
+-- Add mix_details column if it does not exist (Schema Migration)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary' AND column_name = 'mix_details') THEN
+        ALTER TABLE public.data_summary ADD COLUMN mix_details jsonb;
+    END IF;
+END $$;
+
 -- Holidays Table
 create table if not exists public.data_holidays (
     date date PRIMARY KEY,
@@ -705,20 +713,22 @@ BEGIN
             t.ano, 
             t.mes, 
             t.codcli,
-            COUNT(DISTINCT p.key) as unique_prods
+            p.key as prod_code,
+            SUM((p.value)::numeric) as total_val
         FROM filtered_summary t
-        JOIN mix_eligible_clients e ON t.ano = e.ano AND t.mes = e.mes AND t.codcli = e.codcli,
-        jsonb_each_text(t.mix_details) p
+        JOIN mix_eligible_clients e ON t.ano = e.ano AND t.mes = e.mes AND t.codcli = e.codcli
+        CROSS JOIN jsonb_each_text(t.mix_details) p
         WHERE t.codfor IN (''707'', ''708'')
-          AND (p.value)::numeric >= 1
-        GROUP BY 1, 2, 3
+          AND ( ($8 IS NOT NULL AND array_length($8, 1) > 0) OR (t.tipovenda IN (''1'', ''9'')) )
+        GROUP BY 1, 2, 3, 4
+        HAVING SUM((p.value)::numeric) >= 1
     ),
     monthly_mix_stats AS (
         SELECT 
             ano, 
             mes, 
-            SUM(unique_prods) as total_mix_sum,
-            COUNT(codcli) as mix_client_count
+            COUNT(prod_code) as total_mix_sum,
+            COUNT(DISTINCT codcli) as mix_client_count
         FROM mix_raw_data
         GROUP BY 1, 2
     ),
