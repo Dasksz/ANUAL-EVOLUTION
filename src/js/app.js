@@ -94,11 +94,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveToCache = async (key, value) => {
         try {
             const db = await initDB();
-            await db.put(STORE_NAME, value, key);
+            // Wrap data with timestamp for TTL
+            const payload = { timestamp: Date.now(), data: value };
+            await db.put(STORE_NAME, payload, key);
         } catch (e) {
             console.warn('Erro ao salvar cache:', e);
         }
     };
+
+    // Helper to generate canonical cache keys (sorted arrays)
+    function generateCacheKey(prefix, filters) {
+        const sortedFilters = {};
+        Object.keys(filters).sort().forEach(k => {
+            let val = filters[k];
+            if (Array.isArray(val)) {
+                // Clone and sort array to ensure ['A', 'B'] == ['B', 'A']
+                val = [...val].sort();
+            }
+            sortedFilters[k] = val;
+        });
+        return `${prefix}_${JSON.stringify(sortedFilters)}`;
+    }
 
     let checkProfileLock = false;
     let isAppReady = false;
@@ -602,6 +618,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadFilters(currentFilters, retryCount = 0) {
+        // Cache logic for Filters
+        const CACHE_TTL = 1000 * 60 * 5; // 5 minutes for filters
+        const cacheKey = generateCacheKey('dashboard_filters', currentFilters);
+
+        try {
+            const cachedEntry = await getFromCache(cacheKey);
+            if (cachedEntry && cachedEntry.timestamp) {
+                const age = Date.now() - cachedEntry.timestamp;
+                if (age < CACHE_TTL) {
+                    console.log('Serving filters from cache (fresh)');
+                    applyFiltersData(cachedEntry.data);
+                    return;
+                }
+            }
+        } catch (e) { console.warn('Cache error:', e); }
+
         const { data, error } = await supabase.rpc('get_dashboard_filters', currentFilters);
         if (error) {
             if (retryCount < 1) {
@@ -610,6 +642,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return;
         }
+
+        await saveToCache(cacheKey, data);
         applyFiltersData(data);
     }
 
@@ -708,9 +742,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadMainDashboardData() {
         const filters = getCurrentFilters();
-        const cacheKey = `dashboard_data_${JSON.stringify(filters)}`;
-        const cachedData = await getFromCache(cacheKey);
-        if (cachedData) renderDashboard(cachedData);
+        // Canonical key
+        const cacheKey = generateCacheKey('dashboard_data', filters);
+        const CACHE_TTL = 1000 * 60 * 10; // 10 minutes TTL
+
+        // Check cache
+        try {
+            const cachedEntry = await getFromCache(cacheKey);
+            // Handle legacy cache (raw data) vs new cache (timestamp wrapper)
+            if (cachedEntry) {
+                let isFresh = false;
+                let dataToRender = cachedEntry;
+
+                if (cachedEntry.timestamp && cachedEntry.data) {
+                    // New format
+                    const age = Date.now() - cachedEntry.timestamp;
+                    if (age < CACHE_TTL) isFresh = true;
+                    dataToRender = cachedEntry.data;
+                } else {
+                    // Legacy format (assume stale, but render first for speed)
+                    // We treat raw data as "stale" so we fetch fresh in background
+                }
+
+                renderDashboard(dataToRender);
+
+                if (isFresh) {
+                    console.log('Skipping network request (cache is fresh)');
+                    return; // STOP HERE - Revolutionarily Fast
+                }
+            }
+        } catch (e) { console.warn('Cache read error:', e); }
 
         const { data, error } = await supabase.rpc('get_main_dashboard_data', filters);
         if (error) { console.error('Error fetching dashboard data:', error); return; }
