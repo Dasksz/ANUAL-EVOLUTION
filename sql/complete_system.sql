@@ -149,6 +149,7 @@ create table if not exists public.data_summary (
     bonificacao numeric,
     devolucao numeric,
     mix_produtos text[],
+    mix_details jsonb, -- Stores product-level values for accurate Mix calculation
     created_at timestamp with time zone default now()
 );
 
@@ -378,28 +379,60 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     TRUNCATE TABLE public.data_summary;
-    INSERT INTO public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, peso, bonificacao, devolucao, mix_produtos)
-    SELECT 
-        EXTRACT(YEAR FROM s.dtped)::int,
-        EXTRACT(MONTH FROM s.dtped)::int,
-        s.filial, 
-        COALESCE(s.cidade, c.cidade), -- Recover city from clients if missing in history
-        s.superv, 
-        COALESCE(s.nome, c.nomecliente), -- Recover client name from clients if missing
-        s.codfor, 
-        s.tipovenda, 
-        s.codcli,
-        SUM(s.vlvenda),
-        SUM(s.totpesoliq),
-        SUM(s.vlbonific),
-        SUM(COALESCE(s.vldevolucao, 0)),
-        ARRAY_AGG(DISTINCT s.produto) FILTER (WHERE s.produto IS NOT NULL)
-    FROM (
+    
+    -- Use CTE to pre-aggregate product values to build mix_details
+    INSERT INTO public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, peso, bonificacao, devolucao, mix_produtos, mix_details)
+    WITH raw_data AS (
         SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto FROM public.data_detailed
         UNION ALL
         SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto FROM public.data_history
-    ) s
-    LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
+    ),
+    augmented_data AS (
+        SELECT 
+            EXTRACT(YEAR FROM s.dtped)::int as ano,
+            EXTRACT(MONTH FROM s.dtped)::int as mes,
+            s.filial, 
+            COALESCE(s.cidade, c.cidade) as cidade, 
+            s.superv, 
+            COALESCE(s.nome, c.nomecliente) as nome, 
+            s.codfor, 
+            s.tipovenda, 
+            s.codcli,
+            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto
+        FROM raw_data s
+        LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
+    ),
+    product_agg AS (
+        -- Aggregate per product to get sum of value per product for the group
+        SELECT 
+            ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, produto,
+            SUM(vlvenda) as prod_val
+        FROM augmented_data
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+    )
+    SELECT 
+        a.ano, a.mes, a.filial, a.cidade, a.superv, a.nome, a.codfor, a.tipovenda, a.codcli,
+        SUM(a.vlvenda),
+        SUM(a.totpesoliq),
+        SUM(a.vlbonific),
+        SUM(COALESCE(a.vldevolucao, 0)),
+        ARRAY_AGG(DISTINCT a.produto) FILTER (WHERE a.produto IS NOT NULL),
+        (
+             -- Build JSON object { "prod_code": value, ... }
+             SELECT jsonb_object_agg(pa.produto, pa.prod_val)
+             FROM product_agg pa
+             WHERE pa.ano = a.ano 
+               AND pa.mes = a.mes 
+               AND pa.filial IS NOT DISTINCT FROM a.filial
+               AND pa.cidade IS NOT DISTINCT FROM a.cidade
+               AND pa.superv IS NOT DISTINCT FROM a.superv
+               AND pa.nome IS NOT DISTINCT FROM a.nome
+               AND pa.codfor IS NOT DISTINCT FROM a.codfor
+               AND pa.tipovenda IS NOT DISTINCT FROM a.tipovenda
+               AND pa.codcli IS NOT DISTINCT FROM a.codcli
+               AND pa.produto IS NOT NULL
+        )
+    FROM augmented_data a
     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9;
     
     -- Optimize physical storage after rebuild
@@ -672,11 +705,12 @@ BEGIN
             t.ano, 
             t.mes, 
             t.codcli,
-            COUNT(DISTINCT p) as unique_prods
+            COUNT(DISTINCT p.key) as unique_prods
         FROM filtered_summary t
-        JOIN mix_eligible_clients e ON t.ano = e.ano AND t.mes = e.mes AND t.codcli = e.codcli
-        CROSS JOIN unnest(t.mix_produtos) p
+        JOIN mix_eligible_clients e ON t.ano = e.ano AND t.mes = e.mes AND t.codcli = e.codcli,
+        jsonb_each_text(t.mix_details) p
         WHERE t.codfor IN (''707'', ''708'')
+          AND (p.value)::numeric >= 1
         GROUP BY 1, 2, 3
     ),
     monthly_mix_stats AS (
