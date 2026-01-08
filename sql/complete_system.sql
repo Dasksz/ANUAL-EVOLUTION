@@ -1,7 +1,7 @@
 
 -- ==============================================================================
--- UNIFIED DATABASE SETUP & MIGRATION SCRIPT v2
--- Contains: Tables, Optimized Indexes, Summary Tables, RLS Policies, Trend Logic, Holidays, Pagination
+-- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT v3
+-- Contains: Tables, Dynamic SQL, Partial Indexes, Summary Logic, RLS, Trends, Caching
 -- ==============================================================================
 
 -- Enable UUID extension
@@ -80,7 +80,6 @@ create table if not exists public.data_clients (
   id uuid default uuid_generate_v4 () primary key,
   codigo_cliente text unique,
   rca1 text,
-  -- rca2 text, -- Removed in v2
   cidade text,
   nomecliente text,
   bairro text,
@@ -116,6 +115,15 @@ create table if not exists public.profiles (
   updated_at timestamp with time zone default now()
 );
 
+-- Config City Branches (Mapping)
+CREATE TABLE IF NOT EXISTS public.config_city_branches (
+    id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+    cidade text NOT NULL UNIQUE,
+    filial text, 
+    updated_at timestamp with time zone DEFAULT now(),
+    created_at timestamp with time zone DEFAULT now()
+);
+
 -- Unified View
 create or replace view public.all_sales as
 select * from public.data_detailed
@@ -123,6 +131,8 @@ union all
 select * from public.data_history;
 
 -- Summary Table (Pre-Aggregated for Dashboard Speed)
+-- Includes mix_produtos array for denormalized counting
+DROP TABLE IF EXISTS public.data_summary CASCADE;
 create table if not exists public.data_summary (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     ano int,
@@ -138,10 +148,12 @@ create table if not exists public.data_summary (
     peso numeric,
     bonificacao numeric,
     devolucao numeric,
+    mix_produtos text[],
     created_at timestamp with time zone default now()
 );
 
 -- Cache Table (For Filter Dropdowns)
+DROP TABLE IF EXISTS public.cache_filters CASCADE;
 create table if not exists public.cache_filters (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     filial text,
@@ -157,10 +169,11 @@ create table if not exists public.cache_filters (
 );
 
 -- ==============================================================================
--- 2. OPTIMIZED INDEXES
+-- 2. OPTIMIZED INDEXES (Targeted Partial Indexes)
 -- ==============================================================================
 
--- Clean up duplicate/old indexes
+-- Drop old monolithic indexes if they exist
+DROP INDEX IF EXISTS public.idx_summary_main;
 DROP INDEX IF EXISTS public.idx_cache_filters_fornecedor_col;
 DROP INDEX IF EXISTS public.idx_detailed_cidade_btree;
 DROP INDEX IF EXISTS public.idx_detailed_filial_btree;
@@ -170,24 +183,31 @@ DROP INDEX IF EXISTS public.idx_history_cidade_btree;
 DROP INDEX IF EXISTS public.idx_history_filial_btree;
 DROP INDEX IF EXISTS public.idx_history_nome_btree;
 DROP INDEX IF EXISTS public.idx_history_superv_btree;
-DROP INDEX IF EXISTS idx_cache_filters_composite;
 DROP INDEX IF EXISTS idx_cache_filters_superv_composite;
 DROP INDEX IF EXISTS idx_cache_filters_nome_composite;
 DROP INDEX IF EXISTS idx_cache_filters_cidade_composite;
 DROP INDEX IF EXISTS idx_detailed_dtped_composite;
 DROP INDEX IF EXISTS idx_history_dtped_composite;
-DROP INDEX IF EXISTS idx_summary_main;
 
--- Sales Table Indexes (Covering for KPI Base Clients & General Lookups)
+-- Sales Table Indexes
 CREATE INDEX idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, superv, nome, codfor);
 CREATE INDEX idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, superv, nome, codfor);
+CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
+CREATE INDEX IF NOT EXISTS idx_detailed_codfor_dtped ON public.data_detailed (codfor, dtped);
+CREATE INDEX IF NOT EXISTS idx_history_codfor_dtped ON public.data_history (codfor, dtped);
+CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
 
--- Summary Table Index (For Main Dashboard)
-CREATE INDEX idx_summary_main ON public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda);
+-- Summary Table Targeted Indexes (For Dynamic SQL)
+CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_superv ON public.data_summary (ano, mes, superv);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_nome ON public.data_summary (ano, mes, nome); -- Vendedor
+CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_cidade ON public.data_summary (ano, mes, cidade);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_filial ON public.data_summary (ano, mes, filial);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codfor ON public.data_summary (ano, mes, codfor);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_tipovenda ON public.data_summary (ano, mes, tipovenda);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codcli ON public.data_summary (ano, mes, codcli);
 
--- Cache Filters Indexes (For Dropdowns)
+-- Cache Filters Indexes
 CREATE INDEX idx_cache_filters_composite ON public.cache_filters (ano, mes, filial, cidade, superv, nome, codfor, tipovenda);
--- Specialized lookup indexes for specific dropdowns (Split Queries)
 CREATE INDEX IF NOT EXISTS idx_cache_filters_superv_lookup ON public.cache_filters (filial, cidade, ano, superv);
 CREATE INDEX IF NOT EXISTS idx_cache_filters_nome_lookup ON public.cache_filters (filial, cidade, superv, ano, nome);
 CREATE INDEX IF NOT EXISTS idx_cache_filters_cidade_lookup ON public.cache_filters (filial, ano, cidade);
@@ -197,13 +217,6 @@ CREATE INDEX IF NOT EXISTS idx_cache_ano_cidade ON public.cache_filters (ano, ci
 CREATE INDEX IF NOT EXISTS idx_cache_ano_filial ON public.cache_filters (ano, filial);
 CREATE INDEX IF NOT EXISTS idx_cache_ano_tipovenda ON public.cache_filters (ano, tipovenda);
 CREATE INDEX IF NOT EXISTS idx_cache_ano_fornecedor ON public.cache_filters (ano, fornecedor, codfor);
-
--- Performance Optimization Indexes (v2)
-CREATE INDEX IF NOT EXISTS idx_summary_codcli ON public.data_summary(codcli);
-CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
-CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
-CREATE INDEX IF NOT EXISTS idx_detailed_codfor_dtped ON public.data_detailed (codfor, dtped);
-CREATE INDEX IF NOT EXISTS idx_history_codfor_dtped ON public.data_history (codfor, dtped);
 
 -- ==============================================================================
 -- 3. SECURITY & RLS POLICIES
@@ -232,15 +245,21 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.data_summary ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cache_filters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.data_holidays ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.config_city_branches ENABLE ROW LEVEL SECURITY;
 
 -- Clean up Insecure Policies
 DO $$
 DECLARE t text;
 BEGIN
-    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_clients', 'data_detailed', 'data_history', 'profiles', 'data_summary', 'cache_filters', 'data_holidays')
+    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_clients', 'data_detailed', 'data_history', 'profiles', 'data_summary', 'cache_filters', 'data_holidays', 'config_city_branches')
     LOOP
         EXECUTE format('DROP POLICY IF EXISTS "Enable access for all users" ON public.%I;', t);
         EXECUTE format('DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.%I;', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Read Access Approved" ON public.%I;', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Write Access Admin" ON public.%I;', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Update Access Admin" ON public.%I;', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Delete Access Admin" ON public.%I;', t);
+        EXECUTE format('DROP POLICY IF EXISTS "All Access Admin" ON public.%I;', t);
     END LOOP;
 END $$;
 
@@ -263,14 +282,13 @@ DROP POLICY IF EXISTS "Admin Manage Profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Profiles Delete" ON public.profiles;
 CREATE POLICY "Profiles Delete" ON public.profiles FOR DELETE USING (public.is_admin());
 
+-- Config City Branches
+CREATE POLICY "Read Access Approved" ON public.config_city_branches FOR SELECT USING (public.is_approved());
+CREATE POLICY "All Access Admin" ON public.config_city_branches FOR ALL USING (public.is_admin());
+
 -- Holidays Policies
-DROP POLICY IF EXISTS "Read Access Approved" ON public.data_holidays;
 CREATE POLICY "Read Access Approved" ON public.data_holidays FOR SELECT USING (public.is_approved());
-
-DROP POLICY IF EXISTS "Write Access Admin" ON public.data_holidays;
 CREATE POLICY "Write Access Admin" ON public.data_holidays FOR INSERT WITH CHECK (public.is_admin());
-
-DROP POLICY IF EXISTS "Delete Access Admin" ON public.data_holidays;
 CREATE POLICY "Delete Access Admin" ON public.data_holidays FOR DELETE USING (public.is_admin());
 
 -- Data Tables (Detailed, History, Clients, Summary, Cache)
@@ -280,17 +298,10 @@ BEGIN
     FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_detailed', 'data_history', 'data_clients', 'data_summary', 'cache_filters')
     LOOP
         -- Read: Approved Users
-        EXECUTE format('DROP POLICY IF EXISTS "Read Access Approved" ON public.%I;', t);
         EXECUTE format('CREATE POLICY "Read Access Approved" ON public.%I FOR SELECT USING (public.is_approved());', t);
-        
         -- Write: Admins Only
-        EXECUTE format('DROP POLICY IF EXISTS "Write Access Admin" ON public.%I;', t);
         EXECUTE format('CREATE POLICY "Write Access Admin" ON public.%I FOR INSERT WITH CHECK (public.is_admin());', t);
-        
-        EXECUTE format('DROP POLICY IF EXISTS "Update Access Admin" ON public.%I;', t);
         EXECUTE format('CREATE POLICY "Update Access Admin" ON public.%I FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());', t);
-        
-        EXECUTE format('DROP POLICY IF EXISTS "Delete Access Admin" ON public.%I;', t);
         EXECUTE format('CREATE POLICY "Delete Access Admin" ON public.%I FOR DELETE USING (public.is_admin());', t);
     END LOOP;
 END $$;
@@ -325,7 +336,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION public.truncate_table(text) TO authenticated;
 
--- Refresh Cache & Summary Function (Optimized)
 -- Refresh Filters Cache Function
 CREATE OR REPLACE FUNCTION refresh_cache_filters()
 RETURNS void
@@ -359,7 +369,7 @@ BEGIN
 END;
 $$;
 
--- Refresh Summary Cache Function
+-- Refresh Summary Cache Function (Optimized with Mix Products Array)
 CREATE OR REPLACE FUNCTION refresh_cache_summary()
 RETURNS void
 LANGUAGE plpgsql
@@ -368,7 +378,7 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     TRUNCATE TABLE public.data_summary;
-    INSERT INTO public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, peso, bonificacao, devolucao)
+    INSERT INTO public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, peso, bonificacao, devolucao, mix_produtos)
     SELECT 
         EXTRACT(YEAR FROM s.dtped)::int,
         EXTRACT(MONTH FROM s.dtped)::int,
@@ -382,14 +392,19 @@ BEGIN
         SUM(s.vlvenda),
         SUM(s.totpesoliq),
         SUM(s.vlbonific),
-        SUM(COALESCE(s.vldevolucao, 0))
+        SUM(COALESCE(s.vldevolucao, 0)),
+        ARRAY_AGG(DISTINCT s.produto) FILTER (WHERE s.produto IS NOT NULL)
     FROM (
-        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao FROM public.data_detailed
+        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto FROM public.data_detailed
         UNION ALL
-        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao FROM public.data_history
+        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto FROM public.data_history
     ) s
     LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9;
+    
+    -- Optimize physical storage after rebuild
+    CLUSTER public.data_summary USING idx_summary_ano_mes_filial;
+    ANALYZE public.data_summary;
 END;
 $$;
 
@@ -404,8 +419,7 @@ BEGIN
 END;
 $$;
 
--- Database Optimization Function
--- Updated to include new performance indexes
+-- Database Optimization Function (Rebuilds Targeted Indexes)
 CREATE OR REPLACE FUNCTION optimize_database()
 RETURNS text
 LANGUAGE plpgsql
@@ -418,22 +432,17 @@ BEGIN
     END IF;
 
     -- Drop heavy indexes if they exist
-    DROP INDEX IF EXISTS public.idx_detailed_dtped_composite;
-    DROP INDEX IF EXISTS public.idx_history_dtped_composite;
     DROP INDEX IF EXISTS public.idx_summary_main;
 
-    -- Recreate optimized indexes
-    CREATE INDEX idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, superv, nome, codfor);
-    CREATE INDEX idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, superv, nome, codfor);
-    CREATE INDEX idx_summary_main ON public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda);
+    -- Recreate targeted optimized indexes
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_superv ON public.data_summary (ano, mes, superv);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_nome ON public.data_summary (ano, mes, nome);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_cidade ON public.data_summary (ano, mes, cidade);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_filial ON public.data_summary (ano, mes, filial);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codfor ON public.data_summary (ano, mes, codfor);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_tipovenda ON public.data_summary (ano, mes, tipovenda);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codcli ON public.data_summary (ano, mes, codcli);
     
-    -- Recreate performance indexes
-    CREATE INDEX IF NOT EXISTS idx_summary_codcli ON public.data_summary(codcli);
-    CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
-    CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
-    CREATE INDEX IF NOT EXISTS idx_detailed_codfor_dtped ON public.data_detailed (codfor, dtped);
-    CREATE INDEX IF NOT EXISTS idx_history_codfor_dtped ON public.data_history (codfor, dtped);
-
     RETURN 'Banco de dados otimizado com sucesso! Índices reconstruídos.';
 EXCEPTION WHEN OTHERS THEN
     RETURN 'Erro ao otimizar banco: ' || SQLERRM;
@@ -462,7 +471,6 @@ END;
 $$;
 
 -- Helper: Calculate Working Days
--- Helper: Calculate Working Days (Optimized)
 CREATE OR REPLACE FUNCTION calc_working_days(start_date date, end_date date)
 RETURNS int
 LANGUAGE plpgsql
@@ -481,7 +489,22 @@ BEGIN
 END;
 $$;
 
--- Get Main Dashboard Data (Using Summary Table, with Trend Logic, Optimized)
+-- Get Data Version (Cache Invalidation)
+CREATE OR REPLACE FUNCTION get_data_version()
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_last_update timestamp with time zone;
+BEGIN
+    SELECT MAX(created_at) INTO v_last_update FROM public.data_summary;
+    IF v_last_update IS NULL THEN RETURN '1970-01-01 00:00:00+00'; END IF;
+    RETURN v_last_update::text;
+END;
+$$;
+
+-- Get Main Dashboard Data (Dynamic SQL, Parallelism, Pre-Aggregation)
 CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -499,38 +522,36 @@ DECLARE
     v_current_year int;
     v_previous_year int;
     v_target_month int;
-    v_kpi_clients_attended int;
-    v_kpi_clients_base int;
-    v_monthly_chart_current json;
-    v_monthly_chart_previous json;
-    v_result json;
     
     -- Trend Vars
     v_max_sale_date date;
     v_trend_allowed boolean;
     v_work_days_passed int;
     v_work_days_total int;
-    v_trend_factor numeric;
+    v_trend_factor numeric := 0;
     v_trend_data json;
     v_month_start date;
     v_month_end date;
     v_holidays json;
     
-    -- Temp Vars for Calculation
+    -- Dynamic SQL
+    v_sql text;
+    v_where_clause text := '';
+    v_result json;
+    
+    -- Execution Context
+    v_kpi_clients_attended int;
+    v_kpi_clients_base int;
+    v_monthly_chart_current json;
+    v_monthly_chart_previous json;
     v_curr_month_idx int;
-    v_curr_faturamento numeric;
-    v_curr_peso numeric;
-    v_curr_bonificacao numeric;
-    v_curr_devolucao numeric;
-    v_curr_positivacao int;
-    v_curr_mix_pdv numeric;
-    v_curr_ticket_medio numeric;
-    v_range_start date;
-    v_range_end date;
 BEGIN
-    -- Increase timeout for heavy aggregation
-    SET LOCAL statement_timeout = '120s';
+    -- Force Parallel Execution for Heavy Aggregation
+    SET LOCAL max_parallel_workers_per_gather = 4;
+    SET LOCAL min_parallel_table_scan_size = '0';
+    SET LOCAL statement_timeout = '60s';
 
+    -- 1. Determine Date Ranges
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
         SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
     ELSE
@@ -538,17 +559,13 @@ BEGIN
     END IF;
     v_previous_year := v_current_year - 1;
 
-    -- Date ranges for optimization (index usage)
-    v_range_start := make_date(v_previous_year, 1, 1);
-    v_range_end := make_date(v_current_year + 1, 1, 1);
-
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_target_month := p_mes::int + 1;
     ELSE
          SELECT COALESCE(MAX(mes), 12) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year;
     END IF;
 
-    -- Trend Calculation Logic
+    -- 2. Trend Logic Calculation
     SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
     IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
 
@@ -574,20 +591,41 @@ BEGIN
         ELSE
             v_trend_factor := 1;
         END IF;
-    ELSE
-        v_trend_factor := 0;
     END IF;
 
+    -- 3. Construct Dynamic WHERE Clause
+    v_where_clause := 'WHERE ano IN ($1, $2) ';
+    
+    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+        v_where_clause := v_where_clause || ' AND filial = ANY($3) ';
+    END IF;
+    
+    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
+        v_where_clause := v_where_clause || ' AND cidade = ANY($4) ';
+    END IF;
+    
+    IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
+        v_where_clause := v_where_clause || ' AND superv = ANY($5) ';
+    END IF;
+    
+    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+        v_where_clause := v_where_clause || ' AND nome = ANY($6) ';
+    END IF;
+    
+    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
+        v_where_clause := v_where_clause || ' AND codfor = ANY($7) ';
+    END IF;
+    
+    IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
+        v_where_clause := v_where_clause || ' AND tipovenda = ANY($8) ';
+    END IF;
+
+    -- 4. Execute Main Aggregation Query
+    v_sql := '
     WITH filtered_summary AS (
         SELECT *
         FROM public.data_summary
-        WHERE ano IN (v_current_year, v_previous_year)
-          AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
-          AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
-          AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
-          AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
-          AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
-          AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        ' || v_where_clause || '
     ),
     client_monthly_stats AS (
         SELECT 
@@ -612,8 +650,8 @@ BEGIN
             ano,
             mes,
             SUM(CASE 
-                WHEN (p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0) THEN vlvenda
-                WHEN tipovenda IN ('1', '9') THEN vlvenda
+                WHEN ($8 IS NOT NULL AND array_length($8, 1) > 0) THEN vlvenda
+                WHEN tipovenda IN (''1'', ''9'') THEN vlvenda
                 ELSE 0 
             END) as faturamento,
             SUM(peso) as peso,
@@ -622,29 +660,24 @@ BEGIN
         FROM filtered_summary
         GROUP BY 1, 2
     ),
+    mix_eligible_clients AS (
+         SELECT ano, mes, codcli
+         FROM filtered_summary
+         WHERE codfor IN (''707'', ''708'')
+         GROUP BY 1, 2, 3
+         HAVING SUM(vlvenda) >= 1
+    ),
     mix_raw_data AS (
         SELECT 
-            EXTRACT(YEAR FROM s.dtped)::int as ano,
-            EXTRACT(MONTH FROM s.dtped)::int as mes,
-            s.codcli,
-            COUNT(DISTINCT s.produto) as unique_prods
-        FROM (
-            SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, produto, vlvenda 
-            FROM public.data_detailed 
-            WHERE codfor IN ('707', '708') AND dtped >= v_range_start AND dtped < v_range_end
-            UNION ALL
-            SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, produto, vlvenda 
-            FROM public.data_history 
-            WHERE codfor IN ('707', '708') AND dtped >= v_range_start AND dtped < v_range_end
-        ) s
-        WHERE (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR s.filial = ANY(p_filial))
-          AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR s.cidade = ANY(p_cidade))
-          AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR s.superv = ANY(p_supervisor))
-          AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR s.nome = ANY(p_vendedor))
-          AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR s.codfor = ANY(p_fornecedor))
-          AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR s.tipovenda = ANY(p_tipovenda))
+            t.ano, 
+            t.mes, 
+            t.codcli,
+            COUNT(DISTINCT p) as unique_prods
+        FROM filtered_summary t
+        JOIN mix_eligible_clients e ON t.ano = e.ano AND t.mes = e.mes AND t.codcli = e.codcli
+        CROSS JOIN unnest(t.mix_produtos) p
+        WHERE t.codfor IN (''707'', ''708'')
         GROUP BY 1, 2, 3
-        HAVING SUM(s.vlvenda) >= 1
     ),
     monthly_mix_stats AS (
         SELECT 
@@ -660,49 +693,53 @@ BEGIN
         FROM (
              SELECT codcli 
              FROM filtered_summary 
-             WHERE ano = v_current_year AND mes = v_target_month 
+             WHERE ano = $1 AND mes = $9 
              GROUP BY codcli 
              HAVING SUM(vlvenda) >= 1
         ) t
+    ),
+    kpi_base_count AS (
+        SELECT COUNT(*) as val FROM public.data_clients c 
+        WHERE c.bloqueio != ''S'' 
+        AND ($4 IS NULL OR array_length($4, 1) IS NULL OR c.cidade = ANY($4))
     )
     SELECT
         (SELECT val FROM kpi_active_count),
-        (SELECT COUNT(*) FROM public.data_clients c WHERE c.bloqueio != 'S' AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR c.cidade = ANY(p_cidade))),
-        COALESCE(json_agg(json_build_object('month_index', a.mes - 1, 'faturamento', a.faturamento, 'peso', a.peso, 'bonificacao', a.bonificacao, 'devolucao', a.devolucao, 'positivacao', COALESCE(p.positivacao_count, 0), 'mix_pdv', CASE WHEN mm.mix_client_count > 0 THEN mm.total_mix_sum::numeric / mm.mix_client_count ELSE 0 END, 'ticket_medio', CASE WHEN COALESCE(p.positivacao_count, 0) > 0 THEN a.faturamento / p.positivacao_count ELSE 0 END) ORDER BY a.mes) FILTER (WHERE a.ano = v_current_year), '[]'::json),
-        COALESCE(json_agg(json_build_object('month_index', a.mes - 1, 'faturamento', a.faturamento, 'peso', a.peso, 'bonificacao', a.bonificacao, 'devolucao', a.devolucao, 'positivacao', COALESCE(p.positivacao_count, 0), 'mix_pdv', CASE WHEN mm.mix_client_count > 0 THEN mm.total_mix_sum::numeric / mm.mix_client_count ELSE 0 END, 'ticket_medio', CASE WHEN COALESCE(p.positivacao_count, 0) > 0 THEN a.faturamento / p.positivacao_count ELSE 0 END) ORDER BY a.mes) FILTER (WHERE a.ano = v_previous_year), '[]'::json)
-    INTO v_kpi_clients_attended, v_kpi_clients_base, v_monthly_chart_current, v_monthly_chart_previous
+        (SELECT val FROM kpi_base_count),
+        COALESCE(json_agg(json_build_object(''month_index'', a.mes - 1, ''faturamento'', a.faturamento, ''peso'', a.peso, ''bonificacao'', a.bonificacao, ''devolucao'', a.devolucao, ''positivacao'', COALESCE(p.positivacao_count, 0), ''mix_pdv'', CASE WHEN mm.mix_client_count > 0 THEN mm.total_mix_sum::numeric / mm.mix_client_count ELSE 0 END, ''ticket_medio'', CASE WHEN COALESCE(p.positivacao_count, 0) > 0 THEN a.faturamento / p.positivacao_count ELSE 0 END) ORDER BY a.mes) FILTER (WHERE a.ano = $1), ''[]''::json),
+        COALESCE(json_agg(json_build_object(''month_index'', a.mes - 1, ''faturamento'', a.faturamento, ''peso'', a.peso, ''bonificacao'', a.bonificacao, ''devolucao'', a.devolucao, ''positivacao'', COALESCE(p.positivacao_count, 0), ''mix_pdv'', CASE WHEN mm.mix_client_count > 0 THEN mm.total_mix_sum::numeric / mm.mix_client_count ELSE 0 END, ''ticket_medio'', CASE WHEN COALESCE(p.positivacao_count, 0) > 0 THEN a.faturamento / p.positivacao_count ELSE 0 END) ORDER BY a.mes) FILTER (WHERE a.ano = $2), ''[]''::json)
     FROM agg_data a
     LEFT JOIN monthly_positivation p ON a.ano = p.ano AND a.mes = p.mes
-    LEFT JOIN monthly_mix_stats mm ON a.ano = mm.ano AND a.mes = mm.mes;
+    LEFT JOIN monthly_mix_stats mm ON a.ano = mm.ano AND a.mes = mm.mes
+    ';
 
+    EXECUTE v_sql 
+    INTO v_kpi_clients_attended, v_kpi_clients_base, v_monthly_chart_current, v_monthly_chart_previous
+    USING v_current_year, v_previous_year, p_filial, p_cidade, p_supervisor, p_vendedor, p_fornecedor, p_tipovenda, v_target_month;
+
+    -- 5. Calculate Trend (Post-Processing)
     IF v_trend_allowed THEN
         v_curr_month_idx := EXTRACT(MONTH FROM v_max_sale_date)::int - 1;
         
-        -- Use json_array_elements to unpack the current year data and find the month
-        SELECT 
-            (elem->>'faturamento')::numeric,
-            (elem->>'peso')::numeric,
-            (elem->>'bonificacao')::numeric,
-            (elem->>'devolucao')::numeric,
-            (elem->>'positivacao')::int,
-            (elem->>'mix_pdv')::numeric,
-            (elem->>'ticket_medio')::numeric
-        INTO v_curr_faturamento, v_curr_peso, v_curr_bonificacao, v_curr_devolucao, v_curr_positivacao, v_curr_mix_pdv, v_curr_ticket_medio
-        FROM json_array_elements(v_monthly_chart_current) elem
-        WHERE (elem->>'month_index')::int = v_curr_month_idx;
-        
-        IF v_curr_faturamento IS NOT NULL THEN
-            v_trend_data := json_build_object(
-                'month_index', v_curr_month_idx,
-                'faturamento', (v_curr_faturamento * v_trend_factor),
-                'peso', (v_curr_peso * v_trend_factor),
-                'bonificacao', (v_curr_bonificacao * v_trend_factor),
-                'devolucao', (v_curr_devolucao * v_trend_factor),
-                'positivacao', (v_curr_positivacao * v_trend_factor)::int,
-                'mix_pdv', v_curr_mix_pdv, -- Mix is a rate/average, so we project it flat (no factor)
-                'ticket_medio', v_curr_ticket_medio -- Ticket medio is a rate/average, so we project it flat
-            );
-        END IF;
+        DECLARE
+             v_elem json;
+        BEGIN
+            FOR v_elem IN SELECT * FROM json_array_elements(v_monthly_chart_current)
+            LOOP
+                IF (v_elem->>'month_index')::int = v_curr_month_idx THEN
+                    v_trend_data := json_build_object(
+                        'month_index', v_curr_month_idx,
+                        'faturamento', (v_elem->>'faturamento')::numeric * v_trend_factor,
+                        'peso', (v_elem->>'peso')::numeric * v_trend_factor,
+                        'bonificacao', (v_elem->>'bonificacao')::numeric * v_trend_factor,
+                        'devolucao', (v_elem->>'devolucao')::numeric * v_trend_factor,
+                        'positivacao', ((v_elem->>'positivacao')::numeric * v_trend_factor)::int,
+                        'mix_pdv', (v_elem->>'mix_pdv')::numeric,
+                        'ticket_medio', (v_elem->>'ticket_medio')::numeric
+                    );
+                END IF;
+            END LOOP;
+        END;
     END IF;
 
     SELECT json_agg(date) INTO v_holidays FROM public.data_holidays;
@@ -959,8 +996,38 @@ BEGIN
 END;
 $$;
 
+-- ==============================================================================
+-- 5. INITIALIZATION (Populate City Mapping + Refresh)
+-- ==============================================================================
 
--- ==============================================================================
--- 5. INITIALIZATION (RUN LAST)
--- ==============================================================================
+-- Populate City/Branch Map from History (Idempotent)
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN
+        WITH all_sales AS (
+            SELECT cidade, filial, dtped FROM public.data_detailed
+            UNION ALL
+            SELECT cidade, filial, dtped FROM public.data_history
+        ),
+        ranked_sales AS (
+            SELECT
+                cidade,
+                filial,
+                ROW_NUMBER() OVER (PARTITION BY cidade ORDER BY dtped DESC) as rn
+            FROM all_sales
+            WHERE cidade IS NOT NULL AND cidade != '' AND filial IS NOT NULL
+        )
+        SELECT DISTINCT cidade, filial
+        FROM ranked_sales
+        WHERE rn = 1
+    LOOP
+        INSERT INTO public.config_city_branches (cidade, filial)
+        VALUES (r.cidade, r.filial)
+        ON CONFLICT (cidade) DO NOTHING;
+    END LOOP;
+END $$;
+
+-- Refresh Cache to apply updates
 SELECT refresh_dashboard_cache();
