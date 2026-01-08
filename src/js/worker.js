@@ -386,8 +386,10 @@ self.onmessage = async (event) => {
         self.postMessage({ type: 'progress', status: 'Processando e Reatribuindo vendas...', percentage: 50 });
 
         const reattributeSales = (salesData, isCurrMonth = false) => {
+            const balcaoSpecialClients = new Set(['6421', '7706', '9814', '11405', '9763', '6769', '11625']);
             return salesData.map(sale => {
                 const originalCodCli = String(sale['CODCLI'] || '').trim();
+                const originalCodUsur = String(sale['CODUSUR'] || '').trim();
                 const newSale = { ...sale };
 
                 // 1. Strict Branch Force Logic (No exceptions)
@@ -404,7 +406,34 @@ self.onmessage = async (event) => {
                 const isRca53 = rca1 === '53';
                 const isInactive = !clientData || isRca53;
 
-                if (isInactive) {
+                // Check for Special Cases
+                
+                // Case A: 9569/53 Exception
+                const isBalcaoException = (originalCodCli === '9569' && originalCodUsur === '53');
+                // Case B: Balcao List
+                const isBalcaoList = balcaoSpecialClients.has(originalCodCli);
+                
+                // Case C: Americanas
+                const rawName = String(newSale['CLIENTE'] || newSale['NOMECLIENTE'] || newSale['RAZAOSOCIAL'] || '').toUpperCase();
+                const clientName = clientData ? clientData.nomeCliente.toUpperCase() : rawName;
+                const clientRazao = clientData ? clientData.razaosocial.toUpperCase() : '';
+                const isAmericanas = clientName.includes('AMERICANAS') || clientName.includes('AMERICANAS S.A') || clientRazao.includes('AMERICANAS') || clientRazao.includes('AMERICANAS S.A');
+
+                if (isBalcaoException) {
+                    newSale['CODUSUR'] = 'BALCAO_SP';
+                    newSale['NOME'] = 'BALCAO';
+                    newSale['SUPERV'] = 'BALCAO';
+                    newSale['CODCLI'] = '7706';
+                } else if (isBalcaoList) {
+                    newSale['CODUSUR'] = 'BALCAO_SP';
+                    newSale['NOME'] = 'BALCAO';
+                    newSale['SUPERV'] = 'BALCAO';
+                } else if (isAmericanas) {
+                    newSale['CODUSUR'] = 'AMERICANAS';
+                    newSale['NOME'] = 'AMERICANAS';
+                    newSale['SUPERV'] = 'SV AMERICANAS';
+                    // Branch is already set by Strict Logic above
+                } else if (isInactive) {
                     // 3. Inactive Logic: Supervisor by City Predominance
                     // User Rule: "clientes que são identificado como INATIVOS... Será identificado o supervisor de cada cidade, Por predominância"
                     // Vendor Name: "INATIVOS (numero da filial que foi identificada...)"
@@ -430,29 +459,14 @@ self.onmessage = async (event) => {
                         newSale['SUPERV'] = vendorInfo.SUPERV;
                     } else {
                         // Fallback if vendor unknown in map (rare)
-                        // Keep original if valid, otherwise mark N/A?
-                        // Keeping original or "Inativo" fallback might be safer, but instructions imply Strict Active/Inactive split.
-                        // If we can't find the vendor, we can't apply the "latest supervisor" rule.
-                        // Let's assume standard behavior: keep what we have or flag it. 
-                        // Previous logic defaulted to INATIVO.
-                        // However, if the client IS active but RCA is unknown, it's an edge case.
-                        // Let's try to preserve original info if RCA1 is missing but client exists.
                          if (!rca1) {
                              // Use original sale info if RCA1 is missing
                          } else {
                              newSale['CODUSUR'] = rca1;
-                             newSale['NOME'] = 'Desconhecido'; // Or check original sale name?
+                             newSale['NOME'] = 'Desconhecido';
                              newSale['SUPERV'] = 'Desconhecido';
                          }
                     }
-                    
-                    // Handle "Americanas" Name/ID consistency if needed, OR just treat as normal Active Client.
-                    // If Americanas has a client card, it is Active. 
-                    // If its RCA1 maps to "AMERICANAS" in rcaInfoMap, it gets that.
-                    // If the user wants specific names for Americanas, they should ensure the RCA maps to it.
-                    // Given the strict instruction "no exceptions", we rely on the generic Active logic.
-                    // But if Americanas was previously hardcoded because it lacked a consistent RCA, this might break.
-                    // However, we must follow "não deve ter exceções".
                 }
 
                 return newSale;
