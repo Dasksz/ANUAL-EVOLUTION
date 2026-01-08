@@ -1071,7 +1071,5 @@ BEGIN
 END $$;
 
 -- Refresh Cache to apply updates
--- SELECT refresh_dashboard_cache();
-
--- Trigger initial population of the summary table to ensure new columns are populated
-SELECT refresh_cache_summary();
+-- Refresh Cache to apply updates (Populates both Summary and Filters for Dropdowns)
+SELECT refresh_dashboard_cache();
