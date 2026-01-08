@@ -359,6 +359,9 @@ self.onmessage = async (event) => {
 
         self.postMessage({ type: 'progress', status: 'Criando mapa mestre de vendedores...', percentage: 40 });
         const rcaInfoMap = new Map();
+        const clientLastVendorMap = new Map(); // CODCLI -> CODUSUR
+        const vendorCitiesMap = new Map(); // CODUSUR -> Set(MUNICIPIO)
+
         // Sort all sales by date for RCA owner determination
         allSalesRaw.sort((a, b) => {
             const dateA = parseDate(a.DTPED) || new Date(0);
@@ -368,6 +371,9 @@ self.onmessage = async (event) => {
 
         for (const row of allSalesRaw) {
             const codusur = String(row['CODUSUR'] || '').trim();
+            const codcli = String(row['CODCLI'] || '').trim();
+            const municipio = String(row['MUNICIPIO'] || '').trim().toUpperCase();
+
             if (!codusur) continue;
             let supervisor = String(row['SUPERV'] || '').trim();
             const nome = String(row['NOME'] || '').trim();
@@ -380,6 +386,19 @@ self.onmessage = async (event) => {
             } else {
                 if (nome) existingEntry.NOME = nome;
                 if (supervisor) existingEntry.SUPERV = supervisor;
+            }
+
+            // Build Client Last Vendor Map (sales sorted by date, so last one overwrites)
+            if (codcli && codusur) {
+                clientLastVendorMap.set(codcli, codusur);
+            }
+
+            // Build Vendor Cities Map
+            if (codusur && municipio) {
+                if (!vendorCitiesMap.has(codusur)) {
+                    vendorCitiesMap.set(codusur, new Set());
+                }
+                vendorCitiesMap.get(codusur).add(municipio);
             }
         }
 
@@ -434,15 +453,50 @@ self.onmessage = async (event) => {
                     newSale['SUPERV'] = 'SV AMERICANAS';
                     // Branch is already set by Strict Logic above
                 } else if (isInactive) {
-                    // 3. Inactive Logic: Supervisor by City Predominance
-                    // User Rule: "clientes que são identificado como INATIVOS... Será identificado o supervisor de cada cidade, Por predominância"
-                    // Vendor Name: "INATIVOS (numero da filial que foi identificada...)"
+                    // 3. Inactive Logic:
+                    // New Rule:
+                    // 1. Identify last vendor for this client
+                    // 2. Identify all cities that vendor served
+                    // 3. Identify predominant supervisor currently across those cities (aggregate count)
+                    // 4. Assign to that supervisor and "INATIVOS [SUPERVISOR]" vendor.
                     
-                    const predominantSupervisor = cityPredominantSupervisorMap.get(municipio) || 'INATIVOS';
+                    let targetSupervisor = null;
+                    const lastVendor = clientLastVendorMap.get(originalCodCli);
+
+                    if (lastVendor) {
+                        const vendorCities = vendorCitiesMap.get(lastVendor);
+                        if (vendorCities && vendorCities.size > 0) {
+                            const supervisorAggregatedCounts = new Map();
+
+                            vendorCities.forEach(city => {
+                                const cityCounts = citySupervisorCounts.get(city);
+                                if (cityCounts) {
+                                    cityCounts.forEach((count, superv) => {
+                                        supervisorAggregatedCounts.set(superv, (supervisorAggregatedCounts.get(superv) || 0) + count);
+                                    });
+                                }
+                            });
+
+                            let maxCount = 0;
+                            supervisorAggregatedCounts.forEach((count, superv) => {
+                                if (count > maxCount) {
+                                    maxCount = count;
+                                    targetSupervisor = superv;
+                                }
+                            });
+                        }
+                    }
+
+                    // Fallback if no last vendor or no active supervisor found (use current city predominance)
+                    if (!targetSupervisor) {
+                         targetSupervisor = cityPredominantSupervisorMap.get(municipio) || 'INATIVOS';
+                    }
                     
-                    newSale['SUPERV'] = predominantSupervisor;
-                    newSale['CODUSUR'] = `INATIVOS_${finalFilial}`;
-                    newSale['NOME'] = `INATIVOS ${finalFilial}`;
+                    const sanitizedSupervisor = targetSupervisor.replace(/[^A-Z0-9]/g, ''); // Simple sanitization for code
+
+                    newSale['SUPERV'] = targetSupervisor;
+                    newSale['CODUSUR'] = `INAT_${sanitizedSupervisor}`;
+                    newSale['NOME'] = `INATIVOS ${targetSupervisor}`;
 
                 } else {
                     // 4. Active Logic: Supervisor by Vendor's Latest Status
