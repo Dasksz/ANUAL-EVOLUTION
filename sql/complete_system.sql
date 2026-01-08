@@ -100,24 +100,6 @@ BEGIN
 END $$;
 
 -- Add mix_details column if it does not exist (Schema Migration)
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary' AND column_name = 'mix_details') THEN
-        ALTER TABLE public.data_summary ADD COLUMN mix_details jsonb;
-    END IF;
-END $$;
-
--- Add pre_mix_count and pre_positivacao_val if they do not exist
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary' AND column_name = 'pre_mix_count') THEN
-        ALTER TABLE public.data_summary ADD COLUMN pre_mix_count int DEFAULT 0;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary' AND column_name = 'pre_positivacao_val') THEN
-        ALTER TABLE public.data_summary ADD COLUMN pre_positivacao_val int DEFAULT 0;
-    END IF;
-END $$;
-
 -- Holidays Table
 create table if not exists public.data_holidays (
     date date PRIMARY KEY,
@@ -173,6 +155,25 @@ create table if not exists public.data_summary (
     pre_positivacao_val int DEFAULT 0, -- 1 se positivou, 0 se não
     created_at timestamp with time zone default now()
 );
+
+-- Add mix_details column if it does not exist (Schema Migration)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary' AND column_name = 'mix_details') THEN
+        ALTER TABLE public.data_summary ADD COLUMN mix_details jsonb;
+    END IF;
+END $$;
+
+-- Add pre_mix_count and pre_positivacao_val if they do not exist
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary' AND column_name = 'pre_mix_count') THEN
+        ALTER TABLE public.data_summary ADD COLUMN pre_mix_count int DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary' AND column_name = 'pre_positivacao_val') THEN
+        ALTER TABLE public.data_summary ADD COLUMN pre_positivacao_val int DEFAULT 0;
+    END IF;
+END $$;
 
 -- Cache Table (For Filter Dropdowns)
 DROP TABLE IF EXISTS public.cache_filters CASCADE;
@@ -1072,4 +1073,4 @@ END $$;
 
 -- Refresh Cache to apply updates
 -- Refresh Cache to apply updates (Populates both Summary and Filters for Dropdowns)
-SELECT refresh_dashboard_cache();
+-- SELECT refresh_dashboard_cache(); -- Moved to refresh_data.sql
