@@ -599,11 +599,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let holidays = [];
     
     // Prefetch State
-    let availableFiltersState = { filiais: [], supervisors: [] };
+    let availableFiltersState = { filiais: [], supervisors: [], cidades: [], vendedores: [], fornecedores: [], tipos_venda: [] };
     let prefetchQueue = [];
     let isPrefetching = false;
 
     async function initDashboard() {
+        await checkDataVersion(); // Check for invalidation first
+
         const filters = getCurrentFilters();
         await loadFilters(filters);
         await loadMainDashboardData();
@@ -611,7 +613,29 @@ document.addEventListener('DOMContentLoaded', () => {
         // Trigger background prefetch after main load
         setTimeout(() => {
             queueCommonFilters();
-        }, 2000);
+        }, 3000);
+    }
+
+    async function checkDataVersion() {
+        try {
+            const { data: serverVersion, error } = await supabase.rpc('get_data_version');
+            if (error) { console.warn('Erro ao verificar versão:', error); return; }
+
+            const localVersion = localStorage.getItem('dashboard_data_version');
+            
+            if (serverVersion && serverVersion !== localVersion) {
+                console.log('Nova versão de dados detectada. Limpando cache...', serverVersion);
+                
+                // Clear IndexedDB
+                const db = await initDB();
+                await db.clear(STORE_NAME);
+                
+                // Update Local Version
+                localStorage.setItem('dashboard_data_version', serverVersion);
+            }
+        } catch (e) {
+            console.error('Falha na validação de cache:', e);
+        }
     }
 
     function getCurrentFilters() {
@@ -710,6 +734,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Capture available options for prefetcher
         availableFiltersState.filiais = data.filiais || [];
         availableFiltersState.supervisors = data.supervisors || [];
+        availableFiltersState.cidades = data.cidades || [];
+        availableFiltersState.vendedores = data.vendedores || [];
+        availableFiltersState.fornecedores = data.fornecedores || []; // Array of objects
+        availableFiltersState.tipos_venda = data.tipos_venda || [];
 
         const updateSingleSelect = (element, items) => {
             const currentVal = element.value;
@@ -789,29 +817,68 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadMainDashboardData() {
         const filters = getCurrentFilters();
+        
+        // Show Loading Overlay (Blur)
+        const container = document.getElementById('main-dashboard-content');
+        let overlay = document.getElementById('dashboard-loading-overlay');
+        
+        if (!overlay && container) {
+            overlay = document.createElement('div');
+            overlay.id = 'dashboard-loading-overlay';
+            overlay.className = 'dashboard-loading-overlay';
+            overlay.innerHTML = '<div class="dashboard-loading-spinner"></div>';
+            // Make sure container is relative for absolute positioning
+            if (getComputedStyle(container).position === 'static') {
+                container.style.position = 'relative';
+            }
+            container.appendChild(overlay);
+        } else if (overlay) {
+            overlay.classList.remove('hidden');
+        }
+
         const { data, source } = await fetchDashboardData(filters);
+        
         if (data) renderDashboard(data);
+        
+        // Hide Overlay
+        if (overlay) overlay.classList.add('hidden');
     }
 
     // --- Background Prefetch Logic ---
 
     function queueCommonFilters() {
-        console.log('[Background] Iniciando estratégia de pré-carregamento...');
+        console.log('[Background] Iniciando estratégia de pré-carregamento massivo...');
         const currentFilters = getCurrentFilters();
+        const baseFilters = {
+            p_ano: currentFilters.p_ano,
+            p_mes: currentFilters.p_mes,
+            p_filial: [], p_cidade: [], p_supervisor: [], p_vendedor: [], p_fornecedor: [], p_tipovenda: []
+        };
         
-        // Strategy 1: Pre-fetch individual Filiais
-        availableFiltersState.filiais.forEach(filial => {
-            // Clone filters and override filial
-            const newFilters = { ...currentFilters, p_filial: [filial] };
-            addToPrefetchQueue(`Filial: ${filial}`, newFilters);
+        // Strategy: Pre-fetch "One Dimensional" filters (most common drill-down)
+        
+        // 1. Filiais
+        availableFiltersState.filiais.forEach(v => addToPrefetchQueue(`Filial: ${v}`, { ...baseFilters, p_filial: [v] }));
+
+        // 2. Supervisors
+        availableFiltersState.supervisors.forEach(v => addToPrefetchQueue(`Superv: ${v}`, { ...baseFilters, p_supervisor: [v] }));
+
+        // 3. Cidades
+        availableFiltersState.cidades.forEach(v => addToPrefetchQueue(`Cidade: ${v}`, { ...baseFilters, p_cidade: [v] }));
+
+        // 4. Vendedores
+        availableFiltersState.vendedores.forEach(v => addToPrefetchQueue(`Vend: ${v}`, { ...baseFilters, p_vendedor: [v] }));
+
+        // 5. Fornecedores (Handle Object Structure)
+        availableFiltersState.fornecedores.forEach(v => {
+            const cod = v.cod || v; // Handle if object or raw
+            addToPrefetchQueue(`Forn: ${cod}`, { ...baseFilters, p_fornecedor: [String(cod)] });
         });
 
-        // Strategy 2: Pre-fetch individual Supervisors
-        availableFiltersState.supervisors.forEach(superv => {
-             const newFilters = { ...currentFilters, p_supervisor: [superv] };
-             addToPrefetchQueue(`Supervisor: ${superv}`, newFilters);
-        });
+        // 6. Tipos Venda
+        availableFiltersState.tipos_venda.forEach(v => addToPrefetchQueue(`Tipo: ${v}`, { ...baseFilters, p_tipovenda: [v] }));
         
+        console.log(`[Background] ${prefetchQueue.length} filtros agendados.`);
         processQueue();
     }
 
