@@ -414,33 +414,22 @@ BEGIN
         -- Aggregate per product to get sum of value per product for the group
         SELECT
             ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, produto,
-            SUM(vlvenda) as prod_val
+            SUM(vlvenda) as prod_val,
+            SUM(totpesoliq) as prod_peso,
+            SUM(vlbonific) as prod_bonific,
+            SUM(COALESCE(vldevolucao, 0)) as prod_devol
         FROM augmented_data
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
     )
     SELECT
-        a.ano, a.mes, a.filial, a.cidade, a.superv, a.nome, a.codfor, a.tipovenda, a.codcli,
-        SUM(a.vlvenda),
-        SUM(a.totpesoliq),
-        SUM(a.vlbonific),
-        SUM(COALESCE(a.vldevolucao, 0)),
-        ARRAY_AGG(DISTINCT a.produto) FILTER (WHERE a.produto IS NOT NULL),
-        (
-             -- Build JSON object { "prod_code": value, ... }
-             SELECT jsonb_object_agg(pa.produto, pa.prod_val)
-             FROM product_agg pa
-             WHERE pa.ano = a.ano
-               AND pa.mes = a.mes
-               AND pa.filial IS NOT DISTINCT FROM a.filial
-               AND pa.cidade IS NOT DISTINCT FROM a.cidade
-               AND pa.superv IS NOT DISTINCT FROM a.superv
-               AND pa.nome IS NOT DISTINCT FROM a.nome
-               AND pa.codfor IS NOT DISTINCT FROM a.codfor
-               AND pa.tipovenda IS NOT DISTINCT FROM a.tipovenda
-               AND pa.codcli IS NOT DISTINCT FROM a.codcli
-               AND pa.produto IS NOT NULL
-        )
-    FROM augmented_data a
+        pa.ano, pa.mes, pa.filial, pa.cidade, pa.superv, pa.nome, pa.codfor, pa.tipovenda, pa.codcli,
+        SUM(pa.prod_val),
+        SUM(pa.prod_peso),
+        SUM(pa.prod_bonific),
+        SUM(pa.prod_devol),
+        ARRAY_AGG(DISTINCT pa.produto) FILTER (WHERE pa.produto IS NOT NULL),
+        jsonb_object_agg(pa.produto, pa.prod_val) FILTER (WHERE pa.produto IS NOT NULL)
+    FROM product_agg pa
     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9;
     
     -- Optimize physical storage after rebuild
@@ -1074,4 +1063,4 @@ BEGIN
 END $$;
 
 -- Refresh Cache to apply updates
-SELECT refresh_dashboard_cache();
+-- SELECT refresh_dashboard_cache();
