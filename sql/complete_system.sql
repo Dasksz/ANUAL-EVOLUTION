@@ -99,6 +99,14 @@ BEGIN
     END IF;
 END $$;
 
+-- Add mix_details column if it does not exist (Schema Migration)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary' AND column_name = 'mix_details') THEN
+        ALTER TABLE public.data_summary ADD COLUMN mix_details jsonb;
+    END IF;
+END $$;
+
 -- Holidays Table
 create table if not exists public.data_holidays (
     date date PRIMARY KEY,
@@ -406,33 +414,22 @@ BEGIN
         -- Aggregate per product to get sum of value per product for the group
         SELECT 
             ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, produto,
-            SUM(vlvenda) as prod_val
+            SUM(vlvenda) as prod_val,
+            SUM(totpesoliq) as prod_peso,
+            SUM(vlbonific) as prod_bonific,
+            SUM(COALESCE(vldevolucao, 0)) as prod_devol
         FROM augmented_data
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
     )
     SELECT 
-        a.ano, a.mes, a.filial, a.cidade, a.superv, a.nome, a.codfor, a.tipovenda, a.codcli,
-        SUM(a.vlvenda),
-        SUM(a.totpesoliq),
-        SUM(a.vlbonific),
-        SUM(COALESCE(a.vldevolucao, 0)),
-        ARRAY_AGG(DISTINCT a.produto) FILTER (WHERE a.produto IS NOT NULL),
-        (
-             -- Build JSON object { "prod_code": value, ... }
-             SELECT jsonb_object_agg(pa.produto, pa.prod_val)
-             FROM product_agg pa
-             WHERE pa.ano = a.ano 
-               AND pa.mes = a.mes 
-               AND pa.filial IS NOT DISTINCT FROM a.filial
-               AND pa.cidade IS NOT DISTINCT FROM a.cidade
-               AND pa.superv IS NOT DISTINCT FROM a.superv
-               AND pa.nome IS NOT DISTINCT FROM a.nome
-               AND pa.codfor IS NOT DISTINCT FROM a.codfor
-               AND pa.tipovenda IS NOT DISTINCT FROM a.tipovenda
-               AND pa.codcli IS NOT DISTINCT FROM a.codcli
-               AND pa.produto IS NOT NULL
-        )
-    FROM augmented_data a
+        pa.ano, pa.mes, pa.filial, pa.cidade, pa.superv, pa.nome, pa.codfor, pa.tipovenda, pa.codcli,
+        SUM(pa.prod_val),
+        SUM(pa.prod_peso),
+        SUM(pa.prod_bonific),
+        SUM(pa.prod_devol),
+        ARRAY_AGG(DISTINCT pa.produto) FILTER (WHERE pa.produto IS NOT NULL),
+        jsonb_object_agg(pa.produto, pa.prod_val) FILTER (WHERE pa.produto IS NOT NULL)
+    FROM product_agg pa
     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9;
     
     -- Optimize physical storage after rebuild
@@ -705,20 +702,22 @@ BEGIN
             t.ano, 
             t.mes, 
             t.codcli,
-            COUNT(DISTINCT p.key) as unique_prods
+            p.key as prod_code,
+            SUM((p.value)::numeric) as total_val
         FROM filtered_summary t
-        JOIN mix_eligible_clients e ON t.ano = e.ano AND t.mes = e.mes AND t.codcli = e.codcli,
-        jsonb_each_text(t.mix_details) p
+        JOIN mix_eligible_clients e ON t.ano = e.ano AND t.mes = e.mes AND t.codcli = e.codcli
+        CROSS JOIN jsonb_each_text(t.mix_details) p
         WHERE t.codfor IN (''707'', ''708'')
-          AND (p.value)::numeric >= 1
-        GROUP BY 1, 2, 3
+          AND ( ($8 IS NOT NULL AND array_length($8, 1) > 0) OR (t.tipovenda IN (''1'', ''9'')) )
+        GROUP BY 1, 2, 3, 4
+        HAVING SUM((p.value)::numeric) >= 1
     ),
     monthly_mix_stats AS (
         SELECT 
             ano, 
             mes, 
-            SUM(unique_prods) as total_mix_sum,
-            COUNT(codcli) as mix_client_count
+            COUNT(prod_code) as total_mix_sum,
+            COUNT(DISTINCT codcli) as mix_client_count
         FROM mix_raw_data
         GROUP BY 1, 2
     ),
@@ -1064,4 +1063,4 @@ BEGIN
 END $$;
 
 -- Refresh Cache to apply updates
-SELECT refresh_dashboard_cache();
+-- SELECT refresh_dashboard_cache();
