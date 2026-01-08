@@ -818,23 +818,9 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadMainDashboardData() {
         const filters = getCurrentFilters();
 
-        // Show Loading Overlay (Blur)
-        const container = document.getElementById('main-dashboard-content');
-        let overlay = document.getElementById('dashboard-loading-overlay');
-
-        if (!overlay && container) {
-            overlay = document.createElement('div');
-            overlay.id = 'dashboard-loading-overlay';
-            overlay.className = 'dashboard-loading-overlay';
-            overlay.innerHTML = '<div class="dashboard-loading-spinner"></div>';
-            // Make sure container is relative for absolute positioning
-            if (getComputedStyle(container).position === 'static') {
-                container.style.position = 'relative';
-            }
-            container.appendChild(overlay);
-        } else if (overlay) {
-            overlay.classList.remove('hidden');
-        }
+        // Show Loading Overlay
+        const overlay = document.getElementById('dashboard-loading-overlay');
+        if (overlay) overlay.classList.remove('hidden');
 
         const { data, source } = await fetchDashboardData(filters);
 
