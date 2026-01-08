@@ -839,6 +839,7 @@ BEGIN
         AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
         AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
         AND (v_filter_month IS NULL OR mes = v_filter_month)
+        AND superv IS NOT NULL AND superv != '' AND superv != 'null'
         ORDER BY superv
     ) INTO v_supervisors;
 
@@ -851,6 +852,7 @@ BEGIN
         AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
         AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
         AND (v_filter_month IS NULL OR mes = v_filter_month)
+        AND nome IS NOT NULL AND nome != '' AND nome != 'null'
         ORDER BY nome
     ) INTO v_vendedores;
 
@@ -863,6 +865,7 @@ BEGIN
         AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
         AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
         AND (v_filter_month IS NULL OR mes = v_filter_month)
+        AND cidade IS NOT NULL AND cidade != '' AND cidade != 'null'
         ORDER BY cidade
     ) INTO v_cidades;
 
@@ -875,6 +878,7 @@ BEGIN
         AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
         AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
         AND (v_filter_month IS NULL OR mes = v_filter_month)
+        AND filial IS NOT NULL AND filial != '' AND filial != 'null'
         ORDER BY filial
     ) INTO v_filiais;
 
