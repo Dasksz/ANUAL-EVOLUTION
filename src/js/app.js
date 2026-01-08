@@ -186,7 +186,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const { data: profile, error } = await Promise.race([profileQuery, timeout]);
 
-            if (error && error.code !== 'PGRST116') throw error;
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    // Profile doesn't exist, create it
+                    const { error: insertError } = await supabase
+                        .from('profiles')
+                        .insert([{ id: user.id, email: user.email, status: 'pendente' }]);
+
+                    if (insertError) throw insertError;
+                } else {
+                    throw error;
+                }
+            }
 
             const status = profile?.status || 'pendente';
             if (profile?.role) window.userRole = profile.role;
