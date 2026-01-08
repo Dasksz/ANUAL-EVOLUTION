@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Buttons in Dashboard
     const clearFiltersBtn = document.getElementById('clear-filters-btn');
     const calendarBtn = document.getElementById('calendar-btn'); // New Calendar Button
+    const chartToggleBtn = document.getElementById('chart-toggle-btn'); // Chart Mode Toggle
 
     // Calendar Modal Elements
     const calendarModal = document.getElementById('calendar-modal');
@@ -342,6 +343,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Dashboard Internal Navigation ---
+    if (chartToggleBtn) {
+        chartToggleBtn.addEventListener('click', () => {
+            currentChartMode = currentChartMode === 'faturamento' ? 'peso' : 'faturamento';
+            if (lastDashboardData) {
+                renderDashboard(lastDashboardData);
+            }
+        });
+    }
+
     clearFiltersBtn.addEventListener('click', async () => {
         // Reset Single Selects
         anoFilter.value = 'todos';
@@ -608,7 +618,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedTiposVenda = [];
     let currentCharts = {};
     let holidays = [];
-    
+    let currentChartMode = 'faturamento'; // 'faturamento' or 'peso'
+    let lastDashboardData = null;
+
     // Prefetch State
     let availableFiltersState = { filiais: [], supervisors: [], cidades: [], vendedores: [], fornecedores: [], tipos_venda: [] };
     let prefetchQueue = [];
@@ -860,7 +872,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const { data, source } = await fetchDashboardData(filters);
         
-        if (data) renderDashboard(data);
+        if (data) {
+            lastDashboardData = data;
+            renderDashboard(data);
+        }
         
         hideDashboardLoading();
     }
@@ -944,36 +959,83 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let currentData = data.monthly_data_current || [];
         let previousData = data.monthly_data_previous || [];
-
-        if (mesFilter.value !== '') {
-            const selectedMonthIndex = parseInt(mesFilter.value);
-            currentData = currentData.filter(d => d.month_index === selectedMonthIndex);
-            previousData = previousData.filter(d => d.month_index === selectedMonthIndex);
-        }
-
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         const targetIndex = data.target_month_index;
-        const currMonthData = currentData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
-        const prevMonthData = previousData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
 
-        // Helper for Trend Logic
-        const getTrendValue = (key, baseValue) => {
-            if (data.trend_allowed && data.trend_data && data.trend_data.month_index === targetIndex) {
-                return data.trend_data[key] || 0;
+        // KPI Calculation Variables
+        let currFat, currKg, prevFat, prevKg, triAvgFat, triAvgPeso;
+        let kpiTitleFat, kpiTitleKg;
+        
+        // --- KPI LOGIC (Scenario Check) ---
+        if (anoFilter.value !== 'todos' && mesFilter.value === '') {
+            // SCENARIO A: Year Selected, Month All -> Show Year vs Previous Year (Accumulated)
+            
+            const sumData = (dataset, useTrend) => {
+                let sumFat = 0; 
+                let sumKg = 0;
+                // Sum available months (0 to 11)
+                dataset.forEach(d => {
+                    // Check if this month is the trend month and use trend data if applicable
+                    if (useTrend && data.trend_allowed && data.trend_data && d.month_index === data.trend_data.month_index) {
+                        sumFat += data.trend_data.faturamento;
+                        sumKg += data.trend_data.peso;
+                    } else {
+                        sumFat += d.faturamento;
+                        sumKg += d.peso;
+                    }
+                });
+                return { faturamento: sumFat, peso: sumKg };
+            };
+
+            const currSums = sumData(currentData, true);
+            const prevSums = sumData(previousData, false);
+
+            currFat = currSums.faturamento;
+            currKg = currSums.peso;
+            prevFat = prevSums.faturamento;
+            prevKg = prevSums.peso;
+            
+            kpiTitleFat = `Tend. FAT ${data.current_year} vs Ano Ant.`;
+            kpiTitleKg = `Tend. TON ${data.current_year} vs Ano Ant.`;
+
+        } else {
+            // SCENARIO B: Default (Month vs Month or Filtered Month)
+            
+            if (mesFilter.value !== '') {
+                const selectedMonthIndex = parseInt(mesFilter.value);
+                currentData = currentData.filter(d => d.month_index === selectedMonthIndex);
+                previousData = previousData.filter(d => d.month_index === selectedMonthIndex);
             }
-            return baseValue;
-        };
 
-        const currFat = getTrendValue('faturamento', currMonthData.faturamento);
-        const currKg = getTrendValue('peso', currMonthData.peso);
+            const currMonthData = currentData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
+            const prevMonthData = previousData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
+
+            // Helper for Trend Logic
+            const getTrendValue = (key, baseValue) => {
+                if (data.trend_allowed && data.trend_data && data.trend_data.month_index === targetIndex) {
+                    return data.trend_data[key] || 0;
+                }
+                return baseValue;
+            };
+
+            currFat = getTrendValue('faturamento', currMonthData.faturamento);
+            currKg = getTrendValue('peso', currMonthData.peso);
+            prevFat = prevMonthData.faturamento;
+            prevKg = prevMonthData.peso;
+
+            const mName = monthNames[targetIndex]?.toUpperCase() || "";
+            kpiTitleFat = `Tend. FAT ${mName} vs Ano Ant.`;
+            kpiTitleKg = `Tend. TON ${mName} vs Ano Ant.`;
+        }
 
         // Variation Calc
         const calcEvo = (curr, prev) => prev > 0 ? ((curr / prev) - 1) * 100 : (curr > 0 ? 100 : 0);
 
-        // --- KPI Month vs Year ---
+        // --- KPI Updates ---
         updateKpiCard({
             prefix: 'fat',
             trendVal: currFat,
-            prevVal: prevMonthData.faturamento,
+            prevVal: prevFat,
             fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
             calcEvo
         });
@@ -981,34 +1043,49 @@ document.addEventListener('DOMContentLoaded', () => {
         updateKpiCard({
             prefix: 'kg',
             trendVal: currKg,
-            prevVal: prevMonthData.peso,
+            prevVal: prevKg,
             fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Ton`,
             calcEvo
         });
 
-        // --- KPI Month vs Trimester ---
+        // --- KPI Month vs Trimester (Keep standard logic based on target month) ---
         let triSumFat = 0, triSumPeso = 0, triCount = 0;
-        // Trimestral logic: Previous 3 months average
         for (let i = 1; i <= 3; i++) {
             const idx = targetIndex - i;
             let mData;
             if (idx >= 0) {
-                // Same year
                 mData = data.monthly_data_current.find(d => d.month_index === idx);
             } else {
-                // Previous year (e.g., Jan (0) - 1 = -1 -> Dec (11))
                 const prevIdx = 12 + idx;
                 mData = data.monthly_data_previous.find(d => d.month_index === prevIdx);
             }
-            
             if (mData) { triSumFat += mData.faturamento; triSumPeso += mData.peso; triCount++; }
         }
-        const triAvgFat = triCount > 0 ? triSumFat / triCount : 0;
-        const triAvgPeso = triCount > 0 ? triSumPeso / triCount : 0;
+        triAvgFat = triCount > 0 ? triSumFat / triCount : 0;
+        triAvgPeso = triCount > 0 ? triSumPeso / triCount : 0;
+
+        let currMonthFatForTri, currMonthKgForTri;
+        
+        if (anoFilter.value !== 'todos' && mesFilter.value === '') {
+             // In Year View, we still want the Tri card to make sense (Current Month vs Tri).
+             // Let's re-fetch the specific current month data for the Tri calculation.
+             const cMonthData = data.monthly_data_current.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
+             if (data.trend_allowed && data.trend_data && data.trend_data.month_index === targetIndex) {
+                 currMonthFatForTri = data.trend_data.faturamento;
+                 currMonthKgForTri = data.trend_data.peso;
+             } else {
+                 currMonthFatForTri = cMonthData.faturamento;
+                 currMonthKgForTri = cMonthData.peso;
+             }
+        } else {
+             // In Month View, currFat is already the monthly value
+             currMonthFatForTri = currFat;
+             currMonthKgForTri = currKg;
+        }
 
         updateKpiCard({
             prefix: 'tri-fat',
-            trendVal: currFat,
+            trendVal: currMonthFatForTri,
             prevVal: triAvgFat,
             fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
             calcEvo
@@ -1016,23 +1093,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateKpiCard({
             prefix: 'tri-kg',
-            trendVal: currKg,
+            trendVal: currMonthKgForTri,
             prevVal: triAvgPeso,
             fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Ton`,
             calcEvo
         });
 
-        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         const mName = monthNames[targetIndex]?.toUpperCase() || "";
         
         // Update Titles
-        document.getElementById('kpi-title-evo-ano-fat').textContent = `Tend. FAT ${mName} vs Ano Ant.`;
-        document.getElementById('kpi-title-evo-ano-kg').textContent = `Tend. TON ${mName} vs Ano Ant.`;
+        document.getElementById('kpi-title-evo-ano-fat').textContent = kpiTitleFat;
+        document.getElementById('kpi-title-evo-ano-kg').textContent = kpiTitleKg;
         document.getElementById('kpi-title-evo-tri-fat').textContent = `Tend. FAT ${mName} vs Trim. Ant.`;
         document.getElementById('kpi-title-evo-tri-kg').textContent = `Tend. TON ${mName} vs Trim. Ant.`;
 
-        // Chart Data Prep
-        const mapTo12 = (arr) => { const res = new Array(12).fill(0); arr.forEach(d => res[d.month_index] = d.faturamento); return res; };
+        // --- CHART PREP (Responsive to Mode) ---
+        const mainChartTitle = document.getElementById('main-chart-title');
+        
+        // Data Mapping Helper based on Mode
+        const getDataValue = (d) => currentChartMode === 'faturamento' ? d.faturamento : d.peso;
+        
+        // Formatters
+        const currencyFormatter = (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''));
+        const weightFormatter = (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
+        const currentFormatter = currentChartMode === 'faturamento' ? currencyFormatter : weightFormatter;
+
+        if (currentChartMode === 'faturamento') {
+            mainChartTitle.textContent = "FATURAMENTO MENSAL";
+        } else {
+            mainChartTitle.textContent = "TONELAGEM MENSAL";
+        }
+
+        const mapTo12 = (arr) => { 
+            const res = new Array(12).fill(0); 
+            arr.forEach(d => res[d.month_index] = getDataValue(d)); 
+            return res; 
+        };
         
         const datasets = [];
 
@@ -1049,7 +1145,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Pad previous datasets to 13
             datasets.forEach(ds => ds.data.push(null));
             
-            trendArray[12] = data.trend_data.faturamento; // Use 13th slot
+            trendArray[12] = getDataValue(data.trend_data); // Use 13th slot
             
             datasets.push({ 
                 label: `Tendência ${monthNames[data.trend_data.month_index]}`, 
@@ -1061,7 +1157,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const chartLabels = [...monthNames];
         if (data.trend_allowed) chartLabels.push('Tendência');
 
-        createChart('main-chart', 'bar', chartLabels, datasets);
+        createChart('main-chart', 'bar', chartLabels, datasets, currentFormatter);
         updateTable(currentData, previousData, data.current_year, data.previous_year, data.trend_allowed ? data.trend_data : null);
     }
 
@@ -1087,7 +1183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function createChart(canvasId, type, labels, datasetsData) {
+    function createChart(canvasId, type, labels, datasetsData, formatterVal) {
         const container = document.getElementById(canvasId + 'Container');
         if (!container) return;
         container.innerHTML = '';
@@ -1132,7 +1228,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         offset: 4,
                         color: '#cbd5e1',
                         font: { size: 9, weight: 'bold' },
-                        formatter: (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''))
+                        formatter: formatterVal || ((v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : '')))
                     }
                 },
                 scales: {
