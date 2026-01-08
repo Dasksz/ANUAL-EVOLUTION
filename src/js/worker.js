@@ -549,19 +549,20 @@ self.onmessage = async (event) => {
                     newSale.vlvenda = 0;
                 }
 
-                // 2. Data Optimization (Strip unused fields for History)
-                // This reduces JSON payload size and potentially DB size if columns are nullable/dropped
+                // 2. Data Optimization
+                // Unconditionally remove redundant fields to save space/bandwidth
+                delete newSale.cliente_nome;
+                delete newSale.bairro;
+                delete newSale.descricao;
+                delete newSale.observacaofor;
+
+                // 2b. History-specific Optimization
                 if (isHistory) {
                     delete newSale.pedido;
-                    delete newSale.descricao;
-                    delete newSale.observacaofor;
                     delete newSale.estoqueunit;
                     delete newSale.posicao;
                     delete newSale.qtvenda_embalagem_master;
-                    // Deep optimization: Remove fields available in data_clients or unused
-                    delete newSale.cidade;
-                    delete newSale.bairro;
-                    delete newSale.cliente_nome;
+                    // Note: We KEEP 'cidade' for both history and detailed to ensure safety if client is missing from clients table
                 }
 
                 return newSale;
