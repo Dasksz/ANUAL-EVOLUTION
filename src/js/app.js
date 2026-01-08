@@ -991,7 +991,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // Trimestral logic: Previous 3 months average
         for (let i = 1; i <= 3; i++) {
             const idx = targetIndex - i;
-            const mData = currentData.find(d => d.month_index === idx);
+            let mData;
+            if (idx >= 0) {
+                // Same year
+                mData = data.monthly_data_current.find(d => d.month_index === idx);
+            } else {
+                // Previous year (e.g., Jan (0) - 1 = -1 -> Dec (11))
+                const prevIdx = 12 + idx;
+                mData = data.monthly_data_previous.find(d => d.month_index === prevIdx);
+            }
+            
             if (mData) { triSumFat += mData.faturamento; triSumPeso += mData.peso; triCount++; }
         }
         const triAvgFat = triCount > 0 ? triSumFat / triCount : 0;
@@ -1009,7 +1018,7 @@ document.addEventListener('DOMContentLoaded', () => {
             prefix: 'tri-kg',
             trendVal: currKg,
             prevVal: triAvgPeso,
-            fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Ton`,
+            fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Ton`,
             calcEvo
         });
 
