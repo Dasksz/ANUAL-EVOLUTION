@@ -107,6 +107,17 @@ BEGIN
     END IF;
 END $$;
 
+-- Add pre_mix_count and pre_positivacao_val if they do not exist
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary' AND column_name = 'pre_mix_count') THEN
+        ALTER TABLE public.data_summary ADD COLUMN pre_mix_count int DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary' AND column_name = 'pre_positivacao_val') THEN
+        ALTER TABLE public.data_summary ADD COLUMN pre_positivacao_val int DEFAULT 0;
+    END IF;
+END $$;
+
 -- Holidays Table
 create table if not exists public.data_holidays (
     date date PRIMARY KEY,
@@ -158,6 +169,8 @@ create table if not exists public.data_summary (
     devolucao numeric,
     mix_produtos text[],
     mix_details jsonb, -- Stores product-level values for accurate Mix calculation
+    pre_mix_count int DEFAULT 0,
+    pre_positivacao_val int DEFAULT 0, -- 1 se positivou, 0 se não
     created_at timestamp with time zone default now()
 );
 
@@ -388,12 +401,19 @@ BEGIN
 
     TRUNCATE TABLE public.data_summary;
     
-    -- Use CTE to pre-aggregate product values to build mix_details
-    INSERT INTO public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, peso, bonificacao, devolucao, mix_produtos, mix_details)
+    -- Inserção OTIMIZADA: Já calcula se houve positivação e contagem de mix
+    INSERT INTO public.data_summary (
+        ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli,
+        vlvenda, peso, bonificacao, devolucao,
+        mix_produtos, mix_details,
+        pre_mix_count, pre_positivacao_val
+    )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto FROM public.data_detailed
+        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto
+        FROM public.data_detailed
         UNION ALL
-        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto FROM public.data_history
+        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto
+        FROM public.data_history
     ),
     augmented_data AS (
         SELECT 
@@ -411,7 +431,6 @@ BEGIN
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
     ),
     product_agg AS (
-        -- Aggregate per product to get sum of value per product for the group
         SELECT 
             ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, produto,
             SUM(vlvenda) as prod_val,
@@ -420,19 +439,28 @@ BEGIN
             SUM(COALESCE(vldevolucao, 0)) as prod_devol
         FROM augmented_data
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+    ),
+    client_agg AS (
+        SELECT
+            pa.ano, pa.mes, pa.filial, pa.cidade, pa.superv, pa.nome, pa.codfor, pa.tipovenda, pa.codcli,
+            SUM(pa.prod_val) as total_val,
+            SUM(pa.prod_peso) as total_peso,
+            SUM(pa.prod_bonific) as total_bonific,
+            SUM(pa.prod_devol) as total_devol,
+            ARRAY_AGG(DISTINCT pa.produto) FILTER (WHERE pa.produto IS NOT NULL) as arr_prod,
+            jsonb_object_agg(pa.produto, pa.prod_val) FILTER (WHERE pa.produto IS NOT NULL) as json_prod
+        FROM product_agg pa
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
     )
     SELECT 
-        pa.ano, pa.mes, pa.filial, pa.cidade, pa.superv, pa.nome, pa.codfor, pa.tipovenda, pa.codcli,
-        SUM(pa.prod_val),
-        SUM(pa.prod_peso),
-        SUM(pa.prod_bonific),
-        SUM(pa.prod_devol),
-        ARRAY_AGG(DISTINCT pa.produto) FILTER (WHERE pa.produto IS NOT NULL),
-        jsonb_object_agg(pa.produto, pa.prod_val) FILTER (WHERE pa.produto IS NOT NULL)
-    FROM product_agg pa
-    GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9;
+        ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli,
+        total_val, total_peso, total_bonific, total_devol,
+        arr_prod, json_prod,
+        -- CÁLCULOS PRÉVIOS AQUI:
+        (SELECT COUNT(*) FROM jsonb_each_text(json_prod) WHERE (value)::numeric >= 1 AND codfor IN ('707', '708')) as mix_calc,
+        CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc
+    FROM client_agg;
     
-    -- Optimize physical storage after rebuild
     CLUSTER public.data_summary USING idx_summary_ano_mes_filial;
     ANALYZE public.data_summary;
 END;
@@ -576,10 +604,9 @@ DECLARE
     v_monthly_chart_previous json;
     v_curr_month_idx int;
 BEGIN
-    -- Force Parallel Execution for Heavy Aggregation
-    SET LOCAL max_parallel_workers_per_gather = 4;
-    SET LOCAL min_parallel_table_scan_size = '0';
-    SET LOCAL statement_timeout = '60s';
+    -- Configurações de Memória para esta Query Específica
+    SET LOCAL work_mem = '64MB'; -- Aumenta memória para ordenação
+    SET LOCAL statement_timeout = '15s'; -- Fail fast se travar
 
     -- 1. Determine Date Ranges
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
@@ -595,7 +622,7 @@ BEGIN
          SELECT COALESCE(MAX(mes), 12) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year;
     END IF;
 
-    -- 2. Trend Logic Calculation
+    -- 2. Trend Logic Calculation (Mantida igual)
     SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
     IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
 
@@ -610,7 +637,6 @@ BEGIN
     IF v_trend_allowed THEN
         v_month_start := make_date(v_current_year, EXTRACT(MONTH FROM v_max_sale_date)::int, 1);
         v_month_end := (v_month_start + interval '1 month' - interval '1 day')::date;
-        
         IF v_max_sale_date > v_month_end THEN v_max_sale_date := v_month_end; END IF;
         
         v_work_days_passed := public.calc_working_days(v_month_start, v_max_sale_date);
@@ -624,61 +650,44 @@ BEGIN
     END IF;
 
     -- 3. Construct Dynamic WHERE Clause
+    -- Importante: Como usamos SECURITY DEFINER, verifique se a lógica de usuário aprovado se aplica aqui se necessário
+    -- Mas como os filtros vêm do frontend, assumimos que a UI já restringiu o que o user pode pedir
+
     v_where_clause := 'WHERE ano IN ($1, $2) ';
     
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where_clause := v_where_clause || ' AND filial = ANY($3) ';
     END IF;
-    
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where_clause := v_where_clause || ' AND cidade = ANY($4) ';
     END IF;
-    
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where_clause := v_where_clause || ' AND superv = ANY($5) ';
     END IF;
-    
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
         v_where_clause := v_where_clause || ' AND nome = ANY($6) ';
     END IF;
-    
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_where_clause := v_where_clause || ' AND codfor = ANY($7) ';
     END IF;
-    
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where_clause := v_where_clause || ' AND tipovenda = ANY($8) ';
     END IF;
 
-    -- 4. Execute Main Aggregation Query
+    -- 4. Execute Main Aggregation Query (VERSÃO OTIMIZADA)
+    -- Removemos todas as subqueries complexas (mix_raw_data, monthly_mix_stats, etc)
     v_sql := '
     WITH filtered_summary AS (
-        SELECT *
+        SELECT
+            ano, mes, codcli, vlvenda, peso, bonificacao, devolucao, tipovenda, pre_mix_count, pre_positivacao_val
         FROM public.data_summary
         ' || v_where_clause || '
-    ),
-    client_monthly_stats AS (
-        SELECT 
-            ano, 
-            mes, 
-            codcli, 
-            SUM(vlvenda) as total_val
-        FROM filtered_summary
-        GROUP BY 1, 2, 3
-    ),
-    monthly_positivation AS (
-        SELECT 
-            ano, 
-            mes, 
-            COUNT(DISTINCT codcli) as positivacao_count
-        FROM client_monthly_stats
-        WHERE total_val >= 1
-        GROUP BY 1, 2
     ),
     agg_data AS (
         SELECT
             ano,
             mes,
+            -- Agregação simples e direta
             SUM(CASE 
                 WHEN ($8 IS NOT NULL AND array_length($8, 1) > 0) THEN vlvenda
                 WHEN tipovenda IN (''1'', ''9'') THEN vlvenda
@@ -686,50 +695,27 @@ BEGIN
             END) as faturamento,
             SUM(peso) as peso,
             SUM(bonificacao) as bonificacao,
-            SUM(devolucao) as devolucao
+            SUM(devolucao) as devolucao,
+            -- Positivação usando a coluna pré-calculada
+            COUNT(DISTINCT CASE WHEN pre_positivacao_val = 1 THEN codcli END) as positivacao_count,
+            -- Mix pré-calculado (Respeitando regra de Venda/Venda Futura se filtro não for especificado)
+            SUM(CASE
+                WHEN ($8 IS NOT NULL AND array_length($8, 1) > 0) THEN pre_mix_count
+                WHEN tipovenda IN (''1'', ''9'') THEN pre_mix_count
+                ELSE 0
+            END) as total_mix_sum,
+            COUNT(DISTINCT CASE
+                WHEN ($8 IS NOT NULL AND array_length($8, 1) > 0) AND pre_mix_count > 0 THEN codcli
+                WHEN tipovenda IN (''1'', ''9'') AND pre_mix_count > 0 THEN codcli
+                ELSE NULL
+            END) as mix_client_count
         FROM filtered_summary
         GROUP BY 1, 2
     ),
-    mix_eligible_clients AS (
-         SELECT ano, mes, codcli
-         FROM filtered_summary
-         WHERE codfor IN (''707'', ''708'')
-         GROUP BY 1, 2, 3
-         HAVING SUM(vlvenda) >= 1
-    ),
-    mix_raw_data AS (
-        SELECT 
-            t.ano, 
-            t.mes, 
-            t.codcli,
-            p.key as prod_code,
-            SUM((p.value)::numeric) as total_val
-        FROM filtered_summary t
-        JOIN mix_eligible_clients e ON t.ano = e.ano AND t.mes = e.mes AND t.codcli = e.codcli
-        CROSS JOIN jsonb_each_text(t.mix_details) p
-        WHERE t.codfor IN (''707'', ''708'')
-          AND ( ($8 IS NOT NULL AND array_length($8, 1) > 0) OR (t.tipovenda IN (''1'', ''9'')) )
-        GROUP BY 1, 2, 3, 4
-        HAVING SUM((p.value)::numeric) >= 1
-    ),
-    monthly_mix_stats AS (
-        SELECT 
-            ano, 
-            mes, 
-            COUNT(prod_code) as total_mix_sum,
-            COUNT(DISTINCT codcli) as mix_client_count
-        FROM mix_raw_data
-        GROUP BY 1, 2
-    ),
     kpi_active_count AS (
-        SELECT COUNT(*) as val
-        FROM (
-             SELECT codcli 
-             FROM filtered_summary 
-             WHERE ano = $1 AND mes = $9 
-             GROUP BY codcli 
-             HAVING SUM(vlvenda) >= 1
-        ) t
+        SELECT COUNT(DISTINCT codcli) as val
+        FROM filtered_summary
+        WHERE ano = $1 AND mes = $9 AND pre_positivacao_val = 1
     ),
     kpi_base_count AS (
         SELECT COUNT(*) as val FROM public.data_clients c 
@@ -739,11 +725,29 @@ BEGIN
     SELECT
         (SELECT val FROM kpi_active_count),
         (SELECT val FROM kpi_base_count),
-        COALESCE(json_agg(json_build_object(''month_index'', a.mes - 1, ''faturamento'', a.faturamento, ''peso'', a.peso, ''bonificacao'', a.bonificacao, ''devolucao'', a.devolucao, ''positivacao'', COALESCE(p.positivacao_count, 0), ''mix_pdv'', CASE WHEN mm.mix_client_count > 0 THEN mm.total_mix_sum::numeric / mm.mix_client_count ELSE 0 END, ''ticket_medio'', CASE WHEN COALESCE(p.positivacao_count, 0) > 0 THEN a.faturamento / p.positivacao_count ELSE 0 END) ORDER BY a.mes) FILTER (WHERE a.ano = $1), ''[]''::json),
-        COALESCE(json_agg(json_build_object(''month_index'', a.mes - 1, ''faturamento'', a.faturamento, ''peso'', a.peso, ''bonificacao'', a.bonificacao, ''devolucao'', a.devolucao, ''positivacao'', COALESCE(p.positivacao_count, 0), ''mix_pdv'', CASE WHEN mm.mix_client_count > 0 THEN mm.total_mix_sum::numeric / mm.mix_client_count ELSE 0 END, ''ticket_medio'', CASE WHEN COALESCE(p.positivacao_count, 0) > 0 THEN a.faturamento / p.positivacao_count ELSE 0 END) ORDER BY a.mes) FILTER (WHERE a.ano = $2), ''[]''::json)
+        -- Gerar JSON diretamente
+        COALESCE(json_agg(json_build_object(
+            ''month_index'', a.mes - 1,
+            ''faturamento'', a.faturamento,
+            ''peso'', a.peso,
+            ''bonificacao'', a.bonificacao,
+            ''devolucao'', a.devolucao,
+            ''positivacao'', a.positivacao_count,
+            ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END,
+            ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
+        ) ORDER BY a.mes) FILTER (WHERE a.ano = $1), ''[]''::json),
+
+        COALESCE(json_agg(json_build_object(
+            ''month_index'', a.mes - 1,
+            ''faturamento'', a.faturamento,
+            ''peso'', a.peso,
+            ''bonificacao'', a.bonificacao,
+            ''devolucao'', a.devolucao,
+            ''positivacao'', a.positivacao_count,
+            ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END,
+            ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
+        ) ORDER BY a.mes) FILTER (WHERE a.ano = $2), ''[]''::json)
     FROM agg_data a
-    LEFT JOIN monthly_positivation p ON a.ano = p.ano AND a.mes = p.mes
-    LEFT JOIN monthly_mix_stats mm ON a.ano = mm.ano AND a.mes = mm.mes
     ';
 
     EXECUTE v_sql 
@@ -1068,3 +1072,6 @@ END $$;
 
 -- Refresh Cache to apply updates
 -- SELECT refresh_dashboard_cache();
+
+-- Trigger initial population of the summary table to ensure new columns are populated
+SELECT refresh_cache_summary();
