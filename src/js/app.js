@@ -94,11 +94,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveToCache = async (key, value) => {
         try {
             const db = await initDB();
-            await db.put(STORE_NAME, value, key);
+            // Wrap data with timestamp for TTL
+            const payload = { timestamp: Date.now(), data: value };
+            await db.put(STORE_NAME, payload, key);
         } catch (e) {
             console.warn('Erro ao salvar cache:', e);
         }
     };
+
+    // Helper to generate canonical cache keys (sorted arrays)
+    function generateCacheKey(prefix, filters) {
+        const sortedFilters = {};
+        Object.keys(filters).sort().forEach(k => {
+            let val = filters[k];
+            if (Array.isArray(val)) {
+                // Clone and sort array to ensure ['A', 'B'] == ['B', 'A']
+                val = [...val].sort();
+            }
+            sortedFilters[k] = val;
+        });
+        return `${prefix}_${JSON.stringify(sortedFilters)}`;
+    }
 
     let checkProfileLock = false;
     let isAppReady = false;
@@ -581,11 +597,21 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedTiposVenda = [];
     let currentCharts = {};
     let holidays = [];
+    
+    // Prefetch State
+    let availableFiltersState = { filiais: [], supervisors: [] };
+    let prefetchQueue = [];
+    let isPrefetching = false;
 
     async function initDashboard() {
         const filters = getCurrentFilters();
         await loadFilters(filters);
         await loadMainDashboardData();
+        
+        // Trigger background prefetch after main load
+        setTimeout(() => {
+            queueCommonFilters();
+        }, 2000);
     }
 
     function getCurrentFilters() {
@@ -602,6 +628,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadFilters(currentFilters, retryCount = 0) {
+        // Cache logic for Filters
+        const CACHE_TTL = 1000 * 60 * 5; // 5 minutes for filters
+        const cacheKey = generateCacheKey('dashboard_filters', currentFilters);
+        
+        try {
+            const cachedEntry = await getFromCache(cacheKey);
+            if (cachedEntry && cachedEntry.timestamp) {
+                const age = Date.now() - cachedEntry.timestamp;
+                if (age < CACHE_TTL) {
+                    console.log('Serving filters from cache (fresh)');
+                    applyFiltersData(cachedEntry.data);
+                    return; 
+                }
+            }
+        } catch (e) { console.warn('Cache error:', e); }
+
         const { data, error } = await supabase.rpc('get_dashboard_filters', currentFilters);
         if (error) {
             if (retryCount < 1) {
@@ -610,6 +652,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return;
         }
+
+        await saveToCache(cacheKey, data);
         applyFiltersData(data);
     }
 
@@ -663,6 +707,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function applyFiltersData(data) {
+        // Capture available options for prefetcher
+        availableFiltersState.filiais = data.filiais || [];
+        availableFiltersState.supervisors = data.supervisors || [];
+
         const updateSingleSelect = (element, items) => {
             const currentVal = element.value;
             element.innerHTML = '';
@@ -706,17 +754,92 @@ document.addEventListener('DOMContentLoaded', () => {
     anoFilter.onchange = handleFilterChange;
     mesFilter.onchange = handleFilterChange;
 
+    // Unified Fetch & Cache Logic
+    async function fetchDashboardData(filters, isBackground = false) {
+        const cacheKey = generateCacheKey('dashboard_data', filters);
+        const CACHE_TTL = 1000 * 60 * 10; // 10 minutes TTL
+
+        // 1. Try Cache
+        try {
+            const cachedEntry = await getFromCache(cacheKey);
+            if (cachedEntry && cachedEntry.timestamp && cachedEntry.data) {
+                const age = Date.now() - cachedEntry.timestamp;
+                if (age < CACHE_TTL) {
+                    if (!isBackground) console.log('Serving from Cache (Instant)');
+                    return { data: cachedEntry.data, source: 'cache' };
+                }
+            }
+        } catch (e) { console.warn('Cache error:', e); }
+
+        // 2. Network Request
+        if (isBackground) console.log(`[Background] Fetching data from API...`);
+        const { data, error } = await supabase.rpc('get_main_dashboard_data', filters);
+        
+        if (error) {
+            console.error('API Error:', error);
+            return { data: null, error };
+        }
+
+        // 3. Save to Cache
+        await saveToCache(cacheKey, data);
+        if (isBackground) console.log(`[Background] Cached successfully.`);
+
+        return { data, source: 'api' };
+    }
+
     async function loadMainDashboardData() {
         const filters = getCurrentFilters();
-        const cacheKey = `dashboard_data_${JSON.stringify(filters)}`;
-        const cachedData = await getFromCache(cacheKey);
-        if (cachedData) renderDashboard(cachedData);
+        const { data, source } = await fetchDashboardData(filters);
+        if (data) renderDashboard(data);
+    }
 
-        const { data, error } = await supabase.rpc('get_main_dashboard_data', filters);
-        if (error) { console.error('Error fetching dashboard data:', error); return; }
+    // --- Background Prefetch Logic ---
 
-        await saveToCache(cacheKey, data);
-        renderDashboard(data);
+    function queueCommonFilters() {
+        console.log('[Background] Iniciando estratégia de pré-carregamento...');
+        const currentFilters = getCurrentFilters();
+        
+        // Strategy 1: Pre-fetch individual Filiais
+        availableFiltersState.filiais.forEach(filial => {
+            // Clone filters and override filial
+            const newFilters = { ...currentFilters, p_filial: [filial] };
+            addToPrefetchQueue(`Filial: ${filial}`, newFilters);
+        });
+
+        // Strategy 2: Pre-fetch individual Supervisors
+        availableFiltersState.supervisors.forEach(superv => {
+             const newFilters = { ...currentFilters, p_supervisor: [superv] };
+             addToPrefetchQueue(`Supervisor: ${superv}`, newFilters);
+        });
+        
+        processQueue();
+    }
+
+    function addToPrefetchQueue(label, filters) {
+        // Avoid duplicates in queue
+        const key = generateCacheKey('dashboard_data', filters);
+        // Simple check if already queued (could be improved)
+        if (!prefetchQueue.some(item => item.key === key)) {
+            prefetchQueue.push({ label, filters, key });
+        }
+    }
+
+    async function processQueue() {
+        if (isPrefetching || prefetchQueue.length === 0) return;
+
+        isPrefetching = true;
+        const task = prefetchQueue.shift();
+        
+        console.log(`[Background] Processando filtro para: ${task.label} (${prefetchQueue.length} restantes)`);
+        
+        // We use fetchDashboardData which handles the "Check Cache -> Fetch -> Save Cache" loop
+        // We pass isBackground=true to suppress standard logs and enable specific ones
+        await fetchDashboardData(task.filters, true);
+        
+        isPrefetching = false;
+        
+        // Schedule next task with a delay to yield to main thread (UI responsiveness)
+        setTimeout(processQueue, 500); 
     }
 
     function renderDashboard(data) {
