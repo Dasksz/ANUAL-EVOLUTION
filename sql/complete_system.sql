@@ -138,6 +138,7 @@ create table if not exists public.data_summary (
     peso numeric,
     bonificacao numeric,
     devolucao numeric,
+    mix_produtos text[],
     created_at timestamp with time zone default now()
 );
 
@@ -368,7 +369,7 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     TRUNCATE TABLE public.data_summary;
-    INSERT INTO public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, peso, bonificacao, devolucao)
+    INSERT INTO public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, peso, bonificacao, devolucao, mix_produtos)
     SELECT 
         EXTRACT(YEAR FROM s.dtped)::int,
         EXTRACT(MONTH FROM s.dtped)::int,
@@ -382,11 +383,12 @@ BEGIN
         SUM(s.vlvenda),
         SUM(s.totpesoliq),
         SUM(s.vlbonific),
-        SUM(COALESCE(s.vldevolucao, 0))
+        SUM(COALESCE(s.vldevolucao, 0)),
+        ARRAY_AGG(DISTINCT s.produto) FILTER (WHERE s.produto IS NOT NULL)
     FROM (
-        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao FROM public.data_detailed
+        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto FROM public.data_detailed
         UNION ALL
-        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao FROM public.data_history
+        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto FROM public.data_history
     ) s
     LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9;
@@ -528,8 +530,8 @@ DECLARE
     v_range_start date;
     v_range_end date;
 BEGIN
-    -- Increase timeout for heavy aggregation
-    SET LOCAL statement_timeout = '120s';
+    -- Reduced timeout requirement significantly due to optimization
+    SET LOCAL statement_timeout = '60s';
 
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
         SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
@@ -622,29 +624,24 @@ BEGIN
         FROM filtered_summary
         GROUP BY 1, 2
     ),
+    mix_eligible_clients AS (
+         SELECT ano, mes, codcli
+         FROM filtered_summary
+         WHERE codfor IN ('707', '708')
+         GROUP BY 1, 2, 3
+         HAVING SUM(vlvenda) >= 1
+    ),
     mix_raw_data AS (
         SELECT 
-            EXTRACT(YEAR FROM s.dtped)::int as ano,
-            EXTRACT(MONTH FROM s.dtped)::int as mes,
-            s.codcli,
-            COUNT(DISTINCT s.produto) as unique_prods
-        FROM (
-            SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, produto, vlvenda 
-            FROM public.data_detailed 
-            WHERE codfor IN ('707', '708') AND dtped >= v_range_start AND dtped < v_range_end
-            UNION ALL
-            SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, produto, vlvenda 
-            FROM public.data_history 
-            WHERE codfor IN ('707', '708') AND dtped >= v_range_start AND dtped < v_range_end
-        ) s
-        WHERE (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR s.filial = ANY(p_filial))
-          AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR s.cidade = ANY(p_cidade))
-          AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR s.superv = ANY(p_supervisor))
-          AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR s.nome = ANY(p_vendedor))
-          AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR s.codfor = ANY(p_fornecedor))
-          AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR s.tipovenda = ANY(p_tipovenda))
+            t.ano,
+            t.mes,
+            t.codcli,
+            COUNT(DISTINCT p) as unique_prods
+        FROM filtered_summary t
+        JOIN mix_eligible_clients e ON t.ano = e.ano AND t.mes = e.mes AND t.codcli = e.codcli
+        CROSS JOIN unnest(t.mix_produtos) p
+        WHERE t.codfor IN ('707', '708')
         GROUP BY 1, 2, 3
-        HAVING SUM(s.vlvenda) >= 1
     ),
     monthly_mix_stats AS (
         SELECT 
