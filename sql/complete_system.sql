@@ -1,7 +1,7 @@
 
 -- ==============================================================================
--- UNIFIED DATABASE SETUP & MIGRATION SCRIPT v2
--- Contains: Tables, Optimized Indexes, Summary Tables, RLS Policies, Trend Logic, Holidays, Pagination
+-- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT v3
+-- Contains: Tables, Dynamic SQL, Partial Indexes, Summary Logic, RLS, Trends, Caching
 -- ==============================================================================
 
 -- Enable UUID extension
@@ -80,7 +80,6 @@ create table if not exists public.data_clients (
   id uuid default uuid_generate_v4 () primary key,
   codigo_cliente text unique,
   rca1 text,
-  -- rca2 text, -- Removed in v2
   cidade text,
   nomecliente text,
   bairro text,
@@ -116,6 +115,15 @@ create table if not exists public.profiles (
   updated_at timestamp with time zone default now()
 );
 
+-- Config City Branches (Mapping)
+CREATE TABLE IF NOT EXISTS public.config_city_branches (
+    id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+    cidade text NOT NULL UNIQUE,
+    filial text,
+    updated_at timestamp with time zone DEFAULT now(),
+    created_at timestamp with time zone DEFAULT now()
+);
+
 -- Unified View
 create or replace view public.all_sales as
 select * from public.data_detailed
@@ -123,6 +131,8 @@ union all
 select * from public.data_history;
 
 -- Summary Table (Pre-Aggregated for Dashboard Speed)
+-- Includes mix_produtos array for denormalized counting
+DROP TABLE IF EXISTS public.data_summary CASCADE;
 create table if not exists public.data_summary (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     ano int,
@@ -143,6 +153,7 @@ create table if not exists public.data_summary (
 );
 
 -- Cache Table (For Filter Dropdowns)
+DROP TABLE IF EXISTS public.cache_filters CASCADE;
 create table if not exists public.cache_filters (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     filial text,
@@ -158,10 +169,11 @@ create table if not exists public.cache_filters (
 );
 
 -- ==============================================================================
--- 2. OPTIMIZED INDEXES
+-- 2. OPTIMIZED INDEXES (Targeted Partial Indexes)
 -- ==============================================================================
 
--- Clean up duplicate/old indexes
+-- Drop old monolithic indexes if they exist
+DROP INDEX IF EXISTS public.idx_summary_main;
 DROP INDEX IF EXISTS public.idx_cache_filters_fornecedor_col;
 DROP INDEX IF EXISTS public.idx_detailed_cidade_btree;
 DROP INDEX IF EXISTS public.idx_detailed_filial_btree;
@@ -171,20 +183,21 @@ DROP INDEX IF EXISTS public.idx_history_cidade_btree;
 DROP INDEX IF EXISTS public.idx_history_filial_btree;
 DROP INDEX IF EXISTS public.idx_history_nome_btree;
 DROP INDEX IF EXISTS public.idx_history_superv_btree;
-DROP INDEX IF EXISTS idx_cache_filters_composite;
 DROP INDEX IF EXISTS idx_cache_filters_superv_composite;
 DROP INDEX IF EXISTS idx_cache_filters_nome_composite;
 DROP INDEX IF EXISTS idx_cache_filters_cidade_composite;
 DROP INDEX IF EXISTS idx_detailed_dtped_composite;
 DROP INDEX IF EXISTS idx_history_dtped_composite;
-DROP INDEX IF EXISTS idx_summary_main;
 
--- Sales Table Indexes (Covering for KPI Base Clients & General Lookups)
+-- Sales Table Indexes
 CREATE INDEX idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, superv, nome, codfor);
 CREATE INDEX idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, superv, nome, codfor);
+CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
+CREATE INDEX IF NOT EXISTS idx_detailed_codfor_dtped ON public.data_detailed (codfor, dtped);
+CREATE INDEX IF NOT EXISTS idx_history_codfor_dtped ON public.data_history (codfor, dtped);
+CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
 
--- Summary Table Index (For Main Dashboard - Targeted Optimized Indexes)
-DROP INDEX IF EXISTS public.idx_summary_main;
+-- Summary Table Targeted Indexes (For Dynamic SQL)
 CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_superv ON public.data_summary (ano, mes, superv);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_nome ON public.data_summary (ano, mes, nome); -- Vendedor
 CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_cidade ON public.data_summary (ano, mes, cidade);
@@ -193,9 +206,8 @@ CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codfor ON public.data_summary (an
 CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_tipovenda ON public.data_summary (ano, mes, tipovenda);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codcli ON public.data_summary (ano, mes, codcli);
 
--- Cache Filters Indexes (For Dropdowns)
+-- Cache Filters Indexes
 CREATE INDEX idx_cache_filters_composite ON public.cache_filters (ano, mes, filial, cidade, superv, nome, codfor, tipovenda);
--- Specialized lookup indexes for specific dropdowns (Split Queries)
 CREATE INDEX IF NOT EXISTS idx_cache_filters_superv_lookup ON public.cache_filters (filial, cidade, ano, superv);
 CREATE INDEX IF NOT EXISTS idx_cache_filters_nome_lookup ON public.cache_filters (filial, cidade, superv, ano, nome);
 CREATE INDEX IF NOT EXISTS idx_cache_filters_cidade_lookup ON public.cache_filters (filial, ano, cidade);
@@ -205,13 +217,6 @@ CREATE INDEX IF NOT EXISTS idx_cache_ano_cidade ON public.cache_filters (ano, ci
 CREATE INDEX IF NOT EXISTS idx_cache_ano_filial ON public.cache_filters (ano, filial);
 CREATE INDEX IF NOT EXISTS idx_cache_ano_tipovenda ON public.cache_filters (ano, tipovenda);
 CREATE INDEX IF NOT EXISTS idx_cache_ano_fornecedor ON public.cache_filters (ano, fornecedor, codfor);
-
--- Performance Optimization Indexes (v2)
-CREATE INDEX IF NOT EXISTS idx_summary_codcli ON public.data_summary(codcli);
-CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
-CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
-CREATE INDEX IF NOT EXISTS idx_detailed_codfor_dtped ON public.data_detailed (codfor, dtped);
-CREATE INDEX IF NOT EXISTS idx_history_codfor_dtped ON public.data_history (codfor, dtped);
 
 -- ==============================================================================
 -- 3. SECURITY & RLS POLICIES
@@ -240,15 +245,21 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.data_summary ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cache_filters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.data_holidays ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.config_city_branches ENABLE ROW LEVEL SECURITY;
 
 -- Clean up Insecure Policies
 DO $$
 DECLARE t text;
 BEGIN
-    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_clients', 'data_detailed', 'data_history', 'profiles', 'data_summary', 'cache_filters', 'data_holidays')
+    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_clients', 'data_detailed', 'data_history', 'profiles', 'data_summary', 'cache_filters', 'data_holidays', 'config_city_branches')
     LOOP
         EXECUTE format('DROP POLICY IF EXISTS "Enable access for all users" ON public.%I;', t);
         EXECUTE format('DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.%I;', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Read Access Approved" ON public.%I;', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Write Access Admin" ON public.%I;', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Update Access Admin" ON public.%I;', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Delete Access Admin" ON public.%I;', t);
+        EXECUTE format('DROP POLICY IF EXISTS "All Access Admin" ON public.%I;', t);
     END LOOP;
 END $$;
 
@@ -271,14 +282,13 @@ DROP POLICY IF EXISTS "Admin Manage Profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Profiles Delete" ON public.profiles;
 CREATE POLICY "Profiles Delete" ON public.profiles FOR DELETE USING (public.is_admin());
 
+-- Config City Branches
+CREATE POLICY "Read Access Approved" ON public.config_city_branches FOR SELECT USING (public.is_approved());
+CREATE POLICY "All Access Admin" ON public.config_city_branches FOR ALL USING (public.is_admin());
+
 -- Holidays Policies
-DROP POLICY IF EXISTS "Read Access Approved" ON public.data_holidays;
 CREATE POLICY "Read Access Approved" ON public.data_holidays FOR SELECT USING (public.is_approved());
-
-DROP POLICY IF EXISTS "Write Access Admin" ON public.data_holidays;
 CREATE POLICY "Write Access Admin" ON public.data_holidays FOR INSERT WITH CHECK (public.is_admin());
-
-DROP POLICY IF EXISTS "Delete Access Admin" ON public.data_holidays;
 CREATE POLICY "Delete Access Admin" ON public.data_holidays FOR DELETE USING (public.is_admin());
 
 -- Data Tables (Detailed, History, Clients, Summary, Cache)
@@ -288,17 +298,10 @@ BEGIN
     FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_detailed', 'data_history', 'data_clients', 'data_summary', 'cache_filters')
     LOOP
         -- Read: Approved Users
-        EXECUTE format('DROP POLICY IF EXISTS "Read Access Approved" ON public.%I;', t);
         EXECUTE format('CREATE POLICY "Read Access Approved" ON public.%I FOR SELECT USING (public.is_approved());', t);
-        
         -- Write: Admins Only
-        EXECUTE format('DROP POLICY IF EXISTS "Write Access Admin" ON public.%I;', t);
         EXECUTE format('CREATE POLICY "Write Access Admin" ON public.%I FOR INSERT WITH CHECK (public.is_admin());', t);
-        
-        EXECUTE format('DROP POLICY IF EXISTS "Update Access Admin" ON public.%I;', t);
         EXECUTE format('CREATE POLICY "Update Access Admin" ON public.%I FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());', t);
-        
-        EXECUTE format('DROP POLICY IF EXISTS "Delete Access Admin" ON public.%I;', t);
         EXECUTE format('CREATE POLICY "Delete Access Admin" ON public.%I FOR DELETE USING (public.is_admin());', t);
     END LOOP;
 END $$;
@@ -333,7 +336,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION public.truncate_table(text) TO authenticated;
 
--- Refresh Cache & Summary Function (Optimized)
 -- Refresh Filters Cache Function
 CREATE OR REPLACE FUNCTION refresh_cache_filters()
 RETURNS void
@@ -367,7 +369,7 @@ BEGIN
 END;
 $$;
 
--- Refresh Summary Cache Function
+-- Refresh Summary Cache Function (Optimized with Mix Products Array)
 CREATE OR REPLACE FUNCTION refresh_cache_summary()
 RETURNS void
 LANGUAGE plpgsql
@@ -399,6 +401,10 @@ BEGIN
     ) s
     LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9;
+
+    -- Optimize physical storage after rebuild
+    CLUSTER public.data_summary USING idx_summary_ano_mes_filial;
+    ANALYZE public.data_summary;
 END;
 $$;
 
@@ -413,8 +419,7 @@ BEGIN
 END;
 $$;
 
--- Database Optimization Function
--- Updated to include new performance indexes
+-- Database Optimization Function (Rebuilds Targeted Indexes)
 CREATE OR REPLACE FUNCTION optimize_database()
 RETURNS text
 LANGUAGE plpgsql
@@ -427,22 +432,17 @@ BEGIN
     END IF;
 
     -- Drop heavy indexes if they exist
-    DROP INDEX IF EXISTS public.idx_detailed_dtped_composite;
-    DROP INDEX IF EXISTS public.idx_history_dtped_composite;
     DROP INDEX IF EXISTS public.idx_summary_main;
 
-    -- Recreate optimized indexes
-    CREATE INDEX idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, superv, nome, codfor);
-    CREATE INDEX idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, superv, nome, codfor);
-    CREATE INDEX idx_summary_main ON public.data_summary (ano, mes, filial, cidade, superv, nome, codfor, tipovenda);
+    -- Recreate targeted optimized indexes
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_superv ON public.data_summary (ano, mes, superv);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_nome ON public.data_summary (ano, mes, nome);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_cidade ON public.data_summary (ano, mes, cidade);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_filial ON public.data_summary (ano, mes, filial);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codfor ON public.data_summary (ano, mes, codfor);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_tipovenda ON public.data_summary (ano, mes, tipovenda);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codcli ON public.data_summary (ano, mes, codcli);
     
-    -- Recreate performance indexes
-    CREATE INDEX IF NOT EXISTS idx_summary_codcli ON public.data_summary(codcli);
-    CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
-    CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
-    CREATE INDEX IF NOT EXISTS idx_detailed_codfor_dtped ON public.data_detailed (codfor, dtped);
-    CREATE INDEX IF NOT EXISTS idx_history_codfor_dtped ON public.data_history (codfor, dtped);
-
     RETURN 'Banco de dados otimizado com sucesso! Índices reconstruídos.';
 EXCEPTION WHEN OTHERS THEN
     RETURN 'Erro ao otimizar banco: ' || SQLERRM;
@@ -471,7 +471,6 @@ END;
 $$;
 
 -- Helper: Calculate Working Days
--- Helper: Calculate Working Days (Optimized)
 CREATE OR REPLACE FUNCTION calc_working_days(start_date date, end_date date)
 RETURNS int
 LANGUAGE plpgsql
@@ -490,7 +489,22 @@ BEGIN
 END;
 $$;
 
--- Get Main Dashboard Data (Using Dynamic SQL & Targeted Indexes)
+-- Get Data Version (Cache Invalidation)
+CREATE OR REPLACE FUNCTION get_data_version()
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_last_update timestamp with time zone;
+BEGIN
+    SELECT MAX(created_at) INTO v_last_update FROM public.data_summary;
+    IF v_last_update IS NULL THEN RETURN '1970-01-01 00:00:00+00'; END IF;
+    RETURN v_last_update::text;
+END;
+$$;
+
+-- Get Main Dashboard Data (Dynamic SQL, Parallelism, Pre-Aggregation)
 CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -533,7 +547,6 @@ DECLARE
     v_curr_month_idx int;
 BEGIN
     -- Force Parallel Execution for Heavy Aggregation
-    -- This allows using multiple CPU cores to scan the summary table and unnest arrays
     SET LOCAL max_parallel_workers_per_gather = 4;
     SET LOCAL min_parallel_table_scan_size = '0';
     SET LOCAL statement_timeout = '60s';
@@ -552,7 +565,7 @@ BEGIN
          SELECT COALESCE(MAX(mes), 12) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year;
     END IF;
 
-    -- 2. Trend Logic Calculation (Lightweight)
+    -- 2. Trend Logic Calculation
     SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
     IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
 
@@ -581,7 +594,6 @@ BEGIN
     END IF;
 
     -- 3. Construct Dynamic WHERE Clause
-    -- This ensures the Query Planner sees exact constraints and uses the targeted indexes.
     v_where_clause := 'WHERE ano IN ($1, $2) ';
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
@@ -709,8 +721,6 @@ BEGIN
     IF v_trend_allowed THEN
         v_curr_month_idx := EXTRACT(MONTH FROM v_max_sale_date)::int - 1;
         
-        -- Extract current month data from the JSON result
-        -- This logic is same as before but handling the JSON object in PLPGSQL
         DECLARE
              v_elem json;
         BEGIN
@@ -986,28 +996,38 @@ BEGIN
 END;
 $$;
 
+-- ==============================================================================
+-- 5. INITIALIZATION (Populate City Mapping + Refresh)
+-- ==============================================================================
 
--- ==============================================================================
--- 5. INITIALIZATION (RUN LAST)
--- ==============================================================================
-SELECT refresh_dashboard_cache();
--- Function to get the latest data timestamp for cache invalidation
-CREATE OR REPLACE FUNCTION get_data_version()
-RETURNS text
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+-- Populate City/Branch Map from History (Idempotent)
+DO $$
 DECLARE
-    v_last_update timestamp with time zone;
+    r RECORD;
 BEGIN
-    -- Get the most recent creation time from summary (which is truncated/rebuilt on update)
-    SELECT MAX(created_at) INTO v_last_update FROM public.data_summary;
+    FOR r IN
+        WITH all_sales AS (
+            SELECT cidade, filial, dtped FROM public.data_detailed
+            UNION ALL
+            SELECT cidade, filial, dtped FROM public.data_history
+        ),
+        ranked_sales AS (
+            SELECT
+                cidade,
+                filial,
+                ROW_NUMBER() OVER (PARTITION BY cidade ORDER BY dtped DESC) as rn
+            FROM all_sales
+            WHERE cidade IS NOT NULL AND cidade != '' AND filial IS NOT NULL
+        )
+        SELECT DISTINCT cidade, filial
+        FROM ranked_sales
+        WHERE rn = 1
+    LOOP
+        INSERT INTO public.config_city_branches (cidade, filial)
+        VALUES (r.cidade, r.filial)
+        ON CONFLICT (cidade) DO NOTHING;
+    END LOOP;
+END $$;
 
-    -- If null (empty table), return epoch
-    IF v_last_update IS NULL THEN
-        RETURN '1970-01-01 00:00:00+00';
-    END IF;
-
-    RETURN v_last_update::text;
-END;
-$$;
+-- Refresh Cache to apply updates
+SELECT refresh_dashboard_cache();
