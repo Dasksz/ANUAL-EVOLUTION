@@ -508,7 +508,6 @@ self.onmessage = async (event) => {
                     delete newSale.cidade;
                     delete newSale.bairro;
                     delete newSale.cliente_nome;
-                    delete newSale.produto;
                 }
 
                 return newSale;
