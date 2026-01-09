@@ -1400,6 +1400,55 @@ document.addEventListener('DOMContentLoaded', () => {
          initBranchFilters().then(loadBranchView);
     });
 
+    function setupBranchMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
+        btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
+        const renderItems = (filterText = '') => {
+            container.innerHTML = '';
+            let filteredItems = items || [];
+            if (filterText) {
+                const lower = filterText.toLowerCase();
+                filteredItems = filteredItems.filter(item => {
+                    const val = isObject ? item.name : item;
+                    return String(val).toLowerCase().includes(lower);
+                });
+            }
+            filteredItems.forEach(item => {
+                const value = isObject ? item.cod : item;
+                const label = isObject ? item.name : item;
+                const isSelected = selectedArray.includes(String(value));
+                const div = document.createElement('div');
+                div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
+                div.innerHTML = `<input type="checkbox" value="${value}" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2"><label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${label}</label>`;
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    const checkbox = div.querySelector('input');
+                    if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
+                    const val = String(value);
+                    if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
+                    updateBtnLabel();
+                    handleBranchFilterChange();
+                };
+                container.appendChild(div);
+            });
+            if (filteredItems.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
+        };
+        const updateBtnLabel = () => {
+            const span = btn.querySelector('span');
+            if (selectedArray.length === 0) {
+                span.textContent = 'Todas';
+                if(btn.id.includes('vendedor') || btn.id.includes('fornecedor') || btn.id.includes('supervisor') || btn.id.includes('tipovenda')) span.textContent = 'Todos';
+            } else if (selectedArray.length === 1) {
+                const val = selectedArray[0];
+                let found;
+                if (isObject) found = items.find(i => String(i.cod) === val); else found = items.find(i => String(i) === val);
+                if (found) span.textContent = isObject ? found.name : found; else span.textContent = val;
+            } else { span.textContent = `${selectedArray.length} selecionados`; }
+        };
+        renderItems();
+        updateBtnLabel();
+        if (searchInput) { searchInput.oninput = (e) => renderItems(e.target.value); searchInput.onclick = (e) => e.stopPropagation(); }
+    }
+
     async function initBranchFilters() {
          const { data: filterData } = await supabase.rpc('get_dashboard_filters', { p_ano: 'todos' });
          if (!filterData) return;
@@ -1427,21 +1476,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Multi Selects
-        setupMultiSelect(branchCidadeFilterBtn, branchCidadeFilterDropdown, branchCidadeFilterList, filterData.cidades, branchSelectedCidades, () => {}, false, branchCidadeFilterSearch);
-        setupMultiSelect(branchSupervisorFilterBtn, branchSupervisorFilterDropdown, branchSupervisorFilterDropdown, filterData.supervisors, branchSelectedSupervisores, () => {});
-        setupMultiSelect(branchVendedorFilterBtn, branchVendedorFilterDropdown, branchVendedorFilterList, filterData.vendedores, branchSelectedVendedores, () => {}, false, branchVendedorFilterSearch);
-        setupMultiSelect(branchFornecedorFilterBtn, branchFornecedorFilterDropdown, branchFornecedorFilterList, filterData.fornecedores, branchSelectedFornecedores, () => {}, true, branchFornecedorFilterSearch);
-        setupMultiSelect(branchTipovendaFilterBtn, branchTipovendaFilterDropdown, branchTipovendaFilterDropdown, filterData.tipos_venda, branchSelectedTiposVenda, () => {});
-        
-        // Override setupMultiSelect onclick to trigger branch reload
-        [branchCidadeFilterBtn, branchSupervisorFilterBtn, branchVendedorFilterBtn, branchFornecedorFilterBtn, branchTipovendaFilterBtn].forEach(btn => {
-             // We need to re-attach the listener logic because setupMultiSelect attaches a generic one.
-             // But actually setupMultiSelect takes a callback? In app.js line 1056: labelCallback
-             // But handleFilterChange is hardcoded in the onclick inside setupMultiSelect?
-             // Ah, line 1083: "handleFilterChange();" is called inside the onclick.
-             // This refers to the GLOBAL handleFilterChange which refreshes the MAIN dashboard.
-             // We need to change setupMultiSelect to accept a custom change handler or patch it.
-        });
+        setupBranchMultiSelect(branchCidadeFilterBtn, branchCidadeFilterDropdown, branchCidadeFilterList, filterData.cidades, branchSelectedCidades, branchCidadeFilterSearch);
+        setupBranchMultiSelect(branchSupervisorFilterBtn, branchSupervisorFilterDropdown, branchSupervisorFilterDropdown, filterData.supervisors, branchSelectedSupervisores);
+        setupBranchMultiSelect(branchVendedorFilterBtn, branchVendedorFilterDropdown, branchVendedorFilterList, filterData.vendedores, branchSelectedVendedores, branchVendedorFilterSearch);
+        setupBranchMultiSelect(branchFornecedorFilterBtn, branchFornecedorFilterDropdown, branchFornecedorFilterList, filterData.fornecedores, branchSelectedFornecedores, branchFornecedorFilterSearch, true);
+        setupBranchMultiSelect(branchTipovendaFilterBtn, branchTipovendaFilterDropdown, branchTipovendaFilterDropdown, filterData.tipos_venda, branchSelectedTiposVenda);
     }
     
     // Patch setupMultiSelect to support custom handler?
@@ -1510,12 +1549,12 @@ document.addEventListener('DOMContentLoaded', () => {
              if (filterData) {
                  branchList = filterData.filiais || [];
                  availableFiltersState.filiais = branchList; // Cache it
-                 
-                 // Populate Dropdowns if needed (Assuming initBranchFilters handles the DOM, but let's call it to be safe if empty)
-                 if (branchAnoFilter.options.length <= 1) {
-                     await initBranchFilters(); // This populates dropdowns using internal logic (which calls RPC again, but that's fine/safe)
-                 }
              }
+        }
+        
+        // Populate Dropdowns if needed (Check every time to ensure UI is ready)
+        if (branchAnoFilter.options.length <= 1) {
+            await initBranchFilters(); 
         }
 
         // Prepare Filters for RPC
@@ -1642,6 +1681,7 @@ document.addEventListener('DOMContentLoaded', () => {
          // --- Chart Rendering ---
          const datasets = [];
          const colors = ['#06b6d4', '#f97316', '#8b5cf6', '#10b981']; 
+         const trendColors = ['#c084fc', '#7e22ce']; // Lilac, Purple
 
          branches.forEach((b, idx) => {
              datasets.push({
@@ -1665,6 +1705,17 @@ document.addEventListener('DOMContentLoaded', () => {
                  } else {
                      if (datasets[idx]) datasets[idx].data.push(0);
                  }
+                 
+                 // Update colors to highlight trend
+                 const baseColor = colors[idx % colors.length];
+                 const trendColor = trendColors[idx % trendColors.length];
+                 
+                 // Create array of colors: 12 months + 1 trend
+                 const bgColors = new Array(12).fill(baseColor);
+                 bgColors.push(trendColor);
+                 
+                 datasets[idx].backgroundColor = bgColors;
+                 datasets[idx].borderColor = bgColors;
              });
              
              const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Tendência"];
