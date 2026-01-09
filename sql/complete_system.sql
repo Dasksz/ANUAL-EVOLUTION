@@ -1,32 +1,30 @@
 
 -- ==============================================================================
--- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT v3 (CONSOLIDATED)
+-- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT v4 (FINAL)
 -- Contains: Tables, Dynamic SQL, Partial Indexes, Summary Logic, RLS, Trends, Caching, Financials
+-- Fully Optimized: Removed redundant columns, Security Hardened (search_path)
 -- ==============================================================================
 
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";
 
 -- ==============================================================================
--- 1. BASE TABLES
+-- 1. BASE TABLES (OPTIMIZED SCHEMA)
 -- ==============================================================================
 
 -- Sales Detailed (Current Month/Recent)
+-- Optimized: Removed cliente_nome, bairro, descricao, observacaofor (handled by worker/clients)
 create table if not exists public.data_detailed (
   id uuid default uuid_generate_v4 () primary key,
   pedido text,
   nome text,
   superv text,
   produto text,
-  descricao text,
   fornecedor text,
-  observacaofor text,
   codfor text,
   codusur text,
   codcli text,
-  cliente_nome text,
   cidade text,
-  bairro text,
   qtvenda numeric,
   codsupervisor text,
   vlvenda numeric,
@@ -44,21 +42,18 @@ create table if not exists public.data_detailed (
 );
 
 -- Sales History
+-- Optimized: Removed redundant text columns
 create table if not exists public.data_history (
   id uuid default uuid_generate_v4 () primary key,
   pedido text,
   nome text,
   superv text,
   produto text,
-  descricao text,
   fornecedor text,
-  observacaofor text,
   codfor text,
   codusur text,
   codcli text,
-  cliente_nome text,
   cidade text,
-  bairro text,
   qtvenda numeric,
   codsupervisor text,
   vlvenda numeric,
@@ -90,14 +85,6 @@ create table if not exists public.data_clients (
   bloqueio text,
   created_at timestamp with time zone default now()
 );
-
--- Remove RCA 2 Column if it exists (for migration support)
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_clients' AND column_name = 'rca2') THEN
-        ALTER TABLE public.data_clients DROP COLUMN rca2;
-    END IF;
-END $$;
 
 -- Holidays Table
 create table if not exists public.data_holidays (
@@ -131,7 +118,7 @@ union all
 select * from public.data_history;
 
 -- Summary Table (Pre-Aggregated for Dashboard Speed)
--- Includes mix_produtos array for denormalized counting
+-- Optimized: Removed mix_produtos and mix_details (Calculated on fly during refresh)
 DROP TABLE IF EXISTS public.data_summary CASCADE;
 create table if not exists public.data_summary (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -148,31 +135,10 @@ create table if not exists public.data_summary (
     peso numeric,
     bonificacao numeric,
     devolucao numeric,
-    mix_produtos text[],
-    mix_details jsonb, -- Stores product-level values for accurate Mix calculation
     pre_mix_count int DEFAULT 0,
     pre_positivacao_val int DEFAULT 0, -- 1 se positivou, 0 se não
     created_at timestamp with time zone default now()
 );
-
--- Add mix_details column if it does not exist (Schema Migration)
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary' AND column_name = 'mix_details') THEN
-        ALTER TABLE public.data_summary ADD COLUMN mix_details jsonb;
-    END IF;
-END $$;
-
--- Add pre_mix_count and pre_positivacao_val if they do not exist
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary' AND column_name = 'pre_mix_count') THEN
-        ALTER TABLE public.data_summary ADD COLUMN pre_mix_count int DEFAULT 0;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary' AND column_name = 'pre_positivacao_val') THEN
-        ALTER TABLE public.data_summary ADD COLUMN pre_positivacao_val int DEFAULT 0;
-    END IF;
-END $$;
 
 -- Financials Table (Optimization for Dashboard)
 CREATE TABLE IF NOT EXISTS public.data_financials (
@@ -266,14 +232,18 @@ CREATE INDEX IF NOT EXISTS idx_cache_ano_fornecedor ON public.cache_filters (ano
 -- ==============================================================================
 
 -- Helper Functions
-CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean AS $$
+CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean
+SET search_path = public, extensions, temp
+AS $$
 BEGIN
   IF (select auth.role()) = 'service_role' THEN RETURN true; END IF;
   RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'adm');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE OR REPLACE FUNCTION public.is_approved() RETURNS boolean AS $$
+CREATE OR REPLACE FUNCTION public.is_approved() RETURNS boolean
+SET search_path = public, extensions, temp
+AS $$
 BEGIN
   IF (select auth.role()) = 'service_role' THEN RETURN true; END IF;
   RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND status = 'aprovado');
@@ -358,6 +328,7 @@ END $$;
 CREATE OR REPLACE FUNCTION clear_all_data()
 RETURNS void
 LANGUAGE plpgsql
+SET search_path = public, extensions, temp
 AS $$
 BEGIN
     DELETE FROM public.data_detailed;
@@ -372,7 +343,9 @@ $$;
 
 -- Safe Truncate Function
 CREATE OR REPLACE FUNCTION public.truncate_table(table_name text)
-RETURNS void AS $$
+RETURNS void
+SET search_path = public, extensions, temp
+AS $$
 BEGIN
   IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
   IF table_name NOT IN ('data_detailed', 'data_history', 'data_clients', 'data_summary', 'data_financials', 'cache_filters') THEN RAISE EXCEPTION 'Tabela inválida.'; END IF;
@@ -381,10 +354,11 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION public.truncate_table(text) TO authenticated;
 
--- Refresh Filters Cache Function
+-- Refresh Filters Cache Function (Optimized)
 CREATE OR REPLACE FUNCTION refresh_cache_filters()
 RETURNS void
 LANGUAGE plpgsql
+SET search_path = public, extensions, temp
 AS $$
 BEGIN
     SET LOCAL statement_timeout = '600s';
@@ -414,21 +388,20 @@ BEGIN
 END;
 $$;
 
--- Refresh Summary Cache Function (Optimized with Mix Products Array)
+-- Refresh Summary Cache Function (Optimized Mix Calculation)
 CREATE OR REPLACE FUNCTION refresh_cache_summary()
 RETURNS void
 LANGUAGE plpgsql
+SET search_path = public, extensions, temp
 AS $$
 BEGIN
     SET LOCAL statement_timeout = '600s';
 
     TRUNCATE TABLE public.data_summary;
     
-    -- Inserção OTIMIZADA: Já calcula se houve positivação e contagem de mix
     INSERT INTO public.data_summary (
         ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao,
-        mix_produtos, mix_details,
         pre_mix_count, pre_positivacao_val
     )
     WITH raw_data AS (
@@ -470,17 +443,15 @@ BEGIN
             SUM(pa.prod_peso) as total_peso,
             SUM(pa.prod_bonific) as total_bonific,
             SUM(pa.prod_devol) as total_devol,
-            ARRAY_AGG(DISTINCT pa.produto) FILTER (WHERE pa.produto IS NOT NULL) as arr_prod,
-            jsonb_object_agg(pa.produto, pa.prod_val) FILTER (WHERE pa.produto IS NOT NULL) as json_prod
+            -- Optimized Mix Calculation without JSON
+            SUM(CASE WHEN pa.prod_val >= 1 AND pa.codfor IN ('707', '708') THEN 1 ELSE 0 END) as pre_mix_count
         FROM product_agg pa
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
     )
     SELECT 
         ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli,
         total_val, total_peso, total_bonific, total_devol,
-        arr_prod, json_prod,
-        -- CÁLCULOS PRÉVIOS AQUI:
-        (SELECT COUNT(*) FROM jsonb_each_text(json_prod) WHERE (value)::numeric >= 1 AND codfor IN ('707', '708')) as mix_calc,
+        pre_mix_count,
         CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc
     FROM client_agg;
     
@@ -491,7 +462,9 @@ $$;
 
 -- Refresh Data Financials (Aggregated Table)
 CREATE OR REPLACE FUNCTION refresh_data_financials()
-RETURNS void LANGUAGE plpgsql AS $$
+RETURNS void LANGUAGE plpgsql
+SET search_path = public, extensions, temp
+AS $$
 BEGIN
     -- Limpa a tabela antes de popular
     TRUNCATE TABLE public.data_financials;
@@ -517,6 +490,7 @@ $$;
 CREATE OR REPLACE FUNCTION refresh_dashboard_cache()
 RETURNS void
 LANGUAGE plpgsql
+SET search_path = public, extensions, temp
 AS $$
 BEGIN
     PERFORM refresh_cache_filters();
@@ -530,7 +504,7 @@ CREATE OR REPLACE FUNCTION optimize_database()
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions, temp
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN
@@ -560,6 +534,7 @@ CREATE OR REPLACE FUNCTION toggle_holiday(p_date date)
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, extensions, temp
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN
@@ -581,6 +556,7 @@ CREATE OR REPLACE FUNCTION calc_working_days(start_date date, end_date date)
 RETURNS int
 LANGUAGE plpgsql
 STABLE
+SET search_path = public, extensions, temp
 AS $$
 DECLARE
     days int;
@@ -600,6 +576,7 @@ CREATE OR REPLACE FUNCTION get_data_version()
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, extensions, temp
 AS $$
 DECLARE
     v_last_update timestamp with time zone;
@@ -611,8 +588,18 @@ END;
 $$;
 
 -- Get Main Dashboard Data (Dynamic SQL, Parallelism, Pre-Aggregation)
-DROP FUNCTION IF EXISTS get_main_dashboard_data(text[], text[], text[], text[], text[], integer, integer, text[]);
-DROP FUNCTION IF EXISTS get_main_dashboard_data(text[], text[], text[], text[], text[], text, text, text[]);
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN SELECT oid::regprocedure AS func_signature
+             FROM pg_proc
+             WHERE proname = 'get_main_dashboard_data'
+             AND pronamespace = 'public'::regnamespace
+    LOOP
+        EXECUTE 'DROP FUNCTION ' || r.func_signature || ' CASCADE';
+    END LOOP;
+END $$;
 
 CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_filial text[] default null,
@@ -626,6 +613,7 @@ CREATE OR REPLACE FUNCTION get_main_dashboard_data(
 )
 RETURNS JSON
 LANGUAGE plpgsql
+SET search_path = public, extensions, temp
 AS $$
 DECLARE
     v_current_year int;
@@ -840,8 +828,18 @@ END;
 $$;
 
 -- Get Dashboard Filters (Split Queries for Speed)
-DROP FUNCTION IF EXISTS get_dashboard_filters(text[], text[], text[], text[], text[], integer, integer, text[]);
-DROP FUNCTION IF EXISTS get_dashboard_filters(text[], text[], text[], text[], text[], text, text, text[]);
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN SELECT oid::regprocedure AS func_signature
+             FROM pg_proc
+             WHERE proname = 'get_dashboard_filters'
+             AND pronamespace = 'public'::regnamespace
+    LOOP
+        EXECUTE 'DROP FUNCTION ' || r.func_signature || ' CASCADE';
+    END LOOP;
+END $$;
 
 CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_filial text[] default null,
@@ -855,6 +853,7 @@ CREATE OR REPLACE FUNCTION get_dashboard_filters(
 )
 RETURNS JSON
 LANGUAGE plpgsql
+SET search_path = public, extensions, temp
 AS $$
 DECLARE
     v_supervisors text[];
@@ -975,8 +974,18 @@ END;
 $$;
 
 -- Function: Get City View (Paginated for both Active and Inactive, No RCA2)
-DROP FUNCTION IF EXISTS get_city_view_data(text[], text[], text[], text[], text[], integer, integer, text[], int, int, int, int);
-DROP FUNCTION IF EXISTS get_city_view_data(text[], text[], text[], text[], text[], text, text, text[], int, int, int, int);
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN SELECT oid::regprocedure AS func_signature
+             FROM pg_proc
+             WHERE proname = 'get_city_view_data'
+             AND pronamespace = 'public'::regnamespace
+    LOOP
+        EXECUTE 'DROP FUNCTION ' || r.func_signature || ' CASCADE';
+    END LOOP;
+END $$;
 
 CREATE OR REPLACE FUNCTION get_city_view_data(
     p_filial text[] default null,
@@ -994,6 +1003,7 @@ CREATE OR REPLACE FUNCTION get_city_view_data(
 )
 RETURNS JSON
 LANGUAGE plpgsql
+SET search_path = public, extensions, temp
 AS $$
 DECLARE
     v_current_year int;
@@ -1118,6 +1128,25 @@ BEGIN
     END LOOP;
 END $$;
 
--- Refresh Cache to apply updates (Populates both Summary, Financials and Filters)
--- This can be called manually or scheduled
+-- ==============================================================================
+-- 6. MIGRATION & CLEANUP (ENSURE OPTIMIZED STATE)
+-- ==============================================================================
+
+-- 6.1 Drop Redundant Columns from data_summary
+ALTER TABLE public.data_summary DROP COLUMN IF EXISTS mix_details;
+ALTER TABLE public.data_summary DROP COLUMN IF EXISTS mix_produtos;
+
+-- 6.2 Drop Redundant Columns from data_history
+ALTER TABLE public.data_history DROP COLUMN IF EXISTS cliente_nome;
+ALTER TABLE public.data_history DROP COLUMN IF EXISTS bairro;
+ALTER TABLE public.data_history DROP COLUMN IF EXISTS descricao;
+ALTER TABLE public.data_history DROP COLUMN IF EXISTS observacaofor;
+
+-- 6.3 Drop Redundant Columns from data_detailed
+ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS cliente_nome;
+ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS bairro;
+ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS descricao;
+ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS observacaofor;
+
+-- Refresh Cache (Optional - Uncomment if immediate refresh needed)
 -- SELECT refresh_dashboard_cache();
