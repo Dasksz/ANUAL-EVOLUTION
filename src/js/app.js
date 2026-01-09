@@ -374,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     clearFiltersBtn.addEventListener('click', async () => {
         // Reset Single Selects
-        anoFilter.value = 'todos';
+        if (anoFilter.options.length > 0) anoFilter.selectedIndex = 0;
         mesFilter.value = '';
 
         // Reset Multi Select Arrays
@@ -842,12 +842,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const updateSingleSelect = (element, items) => {
             const currentVal = element.value;
             element.innerHTML = '';
-            const allOpt = document.createElement('option');
-            allOpt.value = (element.id === 'ano-filter') ? 'todos' : '';
-            allOpt.textContent = 'Todos';
-            element.appendChild(allOpt);
+            // Remove "Todos" option for Year filter
+            if (element.id !== 'ano-filter') {
+                const allOpt = document.createElement('option');
+                allOpt.value = '';
+                allOpt.textContent = 'Todos';
+                element.appendChild(allOpt);
+            }
             if (items) { items.forEach(item => { const opt = document.createElement('option'); opt.value = item; opt.textContent = item; element.appendChild(opt); }); }
-            if (currentVal && Array.from(element.options).some(o => o.value === currentVal)) element.value = currentVal;
+
+            // Default to first option (Current Year) if no valid selection or if it was 'todos'
+            if (currentVal && currentVal !== 'todos' && Array.from(element.options).some(o => o.value === currentVal)) {
+                element.value = currentVal;
+            } else if (items && items.length > 0) {
+                element.value = items[0];
+            }
         };
         updateSingleSelect(anoFilter, data.anos);
         if (mesFilter.options.length <= 1) { 
@@ -1183,10 +1192,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const datasets = [];
 
-        // Only show previous year if "Todos" is selected (Default View)
-        if (anoFilter.value === 'todos') {
-            datasets.push({ label: `Ano ${data.previous_year}`, data: mapTo12(previousData), isPrevious: true });
-        }
+        // Always show previous year for comparison
+        datasets.push({ label: `Ano ${data.previous_year}`, data: mapTo12(previousData), isPrevious: true });
 
         datasets.push({ label: `Ano ${data.current_year}`, data: mapTo12(currentData), isCurrent: true });
 
@@ -1423,7 +1430,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     branchClearFiltersBtn?.addEventListener('click', () => {
-         branchAnoFilter.value = 'todos';
+         if (branchAnoFilter.options.length > 0) branchAnoFilter.selectedIndex = 0;
          branchMesFilter.value = '';
          branchSelectedFiliais = []; // Reset but re-init will likely pick first 2
          branchSelectedCidades = [];
@@ -1491,7 +1498,7 @@ document.addEventListener('DOMContentLoaded', () => {
          // Years
          if (filterData.anos) {
              const currentVal = branchAnoFilter.value;
-             branchAnoFilter.innerHTML = '<option value="todos">Todos</option>';
+             branchAnoFilter.innerHTML = '';
              filterData.anos.forEach(a => {
                  const opt = document.createElement('option');
                  opt.value = a;
@@ -1499,8 +1506,11 @@ document.addEventListener('DOMContentLoaded', () => {
                  branchAnoFilter.appendChild(opt);
              });
              // Preserve selection or default to current year
-             if (currentVal && currentVal !== 'todos') branchAnoFilter.value = currentVal;
-             else if (filterData.anos.length > 0) branchAnoFilter.value = filterData.anos[0];
+             if (currentVal && currentVal !== 'todos' && Array.from(branchAnoFilter.options).some(o => o.value === currentVal)) {
+                 branchAnoFilter.value = currentVal;
+             } else if (filterData.anos.length > 0) {
+                 branchAnoFilter.value = filterData.anos[0];
+             }
          }
          
          // Months
