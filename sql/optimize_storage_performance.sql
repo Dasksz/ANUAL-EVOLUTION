@@ -10,6 +10,7 @@
 CREATE OR REPLACE FUNCTION refresh_cache_filters()
 RETURNS void
 LANGUAGE plpgsql
+SET search_path = public, extensions, temp
 AS $$
 BEGIN
     SET LOCAL statement_timeout = '600s';
@@ -45,6 +46,7 @@ $$;
 CREATE OR REPLACE FUNCTION refresh_cache_summary()
 RETURNS void
 LANGUAGE plpgsql
+SET search_path = public, extensions, temp
 AS $$
 BEGIN
     SET LOCAL statement_timeout = '600s';
