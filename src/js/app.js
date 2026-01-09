@@ -1377,6 +1377,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Branch View Logic ---
+    const branchFilialFilterBtn = document.getElementById('branch-filial-filter-btn');
+    const branchFilialFilterDropdown = document.getElementById('branch-filial-filter-dropdown');
     const branchAnoFilter = document.getElementById('branch-ano-filter');
     const branchMesFilter = document.getElementById('branch-mes-filter');
     const branchCidadeFilterBtn = document.getElementById('branch-cidade-filter-btn');
@@ -1397,6 +1399,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const branchTipovendaFilterDropdown = document.getElementById('branch-tipovenda-filter-dropdown');
     const branchClearFiltersBtn = document.getElementById('branch-clear-filters-btn');
 
+    let branchSelectedFiliais = [];
     let branchSelectedCidades = [];
     let branchSelectedSupervisores = [];
     let branchSelectedVendedores = [];
@@ -1414,14 +1417,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (branchMesFilter) branchMesFilter.addEventListener('change', handleBranchFilterChange);
 
     document.addEventListener('click', (e) => {
-        const dropdowns = [branchCidadeFilterDropdown, branchSupervisorFilterDropdown, branchVendedorFilterDropdown, branchFornecedorFilterDropdown, branchTipovendaFilterDropdown];
-        const btns = [branchCidadeFilterBtn, branchSupervisorFilterBtn, branchVendedorFilterBtn, branchFornecedorFilterBtn, branchTipovendaFilterBtn];
+        const dropdowns = [branchFilialFilterDropdown, branchCidadeFilterDropdown, branchSupervisorFilterDropdown, branchVendedorFilterDropdown, branchFornecedorFilterDropdown, branchTipovendaFilterDropdown];
+        const btns = [branchFilialFilterBtn, branchCidadeFilterBtn, branchSupervisorFilterBtn, branchVendedorFilterBtn, branchFornecedorFilterBtn, branchTipovendaFilterBtn];
         dropdowns.forEach((dd, idx) => { if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) dd.classList.add('hidden'); });
     });
     
     branchClearFiltersBtn?.addEventListener('click', () => {
          branchAnoFilter.value = 'todos';
          branchMesFilter.value = '';
+         branchSelectedFiliais = []; // Reset but re-init will likely pick first 2
          branchSelectedCidades = [];
          branchSelectedSupervisores = [];
          branchSelectedVendedores = [];
@@ -1507,6 +1511,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Multi Selects
+        setupBranchFilialSelect(branchFilialFilterBtn, branchFilialFilterDropdown, branchFilialFilterDropdown, filterData.filiais, branchSelectedFiliais);
         setupBranchMultiSelect(branchCidadeFilterBtn, branchCidadeFilterDropdown, branchCidadeFilterList, filterData.cidades, branchSelectedCidades, branchCidadeFilterSearch);
         setupBranchMultiSelect(branchSupervisorFilterBtn, branchSupervisorFilterDropdown, branchSupervisorFilterDropdown, filterData.supervisors, branchSelectedSupervisores);
         setupBranchMultiSelect(branchVendedorFilterBtn, branchVendedorFilterDropdown, branchVendedorFilterList, filterData.vendedores, branchSelectedVendedores, branchVendedorFilterSearch);
@@ -1514,13 +1519,60 @@ document.addEventListener('DOMContentLoaded', () => {
         setupBranchMultiSelect(branchTipovendaFilterBtn, branchTipovendaFilterDropdown, branchTipovendaFilterDropdown, filterData.tipos_venda, branchSelectedTiposVenda);
     }
     
-    // Patch setupMultiSelect to support custom handler?
-    // Instead of modifying setupMultiSelect which is used by main dashboard, I will create a specific setup helper for branch or just duplicate the logic slightly modified.
-    // Or better: I can assign the global handleFilterChange to be context aware? No.
-    // I will redefine setupMultiSelect parameters to accept a callback for change.
-    // But I cannot easily change the existing function without breaking main dashboard usage unless I update all calls.
-    // I will duplicate the logic for Branch MultiSelects to be safe and quick.
-    
+    // Specific setup for Branch Filter to enforce 2 selections
+    function setupBranchFilialSelect(btn, dropdown, container, items, selectedArray) {
+        // If nothing selected, default to first 2
+        if (selectedArray.length === 0 && items && items.length > 0) {
+            selectedArray.push(String(items[0]));
+            if(items.length > 1) selectedArray.push(String(items[1]));
+        }
+
+        btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
+        
+        const renderItems = () => {
+            container.innerHTML = '';
+            (items || []).forEach(item => {
+                const val = String(item);
+                const isSelected = selectedArray.includes(val);
+                const div = document.createElement('div');
+                div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
+                div.innerHTML = `<input type="checkbox" value="${val}" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2"><label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${val}</label>`;
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    const checkbox = div.querySelector('input');
+                    // Toggle logic
+                    if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
+                    
+                    if (checkbox.checked) {
+                        if (!selectedArray.includes(val)) {
+                            selectedArray.push(val);
+                            // Enforce max 2: remove first added
+                            if (selectedArray.length > 2) selectedArray.shift();
+                        }
+                    } else {
+                        const idx = selectedArray.indexOf(val);
+                        if (idx > -1) selectedArray.splice(idx, 1);
+                    }
+                    
+                    renderItems(); // Re-render to update checks visually (e.g. if one was auto-removed)
+                    updateBtnLabel();
+                    handleBranchFilterChange();
+                };
+                container.appendChild(div);
+            });
+            if (!items || items.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
+        };
+        
+        const updateBtnLabel = () => {
+            const span = btn.querySelector('span');
+            if (selectedArray.length === 0) span.textContent = 'Selecione 2';
+            else span.textContent = `${selectedArray.length} selecionadas`;
+        };
+        
+        renderItems();
+        updateBtnLabel();
+    }
+
     function setupBranchMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
         btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
         const renderItems = (filterText = '') => {
@@ -1603,7 +1655,15 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const branchDataMap = {};
-        const branchesToFetch = branchList || [];
+        // Use selected branches if any, otherwise default to all (though UI defaults to first 2)
+        // Actually we should rely on branchSelectedFiliais if populated.
+        // If empty (on first load maybe before init), initBranchFilters handles default selection.
+        // But here we need to be safe.
+        let branchesToFetch = branchSelectedFiliais;
+        if (!branchesToFetch || branchesToFetch.length === 0) {
+             // Fallback if not yet initialized
+             branchesToFetch = branchList ? branchList.slice(0, 2) : [];
+        }
 
         // Parallel Fetch for each branch
         try {
@@ -1683,6 +1743,7 @@ document.addEventListener('DOMContentLoaded', () => {
          });
 
          // --- KPI Rendering ---
+         // Ensure we display consistent order as fetched/selected
          const b1 = branches[0] || 'N/A';
          const b2 = branches[1] || 'N/A';
          
@@ -1696,25 +1757,48 @@ document.addEventListener('DOMContentLoaded', () => {
          const elVal1Fat = document.getElementById('branch-val-1-fat'); if(elVal1Fat) elVal1Fat.textContent = val1Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
          const elVal2Fat = document.getElementById('branch-val-2-fat'); if(elVal2Fat) elVal2Fat.textContent = val2Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
          
-         let diffFat = 0;
-         if (val2Fat > 0) diffFat = ((val1Fat / val2Fat) - 1) * 100;
-         const elDiffFat = document.getElementById('branch-diff-fat');
-         if(elDiffFat) {
-             elDiffFat.textContent = `${diffFat > 0 ? '+' : ''}${diffFat.toFixed(1)}% (${b1} vs ${b2})`;
-             elDiffFat.className = `font-bold ${diffFat >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+         // Variations Logic
+         // Var 1 (vs 2): (Val1 / Val2 - 1)
+         // Var 2 (vs 1): (Val2 / Val1 - 1)
+         
+         const calcVar = (curr, ref) => {
+             if (ref > 0) return ((curr / ref) - 1) * 100;
+             if (curr > 0) return 100;
+             return 0;
+         };
+         
+         const var1Fat = calcVar(val1Fat, val2Fat);
+         const var2Fat = calcVar(val2Fat, val1Fat);
+
+         const elVar1Fat = document.getElementById('branch-var-1-fat');
+         if(elVar1Fat) {
+             elVar1Fat.textContent = `${var1Fat > 0 ? '+' : ''}${var1Fat.toFixed(1)}%`;
+             elVar1Fat.className = `text-sm font-bold mt-1 ${var1Fat >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
          }
+         const elVar2Fat = document.getElementById('branch-var-2-fat');
+         if(elVar2Fat) {
+             elVar2Fat.textContent = `${var2Fat > 0 ? '+' : ''}${var2Fat.toFixed(1)}%`;
+             elVar2Fat.className = `text-sm font-bold mt-1 ${var2Fat >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+         }
+
 
          const elB1NameKg = document.getElementById('branch-name-1-kg'); if(elB1NameKg) elB1NameKg.textContent = b1;
          const elB2NameKg = document.getElementById('branch-name-2-kg'); if(elB2NameKg) elB2NameKg.textContent = b2;
          const elVal1Kg = document.getElementById('branch-val-1-kg'); if(elVal1Kg) elVal1Kg.textContent = (val1Kg/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
          const elVal2Kg = document.getElementById('branch-val-2-kg'); if(elVal2Kg) elVal2Kg.textContent = (val2Kg/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
 
-         let diffKg = 0;
-         if (val2Kg > 0) diffKg = ((val1Kg / val2Kg) - 1) * 100;
-         const elDiffKg = document.getElementById('branch-diff-kg');
-         if(elDiffKg) {
-             elDiffKg.textContent = `${diffKg > 0 ? '+' : ''}${diffKg.toFixed(1)}% (${b1} vs ${b2})`;
-             elDiffKg.className = `font-bold ${diffKg >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+         const var1Kg = calcVar(val1Kg, val2Kg);
+         const var2Kg = calcVar(val2Kg, val1Kg);
+
+         const elVar1Kg = document.getElementById('branch-var-1-kg');
+         if(elVar1Kg) {
+             elVar1Kg.textContent = `${var1Kg > 0 ? '+' : ''}${var1Kg.toFixed(1)}%`;
+             elVar1Kg.className = `text-sm font-bold mt-1 ${var1Kg >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+         }
+         const elVar2Kg = document.getElementById('branch-var-2-kg');
+         if(elVar2Kg) {
+             elVar2Kg.textContent = `${var2Kg > 0 ? '+' : ''}${var2Kg.toFixed(1)}%`;
+             elVar2Kg.className = `text-sm font-bold mt-1 ${var2Kg >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
          }
          
          // Update Title Context
