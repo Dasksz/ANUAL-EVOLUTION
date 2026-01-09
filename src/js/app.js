@@ -842,12 +842,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const updateSingleSelect = (element, items) => {
             const currentVal = element.value;
             element.innerHTML = '';
-            const allOpt = document.createElement('option');
-            allOpt.value = (element.id === 'ano-filter') ? 'todos' : '';
-            allOpt.textContent = 'Todos';
-            element.appendChild(allOpt);
-            if (items) { items.forEach(item => { const opt = document.createElement('option'); opt.value = item; opt.textContent = item; element.appendChild(opt); }); }
-            if (currentVal && Array.from(element.options).some(o => o.value === currentVal)) element.value = currentVal;
+            // Only add 'Todos' if it's NOT the year filter
+            if (element.id !== 'ano-filter') {
+                const allOpt = document.createElement('option');
+                allOpt.value = (element.id === 'ano-filter') ? 'todos' : ''; // Fallback, though ano-filter skips this block
+                allOpt.textContent = 'Todos';
+                element.appendChild(allOpt);
+            }
+            if (items) {
+                items.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item;
+                    opt.textContent = item;
+                    element.appendChild(opt);
+                });
+            }
+            // Logic to set default or preserve selection
+            if (currentVal && Array.from(element.options).some(o => o.value === currentVal)) {
+                element.value = currentVal;
+            } else if (element.id === 'ano-filter' && items && items.length > 0) {
+                 // Default to first year (usually current/max)
+                 element.value = items[0];
+            }
         };
         updateSingleSelect(anoFilter, data.anos);
         if (mesFilter.options.length <= 1) { 
@@ -1183,11 +1199,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const datasets = [];
 
-        // Only show previous year if "Todos" is selected (Default View)
-        if (anoFilter.value === 'todos') {
-            datasets.push({ label: `Ano ${data.previous_year}`, data: mapTo12(previousData), isPrevious: true });
-        }
-
+        datasets.push({ label: `Ano ${data.previous_year}`, data: mapTo12(previousData), isPrevious: true });
         datasets.push({ label: `Ano ${data.current_year}`, data: mapTo12(currentData), isCurrent: true });
 
         // Trend Logic (Chart)
