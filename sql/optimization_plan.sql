@@ -268,12 +268,6 @@ LEFT JOIN public.dim_supervisores s ON h.codsupervisor = s.codigo
 LEFT JOIN public.dim_vendedores v ON h.codusur = v.codigo
 LEFT JOIN public.dim_fornecedores f ON h.codfor = f.codigo;
 
--- Recreate all_sales view using compatibility views (Restores full schema)
-CREATE OR REPLACE VIEW public.all_sales AS
-SELECT * FROM public.view_data_detailed_completa
-UNION ALL
-SELECT * FROM public.view_data_history_completa;
-
 CREATE OR REPLACE VIEW public.view_data_detailed_completa AS
 SELECT
     h.*,
@@ -284,6 +278,12 @@ FROM public.data_detailed h
 LEFT JOIN public.dim_supervisores s ON h.codsupervisor = s.codigo
 LEFT JOIN public.dim_vendedores v ON h.codusur = v.codigo
 LEFT JOIN public.dim_fornecedores f ON h.codfor = f.codigo;
+
+-- Recreate all_sales view using compatibility views (Restores full schema)
+CREATE OR REPLACE VIEW public.all_sales AS
+SELECT * FROM public.view_data_detailed_completa
+UNION ALL
+SELECT * FROM public.view_data_history_completa;
 
 
 -- ------------------------------------------------------------------------------
