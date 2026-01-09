@@ -417,6 +417,13 @@ self.onmessage = async (event) => {
                 if (configuredFilial) {
                     newSale['FILIAL'] = configuredFilial;
                 }
+
+                // Rule: Client 11625 in Dec 2025 goes to Branch 05
+                const saleDate = parseDate(newSale['DTPED']);
+                if (originalCodCli === '11625' && saleDate && saleDate.getMonth() === 11 && saleDate.getFullYear() === 2025) {
+                     newSale['FILIAL'] = '05';
+                }
+
                 const finalFilial = String(newSale['FILIAL'] || '00').trim();
 
                 // 2. Identify Client Status (Active vs Inactive)
@@ -438,6 +445,10 @@ self.onmessage = async (event) => {
                 const clientRazao = clientData ? clientData.razaosocial.toUpperCase() : '';
                 const isAmericanas = clientName.includes('AMERICANAS') || clientName.includes('AMERICANAS S.A') || clientRazao.includes('AMERICANAS') || clientRazao.includes('AMERICANAS S.A');
 
+                // Case D: RCA 53 Exception (Non-Americanas)
+                // These clients should keep their original supervisor (from spreadsheet), which is typically BALCAO/8
+                const isRca53Exception = isRca53 && !isAmericanas;
+
                 if (isBalcaoException) {
                     newSale['CODUSUR'] = 'BALCAO_SP';
                     newSale['NOME'] = 'BALCAO';
@@ -447,6 +458,8 @@ self.onmessage = async (event) => {
                     newSale['CODUSUR'] = 'BALCAO_SP';
                     newSale['NOME'] = 'BALCAO';
                     newSale['SUPERV'] = 'BALCAO';
+                } else if (isRca53Exception) {
+                     // Keep original spreadsheet values (Do nothing, prevents falling into isInactive or Active logic)
                 } else if (isAmericanas) {
                     newSale['CODUSUR'] = 'AMERICANAS';
                     newSale['NOME'] = 'AMERICANAS';
