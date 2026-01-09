@@ -1815,6 +1815,12 @@ document.addEventListener('DOMContentLoaded', () => {
          const elTitleFat = document.getElementById('branch-kpi-title-fat'); if(elTitleFat) elTitleFat.textContent = `Faturamento (${kpiContext})`;
          const elTitleKg = document.getElementById('branch-kpi-title-kg'); if(elTitleKg) elTitleKg.textContent = `Tonelagem (${kpiContext})`;
 
+         const elTotalTitleFat = document.getElementById('branch-total-kpi-title-fat'); if(elTotalTitleFat) elTotalTitleFat.textContent = `Faturamento Total (${kpiContext})`;
+         const elTotalTitleKg = document.getElementById('branch-total-kpi-title-kg'); if(elTotalTitleKg) elTotalTitleKg.textContent = `Tonelagem Total (${kpiContext})`;
+
+         const elTotalValFat = document.getElementById('branch-total-fat-val'); if(elTotalValFat) elTotalValFat.textContent = totalFat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+         const elTotalValKg = document.getElementById('branch-total-kg-val'); if(elTotalValKg) elTotalValKg.textContent = (totalKg/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
+
 
          // --- Chart Rendering ---
          const datasets = [];
