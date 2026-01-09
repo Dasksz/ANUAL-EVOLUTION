@@ -537,7 +537,7 @@ self.onmessage = async (event) => {
 
         // --- Collect Dimensions (Supervisors, Vendors, Providers) ---
         self.postMessage({ type: 'progress', status: 'Extraindo dimensões (Supervisores, Vendedores)...', percentage: 80 });
-
+        
         const dimSupervisors = new Map();
         const dimVendors = new Map();
         const dimProviders = new Map();
@@ -574,7 +574,7 @@ self.onmessage = async (event) => {
                 delete newSale.bairro;
                 delete newSale.descricao;
                 delete newSale.observacaofor;
-
+                
                 // 3. Normalization (Remove Text Columns, keep Codes)
                 delete newSale.superv;
                 delete newSale.nome; // Vendedor Name
