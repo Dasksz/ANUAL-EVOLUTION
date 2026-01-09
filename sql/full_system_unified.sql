@@ -1382,13 +1382,13 @@ NOTIFY pgrst, 'reload schema';
 -- SECTION: FIX MISSING NAMES
 -- ==============================================================================
 
--- Fix: Populate Dimension Tables (Robust & Recovery Mode)
+-- Fix: Populate Dimension Tables (Robust, Optimized & Delta Recovery)
 -- This script populates the dimension tables to ensure the all_sales view
 -- can correctly resolve codes to names.
 -- It attempts to read from original tables first, and falls back to cache_filters
--- for recovery if the original name columns were dropped.
+-- for recovery ONLY for missing codes.
 
-SET statement_timeout = '1200s'; -- Increase timeout to 20 minutes
+SET statement_timeout = '3600s'; -- Increase timeout to 1 hour
 
 -- 1. Creates dimension tables if they don't exist
 CREATE TABLE IF NOT EXISTS public.dim_supervisores (
@@ -1428,6 +1428,7 @@ BEGIN
     -- ========================================================================
     -- STRATEGY A: DIRECT POPULATION (If columns exist)
     -- ========================================================================
+    -- This is fast. We do this first.
 
     -- 1. Supervisores
     IF v_has_superv_detailed THEN
@@ -1499,14 +1500,22 @@ BEGIN
     END IF;
 
     -- ========================================================================
-    -- STRATEGY B: RECOVERY FROM CACHE (Only if columns missing)
+    -- STRATEGY B: DELTA RECOVERY FROM CACHE
     -- ========================================================================
-    -- This join is expensive, so we only run it if we couldn't use Strategy A for any table
+    -- Only recover codes that are STILL missing from the dimensions.
+    -- This prevents processing millions of rows for codes we already found.
 
-    -- 1. Recover Supervisors
-    IF (NOT v_has_superv_detailed) OR (NOT v_has_superv_history) THEN
+    -- 1. Recover Supervisors (Only missing ones)
+    IF EXISTS (
+        SELECT 1 FROM (
+            SELECT codsupervisor FROM public.data_detailed
+            UNION
+            SELECT codsupervisor FROM public.data_history
+        ) t
+        WHERE t.codsupervisor NOT IN (SELECT codigo FROM public.dim_supervisores)
+    ) THEN
         INSERT INTO public.dim_supervisores (codigo, nome)
-        SELECT d.codsupervisor, MAX(c.superv) as recovered_name
+        SELECT d.codsupervisor, MAX(c.superv)
         FROM (
             SELECT codsupervisor, filial, cidade, codfor, tipovenda, dtped FROM public.data_detailed
             UNION ALL
@@ -1520,15 +1529,24 @@ BEGIN
           AND d.codfor = c.codfor
           AND d.tipovenda = c.tipovenda
         WHERE d.codsupervisor IS NOT NULL AND d.codsupervisor != ''
+          -- OPTIMIZATION: ONLY LOOK FOR MISSING CODES
+          AND d.codsupervisor NOT IN (SELECT codigo FROM public.dim_supervisores)
           AND c.superv IS NOT NULL AND c.superv != ''
         GROUP BY d.codsupervisor
         ON CONFLICT (codigo) DO NOTHING;
     END IF;
 
-    -- 2. Recover Vendedores
-    IF (NOT v_has_nome_detailed) OR (NOT v_has_nome_history) THEN
+    -- 2. Recover Vendedores (Only missing ones)
+    IF EXISTS (
+        SELECT 1 FROM (
+            SELECT codusur FROM public.data_detailed
+            UNION
+            SELECT codusur FROM public.data_history
+        ) t
+        WHERE t.codusur NOT IN (SELECT codigo FROM public.dim_vendedores)
+    ) THEN
         INSERT INTO public.dim_vendedores (codigo, nome)
-        SELECT d.codusur, MAX(c.nome) as recovered_name
+        SELECT d.codusur, MAX(c.nome)
         FROM (
             SELECT codusur, filial, cidade, codfor, tipovenda, dtped FROM public.data_detailed
             UNION ALL
@@ -1542,21 +1560,21 @@ BEGIN
           AND d.codfor = c.codfor
           AND d.tipovenda = c.tipovenda
         WHERE d.codusur IS NOT NULL AND d.codusur != ''
+          -- OPTIMIZATION: ONLY LOOK FOR MISSING CODES
+          AND d.codusur NOT IN (SELECT codigo FROM public.dim_vendedores)
           AND c.nome IS NOT NULL AND c.nome != ''
         GROUP BY d.codusur
         ON CONFLICT (codigo) DO NOTHING;
     END IF;
 
     -- 3. Recover Fornecedores
-    -- Safe to run always as it is fast (no big join)
-    IF (NOT v_has_fornecedor_detailed) OR (NOT v_has_fornecedor_history) THEN
-        INSERT INTO public.dim_fornecedores (codigo, nome)
-        SELECT DISTINCT codfor, fornecedor
-        FROM public.cache_filters
-        WHERE codfor IS NOT NULL AND codfor != ''
-          AND fornecedor IS NOT NULL AND fornecedor != ''
-        ON CONFLICT (codigo) DO NOTHING;
-    END IF;
+    INSERT INTO public.dim_fornecedores (codigo, nome)
+    SELECT DISTINCT codfor, fornecedor
+    FROM public.cache_filters
+    WHERE codfor IS NOT NULL AND codfor != ''
+      AND fornecedor IS NOT NULL AND fornecedor != ''
+      AND codfor NOT IN (SELECT codigo FROM public.dim_fornecedores)
+    ON CONFLICT (codigo) DO NOTHING;
 
 END $$;
 
