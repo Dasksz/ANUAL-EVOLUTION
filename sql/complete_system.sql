@@ -126,6 +126,7 @@ CREATE TABLE IF NOT EXISTS public.config_city_branches (
 );
 
 -- Unified View
+DROP VIEW IF EXISTS public.all_sales CASCADE;
 create or replace view public.all_sales as
 select * from public.data_detailed
 union all
