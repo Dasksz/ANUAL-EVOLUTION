@@ -82,41 +82,47 @@ END $$;
 -- 2.2 Populate Dimensions from Existing Data (Migration)
 -- Supervisors
 INSERT INTO public.dim_supervisores (codigo, nome)
-SELECT DISTINCT codsupervisor, superv
+SELECT codsupervisor, MAX(superv)
 FROM public.data_history
 WHERE codsupervisor IS NOT NULL AND codsupervisor != '' AND superv IS NOT NULL
+GROUP BY codsupervisor
 ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
 
 INSERT INTO public.dim_supervisores (codigo, nome)
-SELECT DISTINCT codsupervisor, superv
+SELECT codsupervisor, MAX(superv)
 FROM public.data_detailed
 WHERE codsupervisor IS NOT NULL AND codsupervisor != '' AND superv IS NOT NULL
+GROUP BY codsupervisor
 ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
 
 -- Vendors
 INSERT INTO public.dim_vendedores (codigo, nome)
-SELECT DISTINCT codusur, nome
+SELECT codusur, MAX(nome)
 FROM public.data_history
 WHERE codusur IS NOT NULL AND codusur != '' AND nome IS NOT NULL
+GROUP BY codusur
 ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
 
 INSERT INTO public.dim_vendedores (codigo, nome)
-SELECT DISTINCT codusur, nome
+SELECT codusur, MAX(nome)
 FROM public.data_detailed
 WHERE codusur IS NOT NULL AND codusur != '' AND nome IS NOT NULL
+GROUP BY codusur
 ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
 
 -- Suppliers
 INSERT INTO public.dim_fornecedores (codigo, nome)
-SELECT DISTINCT codfor, fornecedor
+SELECT codfor, MAX(fornecedor)
 FROM public.data_history
 WHERE codfor IS NOT NULL AND codfor != '' AND fornecedor IS NOT NULL
+GROUP BY codfor
 ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
 
 INSERT INTO public.dim_fornecedores (codigo, nome)
-SELECT DISTINCT codfor, fornecedor
+SELECT codfor, MAX(fornecedor)
 FROM public.data_detailed
 WHERE codfor IS NOT NULL AND codfor != '' AND fornecedor IS NOT NULL
+GROUP BY codfor
 ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
 
 
