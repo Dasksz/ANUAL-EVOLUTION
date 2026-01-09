@@ -80,50 +80,90 @@ END $$;
 
 
 -- 2.2 Populate Dimensions from Existing Data (Migration)
--- Supervisors
-INSERT INTO public.dim_supervisores (codigo, nome)
-SELECT codsupervisor, MAX(superv)
-FROM public.data_history 
-WHERE codsupervisor IS NOT NULL AND codsupervisor != '' AND superv IS NOT NULL
-GROUP BY codsupervisor
-ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
+-- WRAPPED IN DYNAMIC SQL TO PREVENT ERRORS IF COLUMNS ARE ALREADY DROPPED
+DO $$
+DECLARE
+    v_has_superv_detailed boolean;
+    v_has_superv_history boolean;
+    v_has_nome_detailed boolean;
+    v_has_nome_history boolean;
+    v_has_fornecedor_detailed boolean;
+    v_has_fornecedor_history boolean;
+BEGIN
+    -- Check column existence
+    SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='data_detailed' AND column_name='superv') INTO v_has_superv_detailed;
+    SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='data_history' AND column_name='superv') INTO v_has_superv_history;
+    SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='data_detailed' AND column_name='nome') INTO v_has_nome_detailed;
+    SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='data_history' AND column_name='nome') INTO v_has_nome_history;
+    SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='data_detailed' AND column_name='fornecedor') INTO v_has_fornecedor_detailed;
+    SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='data_history' AND column_name='fornecedor') INTO v_has_fornecedor_history;
 
-INSERT INTO public.dim_supervisores (codigo, nome)
-SELECT codsupervisor, MAX(superv)
-FROM public.data_detailed 
-WHERE codsupervisor IS NOT NULL AND codsupervisor != '' AND superv IS NOT NULL
-GROUP BY codsupervisor
-ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
+    -- Supervisors
+    IF v_has_superv_history THEN
+        EXECUTE '
+            INSERT INTO public.dim_supervisores (codigo, nome)
+            SELECT codsupervisor, MAX(superv)
+            FROM public.data_history
+            WHERE codsupervisor IS NOT NULL AND codsupervisor != '''' AND superv IS NOT NULL
+            GROUP BY codsupervisor
+            ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
+        ';
+    END IF;
+    IF v_has_superv_detailed THEN
+        EXECUTE '
+            INSERT INTO public.dim_supervisores (codigo, nome)
+            SELECT codsupervisor, MAX(superv)
+            FROM public.data_detailed
+            WHERE codsupervisor IS NOT NULL AND codsupervisor != '''' AND superv IS NOT NULL
+            GROUP BY codsupervisor
+            ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
+        ';
+    END IF;
 
--- Vendors
-INSERT INTO public.dim_vendedores (codigo, nome)
-SELECT codusur, MAX(nome)
-FROM public.data_history 
-WHERE codusur IS NOT NULL AND codusur != '' AND nome IS NOT NULL
-GROUP BY codusur
-ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
+    -- Vendors
+    IF v_has_nome_history THEN
+        EXECUTE '
+            INSERT INTO public.dim_vendedores (codigo, nome)
+            SELECT codusur, MAX(nome)
+            FROM public.data_history
+            WHERE codusur IS NOT NULL AND codusur != '''' AND nome IS NOT NULL
+            GROUP BY codusur
+            ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
+        ';
+    END IF;
+    IF v_has_nome_detailed THEN
+        EXECUTE '
+            INSERT INTO public.dim_vendedores (codigo, nome)
+            SELECT codusur, MAX(nome)
+            FROM public.data_detailed
+            WHERE codusur IS NOT NULL AND codusur != '''' AND nome IS NOT NULL
+            GROUP BY codusur
+            ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
+        ';
+    END IF;
 
-INSERT INTO public.dim_vendedores (codigo, nome)
-SELECT codusur, MAX(nome) 
-FROM public.data_detailed 
-WHERE codusur IS NOT NULL AND codusur != '' AND nome IS NOT NULL
-GROUP BY codusur
-ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
-
--- Suppliers
-INSERT INTO public.dim_fornecedores (codigo, nome)
-SELECT codfor, MAX(fornecedor) 
-FROM public.data_history 
-WHERE codfor IS NOT NULL AND codfor != '' AND fornecedor IS NOT NULL
-GROUP BY codfor
-ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
-
-INSERT INTO public.dim_fornecedores (codigo, nome)
-SELECT codfor, MAX(fornecedor) 
-FROM public.data_detailed 
-WHERE codfor IS NOT NULL AND codfor != '' AND fornecedor IS NOT NULL
-GROUP BY codfor
-ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
+    -- Suppliers
+    IF v_has_fornecedor_history THEN
+        EXECUTE '
+            INSERT INTO public.dim_fornecedores (codigo, nome)
+            SELECT codfor, MAX(fornecedor)
+            FROM public.data_history
+            WHERE codfor IS NOT NULL AND codfor != '''' AND fornecedor IS NOT NULL
+            GROUP BY codfor
+            ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
+        ';
+    END IF;
+    IF v_has_fornecedor_detailed THEN
+        EXECUTE '
+            INSERT INTO public.dim_fornecedores (codigo, nome)
+            SELECT codfor, MAX(fornecedor)
+            FROM public.data_detailed
+            WHERE codfor IS NOT NULL AND codfor != '''' AND fornecedor IS NOT NULL
+            GROUP BY codfor
+            ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
+        ';
+    END IF;
+END $$;
 
 
 -- 2.3 Update RPCs to Use Dimensions (BEFORE Dropping Columns)
