@@ -125,6 +125,9 @@ $$;
 ALTER TABLE public.data_summary DROP COLUMN IF EXISTS mix_details;
 ALTER TABLE public.data_summary DROP COLUMN IF EXISTS mix_produtos;
 
+-- 2.0 Handle View Dependency (all_sales)
+DROP VIEW IF EXISTS public.all_sales;
+
 -- 2.2 data_history: Remove redundant text columns
 ALTER TABLE public.data_history DROP COLUMN IF EXISTS cliente_nome;
 ALTER TABLE public.data_history DROP COLUMN IF EXISTS bairro;
@@ -138,6 +141,12 @@ ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS bairro;
 ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS descricao;
 ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS observacaofor;
 -- KEEP cidade
+
+-- 2.4 Recreate View (Updated Schema)
+CREATE OR REPLACE VIEW public.all_sales AS
+SELECT * FROM public.data_detailed
+UNION ALL
+SELECT * FROM public.data_history;
 
 
 -- 3. Verify Database Integrity (Optional Re-indexing)
