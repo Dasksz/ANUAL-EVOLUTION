@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sidebar
     const sideMenu = document.getElementById('side-menu');
     const openSidebarBtn = document.getElementById('open-sidebar-btn'); // Main Header Hamburger
+    const openSidebarBranchBtn = document.getElementById('open-sidebar-branch-btn'); // Branch Header Hamburger
     // No close button explicit in new design, clicking outside handles it
     const sidebarBackdrop = document.getElementById('sidebar-backdrop');
     
@@ -301,6 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     openSidebarBtn.addEventListener('click', openSidebar);
+    if (openSidebarBranchBtn) openSidebarBranchBtn.addEventListener('click', openSidebar);
     sidebarBackdrop.addEventListener('click', closeSidebar);
 
     // Nav Links (Close sidebar on click)
@@ -1538,7 +1540,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // If "Todos" is selected, the chart should probably show All Years aggregated by branch? Or just Current Year by default?
         // Requirement: "caso o filtro do ano esteja 'todos' será mostrado o mês atual filial X VS mês atual filial Y." (This is for KPIs)
         
-        let query = supabase.from('data_summary').select('filial, vlvenda, peso, ano, mes, tipovenda, pre_mix_count, cidade, superv, nome, codfor');
+        let query = supabase.from('data_summary').select('filial, vlvenda, peso, ano, mes, tipovenda, pre_mix_count, cidade, superv, nome, codfor').limit(50000);
 
         // Apply shared filters
         if (branchSelectedCidades.length > 0) query = query.in('cidade', branchSelectedCidades);
@@ -1587,9 +1589,13 @@ document.addEventListener('DOMContentLoaded', () => {
          // KPI Filter Logic
          data.forEach(d => {
              if (!d.filial) return;
-             if (!['1', '9'].includes(d.tipovenda) && (branchSelectedTiposVenda.length === 0 || branchSelectedTiposVenda.includes(d.tipovenda))) return; // Ensure basic sales type if no filter, or respect filter if present
-             // Wait, logic above: "If no filter, default to 1 and 9". 
-             // If filters are present, the query already filtered them.
+
+             const tipo = String(d.tipovenda);
+             // Logic: If no type filter is active, default to standard sales (1 and 9).
+             // If filters ARE active, we assume the query result is what the user wants (since we filtered by .in()).
+             if (branchSelectedTiposVenda.length === 0) {
+                 if (!['1', '9'].includes(tipo)) return;
+             }
              
              // Initialize
              if (!kpiBranches[d.filial]) kpiBranches[d.filial] = { faturamento: 0, peso: 0 };
