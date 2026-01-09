@@ -286,17 +286,23 @@ DROP VIEW IF EXISTS public.all_sales CASCADE;
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'data_history' AND table_type = 'BASE TABLE') THEN
+    -- Try to drop columns from data_history (ignoring errors if it's a view)
+    BEGIN
         ALTER TABLE public.data_history DROP COLUMN IF EXISTS superv;
         ALTER TABLE public.data_history DROP COLUMN IF EXISTS nome;
         ALTER TABLE public.data_history DROP COLUMN IF EXISTS fornecedor;
-    END IF;
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE 'Could not drop columns from public.data_history (possibly a view): %', SQLERRM;
+    END;
 
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'data_detailed' AND table_type = 'BASE TABLE') THEN
+    -- Try to drop columns from data_detailed (ignoring errors if it's a view)
+    BEGIN
         ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS superv;
         ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS nome;
         ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS fornecedor;
-    END IF;
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE 'Could not drop columns from public.data_detailed (possibly a view): %', SQLERRM;
+    END;
 END $$;
 
 
