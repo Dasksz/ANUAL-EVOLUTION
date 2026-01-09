@@ -241,6 +241,9 @@ $$;
 
 
 -- 2.4 Drop Columns (The Diet)
+-- Drop dependent view first to avoid 2BP01 error
+DROP VIEW IF EXISTS public.all_sales;
+
 ALTER TABLE public.data_history DROP COLUMN IF EXISTS superv;
 ALTER TABLE public.data_history DROP COLUMN IF EXISTS nome;
 ALTER TABLE public.data_history DROP COLUMN IF EXISTS fornecedor;
@@ -275,6 +278,12 @@ FROM public.data_detailed h
 LEFT JOIN public.dim_supervisores s ON h.codsupervisor = s.codigo
 LEFT JOIN public.dim_vendedores v ON h.codusur = v.codigo
 LEFT JOIN public.dim_fornecedores f ON h.codfor = f.codigo;
+
+-- Recreate all_sales view using compatibility views (Restores full schema)
+CREATE OR REPLACE VIEW public.all_sales AS
+SELECT * FROM public.view_data_detailed_completa
+UNION ALL
+SELECT * FROM public.view_data_history_completa;
 
 
 -- ------------------------------------------------------------------------------
