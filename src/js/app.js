@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sideMenu = document.getElementById('side-menu');
     const openSidebarBtn = document.getElementById('open-sidebar-btn'); // Main Header Hamburger
     const openSidebarBranchBtn = document.getElementById('open-sidebar-branch-btn'); // Branch Header Hamburger
+    const openSidebarCityBtn = document.getElementById('open-sidebar-city-btn'); // City Header Hamburger
     // No close button explicit in new design, clicking outside handles it
     const sidebarBackdrop = document.getElementById('sidebar-backdrop');
     
@@ -303,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     openSidebarBtn.addEventListener('click', openSidebar);
     if (openSidebarBranchBtn) openSidebarBranchBtn.addEventListener('click', openSidebar);
+    if (openSidebarCityBtn) openSidebarCityBtn.addEventListener('click', openSidebar);
     sidebarBackdrop.addEventListener('click', closeSidebar);
 
     // Nav Links (Close sidebar on click)
@@ -1501,184 +1503,147 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadBranchView() {
         showDashboardLoading();
 
-        if (branchAnoFilter.options.length <= 1) {
-             // Fetch filters once
+        // Ensure filters are populated (branches list needed)
+        let branchList = availableFiltersState.filiais;
+        if (!branchList || branchList.length === 0) {
              const { data: filterData } = await supabase.rpc('get_dashboard_filters', { p_ano: 'todos' });
              if (filterData) {
-                 if (filterData.anos) {
-                     const currentVal = branchAnoFilter.value;
-                     branchAnoFilter.innerHTML = '<option value="todos">Todos</option>';
-                     filterData.anos.forEach(a => {
-                         const opt = document.createElement('option');
-                         opt.value = a;
-                         opt.textContent = a;
-                         branchAnoFilter.appendChild(opt);
-                     });
-                     if (currentVal && currentVal !== 'todos') branchAnoFilter.value = currentVal;
-                     else if (filterData.anos.length > 0) branchAnoFilter.value = filterData.anos[0];
+                 branchList = filterData.filiais || [];
+                 availableFiltersState.filiais = branchList; // Cache it
+                 
+                 // Populate Dropdowns if needed (Assuming initBranchFilters handles the DOM, but let's call it to be safe if empty)
+                 if (branchAnoFilter.options.length <= 1) {
+                     await initBranchFilters(); // This populates dropdowns using internal logic (which calls RPC again, but that's fine/safe)
                  }
-                 if (branchMesFilter.options.length <= 1) {
-                    branchMesFilter.innerHTML = '<option value="">Todos</option>';
-                    const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-                    meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; branchMesFilter.appendChild(opt); });
-                }
-                
-                setupBranchMultiSelect(branchCidadeFilterBtn, branchCidadeFilterDropdown, branchCidadeFilterList, filterData.cidades, branchSelectedCidades, branchCidadeFilterSearch);
-                setupBranchMultiSelect(branchSupervisorFilterBtn, branchSupervisorFilterDropdown, branchSupervisorFilterDropdown, filterData.supervisors, branchSelectedSupervisores);
-                setupBranchMultiSelect(branchVendedorFilterBtn, branchVendedorFilterDropdown, branchVendedorFilterList, filterData.vendedores, branchSelectedVendedores, branchVendedorFilterSearch);
-                setupBranchMultiSelect(branchFornecedorFilterBtn, branchFornecedorFilterDropdown, branchFornecedorFilterList, filterData.fornecedores, branchSelectedFornecedores, branchFornecedorFilterSearch, true);
-                setupBranchMultiSelect(branchTipovendaFilterBtn, branchTipovendaFilterDropdown, branchTipovendaFilterDropdown, filterData.tipos_venda, branchSelectedTiposVenda);
              }
         }
 
-        const selectedYear = branchAnoFilter.value === 'todos' ? null : parseInt(branchAnoFilter.value);
-        const selectedMonth = branchMesFilter.value === '' ? null : parseInt(branchMesFilter.value) + 1;
+        // Prepare Filters for RPC
+        const selectedYear = branchAnoFilter.value === 'todos' ? null : branchAnoFilter.value; // String for RPC
+        const selectedMonth = branchMesFilter.value === '' ? null : branchMesFilter.value; // String for RPC (0-11)
 
-        // KPI Fetching Logic (Scenario dependent)
-        // If Year is 'todos', we want Current Month (Current Year) for KPIs.
-        // But for Chart, maybe we want All Years? "The idea is that the graph comes showing the current year... and still able to filter year and month"
-        // If "Todos" is selected, the chart should probably show All Years aggregated by branch? Or just Current Year by default?
-        // Requirement: "caso o filtro do ano esteja 'todos' será mostrado o mês atual filial X VS mês atual filial Y." (This is for KPIs)
-        
-        let query = supabase.from('data_summary').select('filial, vlvenda, peso, ano, mes, tipovenda, pre_mix_count, cidade, superv, nome, codfor').limit(50000);
+        const rpcFilters = {
+            p_ano: selectedYear,
+            p_mes: selectedMonth,
+            p_cidade: branchSelectedCidades.length > 0 ? branchSelectedCidades : null,
+            p_supervisor: branchSelectedSupervisores.length > 0 ? branchSelectedSupervisores : null,
+            p_vendedor: branchSelectedVendedores.length > 0 ? branchSelectedVendedores : null,
+            p_fornecedor: branchSelectedFornecedores.length > 0 ? branchSelectedFornecedores : null,
+            p_tipovenda: branchSelectedTiposVenda.length > 0 ? branchSelectedTiposVenda : null
+        };
 
-        // Apply shared filters
-        if (branchSelectedCidades.length > 0) query = query.in('cidade', branchSelectedCidades);
-        if (branchSelectedSupervisores.length > 0) query = query.in('superv', branchSelectedSupervisores);
-        if (branchSelectedVendedores.length > 0) query = query.in('nome', branchSelectedVendedores);
-        if (branchSelectedFornecedores.length > 0) query = query.in('codfor', branchSelectedFornecedores);
-        if (branchSelectedTiposVenda.length > 0) query = query.in('tipovenda', branchSelectedTiposVenda);
+        const branchDataMap = {};
+        const branchesToFetch = branchList || [];
 
-        if (selectedYear) {
-            query = query.eq('ano', selectedYear);
-        } else {
-             // Even if "Todos", for performance we might limit to recent years if dataset is huge, 
-             // but user wants "Current Month" comparison if Todos.
-             // We can fetch all data and filter in memory, or fetch specific sets.
-             // Let's fetch all relevant history for the chart, but distinguishing for KPIs.
+        // Parallel Fetch for each branch
+        try {
+            await Promise.all(branchesToFetch.map(async (branch) => {
+                const branchFilters = { ...rpcFilters, p_filial: [branch] };
+                const { data, error } = await supabase.rpc('get_main_dashboard_data', branchFilters);
+                if (!error && data) {
+                    branchDataMap[branch] = data;
+                } else {
+                    console.error(`Erro ao carregar filial ${branch}:`, error);
+                }
+            }));
+        } catch (e) {
+            console.error("Erro geral no fetch de filiais:", e);
         }
-        
-        if (selectedMonth) {
-            query = query.eq('mes', selectedMonth);
-        }
-
-        const { data, error } = await query;
         
         hideDashboardLoading();
-        
-        if (error) {
-            console.error("Erro ao carregar dados filiais:", error);
-            return;
-        }
-
-        renderBranchDashboard(data, selectedYear, selectedMonth);
+        renderBranchDashboard(branchDataMap, selectedYear, selectedMonth);
     }
 
-    function renderBranchDashboard(data, selectedYear, selectedMonth) {
+    function renderBranchDashboard(branchDataMap, selectedYear, selectedMonth) {
          const now = new Date();
-         const isCurrentMonth = (y, m) => y === now.getFullYear() && (m === now.getMonth() + 1);
-
-         // --- KPI Data Preparation ---
-         // "Mês atual da filial X VS Mês atual da filial Y ( caso esteja filtrado um ano, será um ano contra o outro... caso o filtro do ano esteja "todos" será mostrado o mês atual filial X VS mês atual filial Y."
+         const branches = Object.keys(branchDataMap).sort();
          const kpiBranches = {}; 
          const chartBranches = {};
 
-         // Identify branches
-         const allBranches = [...new Set(data.map(d => d.filial))].sort();
-
-         // KPI Filter Logic
-         data.forEach(d => {
-             if (!d.filial) return;
-
-             const tipo = String(d.tipovenda);
-             // Logic: If no type filter is active, default to standard sales (1 and 9).
-             // If filters ARE active, we assume the query result is what the user wants (since we filtered by .in()).
-             if (branchSelectedTiposVenda.length === 0) {
-                 if (!['1', '9'].includes(tipo)) return;
-             }
+         // Process Data from RPC Results
+         branches.forEach(b => {
+             const data = branchDataMap[b];
+             const monthlyData = data.monthly_data_current || [];
              
-             // Initialize
-             if (!kpiBranches[d.filial]) kpiBranches[d.filial] = { faturamento: 0, peso: 0 };
-             if (!chartBranches[d.filial]) chartBranches[d.filial] = new Array(12).fill(0);
+             // Chart Data: Map to 12 months array
+             const chartArr = new Array(12).fill(0);
+             monthlyData.forEach(d => {
+                 // d has month_index (0-11)
+                 if (d.month_index >= 0 && d.month_index < 12) {
+                     chartArr[d.month_index] = d.faturamento; 
+                 }
+             });
+             chartBranches[b] = chartArr;
 
-             // KPI Accumulation
-             let includeInKpi = false;
-             if (selectedYear === null) {
+             // KPI Data
+             let kpiFat = 0;
+             let kpiKg = 0;
+
+             if (!selectedYear || selectedYear === 'todos') {
                  // "Todos" -> Current Month (of Current Year)
-                 if (d.ano === now.getFullYear() && d.mes === (now.getMonth() + 1)) {
-                     includeInKpi = true;
+                 const targetMonthIdx = now.getMonth();
+                 const mData = monthlyData.find(d => d.month_index === targetMonthIdx);
+                 if (mData) {
+                     kpiFat = mData.faturamento || 0;
+                     kpiKg = mData.peso || 0;
                  }
              } else {
-                 // Specific Year -> All data in that year (query already filtered by year)
-                 includeInKpi = true;
+                 // Specific Year -> Sum of returned monthly data
+                 monthlyData.forEach(d => {
+                     kpiFat += (d.faturamento || 0);
+                     kpiKg += (d.peso || 0);
+                 });
              }
              
-             if (includeInKpi) {
-                 kpiBranches[d.filial].faturamento += (d.vlvenda || 0);
-                 kpiBranches[d.filial].peso += (d.peso || 0);
-             }
-
-             // Chart Accumulation (Always by Month for the Selected Year/All Years?)
-             // "The idea is that the graph comes showing the current year... and still able to filter year and month"
-             // If "Todos" -> We probably should show Current Year in chart to avoid clutter or aggregate all?
-             // Let's default Chart to Current Year if "Todos" is selected, unless user explicitly wants All Years history which is hard to map on Jan-Dec axis.
-             // Standard Dashboard shows "Ano Actual vs Ano Previous".
-             // Here we show "Branch A vs Branch B".
-             // Let's restrict Chart to Current Year if selectedYear is null.
-             
-             let includeInChart = false;
-             const chartYear = selectedYear || now.getFullYear();
-             
-             if (d.ano === chartYear) {
-                 const mIdx = d.mes - 1;
-                 if (mIdx >= 0 && mIdx < 12) {
-                     chartBranches[d.filial][mIdx] += (d.vlvenda || 0);
-                 }
-             }
+             kpiBranches[b] = { faturamento: kpiFat, peso: kpiKg };
          });
 
          // --- KPI Rendering ---
-         const b1 = allBranches[0] || 'N/A';
-         const b2 = allBranches[1] || 'N/A';
+         const b1 = branches[0] || 'N/A';
+         const b2 = branches[1] || 'N/A';
          
          const val1Fat = kpiBranches[b1]?.faturamento || 0;
          const val2Fat = kpiBranches[b2]?.faturamento || 0;
          const val1Kg = kpiBranches[b1]?.peso || 0;
          const val2Kg = kpiBranches[b2]?.peso || 0;
 
-         document.getElementById('branch-name-1').textContent = b1;
-         document.getElementById('branch-name-2').textContent = b2;
-         document.getElementById('branch-val-1-fat').textContent = val1Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-         document.getElementById('branch-val-2-fat').textContent = val2Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+         const elB1Name = document.getElementById('branch-name-1'); if(elB1Name) elB1Name.textContent = b1;
+         const elB2Name = document.getElementById('branch-name-2'); if(elB2Name) elB2Name.textContent = b2;
+         const elVal1Fat = document.getElementById('branch-val-1-fat'); if(elVal1Fat) elVal1Fat.textContent = val1Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+         const elVal2Fat = document.getElementById('branch-val-2-fat'); if(elVal2Fat) elVal2Fat.textContent = val2Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
          
          let diffFat = 0;
          if (val2Fat > 0) diffFat = ((val1Fat / val2Fat) - 1) * 100;
          const elDiffFat = document.getElementById('branch-diff-fat');
-         elDiffFat.textContent = `${diffFat > 0 ? '+' : ''}${diffFat.toFixed(1)}% (${b1} vs ${b2})`;
-         elDiffFat.className = `font-bold ${diffFat >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+         if(elDiffFat) {
+             elDiffFat.textContent = `${diffFat > 0 ? '+' : ''}${diffFat.toFixed(1)}% (${b1} vs ${b2})`;
+             elDiffFat.className = `font-bold ${diffFat >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+         }
 
-         document.getElementById('branch-name-1-kg').textContent = b1;
-         document.getElementById('branch-name-2-kg').textContent = b2;
-         document.getElementById('branch-val-1-kg').textContent = (val1Kg/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
-         document.getElementById('branch-val-2-kg').textContent = (val2Kg/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
+         const elB1NameKg = document.getElementById('branch-name-1-kg'); if(elB1NameKg) elB1NameKg.textContent = b1;
+         const elB2NameKg = document.getElementById('branch-name-2-kg'); if(elB2NameKg) elB2NameKg.textContent = b2;
+         const elVal1Kg = document.getElementById('branch-val-1-kg'); if(elVal1Kg) elVal1Kg.textContent = (val1Kg/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
+         const elVal2Kg = document.getElementById('branch-val-2-kg'); if(elVal2Kg) elVal2Kg.textContent = (val2Kg/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
 
          let diffKg = 0;
          if (val2Kg > 0) diffKg = ((val1Kg / val2Kg) - 1) * 100;
          const elDiffKg = document.getElementById('branch-diff-kg');
-         elDiffKg.textContent = `${diffKg > 0 ? '+' : ''}${diffKg.toFixed(1)}% (${b1} vs ${b2})`;
-         elDiffKg.className = `font-bold ${diffKg >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+         if(elDiffKg) {
+             elDiffKg.textContent = `${diffKg > 0 ? '+' : ''}${diffKg.toFixed(1)}% (${b1} vs ${b2})`;
+             elDiffKg.className = `font-bold ${diffKg >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+         }
          
          // Update Title Context
-         const kpiContext = selectedYear ? `Ano ${selectedYear}` : `Mês Atual (${now.toLocaleDateString('pt-BR', { month: 'long' })})`;
-         document.getElementById('branch-kpi-title-fat').textContent = `Faturamento (${kpiContext})`;
-         document.getElementById('branch-kpi-title-kg').textContent = `Tonelagem (${kpiContext})`;
+         const kpiContext = (!selectedYear || selectedYear === 'todos') ? `Mês Atual (${now.toLocaleDateString('pt-BR', { month: 'long' })})` : `Ano ${selectedYear}`;
+         const elTitleFat = document.getElementById('branch-kpi-title-fat'); if(elTitleFat) elTitleFat.textContent = `Faturamento (${kpiContext})`;
+         const elTitleKg = document.getElementById('branch-kpi-title-kg'); if(elTitleKg) elTitleKg.textContent = `Tonelagem (${kpiContext})`;
 
 
          // --- Chart Rendering ---
          const datasets = [];
          const colors = ['#06b6d4', '#f97316', '#8b5cf6', '#10b981']; 
 
-         allBranches.forEach((b, idx) => {
+         branches.forEach((b, idx) => {
              datasets.push({
                  label: b,
                  data: chartBranches[b] || new Array(12).fill(0),
@@ -1688,18 +1653,18 @@ document.addEventListener('DOMContentLoaded', () => {
              });
          });
          
-         // Trend Logic (Current Year Only)
-         const chartYear = selectedYear || now.getFullYear();
-         if (chartYear === now.getFullYear()) {
-             const today = now.getDate();
-             const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-             const factor = today > 0 ? (lastDay / today) : 1;
-             const currentMonthIdx = now.getMonth();
-
-             allBranches.forEach((b, idx) => {
-                 const currentVal = (chartBranches[b] || [])[currentMonthIdx] || 0;
-                 const trendVal = currentVal * factor;
-                 if (datasets[idx]) datasets[idx].data.push(trendVal);
+         const chartYear = (!selectedYear || selectedYear === 'todos') ? now.getFullYear() : parseInt(selectedYear);
+         const isCurrentYear = (chartYear === now.getFullYear());
+         
+         if (isCurrentYear) {
+             branches.forEach((b, idx) => {
+                 const bData = branchDataMap[b];
+                 if (bData && bData.trend_allowed && bData.trend_data) {
+                     const tVal = bData.trend_data.faturamento || 0; 
+                     if (datasets[idx]) datasets[idx].data.push(tVal);
+                 } else {
+                     if (datasets[idx]) datasets[idx].data.push(0);
+                 }
              });
              
              const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Tendência"];
