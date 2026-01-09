@@ -553,6 +553,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const { error } = await supabase.from(table).insert(batch);
             if (error) throw new Error(`Erro ${table}: ${error.message}`);
         };
+        const performDimensionUpsert = async (table, batch) => {
+             // For dimensions, we must upsert (update if exists)
+             // Supabase JS upsert needs onConflict column
+             const { error } = await supabase.from(table).upsert(batch, { onConflict: 'codigo' });
+             if (error) throw new Error(`Erro upsert ${table}: ${error.message}`);
+        };
         const clearTable = async (table) => {
             const { error } = await supabase.rpc('truncate_table', { table_name: table });
             if (error) throw new Error(`Erro clear ${table}: ${error.message}`);
@@ -584,6 +590,20 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         try {
+            // 0. Update Dimensions First
+            if (data.newSupervisors && data.newSupervisors.length > 0) {
+                 updateStatus('Atualizando Supervisores...', 1);
+                 await performDimensionUpsert('dim_supervisores', data.newSupervisors);
+            }
+            if (data.newVendors && data.newVendors.length > 0) {
+                 updateStatus('Atualizando Vendedores...', 2);
+                 await performDimensionUpsert('dim_vendedores', data.newVendors);
+            }
+            if (data.newProviders && data.newProviders.length > 0) {
+                 updateStatus('Atualizando Fornecedores...', 3);
+                 await performDimensionUpsert('dim_fornecedores', data.newProviders);
+            }
+
             if (data.history?.length) { updateStatus('Limpar hist...', 10); await clearTable('data_history'); await uploadBatch('data_history', data.history); }
             if (data.detailed?.length) { updateStatus('Limpar det...', 40); await clearTable('data_detailed'); await uploadBatch('data_detailed', data.detailed); }
             if (data.clients?.length) { updateStatus('Limpar cli...', 70); await clearTable('data_clients'); await uploadBatch('data_clients', data.clients); }

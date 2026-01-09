@@ -535,6 +535,25 @@ self.onmessage = async (event) => {
         const processedCurrYearHist = processSalesData(reattributedCurrYearHist, clientMap, productMasterMap);
         const processedCurrMonth = processSalesData(reattributedCurrMonth, clientMap, productMasterMap);
 
+        // --- Collect Dimensions (Supervisors, Vendors, Providers) ---
+        self.postMessage({ type: 'progress', status: 'Extraindo dimensões (Supervisores, Vendedores)...', percentage: 80 });
+
+        const dimSupervisors = new Map();
+        const dimVendors = new Map();
+        const dimProviders = new Map();
+
+        const collectDimensions = (salesArray) => {
+            salesArray.forEach(sale => {
+                if (sale.codsupervisor && sale.superv) dimSupervisors.set(sale.codsupervisor, sale.superv);
+                if (sale.codusur && sale.nome) dimVendors.set(sale.codusur, sale.nome);
+                if (sale.codfor && sale.fornecedor) dimProviders.set(sale.codfor, sale.fornecedor);
+            });
+        };
+
+        collectDimensions(processedPrevYear);
+        collectDimensions(processedCurrYearHist);
+        collectDimensions(processedCurrMonth);
+
         // --- Final Processing (Bonification Only) ---
         // Note: Branch Override and Tiago Rule removed as City Map now dictates branch assignment.
 
@@ -556,6 +575,11 @@ self.onmessage = async (event) => {
                 delete newSale.descricao;
                 delete newSale.observacaofor;
 
+                // 3. Normalization (Remove Text Columns, keep Codes)
+                delete newSale.superv;
+                delete newSale.nome; // Vendedor Name
+                delete newSale.fornecedor;
+
                 // 2b. History-specific Optimization
                 if (isHistory) {
                     delete newSale.pedido;
@@ -575,12 +599,18 @@ self.onmessage = async (event) => {
 
         self.postMessage({ type: 'progress', status: 'Preparando dados para envio...', percentage: 90 });
 
+        // Helper to convert Map to Array of Objects
+        const mapToObjArray = (map) => Array.from(map.entries()).map(([codigo, nome]) => ({ codigo, nome }));
+
         // Collect all data to return
         const resultPayload = {
             history: [...finalPrevYear, ...finalCurrYearHist],
             detailed: finalCurrMonth,
             clients: clientsToInsert,
-            newCities: Array.from(newCitiesSet)
+            newCities: Array.from(newCitiesSet),
+            newSupervisors: mapToObjArray(dimSupervisors),
+            newVendors: mapToObjArray(dimVendors),
+            newProviders: mapToObjArray(dimProviders)
         };
 
         self.postMessage({ type: 'result', data: resultPayload });
