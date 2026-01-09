@@ -94,7 +94,17 @@ create table if not exists public.data_clients (
 -- Remove RCA 2 Column if it exists (for migration support)
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_clients' AND column_name = 'rca2') THEN
+    -- Check if column exists AND if it is a BASE TABLE (not a view)
+    -- This prevents error 42P16 if data_clients has been converted to a view
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns c
+        JOIN information_schema.tables t ON c.table_name = t.table_name AND c.table_schema = t.table_schema
+        WHERE c.table_schema = 'public'
+          AND c.table_name = 'data_clients'
+          AND c.column_name = 'rca2'
+          AND t.table_type = 'BASE TABLE'
+    ) THEN
         BEGIN
             EXECUTE 'ALTER TABLE public.data_clients DROP COLUMN rca2';
         EXCEPTION WHEN OTHERS THEN

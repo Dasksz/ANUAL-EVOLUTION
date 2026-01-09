@@ -94,7 +94,17 @@ create table if not exists public.data_clients (
 -- Remove RCA 2 Column if it exists (for migration support)
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_clients' AND column_name = 'rca2') THEN
+    -- Check if column exists AND if it is a BASE TABLE (not a view)
+    -- This prevents error 42P16 if data_clients has been converted to a view
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns c
+        JOIN information_schema.tables t ON c.table_name = t.table_name AND c.table_schema = t.table_schema
+        WHERE c.table_schema = 'public'
+          AND c.table_name = 'data_clients'
+          AND c.column_name = 'rca2'
+          AND t.table_type = 'BASE TABLE'
+    ) THEN
         BEGIN
             EXECUTE 'ALTER TABLE public.data_clients DROP COLUMN rca2';
         EXCEPTION WHEN OTHERS THEN
@@ -1372,22 +1382,26 @@ DROP VIEW IF EXISTS public.all_sales CASCADE;
 
 DO $$
 BEGIN
-    -- Using Dynamic SQL to avoid parse-time errors if tables are views
-    BEGIN
-        EXECUTE 'ALTER TABLE public.data_history DROP COLUMN IF EXISTS superv';
-        EXECUTE 'ALTER TABLE public.data_history DROP COLUMN IF EXISTS nome';
-        EXECUTE 'ALTER TABLE public.data_history DROP COLUMN IF EXISTS fornecedor';
-    EXCEPTION WHEN OTHERS THEN
-        RAISE NOTICE 'Could not drop columns from public.data_history: %', SQLERRM;
-    END;
+    -- Check if it is a BASE TABLE (not a view)
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'data_history' AND table_type = 'BASE TABLE') THEN
+        BEGIN
+            EXECUTE 'ALTER TABLE public.data_history DROP COLUMN IF EXISTS superv';
+            EXECUTE 'ALTER TABLE public.data_history DROP COLUMN IF EXISTS nome';
+            EXECUTE 'ALTER TABLE public.data_history DROP COLUMN IF EXISTS fornecedor';
+        EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'Could not drop columns from public.data_history: %', SQLERRM;
+        END;
+    END IF;
 
-    BEGIN
-        EXECUTE 'ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS superv';
-        EXECUTE 'ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS nome';
-        EXECUTE 'ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS fornecedor';
-    EXCEPTION WHEN OTHERS THEN
-        RAISE NOTICE 'Could not drop columns from public.data_detailed: %', SQLERRM;
-    END;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'data_detailed' AND table_type = 'BASE TABLE') THEN
+        BEGIN
+            EXECUTE 'ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS superv';
+            EXECUTE 'ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS nome';
+            EXECUTE 'ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS fornecedor';
+        EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'Could not drop columns from public.data_detailed: %', SQLERRM;
+        END;
+    END IF;
 END $$;
 
 

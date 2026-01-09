@@ -286,22 +286,26 @@ DROP VIEW IF EXISTS public.all_sales CASCADE;
 
 DO $$
 BEGIN
-    -- Using Dynamic SQL to avoid parse-time errors if tables are views
-    BEGIN
-        EXECUTE 'ALTER TABLE public.data_history DROP COLUMN IF EXISTS superv';
-        EXECUTE 'ALTER TABLE public.data_history DROP COLUMN IF EXISTS nome';
-        EXECUTE 'ALTER TABLE public.data_history DROP COLUMN IF EXISTS fornecedor';
-    EXCEPTION WHEN OTHERS THEN
-        RAISE NOTICE 'Could not drop columns from public.data_history: %', SQLERRM;
-    END;
+    -- Check if it is a BASE TABLE (not a view)
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'data_history' AND table_type = 'BASE TABLE') THEN
+        BEGIN
+            EXECUTE 'ALTER TABLE public.data_history DROP COLUMN IF EXISTS superv';
+            EXECUTE 'ALTER TABLE public.data_history DROP COLUMN IF EXISTS nome';
+            EXECUTE 'ALTER TABLE public.data_history DROP COLUMN IF EXISTS fornecedor';
+        EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'Could not drop columns from public.data_history: %', SQLERRM;
+        END;
+    END IF;
 
-    BEGIN
-        EXECUTE 'ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS superv';
-        EXECUTE 'ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS nome';
-        EXECUTE 'ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS fornecedor';
-    EXCEPTION WHEN OTHERS THEN
-        RAISE NOTICE 'Could not drop columns from public.data_detailed: %', SQLERRM;
-    END;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'data_detailed' AND table_type = 'BASE TABLE') THEN
+        BEGIN
+            EXECUTE 'ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS superv';
+            EXECUTE 'ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS nome';
+            EXECUTE 'ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS fornecedor';
+        EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'Could not drop columns from public.data_detailed: %', SQLERRM;
+        END;
+    END IF;
 END $$;
 
 
