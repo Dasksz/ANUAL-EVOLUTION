@@ -1383,7 +1383,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const btns = [branchCidadeFilterBtn, branchSupervisorFilterBtn, branchVendedorFilterBtn, branchFornecedorFilterBtn, branchTipovendaFilterBtn];
         dropdowns.forEach((dd, idx) => { if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) dd.classList.add('hidden'); });
     });
-
+    
     branchClearFiltersBtn?.addEventListener('click', () => {
          branchAnoFilter.value = 'todos';
          branchMesFilter.value = '';
@@ -1414,7 +1414,7 @@ document.addEventListener('DOMContentLoaded', () => {
              if (currentVal && currentVal !== 'todos') branchAnoFilter.value = currentVal;
              else if (filterData.anos.length > 0) branchAnoFilter.value = filterData.anos[0];
          }
-
+         
          // Months
          if (branchMesFilter.options.length <= 1) {
             branchMesFilter.innerHTML = '<option value="">Todos</option>';
@@ -1428,7 +1428,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupMultiSelect(branchVendedorFilterBtn, branchVendedorFilterDropdown, branchVendedorFilterList, filterData.vendedores, branchSelectedVendedores, () => {}, false, branchVendedorFilterSearch);
         setupMultiSelect(branchFornecedorFilterBtn, branchFornecedorFilterDropdown, branchFornecedorFilterList, filterData.fornecedores, branchSelectedFornecedores, () => {}, true, branchFornecedorFilterSearch);
         setupMultiSelect(branchTipovendaFilterBtn, branchTipovendaFilterDropdown, branchTipovendaFilterDropdown, filterData.tipos_venda, branchSelectedTiposVenda, () => {});
-
+        
         // Override setupMultiSelect onclick to trigger branch reload
         [branchCidadeFilterBtn, branchSupervisorFilterBtn, branchVendedorFilterBtn, branchFornecedorFilterBtn, branchTipovendaFilterBtn].forEach(btn => {
              // We need to re-attach the listener logic because setupMultiSelect attaches a generic one.
@@ -1439,14 +1439,14 @@ document.addEventListener('DOMContentLoaded', () => {
              // We need to change setupMultiSelect to accept a custom change handler or patch it.
         });
     }
-
+    
     // Patch setupMultiSelect to support custom handler?
     // Instead of modifying setupMultiSelect which is used by main dashboard, I will create a specific setup helper for branch or just duplicate the logic slightly modified.
     // Or better: I can assign the global handleFilterChange to be context aware? No.
     // I will redefine setupMultiSelect parameters to accept a callback for change.
     // But I cannot easily change the existing function without breaking main dashboard usage unless I update all calls.
     // I will duplicate the logic for Branch MultiSelects to be safe and quick.
-
+    
     function setupBranchMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
         btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
         const renderItems = (filterText = '') => {
@@ -1520,7 +1520,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
                     meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; branchMesFilter.appendChild(opt); });
                 }
-
+                
                 setupBranchMultiSelect(branchCidadeFilterBtn, branchCidadeFilterDropdown, branchCidadeFilterList, filterData.cidades, branchSelectedCidades, branchCidadeFilterSearch);
                 setupBranchMultiSelect(branchSupervisorFilterBtn, branchSupervisorFilterDropdown, branchSupervisorFilterDropdown, filterData.supervisors, branchSelectedSupervisores);
                 setupBranchMultiSelect(branchVendedorFilterBtn, branchVendedorFilterDropdown, branchVendedorFilterList, filterData.vendedores, branchSelectedVendedores, branchVendedorFilterSearch);
@@ -1537,7 +1537,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // But for Chart, maybe we want All Years? "The idea is that the graph comes showing the current year... and still able to filter year and month"
         // If "Todos" is selected, the chart should probably show All Years aggregated by branch? Or just Current Year by default?
         // Requirement: "caso o filtro do ano esteja 'todos' será mostrado o mês atual filial X VS mês atual filial Y." (This is for KPIs)
-
+        
         let query = supabase.from('data_summary').select('filial, vlvenda, peso, ano, mes, tipovenda, pre_mix_count, cidade, superv, nome, codfor');
 
         // Apply shared filters
@@ -1550,20 +1550,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedYear) {
             query = query.eq('ano', selectedYear);
         } else {
-             // Even if "Todos", for performance we might limit to recent years if dataset is huge,
+             // Even if "Todos", for performance we might limit to recent years if dataset is huge, 
              // but user wants "Current Month" comparison if Todos.
              // We can fetch all data and filter in memory, or fetch specific sets.
              // Let's fetch all relevant history for the chart, but distinguishing for KPIs.
         }
-
+        
         if (selectedMonth) {
             query = query.eq('mes', selectedMonth);
         }
 
         const { data, error } = await query;
-
+        
         hideDashboardLoading();
-
+        
         if (error) {
             console.error("Erro ao carregar dados filiais:", error);
             return;
@@ -1578,7 +1578,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
          // --- KPI Data Preparation ---
          // "Mês atual da filial X VS Mês atual da filial Y ( caso esteja filtrado um ano, será um ano contra o outro... caso o filtro do ano esteja "todos" será mostrado o mês atual filial X VS mês atual filial Y."
-         const kpiBranches = {};
+         const kpiBranches = {}; 
          const chartBranches = {};
 
          // Identify branches
@@ -1588,9 +1588,9 @@ document.addEventListener('DOMContentLoaded', () => {
          data.forEach(d => {
              if (!d.filial) return;
              if (!['1', '9'].includes(d.tipovenda) && (branchSelectedTiposVenda.length === 0 || branchSelectedTiposVenda.includes(d.tipovenda))) return; // Ensure basic sales type if no filter, or respect filter if present
-             // Wait, logic above: "If no filter, default to 1 and 9".
+             // Wait, logic above: "If no filter, default to 1 and 9". 
              // If filters are present, the query already filtered them.
-
+             
              // Initialize
              if (!kpiBranches[d.filial]) kpiBranches[d.filial] = { faturamento: 0, peso: 0 };
              if (!chartBranches[d.filial]) chartBranches[d.filial] = new Array(12).fill(0);
@@ -1606,7 +1606,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  // Specific Year -> All data in that year (query already filtered by year)
                  includeInKpi = true;
              }
-
+             
              if (includeInKpi) {
                  kpiBranches[d.filial].faturamento += (d.vlvenda || 0);
                  kpiBranches[d.filial].peso += (d.peso || 0);
@@ -1619,10 +1619,10 @@ document.addEventListener('DOMContentLoaded', () => {
              // Standard Dashboard shows "Ano Actual vs Ano Previous".
              // Here we show "Branch A vs Branch B".
              // Let's restrict Chart to Current Year if selectedYear is null.
-
+             
              let includeInChart = false;
              const chartYear = selectedYear || now.getFullYear();
-
+             
              if (d.ano === chartYear) {
                  const mIdx = d.mes - 1;
                  if (mIdx >= 0 && mIdx < 12) {
@@ -1634,7 +1634,7 @@ document.addEventListener('DOMContentLoaded', () => {
          // --- KPI Rendering ---
          const b1 = allBranches[0] || 'N/A';
          const b2 = allBranches[1] || 'N/A';
-
+         
          const val1Fat = kpiBranches[b1]?.faturamento || 0;
          const val2Fat = kpiBranches[b2]?.faturamento || 0;
          const val1Kg = kpiBranches[b1]?.peso || 0;
@@ -1644,7 +1644,7 @@ document.addEventListener('DOMContentLoaded', () => {
          document.getElementById('branch-name-2').textContent = b2;
          document.getElementById('branch-val-1-fat').textContent = val1Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
          document.getElementById('branch-val-2-fat').textContent = val2Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-
+         
          let diffFat = 0;
          if (val2Fat > 0) diffFat = ((val1Fat / val2Fat) - 1) * 100;
          const elDiffFat = document.getElementById('branch-diff-fat');
@@ -1661,7 +1661,7 @@ document.addEventListener('DOMContentLoaded', () => {
          const elDiffKg = document.getElementById('branch-diff-kg');
          elDiffKg.textContent = `${diffKg > 0 ? '+' : ''}${diffKg.toFixed(1)}% (${b1} vs ${b2})`;
          elDiffKg.className = `font-bold ${diffKg >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-
+         
          // Update Title Context
          const kpiContext = selectedYear ? `Ano ${selectedYear}` : `Mês Atual (${now.toLocaleDateString('pt-BR', { month: 'long' })})`;
          document.getElementById('branch-kpi-title-fat').textContent = `Faturamento (${kpiContext})`;
@@ -1670,7 +1670,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
          // --- Chart Rendering ---
          const datasets = [];
-         const colors = ['#06b6d4', '#f97316', '#8b5cf6', '#10b981'];
+         const colors = ['#06b6d4', '#f97316', '#8b5cf6', '#10b981']; 
 
          allBranches.forEach((b, idx) => {
              datasets.push({
@@ -1681,7 +1681,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  borderWidth: 1
              });
          });
-
+         
          // Trend Logic (Current Year Only)
          const chartYear = selectedYear || now.getFullYear();
          if (chartYear === now.getFullYear()) {
@@ -1695,7 +1695,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  const trendVal = currentVal * factor;
                  if (datasets[idx]) datasets[idx].data.push(trendVal);
              });
-
+             
              const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Tendência"];
              createChart('branch-chart', 'bar', labels, datasets, (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : '')));
          } else {
