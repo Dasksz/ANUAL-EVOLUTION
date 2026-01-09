@@ -447,6 +447,7 @@ self.onmessage = async (event) => {
                     newSale['CODUSUR'] = 'BALCAO_SP';
                     newSale['NOME'] = 'BALCAO';
                     newSale['SUPERV'] = 'BALCAO';
+            newSale['CODSUPERVISOR'] = '8';
                 } else if (isAmericanas) {
                     newSale['CODUSUR'] = 'AMERICANAS';
                     newSale['NOME'] = 'AMERICANAS';

@@ -656,9 +656,7 @@ BEGIN
     
     v_where_clause := 'WHERE ano IN ($1, $2) ';
     
-    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where_clause := v_where_clause || ' AND filial = ANY($3) ';
-    END IF;
+    -- NOTE: Filial filter is handled INSIDE filtered_summary for override logic
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where_clause := v_where_clause || ' AND cidade = ANY($4) ';
     END IF;
@@ -678,11 +676,19 @@ BEGIN
     -- 4. Execute Main Aggregation Query (VERSÃO OTIMIZADA)
     -- Removemos todas as subqueries complexas (mix_raw_data, monthly_mix_stats, etc)
     v_sql := '
-    WITH filtered_summary AS (
+    WITH raw_summary AS (
         SELECT 
-            ano, mes, codcli, vlvenda, peso, bonificacao, devolucao, tipovenda, pre_mix_count, pre_positivacao_val
+            ano, mes, codcli, vlvenda, peso, bonificacao, devolucao, tipovenda, pre_mix_count, pre_positivacao_val,
+            CASE
+                WHEN codcli = ''11625'' AND ano = 2025 AND mes = 12 THEN ''05''
+                ELSE filial
+            END as filial
         FROM public.data_summary
         ' || v_where_clause || '
+    ),
+    filtered_summary AS (
+        SELECT * FROM raw_summary
+        WHERE ($3 IS NULL OR array_length($3, 1) IS NULL OR filial = ANY($3))
     ),
     agg_data AS (
         SELECT
