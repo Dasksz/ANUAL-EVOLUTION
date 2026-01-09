@@ -557,7 +557,12 @@ document.addEventListener('DOMContentLoaded', () => {
              // For dimensions, we must upsert (update if exists)
              // Supabase JS upsert needs onConflict column
              const { error } = await supabase.from(table).upsert(batch, { onConflict: 'codigo' });
-             if (error) throw new Error(`Erro upsert ${table}: ${error.message}`);
+             if (error) {
+                 if (error.message && (error.message.includes('Could not find the table') || error.message.includes('relation') || error.code === '42P01')) {
+                     alert("Erro de Configuração: As tabelas novas (dimensões) não foram encontradas. \n\nPor favor, execute o script 'sql/optimization_plan.sql' no Editor SQL do Supabase para criar as tabelas necessárias e tente novamente.");
+                 }
+                 throw new Error(`Erro upsert ${table}: ${error.message}`);
+             }
         };
         const clearTable = async (table) => {
             const { error } = await supabase.rpc('truncate_table', { table_name: table });
