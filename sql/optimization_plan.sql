@@ -242,15 +242,22 @@ $$;
 
 -- 2.4 Drop Columns (The Diet)
 -- Drop dependent view first to avoid 2BP01 error
-DROP VIEW IF EXISTS public.all_sales;
+DROP VIEW IF EXISTS public.all_sales CASCADE;
 
-ALTER TABLE public.data_history DROP COLUMN IF EXISTS superv;
-ALTER TABLE public.data_history DROP COLUMN IF EXISTS nome;
-ALTER TABLE public.data_history DROP COLUMN IF EXISTS fornecedor;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'data_history' AND table_type = 'BASE TABLE') THEN
+        ALTER TABLE public.data_history DROP COLUMN IF EXISTS superv;
+        ALTER TABLE public.data_history DROP COLUMN IF EXISTS nome;
+        ALTER TABLE public.data_history DROP COLUMN IF EXISTS fornecedor;
+    END IF;
 
-ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS superv;
-ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS nome;
-ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS fornecedor;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'data_detailed' AND table_type = 'BASE TABLE') THEN
+        ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS superv;
+        ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS nome;
+        ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS fornecedor;
+    END IF;
+END $$;
 
 
 -- ------------------------------------------------------------------------------
