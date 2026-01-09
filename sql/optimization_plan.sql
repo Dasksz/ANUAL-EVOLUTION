@@ -272,7 +272,10 @@ LEFT JOIN public.dim_fornecedores f ON h.codfor = f.codigo;
 
 
 -- ------------------------------------------------------------------------------
--- PHASE 4: CLEANUP (Manual Execution Recommended)
+-- PHASE 4: CLEANUP & CACHE REFRESH
 -- ------------------------------------------------------------------------------
 -- VACUUM FULL VERBOSE public.data_history;
 -- VACUUM FULL VERBOSE public.data_detailed;
+
+-- Force PostgREST schema cache reload
+NOTIFY pgrst, 'reload schema';
