@@ -95,7 +95,11 @@ create table if not exists public.data_clients (
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_clients' AND column_name = 'rca2') THEN
-        ALTER TABLE public.data_clients DROP COLUMN rca2;
+        BEGIN
+            EXECUTE 'ALTER TABLE public.data_clients DROP COLUMN rca2';
+        EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'Could not drop column rca2 from public.data_clients: %', SQLERRM;
+        END;
     END IF;
 END $$;
 
