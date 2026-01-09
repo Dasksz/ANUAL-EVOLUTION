@@ -1758,27 +1758,26 @@ document.addEventListener('DOMContentLoaded', () => {
          const elVal2Fat = document.getElementById('branch-val-2-fat'); if(elVal2Fat) elVal2Fat.textContent = val2Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
          
          // Variations Logic
-         // Var 1 (vs 2): (Val1 / Val2 - 1)
-         // Var 2 (vs 1): (Val2 / Val1 - 1)
+         // Share of Total (Val / Total)
 
-         const calcVar = (curr, ref) => {
-             if (ref > 0) return ((curr / ref) - 1) * 100;
-             if (curr > 0) return 100;
+         const calcShare = (val, total) => {
+             if (total > 0) return (val / total) * 100;
              return 0;
          };
 
-         const var1Fat = calcVar(val1Fat, val2Fat);
-         const var2Fat = calcVar(val2Fat, val1Fat);
+         const totalFat = val1Fat + val2Fat;
+         const share1Fat = calcShare(val1Fat, totalFat);
+         const share2Fat = calcShare(val2Fat, totalFat);
 
          const elVar1Fat = document.getElementById('branch-var-1-fat');
          if(elVar1Fat) {
-             elVar1Fat.textContent = `${var1Fat > 0 ? '+' : ''}${var1Fat.toFixed(1)}%`;
-             elVar1Fat.className = `text-sm font-bold mt-1 ${var1Fat >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+             elVar1Fat.textContent = `${share1Fat.toFixed(1)}%`;
+             elVar1Fat.className = `text-sm font-bold mt-1 ${share1Fat >= 50 ? 'text-emerald-400' : 'text-red-400'}`;
          }
          const elVar2Fat = document.getElementById('branch-var-2-fat');
          if(elVar2Fat) {
-             elVar2Fat.textContent = `${var2Fat > 0 ? '+' : ''}${var2Fat.toFixed(1)}%`;
-             elVar2Fat.className = `text-sm font-bold mt-1 ${var2Fat >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+             elVar2Fat.textContent = `${share2Fat.toFixed(1)}%`;
+             elVar2Fat.className = `text-sm font-bold mt-1 ${share2Fat >= 50 ? 'text-emerald-400' : 'text-red-400'}`;
          }
 
 
@@ -1787,18 +1786,19 @@ document.addEventListener('DOMContentLoaded', () => {
          const elVal1Kg = document.getElementById('branch-val-1-kg'); if(elVal1Kg) elVal1Kg.textContent = (val1Kg/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
          const elVal2Kg = document.getElementById('branch-val-2-kg'); if(elVal2Kg) elVal2Kg.textContent = (val2Kg/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
 
-         const var1Kg = calcVar(val1Kg, val2Kg);
-         const var2Kg = calcVar(val2Kg, val1Kg);
+         const totalKg = val1Kg + val2Kg;
+         const share1Kg = calcShare(val1Kg, totalKg);
+         const share2Kg = calcShare(val2Kg, totalKg);
 
          const elVar1Kg = document.getElementById('branch-var-1-kg');
          if(elVar1Kg) {
-             elVar1Kg.textContent = `${var1Kg > 0 ? '+' : ''}${var1Kg.toFixed(1)}%`;
-             elVar1Kg.className = `text-sm font-bold mt-1 ${var1Kg >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+             elVar1Kg.textContent = `${share1Kg.toFixed(1)}%`;
+             elVar1Kg.className = `text-sm font-bold mt-1 ${share1Kg >= 50 ? 'text-emerald-400' : 'text-red-400'}`;
          }
          const elVar2Kg = document.getElementById('branch-var-2-kg');
          if(elVar2Kg) {
-             elVar2Kg.textContent = `${var2Kg > 0 ? '+' : ''}${var2Kg.toFixed(1)}%`;
-             elVar2Kg.className = `text-sm font-bold mt-1 ${var2Kg >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+             elVar2Kg.textContent = `${share2Kg.toFixed(1)}%`;
+             elVar2Kg.className = `text-sm font-bold mt-1 ${share2Kg >= 50 ? 'text-emerald-400' : 'text-red-400'}`;
          }
          
          // Update Title Context
