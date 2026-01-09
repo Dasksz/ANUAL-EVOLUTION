@@ -1,7 +1,7 @@
 
 -- ==============================================================================
--- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT v3
--- Contains: Tables, Dynamic SQL, Partial Indexes, Summary Logic, RLS, Trends, Caching
+-- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT v3 (CONSOLIDATED)
+-- Contains: Tables, Dynamic SQL, Partial Indexes, Summary Logic, RLS, Trends, Caching, Financials
 -- ==============================================================================
 
 -- Enable UUID extension
@@ -99,7 +99,6 @@ BEGIN
     END IF;
 END $$;
 
--- Add mix_details column if it does not exist (Schema Migration)
 -- Holidays Table
 create table if not exists public.data_holidays (
     date date PRIMARY KEY,
@@ -175,6 +174,24 @@ BEGIN
     END IF;
 END $$;
 
+-- Financials Table (Optimization for Dashboard)
+CREATE TABLE IF NOT EXISTS public.data_financials (
+    ano int,
+    mes int,
+    filial text,
+    cidade text,
+    superv text,
+    nome text,       -- Vendedor
+    codfor text,     -- Fornecedor
+    tipovenda text,
+    -- Métricas pré-somadas
+    vlvenda numeric,
+    peso numeric,
+    bonificacao numeric,
+    devolucao numeric,
+    positivacao_count int -- Contagem de clientes positivados
+);
+
 -- Cache Table (For Filter Dropdowns)
 DROP TABLE IF EXISTS public.cache_filters CASCADE;
 create table if not exists public.cache_filters (
@@ -229,6 +246,9 @@ CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codfor ON public.data_summary (an
 CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_tipovenda ON public.data_summary (ano, mes, tipovenda);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codcli ON public.data_summary (ano, mes, codcli);
 
+-- Financials Table Indexes
+CREATE INDEX IF NOT EXISTS idx_fin_filters ON public.data_financials (ano, mes, filial, cidade, superv, nome);
+
 -- Cache Filters Indexes
 CREATE INDEX idx_cache_filters_composite ON public.cache_filters (ano, mes, filial, cidade, superv, nome, codfor, tipovenda);
 CREATE INDEX IF NOT EXISTS idx_cache_filters_superv_lookup ON public.cache_filters (filial, cidade, ano, superv);
@@ -266,6 +286,7 @@ ALTER TABLE public.data_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.data_clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.data_summary ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.data_financials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cache_filters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.data_holidays ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.config_city_branches ENABLE ROW LEVEL SECURITY;
@@ -274,7 +295,7 @@ ALTER TABLE public.config_city_branches ENABLE ROW LEVEL SECURITY;
 DO $$
 DECLARE t text;
 BEGIN
-    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_clients', 'data_detailed', 'data_history', 'profiles', 'data_summary', 'cache_filters', 'data_holidays', 'config_city_branches')
+    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_clients', 'data_detailed', 'data_history', 'profiles', 'data_summary', 'data_financials', 'cache_filters', 'data_holidays', 'config_city_branches')
     LOOP
         EXECUTE format('DROP POLICY IF EXISTS "Enable access for all users" ON public.%I;', t);
         EXECUTE format('DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.%I;', t);
@@ -314,11 +335,11 @@ CREATE POLICY "Read Access Approved" ON public.data_holidays FOR SELECT USING (p
 CREATE POLICY "Write Access Admin" ON public.data_holidays FOR INSERT WITH CHECK (public.is_admin());
 CREATE POLICY "Delete Access Admin" ON public.data_holidays FOR DELETE USING (public.is_admin());
 
--- Data Tables (Detailed, History, Clients, Summary, Cache)
+-- Data Tables (Detailed, History, Clients, Summary, Financials, Cache)
 DO $$
 DECLARE t text;
 BEGIN
-    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_detailed', 'data_history', 'data_clients', 'data_summary', 'cache_filters')
+    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_detailed', 'data_history', 'data_clients', 'data_summary', 'data_financials', 'cache_filters')
     LOOP
         -- Read: Approved Users
         EXECUTE format('CREATE POLICY "Read Access Approved" ON public.%I FOR SELECT USING (public.is_approved());', t);
@@ -344,6 +365,7 @@ BEGIN
     DELETE FROM public.data_clients;
     -- Also clear derived tables
     TRUNCATE TABLE public.data_summary;
+    TRUNCATE TABLE public.data_financials;
     TRUNCATE TABLE public.cache_filters;
 END;
 $$;
@@ -353,7 +375,7 @@ CREATE OR REPLACE FUNCTION public.truncate_table(table_name text)
 RETURNS void AS $$
 BEGIN
   IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
-  IF table_name NOT IN ('data_detailed', 'data_history', 'data_clients', 'data_summary', 'cache_filters') THEN RAISE EXCEPTION 'Tabela inválida.'; END IF;
+  IF table_name NOT IN ('data_detailed', 'data_history', 'data_clients', 'data_summary', 'data_financials', 'cache_filters') THEN RAISE EXCEPTION 'Tabela inválida.'; END IF;
   EXECUTE format('TRUNCATE TABLE public.%I;', table_name);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -467,7 +489,31 @@ BEGIN
 END;
 $$;
 
--- Refresh Cache & Summary Function (Legacy Wrapper)
+-- Refresh Data Financials (Aggregated Table)
+CREATE OR REPLACE FUNCTION refresh_data_financials()
+RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+    -- Limpa a tabela antes de popular
+    TRUNCATE TABLE public.data_financials;
+
+    -- Insere os dados agregados
+    INSERT INTO public.data_financials (
+        ano, mes, filial, cidade, superv, nome, codfor, tipovenda,
+        vlvenda, peso, bonificacao, devolucao, positivacao_count
+    )
+    SELECT
+        ano, mes, filial, cidade, superv, nome, codfor, tipovenda,
+        SUM(vlvenda) as vlvenda,
+        SUM(peso) as peso,
+        SUM(bonificacao) as bonificacao,
+        SUM(devolucao) as devolucao,
+        SUM(pre_positivacao_val) as positivacao_count
+    FROM public.data_summary
+    GROUP BY 1, 2, 3, 4, 5, 6, 7, 8;
+END;
+$$;
+
+-- Refresh Cache & Summary Function (Unified Wrapper)
 CREATE OR REPLACE FUNCTION refresh_dashboard_cache()
 RETURNS void
 LANGUAGE plpgsql
@@ -475,6 +521,7 @@ AS $$
 BEGIN
     PERFORM refresh_cache_filters();
     PERFORM refresh_cache_summary();
+    PERFORM refresh_data_financials();
 END;
 $$;
 
@@ -564,6 +611,9 @@ END;
 $$;
 
 -- Get Main Dashboard Data (Dynamic SQL, Parallelism, Pre-Aggregation)
+DROP FUNCTION IF EXISTS get_main_dashboard_data(text[], text[], text[], text[], text[], integer, integer, text[]);
+DROP FUNCTION IF EXISTS get_main_dashboard_data(text[], text[], text[], text[], text[], text, text, text[]);
+
 CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -595,7 +645,8 @@ DECLARE
     
     -- Dynamic SQL
     v_sql text;
-    v_where_clause text := '';
+    v_where_clause_fin text := '';
+    v_where_clause_sum text := '';
     v_result json;
     
     -- Execution Context
@@ -623,7 +674,7 @@ BEGIN
          SELECT COALESCE(MAX(mes), 12) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year;
     END IF;
 
-    -- 2. Trend Logic Calculation (Mantida igual)
+    -- 2. Trend Logic Calculation
     SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
     IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
 
@@ -650,45 +701,39 @@ BEGIN
         END IF;
     END IF;
 
-    -- 3. Construct Dynamic WHERE Clause
-    -- Importante: Como usamos SECURITY DEFINER, verifique se a lógica de usuário aprovado se aplica aqui se necessário
-    -- Mas como os filtros vêm do frontend, assumimos que a UI já restringiu o que o user pode pedir
+    -- 3. Construct Dynamic WHERE Clauses
 
-    v_where_clause := 'WHERE ano IN ($1, $2) ';
-    
+    -- WHERE clause for data_financials (Optimized)
+    v_where_clause_fin := 'WHERE ano IN ($1, $2) ';
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where_clause := v_where_clause || ' AND filial = ANY($3) ';
+        v_where_clause_fin := v_where_clause_fin || ' AND filial = ANY($3) ';
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_clause := v_where_clause || ' AND cidade = ANY($4) ';
+        v_where_clause_fin := v_where_clause_fin || ' AND cidade = ANY($4) ';
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_clause := v_where_clause || ' AND superv = ANY($5) ';
+        v_where_clause_fin := v_where_clause_fin || ' AND superv = ANY($5) ';
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_clause := v_where_clause || ' AND nome = ANY($6) ';
+        v_where_clause_fin := v_where_clause_fin || ' AND nome = ANY($6) ';
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where_clause := v_where_clause || ' AND codfor = ANY($7) ';
+        v_where_clause_fin := v_where_clause_fin || ' AND codfor = ANY($7) ';
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_clause := v_where_clause || ' AND tipovenda = ANY($8) ';
+        v_where_clause_fin := v_where_clause_fin || ' AND tipovenda = ANY($8) ';
     END IF;
 
-    -- 4. Execute Main Aggregation Query (VERSÃO OTIMIZADA)
-    -- Removemos todas as subqueries complexas (mix_raw_data, monthly_mix_stats, etc)
+    -- WHERE clause for data_summary (Slow, for KPI) - Same Logic
+    v_where_clause_sum := v_where_clause_fin;
+
+    -- 4. Execute Main Aggregation Query (USING DATA_FINANCIALS)
     v_sql := '
-    WITH filtered_summary AS (
-        SELECT
-            ano, mes, codcli, vlvenda, peso, bonificacao, devolucao, tipovenda, pre_mix_count, pre_positivacao_val
-        FROM public.data_summary
-        ' || v_where_clause || '
-    ),
-    agg_data AS (
+    WITH agg_data AS (
         SELECT
             ano,
             mes,
-            -- Agregação simples e direta
+            -- Agregação via SUM
             SUM(CASE 
                 WHEN ($8 IS NOT NULL AND array_length($8, 1) > 0) THEN vlvenda
                 WHEN tipovenda IN (''1'', ''9'') THEN vlvenda
@@ -697,26 +742,22 @@ BEGIN
             SUM(peso) as peso,
             SUM(bonificacao) as bonificacao,
             SUM(devolucao) as devolucao,
-            -- Positivação usando a coluna pré-calculada
-            COUNT(DISTINCT CASE WHEN pre_positivacao_val = 1 THEN codcli END) as positivacao_count,
-            -- Mix pré-calculado (Respeitando regra de Venda/Venda Futura se filtro não for especificado)
-            SUM(CASE
-                WHEN ($8 IS NOT NULL AND array_length($8, 1) > 0) THEN pre_mix_count
-                WHEN tipovenda IN (''1'', ''9'') THEN pre_mix_count
-                ELSE 0
-            END) as total_mix_sum,
-            COUNT(DISTINCT CASE
-                WHEN ($8 IS NOT NULL AND array_length($8, 1) > 0) AND pre_mix_count > 0 THEN codcli
-                WHEN tipovenda IN (''1'', ''9'') AND pre_mix_count > 0 THEN codcli
-                ELSE NULL
-            END) as mix_client_count
-        FROM filtered_summary
+            -- Positivação (SUM de positivacao_count de data_financials)
+            SUM(positivacao_count) as positivacao_count,
+            -- Mix (Sem colunas de mix na data_financials, retornamos 0)
+            0 as total_mix_sum,
+            0 as mix_client_count
+        FROM public.data_financials
+        ' || v_where_clause_fin || '
         GROUP BY 1, 2
     ),
     kpi_active_count AS (
+        -- KPI Clientes Atendidos: Lê da tabela data_summary (DISTINCT codcli)
+        -- OBS: Mantém data_summary aqui pois data_financials não tem codcli
         SELECT COUNT(DISTINCT codcli) as val
-        FROM filtered_summary
-        WHERE ano = $1 AND mes = $9 AND pre_positivacao_val = 1
+        FROM public.data_summary
+        ' || v_where_clause_sum || '
+        AND mes = $9 AND pre_positivacao_val = 1 AND ano = $1
     ),
     kpi_base_count AS (
         SELECT COUNT(*) as val FROM public.data_clients c 
@@ -726,7 +767,7 @@ BEGIN
     SELECT
         (SELECT val FROM kpi_active_count),
         (SELECT val FROM kpi_base_count),
-        -- Gerar JSON diretamente
+        -- Gerar JSON
         COALESCE(json_agg(json_build_object(
             ''month_index'', a.mes - 1,
             ''faturamento'', a.faturamento,
@@ -734,7 +775,7 @@ BEGIN
             ''bonificacao'', a.bonificacao,
             ''devolucao'', a.devolucao,
             ''positivacao'', a.positivacao_count,
-            ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END,
+            ''mix_pdv'', 0,
             ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
         ) ORDER BY a.mes) FILTER (WHERE a.ano = $1), ''[]''::json),
 
@@ -745,7 +786,7 @@ BEGIN
             ''bonificacao'', a.bonificacao,
             ''devolucao'', a.devolucao,
             ''positivacao'', a.positivacao_count,
-            ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END,
+            ''mix_pdv'', 0,
             ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
         ) ORDER BY a.mes) FILTER (WHERE a.ano = $2), ''[]''::json)
     FROM agg_data a
@@ -772,7 +813,7 @@ BEGIN
                         'bonificacao', (v_elem->>'bonificacao')::numeric * v_trend_factor,
                         'devolucao', (v_elem->>'devolucao')::numeric * v_trend_factor,
                         'positivacao', ((v_elem->>'positivacao')::numeric * v_trend_factor)::int,
-                        'mix_pdv', (v_elem->>'mix_pdv')::numeric,
+                        'mix_pdv', 0,
                         'ticket_medio', (v_elem->>'ticket_medio')::numeric
                     );
                 END IF;
@@ -799,6 +840,9 @@ END;
 $$;
 
 -- Get Dashboard Filters (Split Queries for Speed)
+DROP FUNCTION IF EXISTS get_dashboard_filters(text[], text[], text[], text[], text[], integer, integer, text[]);
+DROP FUNCTION IF EXISTS get_dashboard_filters(text[], text[], text[], text[], text[], text, text, text[]);
+
 CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -931,6 +975,9 @@ END;
 $$;
 
 -- Function: Get City View (Paginated for both Active and Inactive, No RCA2)
+DROP FUNCTION IF EXISTS get_city_view_data(text[], text[], text[], text[], text[], integer, integer, text[], int, int, int, int);
+DROP FUNCTION IF EXISTS get_city_view_data(text[], text[], text[], text[], text[], text, text, text[], int, int, int, int);
+
 CREATE OR REPLACE FUNCTION get_city_view_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -1071,6 +1118,6 @@ BEGIN
     END LOOP;
 END $$;
 
--- Refresh Cache to apply updates
--- Refresh Cache to apply updates (Populates both Summary and Filters for Dropdowns)
--- SELECT refresh_dashboard_cache(); -- Moved to refresh_data.sql
+-- Refresh Cache to apply updates (Populates both Summary, Financials and Filters)
+-- This can be called manually or scheduled
+-- SELECT refresh_dashboard_cache();
