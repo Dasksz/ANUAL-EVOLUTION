@@ -176,5 +176,5 @@ BEGIN
 
 END $$;
 
--- 5. Refresh the summary cache to apply changes
-SELECT refresh_cache_summary();
+-- IMPORTANT: Please run the following command separately to refresh the dashboard:
+-- SELECT refresh_cache_summary();
