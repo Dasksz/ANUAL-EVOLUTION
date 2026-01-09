@@ -571,7 +571,6 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatus('Atualizando cache...', 90);
             await supabase.rpc('refresh_cache_filters');
             await supabase.rpc('refresh_cache_summary');
-            await supabase.rpc('refresh_data_financials');
 
         } catch (error) {
             console.error(error);
@@ -662,8 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Trigger background prefetch after main load
         setTimeout(() => {
-            // queueCommonFilters(); <--- COMENTE ESTA LINHA (adicione // no início)
-            console.log("Prefetch desativado para performance");
+            // queueCommonFilters();
         }, 3000);
     }
 
