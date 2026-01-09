@@ -1604,13 +1604,25 @@ document.addEventListener('DOMContentLoaded', () => {
          const branches = Object.keys(branchDataMap).sort();
          const kpiBranches = {}; 
          const chartBranches = {};
+         const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
          // Process Data from RPC Results
          branches.forEach(b => {
              const data = branchDataMap[b];
-             const monthlyData = data.monthly_data_current || [];
+             let monthlyData = data.monthly_data_current || [];
              
+             // If month is selected, filter data
+             if (selectedMonth !== null && selectedMonth !== undefined && selectedMonth !== '') {
+                 const monthIdx = parseInt(selectedMonth);
+                 monthlyData = monthlyData.filter(d => d.month_index === monthIdx);
+             }
+
              // Chart Data: Map to 12 months array
+             // If filtering, only the selected month slot will be filled, which correctly isolates the bar in the chart
+             // BUT we want to preserve the full year view if possible, or follow the user's intent. 
+             // The user said "quando eu filtrei um mês o gráfico continuou mostrando todos os dados", implying they WANTED filtering.
+             // With the filtering above (monthlyData = monthlyData.filter...), chartArr will only contain the filtered month.
+             // So this logic is already correct for filtering.
              const chartArr = new Array(12).fill(0);
              monthlyData.forEach(d => {
                  // d has month_index (0-11)
@@ -1626,6 +1638,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
              if (!selectedYear || selectedYear === 'todos') {
                  // "Todos" -> Current Month (of Current Year)
+                 // If month is NOT selected via filter (default view)
                  const targetMonthIdx = now.getMonth();
                  const mData = monthlyData.find(d => d.month_index === targetMonthIdx);
                  if (mData) {
@@ -1634,6 +1647,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  }
              } else {
                  // Specific Year -> Sum of returned monthly data
+                 // If month is selected, monthlyData is already filtered, so this sums just that month
                  monthlyData.forEach(d => {
                      kpiFat += (d.faturamento || 0);
                      kpiKg += (d.peso || 0);
@@ -1679,7 +1693,16 @@ document.addEventListener('DOMContentLoaded', () => {
          }
          
          // Update Title Context
-         const kpiContext = (!selectedYear || selectedYear === 'todos') ? `Mês Atual (${now.toLocaleDateString('pt-BR', { month: 'long' })})` : `Ano ${selectedYear}`;
+         let kpiContext;
+         if (!selectedYear || selectedYear === 'todos') {
+             kpiContext = `Mês Atual (${now.toLocaleDateString('pt-BR', { month: 'long' })})`;
+         } else {
+             if (selectedMonth !== null && selectedMonth !== undefined && selectedMonth !== '') {
+                 kpiContext = `${monthNames[parseInt(selectedMonth)]} ${selectedYear}`;
+             } else {
+                 kpiContext = `Ano ${selectedYear}`;
+             }
+         }
          const elTitleFat = document.getElementById('branch-kpi-title-fat'); if(elTitleFat) elTitleFat.textContent = `Faturamento (${kpiContext})`;
          const elTitleKg = document.getElementById('branch-kpi-title-kg'); if(elTitleKg) elTitleKg.textContent = `Tonelagem (${kpiContext})`;
 
