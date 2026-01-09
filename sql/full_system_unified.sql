@@ -1368,22 +1368,21 @@ DROP VIEW IF EXISTS public.all_sales CASCADE;
 
 DO $$
 BEGIN
-    -- Try to drop columns from data_history (ignoring errors if it's a view)
+    -- Using Dynamic SQL to avoid parse-time errors if tables are views
     BEGIN
-        ALTER TABLE public.data_history DROP COLUMN IF EXISTS superv;
-        ALTER TABLE public.data_history DROP COLUMN IF EXISTS nome;
-        ALTER TABLE public.data_history DROP COLUMN IF EXISTS fornecedor;
+        EXECUTE 'ALTER TABLE public.data_history DROP COLUMN IF EXISTS superv';
+        EXECUTE 'ALTER TABLE public.data_history DROP COLUMN IF EXISTS nome';
+        EXECUTE 'ALTER TABLE public.data_history DROP COLUMN IF EXISTS fornecedor';
     EXCEPTION WHEN OTHERS THEN
-        RAISE NOTICE 'Could not drop columns from public.data_history (possibly a view): %', SQLERRM;
+        RAISE NOTICE 'Could not drop columns from public.data_history: %', SQLERRM;
     END;
 
-    -- Try to drop columns from data_detailed (ignoring errors if it's a view)
     BEGIN
-        ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS superv;
-        ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS nome;
-        ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS fornecedor;
+        EXECUTE 'ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS superv';
+        EXECUTE 'ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS nome';
+        EXECUTE 'ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS fornecedor';
     EXCEPTION WHEN OTHERS THEN
-        RAISE NOTICE 'Could not drop columns from public.data_detailed (possibly a view): %', SQLERRM;
+        RAISE NOTICE 'Could not drop columns from public.data_detailed: %', SQLERRM;
     END;
 END $$;
 
