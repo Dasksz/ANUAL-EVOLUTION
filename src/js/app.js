@@ -647,9 +647,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let isPrefetching = false;
 
     // --- Loading Helpers ---
-    const showDashboardLoading = () => {
-        const container = document.getElementById('main-dashboard-content');
+    const showDashboardLoading = (targetId = 'main-dashboard-content') => {
+        const container = document.getElementById(targetId);
         let overlay = document.getElementById('dashboard-loading-overlay');
+
+        // If overlay exists but is in a different container, move it
+        if (overlay && overlay.parentElement !== container) {
+            overlay.remove();
+            overlay = null; 
+        }
 
         if (!overlay && container) {
             overlay = document.createElement('div');
@@ -672,7 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     async function initDashboard() {
-        showDashboardLoading();
+        showDashboardLoading('main-dashboard-content');
         await checkDataVersion(); // Check for invalidation first
 
         const filters = getCurrentFilters();
@@ -843,7 +849,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const filters = getCurrentFilters();
         clearTimeout(filterDebounceTimer);
         filterDebounceTimer = setTimeout(async () => {
-            showDashboardLoading();
+            showDashboardLoading('main-dashboard-content');
             try { await loadFilters(filters); } catch (err) { console.error("Failed to load filters:", err); }
             try { await loadMainDashboardData(); } catch (err) { console.error("Failed to load dashboard data:", err); }
             if (!cityView.classList.contains('hidden')) { currentCityPage = 0; currentCityInactivePage = 0; await loadCityView(); }
@@ -888,7 +894,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadMainDashboardData() {
         const filters = getCurrentFilters();
         
-        showDashboardLoading();
+        showDashboardLoading('main-dashboard-content');
 
         const { data, source } = await fetchDashboardData(filters);
         
@@ -1540,7 +1546,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadBranchView() {
-        showDashboardLoading();
+        showDashboardLoading('branch-view');
 
         // Ensure filters are populated (branches list needed)
         let branchList = availableFiltersState.filiais;
@@ -1694,9 +1700,14 @@ document.addEventListener('DOMContentLoaded', () => {
          });
          
          const chartYear = (!selectedYear || selectedYear === 'todos') ? now.getFullYear() : parseInt(selectedYear);
-         const isCurrentYear = (chartYear === now.getFullYear());
          
-         if (isCurrentYear) {
+         // Check if ANY branch has trend data available
+         const hasTrendData = branches.some(b => {
+             const bData = branchDataMap[b];
+             return bData && bData.trend_allowed && bData.trend_data;
+         });
+         
+         if (hasTrendData) {
              branches.forEach((b, idx) => {
                  const bData = branchDataMap[b];
                  if (bData && bData.trend_allowed && bData.trend_data) {
