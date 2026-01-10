@@ -1932,9 +1932,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!calendarModalContent) return;
 
         const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
+        let year = now.getFullYear();
+        let month = now.getMonth();
         
+        // Respect Filters if selected
+        if (anoFilter && anoFilter.value !== 'todos') {
+            year = parseInt(anoFilter.value);
+            // If year selected but month is "Todos", default to January for that year
+            // Unless it's current year, then maybe current month?
+            if (mesFilter && mesFilter.value === '') {
+                 if (year !== now.getFullYear()) {
+                     month = 0;
+                 }
+            }
+        }
+
+        if (mesFilter && mesFilter.value !== '') {
+            month = parseInt(mesFilter.value);
+        }
+
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
         
@@ -1958,7 +1974,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const isHoliday = holidays.includes(dateStr);
-            const isToday = day === now.getDate();
+            const isToday = (day === now.getDate() && month === now.getMonth() && year === now.getFullYear());
             
             let classes = 'calendar-day';
             if (isHoliday) classes += ' selected';
@@ -1983,6 +1999,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 const date = el.getAttribute('data-date');
+                const isSelected = el.classList.contains('selected');
+                const [y, m, d] = date.split('-');
+                const formattedDate = `${d}/${m}/${y}`;
+
+                const confirmMsg = isSelected
+                    ? `Você deseja remover o feriado de ${formattedDate}?`
+                    : `Você deseja selecionar ${formattedDate} como feriado?`;
+
+                if (!confirm(confirmMsg)) return;
+
                 // Optimistic UI Update
                 el.classList.toggle('selected');
                 
@@ -1994,6 +2020,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert("Erro ao alterar feriado: " + error.message);
                 } else {
                     console.log("Holiday toggled successfully.");
+
+                    // Update local holidays array
+                    if (isSelected) {
+                        holidays = holidays.filter(h => h !== date);
+                    } else {
+                        holidays.push(date);
+                    }
+
                     // Reload Data to update trend
                     loadMainDashboardData();
                 }
