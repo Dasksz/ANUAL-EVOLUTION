@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeUploaderBtn = document.getElementById('close-uploader-btn');
 
     // Dashboard Internal Views
+    const mainDashboardView = document.getElementById('main-dashboard-view');
     const mainDashboardHeader = document.getElementById('main-dashboard-header');
     const mainDashboardContent = document.getElementById('main-dashboard-content');
     const cityView = document.getElementById('city-view');
@@ -311,8 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetViews = () => {
         dashboardContainer.classList.remove('hidden');
         uploaderModal.classList.add('hidden');
-        mainDashboardHeader.classList.add('hidden');
-        mainDashboardContent.classList.add('hidden');
+        mainDashboardView.classList.add('hidden');
         cityView.classList.add('hidden');
         branchView.classList.add('hidden');
         // Reset active state styles (simple)
@@ -321,8 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     navDashboardBtn.addEventListener('click', () => {
         resetViews();
-        mainDashboardHeader.classList.remove('hidden');
-        mainDashboardContent.classList.remove('hidden');
+        mainDashboardView.classList.remove('hidden');
         navDashboardBtn.classList.add('bg-slate-700', 'text-white');
         closeSidebar();
     });
@@ -677,7 +676,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isPrefetching = false;
 
     // --- Loading Helpers ---
-    const showDashboardLoading = (targetId = 'main-dashboard-content') => {
+    const showDashboardLoading = (targetId = 'main-dashboard-view') => {
         const container = document.getElementById(targetId);
         let overlay = document.getElementById('dashboard-loading-overlay');
 
@@ -708,7 +707,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     async function initDashboard() {
-        showDashboardLoading('main-dashboard-content');
+        showDashboardLoading();
         await checkDataVersion(); // Check for invalidation first
 
         const filters = getCurrentFilters();
@@ -812,7 +811,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const val = String(value);
                     if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
                     updateBtnLabel();
-                    handleFilterChange();
                 };
                 container.appendChild(div);
             });
@@ -887,7 +885,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', (e) => {
         const dropdowns = [filialFilterDropdown, cidadeFilterDropdown, supervisorFilterDropdown, vendedorFilterDropdown, fornecedorFilterDropdown, tipovendaFilterDropdown];
         const btns = [filialFilterBtn, cidadeFilterBtn, supervisorFilterBtn, vendedorFilterBtn, fornecedorFilterBtn, tipovendaFilterBtn];
-        dropdowns.forEach((dd, idx) => { if (!dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) dd.classList.add('hidden'); });
+        let anyClosed = false;
+        dropdowns.forEach((dd, idx) => {
+            if (!dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) {
+                dd.classList.add('hidden');
+                anyClosed = true;
+            }
+        });
+        if (anyClosed && !mainDashboardView.classList.contains('hidden')) {
+            handleFilterChange();
+        }
     });
 
     let filterDebounceTimer;
@@ -895,7 +902,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const filters = getCurrentFilters();
         clearTimeout(filterDebounceTimer);
         filterDebounceTimer = setTimeout(async () => {
-            showDashboardLoading('main-dashboard-content');
+            showDashboardLoading();
             try { await loadFilters(filters); } catch (err) { console.error("Failed to load filters:", err); }
             try { await loadMainDashboardData(); } catch (err) { console.error("Failed to load dashboard data:", err); }
             if (!cityView.classList.contains('hidden')) { currentCityPage = 0; currentCityInactivePage = 0; await loadCityView(); }
@@ -944,7 +951,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadMainDashboardData(forceRefresh = false) {
         const filters = getCurrentFilters();
         
-        showDashboardLoading('main-dashboard-content');
+        showDashboardLoading();
 
         // Parallel fetch for dashboard data and last sales date (if not already cached/fetched)
         // Note: fetchLastSalesDate updates the global variable
@@ -1483,7 +1490,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', (e) => {
         const dropdowns = [cityFilialFilterDropdown, cityCidadeFilterDropdown, citySupervisorFilterDropdown, cityVendedorFilterDropdown, cityFornecedorFilterDropdown, cityTipovendaFilterDropdown];
         const btns = [cityFilialFilterBtn, cityCidadeFilterBtn, citySupervisorFilterBtn, cityVendedorFilterBtn, cityFornecedorFilterBtn, cityTipovendaFilterBtn];
-        dropdowns.forEach((dd, idx) => { if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) dd.classList.add('hidden'); });
+        let anyClosed = false;
+        dropdowns.forEach((dd, idx) => {
+            if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
+                dd.classList.add('hidden');
+                anyClosed = true;
+            }
+        });
+        if (anyClosed && !cityView.classList.contains('hidden')) {
+            handleCityFilterChange();
+        }
     });
 
     function setupCityMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
@@ -1513,7 +1529,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const val = String(value);
                     if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
                     updateBtnLabel();
-                    handleCityFilterChange();
                 };
                 container.appendChild(div);
             });
@@ -1673,7 +1688,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', (e) => {
         const dropdowns = [branchFilialFilterDropdown, branchCidadeFilterDropdown, branchSupervisorFilterDropdown, branchVendedorFilterDropdown, branchFornecedorFilterDropdown, branchTipovendaFilterDropdown];
         const btns = [branchFilialFilterBtn, branchCidadeFilterBtn, branchSupervisorFilterBtn, branchVendedorFilterBtn, branchFornecedorFilterBtn, branchTipovendaFilterBtn];
-        dropdowns.forEach((dd, idx) => { if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) dd.classList.add('hidden'); });
+        let anyClosed = false;
+        dropdowns.forEach((dd, idx) => {
+            if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) {
+                dd.classList.add('hidden');
+                anyClosed = true;
+            }
+        });
+        if (anyClosed && !branchView.classList.contains('hidden')) {
+            handleBranchFilterChange();
+        }
     });
     
     branchClearFiltersBtn?.addEventListener('click', () => {
@@ -1762,7 +1786,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     renderItems(); // Re-render to update checks visually (e.g. if one was auto-removed)
                     updateBtnLabel();
-                    handleBranchFilterChange();
                 };
                 container.appendChild(div);
             });
@@ -1805,7 +1828,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const val = String(value);
                     if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
                     updateBtnLabel();
-                    handleBranchFilterChange();
                 };
                 container.appendChild(div);
             });
