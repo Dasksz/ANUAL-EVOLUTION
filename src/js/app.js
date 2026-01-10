@@ -901,21 +901,25 @@ document.addEventListener('DOMContentLoaded', () => {
     mesFilter.onchange = handleFilterChange;
 
     // Unified Fetch & Cache Logic
-    async function fetchDashboardData(filters, isBackground = false) {
+    async function fetchDashboardData(filters, isBackground = false, forceRefresh = false) {
         const cacheKey = generateCacheKey('dashboard_data', filters);
         const CACHE_TTL = 1000 * 60 * 10; // 10 minutes TTL
 
-        // 1. Try Cache
-        try {
-            const cachedEntry = await getFromCache(cacheKey);
-            if (cachedEntry && cachedEntry.timestamp && cachedEntry.data) {
-                const age = Date.now() - cachedEntry.timestamp;
-                if (age < CACHE_TTL) {
-                    if (!isBackground) console.log('Serving from Cache (Instant)');
-                    return { data: cachedEntry.data, source: 'cache' };
+        // 1. Try Cache (unless forceRefresh is true)
+        if (!forceRefresh) {
+            try {
+                const cachedEntry = await getFromCache(cacheKey);
+                if (cachedEntry && cachedEntry.timestamp && cachedEntry.data) {
+                    const age = Date.now() - cachedEntry.timestamp;
+                    if (age < CACHE_TTL) {
+                        if (!isBackground) console.log('Serving from Cache (Instant)');
+                        return { data: cachedEntry.data, source: 'cache' };
+                    }
                 }
-            }
-        } catch (e) { console.warn('Cache error:', e); }
+            } catch (e) { console.warn('Cache error:', e); }
+        } else {
+            console.log('Force Refresh: Bypassing cache.');
+        }
 
         // 2. Network Request
         if (isBackground) console.log(`[Background] Fetching data from API...`);
@@ -933,7 +937,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return { data, source: 'api' };
     }
 
-    async function loadMainDashboardData() {
+    async function loadMainDashboardData(forceRefresh = false) {
         const filters = getCurrentFilters();
         
         showDashboardLoading('main-dashboard-content');
@@ -941,7 +945,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Parallel fetch for dashboard data and last sales date (if not already cached/fetched)
         // Note: fetchLastSalesDate updates the global variable
         const [dashboardResult, _] = await Promise.all([
-            fetchDashboardData(filters),
+            fetchDashboardData(filters, false, forceRefresh),
             fetchLastSalesDate()
         ]);
 
@@ -2079,7 +2083,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     // Reload Data to update trend
-                    loadMainDashboardData();
+                    // Force refresh to bypass cache and get updated trend/holiday data
+                    loadMainDashboardData(true);
                 }
             });
         });
