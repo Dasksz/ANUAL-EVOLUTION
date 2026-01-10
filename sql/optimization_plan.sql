@@ -132,6 +132,7 @@ ON CONFLICT (codigo) DO UPDATE SET nome = EXCLUDED.nome;
 CREATE OR REPLACE FUNCTION refresh_cache_filters()
 RETURNS void
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 BEGIN
     SET LOCAL statement_timeout = '600s';
@@ -168,6 +169,7 @@ $$;
 CREATE OR REPLACE FUNCTION refresh_cache_summary()
 RETURNS void
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 BEGIN
     SET LOCAL statement_timeout = '600s';

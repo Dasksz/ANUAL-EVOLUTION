@@ -284,14 +284,18 @@ CREATE INDEX IF NOT EXISTS idx_cache_ano_fornecedor ON public.cache_filters (ano
 -- ==============================================================================
 
 -- Helper Functions
-CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean AS $$
+CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean
+SET search_path = public
+AS $$
 BEGIN
   IF (select auth.role()) = 'service_role' THEN RETURN true; END IF;
   RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'adm');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE OR REPLACE FUNCTION public.is_approved() RETURNS boolean AS $$
+CREATE OR REPLACE FUNCTION public.is_approved() RETURNS boolean
+SET search_path = public
+AS $$
 BEGIN
   IF (select auth.role()) = 'service_role' THEN RETURN true; END IF;
   RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND status = 'aprovado');
@@ -382,6 +386,7 @@ END $$;
 CREATE OR REPLACE FUNCTION clear_all_data()
 RETURNS void
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 BEGIN
     DELETE FROM public.data_detailed;
@@ -395,7 +400,9 @@ $$;
 
 -- Safe Truncate Function
 CREATE OR REPLACE FUNCTION public.truncate_table(table_name text)
-RETURNS void AS $$
+RETURNS void
+SET search_path = public
+AS $$
 BEGIN
   IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
   IF table_name NOT IN ('data_detailed', 'data_history', 'data_clients', 'data_summary', 'cache_filters') THEN RAISE EXCEPTION 'Tabela inválida.'; END IF;
@@ -408,6 +415,7 @@ GRANT EXECUTE ON FUNCTION public.truncate_table(text) TO authenticated;
 CREATE OR REPLACE FUNCTION refresh_cache_filters()
 RETURNS void
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 BEGIN
     SET LOCAL statement_timeout = '600s';
@@ -444,6 +452,7 @@ $$;
 CREATE OR REPLACE FUNCTION refresh_cache_summary()
 RETURNS void
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 BEGIN
     SET LOCAL statement_timeout = '600s';
@@ -521,6 +530,7 @@ $$;
 CREATE OR REPLACE FUNCTION refresh_dashboard_cache()
 RETURNS void
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 BEGIN
     PERFORM refresh_cache_filters();
@@ -563,6 +573,7 @@ CREATE OR REPLACE FUNCTION toggle_holiday(p_date date)
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN
@@ -584,6 +595,7 @@ CREATE OR REPLACE FUNCTION calc_working_days(start_date date, end_date date)
 RETURNS int
 LANGUAGE plpgsql
 STABLE
+SET search_path = public
 AS $$
 DECLARE
     days int;
@@ -603,6 +615,7 @@ CREATE OR REPLACE FUNCTION get_data_version()
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
     v_last_update timestamp with time zone;
@@ -626,6 +639,7 @@ CREATE OR REPLACE FUNCTION get_main_dashboard_data(
 )
 RETURNS JSON
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 DECLARE
     v_current_year int;
@@ -867,6 +881,7 @@ CREATE OR REPLACE FUNCTION get_dashboard_filters(
 )
 RETURNS JSON
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 DECLARE
     v_supervisors text[];
@@ -1003,6 +1018,7 @@ CREATE OR REPLACE FUNCTION get_city_view_data(
 )
 RETURNS JSON
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 DECLARE
     v_current_year int;
