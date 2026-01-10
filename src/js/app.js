@@ -663,6 +663,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedTiposVenda = [];
     let currentCharts = {};
     let holidays = [];
+    let lastSalesDate = null;
     let currentChartMode = 'faturamento'; // 'faturamento' or 'peso'
     let lastDashboardData = null;
 
@@ -937,7 +938,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         showDashboardLoading('main-dashboard-content');
 
-        const { data, source } = await fetchDashboardData(filters);
+        // Parallel fetch for dashboard data and last sales date (if not already cached/fetched)
+        // Note: fetchLastSalesDate updates the global variable
+        const [dashboardResult, _] = await Promise.all([
+            fetchDashboardData(filters),
+            fetchLastSalesDate()
+        ]);
+
+        const { data, source } = dashboardResult;
         
         if (data) {
             lastDashboardData = data;
@@ -945,6 +953,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         hideDashboardLoading();
+    }
+
+    async function fetchLastSalesDate() {
+        try {
+            const { data, error } = await supabase
+                .from('data_detailed')
+                .select('dtped')
+                .order('dtped', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (data && data.dtped) {
+                // dtped is timestamp with time zone, e.g., "2026-01-20T14:00:00+00:00"
+                // We want just the date part in YYYY-MM-DD for comparison
+                lastSalesDate = data.dtped.split('T')[0];
+            } else {
+                lastSalesDate = null;
+            }
+        } catch (e) {
+            console.error("Error fetching last sales date:", e);
+        }
     }
 
     // --- Background Prefetch Logic ---
@@ -1975,15 +2004,36 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const isHoliday = holidays.includes(dateStr);
             const isToday = (day === now.getDate() && month === now.getMonth() && year === now.getFullYear());
+            const isLastSalesDay = (dateStr === lastSalesDate);
             
             let classes = 'calendar-day';
             if (isHoliday) classes += ' selected';
             if (isToday) classes += ' today';
+            if (isLastSalesDay) classes += ' last-sales-day';
             
-            html += `<div class="${classes}" data-date="${dateStr}">${day}</div>`;
+            html += `<div class="${classes}" data-date="${dateStr}" title="${isLastSalesDay ? 'Última Venda' : ''}">${day}</div>`;
         }
         
         html += `</div>`;
+
+        // Legend
+        html += `
+            <div class="mt-4 flex flex-col gap-2 text-xs text-slate-400">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 bg-red-600 rounded"></div>
+                    <span>Feriado</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 border-2 border-emerald-500 bg-emerald-500/20 rounded"></div>
+                    <span>Última Venda (Base Tendência)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 border border-cyan-500 rounded"></div>
+                    <span>Data Atual (Hoje)</span>
+                </div>
+            </div>
+        `;
+
         calendarModalContent.innerHTML = html;
 
         // Add Click Listeners
