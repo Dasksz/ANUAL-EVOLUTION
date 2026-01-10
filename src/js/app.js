@@ -958,9 +958,46 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data) {
             lastDashboardData = data;
             renderDashboard(data);
+
+            // Trigger prefetch logic
+            prefetchViews(filters);
         }
         
         hideDashboardLoading();
+    }
+
+    // Prefetch Background Logic
+    let prefetchDebounce;
+    async function prefetchViews(filters) {
+        clearTimeout(prefetchDebounce);
+        prefetchDebounce = setTimeout(async () => {
+            if (document.hidden) return; // Save resources if tab hidden
+
+            console.log('[Prefetch] Starting background fetch for other views...');
+
+            // 1. Branch Data (Aggregated RPC)
+            const branchKey = generateCacheKey('branch_data', filters);
+            const cachedBranch = await getFromCache(branchKey);
+
+            if (!cachedBranch) {
+                supabase.rpc('get_branch_comparison_data', filters)
+                    .then(({ data, error }) => {
+                        if (data && !error) saveToCache(branchKey, data);
+                    });
+            }
+
+            // 2. City Data (First Page Only)
+            const cityFilters = { ...filters, p_page: 0, p_limit: 50, p_inactive_page: 0, p_inactive_limit: 50 };
+            const cityKey = generateCacheKey('city_view_data', cityFilters);
+            const cachedCity = await getFromCache(cityKey);
+
+            if (!cachedCity) {
+                supabase.rpc('get_city_view_data', cityFilters)
+                    .then(({ data, error }) => {
+                        if (data && !error) saveToCache(cityKey, data);
+                    });
+            }
+        }, 1000);
     }
 
     async function fetchLastSalesDate() {
@@ -1794,28 +1831,19 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadBranchView() {
         showDashboardLoading('branch-view');
 
-        // Ensure filters are populated (branches list needed)
-        let branchList = availableFiltersState.filiais;
-        if (!branchList || branchList.length === 0) {
-             const { data: filterData } = await supabase.rpc('get_dashboard_filters', { p_ano: 'todos' });
-             if (filterData) {
-                 branchList = filterData.filiais || [];
-                 availableFiltersState.filiais = branchList; // Cache it
-             }
-        }
-        
-        // Populate Dropdowns if needed (Check every time to ensure UI is ready)
+        // Populate Dropdowns if needed
         if (branchAnoFilter.options.length <= 1) {
             await initBranchFilters(); 
         }
 
         // Prepare Filters for RPC
-        const selectedYear = branchAnoFilter.value === 'todos' ? null : branchAnoFilter.value; // String for RPC
-        const selectedMonth = branchMesFilter.value === '' ? null : branchMesFilter.value; // String for RPC (0-11)
+        const selectedYear = branchAnoFilter.value === 'todos' ? null : branchAnoFilter.value;
+        const selectedMonth = branchMesFilter.value === '' ? null : branchMesFilter.value;
 
-        const rpcFilters = {
+        const filters = {
             p_ano: selectedYear,
             p_mes: selectedMonth,
+            p_filial: branchSelectedFiliais.length > 0 ? branchSelectedFiliais : null,
             p_cidade: branchSelectedCidades.length > 0 ? branchSelectedCidades : null,
             p_supervisor: branchSelectedSupervisores.length > 0 ? branchSelectedSupervisores : null,
             p_vendedor: branchSelectedVendedores.length > 0 ? branchSelectedVendedores : null,
@@ -1823,34 +1851,32 @@ document.addEventListener('DOMContentLoaded', () => {
             p_tipovenda: branchSelectedTiposVenda.length > 0 ? branchSelectedTiposVenda : null
         };
 
-        const branchDataMap = {};
-        // Use selected branches if any, otherwise default to all (though UI defaults to first 2)
-        // Actually we should rely on branchSelectedFiliais if populated.
-        // If empty (on first load maybe before init), initBranchFilters handles default selection.
-        // But here we need to be safe.
-        let branchesToFetch = branchSelectedFiliais;
-        if (!branchesToFetch || branchesToFetch.length === 0) {
-             // Fallback if not yet initialized
-             branchesToFetch = branchList ? branchList.slice(0, 2) : [];
-        }
+        // Aggregated Fetch (Fast Response)
+        const cacheKey = generateCacheKey('branch_data', filters);
+        let branchDataMap = null;
 
-        // Parallel Fetch for each branch
         try {
-            await Promise.all(branchesToFetch.map(async (branch) => {
-                const branchFilters = { ...rpcFilters, p_filial: [branch] };
-                const { data, error } = await supabase.rpc('get_main_dashboard_data', branchFilters);
+            const cachedEntry = await getFromCache(cacheKey);
+            if (cachedEntry && cachedEntry.data) {
+                console.log('Serving Branch View from Cache');
+                branchDataMap = cachedEntry.data;
+            } else {
+                const { data, error } = await supabase.rpc('get_branch_comparison_data', filters);
                 if (!error && data) {
-                    branchDataMap[branch] = data;
+                    branchDataMap = data;
+                    saveToCache(cacheKey, data);
                 } else {
-                    console.error(`Erro ao carregar filial ${branch}:`, error);
+                    console.error('Erro ao carregar filiais:', error);
                 }
-            }));
+            }
         } catch (e) {
             console.error("Erro geral no fetch de filiais:", e);
         }
         
         hideDashboardLoading();
-        renderBranchDashboard(branchDataMap, selectedYear, selectedMonth);
+        if (branchDataMap) {
+            renderBranchDashboard(branchDataMap, selectedYear, selectedMonth);
+        }
     }
 
     function renderBranchDashboard(branchDataMap, selectedYear, selectedMonth) {
