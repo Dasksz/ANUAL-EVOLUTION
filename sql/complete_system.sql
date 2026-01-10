@@ -15,20 +15,17 @@ create extension if not exists "uuid-ossp";
 create table if not exists public.data_detailed (
   id uuid default uuid_generate_v4 () primary key,
   pedido text,
-  nome text,
-  superv text,
+  codusur text,
+  codsupervisor text,
   produto text,
   descricao text,
-  fornecedor text,
-  observacaofor text,
   codfor text,
-  codusur text,
+  observacaofor text,
   codcli text,
   cliente_nome text,
   cidade text,
   bairro text,
   qtvenda numeric,
-  codsupervisor text,
   vlvenda numeric,
   vlbonific numeric,
   vldevolucao numeric,
@@ -47,20 +44,17 @@ create table if not exists public.data_detailed (
 create table if not exists public.data_history (
   id uuid default uuid_generate_v4 () primary key,
   pedido text,
-  nome text,
-  superv text,
+  codusur text,
+  codsupervisor text,
   produto text,
   descricao text,
-  fornecedor text,
-  observacaofor text,
   codfor text,
-  codusur text,
+  observacaofor text,
   codcli text,
   cliente_nome text,
   cidade text,
   bairro text,
   qtvenda numeric,
-  codsupervisor text,
   vlvenda numeric,
   vlbonific numeric,
   vldevolucao numeric,
@@ -125,7 +119,39 @@ CREATE TABLE IF NOT EXISTS public.config_city_branches (
     created_at timestamp with time zone DEFAULT now()
 );
 
+-- Dimension Tables
+CREATE TABLE IF NOT EXISTS public.dim_supervisores (
+    codigo text PRIMARY KEY,
+    nome text
+);
+ALTER TABLE public.dim_supervisores ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.dim_supervisores;
+CREATE POLICY "Read Access Approved" ON public.dim_supervisores FOR SELECT USING (public.is_approved());
+DROP POLICY IF EXISTS "All Access Admin" ON public.dim_supervisores;
+CREATE POLICY "All Access Admin" ON public.dim_supervisores FOR ALL USING (public.is_admin());
+
+CREATE TABLE IF NOT EXISTS public.dim_vendedores (
+    codigo text PRIMARY KEY,
+    nome text
+);
+ALTER TABLE public.dim_vendedores ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.dim_vendedores;
+CREATE POLICY "Read Access Approved" ON public.dim_vendedores FOR SELECT USING (public.is_approved());
+DROP POLICY IF EXISTS "All Access Admin" ON public.dim_vendedores;
+CREATE POLICY "All Access Admin" ON public.dim_vendedores FOR ALL USING (public.is_admin());
+
+CREATE TABLE IF NOT EXISTS public.dim_fornecedores (
+    codigo text PRIMARY KEY,
+    nome text
+);
+ALTER TABLE public.dim_fornecedores ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.dim_fornecedores;
+CREATE POLICY "Read Access Approved" ON public.dim_fornecedores FOR SELECT USING (public.is_approved());
+DROP POLICY IF EXISTS "All Access Admin" ON public.dim_fornecedores;
+CREATE POLICY "All Access Admin" ON public.dim_fornecedores FOR ALL USING (public.is_admin());
+
 -- Unified View
+DROP VIEW IF EXISTS public.all_sales CASCADE;
 create or replace view public.all_sales as
 select * from public.data_detailed
 union all
@@ -213,8 +239,8 @@ DROP INDEX IF EXISTS idx_detailed_dtped_composite;
 DROP INDEX IF EXISTS idx_history_dtped_composite;
 
 -- Sales Table Indexes
-CREATE INDEX idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, superv, nome, codfor);
-CREATE INDEX idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, superv, nome, codfor);
+CREATE INDEX idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, codsupervisor, codusur, codfor);
+CREATE INDEX idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, codsupervisor, codusur, codfor);
 CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
 CREATE INDEX IF NOT EXISTS idx_detailed_codfor_dtped ON public.data_detailed (codfor, dtped);
 CREATE INDEX IF NOT EXISTS idx_history_codfor_dtped ON public.data_history (codfor, dtped);
@@ -372,23 +398,26 @@ BEGIN
     SELECT DISTINCT 
         t.filial, 
         COALESCE(t.cidade, c.cidade) as cidade, 
-        t.superv, 
-        COALESCE(t.nome, c.nomecliente) as nome, 
+        ds.nome as superv, 
+        COALESCE(dv.nome, c.nomecliente) as nome, 
         t.codfor, 
-        t.fornecedor, 
+        df.nome as fornecedor, 
         t.tipovenda, 
         t.yr, 
         t.mth
     FROM (
-        SELECT filial, cidade, superv, nome, codfor, fornecedor, tipovenda, codcli,
+        SELECT filial, cidade, codsupervisor, codusur as codvendedor, codfor, tipovenda, codcli,
                EXTRACT(YEAR FROM dtped)::int as yr, EXTRACT(MONTH FROM dtped)::int as mth 
         FROM public.data_detailed
         UNION ALL
-        SELECT filial, cidade, superv, nome, codfor, fornecedor, tipovenda, codcli,
+        SELECT filial, cidade, codsupervisor, codusur as codvendedor, codfor, tipovenda, codcli,
                EXTRACT(YEAR FROM dtped)::int as yr, EXTRACT(MONTH FROM dtped)::int as mth 
         FROM public.data_history
     ) t
-    LEFT JOIN public.data_clients c ON t.codcli = c.codigo_cliente;
+    LEFT JOIN public.data_clients c ON t.codcli = c.codigo_cliente
+    LEFT JOIN public.dim_supervisores ds ON t.codsupervisor = ds.codigo
+    LEFT JOIN public.dim_vendedores dv ON t.codvendedor = dv.codigo
+    LEFT JOIN public.dim_fornecedores df ON t.codfor = df.codigo;
 END;
 $$;
 
@@ -410,10 +439,10 @@ BEGIN
         pre_mix_count, pre_positivacao_val
     )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto 
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto 
         FROM public.data_detailed
         UNION ALL
-        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto 
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto 
         FROM public.data_history
     ),
     augmented_data AS (
@@ -422,14 +451,16 @@ BEGIN
             EXTRACT(MONTH FROM s.dtped)::int as mes,
             s.filial, 
             COALESCE(s.cidade, c.cidade) as cidade, 
-            s.superv, 
-            COALESCE(s.nome, c.nomecliente) as nome, 
+            ds.nome as superv, 
+            COALESCE(dv.nome, c.nomecliente) as nome, 
             s.codfor, 
             s.tipovenda, 
             s.codcli,
             s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto
         FROM raw_data s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
+        LEFT JOIN public.dim_supervisores ds ON s.codsupervisor = ds.codigo
+        LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
     ),
     product_agg AS (
         SELECT 
@@ -679,9 +710,9 @@ BEGIN
     WITH raw_summary AS (
         SELECT 
             ano, mes, codcli, vlvenda, peso, bonificacao, devolucao, tipovenda, pre_mix_count, pre_positivacao_val,
-            CASE
+            CASE 
                 WHEN codcli = ''11625'' AND ano = 2025 AND mes = 12 THEN ''05''
-                ELSE filial
+                ELSE filial 
             END as filial
         FROM public.data_summary
         ' || v_where_clause || '
