@@ -46,34 +46,6 @@
             transition: transform 0.3s ease-in-out;
         }
         
-        /* Calendar Styles */
-        .calendar-day {
-            width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;
-            border-radius: 0.25rem; cursor: pointer; font-size: 0.75rem; color: #cbd5e1;
-            transition: background-color 0.2s;
-        }
-        .calendar-day:hover { background-color: #475569; }
-        
-        .calendar-day.selected {
-            background-color: #dc2626; color: white; font-weight: 700;
-        }
-        .calendar-day.selected:hover { background-color: #b91c1c; }
-
-        .calendar-day.today {
-            border: 1px solid #06b6d4;
-        }
-
-        .calendar-day.last-sales-day {
-             border: 2px solid #10b981; /* emerald-500 */
-             background-color: rgba(16, 185, 129, 0.1);
-             font-weight: 700;
-             color: #34d399;
-        }
-        
-        .calendar-day.header {
-             font-weight: 700; color: #64748b; cursor: default;
-        }
-        .calendar-day.header:hover { background-color: transparent; }
     </style>
 </head>
 <body class="min-h-screen">

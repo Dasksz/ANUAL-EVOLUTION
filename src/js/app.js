@@ -2175,7 +2175,7 @@ document.addEventListener('DOMContentLoaded', () => {
         html += `<div class="grid grid-cols-7 gap-1 text-center">`;
         
         const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-        weekDays.forEach(day => html += `<div class="calendar-day header">${day}</div>`);
+        weekDays.forEach(day => html += `<div class="w-8 h-8 flex items-center justify-center text-xs font-bold text-slate-500 cursor-default">${day}</div>`);
 
         // Empty cells for starting day
         for (let i = 0; i < startingDay; i++) {
@@ -2189,10 +2189,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const isToday = (day === now.getDate() && month === now.getMonth() && year === now.getFullYear());
             const isLastSalesDay = (dateStr === lastSalesDate);
             
-            let classes = 'calendar-day';
-            if (isHoliday) classes += ' selected';
-            if (isToday) classes += ' today';
-            if (isLastSalesDay) classes += ' last-sales-day';
+            let classes = 'calendar-day w-8 h-8 flex items-center justify-center rounded cursor-pointer text-xs transition-colors';
+
+            if (isHoliday) {
+                classes += ' bg-red-600 text-white font-bold hover:bg-red-700';
+            } else {
+                classes += ' text-slate-300 hover:bg-slate-700';
+            }
+
+            if (isToday) classes += ' ring-1 ring-inset ring-cyan-500';
+            if (isLastSalesDay) classes += ' border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 font-bold';
             
             html += `<div class="${classes}" data-date="${dateStr}" title="${isLastSalesDay ? 'Última Venda' : ''}">${day}</div>`;
         }
