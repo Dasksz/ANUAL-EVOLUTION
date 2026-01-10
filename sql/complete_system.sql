@@ -15,20 +15,17 @@ create extension if not exists "uuid-ossp";
 create table if not exists public.data_detailed (
   id uuid default uuid_generate_v4 () primary key,
   pedido text,
-  nome text,
-  superv text,
+  codusur text,
+  codsupervisor text,
   produto text,
   descricao text,
-  fornecedor text,
-  observacaofor text,
   codfor text,
-  codusur text,
+  observacaofor text,
   codcli text,
   cliente_nome text,
   cidade text,
   bairro text,
   qtvenda numeric,
-  codsupervisor text,
   vlvenda numeric,
   vlbonific numeric,
   vldevolucao numeric,
@@ -47,20 +44,17 @@ create table if not exists public.data_detailed (
 create table if not exists public.data_history (
   id uuid default uuid_generate_v4 () primary key,
   pedido text,
-  nome text,
-  superv text,
+  codusur text,
+  codsupervisor text,
   produto text,
   descricao text,
-  fornecedor text,
-  observacaofor text,
   codfor text,
-  codusur text,
+  observacaofor text,
   codcli text,
   cliente_nome text,
   cidade text,
   bairro text,
   qtvenda numeric,
-  codsupervisor text,
   vlvenda numeric,
   vlbonific numeric,
   vldevolucao numeric,
@@ -245,8 +239,8 @@ DROP INDEX IF EXISTS idx_detailed_dtped_composite;
 DROP INDEX IF EXISTS idx_history_dtped_composite;
 
 -- Sales Table Indexes
-CREATE INDEX idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, superv, nome, codfor);
-CREATE INDEX idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, superv, nome, codfor);
+CREATE INDEX idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, codsupervisor, codusur, codfor);
+CREATE INDEX idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, codsupervisor, codusur, codfor);
 CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
 CREATE INDEX IF NOT EXISTS idx_detailed_codfor_dtped ON public.data_detailed (codfor, dtped);
 CREATE INDEX IF NOT EXISTS idx_history_codfor_dtped ON public.data_history (codfor, dtped);
