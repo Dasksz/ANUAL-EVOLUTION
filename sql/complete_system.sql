@@ -131,7 +131,9 @@ CREATE TABLE IF NOT EXISTS public.dim_supervisores (
     nome text
 );
 ALTER TABLE public.dim_supervisores ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.dim_supervisores;
 CREATE POLICY "Read Access Approved" ON public.dim_supervisores FOR SELECT USING (public.is_approved());
+DROP POLICY IF EXISTS "All Access Admin" ON public.dim_supervisores;
 CREATE POLICY "All Access Admin" ON public.dim_supervisores FOR ALL USING (public.is_admin());
 
 CREATE TABLE IF NOT EXISTS public.dim_vendedores (
@@ -139,7 +141,9 @@ CREATE TABLE IF NOT EXISTS public.dim_vendedores (
     nome text
 );
 ALTER TABLE public.dim_vendedores ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.dim_vendedores;
 CREATE POLICY "Read Access Approved" ON public.dim_vendedores FOR SELECT USING (public.is_approved());
+DROP POLICY IF EXISTS "All Access Admin" ON public.dim_vendedores;
 CREATE POLICY "All Access Admin" ON public.dim_vendedores FOR ALL USING (public.is_admin());
 
 CREATE TABLE IF NOT EXISTS public.dim_fornecedores (
@@ -147,7 +151,9 @@ CREATE TABLE IF NOT EXISTS public.dim_fornecedores (
     nome text
 );
 ALTER TABLE public.dim_fornecedores ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.dim_fornecedores;
 CREATE POLICY "Read Access Approved" ON public.dim_fornecedores FOR SELECT USING (public.is_approved());
+DROP POLICY IF EXISTS "All Access Admin" ON public.dim_fornecedores;
 CREATE POLICY "All Access Admin" ON public.dim_fornecedores FOR ALL USING (public.is_admin());
 
 -- Unified View
