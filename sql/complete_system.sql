@@ -125,34 +125,46 @@ CREATE TABLE IF NOT EXISTS public.dim_supervisores (
     nome text
 );
 ALTER TABLE public.dim_supervisores ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Read Access Approved" ON public.dim_supervisores;
-CREATE POLICY "Read Access Approved" ON public.dim_supervisores FOR SELECT USING (public.is_approved());
-DROP POLICY IF EXISTS "All Access Admin" ON public.dim_supervisores;
-CREATE POLICY "All Access Admin" ON public.dim_supervisores FOR ALL USING (public.is_admin());
+DROP POLICY IF EXISTS "Unified Read Access" ON public.dim_supervisores;
+CREATE POLICY "Unified Read Access" ON public.dim_supervisores FOR SELECT USING (public.is_admin() OR public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.dim_supervisores;
+CREATE POLICY "Admin Insert" ON public.dim_supervisores FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.dim_supervisores;
+CREATE POLICY "Admin Update" ON public.dim_supervisores FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.dim_supervisores;
+CREATE POLICY "Admin Delete" ON public.dim_supervisores FOR DELETE USING (public.is_admin());
 
 CREATE TABLE IF NOT EXISTS public.dim_vendedores (
     codigo text PRIMARY KEY,
     nome text
 );
 ALTER TABLE public.dim_vendedores ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Read Access Approved" ON public.dim_vendedores;
-CREATE POLICY "Read Access Approved" ON public.dim_vendedores FOR SELECT USING (public.is_approved());
-DROP POLICY IF EXISTS "All Access Admin" ON public.dim_vendedores;
-CREATE POLICY "All Access Admin" ON public.dim_vendedores FOR ALL USING (public.is_admin());
+DROP POLICY IF EXISTS "Unified Read Access" ON public.dim_vendedores;
+CREATE POLICY "Unified Read Access" ON public.dim_vendedores FOR SELECT USING (public.is_admin() OR public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.dim_vendedores;
+CREATE POLICY "Admin Insert" ON public.dim_vendedores FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.dim_vendedores;
+CREATE POLICY "Admin Update" ON public.dim_vendedores FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.dim_vendedores;
+CREATE POLICY "Admin Delete" ON public.dim_vendedores FOR DELETE USING (public.is_admin());
 
 CREATE TABLE IF NOT EXISTS public.dim_fornecedores (
     codigo text PRIMARY KEY,
     nome text
 );
 ALTER TABLE public.dim_fornecedores ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Read Access Approved" ON public.dim_fornecedores;
-CREATE POLICY "Read Access Approved" ON public.dim_fornecedores FOR SELECT USING (public.is_approved());
-DROP POLICY IF EXISTS "All Access Admin" ON public.dim_fornecedores;
-CREATE POLICY "All Access Admin" ON public.dim_fornecedores FOR ALL USING (public.is_admin());
+DROP POLICY IF EXISTS "Unified Read Access" ON public.dim_fornecedores;
+CREATE POLICY "Unified Read Access" ON public.dim_fornecedores FOR SELECT USING (public.is_admin() OR public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.dim_fornecedores;
+CREATE POLICY "Admin Insert" ON public.dim_fornecedores FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.dim_fornecedores;
+CREATE POLICY "Admin Update" ON public.dim_fornecedores FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.dim_fornecedores;
+CREATE POLICY "Admin Delete" ON public.dim_fornecedores FOR DELETE USING (public.is_admin());
 
 -- Unified View
 DROP VIEW IF EXISTS public.all_sales CASCADE;
-create or replace view public.all_sales as
+create or replace view public.all_sales with (security_invoker = true) as
 select * from public.data_detailed
 union all
 select * from public.data_history;
@@ -300,7 +312,7 @@ ALTER TABLE public.config_city_branches ENABLE ROW LEVEL SECURITY;
 DO $$
 DECLARE t text;
 BEGIN
-    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_clients', 'data_detailed', 'data_history', 'profiles', 'data_summary', 'cache_filters', 'data_holidays', 'config_city_branches')
+    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_clients', 'data_detailed', 'data_history', 'profiles', 'data_summary', 'cache_filters', 'data_holidays', 'config_city_branches', 'dim_supervisores', 'dim_vendedores', 'dim_fornecedores')
     LOOP
         EXECUTE format('DROP POLICY IF EXISTS "Enable access for all users" ON public.%I;', t);
         EXECUTE format('DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.%I;', t);
@@ -309,6 +321,11 @@ BEGIN
         EXECUTE format('DROP POLICY IF EXISTS "Update Access Admin" ON public.%I;', t);
         EXECUTE format('DROP POLICY IF EXISTS "Delete Access Admin" ON public.%I;', t);
         EXECUTE format('DROP POLICY IF EXISTS "All Access Admin" ON public.%I;', t);
+        -- Drop obsolete policies causing performance warnings
+        EXECUTE format('DROP POLICY IF EXISTS "Delete Admin" ON public.%I;', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Insert Admin" ON public.%I;', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Update Admin" ON public.%I;', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Read Access" ON public.%I;', t);
     END LOOP;
 END $$;
 
@@ -332,8 +349,10 @@ DROP POLICY IF EXISTS "Profiles Delete" ON public.profiles;
 CREATE POLICY "Profiles Delete" ON public.profiles FOR DELETE USING (public.is_admin());
 
 -- Config City Branches
-CREATE POLICY "Read Access Approved" ON public.config_city_branches FOR SELECT USING (public.is_approved());
-CREATE POLICY "All Access Admin" ON public.config_city_branches FOR ALL USING (public.is_admin());
+CREATE POLICY "Unified Read Access" ON public.config_city_branches FOR SELECT USING (public.is_admin() OR public.is_approved());
+CREATE POLICY "Admin Insert" ON public.config_city_branches FOR INSERT WITH CHECK (public.is_admin());
+CREATE POLICY "Admin Update" ON public.config_city_branches FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Admin Delete" ON public.config_city_branches FOR DELETE USING (public.is_admin());
 
 -- Holidays Policies
 CREATE POLICY "Read Access Approved" ON public.data_holidays FOR SELECT USING (public.is_approved());
