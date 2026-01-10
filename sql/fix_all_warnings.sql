@@ -11,6 +11,12 @@ DROP POLICY IF EXISTS "Update Admin" ON public.config_city_branches;
 DROP POLICY IF EXISTS "Write Access Admin" ON public.config_city_branches;
 DROP POLICY IF EXISTS "Update Access Admin" ON public.config_city_branches;
 
+-- Idempotency drops for new policies
+DROP POLICY IF EXISTS "Unified Read Access" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Admin Insert" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Admin Update" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Admin Delete" ON public.config_city_branches;
+
 CREATE POLICY "Unified Read Access" ON public.config_city_branches FOR SELECT USING (public.is_admin() OR public.is_approved());
 CREATE POLICY "Admin Insert" ON public.config_city_branches FOR INSERT WITH CHECK (public.is_admin());
 CREATE POLICY "Admin Update" ON public.config_city_branches FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
@@ -32,6 +38,12 @@ BEGIN
         EXECUTE format('DROP POLICY IF EXISTS "Insert Admin" ON public.%I', t);
         EXECUTE format('DROP POLICY IF EXISTS "Update Admin" ON public.%I', t);
         EXECUTE format('DROP POLICY IF EXISTS "Read Access" ON public.%I', t);
+
+        -- Idempotency drops for new policies
+        EXECUTE format('DROP POLICY IF EXISTS "Unified Read Access" ON public.%I', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Admin Insert" ON public.%I', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Admin Update" ON public.%I', t);
+        EXECUTE format('DROP POLICY IF EXISTS "Admin Delete" ON public.%I', t);
 
         -- Recreate Unified Read
         EXECUTE format('CREATE POLICY "Unified Read Access" ON public.%I FOR SELECT USING (public.is_admin() OR public.is_approved())', t);
