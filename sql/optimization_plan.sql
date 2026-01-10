@@ -257,7 +257,7 @@ ALTER TABLE public.data_detailed DROP COLUMN IF EXISTS fornecedor;
 -- PHASE 3: COMPATIBILITY VIEWS
 -- ------------------------------------------------------------------------------
 
-CREATE OR REPLACE VIEW public.view_data_history_completa AS
+CREATE OR REPLACE VIEW public.view_data_history_completa WITH (security_invoker = true) AS
 SELECT 
     h.*,
     s.nome as superv,
@@ -268,7 +268,7 @@ LEFT JOIN public.dim_supervisores s ON h.codsupervisor = s.codigo
 LEFT JOIN public.dim_vendedores v ON h.codusur = v.codigo
 LEFT JOIN public.dim_fornecedores f ON h.codfor = f.codigo;
 
-CREATE OR REPLACE VIEW public.view_data_detailed_completa AS
+CREATE OR REPLACE VIEW public.view_data_detailed_completa WITH (security_invoker = true) AS
 SELECT 
     h.*,
     s.nome as superv,
@@ -280,7 +280,7 @@ LEFT JOIN public.dim_vendedores v ON h.codusur = v.codigo
 LEFT JOIN public.dim_fornecedores f ON h.codfor = f.codigo;
 
 -- Recreate all_sales view using compatibility views (Restores full schema)
-CREATE OR REPLACE VIEW public.all_sales AS
+CREATE OR REPLACE VIEW public.all_sales WITH (security_invoker = true) AS
 SELECT * FROM public.view_data_detailed_completa
 UNION ALL
 SELECT * FROM public.view_data_history_completa;
