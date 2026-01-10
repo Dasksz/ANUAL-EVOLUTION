@@ -331,7 +331,11 @@ document.addEventListener('DOMContentLoaded', () => {
         resetViews();
         cityView.classList.remove('hidden');
         navCityAnalysisBtn.classList.add('bg-slate-700', 'text-white');
-        loadCityView();
+        if (typeof initCityFilters === 'function' && cityAnoFilter && cityAnoFilter.options.length <= 1) {
+             initCityFilters().then(loadCityView);
+        } else {
+             loadCityView();
+        }
         closeSidebar();
     });
 
@@ -1382,14 +1386,172 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- City View Filter Logic ---
+    const cityFilialFilterBtn = document.getElementById('city-filial-filter-btn');
+    const cityFilialFilterDropdown = document.getElementById('city-filial-filter-dropdown');
+    const cityAnoFilter = document.getElementById('city-ano-filter');
+    const cityMesFilter = document.getElementById('city-mes-filter');
+    const cityCidadeFilterBtn = document.getElementById('city-cidade-filter-btn');
+    const cityCidadeFilterDropdown = document.getElementById('city-cidade-filter-dropdown');
+    const cityCidadeFilterList = document.getElementById('city-cidade-filter-list');
+    const cityCidadeFilterSearch = document.getElementById('city-cidade-filter-search');
+    const citySupervisorFilterBtn = document.getElementById('city-supervisor-filter-btn');
+    const citySupervisorFilterDropdown = document.getElementById('city-supervisor-filter-dropdown');
+    const cityVendedorFilterBtn = document.getElementById('city-vendedor-filter-btn');
+    const cityVendedorFilterDropdown = document.getElementById('city-vendedor-filter-dropdown');
+    const cityVendedorFilterList = document.getElementById('city-vendedor-filter-list');
+    const cityVendedorFilterSearch = document.getElementById('city-vendedor-filter-search');
+    const cityFornecedorFilterBtn = document.getElementById('city-fornecedor-filter-btn');
+    const cityFornecedorFilterDropdown = document.getElementById('city-fornecedor-filter-dropdown');
+    const cityFornecedorFilterList = document.getElementById('city-fornecedor-filter-list');
+    const cityFornecedorFilterSearch = document.getElementById('city-fornecedor-filter-search');
+    const cityTipovendaFilterBtn = document.getElementById('city-tipovenda-filter-btn');
+    const cityTipovendaFilterDropdown = document.getElementById('city-tipovenda-filter-dropdown');
+    const cityClearFiltersBtn = document.getElementById('city-clear-filters-btn');
+
+    let citySelectedFiliais = [];
+    let citySelectedCidades = [];
+    let citySelectedSupervisores = [];
+    let citySelectedVendedores = [];
+    let citySelectedFornecedores = [];
+    let citySelectedTiposVenda = [];
+
+    let cityFilterDebounceTimer;
+    const handleCityFilterChange = () => {
+        clearTimeout(cityFilterDebounceTimer);
+        cityFilterDebounceTimer = setTimeout(() => {
+            currentCityPage = 0; 
+            currentCityInactivePage = 0;
+            loadCityView();
+        }, 500);
+    };
+
+    if (cityAnoFilter) cityAnoFilter.addEventListener('change', handleCityFilterChange);
+    if (cityMesFilter) cityMesFilter.addEventListener('change', handleCityFilterChange);
+
+    if (cityClearFiltersBtn) {
+        cityClearFiltersBtn.addEventListener('click', () => {
+             cityAnoFilter.value = 'todos';
+             cityMesFilter.value = '';
+             citySelectedFiliais = [];
+             citySelectedCidades = [];
+             citySelectedSupervisores = [];
+             citySelectedVendedores = [];
+             citySelectedFornecedores = [];
+             citySelectedTiposVenda = [];
+             initCityFilters().then(loadCityView);
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        const dropdowns = [cityFilialFilterDropdown, cityCidadeFilterDropdown, citySupervisorFilterDropdown, cityVendedorFilterDropdown, cityFornecedorFilterDropdown, cityTipovendaFilterDropdown];
+        const btns = [cityFilialFilterBtn, cityCidadeFilterBtn, citySupervisorFilterBtn, cityVendedorFilterBtn, cityFornecedorFilterBtn, cityTipovendaFilterBtn];
+        dropdowns.forEach((dd, idx) => { if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) dd.classList.add('hidden'); });
+    });
+
+    function setupCityMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
+        if(!btn || !dropdown) return;
+        btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
+        const renderItems = (filterText = '') => {
+            container.innerHTML = '';
+            let filteredItems = items || [];
+            if (filterText) {
+                const lower = filterText.toLowerCase();
+                filteredItems = filteredItems.filter(item => {
+                    const val = isObject ? item.name : item;
+                    return String(val).toLowerCase().includes(lower);
+                });
+            }
+            filteredItems.forEach(item => {
+                const value = isObject ? item.cod : item;
+                const label = isObject ? item.name : item;
+                const isSelected = selectedArray.includes(String(value));
+                const div = document.createElement('div');
+                div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
+                div.innerHTML = `<input type="checkbox" value="${value}" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2"><label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${label}</label>`;
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    const checkbox = div.querySelector('input');
+                    if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
+                    const val = String(value);
+                    if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
+                    updateBtnLabel();
+                    handleCityFilterChange();
+                };
+                container.appendChild(div);
+            });
+            if (filteredItems.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
+        };
+        const updateBtnLabel = () => {
+            const span = btn.querySelector('span');
+            if (selectedArray.length === 0) {
+                span.textContent = 'Todas';
+                 if(btn.id.includes('vendedor') || btn.id.includes('fornecedor') || btn.id.includes('supervisor') || btn.id.includes('tipovenda')) span.textContent = 'Todos';
+            } else if (selectedArray.length === 1) {
+                const val = selectedArray[0];
+                let found;
+                if (isObject) found = items.find(i => String(i.cod) === val); else found = items.find(i => String(i) === val);
+                if (found) span.textContent = isObject ? found.name : found; else span.textContent = val;
+            } else { span.textContent = `${selectedArray.length} selecionados`; }
+        };
+        renderItems();
+        updateBtnLabel();
+        if (searchInput) { searchInput.oninput = (e) => renderItems(e.target.value); searchInput.onclick = (e) => e.stopPropagation(); }
+    }
+
+    async function initCityFilters() {
+         const { data: filterData } = await supabase.rpc('get_dashboard_filters', { p_ano: 'todos' });
+         if (!filterData) return;
+
+         if (filterData.anos && cityAnoFilter) {
+             const currentVal = cityAnoFilter.value;
+             cityAnoFilter.innerHTML = '<option value="todos">Todos</option>';
+             filterData.anos.forEach(a => {
+                 const opt = document.createElement('option');
+                 opt.value = a;
+                 opt.textContent = a;
+                 cityAnoFilter.appendChild(opt);
+             });
+             if (currentVal && currentVal !== 'todos') cityAnoFilter.value = currentVal;
+             else if (filterData.anos.length > 0) cityAnoFilter.value = filterData.anos[0];
+         }
+         
+         if (cityMesFilter && cityMesFilter.options.length <= 1) {
+            cityMesFilter.innerHTML = '<option value="">Todos</option>';
+            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; cityMesFilter.appendChild(opt); });
+        }
+
+        setupCityMultiSelect(cityFilialFilterBtn, cityFilialFilterDropdown, cityFilialFilterDropdown, filterData.filiais, citySelectedFiliais);
+        setupCityMultiSelect(cityCidadeFilterBtn, cityCidadeFilterDropdown, cityCidadeFilterList, filterData.cidades, citySelectedCidades, cityCidadeFilterSearch);
+        setupCityMultiSelect(citySupervisorFilterBtn, citySupervisorFilterDropdown, citySupervisorFilterDropdown, filterData.supervisors, citySelectedSupervisores);
+        setupCityMultiSelect(cityVendedorFilterBtn, cityVendedorFilterDropdown, cityVendedorFilterList, filterData.vendedores, citySelectedVendedores, cityVendedorFilterSearch);
+        setupCityMultiSelect(cityFornecedorFilterBtn, cityFornecedorFilterDropdown, cityFornecedorFilterList, filterData.fornecedores, citySelectedFornecedores, cityFornecedorFilterSearch, true);
+        setupCityMultiSelect(cityTipovendaFilterBtn, cityTipovendaFilterDropdown, cityTipovendaFilterDropdown, filterData.tipos_venda, citySelectedTiposVenda);
+    }
+
     async function loadCityView() {
-        const filters = getCurrentFilters();
-        filters.p_page = currentCityPage;
-        filters.p_limit = cityPageSize;
-        filters.p_inactive_page = currentCityInactivePage;
-        filters.p_inactive_limit = cityInactivePageSize;
+        showDashboardLoading('city-view');
+
+        const filters = {
+            p_filial: citySelectedFiliais.length > 0 ? citySelectedFiliais : null,
+            p_cidade: citySelectedCidades.length > 0 ? citySelectedCidades : null,
+            p_supervisor: citySelectedSupervisores.length > 0 ? citySelectedSupervisores : null,
+            p_vendedor: citySelectedVendedores.length > 0 ? citySelectedVendedores : null,
+            p_fornecedor: citySelectedFornecedores.length > 0 ? citySelectedFornecedores : null,
+            p_tipovenda: citySelectedTiposVenda.length > 0 ? citySelectedTiposVenda : null,
+            p_ano: cityAnoFilter.value === 'todos' ? null : cityAnoFilter.value,
+            p_mes: cityMesFilter.value === '' ? null : cityMesFilter.value,
+            p_page: currentCityPage,
+            p_limit: cityPageSize,
+            p_inactive_page: currentCityInactivePage,
+            p_inactive_limit: cityInactivePageSize
+        };
 
         const { data, error } = await supabase.rpc('get_city_view_data', filters);
+        
+        hideDashboardLoading();
+
         if(error) { console.error(error); return; }
 
         totalActiveClients = data.total_active_count || 0;
@@ -1490,54 +1652,6 @@ document.addEventListener('DOMContentLoaded', () => {
          initBranchFilters().then(loadBranchView);
     });
 
-    function setupBranchMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
-        btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
-        const renderItems = (filterText = '') => {
-            container.innerHTML = '';
-            let filteredItems = items || [];
-            if (filterText) {
-                const lower = filterText.toLowerCase();
-                filteredItems = filteredItems.filter(item => {
-                    const val = isObject ? item.name : item;
-                    return String(val).toLowerCase().includes(lower);
-                });
-            }
-            filteredItems.forEach(item => {
-                const value = isObject ? item.cod : item;
-                const label = isObject ? item.name : item;
-                const isSelected = selectedArray.includes(String(value));
-                const div = document.createElement('div');
-                div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
-                div.innerHTML = `<input type="checkbox" value="${value}" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2"><label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${label}</label>`;
-                div.onclick = (e) => {
-                    e.stopPropagation();
-                    const checkbox = div.querySelector('input');
-                    if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
-                    const val = String(value);
-                    if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
-                    updateBtnLabel();
-                    handleBranchFilterChange();
-                };
-                container.appendChild(div);
-            });
-            if (filteredItems.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
-        };
-        const updateBtnLabel = () => {
-            const span = btn.querySelector('span');
-            if (selectedArray.length === 0) {
-                span.textContent = 'Todas';
-                if(btn.id.includes('vendedor') || btn.id.includes('fornecedor') || btn.id.includes('supervisor') || btn.id.includes('tipovenda')) span.textContent = 'Todos';
-            } else if (selectedArray.length === 1) {
-                const val = selectedArray[0];
-                let found;
-                if (isObject) found = items.find(i => String(i.cod) === val); else found = items.find(i => String(i) === val);
-                if (found) span.textContent = isObject ? found.name : found; else span.textContent = val;
-            } else { span.textContent = `${selectedArray.length} selecionados`; }
-        };
-        renderItems();
-        updateBtnLabel();
-        if (searchInput) { searchInput.oninput = (e) => renderItems(e.target.value); searchInput.onclick = (e) => e.stopPropagation(); }
-    }
 
     async function initBranchFilters() {
          const { data: filterData } = await supabase.rpc('get_dashboard_filters', { p_ano: 'todos' });
