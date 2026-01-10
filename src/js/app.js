@@ -1443,6 +1443,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const branchTipovendaFilterBtn = document.getElementById('branch-tipovenda-filter-btn');
     const branchTipovendaFilterDropdown = document.getElementById('branch-tipovenda-filter-dropdown');
     const branchClearFiltersBtn = document.getElementById('branch-clear-filters-btn');
+    const branchCalendarBtn = document.getElementById('branch-calendar-btn');
+    const branchChartToggleBtn = document.getElementById('branch-chart-toggle-btn');
 
     let branchSelectedFiliais = [];
     let branchSelectedCidades = [];
@@ -1450,6 +1452,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let branchSelectedVendedores = [];
     let branchSelectedFornecedores = [];
     let branchSelectedTiposVenda = [];
+    let currentBranchChartMode = 'faturamento';
 
     // Filter Change Handler
     let branchFilterDebounceTimer;
@@ -1460,6 +1463,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (branchAnoFilter) branchAnoFilter.addEventListener('change', handleBranchFilterChange);
     if (branchMesFilter) branchMesFilter.addEventListener('change', handleBranchFilterChange);
+    if (branchCalendarBtn) branchCalendarBtn.addEventListener('click', openCalendar);
+    if (branchChartToggleBtn) {
+        branchChartToggleBtn.addEventListener('click', () => {
+            currentBranchChartMode = currentBranchChartMode === 'faturamento' ? 'peso' : 'faturamento';
+            loadBranchView();
+        });
+    }
 
     document.addEventListener('click', (e) => {
         const dropdowns = [branchFilialFilterDropdown, branchCidadeFilterDropdown, branchSupervisorFilterDropdown, branchVendedorFilterDropdown, branchFornecedorFilterDropdown, branchTipovendaFilterDropdown];
@@ -1736,6 +1746,12 @@ document.addEventListener('DOMContentLoaded', () => {
          const chartBranches = {};
          const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
+         // Title Logic
+         const chartTitleEl = document.getElementById('branch-chart-title');
+         if (chartTitleEl) {
+             chartTitleEl.textContent = `COMPARATIVO POR FILIAL - ${currentBranchChartMode === 'faturamento' ? 'FATURAMENTO' : 'TONELAGEM'}`;
+         }
+
          // Process Data from RPC Results
          branches.forEach(b => {
              const data = branchDataMap[b];
@@ -1748,16 +1764,11 @@ document.addEventListener('DOMContentLoaded', () => {
              }
 
              // Chart Data: Map to 12 months array
-             // If filtering, only the selected month slot will be filled, which correctly isolates the bar in the chart
-             // BUT we want to preserve the full year view if possible, or follow the user's intent. 
-             // The user said "quando eu filtrei um mês o gráfico continuou mostrando todos os dados", implying they WANTED filtering.
-             // With the filtering above (monthlyData = monthlyData.filter...), chartArr will only contain the filtered month.
-             // So this logic is already correct for filtering.
              const chartArr = new Array(12).fill(0);
              monthlyData.forEach(d => {
                  // d has month_index (0-11)
                  if (d.month_index >= 0 && d.month_index < 12) {
-                     chartArr[d.month_index] = d.faturamento; 
+                     chartArr[d.month_index] = currentBranchChartMode === 'faturamento' ? d.faturamento : d.peso;
                  }
              });
              chartBranches[b] = chartArr;
@@ -1894,7 +1905,7 @@ document.addEventListener('DOMContentLoaded', () => {
              branches.forEach((b, idx) => {
                  const bData = branchDataMap[b];
                  if (bData && bData.trend_allowed && bData.trend_data) {
-                     const tVal = bData.trend_data.faturamento || 0; 
+                     const tVal = currentBranchChartMode === 'faturamento' ? (bData.trend_data.faturamento || 0) : (bData.trend_data.peso || 0);
                      if (datasets[idx]) datasets[idx].data.push(tVal);
                  } else {
                      if (datasets[idx]) datasets[idx].data.push(0);
@@ -1913,10 +1924,16 @@ document.addEventListener('DOMContentLoaded', () => {
              });
              
              const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Tendência"];
-             createChart('branch-chart', 'bar', labels, datasets, (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : '')));
+             const fmt = currentBranchChartMode === 'faturamento'
+                ? (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''))
+                : (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
+             createChart('branch-chart', 'bar', labels, datasets, fmt);
          } else {
              const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-             createChart('branch-chart', 'bar', labels, datasets, (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : '')));
+             const fmt = currentBranchChartMode === 'faturamento'
+                ? (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''))
+                : (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
+             createChart('branch-chart', 'bar', labels, datasets, fmt);
          }
     }
 
@@ -1967,7 +1984,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         let year = now.getFullYear();
         let month = now.getMonth();
-        
+
         // Respect Filters if selected
         if (anoFilter && anoFilter.value !== 'todos') {
             year = parseInt(anoFilter.value);
