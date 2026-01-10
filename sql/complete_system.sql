@@ -125,6 +125,31 @@ CREATE TABLE IF NOT EXISTS public.config_city_branches (
     created_at timestamp with time zone DEFAULT now()
 );
 
+-- Dimension Tables
+CREATE TABLE IF NOT EXISTS public.dim_supervisores (
+    codigo text PRIMARY KEY,
+    nome text
+);
+ALTER TABLE public.dim_supervisores ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Read Access Approved" ON public.dim_supervisores FOR SELECT USING (public.is_approved());
+CREATE POLICY "All Access Admin" ON public.dim_supervisores FOR ALL USING (public.is_admin());
+
+CREATE TABLE IF NOT EXISTS public.dim_vendedores (
+    codigo text PRIMARY KEY,
+    nome text
+);
+ALTER TABLE public.dim_vendedores ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Read Access Approved" ON public.dim_vendedores FOR SELECT USING (public.is_approved());
+CREATE POLICY "All Access Admin" ON public.dim_vendedores FOR ALL USING (public.is_admin());
+
+CREATE TABLE IF NOT EXISTS public.dim_fornecedores (
+    codigo text PRIMARY KEY,
+    nome text
+);
+ALTER TABLE public.dim_fornecedores ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Read Access Approved" ON public.dim_fornecedores FOR SELECT USING (public.is_approved());
+CREATE POLICY "All Access Admin" ON public.dim_fornecedores FOR ALL USING (public.is_admin());
+
 -- Unified View
 DROP VIEW IF EXISTS public.all_sales CASCADE;
 create or replace view public.all_sales as
@@ -373,23 +398,26 @@ BEGIN
     SELECT DISTINCT 
         t.filial, 
         COALESCE(t.cidade, c.cidade) as cidade, 
-        t.superv, 
-        COALESCE(t.nome, c.nomecliente) as nome, 
+        ds.nome as superv,
+        COALESCE(dv.nome, c.nomecliente) as nome,
         t.codfor, 
-        t.fornecedor, 
+        df.nome as fornecedor,
         t.tipovenda, 
         t.yr, 
         t.mth
     FROM (
-        SELECT filial, cidade, superv, nome, codfor, fornecedor, tipovenda, codcli,
+        SELECT filial, cidade, codsupervisor, codusur as codvendedor, codfor, tipovenda, codcli,
                EXTRACT(YEAR FROM dtped)::int as yr, EXTRACT(MONTH FROM dtped)::int as mth 
         FROM public.data_detailed
         UNION ALL
-        SELECT filial, cidade, superv, nome, codfor, fornecedor, tipovenda, codcli,
+        SELECT filial, cidade, codsupervisor, codusur as codvendedor, codfor, tipovenda, codcli,
                EXTRACT(YEAR FROM dtped)::int as yr, EXTRACT(MONTH FROM dtped)::int as mth 
         FROM public.data_history
     ) t
-    LEFT JOIN public.data_clients c ON t.codcli = c.codigo_cliente;
+    LEFT JOIN public.data_clients c ON t.codcli = c.codigo_cliente
+    LEFT JOIN public.dim_supervisores ds ON t.codsupervisor = ds.codigo
+    LEFT JOIN public.dim_vendedores dv ON t.codvendedor = dv.codigo
+    LEFT JOIN public.dim_fornecedores df ON t.codfor = df.codigo;
 END;
 $$;
 
@@ -411,10 +439,10 @@ BEGIN
         pre_mix_count, pre_positivacao_val
     )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto 
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto
         FROM public.data_detailed
         UNION ALL
-        SELECT dtped, filial, cidade, superv, nome, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto 
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto
         FROM public.data_history
     ),
     augmented_data AS (
@@ -423,14 +451,16 @@ BEGIN
             EXTRACT(MONTH FROM s.dtped)::int as mes,
             s.filial, 
             COALESCE(s.cidade, c.cidade) as cidade, 
-            s.superv, 
-            COALESCE(s.nome, c.nomecliente) as nome, 
+            ds.nome as superv,
+            COALESCE(dv.nome, c.nomecliente) as nome,
             s.codfor, 
             s.tipovenda, 
             s.codcli,
             s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto
         FROM raw_data s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
+        LEFT JOIN public.dim_supervisores ds ON s.codsupervisor = ds.codigo
+        LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
     ),
     product_agg AS (
         SELECT 
