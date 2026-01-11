@@ -191,6 +191,7 @@ create table if not exists public.data_summary (
     mix_details jsonb, -- Stores product-level values for accurate Mix calculation
     pre_mix_count int DEFAULT 0,
     pre_positivacao_val int DEFAULT 0, -- 1 se positivou, 0 se não
+    ramo text, -- ADDED: Rede Filter
     created_at timestamp with time zone default now()
 );
 
@@ -226,6 +227,7 @@ create table if not exists public.cache_filters (
     tipovenda text,
     ano int,
     mes int,
+    rede text, -- ADDED: Rede Filter
     created_at timestamp with time zone default now()
 );
 
@@ -266,6 +268,7 @@ CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_filial ON public.data_summary (an
 CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codfor ON public.data_summary (ano, mes, codfor);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_tipovenda ON public.data_summary (ano, mes, tipovenda);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codcli ON public.data_summary (ano, mes, codcli);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_ramo ON public.data_summary (ano, mes, ramo);
 
 -- Cache Filters Indexes
 CREATE INDEX idx_cache_filters_composite ON public.cache_filters (ano, mes, filial, cidade, superv, nome, codfor, tipovenda);
@@ -278,6 +281,7 @@ CREATE INDEX IF NOT EXISTS idx_cache_ano_cidade ON public.cache_filters (ano, ci
 CREATE INDEX IF NOT EXISTS idx_cache_ano_filial ON public.cache_filters (ano, filial);
 CREATE INDEX IF NOT EXISTS idx_cache_ano_tipovenda ON public.cache_filters (ano, tipovenda);
 CREATE INDEX IF NOT EXISTS idx_cache_ano_fornecedor ON public.cache_filters (ano, fornecedor, codfor);
+CREATE INDEX IF NOT EXISTS idx_cache_filters_rede_lookup ON public.cache_filters (filial, cidade, superv, ano, rede);
 
 -- ==============================================================================
 -- 3. SECURITY & RLS POLICIES
@@ -421,7 +425,7 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
     
     TRUNCATE TABLE public.cache_filters;
-    INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes)
+    INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes, rede)
     SELECT DISTINCT 
         t.filial, 
         COALESCE(t.cidade, c.cidade) as cidade, 
@@ -431,7 +435,8 @@ BEGIN
         df.nome as fornecedor, 
         t.tipovenda, 
         t.yr, 
-        t.mth
+        t.mth,
+        c.ramo as rede
     FROM (
         SELECT filial, cidade, codsupervisor, codusur as codvendedor, codfor, tipovenda, codcli,
                EXTRACT(YEAR FROM dtped)::int as yr, EXTRACT(MONTH FROM dtped)::int as mth 
@@ -464,7 +469,8 @@ BEGIN
         ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, 
         vlvenda, peso, bonificacao, devolucao, 
         mix_produtos, mix_details,
-        pre_mix_count, pre_positivacao_val
+        pre_mix_count, pre_positivacao_val,
+        ramo
     )
     WITH raw_data AS (
         SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto 
@@ -477,14 +483,18 @@ BEGIN
         SELECT 
             EXTRACT(YEAR FROM s.dtped)::int as ano,
             EXTRACT(MONTH FROM s.dtped)::int as mes,
-            s.filial, 
+            CASE
+                WHEN s.codcli = '11625' AND EXTRACT(YEAR FROM s.dtped) = 2025 AND EXTRACT(MONTH FROM s.dtped) = 12 THEN '05'
+                ELSE s.filial
+            END as filial,
             COALESCE(s.cidade, c.cidade) as cidade, 
             ds.nome as superv, 
             COALESCE(dv.nome, c.nomecliente) as nome, 
             s.codfor, 
             s.tipovenda, 
             s.codcli,
-            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto
+            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto,
+            c.ramo
         FROM raw_data s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
         LEFT JOIN public.dim_supervisores ds ON s.codsupervisor = ds.codigo
@@ -492,17 +502,17 @@ BEGIN
     ),
     product_agg AS (
         SELECT 
-            ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, produto,
+            ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, ramo, produto,
             SUM(vlvenda) as prod_val,
             SUM(totpesoliq) as prod_peso,
             SUM(vlbonific) as prod_bonific,
             SUM(COALESCE(vldevolucao, 0)) as prod_devol
         FROM augmented_data
-        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
     ),
     client_agg AS (
         SELECT 
-            pa.ano, pa.mes, pa.filial, pa.cidade, pa.superv, pa.nome, pa.codfor, pa.tipovenda, pa.codcli,
+            pa.ano, pa.mes, pa.filial, pa.cidade, pa.superv, pa.nome, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo,
             SUM(pa.prod_val) as total_val,
             SUM(pa.prod_peso) as total_peso,
             SUM(pa.prod_bonific) as total_bonific,
@@ -510,7 +520,7 @@ BEGIN
             ARRAY_AGG(DISTINCT pa.produto) FILTER (WHERE pa.produto IS NOT NULL) as arr_prod,
             jsonb_object_agg(pa.produto, pa.prod_val) FILTER (WHERE pa.produto IS NOT NULL) as json_prod
         FROM product_agg pa
-        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
     )
     SELECT 
         ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli,
@@ -518,7 +528,8 @@ BEGIN
         arr_prod, json_prod,
         -- CÁLCULOS PRÉVIOS AQUI:
         (SELECT COUNT(*) FROM jsonb_each_text(json_prod) WHERE (value)::numeric >= 1 AND codfor IN ('707', '708')) as mix_calc,
-        CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc
+        CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
+        ramo
     FROM client_agg;
     
     CLUSTER public.data_summary USING idx_summary_ano_mes_filial;
@@ -635,7 +646,8 @@ CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_fornecedor text[] default null,
     p_ano text default null,
     p_mes text default null,
-    p_tipovenda text[] default null
+    p_tipovenda text[] default null,
+    p_rede text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -659,7 +671,8 @@ DECLARE
     
     -- Dynamic SQL
     v_sql text;
-    v_where_clause text := '';
+    v_where_base text := ' WHERE 1=1 ';
+    v_where_kpi text := ' WHERE 1=1 ';
     v_result json;
     
     -- Execution Context
@@ -668,6 +681,12 @@ DECLARE
     v_monthly_chart_current json;
     v_monthly_chart_previous json;
     v_curr_month_idx int;
+
+    -- Rede Logic Vars
+    v_has_com_rede boolean;
+    v_has_sem_rede boolean;
+    v_specific_redes text[];
+    v_rede_condition text := '';
 BEGIN
     -- Configurações de Memória para esta Query Específica
     SET LOCAL work_mem = '64MB'; -- Aumenta memória para ordenação
@@ -715,44 +734,85 @@ BEGIN
     END IF;
 
     -- 3. Construct Dynamic WHERE Clause
-    -- Importante: Como usamos SECURITY DEFINER, verifique se a lógica de usuário aprovado se aplica aqui se necessário
-    -- Mas como os filtros vêm do frontend, assumimos que a UI já restringiu o que o user pode pedir
     
-    v_where_clause := 'WHERE ano IN ($1, $2) ';
-    
-    -- NOTE: Filial filter is handled INSIDE filtered_summary for override logic
+    -- Base Filters (Table: data_summary)
+    v_where_base := v_where_base || format(' AND ano IN (%L, %L) ', v_current_year, v_previous_year);
+
+    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+        v_where_base := v_where_base || format(' AND filial = ANY(%L) ', p_filial);
+    END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_clause := v_where_clause || ' AND cidade = ANY($4) ';
+        v_where_base := v_where_base || format(' AND cidade = ANY(%L) ', p_cidade);
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_clause := v_where_clause || ' AND superv = ANY($5) ';
+        v_where_base := v_where_base || format(' AND superv = ANY(%L) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_clause := v_where_clause || ' AND nome = ANY($6) ';
+        v_where_base := v_where_base || format(' AND nome = ANY(%L) ', p_vendedor);
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where_clause := v_where_clause || ' AND codfor = ANY($7) ';
+        v_where_base := v_where_base || format(' AND codfor = ANY(%L) ', p_fornecedor);
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_clause := v_where_clause || ' AND tipovenda = ANY($8) ';
+        v_where_base := v_where_base || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+    END IF;
+
+    -- REDE Logic
+    IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
+       v_has_com_rede := ('Com Rede' = ANY(p_rede));
+       v_has_sem_rede := ('Sem Rede' = ANY(p_rede));
+       v_specific_redes := array_remove(array_remove(p_rede, 'Com Rede'), 'Sem Rede');
+
+       IF array_length(v_specific_redes, 1) > 0 THEN
+           v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
+       END IF;
+
+       IF v_has_com_rede THEN
+           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+           v_rede_condition := v_rede_condition || ' (ramo IS NOT NULL AND ramo NOT IN (''N/A'', ''N/D'')) ';
+       END IF;
+
+       IF v_has_sem_rede THEN
+           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+           v_rede_condition := v_rede_condition || ' (ramo IS NULL OR ramo IN (''N/A'', ''N/D'')) ';
+       END IF;
+
+       IF v_rede_condition != '' THEN
+           v_where_base := v_where_base || ' AND (' || v_rede_condition || ') ';
+       END IF;
+    END IF;
+
+    -- KPI Base Filter (Table: data_clients)
+    v_where_kpi := ' WHERE bloqueio != ''S'' ';
+    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
+        v_where_kpi := v_where_kpi || format(' AND cidade = ANY(%L) ', p_cidade);
+    END IF;
+
+    IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
+        v_rede_condition := ''; -- reset
+        IF array_length(v_specific_redes, 1) > 0 THEN
+           v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
+        END IF;
+        IF v_has_com_rede THEN
+           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+           v_rede_condition := v_rede_condition || ' (ramo IS NOT NULL AND ramo NOT IN (''N/A'', ''N/D'')) ';
+        END IF;
+        IF v_has_sem_rede THEN
+           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+           v_rede_condition := v_rede_condition || ' (ramo IS NULL OR ramo IN (''N/A'', ''N/D'')) ';
+        END IF;
+        IF v_rede_condition != '' THEN
+            v_where_kpi := v_where_kpi || ' AND (' || v_rede_condition || ') ';
+        END IF;
     END IF;
 
     -- 4. Execute Main Aggregation Query (VERSÃO OTIMIZADA)
     -- Removemos todas as subqueries complexas (mix_raw_data, monthly_mix_stats, etc)
     v_sql := '
-    WITH raw_summary AS (
-        SELECT 
-            ano, mes, codcli, vlvenda, peso, bonificacao, devolucao, tipovenda, pre_mix_count, pre_positivacao_val,
-            CASE 
-                WHEN codcli = ''11625'' AND ano = 2025 AND mes = 12 THEN ''05''
-                ELSE filial 
-            END as filial
+    WITH filtered_summary AS (
+        SELECT ano, mes, vlvenda, peso, bonificacao, devolucao, pre_positivacao_val, pre_mix_count, codcli, tipovenda
         FROM public.data_summary
-        ' || v_where_clause || '
-    ),
-    filtered_summary AS (
-        SELECT * FROM raw_summary
-        WHERE ($3 IS NULL OR array_length($3, 1) IS NULL OR filial = ANY($3))
+        ' || v_where_base || '
     ),
     agg_data AS (
         SELECT
@@ -760,7 +820,7 @@ BEGIN
             mes,
             -- Agregação simples e direta
             SUM(CASE 
-                WHEN ($8 IS NOT NULL AND array_length($8, 1) > 0) THEN vlvenda
+                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN vlvenda
                 WHEN tipovenda IN (''1'', ''9'') THEN vlvenda 
                 ELSE 0 
             END) as faturamento,
@@ -771,12 +831,12 @@ BEGIN
             COUNT(DISTINCT CASE WHEN pre_positivacao_val = 1 THEN codcli END) as positivacao_count,
             -- Mix pré-calculado (Respeitando regra de Venda/Venda Futura se filtro não for especificado)
             SUM(CASE 
-                WHEN ($8 IS NOT NULL AND array_length($8, 1) > 0) THEN pre_mix_count
+                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN pre_mix_count
                 WHEN tipovenda IN (''1'', ''9'') THEN pre_mix_count 
                 ELSE 0 
             END) as total_mix_sum,
             COUNT(DISTINCT CASE 
-                WHEN ($8 IS NOT NULL AND array_length($8, 1) > 0) AND pre_mix_count > 0 THEN codcli 
+                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) AND pre_mix_count > 0 THEN codcli
                 WHEN tipovenda IN (''1'', ''9'') AND pre_mix_count > 0 THEN codcli 
                 ELSE NULL 
             END) as mix_client_count
@@ -786,12 +846,11 @@ BEGIN
     kpi_active_count AS (
         SELECT COUNT(DISTINCT codcli) as val
         FROM filtered_summary 
-        WHERE ano = $1 AND mes = $9 AND pre_positivacao_val = 1
+        WHERE ano = $2 AND mes = $3 AND pre_positivacao_val = 1
     ),
     kpi_base_count AS (
-        SELECT COUNT(*) as val FROM public.data_clients c 
-        WHERE c.bloqueio != ''S'' 
-        AND ($4 IS NULL OR array_length($4, 1) IS NULL OR c.cidade = ANY($4))
+        SELECT COUNT(*) as val FROM public.data_clients
+        ' || v_where_kpi || '
     )
     SELECT
         (SELECT val FROM kpi_active_count),
@@ -806,7 +865,7 @@ BEGIN
             ''positivacao'', a.positivacao_count, 
             ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END, 
             ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
-        ) ORDER BY a.mes) FILTER (WHERE a.ano = $1), ''[]''::json),
+        ) ORDER BY a.mes) FILTER (WHERE a.ano = $2), ''[]''::json),
         
         COALESCE(json_agg(json_build_object(
             ''month_index'', a.mes - 1, 
@@ -817,13 +876,13 @@ BEGIN
             ''positivacao'', a.positivacao_count, 
             ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END, 
             ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
-        ) ORDER BY a.mes) FILTER (WHERE a.ano = $2), ''[]''::json)
+        ) ORDER BY a.mes) FILTER (WHERE a.ano = $4), ''[]''::json)
     FROM agg_data a
     ';
 
     EXECUTE v_sql 
     INTO v_kpi_clients_attended, v_kpi_clients_base, v_monthly_chart_current, v_monthly_chart_previous
-    USING v_current_year, v_previous_year, p_filial, p_cidade, p_supervisor, p_vendedor, p_fornecedor, p_tipovenda, v_target_month;
+    USING p_tipovenda, v_current_year, v_target_month, v_previous_year;
 
     -- 5. Calculate Trend (Post-Processing)
     IF v_trend_allowed THEN
@@ -891,6 +950,7 @@ DECLARE
     v_filiais text[];
     v_anos int[];
     v_tipos_venda text[];
+    v_redes text[];
     v_filter_year int;
     v_filter_month int;
 BEGIN
@@ -985,7 +1045,21 @@ BEGIN
         AND codfor IS NOT NULL
     ) t;
 
-    -- 7. Anos
+    -- 7. Redes
+    SELECT ARRAY(SELECT DISTINCT rede FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        AND rede IS NOT NULL AND rede != '' AND rede != 'null' AND rede != 'N/A' AND rede != 'N/D'
+        ORDER BY rede
+    ) INTO v_redes;
+
+    -- 8. Anos
     SELECT ARRAY(SELECT DISTINCT ano FROM public.cache_filters WHERE
         (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
         AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
@@ -997,7 +1071,16 @@ BEGIN
         ORDER BY ano DESC
     ) INTO v_anos;
 
-    RETURN json_build_object('supervisors', COALESCE(v_supervisors, '{}'), 'vendedores', COALESCE(v_vendedores, '{}'), 'fornecedores', COALESCE(v_fornecedores, '[]'::json), 'cidades', COALESCE(v_cidades, '{}'), 'filiais', COALESCE(v_filiais, '{}'), 'anos', COALESCE(v_anos, '{}'), 'tipos_venda', COALESCE(v_tipos_venda, '{}'));
+    RETURN json_build_object(
+        'supervisors', COALESCE(v_supervisors, '{}'),
+        'vendedores', COALESCE(v_vendedores, '{}'),
+        'fornecedores', COALESCE(v_fornecedores, '[]'::json),
+        'cidades', COALESCE(v_cidades, '{}'),
+        'filiais', COALESCE(v_filiais, '{}'),
+        'redes', COALESCE(v_redes, '{}'),
+        'anos', COALESCE(v_anos, '{}'),
+        'tipos_venda', COALESCE(v_tipos_venda, '{}')
+    );
 END;
 $$;
 
@@ -1011,6 +1094,7 @@ CREATE OR REPLACE FUNCTION get_city_view_data(
     p_ano text default null,
     p_mes text default null,
     p_tipovenda text[] default null,
+    p_rede text[] default null,
     p_page int default 0,
     p_limit int default 50,
     p_inactive_page int default 0,
@@ -1030,6 +1114,12 @@ DECLARE
     v_inactive_clients json;
     v_total_active_count int;
     v_total_inactive_count int;
+
+    -- Rede Logic Vars
+    v_has_com_rede boolean;
+    v_has_sem_rede boolean;
+    v_specific_redes text[];
+    v_rede_condition text := '';
 BEGIN
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
          SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
@@ -1041,8 +1131,33 @@ BEGIN
     v_start_date := make_date(v_current_year, v_target_month, 1);
     v_end_date := v_start_date + interval '1 month';
 
+    -- Rede Logic
+    IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
+       v_has_com_rede := ('Com Rede' = ANY(p_rede));
+       v_has_sem_rede := ('Sem Rede' = ANY(p_rede));
+       v_specific_redes := array_remove(array_remove(p_rede, 'Com Rede'), 'Sem Rede');
+
+       IF array_length(v_specific_redes, 1) > 0 THEN
+           v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
+       END IF;
+
+       IF v_has_com_rede THEN
+           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+           v_rede_condition := v_rede_condition || ' (ramo IS NOT NULL AND ramo NOT IN (''N/A'', ''N/D'')) ';
+       END IF;
+
+       IF v_has_sem_rede THEN
+           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+           v_rede_condition := v_rede_condition || ' (ramo IS NULL OR ramo IN (''N/A'', ''N/D'')) ';
+       END IF;
+    END IF;
+
     -- Active Clients (Paginated)
     -- Using WITH clause to aggregate first
+    -- Apply rede condition to filtering summary if needed, but summary is per product/mix.
+    -- Summary table HAS ramo column now.
+    -- We can filter summary by ramo directly.
+
     WITH client_totals AS (
         SELECT codcli, SUM(vlvenda) as total_fat
         FROM public.data_summary
@@ -1054,59 +1169,34 @@ BEGIN
           AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
           AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
           AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+          AND (v_rede_condition = '' OR (
+              CASE WHEN v_rede_condition != '' THEN
+                  -- Dynamic SQL needed for arbitrary condition?
+                  -- No, we can't easily inject dynamic sql inside this static sql block without EXECUTE.
+                  -- But get_city_view_data uses EXECUTE.
+                  -- Wait, this function body in complete_system.sql is different from fast_response_rpc.sql which uses EXECUTE.
+                  -- I should follow the pattern. fast_response_rpc.sql uses dynamic SQL.
+                  -- This file seems to use static SQL in older version?
+                  -- No, this file (complete_system.sql) is what I am editing.
+                  -- The previous content I read from complete_system.sql seemed to use static SQL for get_city_view_data?
+                  -- Let me double check read_file output for complete_system.sql earlier.
+                  -- It wasn't fully read.
+                  -- But I'm overwriting it. I should use the Optimized Dynamic SQL version from fast_response_rpc.sql as base for consistency.
+                  -- Reverting to Dynamic SQL logic similar to fast_response_rpc.sql for consistency.
+                  true -- Placeholder
+              END
+          ))
         GROUP BY codcli
         HAVING SUM(vlvenda) >= 1
-    ),
-    count_cte AS (SELECT COUNT(*) as cnt FROM client_totals),
-    paginated_clients AS (
-        SELECT ct.codcli, ct.total_fat, c.fantasia, c.razaosocial, c.cidade, c.bairro, c.rca1
-        FROM client_totals ct
-        JOIN public.data_clients c ON c.codigo_cliente = ct.codcli
-        ORDER BY ct.total_fat DESC
-        LIMIT p_limit OFFSET (p_page * p_limit)
     )
-    SELECT (SELECT cnt FROM count_cte), json_agg(json_build_object('Código', pc.codcli, 'fantasia', pc.fantasia, 'razaoSocial', pc.razaosocial, 'totalFaturamento', pc.total_fat, 'cidade', pc.cidade, 'bairro', pc.bairro, 'rca1', pc.rca1) ORDER BY pc.total_fat DESC) 
-    INTO v_total_active_count, v_active_clients
-    FROM paginated_clients pc;
+    SELECT 1; -- Dummy
 
-    -- Inactive Clients (Paginated)
-    WITH inactive_cte AS (
-        SELECT c.codigo_cliente, c.fantasia, c.razaosocial, c.cidade, c.bairro, c.ultimacompra, c.rca1
-        FROM public.data_clients c
-        WHERE c.bloqueio != 'S'
-          AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR c.cidade = ANY(p_cidade))
-          AND NOT EXISTS (
-              SELECT 1 FROM public.data_summary s2
-              WHERE s2.codcli = c.codigo_cliente
-                AND s2.ano = v_current_year
-                AND (p_mes IS NULL OR p_mes = '' OR p_mes = 'todos' OR s2.mes = (p_mes::int + 1))
-                AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR s2.filial = ANY(p_filial))
-                AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR s2.cidade = ANY(p_cidade))
-                AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR s2.superv = ANY(p_supervisor))
-                AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR s2.nome = ANY(p_vendedor))
-                AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR s2.codfor = ANY(p_fornecedor))
-                AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR s2.tipovenda = ANY(p_tipovenda))
-          )
-    ),
-    count_inactive AS (SELECT COUNT(*) as cnt FROM inactive_cte),
-    paginated_inactive AS (
-        SELECT * FROM inactive_cte
-        ORDER BY ultimacompra DESC NULLS LAST
-        LIMIT p_inactive_limit OFFSET (p_inactive_page * p_inactive_limit)
-    )
-    SELECT (SELECT cnt FROM count_inactive), json_agg(
-        json_build_object('Código', pi.codigo_cliente, 'fantasia', pi.fantasia, 'razaoSocial', pi.razaosocial, 'cidade', pi.cidade, 'bairro', pi.bairro, 'ultimaCompra', pi.ultimacompra, 'rca1', pi.rca1) 
-        ORDER BY pi.ultimacompra DESC NULLS LAST
-    ) INTO v_total_inactive_count, v_inactive_clients
-    FROM paginated_inactive pi;
+    -- Actually, it's safer to just PASTE the content of fast_response_rpc.sql logic here, but adapted for this file.
+    -- Or better, since fast_response_rpc.sql OVERRIDES this, I should just make sure this file has a valid definition even if simpler.
+    -- But since I'm updating complete_system.sql, I should make it "complete".
+    -- I will use the same Dynamic SQL logic I wrote for fast_response_rpc.sql.
 
-    v_result := json_build_object(
-        'active_clients', COALESCE(v_active_clients, '[]'::json), 
-        'total_active_count', COALESCE(v_total_active_count, 0), 
-        'inactive_clients', COALESCE(v_inactive_clients, '[]'::json),
-        'total_inactive_count', COALESCE(v_total_inactive_count, 0)
-    );
-    RETURN v_result;
+    RETURN NULL; -- Placeholder, will be replaced by the write below using the logic from my migration script.
 END;
 $$;
 
@@ -1146,3 +1236,163 @@ END $$;
 -- Refresh Cache to apply updates
 -- Refresh Cache to apply updates (Populates both Summary and Filters for Dropdowns)
 -- SELECT refresh_dashboard_cache(); -- Moved to refresh_data.sql
+-- Function: Get City View (Paginated for both Active and Inactive, No RCA2)
+-- Re-defining with correct Dynamic SQL logic matching fast_response_rpc.sql to ensure complete_system.sql is valid.
+CREATE OR REPLACE FUNCTION get_city_view_data(
+    p_filial text[] default null,
+    p_cidade text[] default null,
+    p_supervisor text[] default null,
+    p_vendedor text[] default null,
+    p_fornecedor text[] default null,
+    p_ano text default null,
+    p_mes text default null,
+    p_tipovenda text[] default null,
+    p_rede text[] default null,
+    p_page int default 0,
+    p_limit int default 50,
+    p_inactive_page int default 0,
+    p_inactive_limit int default 50
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+DECLARE
+    v_current_year int;
+    v_target_month int;
+    v_where text := ' WHERE 1=1 ';
+    v_where_clients text := ' WHERE bloqueio != ''S'' ';
+    v_sql text;
+    v_active_clients json;
+    v_inactive_clients json;
+    v_total_active_count int;
+    v_total_inactive_count int;
+
+    -- Rede Logic Vars
+    v_has_com_rede boolean;
+    v_has_sem_rede boolean;
+    v_specific_redes text[];
+    v_rede_condition text := '';
+BEGIN
+    SET LOCAL work_mem = '64MB';
+
+    -- Date Logic
+    IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
+         SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
+    ELSE v_current_year := p_ano::int; END IF;
+
+    -- Target month filter logic for summary
+    v_where := v_where || format(' AND ano = %L ', v_current_year);
+    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
+        v_target_month := p_mes::int + 1;
+        v_where := v_where || format(' AND mes = %L ', v_target_month);
+    END IF;
+
+    -- Dynamic Filters
+    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+        v_where := v_where || format(' AND filial = ANY(%L) ', p_filial);
+    END IF;
+    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
+        v_where := v_where || format(' AND cidade = ANY(%L) ', p_cidade);
+        v_where_clients := v_where_clients || format(' AND cidade = ANY(%L) ', p_cidade);
+    END IF;
+    IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
+        v_where := v_where || format(' AND superv = ANY(%L) ', p_supervisor);
+    END IF;
+    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+        v_where := v_where || format(' AND nome = ANY(%L) ', p_vendedor);
+    END IF;
+    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
+        v_where := v_where || format(' AND codfor = ANY(%L) ', p_fornecedor);
+    END IF;
+    IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
+        v_where := v_where || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+    END IF;
+
+    -- REDE Logic
+    IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
+       v_has_com_rede := ('Com Rede' = ANY(p_rede));
+       v_has_sem_rede := ('Sem Rede' = ANY(p_rede));
+       v_specific_redes := array_remove(array_remove(p_rede, 'Com Rede'), 'Sem Rede');
+
+       IF array_length(v_specific_redes, 1) > 0 THEN
+           v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
+       END IF;
+
+       IF v_has_com_rede THEN
+           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+           v_rede_condition := v_rede_condition || ' (ramo IS NOT NULL AND ramo NOT IN (''N/A'', ''N/D'')) ';
+       END IF;
+
+       IF v_has_sem_rede THEN
+           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+           v_rede_condition := v_rede_condition || ' (ramo IS NULL OR ramo IN (''N/A'', ''N/D'')) ';
+       END IF;
+
+       IF v_rede_condition != '' THEN
+           -- Apply to summary
+           v_where := v_where || ' AND (' || v_rede_condition || ') ';
+           -- Apply to clients
+           v_where_clients := v_where_clients || ' AND (' || v_rede_condition || ') ';
+       END IF;
+    END IF;
+
+    -- ACTIVE CLIENTS QUERY
+    v_sql := '
+    WITH client_totals AS (
+        SELECT codcli, SUM(vlvenda) as total_fat
+        FROM public.data_summary
+        ' || v_where || '
+        GROUP BY codcli
+        HAVING SUM(vlvenda) >= 1
+    ),
+    count_cte AS (SELECT COUNT(*) as cnt FROM client_totals),
+    paginated_clients AS (
+        SELECT ct.codcli, ct.total_fat, c.fantasia, c.razaosocial, c.cidade, c.bairro, c.rca1
+        FROM client_totals ct
+        JOIN public.data_clients c ON c.codigo_cliente = ct.codcli
+        ORDER BY ct.total_fat DESC
+        LIMIT $1 OFFSET ($2 * $1)
+    )
+    SELECT
+        (SELECT cnt FROM count_cte),
+        json_agg(json_build_object(''Código'', pc.codcli, ''fantasia'', pc.fantasia, ''razaoSocial'', pc.razaosocial, ''totalFaturamento'', pc.total_fat, ''cidade'', pc.cidade, ''bairro'', pc.bairro, ''rca1'', pc.rca1) ORDER BY pc.total_fat DESC)
+    FROM paginated_clients pc;
+    ';
+
+    EXECUTE v_sql INTO v_total_active_count, v_active_clients USING p_limit, p_page;
+
+    -- INACTIVE CLIENTS QUERY (NOT EXISTS)
+    -- We reuse v_where for the NOT EXISTS subquery
+    v_sql := '
+    WITH inactive_cte AS (
+        SELECT c.codigo_cliente, c.fantasia, c.razaosocial, c.cidade, c.bairro, c.ultimacompra, c.rca1
+        FROM public.data_clients c
+        ' || v_where_clients || '
+        AND NOT EXISTS (
+              SELECT 1 FROM public.data_summary s2
+              ' || v_where || ' AND s2.codcli = c.codigo_cliente
+        )
+    ),
+    count_inactive AS (SELECT COUNT(*) as cnt FROM inactive_cte),
+    paginated_inactive AS (
+        SELECT * FROM inactive_cte
+        ORDER BY ultimacompra DESC NULLS LAST
+        LIMIT $1 OFFSET ($2 * $1)
+    )
+    SELECT
+        (SELECT cnt FROM count_inactive),
+        json_agg(json_build_object(''Código'', pi.codigo_cliente, ''fantasia'', pi.fantasia, ''razaoSocial'', pi.razaosocial, ''cidade'', pi.cidade, ''bairro'', pi.bairro, ''ultimaCompra'', pi.ultimacompra, ''rca1'', pi.rca1) ORDER BY pi.ultimacompra DESC NULLS LAST)
+    FROM paginated_inactive pi;
+    ';
+
+    EXECUTE v_sql INTO v_total_inactive_count, v_inactive_clients USING p_inactive_limit, p_inactive_page;
+
+    RETURN json_build_object(
+        'active_clients', COALESCE(v_active_clients, '[]'::json),
+        'total_active_count', COALESCE(v_total_active_count, 0),
+        'inactive_clients', COALESCE(v_inactive_clients, '[]'::json),
+        'total_inactive_count', COALESCE(v_total_inactive_count, 0)
+    );
+END;
+$$;
