@@ -357,9 +357,13 @@ DROP POLICY IF EXISTS "Profiles Delete" ON public.profiles;
 CREATE POLICY "Profiles Delete" ON public.profiles FOR DELETE USING (public.is_admin());
 
 -- Config City Branches
+DROP POLICY IF EXISTS "Unified Read Access" ON public.config_city_branches;
 CREATE POLICY "Unified Read Access" ON public.config_city_branches FOR SELECT USING (public.is_admin() OR public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.config_city_branches;
 CREATE POLICY "Admin Insert" ON public.config_city_branches FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.config_city_branches;
 CREATE POLICY "Admin Update" ON public.config_city_branches FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.config_city_branches;
 CREATE POLICY "Admin Delete" ON public.config_city_branches FOR DELETE USING (public.is_admin());
 
 -- Holidays Policies
@@ -1085,120 +1089,6 @@ END;
 $$;
 
 -- Function: Get City View (Paginated for both Active and Inactive, No RCA2)
-CREATE OR REPLACE FUNCTION get_city_view_data(
-    p_filial text[] default null,
-    p_cidade text[] default null,
-    p_supervisor text[] default null,
-    p_vendedor text[] default null,
-    p_fornecedor text[] default null,
-    p_ano text default null,
-    p_mes text default null,
-    p_tipovenda text[] default null,
-    p_rede text[] default null,
-    p_page int default 0,
-    p_limit int default 50,
-    p_inactive_page int default 0,
-    p_inactive_limit int default 50
-)
-RETURNS JSON
-LANGUAGE plpgsql
-SET search_path = public
-AS $$
-DECLARE
-    v_current_year int;
-    v_target_month int;
-    v_start_date date;
-    v_end_date date;
-    v_result json;
-    v_active_clients json;
-    v_inactive_clients json;
-    v_total_active_count int;
-    v_total_inactive_count int;
-
-    -- Rede Logic Vars
-    v_has_com_rede boolean;
-    v_has_sem_rede boolean;
-    v_specific_redes text[];
-    v_rede_condition text := '';
-BEGIN
-    IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
-         SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
-    ELSE v_current_year := p_ano::int; END IF;
-
-    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN v_target_month := p_mes::int + 1;
-    ELSE SELECT COALESCE(MAX(mes), 12) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year; END IF;
-
-    v_start_date := make_date(v_current_year, v_target_month, 1);
-    v_end_date := v_start_date + interval '1 month';
-
-    -- Rede Logic
-    IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-       v_has_com_rede := ('Com Rede' = ANY(p_rede));
-       v_has_sem_rede := ('Sem Rede' = ANY(p_rede));
-       v_specific_redes := array_remove(array_remove(p_rede, 'Com Rede'), 'Sem Rede');
-
-       IF array_length(v_specific_redes, 1) > 0 THEN
-           v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
-       END IF;
-
-       IF v_has_com_rede THEN
-           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
-           v_rede_condition := v_rede_condition || ' (ramo IS NOT NULL AND ramo NOT IN (''N/A'', ''N/D'')) ';
-       END IF;
-
-       IF v_has_sem_rede THEN
-           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
-           v_rede_condition := v_rede_condition || ' (ramo IS NULL OR ramo IN (''N/A'', ''N/D'')) ';
-       END IF;
-    END IF;
-
-    -- Active Clients (Paginated)
-    -- Using WITH clause to aggregate first
-    -- Apply rede condition to filtering summary if needed, but summary is per product/mix.
-    -- Summary table HAS ramo column now.
-    -- We can filter summary by ramo directly.
-
-    WITH client_totals AS (
-        SELECT codcli, SUM(vlvenda) as total_fat
-        FROM public.data_summary
-        WHERE ano = v_current_year
-          AND (p_mes IS NULL OR p_mes = '' OR p_mes = 'todos' OR mes = (p_mes::int + 1))
-          AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
-          AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
-          AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
-          AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
-          AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
-          AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
-          AND (v_rede_condition = '' OR (
-              CASE WHEN v_rede_condition != '' THEN
-                  -- Dynamic SQL needed for arbitrary condition?
-                  -- No, we can't easily inject dynamic sql inside this static sql block without EXECUTE.
-                  -- But get_city_view_data uses EXECUTE.
-                  -- Wait, this function body in complete_system.sql is different from fast_response_rpc.sql which uses EXECUTE.
-                  -- I should follow the pattern. fast_response_rpc.sql uses dynamic SQL.
-                  -- This file seems to use static SQL in older version?
-                  -- No, this file (complete_system.sql) is what I am editing.
-                  -- The previous content I read from complete_system.sql seemed to use static SQL for get_city_view_data?
-                  -- Let me double check read_file output for complete_system.sql earlier.
-                  -- It wasn't fully read.
-                  -- But I'm overwriting it. I should use the Optimized Dynamic SQL version from fast_response_rpc.sql as base for consistency.
-                  -- Reverting to Dynamic SQL logic similar to fast_response_rpc.sql for consistency.
-                  true -- Placeholder
-              END
-          ))
-        GROUP BY codcli
-        HAVING SUM(vlvenda) >= 1
-    )
-    SELECT 1; -- Dummy
-
-    -- Actually, it's safer to just PASTE the content of fast_response_rpc.sql logic here, but adapted for this file.
-    -- Or better, since fast_response_rpc.sql OVERRIDES this, I should just make sure this file has a valid definition even if simpler.
-    -- But since I'm updating complete_system.sql, I should make it "complete".
-    -- I will use the same Dynamic SQL logic I wrote for fast_response_rpc.sql.
-
-    RETURN NULL; -- Placeholder, will be replaced by the write below using the logic from my migration script.
-END;
-$$;
 
 -- ==============================================================================
 -- 5. INITIALIZATION (Populate City Mapping + Refresh)
