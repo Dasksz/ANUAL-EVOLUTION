@@ -890,7 +890,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupMultiSelect(tipovendaFilterBtn, tipovendaFilterDropdown, tipovendaFilterDropdown, data.tipos_venda, selectedTiposVenda, () => {});
 
         // Rede Logic with "Com Rede" and "Sem Rede"
-        const redes = ['Com Rede', 'Sem Rede', ...(data.redes || [])];
+        const redes = ['C/ REDE', 'S/ REDE', ...(data.redes || [])];
         setupMultiSelect(redeFilterBtn, redeFilterDropdown, redeFilterList, redes, selectedRedes, () => {}, false, redeFilterSearch);
     }
 
@@ -1602,7 +1602,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupCityMultiSelect(cityFornecedorFilterBtn, cityFornecedorFilterDropdown, cityFornecedorFilterList, filterData.fornecedores, citySelectedFornecedores, cityFornecedorFilterSearch, true);
         setupCityMultiSelect(cityTipovendaFilterBtn, cityTipovendaFilterDropdown, cityTipovendaFilterDropdown, filterData.tipos_venda, citySelectedTiposVenda);
 
-        const redes = ['Com Rede', 'Sem Rede', ...(filterData.redes || [])];
+        const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
         setupCityMultiSelect(cityRedeFilterBtn, cityRedeFilterDropdown, cityRedeFilterList, redes, citySelectedRedes, cityRedeFilterSearch);
     }
 
@@ -1779,7 +1779,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupBranchMultiSelect(branchFornecedorFilterBtn, branchFornecedorFilterDropdown, branchFornecedorFilterList, filterData.fornecedores, branchSelectedFornecedores, branchFornecedorFilterSearch, true);
         setupBranchMultiSelect(branchTipovendaFilterBtn, branchTipovendaFilterDropdown, branchTipovendaFilterDropdown, filterData.tipos_venda, branchSelectedTiposVenda);
 
-        const redes = ['Com Rede', 'Sem Rede', ...(filterData.redes || [])];
+        const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
         setupBranchMultiSelect(branchRedeFilterBtn, branchRedeFilterDropdown, branchRedeFilterList, redes, branchSelectedRedes, branchRedeFilterSearch);
     }
     
