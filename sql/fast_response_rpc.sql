@@ -78,14 +78,15 @@ BEGIN
 END $$;
 
 -- Create Indexes for Dynamic SQL & Clustering
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_filial ON public.data_summary (ano, mes, filial);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_cidade ON public.data_summary (ano, mes, cidade);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_superv ON public.data_summary (ano, mes, superv);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_nome ON public.data_summary (ano, mes, nome); -- Vendedor
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codfor ON public.data_summary (ano, mes, codfor);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_tipovenda ON public.data_summary (ano, mes, tipovenda);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codcli ON public.data_summary (ano, mes, codcli);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_ramo ON public.data_summary (ano, mes, ramo);
+-- V2 Optimized Indexes (Year + Dimension) - Removing Month from prefix to allow broad year scans
+CREATE INDEX IF NOT EXISTS idx_summary_ano_filial ON public.data_summary (ano, filial);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_cidade ON public.data_summary (ano, cidade);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_superv ON public.data_summary (ano, superv);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_nome ON public.data_summary (ano, nome); -- Vendedor
+CREATE INDEX IF NOT EXISTS idx_summary_ano_codfor ON public.data_summary (ano, codfor);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_tipovenda ON public.data_summary (ano, tipovenda);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_codcli ON public.data_summary (ano, codcli);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_ramo ON public.data_summary (ano, ramo);
 
 
 -- ------------------------------------------------------------------------------
@@ -170,7 +171,7 @@ BEGIN
         ramo
     FROM client_agg;
 
-    CLUSTER public.data_summary USING idx_summary_ano_mes_filial;
+    CLUSTER public.data_summary USING idx_summary_ano_filial;
     ANALYZE public.data_summary;
 END;
 $$;
