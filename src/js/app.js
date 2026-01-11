@@ -793,7 +793,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupMultiSelect(btn, dropdown, container, items, selectedArray, labelCallback, isObject = false, searchInput = null) {
+        const MAX_ITEMS = 100;
         btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
+        
+        let debounceTimer;
         const renderItems = (filterText = '') => {
             container.innerHTML = '';
             let filteredItems = items || [];
@@ -804,7 +807,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     return String(val).toLowerCase().includes(lower);
                 });
             }
-            filteredItems.forEach(item => {
+            
+            const displayItems = filteredItems.slice(0, MAX_ITEMS);
+            
+            displayItems.forEach(item => {
                 const value = isObject ? item.cod : item;
                 const label = isObject ? item.name : item;
                 const isSelected = selectedArray.includes(String(value));
@@ -821,6 +827,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 container.appendChild(div);
             });
+
+            if (filteredItems.length > MAX_ITEMS) {
+                const limitMsg = document.createElement('div');
+                limitMsg.className = 'p-2 text-xs text-slate-500 text-center border-t border-slate-700 mt-1';
+                limitMsg.textContent = `Exibindo ${MAX_ITEMS} de ${filteredItems.length}. Use a busca.`;
+                container.appendChild(limitMsg);
+            }
+
             if (filteredItems.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
         };
         const updateBtnLabel = () => {
@@ -837,7 +851,13 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         renderItems();
         updateBtnLabel();
-        if (searchInput) { searchInput.oninput = (e) => renderItems(e.target.value); searchInput.onclick = (e) => e.stopPropagation(); }
+        if (searchInput) { 
+            searchInput.oninput = (e) => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => renderItems(e.target.value), 300);
+            }; 
+            searchInput.onclick = (e) => e.stopPropagation(); 
+        }
     }
 
     function applyFiltersData(data) {
@@ -989,7 +1009,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let prefetchDebounce;
     async function prefetchViews(filters) {
         clearTimeout(prefetchDebounce);
-        prefetchDebounce = setTimeout(async () => {
+
+        const runPrefetch = async () => {
             if (document.hidden) return; // Save resources if tab hidden
 
             console.log('[Prefetch] Starting background fetch for other views...');
@@ -1016,10 +1037,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (data && !error) saveToCache(cityKey, data);
                     });
             }
-        }, 1000);
+        };
+
+        prefetchDebounce = setTimeout(() => {
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(() => runPrefetch(), { timeout: 10000 });
+            } else {
+                setTimeout(runPrefetch, 100);
+            }
+        }, 5000);
     }
 
     async function fetchLastSalesDate() {
+        if (lastSalesDate) return;
+
         try {
             const { data, error } = await supabase
                 .from('data_detailed')
@@ -1525,6 +1556,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setupCityMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
         if(!btn || !dropdown) return;
+        const MAX_ITEMS = 100;
+        let debounceTimer;
+
         btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
         const renderItems = (filterText = '') => {
             container.innerHTML = '';
@@ -1536,7 +1570,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     return String(val).toLowerCase().includes(lower);
                 });
             }
-            filteredItems.forEach(item => {
+            
+            const displayItems = filteredItems.slice(0, MAX_ITEMS);
+
+            displayItems.forEach(item => {
                 const value = isObject ? item.cod : item;
                 const label = isObject ? item.name : item;
                 const isSelected = selectedArray.includes(String(value));
@@ -1553,6 +1590,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 container.appendChild(div);
             });
+
+            if (filteredItems.length > MAX_ITEMS) {
+                const limitMsg = document.createElement('div');
+                limitMsg.className = 'p-2 text-xs text-slate-500 text-center border-t border-slate-700 mt-1';
+                limitMsg.textContent = `Exibindo ${MAX_ITEMS} de ${filteredItems.length}. Use a busca.`;
+                container.appendChild(limitMsg);
+            }
+
             if (filteredItems.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
         };
         const updateBtnLabel = () => {
@@ -1569,7 +1614,13 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         renderItems();
         updateBtnLabel();
-        if (searchInput) { searchInput.oninput = (e) => renderItems(e.target.value); searchInput.onclick = (e) => e.stopPropagation(); }
+        if (searchInput) { 
+            searchInput.oninput = (e) => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => renderItems(e.target.value), 300);
+            }; 
+            searchInput.onclick = (e) => e.stopPropagation(); 
+        }
     }
 
     async function initCityFilters() {
@@ -1837,6 +1888,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupBranchMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
+        const MAX_ITEMS = 100;
+        let debounceTimer;
+
         btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
         const renderItems = (filterText = '') => {
             container.innerHTML = '';
@@ -1848,7 +1902,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     return String(val).toLowerCase().includes(lower);
                 });
             }
-            filteredItems.forEach(item => {
+            
+            const displayItems = filteredItems.slice(0, MAX_ITEMS);
+
+            displayItems.forEach(item => {
                 const value = isObject ? item.cod : item;
                 const label = isObject ? item.name : item;
                 const isSelected = selectedArray.includes(String(value));
@@ -1865,6 +1922,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 container.appendChild(div);
             });
+
+            if (filteredItems.length > MAX_ITEMS) {
+                const limitMsg = document.createElement('div');
+                limitMsg.className = 'p-2 text-xs text-slate-500 text-center border-t border-slate-700 mt-1';
+                limitMsg.textContent = `Exibindo ${MAX_ITEMS} de ${filteredItems.length}. Use a busca.`;
+                container.appendChild(limitMsg);
+            }
+
             if (filteredItems.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
         };
         const updateBtnLabel = () => {
@@ -1881,7 +1946,13 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         renderItems();
         updateBtnLabel();
-        if (searchInput) { searchInput.oninput = (e) => renderItems(e.target.value); searchInput.onclick = (e) => e.stopPropagation(); }
+        if (searchInput) { 
+            searchInput.oninput = (e) => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => renderItems(e.target.value), 300);
+            }; 
+            searchInput.onclick = (e) => e.stopPropagation(); 
+        }
     }
 
     async function loadBranchView() {
