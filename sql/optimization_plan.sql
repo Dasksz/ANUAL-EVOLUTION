@@ -28,6 +28,18 @@ CREATE INDEX IF NOT EXISTS idx_history_codfor ON public.data_history (codfor);
 CREATE INDEX IF NOT EXISTS idx_history_codusur ON public.data_history (codusur);
 CREATE INDEX IF NOT EXISTS idx_history_codsupervisor ON public.data_history (codsupervisor);
 CREATE INDEX IF NOT EXISTS idx_history_produto ON public.data_history (produto);
+-- Optimized Indexes for Summary Table (V2)
+CREATE INDEX IF NOT EXISTS idx_summary_ano_filial ON public.data_summary (ano, filial);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_cidade ON public.data_summary (ano, cidade);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_superv ON public.data_summary (ano, superv);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_nome ON public.data_summary (ano, nome);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_codfor ON public.data_summary (ano, codfor);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_tipovenda ON public.data_summary (ano, tipovenda);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_codcli ON public.data_summary (ano, codcli);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_ramo ON public.data_summary (ano, ramo);
+-- Optimized Indexes for Clients
+CREATE INDEX IF NOT EXISTS idx_clients_bloqueio_cidade ON public.data_clients (bloqueio, cidade);
+CREATE INDEX IF NOT EXISTS idx_clients_ramo ON public.data_clients (ramo);
 
 CREATE INDEX IF NOT EXISTS idx_detailed_dtped ON public.data_detailed (dtped);
 CREATE INDEX IF NOT EXISTS idx_detailed_filial ON public.data_detailed (filial);
@@ -263,7 +275,7 @@ BEGIN
         CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc
     FROM client_agg;
     
-    CLUSTER public.data_summary USING idx_summary_ano_mes_filial;
+    CLUSTER public.data_summary USING idx_summary_ano_filial;
     ANALYZE public.data_summary;
 END;
 $$;
