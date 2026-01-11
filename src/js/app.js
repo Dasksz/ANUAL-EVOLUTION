@@ -999,6 +999,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (age < 60 * 1000) { // Fresh enough (1 min)
                          console.log('SWR: Cache is fresh (<1min), skipping background fetch.');
                          await fetchLastSalesDate();
+                         hideDashboardLoading();
+                         prefetchViews(filters);
                          return;
                     } else {
                         console.log('SWR: Cache is stale, fetching update in background...');
