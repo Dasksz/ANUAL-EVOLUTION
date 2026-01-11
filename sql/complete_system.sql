@@ -93,6 +93,14 @@ BEGIN
     END IF;
 END $$;
 
+-- Add Ramo column if it does not exist (Schema Migration)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_clients' AND column_name = 'ramo') THEN
+        ALTER TABLE public.data_clients ADD COLUMN ramo text;
+    END IF;
+END $$;
+
 -- Add mix_details column if it does not exist (Schema Migration)
 -- Holidays Table
 create table if not exists public.data_holidays (
@@ -1398,7 +1406,7 @@ BEGIN
         SELECT
             filial,
             mes,
-            SUM(CASE WHEN ( IS NOT NULL AND array_length(, 1) > 0) THEN vlvenda WHEN tipovenda IN (''1'', ''9'') THEN vlvenda ELSE 0 END) as faturamento,
+            SUM(CASE WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN vlvenda WHEN tipovenda IN (''1'', ''9'') THEN vlvenda ELSE 0 END) as faturamento,
             SUM(peso) as peso
         FROM public.data_summary
         ' || v_where || '
@@ -1412,11 +1420,11 @@ BEGIN
                 ''faturamento'', faturamento,
                 ''peso'', peso
             ) ORDER BY mes),
-            ''trend_allowed'', ,
-            ''trend_data'', CASE WHEN  THEN
-                 (SELECT json_build_object(''month_index'', mes - 1, ''faturamento'', faturamento * , ''peso'', peso * )
+            ''trend_allowed'', $2,
+            ''trend_data'', CASE WHEN $2 THEN
+                 (SELECT json_build_object(''month_index'', mes - 1, ''faturamento'', faturamento * $3, ''peso'', peso * $3)
                   FROM agg_filial sub
-                  WHERE sub.filial = agg_filial.filial AND sub.mes = ( + 1))
+                  WHERE sub.filial = agg_filial.filial AND sub.mes = ($4 + 1))
             ELSE null END
         ) as data
         FROM agg_filial
