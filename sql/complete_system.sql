@@ -269,14 +269,15 @@ CREATE INDEX IF NOT EXISTS idx_history_codfor_dtped ON public.data_history (codf
 CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
 
 -- Summary Table Targeted Indexes (For Dynamic SQL)
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_superv ON public.data_summary (ano, mes, superv);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_nome ON public.data_summary (ano, mes, nome); -- Vendedor
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_cidade ON public.data_summary (ano, mes, cidade);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_filial ON public.data_summary (ano, mes, filial);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codfor ON public.data_summary (ano, mes, codfor);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_tipovenda ON public.data_summary (ano, mes, tipovenda);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codcli ON public.data_summary (ano, mes, codcli);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_ramo ON public.data_summary (ano, mes, ramo);
+-- V2 Optimized Indexes (Year + Dimension) - Removing Month from prefix
+CREATE INDEX IF NOT EXISTS idx_summary_ano_filial ON public.data_summary (ano, filial);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_cidade ON public.data_summary (ano, cidade);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_superv ON public.data_summary (ano, superv);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_nome ON public.data_summary (ano, nome); -- Vendedor
+CREATE INDEX IF NOT EXISTS idx_summary_ano_codfor ON public.data_summary (ano, codfor);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_tipovenda ON public.data_summary (ano, tipovenda);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_codcli ON public.data_summary (ano, codcli);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_ramo ON public.data_summary (ano, ramo);
 
 -- Cache Filters Indexes
 CREATE INDEX idx_cache_filters_composite ON public.cache_filters (ano, mes, filial, cidade, superv, nome, codfor, tipovenda);
@@ -576,14 +577,25 @@ BEGIN
     -- Drop heavy indexes if they exist
     DROP INDEX IF EXISTS public.idx_summary_main;
 
-    -- Recreate targeted optimized indexes
-    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_superv ON public.data_summary (ano, mes, superv);
-    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_nome ON public.data_summary (ano, mes, nome);
-    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_cidade ON public.data_summary (ano, mes, cidade);
-    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_filial ON public.data_summary (ano, mes, filial);
-    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codfor ON public.data_summary (ano, mes, codfor);
-    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_tipovenda ON public.data_summary (ano, mes, tipovenda);
-    CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codcli ON public.data_summary (ano, mes, codcli);
+    -- Drop legacy inefficient indexes
+    DROP INDEX IF EXISTS public.idx_summary_ano_mes_filial;
+    DROP INDEX IF EXISTS public.idx_summary_ano_mes_cidade;
+    DROP INDEX IF EXISTS public.idx_summary_ano_mes_superv;
+    DROP INDEX IF EXISTS public.idx_summary_ano_mes_nome;
+    DROP INDEX IF EXISTS public.idx_summary_ano_mes_codfor;
+    DROP INDEX IF EXISTS public.idx_summary_ano_mes_tipovenda;
+    DROP INDEX IF EXISTS public.idx_summary_ano_mes_codcli;
+    DROP INDEX IF EXISTS public.idx_summary_ano_mes_ramo;
+
+    -- Recreate targeted optimized indexes (v2)
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_filial ON public.data_summary (ano, filial);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_cidade ON public.data_summary (ano, cidade);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_superv ON public.data_summary (ano, superv);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_nome ON public.data_summary (ano, nome);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_codfor ON public.data_summary (ano, codfor);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_tipovenda ON public.data_summary (ano, tipovenda);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_codcli ON public.data_summary (ano, codcli);
+    CREATE INDEX IF NOT EXISTS idx_summary_ano_ramo ON public.data_summary (ano, ramo);
     
     RETURN 'Banco de dados otimizado com sucesso! Índices reconstruídos.';
 EXCEPTION WHEN OTHERS THEN
