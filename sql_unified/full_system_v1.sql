@@ -297,9 +297,16 @@ END $$;
 -- Define Secure Policies
 
 -- Profiles
+DROP POLICY IF EXISTS "Profiles Select" ON public.profiles;
 CREATE POLICY "Profiles Select" ON public.profiles FOR SELECT USING ((select auth.uid()) = id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Profiles Insert" ON public.profiles;
 CREATE POLICY "Profiles Insert" ON public.profiles FOR INSERT WITH CHECK ((select auth.uid()) = id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Profiles Update" ON public.profiles;
 CREATE POLICY "Profiles Update" ON public.profiles FOR UPDATE USING ((select auth.uid()) = id OR public.is_admin()) WITH CHECK ((select auth.uid()) = id OR public.is_admin());
+
+DROP POLICY IF EXISTS "Profiles Delete" ON public.profiles;
 CREATE POLICY "Profiles Delete" ON public.profiles FOR DELETE USING (public.is_admin());
 
 -- Config City Branches & Dimensions
@@ -308,16 +315,28 @@ DECLARE t text;
 BEGIN
     FOR t IN SELECT unnest(ARRAY['config_city_branches', 'dim_supervisores', 'dim_vendedores', 'dim_fornecedores'])
     LOOP
+        EXECUTE format('DROP POLICY IF EXISTS "Unified Read Access" ON public.%I', t);
         EXECUTE format('CREATE POLICY "Unified Read Access" ON public.%I FOR SELECT USING (public.is_admin() OR public.is_approved())', t);
+
+        EXECUTE format('DROP POLICY IF EXISTS "Admin Insert" ON public.%I', t);
         EXECUTE format('CREATE POLICY "Admin Insert" ON public.%I FOR INSERT WITH CHECK (public.is_admin())', t);
+
+        EXECUTE format('DROP POLICY IF EXISTS "Admin Update" ON public.%I', t);
         EXECUTE format('CREATE POLICY "Admin Update" ON public.%I FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin())', t);
+
+        EXECUTE format('DROP POLICY IF EXISTS "Admin Delete" ON public.%I', t);
         EXECUTE format('CREATE POLICY "Admin Delete" ON public.%I FOR DELETE USING (public.is_admin())', t);
     END LOOP;
 END $$;
 
 -- Holidays Policies
+DROP POLICY IF EXISTS "Unified Read Access" ON public.data_holidays;
 CREATE POLICY "Unified Read Access" ON public.data_holidays FOR SELECT USING (public.is_approved());
+
+DROP POLICY IF EXISTS "Admin Insert" ON public.data_holidays;
 CREATE POLICY "Admin Insert" ON public.data_holidays FOR INSERT WITH CHECK (public.is_admin());
+
+DROP POLICY IF EXISTS "Admin Delete" ON public.data_holidays;
 CREATE POLICY "Admin Delete" ON public.data_holidays FOR DELETE USING (public.is_admin());
 
 -- Data Tables (Detailed, History, Clients, Summary, Cache)
@@ -327,10 +346,17 @@ BEGIN
     FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_detailed', 'data_history', 'data_clients', 'data_summary', 'cache_filters')
     LOOP
         -- Read: Approved Users
+        EXECUTE format('DROP POLICY IF EXISTS "Unified Read Access" ON public.%I', t);
         EXECUTE format('CREATE POLICY "Unified Read Access" ON public.%I FOR SELECT USING (public.is_approved());', t);
+
         -- Write: Admins Only
+        EXECUTE format('DROP POLICY IF EXISTS "Admin Insert" ON public.%I', t);
         EXECUTE format('CREATE POLICY "Admin Insert" ON public.%I FOR INSERT WITH CHECK (public.is_admin());', t);
+
+        EXECUTE format('DROP POLICY IF EXISTS "Admin Update" ON public.%I', t);
         EXECUTE format('CREATE POLICY "Admin Update" ON public.%I FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());', t);
+
+        EXECUTE format('DROP POLICY IF EXISTS "Admin Delete" ON public.%I', t);
         EXECUTE format('CREATE POLICY "Admin Delete" ON public.%I FOR DELETE USING (public.is_admin());', t);
     END LOOP;
 END $$;
