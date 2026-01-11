@@ -779,7 +779,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (e) { console.warn('Cache error:', e); }
 
-        const { data, error } = await supabase.rpc('get_dashboard_filters_optimized', currentFilters);
+        const { data, error } = await supabase.rpc('get_dashboard_filters', currentFilters);
         if (error) {
             if (retryCount < 1) {
                  await new Promise(r => setTimeout(r, 1000));
@@ -933,24 +933,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleFilterChange = async () => {
         const filters = getCurrentFilters();
         clearTimeout(filterDebounceTimer);
-
         filterDebounceTimer = setTimeout(async () => {
             showDashboardLoading();
-
-            // --- ALTERAÇÃO AQUI: TÉCNICA DE PARALELISMO ---
-            // Dispara ambos os pedidos ao mesmo tempo usando Promise.all
-            const filtersPromise = loadFilters(filters).catch(err => console.error("Filter error:", err));
-            const dataPromise = loadMainDashboardData().catch(err => console.error("Data error:", err));
-
-            // Espera que ambos terminem, mas eles correm em paralelo
-            await Promise.all([filtersPromise, dataPromise]);
-
-            if (!cityView.classList.contains('hidden')) {
-                currentCityPage = 0;
-                currentCityInactivePage = 0;
-                await loadCityView();
-            }
-            // -----------------------------------------------
+            try { await loadFilters(filters); } catch (err) { console.error("Failed to load filters:", err); }
+            try { await loadMainDashboardData(); } catch (err) { console.error("Failed to load dashboard data:", err); }
+            if (!cityView.classList.contains('hidden')) { currentCityPage = 0; currentCityInactivePage = 0; await loadCityView(); }
         }, 500);
     };
     anoFilter.onchange = handleFilterChange;
@@ -1667,7 +1654,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function initCityFilters() {
-         const { data: filterData } = await supabase.rpc('get_dashboard_filters_optimized', { p_ano: 'todos' });
+         const { data: filterData } = await supabase.rpc('get_dashboard_filters', { p_ano: 'todos' });
          if (!filterData) return;
 
          if (filterData.anos && cityAnoFilter) {
@@ -1856,7 +1843,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     async function initBranchFilters() {
-         const { data: filterData } = await supabase.rpc('get_dashboard_filters_optimized', { p_ano: 'todos' });
+         const { data: filterData } = await supabase.rpc('get_dashboard_filters', { p_ano: 'todos' });
          if (!filterData) return;
 
          // Years
