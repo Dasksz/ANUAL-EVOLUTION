@@ -209,9 +209,12 @@ CREATE INDEX IF NOT EXISTS idx_history_codfor_dtped ON public.data_history (codf
 CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
 CREATE INDEX IF NOT EXISTS idx_clients_bloqueio_cidade ON public.data_clients (bloqueio, cidade);
 CREATE INDEX IF NOT EXISTS idx_clients_ramo ON public.data_clients (ramo);
+CREATE INDEX IF NOT EXISTS idx_clients_busca ON public.data_clients (codigo_cliente, rca1, cidade);
 
 -- Summary Table Targeted Indexes (For Dynamic SQL)
 -- V2 Optimized Indexes (Year + Dimension) - Removing Month from prefix
+CREATE INDEX IF NOT EXISTS idx_summary_composite_main ON public.data_summary (ano, mes, filial, cidade);
+CREATE INDEX IF NOT EXISTS idx_summary_comercial ON public.data_summary (superv, nome, filial);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_filial ON public.data_summary (ano, filial);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_cidade ON public.data_summary (ano, cidade);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_superv ON public.data_summary (ano, superv);
@@ -554,6 +557,8 @@ BEGIN
     DROP INDEX IF EXISTS public.idx_summary_ano_mes_ramo;
 
     -- Recreate targeted optimized indexes (v2)
+    CREATE INDEX IF NOT EXISTS idx_summary_composite_main ON public.data_summary (ano, mes, filial, cidade);
+    CREATE INDEX IF NOT EXISTS idx_summary_comercial ON public.data_summary (superv, nome, filial);
     CREATE INDEX IF NOT EXISTS idx_summary_ano_filial ON public.data_summary (ano, filial);
     CREATE INDEX IF NOT EXISTS idx_summary_ano_cidade ON public.data_summary (ano, cidade);
     CREATE INDEX IF NOT EXISTS idx_summary_ano_superv ON public.data_summary (ano, superv);
@@ -1195,7 +1200,10 @@ BEGIN
     )
     SELECT
         (SELECT cnt FROM count_cte),
-        json_agg(json_build_object(''Código'', pc.codcli, ''fantasia'', pc.fantasia, ''razaoSocial'', pc.razaosocial, ''totalFaturamento'', pc.total_fat, ''cidade'', pc.cidade, ''bairro'', pc.bairro, ''rca1'', pc.rca1) ORDER BY pc.total_fat DESC)
+        json_build_object(
+            ''cols'', json_build_array(''Código'', ''fantasia'', ''razaoSocial'', ''totalFaturamento'', ''cidade'', ''bairro'', ''rca1''),
+            ''rows'', COALESCE(json_agg(json_build_array(pc.codcli, pc.fantasia, pc.razaosocial, pc.total_fat, pc.cidade, pc.bairro, pc.rca1) ORDER BY pc.total_fat DESC), ''[]''::json)
+        )
     FROM paginated_clients pc;
     ';
 
@@ -1221,16 +1229,19 @@ BEGIN
     )
     SELECT
         (SELECT cnt FROM count_inactive),
-        json_agg(json_build_object(''Código'', pi.codigo_cliente, ''fantasia'', pi.fantasia, ''razaoSocial'', pi.razaosocial, ''cidade'', pi.cidade, ''bairro'', pi.bairro, ''ultimaCompra'', pi.ultimacompra, ''rca1'', pi.rca1) ORDER BY pi.ultimacompra DESC NULLS LAST)
+        json_build_object(
+            ''cols'', json_build_array(''Código'', ''fantasia'', ''razaoSocial'', ''cidade'', ''bairro'', ''ultimaCompra'', ''rca1''),
+            ''rows'', COALESCE(json_agg(json_build_array(pi.codigo_cliente, pi.fantasia, pi.razaosocial, pi.cidade, pi.bairro, pi.ultimacompra, pi.rca1) ORDER BY pi.ultimacompra DESC NULLS LAST), ''[]''::json)
+        )
     FROM paginated_inactive pi;
     ';
 
     EXECUTE v_sql INTO v_total_inactive_count, v_inactive_clients USING p_inactive_limit, p_inactive_page;
 
     RETURN json_build_object(
-        'active_clients', COALESCE(v_active_clients, '[]'::json),
+        'active_clients', v_active_clients, -- Already in cols/rows object format from subquery
         'total_active_count', COALESCE(v_total_active_count, 0),
-        'inactive_clients', COALESCE(v_inactive_clients, '[]'::json),
+        'inactive_clients', v_inactive_clients,
         'total_inactive_count', COALESCE(v_total_inactive_count, 0)
     );
 END;

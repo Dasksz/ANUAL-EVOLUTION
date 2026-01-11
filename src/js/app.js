@@ -956,7 +956,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const age = Date.now() - cachedEntry.timestamp;
                     if (age < CACHE_TTL) {
                         if (!isBackground) console.log('Serving from Cache (Instant)');
-                        return { data: cachedEntry.data, source: 'cache' };
+                        return { data: cachedEntry.data, source: 'cache', timestamp: cachedEntry.timestamp };
+                    } else {
+                         return { data: cachedEntry.data, source: 'stale', timestamp: cachedEntry.timestamp };
                     }
                 }
             } catch (e) { console.warn('Cache error:', e); }
@@ -982,23 +984,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadMainDashboardData(forceRefresh = false) {
         const filters = getCurrentFilters();
+        const cacheKey = generateCacheKey('dashboard_data', filters);
         
-        showDashboardLoading();
+        // 1. Stale-While-Revalidate: Try Cache & Render Immediately
+        if (!forceRefresh) {
+            try {
+                const cachedEntry = await getFromCache(cacheKey);
+                if (cachedEntry && cachedEntry.data) {
+                    console.log('SWR: Rendering cached data immediately...');
+                    renderDashboard(cachedEntry.data);
+                    lastDashboardData = cachedEntry.data;
 
-        // Parallel fetch for dashboard data and last sales date (if not already cached/fetched)
-        // Note: fetchLastSalesDate updates the global variable
+                    const age = Date.now() - cachedEntry.timestamp;
+                    if (age < 60 * 1000) { // Fresh enough (1 min)
+                         console.log('SWR: Cache is fresh (<1min), skipping background fetch.');
+                         await fetchLastSalesDate();
+                         return;
+                    } else {
+                        console.log('SWR: Cache is stale, fetching update in background...');
+                        showDashboardLoading(); // Optional: show loading indicator non-intrusively
+                    }
+                } else {
+                    showDashboardLoading();
+                }
+            } catch (e) {
+                console.warn('SWR Cache Error:', e);
+                showDashboardLoading();
+            }
+        } else {
+            showDashboardLoading();
+        }
+
+        // 2. Network Fetch (Background or Foreground)
         const [dashboardResult, _] = await Promise.all([
-            fetchDashboardData(filters, false, forceRefresh),
+            fetchDashboardData(filters, false, true), // Force network fetch logic reusing existing func but we handle flow here
             fetchLastSalesDate()
         ]);
 
-        const { data, source } = dashboardResult;
+        const { data, error } = dashboardResult;
         
-        if (data) {
+        if (data && !error) {
+            console.log('SWR: Updated with fresh data.');
             lastDashboardData = data;
             renderDashboard(data);
 
-            // Trigger prefetch logic
+            // Prefetch Next
             prefetchViews(filters);
         }
         
@@ -1685,6 +1715,22 @@ document.addEventListener('DOMContentLoaded', () => {
         totalActiveClients = data.total_active_count || 0;
         totalInactiveClients = data.total_inactive_count || 0;
 
+        // Helper to map array rows to object based on cols
+        const mapRows = (dataObj) => {
+             if (!dataObj || !dataObj.cols || !dataObj.rows) return dataObj || []; // Fallback for legacy format
+             const cols = dataObj.cols;
+             return dataObj.rows.map(row => {
+                 const obj = {};
+                 cols.forEach((col, idx) => {
+                     obj[col] = row[idx];
+                 });
+                 return obj;
+             });
+        };
+
+        const activeClients = Array.isArray(data.active_clients) ? data.active_clients : mapRows(data.active_clients);
+        const inactiveClients = Array.isArray(data.inactive_clients) ? data.inactive_clients : mapRows(data.inactive_clients);
+
         const renderTable = (bodyId, items) => {
             const body = document.getElementById(bodyId);
             if (items && items.length > 0) {
@@ -1704,8 +1750,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        renderTable('city-active-detail-table-body', data.active_clients);
-        renderTable('city-inactive-detail-table-body', data.inactive_clients);
+        renderTable('city-active-detail-table-body', activeClients);
+        renderTable('city-inactive-detail-table-body', inactiveClients);
 
         renderCityPaginationControls();
         renderCityInactivePaginationControls();

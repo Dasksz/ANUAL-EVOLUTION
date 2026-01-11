@@ -5,7 +5,15 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     global: {
         fetch: (url, options) => {
-            return fetch(url, { ...options, signal: AbortSignal.timeout(600000) }); // 10 minutes timeout
+            const newOptions = {
+                ...options,
+                signal: AbortSignal.timeout(600000), // 10 minutes timeout
+                headers: {
+                    ...options.headers,
+                    'Cache-Control': 'max-age=60' // Cache de 1 min em rede
+                }
+            };
+            return fetch(url, newOptions);
         }
     }
 });
