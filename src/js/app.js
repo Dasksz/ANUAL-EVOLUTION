@@ -387,6 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedVendedores = [];
         selectedFornecedores = [];
         selectedTiposVenda = [];
+        selectedRedes = [];
 
         // Note: loadFilters will re-render the dropdowns with checked status based on these empty arrays,
         // effectively clearing the checkboxes visually.
@@ -649,6 +650,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const fornecedorFilterSearch = document.getElementById('fornecedor-filter-search');
     const tipovendaFilterBtn = document.getElementById('tipovenda-filter-btn');
     const tipovendaFilterDropdown = document.getElementById('tipovenda-filter-dropdown');
+    const redeFilterBtn = document.getElementById('rede-filter-btn');
+    const redeFilterDropdown = document.getElementById('rede-filter-dropdown');
+    const redeFilterList = document.getElementById('rede-filter-list');
+    const redeFilterSearch = document.getElementById('rede-filter-search');
 
     // State
     let currentCityPage = 0;
@@ -664,6 +669,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedVendedores = [];
     let selectedFornecedores = [];
     let selectedTiposVenda = [];
+    let selectedRedes = [];
     let currentCharts = {};
     let holidays = [];
     let lastSalesDate = null;
@@ -671,7 +677,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastDashboardData = null;
 
     // Prefetch State
-    let availableFiltersState = { filiais: [], supervisors: [], cidades: [], vendedores: [], fornecedores: [], tipos_venda: [] };
+    let availableFiltersState = { filiais: [], supervisors: [], cidades: [], vendedores: [], fornecedores: [], tipos_venda: [], redes: [] };
     let prefetchQueue = [];
     let isPrefetching = false;
 
@@ -751,7 +757,8 @@ document.addEventListener('DOMContentLoaded', () => {
             p_fornecedor: selectedFornecedores,
             p_ano: anoFilter.value,
             p_mes: mesFilter.value,
-            p_tipovenda: selectedTiposVenda
+            p_tipovenda: selectedTiposVenda,
+            p_rede: selectedRedes
         };
     }
 
@@ -841,6 +848,7 @@ document.addEventListener('DOMContentLoaded', () => {
         availableFiltersState.vendedores = data.vendedores || [];
         availableFiltersState.fornecedores = data.fornecedores || []; // Array of objects
         availableFiltersState.tipos_venda = data.tipos_venda || [];
+        availableFiltersState.redes = data.redes || [];
 
         const updateSingleSelect = (element, items) => {
             const currentVal = element.value;
@@ -880,14 +888,18 @@ document.addEventListener('DOMContentLoaded', () => {
         setupMultiSelect(vendedorFilterBtn, vendedorFilterDropdown, vendedorFilterList, data.vendedores, selectedVendedores, () => {}, false, vendedorFilterSearch);
         setupMultiSelect(fornecedorFilterBtn, fornecedorFilterDropdown, fornecedorFilterList, data.fornecedores, selectedFornecedores, () => {}, true, fornecedorFilterSearch);
         setupMultiSelect(tipovendaFilterBtn, tipovendaFilterDropdown, tipovendaFilterDropdown, data.tipos_venda, selectedTiposVenda, () => {});
+
+        // Rede Logic with "Com Rede" and "Sem Rede"
+        const redes = ['Com Rede', 'Sem Rede', ...(data.redes || [])];
+        setupMultiSelect(redeFilterBtn, redeFilterDropdown, redeFilterList, redes, selectedRedes, () => {}, false, redeFilterSearch);
     }
 
     document.addEventListener('click', (e) => {
-        const dropdowns = [filialFilterDropdown, cidadeFilterDropdown, supervisorFilterDropdown, vendedorFilterDropdown, fornecedorFilterDropdown, tipovendaFilterDropdown];
-        const btns = [filialFilterBtn, cidadeFilterBtn, supervisorFilterBtn, vendedorFilterBtn, fornecedorFilterBtn, tipovendaFilterBtn];
+        const dropdowns = [filialFilterDropdown, cidadeFilterDropdown, supervisorFilterDropdown, vendedorFilterDropdown, fornecedorFilterDropdown, tipovendaFilterDropdown, redeFilterDropdown];
+        const btns = [filialFilterBtn, cidadeFilterBtn, supervisorFilterBtn, vendedorFilterBtn, fornecedorFilterBtn, tipovendaFilterBtn, redeFilterBtn];
         let anyClosed = false;
         dropdowns.forEach((dd, idx) => {
-            if (!dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) {
+            if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) {
                 dd.classList.add('hidden');
                 anyClosed = true;
             }
@@ -1062,6 +1074,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // 6. Tipos Venda
         availableFiltersState.tipos_venda.forEach(v => addToPrefetchQueue(`Tipo: ${v}`, { ...baseFilters, p_tipovenda: [v] }));
         
+        // 7. Redes
+        availableFiltersState.redes.forEach(v => addToPrefetchQueue(`Rede: ${v}`, { ...baseFilters, p_rede: [v] }));
+
         console.log(`[Background] ${prefetchQueue.length} filtros agendados.`);
         processQueue();
     }
@@ -1449,6 +1464,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const cityFornecedorFilterDropdown = document.getElementById('city-fornecedor-filter-dropdown');
     const cityFornecedorFilterList = document.getElementById('city-fornecedor-filter-list');
     const cityFornecedorFilterSearch = document.getElementById('city-fornecedor-filter-search');
+    const cityRedeFilterBtn = document.getElementById('city-rede-filter-btn');
+    const cityRedeFilterDropdown = document.getElementById('city-rede-filter-dropdown');
+    const cityRedeFilterList = document.getElementById('city-rede-filter-list');
+    const cityRedeFilterSearch = document.getElementById('city-rede-filter-search');
     const cityTipovendaFilterBtn = document.getElementById('city-tipovenda-filter-btn');
     const cityTipovendaFilterDropdown = document.getElementById('city-tipovenda-filter-dropdown');
     const cityClearFiltersBtn = document.getElementById('city-clear-filters-btn');
@@ -1459,6 +1478,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let citySelectedVendedores = [];
     let citySelectedFornecedores = [];
     let citySelectedTiposVenda = [];
+    let citySelectedRedes = [];
 
     let cityFilterDebounceTimer;
     const handleCityFilterChange = () => {
@@ -1483,13 +1503,14 @@ document.addEventListener('DOMContentLoaded', () => {
              citySelectedVendedores = [];
              citySelectedFornecedores = [];
              citySelectedTiposVenda = [];
+             citySelectedRedes = [];
              initCityFilters().then(loadCityView);
         });
     }
 
     document.addEventListener('click', (e) => {
-        const dropdowns = [cityFilialFilterDropdown, cityCidadeFilterDropdown, citySupervisorFilterDropdown, cityVendedorFilterDropdown, cityFornecedorFilterDropdown, cityTipovendaFilterDropdown];
-        const btns = [cityFilialFilterBtn, cityCidadeFilterBtn, citySupervisorFilterBtn, cityVendedorFilterBtn, cityFornecedorFilterBtn, cityTipovendaFilterBtn];
+        const dropdowns = [cityFilialFilterDropdown, cityCidadeFilterDropdown, citySupervisorFilterDropdown, cityVendedorFilterDropdown, cityFornecedorFilterDropdown, cityTipovendaFilterDropdown, cityRedeFilterDropdown];
+        const btns = [cityFilialFilterBtn, cityCidadeFilterBtn, citySupervisorFilterBtn, cityVendedorFilterBtn, cityFornecedorFilterBtn, cityTipovendaFilterBtn, cityRedeFilterBtn];
         let anyClosed = false;
         dropdowns.forEach((dd, idx) => {
             if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
@@ -1580,6 +1601,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setupCityMultiSelect(cityVendedorFilterBtn, cityVendedorFilterDropdown, cityVendedorFilterList, filterData.vendedores, citySelectedVendedores, cityVendedorFilterSearch);
         setupCityMultiSelect(cityFornecedorFilterBtn, cityFornecedorFilterDropdown, cityFornecedorFilterList, filterData.fornecedores, citySelectedFornecedores, cityFornecedorFilterSearch, true);
         setupCityMultiSelect(cityTipovendaFilterBtn, cityTipovendaFilterDropdown, cityTipovendaFilterDropdown, filterData.tipos_venda, citySelectedTiposVenda);
+
+        const redes = ['Com Rede', 'Sem Rede', ...(filterData.redes || [])];
+        setupCityMultiSelect(cityRedeFilterBtn, cityRedeFilterDropdown, cityRedeFilterList, redes, citySelectedRedes, cityRedeFilterSearch);
     }
 
     async function loadCityView() {
@@ -1592,6 +1616,7 @@ document.addEventListener('DOMContentLoaded', () => {
             p_vendedor: citySelectedVendedores.length > 0 ? citySelectedVendedores : null,
             p_fornecedor: citySelectedFornecedores.length > 0 ? citySelectedFornecedores : null,
             p_tipovenda: citySelectedTiposVenda.length > 0 ? citySelectedTiposVenda : null,
+            p_rede: citySelectedRedes.length > 0 ? citySelectedRedes : null,
             p_ano: cityAnoFilter.value === 'todos' ? null : cityAnoFilter.value,
             p_mes: cityMesFilter.value === '' ? null : cityMesFilter.value,
             p_page: currentCityPage,
@@ -1654,6 +1679,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const branchFornecedorFilterDropdown = document.getElementById('branch-fornecedor-filter-dropdown');
     const branchFornecedorFilterList = document.getElementById('branch-fornecedor-filter-list');
     const branchFornecedorFilterSearch = document.getElementById('branch-fornecedor-filter-search');
+    const branchRedeFilterBtn = document.getElementById('branch-rede-filter-btn');
+    const branchRedeFilterDropdown = document.getElementById('branch-rede-filter-dropdown');
+    const branchRedeFilterList = document.getElementById('branch-rede-filter-list');
+    const branchRedeFilterSearch = document.getElementById('branch-rede-filter-search');
     const branchTipovendaFilterBtn = document.getElementById('branch-tipovenda-filter-btn');
     const branchTipovendaFilterDropdown = document.getElementById('branch-tipovenda-filter-dropdown');
     const branchClearFiltersBtn = document.getElementById('branch-clear-filters-btn');
@@ -1666,6 +1695,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let branchSelectedVendedores = [];
     let branchSelectedFornecedores = [];
     let branchSelectedTiposVenda = [];
+    let branchSelectedRedes = [];
     let currentBranchChartMode = 'faturamento';
 
     // Filter Change Handler
@@ -1686,8 +1716,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.addEventListener('click', (e) => {
-        const dropdowns = [branchFilialFilterDropdown, branchCidadeFilterDropdown, branchSupervisorFilterDropdown, branchVendedorFilterDropdown, branchFornecedorFilterDropdown, branchTipovendaFilterDropdown];
-        const btns = [branchFilialFilterBtn, branchCidadeFilterBtn, branchSupervisorFilterBtn, branchVendedorFilterBtn, branchFornecedorFilterBtn, branchTipovendaFilterBtn];
+        const dropdowns = [branchFilialFilterDropdown, branchCidadeFilterDropdown, branchSupervisorFilterDropdown, branchVendedorFilterDropdown, branchFornecedorFilterDropdown, branchTipovendaFilterDropdown, branchRedeFilterDropdown];
+        const btns = [branchFilialFilterBtn, branchCidadeFilterBtn, branchSupervisorFilterBtn, branchVendedorFilterBtn, branchFornecedorFilterBtn, branchTipovendaFilterBtn, branchRedeFilterBtn];
         let anyClosed = false;
         dropdowns.forEach((dd, idx) => {
             if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) {
@@ -1709,6 +1739,7 @@ document.addEventListener('DOMContentLoaded', () => {
          branchSelectedVendedores = [];
          branchSelectedFornecedores = [];
          branchSelectedTiposVenda = [];
+         branchSelectedRedes = [];
          // Re-init filters to update UI
          initBranchFilters().then(loadBranchView);
     });
@@ -1747,6 +1778,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setupBranchMultiSelect(branchVendedorFilterBtn, branchVendedorFilterDropdown, branchVendedorFilterList, filterData.vendedores, branchSelectedVendedores, branchVendedorFilterSearch);
         setupBranchMultiSelect(branchFornecedorFilterBtn, branchFornecedorFilterDropdown, branchFornecedorFilterList, filterData.fornecedores, branchSelectedFornecedores, branchFornecedorFilterSearch, true);
         setupBranchMultiSelect(branchTipovendaFilterBtn, branchTipovendaFilterDropdown, branchTipovendaFilterDropdown, filterData.tipos_venda, branchSelectedTiposVenda);
+
+        const redes = ['Com Rede', 'Sem Rede', ...(filterData.redes || [])];
+        setupBranchMultiSelect(branchRedeFilterBtn, branchRedeFilterDropdown, branchRedeFilterList, redes, branchSelectedRedes, branchRedeFilterSearch);
     }
     
     // Specific setup for Branch Filter to enforce 2 selections
@@ -1870,7 +1904,8 @@ document.addEventListener('DOMContentLoaded', () => {
             p_supervisor: branchSelectedSupervisores.length > 0 ? branchSelectedSupervisores : null,
             p_vendedor: branchSelectedVendedores.length > 0 ? branchSelectedVendedores : null,
             p_fornecedor: branchSelectedFornecedores.length > 0 ? branchSelectedFornecedores : null,
-            p_tipovenda: branchSelectedTiposVenda.length > 0 ? branchSelectedTiposVenda : null
+            p_tipovenda: branchSelectedTiposVenda.length > 0 ? branchSelectedTiposVenda : null,
+            p_rede: branchSelectedRedes.length > 0 ? branchSelectedRedes : null
         };
 
         // Aggregated Fetch (Fast Response)

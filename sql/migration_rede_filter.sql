@@ -1,96 +1,17 @@
 
--- ==============================================================================
--- FAST RESPONSE OPTIMIZATIONS
--- 1. Schema Definitions (Table & Indexes)
--- 2. Materialize Logic into Summary Table
--- 3. Dynamic SQL for Instant Reads
--- 4. Aggregated Branch RPC
--- ==============================================================================
+-- Migration: Add Rede Filter
+-- Description: Adds 'ramo' (Rede) filtering capability to dashboard, city view, and branch view.
 
--- ------------------------------------------------------------------------------
--- 1. SCHEMA DEFINITIONS (DDL)
--- ------------------------------------------------------------------------------
+-- 1. Schema Changes
+ALTER TABLE public.data_summary ADD COLUMN IF NOT EXISTS ramo text;
+ALTER TABLE public.cache_filters ADD COLUMN IF NOT EXISTS rede text;
 
--- Create Summary Table (if not exists)
-CREATE TABLE IF NOT EXISTS public.data_summary (
-    id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-    ano int,
-    mes int,
-    filial text,
-    cidade text,
-    superv text,
-    nome text,
-    codfor text,
-    tipovenda text,
-    codcli text,
-    vlvenda numeric,
-    peso numeric,
-    bonificacao numeric,
-    devolucao numeric,
-    mix_produtos text[],
-    mix_details jsonb, -- Stores product-level values for accurate Mix calculation
-    pre_mix_count int DEFAULT 0,
-    pre_positivacao_val int DEFAULT 0, -- 1 se positivou, 0 se não
-    ramo text, -- ADDED: Rede Filter
-    created_at timestamp with time zone default now()
-);
-
--- Ensure cache_filters has rede column (for safety if running standalone)
-CREATE TABLE IF NOT EXISTS public.cache_filters (
-    id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-    filial text,
-    cidade text,
-    superv text,
-    nome text,
-    codfor text,
-    fornecedor text,
-    tipovenda text,
-    ano int,
-    mes int,
-    rede text,
-    created_at timestamp with time zone default now()
-);
--- Idempotent column add if table exists
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cache_filters' AND column_name = 'rede') THEN
-        ALTER TABLE public.cache_filters ADD COLUMN rede text;
-    END IF;
-END $$;
-
-
--- Ensure RLS is enabled and policies exist (idempotent)
-ALTER TABLE public.data_summary ENABLE ROW LEVEL SECURITY;
-
-DO $$
-BEGIN
-    -- Drop old policies to ensure clean state
-    DROP POLICY IF EXISTS "Read Access Approved" ON public.data_summary;
-    DROP POLICY IF EXISTS "Write Access Admin" ON public.data_summary;
-    DROP POLICY IF EXISTS "Update Access Admin" ON public.data_summary;
-    DROP POLICY IF EXISTS "Delete Access Admin" ON public.data_summary;
-
-    -- Recreate Policies
-    CREATE POLICY "Read Access Approved" ON public.data_summary FOR SELECT USING (public.is_approved());
-    CREATE POLICY "Write Access Admin" ON public.data_summary FOR INSERT WITH CHECK (public.is_admin());
-    CREATE POLICY "Update Access Admin" ON public.data_summary FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
-    CREATE POLICY "Delete Access Admin" ON public.data_summary FOR DELETE USING (public.is_admin());
-END $$;
-
--- Create Indexes for Dynamic SQL & Clustering
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_filial ON public.data_summary (ano, mes, filial);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_cidade ON public.data_summary (ano, mes, cidade);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_superv ON public.data_summary (ano, mes, superv);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_nome ON public.data_summary (ano, mes, nome); -- Vendedor
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codfor ON public.data_summary (ano, mes, codfor);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_tipovenda ON public.data_summary (ano, mes, tipovenda);
-CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_codcli ON public.data_summary (ano, mes, codcli);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_mes_ramo ON public.data_summary (ano, mes, ramo);
+CREATE INDEX IF NOT EXISTS idx_cache_filters_rede_lookup ON public.cache_filters (filial, cidade, superv, ano, rede);
 
+-- 2. Update Functions
 
--- ------------------------------------------------------------------------------
--- 2. OPTIMIZED REFRESH SUMMARY (Bake Logic In)
--- ------------------------------------------------------------------------------
+-- 2.1 Refresh Cache Summary (Populate ramo)
 CREATE OR REPLACE FUNCTION refresh_cache_summary()
 RETURNS void
 LANGUAGE plpgsql
@@ -175,9 +96,205 @@ BEGIN
 END;
 $$;
 
--- ------------------------------------------------------------------------------
--- 3. OPTIMIZED GET MAIN DASHBOARD DATA (Dynamic SQL)
--- ------------------------------------------------------------------------------
+-- 2.2 Refresh Cache Filters (Populate rede)
+CREATE OR REPLACE FUNCTION refresh_cache_filters()
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+    SET LOCAL statement_timeout = '600s';
+
+    TRUNCATE TABLE public.cache_filters;
+    INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes, rede)
+    SELECT DISTINCT
+        t.filial,
+        COALESCE(t.cidade, c.cidade) as cidade,
+        ds.nome as superv,
+        COALESCE(dv.nome, c.nomecliente) as nome,
+        t.codfor,
+        df.nome as fornecedor,
+        t.tipovenda,
+        t.yr,
+        t.mth,
+        c.ramo as rede
+    FROM (
+        SELECT filial, cidade, codsupervisor, codusur as codvendedor, codfor, tipovenda, codcli,
+               EXTRACT(YEAR FROM dtped)::int as yr, EXTRACT(MONTH FROM dtped)::int as mth
+        FROM public.data_detailed
+        UNION ALL
+        SELECT filial, cidade, codsupervisor, codusur as codvendedor, codfor, tipovenda, codcli,
+               EXTRACT(YEAR FROM dtped)::int as yr, EXTRACT(MONTH FROM dtped)::int as mth
+        FROM public.data_history
+    ) t
+    LEFT JOIN public.data_clients c ON t.codcli = c.codigo_cliente
+    LEFT JOIN public.dim_supervisores ds ON t.codsupervisor = ds.codigo
+    LEFT JOIN public.dim_vendedores dv ON t.codvendedor = dv.codigo
+    LEFT JOIN public.dim_fornecedores df ON t.codfor = df.codigo;
+END;
+$$;
+
+-- 2.3 Get Dashboard Filters (Return redes)
+CREATE OR REPLACE FUNCTION get_dashboard_filters(
+    p_filial text[] default null,
+    p_cidade text[] default null,
+    p_supervisor text[] default null,
+    p_vendedor text[] default null,
+    p_fornecedor text[] default null,
+    p_ano text default null,
+    p_mes text default null,
+    p_tipovenda text[] default null
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+DECLARE
+    v_supervisors text[];
+    v_vendedores text[];
+    v_fornecedores json;
+    v_cidades text[];
+    v_filiais text[];
+    v_anos int[];
+    v_tipos_venda text[];
+    v_redes text[];
+    v_filter_year int;
+    v_filter_month int;
+BEGIN
+    SET LOCAL statement_timeout = '300s';
+
+    IF p_ano IS NOT NULL AND p_ano != '' AND p_ano != 'todos' THEN
+        v_filter_year := p_ano::int;
+    ELSE
+        IF p_ano = 'todos' THEN v_filter_year := NULL;
+        ELSE
+            SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_filter_year FROM public.cache_filters;
+        END IF;
+    END IF;
+    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN v_filter_month := p_mes::int + 1; END IF;
+
+    -- 1. Supervisors
+    SELECT ARRAY(SELECT DISTINCT superv FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        AND superv IS NOT NULL AND superv != '' AND superv != 'null'
+        ORDER BY superv
+    ) INTO v_supervisors;
+
+    -- 2. Vendedores
+    SELECT ARRAY(SELECT DISTINCT nome FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        AND nome IS NOT NULL AND nome != '' AND nome != 'null'
+        ORDER BY nome
+    ) INTO v_vendedores;
+
+    -- 3. Cidades
+    SELECT ARRAY(SELECT DISTINCT cidade FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        AND cidade IS NOT NULL AND cidade != '' AND cidade != 'null'
+        ORDER BY cidade
+    ) INTO v_cidades;
+
+    -- 4. Filiais
+    SELECT ARRAY(SELECT DISTINCT filial FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        AND filial IS NOT NULL AND filial != '' AND filial != 'null'
+        ORDER BY filial
+    ) INTO v_filiais;
+
+    -- 5. Tipos de Venda
+    SELECT ARRAY(SELECT DISTINCT tipovenda FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        AND tipovenda IS NOT NULL AND tipovenda != '' AND tipovenda != 'null'
+        ORDER BY tipovenda
+    ) INTO v_tipos_venda;
+
+    -- 6. Fornecedores
+    SELECT json_agg(json_build_object('cod', codfor, 'name', CASE WHEN codfor = '707' THEN 'Extrusados' WHEN codfor = '708' THEN 'Ñ Extrusados' WHEN codfor = '752' THEN 'Torcida' WHEN codfor = '1119' THEN 'Foods' ELSE fornecedor END) ORDER BY CASE WHEN codfor = '707' THEN 'Extrusados' WHEN codfor = '708' THEN 'Ñ Extrusados' WHEN codfor = '752' THEN 'Torcida' WHEN codfor = '1119' THEN 'Foods' ELSE fornecedor END) INTO v_fornecedores
+    FROM (
+        SELECT DISTINCT codfor, fornecedor FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        AND codfor IS NOT NULL
+    ) t;
+
+    -- 7. Redes
+    SELECT ARRAY(SELECT DISTINCT rede FROM public.cache_filters WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        AND rede IS NOT NULL AND rede != '' AND rede != 'null' AND rede != 'N/A' AND rede != 'N/D'
+        ORDER BY rede
+    ) INTO v_redes;
+
+    -- 8. Anos
+    SELECT ARRAY(SELECT DISTINCT ano FROM public.cache_filters WHERE
+        (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR array_length(p_cidade, 1) IS NULL OR cidade = ANY(p_cidade))
+        AND (p_supervisor IS NULL OR array_length(p_supervisor, 1) IS NULL OR superv = ANY(p_supervisor))
+        AND (p_vendedor IS NULL OR array_length(p_vendedor, 1) IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR array_length(p_fornecedor, 1) IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR array_length(p_tipovenda, 1) IS NULL OR tipovenda = ANY(p_tipovenda))
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        ORDER BY ano DESC
+    ) INTO v_anos;
+
+    RETURN json_build_object(
+        'supervisors', COALESCE(v_supervisors, '{}'),
+        'vendedores', COALESCE(v_vendedores, '{}'),
+        'fornecedores', COALESCE(v_fornecedores, '[]'::json),
+        'cidades', COALESCE(v_cidades, '{}'),
+        'filiais', COALESCE(v_filiais, '{}'),
+        'redes', COALESCE(v_redes, '{}'),
+        'anos', COALESCE(v_anos, '{}'),
+        'tipos_venda', COALESCE(v_tipos_venda, '{}')
+    );
+END;
+$$;
+
+
+-- 2.4 Get Main Dashboard Data (Add p_rede)
+DROP FUNCTION IF EXISTS get_main_dashboard_data(text[], text[], text[], text[], text[], text, text, text[]);
+
 CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -321,6 +438,8 @@ BEGIN
         v_where_kpi := v_where_kpi || format(' AND cidade = ANY(%L) ', p_cidade);
     END IF;
 
+    -- NOTE: Ideally apply Rede filter to KPI Base Count too, but "ramo" is in data_clients, so we can.
+    -- However, p_rede logic needs to be reapplied to data_clients alias.
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
         v_rede_condition := ''; -- reset
         IF array_length(v_specific_redes, 1) > 0 THEN
@@ -338,6 +457,7 @@ BEGIN
             v_where_kpi := v_where_kpi || ' AND (' || v_rede_condition || ') ';
         END IF;
     END IF;
+
 
     -- 4. Execute Main Query
     v_sql := '
@@ -454,9 +574,9 @@ END;
 $$;
 
 
--- ------------------------------------------------------------------------------
--- 4. OPTIMIZED GET CITY DATA (Dynamic SQL + Pagination)
--- ------------------------------------------------------------------------------
+-- 2.5 Get City View Data (Add p_rede)
+DROP FUNCTION IF EXISTS get_city_view_data(text[], text[], text[], text[], text[], text, text, text[], int, int, int, int);
+
 CREATE OR REPLACE FUNCTION get_city_view_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -617,9 +737,9 @@ END;
 $$;
 
 
--- ------------------------------------------------------------------------------
--- 5. NEW RPC: GET BRANCH COMPARISON (Aggregated)
--- ------------------------------------------------------------------------------
+-- 2.6 Get Branch Comparison Data (Add p_rede)
+DROP FUNCTION IF EXISTS get_branch_comparison_data(text[], text[], text[], text[], text[], text, text, text[]);
+
 CREATE OR REPLACE FUNCTION get_branch_comparison_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -658,7 +778,7 @@ DECLARE
 BEGIN
     SET LOCAL work_mem = '64MB';
 
-    -- 1. Date & Trend Setup (Simplified)
+    -- 1. Date & Trend Setup
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
         SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
     ELSE v_current_year := p_ano::int; END IF;
@@ -666,7 +786,7 @@ BEGIN
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN v_target_month := p_mes::int + 1;
     ELSE SELECT COALESCE(MAX(mes), 12) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year; END IF;
 
-    -- Trend Calculation (Copy from Main)
+    -- Trend Calculation
     SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
     IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
     v_trend_allowed := (v_current_year = EXTRACT(YEAR FROM v_max_sale_date)::int);
@@ -759,8 +879,7 @@ BEGIN
 END;
 $$;
 
--- ------------------------------------------------------------------------------
--- 6. INITIALIZATION & REFRESH
--- ------------------------------------------------------------------------------
--- Ensure summary table is populated immediately
+
+-- 3. Initialization
 SELECT refresh_cache_summary();
+SELECT refresh_cache_filters();
