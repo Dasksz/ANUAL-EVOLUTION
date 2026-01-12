@@ -614,8 +614,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.clients?.length) { updateStatus('Limpar cli...', 70); await clearTable('data_clients'); await uploadBatch('data_clients', data.clients); }
 
             updateStatus('Atualizando cache...', 90);
-            await supabase.rpc('refresh_cache_filters');
-            await supabase.rpc('refresh_cache_summary');
+            await supabase.rpc('refresh_dashboard_cache');
 
         } catch (error) {
             console.error(error);
