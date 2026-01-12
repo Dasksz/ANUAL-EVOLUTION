@@ -401,6 +401,7 @@ GRANT EXECUTE ON FUNCTION public.truncate_table(text) TO authenticated;
 CREATE OR REPLACE FUNCTION refresh_cache_filters()
 RETURNS void
 LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
@@ -439,6 +440,7 @@ $$;
 CREATE OR REPLACE FUNCTION refresh_cache_summary()
 RETURNS void
 LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
@@ -523,6 +525,7 @@ $$;
 CREATE OR REPLACE FUNCTION refresh_dashboard_cache()
 RETURNS void
 LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
