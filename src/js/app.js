@@ -942,7 +942,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Unified Fetch & Cache Logic
     async function fetchDashboardData(filters, isBackground = false, forceRefresh = false) {
         const cacheKey = generateCacheKey('dashboard_data', filters);
-        const CACHE_TTL = 1000 * 60 * 10; // 10 minutes TTL
+        const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Hours TTL (Relies on checkDataVersion for invalidation)
 
         // 1. Try Cache (unless forceRefresh is true)
         if (!forceRefresh) {
@@ -1101,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Background Prefetch Logic ---
 
-    function queueCommonFilters() {
+    async function queueCommonFilters() {
         console.log('[Background] Iniciando estratégia de pré-carregamento massivo...');
         const currentFilters = getCurrentFilters();
         const baseFilters = {
@@ -1110,34 +1110,51 @@ document.addEventListener('DOMContentLoaded', () => {
             p_filial: [], p_cidade: [], p_supervisor: [], p_vendedor: [], p_fornecedor: [], p_tipovenda: []
         };
         
-        // Strategy: Pre-fetch "One Dimensional" filters (most common drill-down)
+        // Helper to check and add
+        const checkAndAdd = async (label, filters) => {
+             const key = generateCacheKey('dashboard_data', filters);
+             const cached = await getFromCache(key);
+             // We check existence only; validity is handled by data version clear
+             if (!cached) {
+                 addToPrefetchQueue(label, filters);
+             }
+        };
+
+        const tasks = [];
         
         // 1. Filiais
-        availableFiltersState.filiais.forEach(v => addToPrefetchQueue(`Filial: ${v}`, { ...baseFilters, p_filial: [v] }));
+        availableFiltersState.filiais.forEach(v => tasks.push(checkAndAdd(`Filial: ${v}`, { ...baseFilters, p_filial: [v] })));
 
         // 2. Supervisors
-        availableFiltersState.supervisors.forEach(v => addToPrefetchQueue(`Superv: ${v}`, { ...baseFilters, p_supervisor: [v] }));
+        availableFiltersState.supervisors.forEach(v => tasks.push(checkAndAdd(`Superv: ${v}`, { ...baseFilters, p_supervisor: [v] })));
 
         // 3. Cidades
-        availableFiltersState.cidades.forEach(v => addToPrefetchQueue(`Cidade: ${v}`, { ...baseFilters, p_cidade: [v] }));
+        availableFiltersState.cidades.forEach(v => tasks.push(checkAndAdd(`Cidade: ${v}`, { ...baseFilters, p_cidade: [v] })));
 
         // 4. Vendedores
-        availableFiltersState.vendedores.forEach(v => addToPrefetchQueue(`Vend: ${v}`, { ...baseFilters, p_vendedor: [v] }));
+        availableFiltersState.vendedores.forEach(v => tasks.push(checkAndAdd(`Vend: ${v}`, { ...baseFilters, p_vendedor: [v] })));
 
         // 5. Fornecedores (Handle Object Structure)
         availableFiltersState.fornecedores.forEach(v => {
             const cod = v.cod || v; // Handle if object or raw
-            addToPrefetchQueue(`Forn: ${cod}`, { ...baseFilters, p_fornecedor: [String(cod)] });
+            tasks.push(checkAndAdd(`Forn: ${cod}`, { ...baseFilters, p_fornecedor: [String(cod)] }));
         });
 
         // 6. Tipos Venda
-        availableFiltersState.tipos_venda.forEach(v => addToPrefetchQueue(`Tipo: ${v}`, { ...baseFilters, p_tipovenda: [v] }));
+        availableFiltersState.tipos_venda.forEach(v => tasks.push(checkAndAdd(`Tipo: ${v}`, { ...baseFilters, p_tipovenda: [v] })));
         
         // 7. Redes
-        availableFiltersState.redes.forEach(v => addToPrefetchQueue(`Rede: ${v}`, { ...baseFilters, p_rede: [v] }));
+        availableFiltersState.redes.forEach(v => tasks.push(checkAndAdd(`Rede: ${v}`, { ...baseFilters, p_rede: [v] })));
 
-        console.log(`[Background] ${prefetchQueue.length} filtros agendados.`);
-        processQueue();
+        // Wait for all checks
+        await Promise.all(tasks);
+
+        if (prefetchQueue.length > 0) {
+            console.log(`[Background] ${prefetchQueue.length} filtros novos agendados.`);
+            processQueue();
+        } else {
+            console.log('[Background] Todos os filtros comuns já estão em cache.');
+        }
     }
 
     function addToPrefetchQueue(label, filters) {
