@@ -1498,5 +1498,13 @@ BEGIN
     END IF;
 END $$;
 
+-- Fix Americanas Supervisor Mapping
+-- Ensure code 8 is BALCAO and SV_AMERICANAS is SV AMERICANAS
+INSERT INTO public.dim_supervisores (codigo, nome) VALUES ('8', 'BALCAO')
+ON CONFLICT (codigo) DO UPDATE SET nome = 'BALCAO';
+
+INSERT INTO public.dim_supervisores (codigo, nome) VALUES ('SV_AMERICANAS', 'SV AMERICANAS')
+ON CONFLICT (codigo) DO UPDATE SET nome = 'SV AMERICANAS';
+
 -- Populate summary table immediately
 SELECT refresh_cache_summary();

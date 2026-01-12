@@ -452,6 +452,7 @@ self.onmessage = async (event) => {
                     newSale['CODUSUR'] = 'AMERICANAS';
                     newSale['NOME'] = 'AMERICANAS';
                     newSale['SUPERV'] = 'SV AMERICANAS';
+                    newSale['CODSUPERVISOR'] = 'SV_AMERICANAS';
                     // Branch is already set by Strict Logic above
                 } else if (isInactive) {
                     // 3. Inactive Logic:
