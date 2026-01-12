@@ -738,9 +738,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Update Local Version
                 localStorage.setItem('dashboard_data_version', serverVersion);
+                return true; // Indicates cache was invalidated
             }
+            return false;
         } catch (e) {
             console.error('Falha na validação de cache:', e);
+            return false;
         }
     }
 
@@ -760,18 +763,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadFilters(currentFilters, retryCount = 0) {
         // Cache logic for Filters
-        const CACHE_TTL = 1000 * 60 * 5; // 5 minutes for filters
         const cacheKey = generateCacheKey('dashboard_filters', currentFilters);
         
         try {
             const cachedEntry = await getFromCache(cacheKey);
             if (cachedEntry && cachedEntry.timestamp) {
-                const age = Date.now() - cachedEntry.timestamp;
-                if (age < CACHE_TTL) {
-                    console.log('Serving filters from cache (fresh)');
-                    applyFiltersData(cachedEntry.data);
-                    return; 
-                }
+                console.log('Serving filters from cache (fresh)');
+                applyFiltersData(cachedEntry.data);
+                return;
             }
         } catch (e) { console.warn('Cache error:', e); }
 
@@ -942,20 +941,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Unified Fetch & Cache Logic
     async function fetchDashboardData(filters, isBackground = false, forceRefresh = false) {
         const cacheKey = generateCacheKey('dashboard_data', filters);
-        const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Hours TTL (Relies on checkDataVersion for invalidation)
 
         // 1. Try Cache (unless forceRefresh is true)
         if (!forceRefresh) {
             try {
                 const cachedEntry = await getFromCache(cacheKey);
                 if (cachedEntry && cachedEntry.timestamp && cachedEntry.data) {
-                    const age = Date.now() - cachedEntry.timestamp;
-                    if (age < CACHE_TTL) {
-                        if (!isBackground) console.log('Serving from Cache (Instant)');
-                        return { data: cachedEntry.data, source: 'cache', timestamp: cachedEntry.timestamp };
-                    } else {
-                         return { data: cachedEntry.data, source: 'stale', timestamp: cachedEntry.timestamp };
-                    }
+                    if (!isBackground) console.log('Serving from Cache (Instant)');
+                    return { data: cachedEntry.data, source: 'cache', timestamp: cachedEntry.timestamp };
                 }
             } catch (e) { console.warn('Cache error:', e); }
         } else {
@@ -981,7 +974,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadMainDashboardData(forceRefresh = false) {
         const filters = getCurrentFilters();
         const cacheKey = generateCacheKey('dashboard_data', filters);
-        
+        let renderedFromCache = false;
+
         // 1. Stale-While-Revalidate: Try Cache & Render Immediately
         if (!forceRefresh) {
             try {
@@ -990,18 +984,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.log('SWR: Rendering cached data immediately...');
                     renderDashboard(cachedEntry.data);
                     lastDashboardData = cachedEntry.data;
+                    renderedFromCache = true;
+                    hideDashboardLoading();
 
-                    const age = Date.now() - cachedEntry.timestamp;
-                    if (age < 60 * 1000) { // Fresh enough (1 min)
-                         console.log('SWR: Cache is fresh (<1min), skipping background fetch.');
-                         await fetchLastSalesDate();
-                         hideDashboardLoading();
-                         prefetchViews(filters);
-                         return;
-                    } else {
-                        console.log('SWR: Cache is stale, fetching update in background...');
-                        showDashboardLoading(); // Optional: show loading indicator non-intrusively
-                    }
+                    // Allow UI to settle
+                    await new Promise(r => setTimeout(r, 0));
                 } else {
                     showDashboardLoading();
                 }
@@ -1013,9 +1000,30 @@ document.addEventListener('DOMContentLoaded', () => {
             showDashboardLoading();
         }
 
-        // 2. Network Fetch (Background or Foreground)
+        // 2. Check Version & Fetch if Needed
+        // If we rendered from cache, we check version in background.
+        // If version changed, we force refresh.
+        // If we didn't render from cache (or forced), we just fetch.
+
+        const shouldCheckVersion = renderedFromCache;
+        let versionChanged = false;
+
+        if (shouldCheckVersion) {
+             console.log('SWR: Checking data version in background...');
+             versionChanged = await checkDataVersion();
+             if (!versionChanged) {
+                 console.log('SWR: Data version matches. Cache is valid. Stop.');
+                 await fetchLastSalesDate();
+                 prefetchViews(filters);
+                 return;
+             }
+             console.log('SWR: Data version changed! Fetching fresh data...');
+             showDashboardLoading(); // Show loading again if we need to update
+        }
+
+        // 3. Network Fetch
         const [dashboardResult, _] = await Promise.all([
-            fetchDashboardData(filters, false, true), // Force network fetch logic reusing existing func but we handle flow here
+            fetchDashboardData(filters, false, true), // Force network fetch (true because version changed or no cache)
             fetchLastSalesDate()
         ]);
 
