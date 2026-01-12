@@ -330,11 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         resetViews();
         cityView.classList.remove('hidden');
         navCityAnalysisBtn.classList.add('bg-slate-700', 'text-white');
-        if (typeof initCityFilters === 'function' && cityAnoFilter && cityAnoFilter.options.length <= 1) {
-             initCityFilters().then(loadCityView);
-        } else {
-             loadCityView();
-        }
+        loadCityView();
         closeSidebar();
     });
 
@@ -1703,6 +1699,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadCityView() {
         showDashboardLoading('city-view');
+
+        if (typeof initCityFilters === 'function' && cityAnoFilter && cityAnoFilter.options.length <= 1) {
+             await initCityFilters();
+        }
 
         const filters = {
             p_filial: citySelectedFiliais.length > 0 ? citySelectedFiliais : null,
