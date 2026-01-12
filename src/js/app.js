@@ -569,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw new Error(`Erro clear ${table}: ${error.message}`);
         };
 
-        const BATCH_SIZE = 100;
+        const BATCH_SIZE = 1000;
         const CONCURRENT_REQUESTS = 1;
 
         const uploadBatch = async (table, items) => {
