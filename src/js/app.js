@@ -1228,8 +1228,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const currSums = sumData(currentData, true);
             const prevSums = sumData(previousData, false);
 
-            currFat = currSums.faturamento;
-            currKg = currSums.peso;
+            // Logic for Annual Trend Projection (Current Year Only)
+            if (data.trend_allowed && data.trend_data) {
+                // Formula: (Accumulated YTD + Projected Current Month) / (Months Passed) * 12
+                // Note: sumData already includes the Projected Current Month if trend_allowed is true.
+                const monthsPassed = data.trend_data.month_index + 1;
+
+                currFat = (currSums.faturamento / monthsPassed) * 12;
+                currKg = (currSums.peso / monthsPassed) * 12;
+            } else {
+                currFat = currSums.faturamento;
+                currKg = currSums.peso;
+            }
+
             prevFat = prevSums.faturamento;
             prevKg = prevSums.peso;
             

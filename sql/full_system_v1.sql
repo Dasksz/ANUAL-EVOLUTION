@@ -686,6 +686,7 @@ DECLARE
     v_has_sem_rede boolean;
     v_specific_redes text[];
     v_rede_condition text := '';
+    v_is_month_filtered boolean := false;
 BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
 
@@ -703,8 +704,10 @@ BEGIN
 
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_target_month := p_mes::int + 1;
+        v_is_month_filtered := true;
     ELSE
          SELECT COALESCE(MAX(mes), 12) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year;
+         v_is_month_filtered := false;
     END IF;
 
     -- 2. Trend Logic Calculation (Mantida igual)
@@ -847,7 +850,8 @@ BEGIN
     kpi_active_count AS (
         SELECT COUNT(DISTINCT codcli) as val
         FROM filtered_summary 
-        WHERE ano = $2 AND mes = $3 AND pre_positivacao_val = 1
+        WHERE ano = $2 AND pre_positivacao_val = 1
+        ' || CASE WHEN v_is_month_filtered THEN ' AND mes = $3 ' ELSE '' END || '
     ),
     kpi_base_count AS (
         SELECT COUNT(*) as val FROM public.data_clients
