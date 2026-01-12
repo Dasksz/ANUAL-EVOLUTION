@@ -718,7 +718,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Trigger background prefetch after main load
         setTimeout(() => {
-            // queueCommonFilters();
+            queueCommonFilters();
         }, 3000);
     }
 

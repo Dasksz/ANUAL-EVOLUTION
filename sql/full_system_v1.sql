@@ -646,6 +646,7 @@ CREATE OR REPLACE FUNCTION get_main_dashboard_data(
 )
 RETURNS JSON
 LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
@@ -683,6 +684,8 @@ DECLARE
     v_specific_redes text[];
     v_rede_condition text := '';
 BEGIN
+    IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
+
     -- Configurações de Memória para esta Query Específica
     SET LOCAL work_mem = '64MB'; -- Aumenta memória para ordenação
     SET LOCAL statement_timeout = '15s'; -- Fail fast se travar
@@ -936,6 +939,7 @@ CREATE OR REPLACE FUNCTION get_dashboard_filters(
 )
 RETURNS JSON
 LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
@@ -950,6 +954,8 @@ DECLARE
     v_filter_year int;
     v_filter_month int;
 BEGIN
+    IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
+
     SET LOCAL statement_timeout = '300s';
 
     IF p_ano IS NOT NULL AND p_ano != '' AND p_ano != 'todos' THEN
@@ -1099,6 +1105,7 @@ CREATE OR REPLACE FUNCTION get_city_view_data(
 )
 RETURNS JSON
 LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
@@ -1118,6 +1125,8 @@ DECLARE
     v_specific_redes text[];
     v_rede_condition text := '';
 BEGIN
+    IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
+
     SET LOCAL work_mem = '64MB';
 
     -- Date Logic
@@ -1263,6 +1272,7 @@ CREATE OR REPLACE FUNCTION get_branch_comparison_data(
 )
 RETURNS JSON
 LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
@@ -1286,6 +1296,8 @@ DECLARE
     v_specific_redes text[];
     v_rede_condition text := '';
 BEGIN
+    IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
+
     SET LOCAL work_mem = '64MB';
 
     -- 1. Date & Trend Setup (Simplified)
