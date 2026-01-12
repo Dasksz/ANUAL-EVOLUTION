@@ -1656,7 +1656,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function initCityFilters() {
-         const { data: filterData } = await supabase.rpc('get_dashboard_filters', { p_ano: 'todos' });
+        const filters = {
+            p_ano: 'todos',
+            p_mes: null,
+            p_filial: [],
+            p_cidade: [],
+            p_supervisor: [],
+            p_vendedor: [],
+            p_fornecedor: [],
+            p_tipovenda: [],
+            p_rede: []
+        };
+         const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
+         if (error) console.error('Error fetching city filters:', error);
          if (!filterData) return;
 
          if (filterData.anos && cityAnoFilter) {
@@ -1845,7 +1857,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     async function initBranchFilters() {
-         const { data: filterData } = await supabase.rpc('get_dashboard_filters', { p_ano: 'todos' });
+        const filters = {
+            p_ano: 'todos',
+            p_mes: null,
+            p_filial: [],
+            p_cidade: [],
+            p_supervisor: [],
+            p_vendedor: [],
+            p_fornecedor: [],
+            p_tipovenda: [],
+            p_rede: []
+        };
+         const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
+         if (error) console.error('Error fetching branch filters:', error);
          if (!filterData) return;
 
          // Years
