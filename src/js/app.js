@@ -2912,7 +2912,10 @@ document.addEventListener('DOMContentLoaded', () => {
                   current: data.current_kpi.c > 0 ? data.current_kpi.f / data.current_kpi.c : 0,
                   history: data.history_kpi.c > 0 ? (data.history_kpi.f/3) / (data.history_kpi.c/3) : 0,
                   format: 'currency'
-                }
+                },
+                { title: 'Mix por PDV (Pepsico)', current: data.current_kpi.mix_pepsico, history: data.history_kpi.sum_mix_pepsico / 3, format: 'mix' },
+                { title: 'Mix Salty', current: data.current_kpi.pos_salty, history: data.history_kpi.sum_pos_salty / 3, format: 'integer' },
+                { title: 'Mix Foods', current: data.current_kpi.pos_foods, history: data.history_kpi.sum_pos_foods / 3, format: 'integer' }
             ];
 
             // 2. Weekly Chart Logic

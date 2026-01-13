@@ -127,17 +127,17 @@ BEGIN
 
     EXECUTE format('
         WITH target_sales AS (
-            SELECT dtped, vlvenda, totpesoliq, codcli, codsupervisor
+            SELECT dtped, vlvenda, totpesoliq, codcli, codsupervisor, produto, descricao, codfor
             FROM public.data_detailed s %s %s AND dtped >= %L AND dtped <= %L
             UNION ALL
-            SELECT dtped, vlvenda, totpesoliq, codcli, codsupervisor
+            SELECT dtped, vlvenda, totpesoliq, codcli, codsupervisor, produto, descricao, codfor
             FROM public.data_history s %s %s AND dtped >= %L AND dtped <= %L
         ),
         history_sales AS (
-            SELECT dtped, vlvenda, totpesoliq, codcli, codsupervisor
+            SELECT dtped, vlvenda, totpesoliq, codcli, codsupervisor, produto, descricao, codfor
             FROM public.data_detailed s %s %s AND dtped >= %L AND dtped <= %L
             UNION ALL
-            SELECT dtped, vlvenda, totpesoliq, codcli, codsupervisor
+            SELECT dtped, vlvenda, totpesoliq, codcli, codsupervisor, produto, descricao, codfor
             FROM public.data_history s %s %s AND dtped >= %L AND dtped <= %L
         ),
         -- Current Aggregates
@@ -145,9 +145,33 @@ BEGIN
             SELECT dtped::date as d, SUM(vlvenda) as f, SUM(totpesoliq) as p
             FROM target_sales GROUP BY 1
         ),
-        curr_kpi AS (
-            SELECT SUM(vlvenda) as f, SUM(totpesoliq) as p, COUNT(DISTINCT codcli) as c
+        -- Current Mix Calculation (Active Clients Filter: Sum Venda >= 1)
+        curr_mix_base AS (
+            SELECT
+                codcli,
+                SUM(vlvenda) as total_val,
+                COUNT(DISTINCT CASE WHEN codfor IN (''707'', ''708'') AND vlvenda > 0 THEN produto END) as pepsico_skus,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%CHEETOS%%'' THEN 1 ELSE 0 END) as has_cheetos,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%DORITOS%%'' THEN 1 ELSE 0 END) as has_doritos,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%FANDANGOS%%'' THEN 1 ELSE 0 END) as has_fandangos,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%RUFFLES%%'' THEN 1 ELSE 0 END) as has_ruffles,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TORCIDA%%'' THEN 1 ELSE 0 END) as has_torcida,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TODDYNHO%%'' THEN 1 ELSE 0 END) as has_toddynho,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TODDY %%'' THEN 1 ELSE 0 END) as has_toddy,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%QUAKER%%'' THEN 1 ELSE 0 END) as has_quaker,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%KEROCOCO%%'' THEN 1 ELSE 0 END) as has_kerococo
             FROM target_sales
+            GROUP BY 1
+        ),
+        curr_kpi AS (
+            SELECT
+                SUM(ts.vlvenda) as f,
+                SUM(ts.totpesoliq) as p,
+                (SELECT COUNT(*) FROM curr_mix_base WHERE total_val >= 1) as c,
+                COALESCE((SELECT SUM(pepsico_skus)::numeric / NULLIF(COUNT(CASE WHEN pepsico_skus > 0 THEN 1 END), 0) FROM curr_mix_base), 0) as mix_pepsico,
+                COALESCE((SELECT COUNT(1) FROM curr_mix_base WHERE has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1), 0) as pos_salty,
+                COALESCE((SELECT COUNT(1) FROM curr_mix_base WHERE has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1), 0) as pos_foods
+            FROM target_sales ts
         ),
         curr_superv AS (
             SELECT codsupervisor as s, SUM(vlvenda) as f FROM target_sales GROUP BY 1
@@ -157,16 +181,52 @@ BEGIN
             SELECT dtped::date as d, SUM(vlvenda) as f, SUM(totpesoliq) as p
             FROM history_sales GROUP BY 1
         ),
-        hist_kpi AS (
-            SELECT SUM(vlvenda) as f, SUM(totpesoliq) as p, COUNT(DISTINCT codcli) as c
+        -- History Mix Calculation (Monthly)
+        hist_monthly_mix AS (
+            SELECT
+                date_trunc(''month'', dtped) as m_date,
+                codcli,
+                SUM(vlvenda) as total_val,
+                COUNT(DISTINCT CASE WHEN codfor IN (''707'', ''708'') AND vlvenda > 0 THEN produto END) as pepsico_skus,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%CHEETOS%%'' THEN 1 ELSE 0 END) as has_cheetos,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%DORITOS%%'' THEN 1 ELSE 0 END) as has_doritos,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%FANDANGOS%%'' THEN 1 ELSE 0 END) as has_fandangos,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%RUFFLES%%'' THEN 1 ELSE 0 END) as has_ruffles,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TORCIDA%%'' THEN 1 ELSE 0 END) as has_torcida,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TODDYNHO%%'' THEN 1 ELSE 0 END) as has_toddynho,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TODDY %%'' THEN 1 ELSE 0 END) as has_toddy,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%QUAKER%%'' THEN 1 ELSE 0 END) as has_quaker,
+                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%KEROCOCO%%'' THEN 1 ELSE 0 END) as has_kerococo
             FROM history_sales
+            GROUP BY 1, 2
+        ),
+        hist_monthly_sums AS (
+            SELECT
+                m_date,
+                SUM(total_val) as monthly_f,
+                COUNT(CASE WHEN total_val >= 1 THEN 1 END) as monthly_active_clients,
+                COALESCE(SUM(pepsico_skus)::numeric / NULLIF(COUNT(CASE WHEN pepsico_skus > 0 THEN 1 END), 0), 0) as monthly_mix_pepsico,
+                COUNT(CASE WHEN has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1 THEN 1 END) as monthly_pos_salty,
+                COUNT(CASE WHEN has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1 THEN 1 END) as monthly_pos_foods
+            FROM hist_monthly_mix
+            GROUP BY 1
+        ),
+        hist_kpi AS (
+            SELECT
+                SUM(ts.vlvenda) as f,
+                SUM(ts.totpesoliq) as p,
+                COALESCE((SELECT SUM(monthly_active_clients) FROM hist_monthly_sums), 0) as c,
+                COALESCE((SELECT SUM(monthly_mix_pepsico) FROM hist_monthly_sums), 0) as sum_mix_pepsico,
+                COALESCE((SELECT SUM(monthly_pos_salty) FROM hist_monthly_sums), 0) as sum_pos_salty,
+                COALESCE((SELECT SUM(monthly_pos_foods) FROM hist_monthly_sums), 0) as sum_pos_foods
+            FROM history_sales ts
         ),
         hist_superv AS (
             SELECT codsupervisor as s, SUM(vlvenda) as f FROM history_sales GROUP BY 1
         ),
         hist_monthly AS (
-             SELECT to_char(dtped, ''YYYY-MM'') as m, SUM(vlvenda) as f, COUNT(DISTINCT codcli) as c
-             FROM history_sales GROUP BY 1
+             SELECT to_char(m_date, ''YYYY-MM'') as m, monthly_f as f, monthly_active_clients as c
+             FROM hist_monthly_sums
         )
         SELECT
             COALESCE((SELECT json_agg(row_to_json(curr_daily.*)) FROM curr_daily), ''[]''),
