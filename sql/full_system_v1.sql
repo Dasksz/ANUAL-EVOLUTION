@@ -763,9 +763,9 @@ BEGIN
     
     -- REDE Logic
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-       v_has_com_rede := ('Com Rede' = ANY(p_rede));
-       v_has_sem_rede := ('Sem Rede' = ANY(p_rede));
-       v_specific_redes := array_remove(array_remove(p_rede, 'Com Rede'), 'Sem Rede');
+       v_has_com_rede := ('C/ REDE' = ANY(p_rede));
+       v_has_sem_rede := ('S/ REDE' = ANY(p_rede));
+       v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
        
        IF array_length(v_specific_redes, 1) > 0 THEN
            v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
@@ -1171,9 +1171,9 @@ BEGIN
     
     -- REDE Logic
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-       v_has_com_rede := ('Com Rede' = ANY(p_rede));
-       v_has_sem_rede := ('Sem Rede' = ANY(p_rede));
-       v_specific_redes := array_remove(array_remove(p_rede, 'Com Rede'), 'Sem Rede');
+       v_has_com_rede := ('C/ REDE' = ANY(p_rede));
+       v_has_sem_rede := ('S/ REDE' = ANY(p_rede));
+       v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
        
        IF array_length(v_specific_redes, 1) > 0 THEN
            v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
@@ -1347,9 +1347,9 @@ BEGIN
 
     -- REDE Logic
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-       v_has_com_rede := ('Com Rede' = ANY(p_rede));
-       v_has_sem_rede := ('Sem Rede' = ANY(p_rede));
-       v_specific_redes := array_remove(array_remove(p_rede, 'Com Rede'), 'Sem Rede');
+       v_has_com_rede := ('C/ REDE' = ANY(p_rede));
+       v_has_sem_rede := ('S/ REDE' = ANY(p_rede));
+       v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
        
        IF array_length(v_specific_redes, 1) > 0 THEN
            v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
