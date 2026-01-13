@@ -687,6 +687,11 @@ DECLARE
     v_specific_redes text[];
     v_rede_condition text := '';
     v_is_month_filtered boolean := false;
+
+    -- New KPI Logic Vars
+    v_filial_cities text[];
+    v_supervisor_rcas text[];
+    v_vendedor_rcas text[];
 BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
 
@@ -791,7 +796,47 @@ BEGIN
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where_kpi := v_where_kpi || format(' AND cidade = ANY(%L) ', p_cidade);
     END IF;
-    
+
+    -- FILIAL LOGIC FOR KPI (Clients Base)
+    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+        SELECT array_agg(DISTINCT cidade) INTO v_filial_cities
+        FROM public.config_city_branches
+        WHERE filial = ANY(p_filial);
+
+        IF v_filial_cities IS NOT NULL THEN
+             v_where_kpi := v_where_kpi || format(' AND cidade = ANY(%L) ', v_filial_cities);
+        ELSE
+             v_where_kpi := v_where_kpi || ' AND 1=0 ';
+        END IF;
+    END IF;
+
+    -- SUPERVISOR LOGIC FOR KPI
+    IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
+        SELECT array_agg(DISTINCT d.codusur) INTO v_supervisor_rcas
+        FROM public.data_detailed d
+        JOIN public.dim_supervisores ds ON d.codsupervisor = ds.codigo
+        WHERE ds.nome = ANY(p_supervisor);
+
+        IF v_supervisor_rcas IS NOT NULL THEN
+            v_where_kpi := v_where_kpi || format(' AND rca1 = ANY(%L) ', v_supervisor_rcas);
+        ELSE
+             v_where_kpi := v_where_kpi || ' AND 1=0 ';
+        END IF;
+    END IF;
+
+    -- VENDEDOR LOGIC FOR KPI
+    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+        SELECT array_agg(DISTINCT codigo) INTO v_vendedor_rcas
+        FROM public.dim_vendedores
+        WHERE nome = ANY(p_vendedor);
+
+        IF v_vendedor_rcas IS NOT NULL THEN
+            v_where_kpi := v_where_kpi || format(' AND rca1 = ANY(%L) ', v_vendedor_rcas);
+        ELSE
+            v_where_kpi := v_where_kpi || ' AND 1=0 ';
+        END IF;
+    END IF;
+
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
         v_rede_condition := ''; -- reset
         IF array_length(v_specific_redes, 1) > 0 THEN
