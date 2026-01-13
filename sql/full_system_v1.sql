@@ -1558,5 +1558,4 @@ ON CONFLICT (codigo) DO UPDATE SET nome = 'BALCAO';
 INSERT INTO public.dim_supervisores (codigo, nome) VALUES ('SV_AMERICANAS', 'SV AMERICANAS')
 ON CONFLICT (codigo) DO UPDATE SET nome = 'SV AMERICANAS';
 
--- Populate summary table immediately
-SELECT refresh_cache_summary();
+SELECT refresh_dashboard_cache();
