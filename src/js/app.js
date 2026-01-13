@@ -2844,104 +2844,6 @@ document.addEventListener('DOMContentLoaded', () => {
             setupCityMultiSelect(comparisonComRedeBtn, comparisonRedeFilterDropdown, comparisonRedeFilterDropdown, redes, selectedComparisonRedes);
         }
 
-        async function fetchComparisonData() {
-            const now = new Date();
-            let refDate;
-
-            // --- 1. Determine Reference Date based on Filters ---
-            const selectedYear = comparisonAnoFilter.value;
-            const selectedMonth = comparisonMesFilter.value;
-
-            // Base fallback: lastSalesDate or now
-            const defaultRefDate = lastSalesDate ? new Date(lastSalesDate) : now;
-
-            if (selectedYear && selectedYear !== 'todos') {
-                const year = parseInt(selectedYear);
-
-                if (selectedMonth !== '') {
-                    // Scenario A: Year + Month Selected -> Use that exact month
-                    const month = parseInt(selectedMonth);
-                    // Use last day of that month to ensure we cover the whole month
-                    refDate = new Date(Date.UTC(year, month + 1, 0));
-                } else {
-                    // Scenario B: Year Selected, Month Empty -> Use "Last Month" logic for that year
-                    // If Year == Current Year -> Use current latest month (defaultRefDate)
-                    // If Year < Current Year -> Use December of that year
-                    const currentYear = defaultRefDate.getFullYear();
-
-                    if (year === currentYear) {
-                        refDate = defaultRefDate;
-                    } else {
-                        // Past Year: Default to December
-                        // (Optimization: In a real app we might query MAX(dtped) for that year,
-                        // but Dec is standard "Year End" view)
-                        refDate = new Date(Date.UTC(year, 11, 31)); // Dec 31
-                    }
-                }
-            } else {
-                // Scenario C: No Year Selected (or 'todos') -> Default to latest available
-                refDate = defaultRefDate;
-            }
-
-            // --- 2. Calculate Ranges ---
-            // Target Month (The one being analyzed)
-            const targetYear = refDate.getFullYear();
-            const targetMonth = refDate.getMonth(); // 0-11
-
-            const startOfTarget = new Date(Date.UTC(targetYear, targetMonth, 1));
-            const endOfTarget = new Date(Date.UTC(targetYear, targetMonth + 1, 0, 23, 59, 59));
-
-            // Comparison Quarter (Previous 3 Months relative to Target)
-            // e.g. If Target = Dec, Quarter = Sept, Oct, Nov
-            const endOfQuarter = new Date(Date.UTC(targetYear, targetMonth, 0, 23, 59, 59)); // Last second of previous month
-            const startOfQuarter = new Date(Date.UTC(targetYear, targetMonth - 3, 1));
-
-            // --- 3. Determine Source Table for Target Month ---
-            // We fetch from BOTH tables to ensure we catch split data (e.g. Jan 2026 split between history and detailed)
-
-            // --- 4. Fetch Data ---
-
-            // Fetch Target Month from Data Detailed
-            const fetchDetailed = supabase
-                .from('data_detailed')
-                .select('*')
-                .gte('dtped', startOfTarget.toISOString())
-                .lte('dtped', endOfTarget.toISOString());
-
-            // Fetch Target Month from Data History
-            const fetchHistoryCurrent = supabase
-                .from('data_history')
-                .select('*')
-                .gte('dtped', startOfTarget.toISOString())
-                .lte('dtped', endOfTarget.toISOString());
-
-            const [resDetailed, resHistoryCurrent] = await Promise.all([fetchDetailed, fetchHistoryCurrent]);
-
-            if (resDetailed.error) console.error("Error fetching detailed target:", resDetailed.error);
-            if (resHistoryCurrent.error) console.error("Error fetching history target:", resHistoryCurrent.error);
-
-            // Combine results
-            let currentSales = [];
-            if (resDetailed.data) currentSales = currentSales.concat(resDetailed.data);
-            if (resHistoryCurrent.data) currentSales = currentSales.concat(resHistoryCurrent.data);
-
-            // Fetch Comparison Quarter (History)
-            // Always from data_history (assuming quarter is always past)
-            // Edge case: If "Quarter" includes current month? (e.g. Filter next month?)
-            // Based on rules: "Trimestre anterior de 2025 a dezembro (setembro, outubro, novembro)"
-            // So Quarter is strictly previous.
-
-            const { data: historySales, error: errHistory } = await supabase
-                .from('data_history')
-                .select('*')
-                .gte('dtped', startOfQuarter.toISOString())
-                .lte('dtped', endOfQuarter.toISOString());
-
-            if (errHistory) console.error("Error fetching history quarter:", errHistory);
-
-            return { current: currentSales || [], history: historySales || [] };
-        }
-
         async function loadComparisonView() {
             showDashboardLoading('comparison-view');
 
@@ -2949,60 +2851,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 await initComparisonFilters();
             }
 
-            const { current, history } = await fetchComparisonData();
-
-            // Filter Data Client-Side based on UI filters
-            // ... (Implement Filtering Logic similar to getComparisonFilteredData in external app) ...
-
-            // For brevity in this step, I will implement a simplified filter application here
-            // reusing the logic structure we saw in the analysis.
-
-            const filterData = (data) => {
-                return data.filter(item => {
-                    if (comparisonFilialFilter.value !== 'ambas' && item.filial !== comparisonFilialFilter.value) return false;
-                    if (selectedComparisonSupervisors.length > 0 && !selectedComparisonSupervisors.includes(item.superv)) return false;
-                    if (selectedComparisonSellers.length > 0 && !selectedComparisonSellers.includes(item.nome)) return false;
-                    if (selectedComparisonSuppliers.length > 0 && !selectedComparisonSuppliers.includes(item.codfor)) return false;
-                    if (selectedComparisonTiposVenda.length > 0 && !selectedComparisonTiposVenda.includes(item.tipovenda)) return false;
-                    if (currentComparisonFornecedor) {
-                        if (currentComparisonFornecedor === 'ELMA') {
-                            // 707, 708, 752
-                            const validCodes = ['707', '708', '752'];
-                            if (!validCodes.includes(String(item.codfor))) return false;
-                        } else if (currentComparisonFornecedor === 'FOODS') {
-                            // 1119
-                            if (String(item.codfor) !== '1119') return false;
-                        } else {
-                            // Fallback Logic (Legacy Pepsico/Multimarcas if ever triggered)
-                            const rawFornecedor = (item.fornecedor || '').toUpperCase();
-                            let rowPasta = item.observacaofor;
-                            if (!rowPasta || rowPasta === '0' || rowPasta === '00' || rowPasta === 'N/A') {
-                                rowPasta = rawFornecedor.includes('PEPSICO') ? 'PEPSICO' : 'MULTIMARCAS';
-                            }
-                            if (rowPasta !== currentComparisonFornecedor) return false;
-                        }
-                    }
-                    if (comparisonCityFilter.value) {
-                        const city = item.cidade || '';
-                        if (!city.toLowerCase().includes(comparisonCityFilter.value.toLowerCase())) return false;
-                    }
-                    // Rede Logic would require joining with client data, let's assume we have it or skip for now if data_detailed lacks 'ramo'
-                    // data_detailed does NOT have ramo usually. We might need to fetch clients map.
-                    return true;
-                });
+            const filters = {
+                p_filial: comparisonFilialFilter.value === 'ambas' ? null : [comparisonFilialFilter.value],
+                p_cidade: comparisonCityFilter.value ? [comparisonCityFilter.value] : null,
+                p_supervisor: selectedComparisonSupervisors.length > 0 ? selectedComparisonSupervisors : null,
+                p_vendedor: selectedComparisonSellers.length > 0 ? selectedComparisonSellers : null,
+                p_fornecedor: selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null,
+                p_tipovenda: selectedComparisonTiposVenda.length > 0 ? selectedComparisonTiposVenda : null,
+                p_rede: selectedComparisonRedes.length > 0 ? selectedComparisonRedes : null,
+                p_ano: comparisonAnoFilter.value === 'todos' ? null : comparisonAnoFilter.value,
+                p_mes: comparisonMesFilter.value === '' ? null : comparisonMesFilter.value
             };
 
-            const filteredCurrent = filterData(current);
-            const filteredHistory = filterData(history);
-
-            // Populate Product Filter (if empty)
-            if (comparisonProductFilterDropdown.children.length <= 1) {
-                const uniqueProducts = [...new Map([...filteredCurrent, ...filteredHistory].map(item => [item.produto, item.descricao])).values()];
-                // Ideally use setupCityMultiSelect logic but adapted
-                // Simple implementation for now to save space
+            // Handle Special Fornecedor Toggles (Client-side UI mapped to codes for RPC)
+            if (currentComparisonFornecedor) {
+                if (!filters.p_fornecedor) filters.p_fornecedor = [];
+                if (currentComparisonFornecedor === 'ELMA') {
+                    filters.p_fornecedor.push('707', '708', '752');
+                } else if (currentComparisonFornecedor === 'FOODS') {
+                    filters.p_fornecedor.push('1119');
+                }
+                // Note: Legacy "Pasta" logic might need clearer mapping if codes vary
             }
 
-            const metrics = calculateUnifiedMetrics(filteredCurrent, filteredHistory);
+            const { data, error } = await supabase.rpc('get_comparison_view_data', filters);
+
+            if (error) {
+                console.error("RPC Error:", error);
+                hideDashboardLoading();
+                if (error.message.includes('function get_comparison_view_data') && error.message.includes('does not exist')) {
+                    alert("A função 'get_comparison_view_data' não foi encontrada no banco de dados. \n\nPor favor, execute o script 'sql/comparison_view_rpc.sql' no Supabase SQL Editor para corrigir isso.");
+                }
+                return;
+            }
+
+            // Map RPC Data to UI format
+            const metrics = mapRpcDataToMetrics(data);
 
             // Render KPIs
             renderKpiCards(metrics.kpis);
@@ -3014,6 +2898,111 @@ document.addEventListener('DOMContentLoaded', () => {
             renderSupervisorTable(metrics.supervisorData);
 
             hideDashboardLoading();
+        }
+
+        function mapRpcDataToMetrics(data) {
+            if (!data) return { kpis: [], charts: {}, supervisorData: {} };
+
+            // 1. Process KPIs
+            const kpis = [
+                { title: 'Faturamento Total', current: data.current_kpi.f, history: data.history_kpi.f / 3, format: 'currency' }, // History is 3 months sum, average is /3
+                { title: 'Peso Total (Ton)', current: data.current_kpi.p/1000, history: (data.history_kpi.p/3)/1000, format: 'decimal' },
+                { title: 'Clientes Atendidos', current: data.current_kpi.c, history: data.history_kpi.c / 3, format: 'integer' },
+                { title: 'Ticket Médio', 
+                  current: data.current_kpi.c > 0 ? data.current_kpi.f / data.current_kpi.c : 0, 
+                  history: data.history_kpi.c > 0 ? (data.history_kpi.f/3) / (data.history_kpi.c/3) : 0, 
+                  format: 'currency' 
+                }
+            ];
+
+            // 2. Weekly Chart Logic
+            // We need to map daily data to "Weeks" (1-4/5)
+            // Current Month
+            const currentDaily = data.current_daily || [];
+            const historyDaily = data.history_daily || [];
+            
+            // Helper to get week index (0-based) for a date within its month
+            const getWeekIdx = (dateStr) => {
+                const d = new Date(dateStr);
+                // Simple logic: Divide day of month by 7? Or real calendar weeks?
+                // The original JS used specific week distribution logic (StartOfMonth -> EndOfWeek).
+                // Let's approximate for visual consistency:
+                // Week 1: Days 1-7, Week 2: 8-14... No, that's not calendar.
+                // Calendar week:
+                const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
+                const offset = firstDay.getDay(); // 0-6
+                const dayOfMonth = d.getDate();
+                return Math.floor((dayOfMonth + offset - 1) / 7);
+            };
+
+            // Determine max weeks (usually 5 or 6)
+            const weeklyCurrent = new Array(6).fill(0);
+            const weeklyHistory = new Array(6).fill(0);
+
+            currentDaily.forEach(item => {
+                const idx = getWeekIdx(item.d + 'T12:00:00'); // Safe Timezone
+                if (idx >= 0 && idx < 6) weeklyCurrent[idx] += item.f;
+            });
+
+            historyDaily.forEach(item => {
+                const idx = getWeekIdx(item.d + 'T12:00:00'); // Safe Timezone
+                if (idx >= 0 && idx < 6) weeklyHistory[idx] += item.f;
+            });
+
+            // Normalize History (Quarter Sum -> Average Month)
+            for(let i=0; i<6; i++) weeklyHistory[i] = weeklyHistory[i] / 3;
+
+            // Trim empty tail weeks?
+            // Keep it simple for now
+
+            // 3. Monthly Chart (History Months + Current)
+            const monthlyData = (data.history_monthly || []).map(m => ({
+                label: m.m, // YYYY-MM
+                fat: m.f,
+                clients: m.c
+            }));
+            // Add Current (fake label based on data?)
+            // We can add current total
+            monthlyData.push({ label: 'Atual', fat: data.current_kpi.f, clients: data.current_kpi.c });
+
+            // 4. Daily Chart (Day of Week)
+            const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+            const dailyDataByWeek = new Array(6).fill(0).map(() => new Array(7).fill(0)); // 6 weeks, 7 days
+
+            currentDaily.forEach(item => {
+                const d = new Date(item.d + 'T12:00:00'); // Safe Timezone
+                const wIdx = getWeekIdx(item.d + 'T12:00:00');
+                const dayIdx = d.getDay();
+                if (wIdx >= 0 && wIdx < 6) {
+                    dailyDataByWeek[wIdx][dayIdx] += item.f;
+                }
+            });
+
+            const datasetsDaily = dayNames.map((name, i) => ({
+                label: name,
+                data: dailyDataByWeek.map(weekData => weekData[i])
+            }));
+
+            // 5. Supervisor Table
+            // Already formatted in RPC: [{name, current, history}]
+            const supervisorData = {};
+            (data.supervisor_data || []).forEach(s => {
+                supervisorData[s.name] = { current: s.current, history: s.history / 3 };
+            });
+
+            return {
+                kpis,
+                charts: {
+                    weeklyCurrent,
+                    weeklyHistory,
+                    monthlyData,
+                    dailyData: {
+                        labels: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4', 'Semana 5', 'Semana 6'],
+                        datasets: datasetsDaily
+                    }
+                },
+                supervisorData
+            };
         }
 
         function getMonthWeeksDistribution(date) {
