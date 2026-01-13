@@ -2897,40 +2897,33 @@ document.addEventListener('DOMContentLoaded', () => {
             const startOfQuarter = new Date(Date.UTC(targetYear, targetMonth - 3, 1));
 
             // --- 3. Determine Source Table for Target Month ---
-            // Check if Target Month matches the month in `data_detailed`
-            // `data_detailed` typically holds the latest load.
-            // We can check `lastSalesDate` month/year against `targetYear`/`targetMonth`
-
-            let targetIsDetailed = false;
-            if (lastSalesDate) {
-                const lastDate = new Date(lastSalesDate);
-                // Compare YYYY-MM
-                if (lastDate.getFullYear() === targetYear && lastDate.getMonth() === targetMonth) {
-                    targetIsDetailed = true;
-                }
-            }
+            // We fetch from BOTH tables to ensure we catch split data (e.g. Jan 2026 split between history and detailed)
 
             // --- 4. Fetch Data ---
 
-            // Fetch Target Month
+            // Fetch Target Month from Data Detailed
+            const fetchDetailed = supabase
+                .from('data_detailed')
+                .select('*')
+                .gte('dtped', startOfTarget.toISOString())
+                .lte('dtped', endOfTarget.toISOString());
+
+            // Fetch Target Month from Data History
+            const fetchHistoryCurrent = supabase
+                .from('data_history')
+                .select('*')
+                .gte('dtped', startOfTarget.toISOString())
+                .lte('dtped', endOfTarget.toISOString());
+
+            const [resDetailed, resHistoryCurrent] = await Promise.all([fetchDetailed, fetchHistoryCurrent]);
+
+            if (resDetailed.error) console.error("Error fetching detailed target:", resDetailed.error);
+            if (resHistoryCurrent.error) console.error("Error fetching history target:", resHistoryCurrent.error);
+
+            // Combine results
             let currentSales = [];
-            if (targetIsDetailed) {
-                // Fetch from detailed
-                const { data, error } = await supabase
-                    .from('data_detailed')
-                    .select('*')
-                    .gte('dtped', startOfTarget.toISOString())
-                    .lte('dtped', endOfTarget.toISOString());
-                if (!error) currentSales = data; else console.error("Error fetching detailed target:", error);
-            } else {
-                // Fetch from history
-                const { data, error } = await supabase
-                    .from('data_history')
-                    .select('*')
-                    .gte('dtped', startOfTarget.toISOString())
-                    .lte('dtped', endOfTarget.toISOString());
-                if (!error) currentSales = data; else console.error("Error fetching history target:", error);
-            }
+            if (resDetailed.data) currentSales = currentSales.concat(resDetailed.data);
+            if (resHistoryCurrent.data) currentSales = currentSales.concat(resHistoryCurrent.data);
 
             // Fetch Comparison Quarter (History)
             // Always from data_history (assuming quarter is always past)
