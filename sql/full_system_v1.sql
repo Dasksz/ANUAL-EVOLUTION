@@ -697,7 +697,7 @@ BEGIN
 
     -- Configurações de Memória para esta Query Específica
     SET LOCAL work_mem = '64MB'; -- Aumenta memória para ordenação
-    SET LOCAL statement_timeout = '15s'; -- Fail fast se travar
+    SET LOCAL statement_timeout = '60s'; -- Aumentado para 60s para suportar volumes maiores
 
     -- 1. Determine Date Ranges
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
@@ -1180,6 +1180,7 @@ BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
 
     SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s'; -- Timeout increased for large datasets
 
     -- Date Logic
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
@@ -1502,6 +1503,8 @@ BEGIN
     -- Security Check
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
 
+    SET LOCAL statement_timeout = '120s'; -- Explicitly increased for heavy agg
+
     -- 1. Date Logic (Mirrors JS fetchComparisonData)
     IF p_ano IS NOT NULL AND p_ano != 'todos' AND p_ano != '' THEN
         IF p_mes IS NOT NULL AND p_mes != '' THEN
@@ -1662,7 +1665,7 @@ BEGIN
                 m_date,
                 SUM(total_val) as monthly_f,
                 COUNT(CASE WHEN total_val >= 1 THEN 1 END) as monthly_active_clients,
-                COALESCE(SUM(pepsico_skus)::numeric / NULLIF(COUNT(CASE WHEN pepsico_skus > 0 THEN 1 END), 0), 0) as monthly_mix_pepsico,
+                COALESCE(SUM(pepsico_skus)::numeric / NULLIF(COUNT(CASE WHEN pepsico_skus > 0 THEN 1 END), 0) as monthly_mix_pepsico,
                 COUNT(CASE WHEN has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1 THEN 1 END) as monthly_pos_salty,
                 COUNT(CASE WHEN has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1 THEN 1 END) as monthly_pos_foods
             FROM hist_monthly_mix
@@ -1826,4 +1829,4 @@ ON CONFLICT (codigo) DO UPDATE SET nome = 'BALCAO';
 INSERT INTO public.dim_supervisores (codigo, nome) VALUES ('SV_AMERICANAS', 'SV AMERICANAS')
 ON CONFLICT (codigo) DO UPDATE SET nome = 'SV AMERICANAS';
 
-SELECT refresh_dashboard_cache();
+-- SELECT refresh_dashboard_cache(); -- Disabled auto-run to prevent immediate locking
