@@ -70,3 +70,73 @@
     align-items: center;
     justify-content: center;
 }
+
+/* KPI Glow Effects (Comparison View) */
+.kpi-glow-base {
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-glow-base::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+}
+
+.kpi-glow-base:hover::before {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.kpi-glow-blue { border-left: 4px solid #3b82f6; } /* Blue-500 */
+.kpi-glow-green { border-left: 4px solid #10b981; } /* Emerald-500 */
+.kpi-glow-yellow { border-left: 4px solid #f59e0b; } /* Amber-500 */
+.kpi-glow-purple { border-left: 4px solid #8b5cf6; } /* Violet-500 */
+
+.metric-btn {
+    background-color: transparent;
+    color: #94a3b8; /* slate-400 */
+    transition: all 0.2s;
+}
+.metric-btn:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+.metric-btn.active {
+    background-color: #3b82f6; /* blue-500 */
+    color: white !important;
+}
+
+.comparison-toggle-btn {
+    background-color: transparent;
+    color: #94a3b8;
+    transition: all 0.2s;
+}
+.comparison-toggle-btn:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+.comparison-toggle-btn.active {
+    background-color: #3b82f6;
+    color: white !important;
+}
+
+.fornecedor-btn {
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+.fornecedor-btn.active {
+    opacity: 1;
+    background-color: #0d9488; /* teal-600 */
+}
+.fornecedor-btn:hover:not(.active) {
+    opacity: 0.8;
+}
