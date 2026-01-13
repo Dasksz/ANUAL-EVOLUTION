@@ -2498,7 +2498,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
-});
  
         // --- Comparison View Logic ---
         const comparisonSupervisorFilterBtn = document.getElementById('comparison-supervisor-filter-btn');
@@ -2880,12 +2879,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (selectedComparisonSuppliers.length > 0 && !selectedComparisonSuppliers.includes(item.codfor)) return false;
                     if (selectedComparisonTiposVenda.length > 0 && !selectedComparisonTiposVenda.includes(item.tipovenda)) return false;
                     if (currentComparisonFornecedor) {
-                        const rawFornecedor = (item.fornecedor || '').toUpperCase();
-                        let rowPasta = item.observacaofor;
-                        if (!rowPasta || rowPasta === '0' || rowPasta === '00' || rowPasta === 'N/A') {
-                             rowPasta = rawFornecedor.includes('PEPSICO') ? 'PEPSICO' : 'MULTIMARCAS';
+                        if (currentComparisonFornecedor === 'ELMA') {
+                            // 707, 708, 752
+                            const validCodes = ['707', '708', '752'];
+                            if (!validCodes.includes(String(item.codfor))) return false;
+                        } else if (currentComparisonFornecedor === 'FOODS') {
+                            // 1119
+                            if (String(item.codfor) !== '1119') return false;
+                        } else {
+                            // Fallback Logic (Legacy Pepsico/Multimarcas if ever triggered)
+                            const rawFornecedor = (item.fornecedor || '').toUpperCase();
+                            let rowPasta = item.observacaofor;
+                            if (!rowPasta || rowPasta === '0' || rowPasta === '00' || rowPasta === 'N/A') {
+                                rowPasta = rawFornecedor.includes('PEPSICO') ? 'PEPSICO' : 'MULTIMARCAS';
+                            }
+                            if (rowPasta !== currentComparisonFornecedor) return false;
                         }
-                        if (rowPasta !== currentComparisonFornecedor) return false;
                     }
                     if (comparisonCityFilter.value) {
                         const city = item.cidade || '';
@@ -3208,3 +3217,4 @@ document.addEventListener('DOMContentLoaded', () => {
                         </tr>`;
             }).join('');
         }
+});
