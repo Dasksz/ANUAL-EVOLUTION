@@ -1605,22 +1605,27 @@ BEGIN
             SELECT dtped::date as d, SUM(vlvenda) as f, SUM(totpesoliq) as p
             FROM target_sales GROUP BY 1
         ),
-        -- Current Mix Calculation (Active Clients Filter: Sum Venda >= 1)
+        -- Current Aggregates for Product Mix (Product Level >= 1)
+        curr_prod_agg AS (
+            SELECT codcli, produto, MAX(descricao) as descricao, MAX(codfor) as codfor, SUM(vlvenda) as prod_val
+            FROM target_sales
+            GROUP BY 1, 2
+        ),
         curr_mix_base AS (
             SELECT
                 codcli,
-                SUM(vlvenda) as total_val,
-                COUNT(DISTINCT CASE WHEN codfor IN (''707'', ''708'') AND vlvenda > 0 THEN produto END) as pepsico_skus,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%CHEETOS%%'' THEN 1 ELSE 0 END) as has_cheetos,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%DORITOS%%'' THEN 1 ELSE 0 END) as has_doritos,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%FANDANGOS%%'' THEN 1 ELSE 0 END) as has_fandangos,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%RUFFLES%%'' THEN 1 ELSE 0 END) as has_ruffles,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TORCIDA%%'' THEN 1 ELSE 0 END) as has_torcida,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TODDYNHO%%'' THEN 1 ELSE 0 END) as has_toddynho,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TODDY %%'' THEN 1 ELSE 0 END) as has_toddy,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%QUAKER%%'' THEN 1 ELSE 0 END) as has_quaker,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%KEROCOCO%%'' THEN 1 ELSE 0 END) as has_kerococo
-            FROM target_sales
+                SUM(prod_val) as total_val,
+                COUNT(CASE WHEN codfor IN (''707'', ''708'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%CHEETOS%%'' THEN 1 ELSE 0 END) as has_cheetos,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%DORITOS%%'' THEN 1 ELSE 0 END) as has_doritos,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%FANDANGOS%%'' THEN 1 ELSE 0 END) as has_fandangos,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%RUFFLES%%'' THEN 1 ELSE 0 END) as has_ruffles,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TORCIDA%%'' THEN 1 ELSE 0 END) as has_torcida,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDYNHO%%'' THEN 1 ELSE 0 END) as has_toddynho,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDY %%'' THEN 1 ELSE 0 END) as has_toddy,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%QUAKER%%'' THEN 1 ELSE 0 END) as has_quaker,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%KEROCOCO%%'' THEN 1 ELSE 0 END) as has_kerococo
+            FROM curr_prod_agg
             GROUP BY 1
         ),
         curr_kpi AS (
@@ -1641,23 +1646,28 @@ BEGIN
             SELECT dtped::date as d, SUM(vlvenda) as f, SUM(totpesoliq) as p
             FROM history_sales GROUP BY 1
         ),
-        -- History Mix Calculation (Monthly)
+        -- History Aggregates for Product Mix (Product Level >= 1)
+        hist_prod_agg AS (
+            SELECT date_trunc(''month'', dtped) as m_date, codcli, produto, MAX(descricao) as descricao, MAX(codfor) as codfor, SUM(vlvenda) as prod_val
+            FROM history_sales
+            GROUP BY 1, 2, 3
+        ),
         hist_monthly_mix AS (
             SELECT
-                date_trunc(''month'', dtped) as m_date,
+                m_date,
                 codcli,
-                SUM(vlvenda) as total_val,
-                COUNT(DISTINCT CASE WHEN codfor IN (''707'', ''708'') AND vlvenda > 0 THEN produto END) as pepsico_skus,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%CHEETOS%%'' THEN 1 ELSE 0 END) as has_cheetos,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%DORITOS%%'' THEN 1 ELSE 0 END) as has_doritos,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%FANDANGOS%%'' THEN 1 ELSE 0 END) as has_fandangos,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%RUFFLES%%'' THEN 1 ELSE 0 END) as has_ruffles,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TORCIDA%%'' THEN 1 ELSE 0 END) as has_torcida,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TODDYNHO%%'' THEN 1 ELSE 0 END) as has_toddynho,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TODDY %%'' THEN 1 ELSE 0 END) as has_toddy,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%QUAKER%%'' THEN 1 ELSE 0 END) as has_quaker,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%KEROCOCO%%'' THEN 1 ELSE 0 END) as has_kerococo
-            FROM history_sales
+                SUM(prod_val) as total_val,
+                COUNT(CASE WHEN codfor IN (''707'', ''708'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%CHEETOS%%'' THEN 1 ELSE 0 END) as has_cheetos,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%DORITOS%%'' THEN 1 ELSE 0 END) as has_doritos,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%FANDANGOS%%'' THEN 1 ELSE 0 END) as has_fandangos,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%RUFFLES%%'' THEN 1 ELSE 0 END) as has_ruffles,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TORCIDA%%'' THEN 1 ELSE 0 END) as has_torcida,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDYNHO%%'' THEN 1 ELSE 0 END) as has_toddynho,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDY %%'' THEN 1 ELSE 0 END) as has_toddy,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%QUAKER%%'' THEN 1 ELSE 0 END) as has_quaker,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%KEROCOCO%%'' THEN 1 ELSE 0 END) as has_kerococo
+            FROM hist_prod_agg
             GROUP BY 1, 2
         ),
         hist_monthly_sums AS (
