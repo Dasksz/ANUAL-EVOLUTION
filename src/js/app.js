@@ -2500,6 +2500,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
  
         // --- Comparison View Logic ---
+        const comparisonAnoFilter = document.getElementById('comparison-ano-filter');
+        const comparisonMesFilter = document.getElementById('comparison-mes-filter');
         const comparisonSupervisorFilterBtn = document.getElementById('comparison-supervisor-filter-btn');
         const comparisonSupervisorFilterDropdown = document.getElementById('comparison-supervisor-filter-dropdown');
         const comparisonVendedorFilterBtn = document.getElementById('comparison-vendedor-filter-btn');
@@ -2546,6 +2548,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadComparisonView();
             }, 500);
         };
+
+        if (comparisonAnoFilter) comparisonAnoFilter.addEventListener('change', handleComparisonFilterChange);
+        if (comparisonMesFilter) comparisonMesFilter.addEventListener('change', handleComparisonFilterChange);
 
         if (comparisonSupervisorFilterBtn) {
             comparisonSupervisorFilterBtn.addEventListener('click', () => comparisonSupervisorFilterDropdown.classList.toggle('hidden'));
@@ -2711,6 +2716,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (clearComparisonFiltersBtn) {
             clearComparisonFiltersBtn.addEventListener('click', () => {
+                comparisonAnoFilter.value = 'todos';
+                comparisonMesFilter.value = '';
                 selectedComparisonSupervisors = [];
                 selectedComparisonSellers = [];
                 selectedComparisonSuppliers = [];
@@ -2799,6 +2806,25 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) console.error('Error fetching comparison filters:', error);
             if (!filterData) return;
 
+            if (filterData.anos && comparisonAnoFilter) {
+                const currentVal = comparisonAnoFilter.value;
+                comparisonAnoFilter.innerHTML = '<option value="todos">Todos</option>';
+                filterData.anos.forEach(a => {
+                    const opt = document.createElement('option');
+                    opt.value = a;
+                    opt.textContent = a;
+                    comparisonAnoFilter.appendChild(opt);
+                });
+                if (currentVal && currentVal !== 'todos') comparisonAnoFilter.value = currentVal;
+                else if (filterData.anos.length > 0) comparisonAnoFilter.value = filterData.anos[0];
+            }
+
+            if (comparisonMesFilter && comparisonMesFilter.options.length <= 1) {
+                comparisonMesFilter.innerHTML = '<option value="">Todos</option>';
+                const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; comparisonMesFilter.appendChild(opt); });
+            }
+
             setupCityMultiSelect(comparisonSupervisorFilterBtn, comparisonSupervisorFilterDropdown, comparisonSupervisorFilterDropdown, filterData.supervisors, selectedComparisonSupervisors);
             setupCityMultiSelect(comparisonVendedorFilterBtn, comparisonVendedorFilterDropdown, comparisonVendedorFilterDropdown, filterData.vendedores, selectedComparisonSellers);
             setupCityMultiSelect(comparisonSupplierFilterBtn, comparisonSupplierFilterDropdown, comparisonSupplierFilterDropdown, filterData.fornecedores, selectedComparisonSuppliers, null, true);
@@ -2819,41 +2845,108 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         async function fetchComparisonData() {
-            // Fetch Raw Data from Supabase
-            // We need Current Month Data and History (Last 3 months)
-
-            // Determine Date Range
             const now = new Date();
-            // Assuming last sales date logic or default to now
-            const refDate = lastSalesDate ? new Date(lastSalesDate) : now;
+            let refDate;
 
-            // Current Month Range
-            const startOfMonth = new Date(Date.UTC(refDate.getFullYear(), refDate.getMonth(), 1));
-            const endOfMonth = new Date(Date.UTC(refDate.getFullYear(), refDate.getMonth() + 1, 0, 23, 59, 59));
+            // --- 1. Determine Reference Date based on Filters ---
+            const selectedYear = comparisonAnoFilter.value;
+            const selectedMonth = comparisonMesFilter.value;
 
-            // History Range (Previous 3 Months)
-            const startOfHistory = new Date(Date.UTC(refDate.getFullYear(), refDate.getMonth() - 3, 1));
-            const endOfHistory = new Date(Date.UTC(refDate.getFullYear(), refDate.getMonth(), 0, 23, 59, 59)); // End of previous month
+            // Base fallback: lastSalesDate or now
+            const defaultRefDate = lastSalesDate ? new Date(lastSalesDate) : now;
 
-            // Fetch Current
-            const { data: currentSales, error: errCurrent } = await supabase
-                .from('data_detailed')
-                .select('*')
-                .gte('dtped', startOfMonth.toISOString())
-                .lte('dtped', endOfMonth.toISOString());
+            if (selectedYear && selectedYear !== 'todos') {
+                const year = parseInt(selectedYear);
 
-            if (errCurrent) { console.error("Error fetching current sales:", errCurrent); return { current: [], history: [] }; }
+                if (selectedMonth !== '') {
+                    // Scenario A: Year + Month Selected -> Use that exact month
+                    const month = parseInt(selectedMonth);
+                    // Use last day of that month to ensure we cover the whole month
+                    refDate = new Date(Date.UTC(year, month + 1, 0));
+                } else {
+                    // Scenario B: Year Selected, Month Empty -> Use "Last Month" logic for that year
+                    // If Year == Current Year -> Use current latest month (defaultRefDate)
+                    // If Year < Current Year -> Use December of that year
+                    const currentYear = defaultRefDate.getFullYear();
 
-            // Fetch History
+                    if (year === currentYear) {
+                        refDate = defaultRefDate;
+                    } else {
+                        // Past Year: Default to December
+                        // (Optimization: In a real app we might query MAX(dtped) for that year,
+                        // but Dec is standard "Year End" view)
+                        refDate = new Date(Date.UTC(year, 11, 31)); // Dec 31
+                    }
+                }
+            } else {
+                // Scenario C: No Year Selected (or 'todos') -> Default to latest available
+                refDate = defaultRefDate;
+            }
+
+            // --- 2. Calculate Ranges ---
+            // Target Month (The one being analyzed)
+            const targetYear = refDate.getFullYear();
+            const targetMonth = refDate.getMonth(); // 0-11
+
+            const startOfTarget = new Date(Date.UTC(targetYear, targetMonth, 1));
+            const endOfTarget = new Date(Date.UTC(targetYear, targetMonth + 1, 0, 23, 59, 59));
+
+            // Comparison Quarter (Previous 3 Months relative to Target)
+            // e.g. If Target = Dec, Quarter = Sept, Oct, Nov
+            const endOfQuarter = new Date(Date.UTC(targetYear, targetMonth, 0, 23, 59, 59)); // Last second of previous month
+            const startOfQuarter = new Date(Date.UTC(targetYear, targetMonth - 3, 1));
+
+            // --- 3. Determine Source Table for Target Month ---
+            // Check if Target Month matches the month in `data_detailed`
+            // `data_detailed` typically holds the latest load.
+            // We can check `lastSalesDate` month/year against `targetYear`/`targetMonth`
+
+            let targetIsDetailed = false;
+            if (lastSalesDate) {
+                const lastDate = new Date(lastSalesDate);
+                // Compare YYYY-MM
+                if (lastDate.getFullYear() === targetYear && lastDate.getMonth() === targetMonth) {
+                    targetIsDetailed = true;
+                }
+            }
+
+            // --- 4. Fetch Data ---
+
+            // Fetch Target Month
+            let currentSales = [];
+            if (targetIsDetailed) {
+                // Fetch from detailed
+                const { data, error } = await supabase
+                    .from('data_detailed')
+                    .select('*')
+                    .gte('dtped', startOfTarget.toISOString())
+                    .lte('dtped', endOfTarget.toISOString());
+                if (!error) currentSales = data; else console.error("Error fetching detailed target:", error);
+            } else {
+                // Fetch from history
+                const { data, error } = await supabase
+                    .from('data_history')
+                    .select('*')
+                    .gte('dtped', startOfTarget.toISOString())
+                    .lte('dtped', endOfTarget.toISOString());
+                if (!error) currentSales = data; else console.error("Error fetching history target:", error);
+            }
+
+            // Fetch Comparison Quarter (History)
+            // Always from data_history (assuming quarter is always past)
+            // Edge case: If "Quarter" includes current month? (e.g. Filter next month?)
+            // Based on rules: "Trimestre anterior de 2025 a dezembro (setembro, outubro, novembro)"
+            // So Quarter is strictly previous.
+
             const { data: historySales, error: errHistory } = await supabase
                 .from('data_history')
                 .select('*')
-                .gte('dtped', startOfHistory.toISOString())
-                .lte('dtped', endOfHistory.toISOString());
+                .gte('dtped', startOfQuarter.toISOString())
+                .lte('dtped', endOfQuarter.toISOString());
 
-            if (errHistory) { console.error("Error fetching history sales:", errHistory); return { current: currentSales, history: [] }; }
+            if (errHistory) console.error("Error fetching history quarter:", errHistory);
 
-            return { current: currentSales, history: historySales };
+            return { current: currentSales || [], history: historySales || [] };
         }
 
         async function loadComparisonView() {
@@ -2970,13 +3063,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function calculateUnifiedMetrics(currentSales, historySales) {
-            const currentYear = new Date().getFullYear();
-            // Assuming last sales date is available or defaulting to current
-            const refDate = lastSalesDate ? new Date(lastSalesDate) : new Date();
-            const currentMonth = refDate.getUTCMonth();
+            // Determine Reference Date (Target Month)
+            // Re-using logic from fetchComparisonData or inferring from currentSales
+            // Ideally we pass refDate, but we can infer from currentSales[0] or default
+            let refDate;
+            if (currentSales && currentSales.length > 0 && currentSales[0].dtped) {
+                refDate = new Date(currentSales[0].dtped);
+            } else {
+                // Fallback: If no current sales, use filter logic or lastSalesDate
+                const selectedYear = comparisonAnoFilter.value;
+                const selectedMonth = comparisonMesFilter.value;
+                const defaultRefDate = lastSalesDate ? new Date(lastSalesDate) : new Date();
 
-            // Generate weeks structure for current month
-            // Week logic: similar to getMonthWeeksDistribution
+                if (selectedYear && selectedYear !== 'todos') {
+                    const year = parseInt(selectedYear);
+                    if (selectedMonth !== '') {
+                        refDate = new Date(Date.UTC(year, parseInt(selectedMonth), 15));
+                    } else {
+                        const currentYear = defaultRefDate.getFullYear();
+                        if (year === currentYear) refDate = defaultRefDate;
+                        else refDate = new Date(Date.UTC(year, 11, 15));
+                    }
+                } else {
+                    refDate = defaultRefDate;
+                }
+            }
+
+            const currentYear = refDate.getFullYear();
+            const currentMonth = refDate.getMonth(); // 0-11 local or UTC depending on how we handle
+
+            // Generate weeks structure for current (target) month
+            // Ensure refDate is handled correctly as UTC or Local.
+            // The getMonthWeeksDistribution uses local Date methods (getFullYear, getMonth).
+            // We should ensure consistency.
             const { weeks } = getMonthWeeksDistribution(refDate);
             const currentMonthWeeks = weeks;
 
