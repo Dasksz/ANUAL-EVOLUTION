@@ -359,6 +359,7 @@ self.onmessage = async (event) => {
 
         self.postMessage({ type: 'progress', status: 'Criando mapa mestre de vendedores...', percentage: 40 });
         const rcaInfoMap = new Map();
+        const supervisorCodeMap = new Map(); // CODSUPERVISOR -> SUPERV NAME
         const clientLastVendorMap = new Map(); // CODCLI -> CODUSUR
         const vendorCitiesMap = new Map(); // CODUSUR -> Set(MUNICIPIO)
 
@@ -376,16 +377,24 @@ self.onmessage = async (event) => {
 
             if (!codusur) continue;
             let supervisor = String(row['SUPERV'] || '').trim();
+            let codSupervisor = String(row['CODSUPERVISOR'] || '').trim();
             const nome = String(row['NOME'] || '').trim();
+
             if (supervisor.trim().toUpperCase() === 'OSÉAS SANTOS OL') supervisor = 'OSVALDO NUNES O';
             const supervisorUpper = (supervisor || '').trim().toUpperCase();
             if (supervisorUpper === 'BALCAO' || supervisorUpper === 'BALCÃO') supervisor = 'BALCAO';
+
+            if (codSupervisor && supervisor) {
+                supervisorCodeMap.set(codSupervisor, supervisor);
+            }
+
             const existingEntry = rcaInfoMap.get(codusur);
             if (!existingEntry) {
-                rcaInfoMap.set(codusur, { NOME: nome || 'N/A', SUPERV: supervisor || 'N/A' });
+                rcaInfoMap.set(codusur, { NOME: nome || 'N/A', SUPERV: supervisor || 'N/A', CODSUPERVISOR: codSupervisor || 'N/A' });
             } else {
                 if (nome) existingEntry.NOME = nome;
                 if (supervisor) existingEntry.SUPERV = supervisor;
+                if (codSupervisor) existingEntry.CODSUPERVISOR = codSupervisor;
             }
 
             // Build Client Last Vendor Map (sales sorted by date, so last one overwrites)
@@ -512,7 +521,17 @@ self.onmessage = async (event) => {
                         const vendorInfo = rcaInfoMap.get(targetVendorCode);
                         newSale['CODUSUR'] = targetVendorCode;
                         newSale['NOME'] = vendorInfo.NOME;
-                        newSale['SUPERV'] = vendorInfo.SUPERV;
+
+                        // New Rule: Vendor 190 -> Supervisor 12
+                        if (targetVendorCode === '190') {
+                            newSale['CODSUPERVISOR'] = '12';
+                            newSale['SUPERV'] = supervisorCodeMap.get('12') || 'SUPERVISOR 12';
+                        } else {
+                            newSale['SUPERV'] = vendorInfo.SUPERV;
+                            if (vendorInfo.CODSUPERVISOR && vendorInfo.CODSUPERVISOR !== 'N/A') {
+                                newSale['CODSUPERVISOR'] = vendorInfo.CODSUPERVISOR;
+                            }
+                        }
                     } else {
                         // Fallback if vendor unknown in map (rare)
                          if (!rca1) {
