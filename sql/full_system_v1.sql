@@ -148,9 +148,17 @@ ALTER TABLE public.dim_fornecedores ENABLE ROW LEVEL SECURITY;
 
 CREATE TABLE IF NOT EXISTS public.dim_produtos (
     codigo text PRIMARY KEY,
-    descricao text
+    descricao text,
+    codfor text
 );
 ALTER TABLE public.dim_produtos ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'codfor') THEN
+        ALTER TABLE public.dim_produtos ADD COLUMN codfor text;
+    END IF;
+END $$;
 
 -- Unified View
 DROP VIEW IF EXISTS public.all_sales CASCADE;
