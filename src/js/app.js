@@ -3008,6 +3008,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     return day !== 0 && day !== 6 && !hols.includes(dateStr);
                 };
 
+                // A. Process History to build Weights Matrix [Week][Day]
+                const historySums = new Array(6).fill(0).map(() => new Array(7).fill(0));
+                const historyCounts = new Array(6).fill(0).map(() => new Array(7).fill(0));
+
+                historyDaily.forEach(item => {
+                    const idx = getWeekIdx(item.d + 'T12:00:00');
+                    if (idx >= 0 && idx < 6) {
+                        const d = new Date(item.d + 'T12:00:00');
+                        const dayIdx = d.getDay();
+                        historySums[idx][dayIdx] += item.f;
+                        historyCounts[idx][dayIdx]++;
+                    }
+                });
+
+                const historyWeights = historySums.map((week, wIdx) =>
+                    week.map((sum, dIdx) => {
+                        const count = historyCounts[wIdx][dIdx];
+                        return count > 0 ? sum / count : 0;
+                    })
+                );
+
+                // B. Calculate Run Rate and Total Projected Pot
                 let passedWorkingDays = 0;
                 let curr = new Date(monthStart);
                 while (curr <= lastSalesDate) {
@@ -3017,20 +3039,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const dailyRunRate = passedWorkingDays > 0 ? currentActualTotal / passedWorkingDays : 0;
 
-                // Project Future Days
+                // Identify Future Working Days
+                const futureDays = [];
                 let iter = new Date(lastSalesDate);
                 iter.setDate(iter.getDate() + 1); // Start from next day
 
                 while (iter <= monthEnd) {
                     if (isWorkingDay(iter)) {
                         const idx = getWeekIdx(iter.toISOString());
+                        const dayIdx = iter.getDay();
                         if (idx >= 0 && idx < 6) {
-                            weeklyCurrent[idx] += dailyRunRate;
-                            dailyDataByWeek[idx][iter.getDay()] += dailyRunRate;
+                            futureDays.push({ weekIdx: idx, dayIdx: dayIdx });
                         }
                     }
                     iter.setDate(iter.getDate() + 1);
                 }
+
+                const totalProjectedPot = dailyRunRate * futureDays.length;
+
+                // C. Distribute Pot
+                let totalWeightDenominator = 0;
+                futureDays.forEach(day => {
+                    totalWeightDenominator += historyWeights[day.weekIdx][day.dayIdx];
+                });
+
+                futureDays.forEach(day => {
+                    let allocation = 0;
+                    if (totalWeightDenominator > 0) {
+                        const weight = historyWeights[day.weekIdx][day.dayIdx];
+                        allocation = totalProjectedPot * (weight / totalWeightDenominator);
+                    } else {
+                        // Fallback to equal distribution if no history for these specific slots
+                        allocation = dailyRunRate;
+                    }
+
+                    weeklyCurrent[day.weekIdx] += allocation;
+                    dailyDataByWeek[day.weekIdx][day.dayIdx] += allocation;
+                });
             }
 
             historyDaily.forEach(item => {
