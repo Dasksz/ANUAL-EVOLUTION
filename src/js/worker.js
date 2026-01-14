@@ -562,12 +562,14 @@ self.onmessage = async (event) => {
         const dimSupervisors = new Map();
         const dimVendors = new Map();
         const dimProviders = new Map();
+        const dimProducts = new Map();
 
         const collectDimensions = (salesArray) => {
             salesArray.forEach(sale => {
                 if (sale.codsupervisor && sale.superv) dimSupervisors.set(sale.codsupervisor, sale.superv);
                 if (sale.codusur && sale.nome) dimVendors.set(sale.codusur, sale.nome);
                 if (sale.codfor && sale.fornecedor) dimProviders.set(sale.codfor, sale.fornecedor);
+                if (sale.produto && sale.descricao) dimProducts.set(sale.produto, sale.descricao);
             });
         };
 
@@ -593,7 +595,7 @@ self.onmessage = async (event) => {
                 // Unconditionally remove redundant fields to save space/bandwidth
                 delete newSale.cliente_nome;
                 delete newSale.bairro;
-                // delete newSale.descricao; // Kept for Mix Logic
+                delete newSale.descricao;
                 delete newSale.observacaofor;
                 
                 // 3. Normalization (Remove Text Columns, keep Codes)
@@ -631,7 +633,8 @@ self.onmessage = async (event) => {
             newCities: Array.from(newCitiesSet),
             newSupervisors: mapToObjArray(dimSupervisors),
             newVendors: mapToObjArray(dimVendors),
-            newProviders: mapToObjArray(dimProviders)
+            newProviders: mapToObjArray(dimProviders),
+            newProducts: Array.from(dimProducts.entries()).map(([codigo, descricao]) => ({ codigo, descricao }))
         };
 
         self.postMessage({ type: 'result', data: resultPayload });

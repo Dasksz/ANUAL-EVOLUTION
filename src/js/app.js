@@ -619,6 +619,10 @@ document.addEventListener('DOMContentLoaded', () => {
                  updateStatus('Atualizando Supervisores...', 1);
                  await performDimensionUpsert('dim_supervisores', data.newSupervisors);
             }
+            if (data.newProducts && data.newProducts.length > 0) {
+                 updateStatus('Atualizando Produtos...', 1);
+                 await performDimensionUpsert('dim_produtos', data.newProducts);
+            }
             if (data.newVendors && data.newVendors.length > 0) {
                  updateStatus('Atualizando Vendedores...', 2);
                  await performDimensionUpsert('dim_vendedores', data.newVendors);

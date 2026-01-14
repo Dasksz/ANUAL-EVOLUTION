@@ -146,6 +146,12 @@ CREATE TABLE IF NOT EXISTS public.dim_fornecedores (
 );
 ALTER TABLE public.dim_fornecedores ENABLE ROW LEVEL SECURITY;
 
+CREATE TABLE IF NOT EXISTS public.dim_produtos (
+    codigo text PRIMARY KEY,
+    descricao text
+);
+ALTER TABLE public.dim_produtos ENABLE ROW LEVEL SECURITY;
+
 -- Unified View
 DROP VIEW IF EXISTS public.all_sales CASCADE;
 create or replace view public.all_sales with (security_invoker = true) as
@@ -316,7 +322,7 @@ CREATE POLICY "Profiles Delete" ON public.profiles FOR DELETE USING (public.is_a
 DO $$
 DECLARE t text;
 BEGIN
-    FOR t IN SELECT unnest(ARRAY['config_city_branches', 'dim_supervisores', 'dim_vendedores', 'dim_fornecedores'])
+    FOR t IN SELECT unnest(ARRAY['config_city_branches', 'dim_supervisores', 'dim_vendedores', 'dim_fornecedores', 'dim_produtos'])
     LOOP
         EXECUTE format('DROP POLICY IF EXISTS "Unified Read Access" ON public.%I', t);
         EXECUTE format('CREATE POLICY "Unified Read Access" ON public.%I FOR SELECT USING (public.is_admin() OR public.is_approved())', t);
@@ -1607,8 +1613,9 @@ BEGIN
         ),
         -- Current Aggregates for Product Mix (Product Level >= 1)
         curr_prod_agg AS (
-            SELECT codcli, produto, MAX(descricao) as descricao, MAX(codfor) as codfor, SUM(vlvenda) as prod_val
-            FROM target_sales
+            SELECT s.codcli, s.produto, MAX(dp.descricao) as descricao, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val
+            FROM target_sales s
+            LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             GROUP BY 1, 2
         ),
         curr_mix_base AS (
@@ -1648,8 +1655,9 @@ BEGIN
         ),
         -- History Aggregates for Product Mix (Product Level >= 1)
         hist_prod_agg AS (
-            SELECT date_trunc(''month'', dtped) as m_date, codcli, produto, MAX(descricao) as descricao, MAX(codfor) as codfor, SUM(vlvenda) as prod_val
-            FROM history_sales
+            SELECT date_trunc(''month'', dtped) as m_date, s.codcli, s.produto, MAX(dp.descricao) as descricao, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val
+            FROM history_sales s
+            LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             GROUP BY 1, 2, 3
         ),
         hist_monthly_mix AS (
