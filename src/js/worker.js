@@ -292,12 +292,19 @@ self.onmessage = async (event) => {
 
         self.postMessage({ type: 'progress', status: 'Mapeando produtos...', percentage: 30 });
         const productMasterMap = new Map();
+        const dimProducts = new Map();
+
         productsDataRaw.forEach(prod => {
             const productCode = String(prod['Código'] || '').trim();
             if (!productCode) return;
+            
             let qtdeMaster = parseInt(prod['Qtde embalagem master(Compra)'], 10);
             if (isNaN(qtdeMaster) || qtdeMaster <= 0) qtdeMaster = 1;
             productMasterMap.set(productCode, qtdeMaster);
+
+            const desc = String(prod['Descrição'] || '').trim();
+            const codFor = String(prod['Fornecedor'] || '').trim();
+            dimProducts.set(productCode, { descricao: desc, codfor: codFor });
         });
 
         // --- Logic for Inactive Clients (City -> Filial -> Supervisor) ---
@@ -562,12 +569,16 @@ self.onmessage = async (event) => {
         const dimSupervisors = new Map();
         const dimVendors = new Map();
         const dimProviders = new Map();
+        // dimProducts initialized earlier
 
         const collectDimensions = (salesArray) => {
             salesArray.forEach(sale => {
                 if (sale.codsupervisor && sale.superv) dimSupervisors.set(sale.codsupervisor, sale.superv);
                 if (sale.codusur && sale.nome) dimVendors.set(sale.codusur, sale.nome);
                 if (sale.codfor && sale.fornecedor) dimProviders.set(sale.codfor, sale.fornecedor);
+                if (sale.produto && !dimProducts.has(sale.produto)) {
+                    dimProducts.set(sale.produto, { descricao: sale.descricao, codfor: sale.codfor });
+                }
             });
         };
 
@@ -631,7 +642,8 @@ self.onmessage = async (event) => {
             newCities: Array.from(newCitiesSet),
             newSupervisors: mapToObjArray(dimSupervisors),
             newVendors: mapToObjArray(dimVendors),
-            newProviders: mapToObjArray(dimProviders)
+            newProviders: mapToObjArray(dimProviders),
+            newProducts: Array.from(dimProducts.entries()).map(([codigo, val]) => ({ codigo, descricao: val.descricao, codfor: val.codfor }))
         };
 
         self.postMessage({ type: 'result', data: resultPayload });
