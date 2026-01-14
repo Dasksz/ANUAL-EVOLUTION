@@ -2851,7 +2851,7 @@ document.addEventListener('DOMContentLoaded', () => {
         async function loadComparisonView() {
             showDashboardLoading('comparison-view');
 
-            if (typeof initComparisonFilters === 'function' && comparisonSupervisorFilterDropdown.children.length === 0) {
+            if (typeof initComparisonFilters === 'function' && (!comparisonSupervisorFilterDropdown.children.length || comparisonSupervisorFilterDropdown.children.length === 0)) {
                 await initComparisonFilters();
             }
 
@@ -2907,48 +2907,47 @@ document.addEventListener('DOMContentLoaded', () => {
         function mapRpcDataToMetrics(data) {
             if (!data) return { kpis: [], charts: {}, supervisorData: {} };
 
+            // Trend Factor
+            const trendFactor = (useTendencyComparison && data.trend_info && data.trend_info.allowed) ? data.trend_info.factor : 1;
+
+            // Apply Trend to Current Base Values
+            const curF = data.current_kpi.f * trendFactor;
+            const curP = data.current_kpi.p * trendFactor;
+            const curC = Math.round(data.current_kpi.c * trendFactor);
+
             // 1. Process KPIs
             const kpis = [
-                { title: 'Faturamento Total', current: data.current_kpi.f, history: data.history_kpi.f / 3, format: 'currency' }, // History is 3 months sum, average is /3
-                { title: 'Peso Total (Ton)', current: data.current_kpi.p/1000, history: (data.history_kpi.p/3)/1000, format: 'decimal' },
-                { title: 'Clientes Atendidos', current: data.current_kpi.c, history: data.history_kpi.c / 3, format: 'integer' },
+                { title: 'Faturamento Total', current: curF, history: data.history_kpi.f / 3, format: 'currency' },
+                { title: 'Peso Total (Ton)', current: curP/1000, history: (data.history_kpi.p/3)/1000, format: 'decimal' },
+                { title: 'Clientes Atendidos', current: curC, history: data.history_kpi.c / 3, format: 'integer' },
                 { title: 'Ticket Médio',
-                  current: data.current_kpi.c > 0 ? data.current_kpi.f / data.current_kpi.c : 0,
+                  current: curC > 0 ? curF / curC : 0,
                   history: data.history_kpi.c > 0 ? (data.history_kpi.f/3) / (data.history_kpi.c/3) : 0,
                   format: 'currency'
                 },
-                { title: 'Mix por PDV (Pepsico)', current: data.current_kpi.mix_pepsico, history: data.history_kpi.sum_mix_pepsico / 3, format: 'mix' },
-                { title: 'Mix Salty', current: data.current_kpi.pos_salty, history: data.history_kpi.sum_pos_salty / 3, format: 'integer' },
-                { title: 'Mix Foods', current: data.current_kpi.pos_foods, history: data.history_kpi.sum_pos_foods / 3, format: 'integer' }
+                { title: 'Mix por PDV (Pepsico)', current: Number(data.current_kpi.mix_pepsico.toFixed(2)), history: Number((data.history_kpi.sum_mix_pepsico / 3).toFixed(2)), format: 'decimal' },
+                { title: 'Mix Salty', current: Math.round(data.current_kpi.pos_salty * trendFactor), history: Math.round(data.history_kpi.sum_pos_salty / 3), format: 'integer' },
+                { title: 'Mix Foods', current: Math.round(data.current_kpi.pos_foods * trendFactor), history: Math.round(data.history_kpi.sum_pos_foods / 3), format: 'integer' }
             ];
 
             // 2. Weekly Chart Logic
-            // We need to map daily data to "Weeks" (1-4/5)
-            // Current Month
             const currentDaily = data.current_daily || [];
             const historyDaily = data.history_daily || [];
 
-            // Helper to get week index (0-based) for a date within its month
             const getWeekIdx = (dateStr) => {
                 const d = new Date(dateStr);
-                // Simple logic: Divide day of month by 7? Or real calendar weeks?
-                // The original JS used specific week distribution logic (StartOfMonth -> EndOfWeek).
-                // Let's approximate for visual consistency:
-                // Week 1: Days 1-7, Week 2: 8-14... No, that's not calendar.
-                // Calendar week:
                 const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
-                const offset = firstDay.getDay(); // 0-6
+                const offset = firstDay.getDay();
                 const dayOfMonth = d.getDate();
                 return Math.floor((dayOfMonth + offset - 1) / 7);
             };
 
-            // Determine max weeks (usually 5 or 6)
             const weeklyCurrent = new Array(6).fill(0);
             const weeklyHistory = new Array(6).fill(0);
 
             currentDaily.forEach(item => {
-                const idx = getWeekIdx(item.d + 'T12:00:00'); // Safe Timezone
-                if (idx >= 0 && idx < 6) weeklyCurrent[idx] += item.f;
+                const idx = getWeekIdx(item.d + 'T12:00:00');
+                if (idx >= 0 && idx < 6) weeklyCurrent[idx] += (item.f * trendFactor);
             });
 
             historyDaily.forEach(item => {
@@ -2968,9 +2967,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 fat: m.f,
                 clients: m.c
             }));
-            // Add Current (fake label based on data?)
-            // We can add current total
-            monthlyData.push({ label: 'Atual', fat: data.current_kpi.f, clients: data.current_kpi.c });
+
+            monthlyData.push({ label: 'Atual', fat: curF, clients: curC });
 
             // 4. Daily Chart (Day of Week)
             const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -2981,7 +2979,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const wIdx = getWeekIdx(item.d + 'T12:00:00');
                 const dayIdx = d.getDay();
                 if (wIdx >= 0 && wIdx < 6) {
-                    dailyDataByWeek[wIdx][dayIdx] += item.f;
+                    dailyDataByWeek[wIdx][dayIdx] += (item.f * trendFactor);
                 }
             });
 
@@ -2991,10 +2989,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }));
 
             // 5. Supervisor Table
-            // Already formatted in RPC: [{name, current, history}]
             const supervisorData = {};
             (data.supervisor_data || []).forEach(s => {
-                supervisorData[s.name] = { current: s.current, history: s.history / 3 };
+                supervisorData[s.name] = { current: s.current * trendFactor, history: s.history / 3 };
             });
 
             return {

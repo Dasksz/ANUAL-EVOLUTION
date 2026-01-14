@@ -1500,6 +1500,15 @@ DECLARE
     v_where text := ' WHERE 1=1 ';
     v_where_rede text := '';
 
+    -- Trend Vars
+    v_max_sale_date date;
+    v_trend_allowed boolean;
+    v_trend_factor numeric := 1;
+    v_month_start date;
+    v_month_end date;
+    v_work_days_passed int;
+    v_work_days_total int;
+
     -- Outputs
     v_current_kpi json;
     v_history_kpi json;
@@ -1548,6 +1557,25 @@ BEGIN
     -- Comparison Quarter (Previous 3 Months)
     v_end_quarter := v_start_target - interval '1 second';
     v_start_quarter := date_trunc('month', v_end_quarter - interval '2 months');
+
+    -- Trend Calculation
+    SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
+    IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
+
+    -- Trend Allowed logic (Simplified: Target Year/Month must match Max Sale Date Year/Month)
+    v_trend_allowed := (EXTRACT(YEAR FROM v_end_target) = EXTRACT(YEAR FROM v_max_sale_date) AND EXTRACT(MONTH FROM v_end_target) = EXTRACT(MONTH FROM v_max_sale_date));
+
+    IF v_trend_allowed THEN
+        v_month_start := date_trunc('month', v_max_sale_date);
+        v_month_end := (v_month_start + interval '1 month' - interval '1 day')::date;
+
+        v_work_days_passed := public.calc_working_days(v_month_start, v_max_sale_date);
+        v_work_days_total := public.calc_working_days(v_month_start, v_month_end);
+
+        IF v_work_days_passed > 0 AND v_work_days_total > 0 THEN
+            v_trend_factor := v_work_days_total::numeric / v_work_days_passed::numeric;
+        END IF;
+    END IF;
 
     -- 2. Build WHERE Clause
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
@@ -1744,6 +1772,7 @@ BEGIN
         'history_kpi', v_history_kpi,
         'supervisor_data', v_supervisor_data,
         'history_monthly', v_history_monthly,
+        'trend_info', json_build_object('allowed', v_trend_allowed, 'factor', v_trend_factor),
         'debug_range', json_build_object('start', v_start_target, 'end', v_end_target, 'h_start', v_start_quarter, 'h_end', v_end_quarter)
     );
 END;
