@@ -877,40 +877,58 @@ BEGIN
         FROM public.data_summary
         ' || v_where_base || '
     ),
+    -- CORREÇÃO: Agregação por Cliente para Positivação (Net Sales >= 1)
+    monthly_client_agg AS (
+        SELECT ano, mes, codcli
+        FROM filtered_summary
+        GROUP BY ano, mes, codcli
+        HAVING SUM(vlvenda) >= 1
+    ),
+    monthly_counts AS (
+        SELECT ano, mes, COUNT(*) as active_count
+        FROM monthly_client_agg
+        GROUP BY ano, mes
+    ),
     agg_data AS (
         SELECT
-            ano,
-            mes,
+            fs.ano,
+            fs.mes,
             -- Agregação simples e direta
             SUM(CASE 
-                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN vlvenda
-                WHEN tipovenda IN (''1'', ''9'') THEN vlvenda 
+                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN fs.vlvenda
+                WHEN fs.tipovenda IN (''1'', ''9'') THEN fs.vlvenda
                 ELSE 0 
             END) as faturamento,
-            SUM(peso) as peso,
-            SUM(bonificacao) as bonificacao,
-            SUM(devolucao) as devolucao,
-            -- Positivação usando a coluna pré-calculada
-            COUNT(DISTINCT CASE WHEN pre_positivacao_val = 1 THEN codcli END) as positivacao_count,
+            SUM(fs.peso) as peso,
+            SUM(fs.bonificacao) as bonificacao,
+            SUM(fs.devolucao) as devolucao,
+            -- Positivação Corrigida (Join com pré-cálculo por cliente)
+            COALESCE(mc.active_count, 0) as positivacao_count,
             -- Mix pré-calculado (Respeitando regra de Venda/Venda Futura se filtro não for especificado)
             SUM(CASE 
-                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN pre_mix_count
-                WHEN tipovenda IN (''1'', ''9'') THEN pre_mix_count 
+                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN fs.pre_mix_count
+                WHEN fs.tipovenda IN (''1'', ''9'') THEN fs.pre_mix_count
                 ELSE 0 
             END) as total_mix_sum,
             COUNT(DISTINCT CASE 
-                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) AND pre_mix_count > 0 THEN codcli 
-                WHEN tipovenda IN (''1'', ''9'') AND pre_mix_count > 0 THEN codcli 
+                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) AND fs.pre_mix_count > 0 THEN fs.codcli
+                WHEN fs.tipovenda IN (''1'', ''9'') AND fs.pre_mix_count > 0 THEN fs.codcli
                 ELSE NULL 
             END) as mix_client_count
-        FROM filtered_summary
-        GROUP BY 1, 2
+        FROM filtered_summary fs
+        LEFT JOIN monthly_counts mc ON fs.ano = mc.ano AND fs.mes = mc.mes
+        GROUP BY fs.ano, fs.mes, mc.active_count
     ),
     kpi_active_count AS (
-        SELECT COUNT(DISTINCT codcli) as val
-        FROM filtered_summary 
-        WHERE ano = $2 AND pre_positivacao_val = 1
-        ' || CASE WHEN v_is_month_filtered THEN ' AND mes = $3 ' ELSE '' END || '
+        SELECT COUNT(*) as val
+        FROM (
+            SELECT codcli
+            FROM filtered_summary
+            WHERE ano = $2
+            ' || CASE WHEN v_is_month_filtered THEN ' AND mes = $3 ' ELSE '' END || '
+            GROUP BY codcli
+            HAVING SUM(vlvenda) >= 1
+        ) t
     ),
     kpi_base_count AS (
         SELECT COUNT(*) as val FROM public.data_clients
