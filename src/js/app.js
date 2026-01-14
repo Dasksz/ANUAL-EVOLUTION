@@ -2969,10 +2969,69 @@ document.addEventListener('DOMContentLoaded', () => {
             const weeklyCurrent = new Array(6).fill(0);
             const weeklyHistory = new Array(6).fill(0);
 
+            // 4. Daily Chart Init (moved up for shared logic)
+            const dailyDataByWeek = new Array(6).fill(0).map(() => new Array(7).fill(0)); // 6 weeks, 7 days
+
+            // --- Trend Logic Implementation ---
+            // 1. Calculate Actuals & Find Last Sales Date
+            let maxDateStr = '0000-00-00';
+            let currentActualTotal = 0;
+
             currentDaily.forEach(item => {
+                if (item.d > maxDateStr) maxDateStr = item.d;
+                currentActualTotal += item.f;
+                
                 const idx = getWeekIdx(item.d + 'T12:00:00');
-                if (idx >= 0 && idx < 6) weeklyCurrent[idx] += (item.f * trendFactor);
+                if (idx >= 0 && idx < 6) {
+                    weeklyCurrent[idx] += item.f;
+                    
+                    // Fill Daily Actuals
+                    const d = new Date(item.d + 'T12:00:00');
+                    const dayIdx = d.getDay();
+                    dailyDataByWeek[idx][dayIdx] += item.f;
+                }
             });
+
+            // 2. Apply Trend Projection (if enabled and applicable)
+            if (useTendencyComparison && data.trend_info && data.trend_info.allowed && maxDateStr !== '0000-00-00') {
+                const lastSalesDate = new Date(maxDateStr + 'T12:00:00');
+                const year = lastSalesDate.getFullYear();
+                const month = lastSalesDate.getMonth();
+                const monthStart = new Date(year, month, 1);
+                const monthEnd = new Date(year, month + 1, 0);
+
+                const isWorkingDay = (d) => {
+                    const day = d.getDay();
+                    const dateStr = d.toISOString().split('T')[0];
+                    // Access global holidays if available
+                    const hols = (typeof holidays !== 'undefined') ? holidays : []; 
+                    return day !== 0 && day !== 6 && !hols.includes(dateStr);
+                };
+
+                let passedWorkingDays = 0;
+                let curr = new Date(monthStart);
+                while (curr <= lastSalesDate) {
+                    if (isWorkingDay(curr)) passedWorkingDays++;
+                    curr.setDate(curr.getDate() + 1);
+                }
+
+                const dailyRunRate = passedWorkingDays > 0 ? currentActualTotal / passedWorkingDays : 0;
+
+                // Project Future Days
+                let iter = new Date(lastSalesDate);
+                iter.setDate(iter.getDate() + 1); // Start from next day
+
+                while (iter <= monthEnd) {
+                    if (isWorkingDay(iter)) {
+                        const idx = getWeekIdx(iter.toISOString());
+                        if (idx >= 0 && idx < 6) {
+                            weeklyCurrent[idx] += dailyRunRate;
+                            dailyDataByWeek[idx][iter.getDay()] += dailyRunRate;
+                        }
+                    }
+                    iter.setDate(iter.getDate() + 1);
+                }
+            }
 
             historyDaily.forEach(item => {
                 const idx = getWeekIdx(item.d + 'T12:00:00'); // Safe Timezone
@@ -2994,22 +3053,23 @@ document.addEventListener('DOMContentLoaded', () => {
             
             monthlyData.push({ label: 'Atual', fat: curF, clients: curC });
 
-            // 4. Daily Chart (Day of Week)
+            // 4. Daily Chart Datasets
             const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-            const dailyDataByWeek = new Array(6).fill(0).map(() => new Array(7).fill(0)); // 6 weeks, 7 days
-
-            currentDaily.forEach(item => {
-                const d = new Date(item.d + 'T12:00:00'); // Safe Timezone
-                const wIdx = getWeekIdx(item.d + 'T12:00:00');
-                const dayIdx = d.getDay();
-                if (wIdx >= 0 && wIdx < 6) {
-                    dailyDataByWeek[wIdx][dayIdx] += (item.f * trendFactor);
-                }
-            });
+            const dailyColors = [
+                '#94a3b8', // Domingo (Slate)
+                '#60a5fa', // Segunda (Blue)
+                '#34d399', // Terca (Emerald)
+                '#facc15', // Quarta (Yellow)
+                '#fb923c', // Quinta (Orange)
+                '#f87171', // Sexta (Red)
+                '#a78bfa'  // Sabado (Purple)
+            ];
 
             const datasetsDaily = dayNames.map((name, i) => ({
                 label: name,
-                data: dailyDataByWeek.map(weekData => weekData[i])
+                data: dailyDataByWeek.map(weekData => weekData[i]),
+                backgroundColor: dailyColors[i],
+                borderColor: dailyColors[i]
             }));
 
             // 5. Supervisor Table
