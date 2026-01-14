@@ -1634,6 +1634,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setupCityMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
         if(!btn || !dropdown) return;
+        // Safety check for container
+        if (!container) {
+            console.warn('Container not found for filter', btn.id);
+            return;
+        }
+        
         const MAX_ITEMS = 100;
         let debounceTimer;
 
@@ -1680,6 +1686,11 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         const updateBtnLabel = () => {
             const span = btn.querySelector('span');
+            if (!span) {
+                // Fallback if no span, to prevent crash
+                return; 
+            }
+
             if (selectedArray.length === 0) {
                 span.textContent = 'Todas';
                  if(btn.id.includes('vendedor') || btn.id.includes('fornecedor') || btn.id.includes('supervisor') || btn.id.includes('tipovenda')) span.textContent = 'Todos';
@@ -2829,23 +2840,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; comparisonMesFilter.appendChild(opt); });
             }
 
-            setupCityMultiSelect(comparisonSupervisorFilterBtn, comparisonSupervisorFilterDropdown, comparisonSupervisorFilterDropdown, filterData.supervisors, selectedComparisonSupervisors);
-            setupCityMultiSelect(comparisonVendedorFilterBtn, comparisonVendedorFilterDropdown, comparisonVendedorFilterDropdown, filterData.vendedores, selectedComparisonSellers);
-            setupCityMultiSelect(comparisonSupplierFilterBtn, comparisonSupplierFilterDropdown, comparisonSupplierFilterDropdown, filterData.fornecedores, selectedComparisonSuppliers, null, true);
-            setupCityMultiSelect(comparisonTipoVendaFilterBtn, comparisonTipoVendaFilterDropdown, comparisonTipoVendaFilterDropdown, filterData.tipos_venda, selectedComparisonTiposVenda);
+            try {
+                // Try to find specific list containers, fallback to dropdown if not found
+                const getList = (id) => document.getElementById(id);
+                
+                // Supervisors
+                const supList = getList('comparison-supervisor-filter-list') || comparisonSupervisorFilterDropdown;
+                setupCityMultiSelect(comparisonSupervisorFilterBtn, comparisonSupervisorFilterDropdown, supList, filterData.supervisors, selectedComparisonSupervisors);
+                
+                // Vendedores
+                const vendList = getList('comparison-vendedor-filter-list') || comparisonVendedorFilterDropdown;
+                setupCityMultiSelect(comparisonVendedorFilterBtn, comparisonVendedorFilterDropdown, vendList, filterData.vendedores, selectedComparisonSellers);
+                
+                // Suppliers
+                const suppList = getList('comparison-supplier-filter-list') || comparisonSupplierFilterDropdown;
+                setupCityMultiSelect(comparisonSupplierFilterBtn, comparisonSupplierFilterDropdown, suppList, filterData.fornecedores, selectedComparisonSuppliers, null, true);
+                
+                // Tipos Venda
+                const tipoList = getList('comparison-tipo-venda-filter-list') || comparisonTipoVendaFilterDropdown;
+                setupCityMultiSelect(comparisonTipoVendaFilterBtn, comparisonTipoVendaFilterDropdown, tipoList, filterData.tipos_venda, selectedComparisonTiposVenda);
 
-            setupAutocomplete(comparisonCityFilter, comparisonCitySuggestions, filterData.cidades || []);
+                // Autocomplete
+                setupAutocomplete(comparisonCityFilter, comparisonCitySuggestions, filterData.cidades || []);
 
-            // Product Filter (Special case with search)
-            // We need product list. Usually dashboard filters RPC doesn't return products (too many).
-            // We might need to fetch them separately or assume they come from loaded data?
-            // For now, let's skip product filter population or implement a specific RPC/Fetch if critical.
-            // Since we are fetching 'data_detailed', we can extract products from there if we have it.
-            // But filter init happens before data load?
-            // Let's populate products after data load in loadComparisonView.
-
-            const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-            setupCityMultiSelect(comparisonComRedeBtn, comparisonRedeFilterDropdown, comparisonRedeFilterDropdown, redes, selectedComparisonRedes);
+                // Redes
+                const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
+                const redeList = getList('comparison-rede-filter-list') || comparisonRedeFilterDropdown;
+                setupCityMultiSelect(comparisonComRedeBtn, comparisonRedeFilterDropdown, redeList, redes, selectedComparisonRedes);
+            } catch (e) {
+                console.error('Error setting up comparison filters:', e);
+            }
         }
 
         async function loadComparisonView() {
@@ -3246,6 +3270,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const fmt = (val, format) => {
                 if (format === 'currency') return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                 if (format === 'decimal') return val.toLocaleString('pt-BR', { minimumFractionDigits: 3 });
+                if (format === 'decimal_2') return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 return val.toLocaleString('pt-BR');
             };
 
