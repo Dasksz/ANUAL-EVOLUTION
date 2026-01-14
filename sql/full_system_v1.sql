@@ -146,6 +146,20 @@ CREATE TABLE IF NOT EXISTS public.dim_fornecedores (
 );
 ALTER TABLE public.dim_fornecedores ENABLE ROW LEVEL SECURITY;
 
+CREATE TABLE IF NOT EXISTS public.dim_produtos (
+    codigo text PRIMARY KEY,
+    descricao text,
+    codfor text
+);
+ALTER TABLE public.dim_produtos ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'codfor') THEN
+        ALTER TABLE public.dim_produtos ADD COLUMN codfor text;
+    END IF;
+END $$;
+
 -- Unified View
 DROP VIEW IF EXISTS public.all_sales CASCADE;
 create or replace view public.all_sales with (security_invoker = true) as
@@ -316,7 +330,7 @@ CREATE POLICY "Profiles Delete" ON public.profiles FOR DELETE USING (public.is_a
 DO $$
 DECLARE t text;
 BEGIN
-    FOR t IN SELECT unnest(ARRAY['config_city_branches', 'dim_supervisores', 'dim_vendedores', 'dim_fornecedores'])
+    FOR t IN SELECT unnest(ARRAY['config_city_branches', 'dim_supervisores', 'dim_vendedores', 'dim_fornecedores', 'dim_produtos'])
     LOOP
         EXECUTE format('DROP POLICY IF EXISTS "Unified Read Access" ON public.%I', t);
         EXECUTE format('CREATE POLICY "Unified Read Access" ON public.%I FOR SELECT USING (public.is_admin() OR public.is_approved())', t);
@@ -697,7 +711,7 @@ BEGIN
 
     -- Configurações de Memória para esta Query Específica
     SET LOCAL work_mem = '64MB'; -- Aumenta memória para ordenação
-    SET LOCAL statement_timeout = '15s'; -- Fail fast se travar
+    SET LOCAL statement_timeout = '60s'; -- Aumentado para 60s para suportar volumes maiores
 
     -- 1. Determine Date Ranges
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
@@ -1180,6 +1194,7 @@ BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
 
     SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s'; -- Timeout increased for large datasets
 
     -- Date Logic
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
@@ -1501,6 +1516,8 @@ DECLARE
 BEGIN
     -- Security Check
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
+
+    SET LOCAL statement_timeout = '120s'; -- Explicitly increased for heavy agg
     
     -- 1. Date Logic (Mirrors JS fetchComparisonData)
     IF p_ano IS NOT NULL AND p_ano != 'todos' AND p_ano != '' THEN
@@ -1602,22 +1619,28 @@ BEGIN
             SELECT dtped::date as d, SUM(vlvenda) as f, SUM(totpesoliq) as p
             FROM target_sales GROUP BY 1
         ),
-        -- Current Mix Calculation (Active Clients Filter: Sum Venda >= 1)
+        -- Current Aggregates for Product Mix (Product Level >= 1)
+        curr_prod_agg AS (
+            SELECT s.codcli, s.produto, MAX(dp.descricao) as descricao, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val
+            FROM target_sales s
+            LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+            GROUP BY 1, 2
+        ),
         curr_mix_base AS (
             SELECT 
                 codcli,
-                SUM(vlvenda) as total_val,
-                COUNT(DISTINCT CASE WHEN codfor IN (''707'', ''708'') AND vlvenda > 0 THEN produto END) as pepsico_skus,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%CHEETOS%%'' THEN 1 ELSE 0 END) as has_cheetos,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%DORITOS%%'' THEN 1 ELSE 0 END) as has_doritos,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%FANDANGOS%%'' THEN 1 ELSE 0 END) as has_fandangos,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%RUFFLES%%'' THEN 1 ELSE 0 END) as has_ruffles,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TORCIDA%%'' THEN 1 ELSE 0 END) as has_torcida,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TODDYNHO%%'' THEN 1 ELSE 0 END) as has_toddynho,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TODDY %%'' THEN 1 ELSE 0 END) as has_toddy,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%QUAKER%%'' THEN 1 ELSE 0 END) as has_quaker,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%KEROCOCO%%'' THEN 1 ELSE 0 END) as has_kerococo
-            FROM target_sales
+                SUM(prod_val) as total_val,
+                COUNT(CASE WHEN codfor IN (''707'', ''708'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%CHEETOS%%'' THEN 1 ELSE 0 END) as has_cheetos,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%DORITOS%%'' THEN 1 ELSE 0 END) as has_doritos,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%FANDANGOS%%'' THEN 1 ELSE 0 END) as has_fandangos,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%RUFFLES%%'' THEN 1 ELSE 0 END) as has_ruffles,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TORCIDA%%'' THEN 1 ELSE 0 END) as has_torcida,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDYNHO%%'' THEN 1 ELSE 0 END) as has_toddynho,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDY %%'' THEN 1 ELSE 0 END) as has_toddy,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%QUAKER%%'' THEN 1 ELSE 0 END) as has_quaker,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%KEROCOCO%%'' THEN 1 ELSE 0 END) as has_kerococo
+            FROM curr_prod_agg
             GROUP BY 1
         ),
         curr_kpi AS (
@@ -1638,23 +1661,29 @@ BEGIN
             SELECT dtped::date as d, SUM(vlvenda) as f, SUM(totpesoliq) as p
             FROM history_sales GROUP BY 1
         ),
-        -- History Mix Calculation (Monthly)
+        -- History Aggregates for Product Mix (Product Level >= 1)
+        hist_prod_agg AS (
+            SELECT date_trunc(''month'', dtped) as m_date, s.codcli, s.produto, MAX(dp.descricao) as descricao, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val
+            FROM history_sales s
+            LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+            GROUP BY 1, 2, 3
+        ),
         hist_monthly_mix AS (
             SELECT 
-                date_trunc(''month'', dtped) as m_date,
+                m_date,
                 codcli,
-                SUM(vlvenda) as total_val,
-                COUNT(DISTINCT CASE WHEN codfor IN (''707'', ''708'') AND vlvenda > 0 THEN produto END) as pepsico_skus,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%CHEETOS%%'' THEN 1 ELSE 0 END) as has_cheetos,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%DORITOS%%'' THEN 1 ELSE 0 END) as has_doritos,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%FANDANGOS%%'' THEN 1 ELSE 0 END) as has_fandangos,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%RUFFLES%%'' THEN 1 ELSE 0 END) as has_ruffles,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TORCIDA%%'' THEN 1 ELSE 0 END) as has_torcida,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TODDYNHO%%'' THEN 1 ELSE 0 END) as has_toddynho,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%TODDY %%'' THEN 1 ELSE 0 END) as has_toddy,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%QUAKER%%'' THEN 1 ELSE 0 END) as has_quaker,
-                MAX(CASE WHEN vlvenda > 0 AND descricao ILIKE ''%%KEROCOCO%%'' THEN 1 ELSE 0 END) as has_kerococo
-            FROM history_sales
+                SUM(prod_val) as total_val,
+                COUNT(CASE WHEN codfor IN (''707'', ''708'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%CHEETOS%%'' THEN 1 ELSE 0 END) as has_cheetos,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%DORITOS%%'' THEN 1 ELSE 0 END) as has_doritos,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%FANDANGOS%%'' THEN 1 ELSE 0 END) as has_fandangos,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%RUFFLES%%'' THEN 1 ELSE 0 END) as has_ruffles,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TORCIDA%%'' THEN 1 ELSE 0 END) as has_torcida,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDYNHO%%'' THEN 1 ELSE 0 END) as has_toddynho,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDY %%'' THEN 1 ELSE 0 END) as has_toddy,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%QUAKER%%'' THEN 1 ELSE 0 END) as has_quaker,
+                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%KEROCOCO%%'' THEN 1 ELSE 0 END) as has_kerococo
+            FROM hist_prod_agg
             GROUP BY 1, 2
         ),
         hist_monthly_sums AS (
@@ -1826,4 +1855,4 @@ ON CONFLICT (codigo) DO UPDATE SET nome = 'BALCAO';
 INSERT INTO public.dim_supervisores (codigo, nome) VALUES ('SV_AMERICANAS', 'SV AMERICANAS')
 ON CONFLICT (codigo) DO UPDATE SET nome = 'SV AMERICANAS';
 
-SELECT refresh_dashboard_cache();
+-- SELECT refresh_dashboard_cache(); -- Disabled auto-run to prevent immediate locking
