@@ -268,7 +268,7 @@ self.onmessage = async (event) => {
 
             const clientData = {
                 codigo_cliente: codCli,
-                rca1: rca1,
+                rca1: rca1.trim(),
                 // rca2: rca2, -- Removed
                 cidade: finalCity, // Was: String(client['Nome da Cidade'] || 'N/A'),
                 nomecliente: String(client['Fantasia'] || client['Cliente'] || 'N/A'),
