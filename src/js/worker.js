@@ -545,8 +545,8 @@ self.onmessage = async (event) => {
                              // Use original sale info if RCA1 is missing
                          } else {
                              newSale['CODUSUR'] = rca1;
-                             newSale['NOME'] = 'Desconhecido';
-                             newSale['SUPERV'] = 'Desconhecido';
+                             newSale['NOME'] = `Vendedor ${rca1}`;
+                             newSale['SUPERV'] = `Desconhecido (${rca1})`;
                          }
                     }
                 }
