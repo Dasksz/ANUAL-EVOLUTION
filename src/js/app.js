@@ -2567,6 +2567,66 @@ document.addEventListener('DOMContentLoaded', () => {
         if (comparisonAnoFilter) comparisonAnoFilter.addEventListener('change', handleComparisonFilterChange);
         if (comparisonMesFilter) comparisonMesFilter.addEventListener('change', handleComparisonFilterChange);
 
+        if (comparisonSupervisorFilterBtn) {
+            comparisonSupervisorFilterBtn.addEventListener('click', () => comparisonSupervisorFilterDropdown.classList.toggle('hidden'));
+            comparisonSupervisorFilterDropdown.addEventListener('change', (e) => {
+                if (e.target.type === 'checkbox') {
+                    const { value, checked } = e.target;
+                    if (checked) selectedComparisonSupervisors.push(value);
+                    else selectedComparisonSupervisors = selectedComparisonSupervisors.filter(s => s !== value);
+                    handleComparisonFilterChange();
+                }
+            });
+        }
+
+        if (comparisonVendedorFilterBtn) {
+            comparisonVendedorFilterBtn.addEventListener('click', () => comparisonVendedorFilterDropdown.classList.toggle('hidden'));
+            comparisonVendedorFilterDropdown.addEventListener('change', (e) => {
+                if (e.target.type === 'checkbox') {
+                    const { value, checked } = e.target;
+                    if (checked) selectedComparisonSellers.push(value);
+                    else selectedComparisonSellers = selectedComparisonSellers.filter(s => s !== value);
+                    handleComparisonFilterChange();
+                }
+            });
+        }
+
+        if (comparisonSupplierFilterBtn) {
+            comparisonSupplierFilterBtn.addEventListener('click', () => comparisonSupplierFilterDropdown.classList.toggle('hidden'));
+            comparisonSupplierFilterDropdown.addEventListener('change', (e) => {
+                if (e.target.type === 'checkbox') {
+                    const { value, checked } = e.target;
+                    if (checked) selectedComparisonSuppliers.push(value);
+                    else selectedComparisonSuppliers = selectedComparisonSuppliers.filter(s => s !== value);
+                    handleComparisonFilterChange();
+                }
+            });
+        }
+
+        if (comparisonProductFilterBtn) {
+            comparisonProductFilterBtn.addEventListener('click', () => comparisonProductFilterDropdown.classList.toggle('hidden'));
+            comparisonProductFilterDropdown.addEventListener('change', (e) => {
+                if (e.target.type === 'checkbox') {
+                    const { value, checked } = e.target;
+                    if (checked) selectedComparisonProducts.push(value);
+                    else selectedComparisonProducts = selectedComparisonProducts.filter(s => s !== value);
+                    handleComparisonFilterChange();
+                }
+            });
+        }
+
+        if (comparisonTipoVendaFilterBtn) {
+            comparisonTipoVendaFilterBtn.addEventListener('click', () => comparisonTipoVendaFilterDropdown.classList.toggle('hidden'));
+            comparisonTipoVendaFilterDropdown.addEventListener('change', (e) => {
+                if (e.target.type === 'checkbox') {
+                    const { value, checked } = e.target;
+                    if (checked) selectedComparisonTiposVenda.push(value);
+                    else selectedComparisonTiposVenda = selectedComparisonTiposVenda.filter(s => s !== value);
+                    handleComparisonFilterChange();
+                }
+            });
+        }
+
         if (comparisonFilialFilter) comparisonFilialFilter.addEventListener('change', handleComparisonFilterChange);
 
         if (comparisonFornecedorToggleContainer) {
@@ -2586,6 +2646,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        if (comparisonComRedeBtn) {
+            comparisonComRedeBtn.addEventListener('click', () => comparisonRedeFilterDropdown.classList.toggle('hidden'));
+        }
+
         if (comparisonRedeGroupContainer) {
             comparisonRedeGroupContainer.addEventListener('click', (e) => {
                 if (e.target.closest('button')) {
@@ -2597,6 +2661,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         comparisonRedeFilterDropdown.classList.add('hidden');
                         selectedComparisonRedes = [];
                     }
+                    handleComparisonFilterChange();
+                }
+            });
+        }
+
+        if (comparisonRedeFilterDropdown) {
+            comparisonRedeFilterDropdown.addEventListener('change', (e) => {
+                if (e.target.type === 'checkbox') {
+                    const { value, checked } = e.target;
+                    if (checked) selectedComparisonRedes.push(value);
+                    else selectedComparisonRedes = selectedComparisonRedes.filter(r => r !== value);
+
+                    comparisonRedeGroupFilter = 'com_rede';
+                    comparisonRedeGroupContainer.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                    comparisonComRedeBtn.classList.add('active');
+
                     handleComparisonFilterChange();
                 }
             });
@@ -2676,26 +2756,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('click', (e) => {
             const dropdowns = [comparisonSupervisorFilterDropdown, comparisonVendedorFilterDropdown, comparisonSupplierFilterDropdown, comparisonProductFilterDropdown, comparisonTipoVendaFilterDropdown, comparisonRedeFilterDropdown];
             const btns = [comparisonSupervisorFilterBtn, comparisonVendedorFilterBtn, comparisonSupplierFilterBtn, comparisonProductFilterBtn, comparisonTipoVendaFilterBtn, comparisonComRedeBtn];
-            let anyClosed = false;
 
             dropdowns.forEach((dd, idx) => {
                 if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
                     dd.classList.add('hidden');
-                    anyClosed = true;
                 }
             });
-
-            if (anyClosed) {
-                // If closing Rede Filter and items are selected, update group state visually
-                if (selectedComparisonRedes.length > 0 && comparisonRedeGroupFilter !== 'com_rede') {
-                    comparisonRedeGroupFilter = 'com_rede';
-                    if (comparisonRedeGroupContainer) {
-                        comparisonRedeGroupContainer.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-                        if (comparisonComRedeBtn) comparisonComRedeBtn.classList.add('active');
-                    }
-                }
-                handleComparisonFilterChange();
-            }
         });
 
         function setupAutocomplete(input, suggestionsContainer, items) {
