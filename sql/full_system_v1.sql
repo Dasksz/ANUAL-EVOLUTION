@@ -878,12 +878,22 @@ BEGIN
         FROM public.data_summary
         ' || v_where_base || '
     ),
-    -- CORREÇÃO: Agregação por Cliente para Positivação (Net Sales >= 1)
+    -- CORREÇÃO: Agregação por Cliente para Positivação (Net Sales >= 1 ou Bonificação > 0)
     monthly_client_agg AS (
         SELECT ano, mes, codcli
         FROM filtered_summary
+        WHERE (
+            CASE
+                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN tipovenda = ANY($1)
+                ELSE tipovenda IN (''1'', ''9'')
+            END
+        )
         GROUP BY ano, mes, codcli
-        HAVING SUM(vlvenda) >= 1
+        HAVING (
+            ( ($1 IS NOT NULL AND array_length($1, 1) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(bonificacao) > 0 )
+            OR
+            ( NOT ($1 IS NOT NULL AND array_length($1, 1) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(vlvenda) >= 1 )
+        )
     ),
     monthly_counts AS (
         SELECT ano, mes, COUNT(*) as active_count
@@ -978,7 +988,11 @@ BEGIN
                 END
             )
             GROUP BY codcli
-            HAVING SUM(vlvenda) >= 1
+            HAVING (
+                ( ($1 IS NOT NULL AND array_length($1, 1) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(bonificacao) > 0 )
+                OR
+                ( NOT ($1 IS NOT NULL AND array_length($1, 1) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(vlvenda) >= 1 )
+            )
         ) t
     ),
     kpi_base_count AS (
