@@ -885,7 +885,7 @@ BEGIN
         WHERE (
             CASE
                 WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN tipovenda = ANY($1)
-                ELSE tipovenda IN (''1'', ''9'')
+                ELSE tipovenda NOT IN (''5'', ''11'')
             END
         )
         GROUP BY ano, mes, codcli
@@ -984,7 +984,7 @@ BEGIN
             AND (
                 CASE
                     WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN tipovenda = ANY($1)
-                    ELSE tipovenda IN (''1'', ''9'')
+                    ELSE tipovenda NOT IN (''5'', ''11'')
                 END
             )
             GROUP BY codcli
