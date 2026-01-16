@@ -1506,7 +1506,8 @@ BEGIN
             filial,
             mes,
             SUM(CASE WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN vlvenda WHEN tipovenda IN (''1'', ''9'') THEN vlvenda ELSE 0 END) as faturamento,
-            SUM(peso) as peso
+            SUM(peso) as peso,
+            SUM(bonificacao) as bonificacao
         FROM public.data_summary
         ' || v_where || '
         GROUP BY filial, mes
@@ -1517,11 +1518,12 @@ BEGIN
             ''monthly_data_current'', json_agg(json_build_object(
                 ''month_index'', mes - 1,
                 ''faturamento'', faturamento,
-                ''peso'', peso
+                ''peso'', peso,
+                ''bonificacao'', bonificacao
             ) ORDER BY mes),
             ''trend_allowed'', $2,
             ''trend_data'', CASE WHEN $2 THEN
-                 (SELECT json_build_object(''month_index'', mes - 1, ''faturamento'', faturamento * $3, ''peso'', peso * $3)
+                 (SELECT json_build_object(''month_index'', mes - 1, ''faturamento'', faturamento * $3, ''peso'', peso * $3, ''bonificacao'', bonificacao * $3)
                   FROM agg_filial sub
                   WHERE sub.filial = agg_filial.filial AND sub.mes = ($4 + 1))
             ELSE null END

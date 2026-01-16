@@ -113,6 +113,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Helper to check if bonification mode is active (Only Type 5 or 11 or both)
+    function isBonificationMode(selectedTypes) {
+        if (!selectedTypes || selectedTypes.length === 0) return false;
+        return selectedTypes.every(t => t === '5' || t === '11');
+    }
+
     // Helper to generate canonical cache keys (sorted arrays)
     function generateCacheKey(prefix, filters) {
         const sortedFilters = {};
@@ -1392,8 +1398,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- CHART PREP (Responsive to Mode) ---
         const mainChartTitle = document.getElementById('main-chart-title');
         
+        // Determine Bonification Mode
+        const isBonifMode = isBonificationMode(getCurrentFilters().p_tipovenda);
+
         // Data Mapping Helper based on Mode
-        const getDataValue = (d) => currentChartMode === 'faturamento' ? d.faturamento : d.peso;
+        const getDataValue = (d) => {
+            if (isBonifMode && currentChartMode === 'faturamento') return d.bonificacao;
+            return currentChartMode === 'faturamento' ? d.faturamento : d.peso;
+        };
         
         // Formatters
         const currencyFormatter = (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''));
@@ -1401,7 +1413,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentFormatter = currentChartMode === 'faturamento' ? currencyFormatter : weightFormatter;
 
         if (currentChartMode === 'faturamento') {
-            mainChartTitle.textContent = "FATURAMENTO MENSAL";
+            mainChartTitle.textContent = isBonifMode ? "BONIFICADO MENSAL" : "FATURAMENTO MENSAL";
         } else {
             mainChartTitle.textContent = "TONELAGEM MENSAL";
         }
@@ -2163,10 +2175,17 @@ document.addEventListener('DOMContentLoaded', () => {
          const chartBranches = {};
          const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
+         // Determine Bonification Mode
+         const isBonifMode = isBonificationMode(branchSelectedTiposVenda);
+
          // Title Logic
          const chartTitleEl = document.getElementById('branch-chart-title');
          if (chartTitleEl) {
-             chartTitleEl.textContent = `COMPARATIVO POR FILIAL - ${currentBranchChartMode === 'faturamento' ? 'FATURAMENTO' : 'TONELAGEM'}`;
+             if (currentBranchChartMode === 'faturamento') {
+                 chartTitleEl.textContent = isBonifMode ? "COMPARATIVO POR FILIAL - BONIFICADO" : "COMPARATIVO POR FILIAL - FATURAMENTO";
+             } else {
+                 chartTitleEl.textContent = "COMPARATIVO POR FILIAL - TONELAGEM";
+             }
          }
 
          // Process Data from RPC Results
@@ -2185,7 +2204,11 @@ document.addEventListener('DOMContentLoaded', () => {
              monthlyData.forEach(d => {
                  // d has month_index (0-11)
                  if (d.month_index >= 0 && d.month_index < 12) {
-                     chartArr[d.month_index] = currentBranchChartMode === 'faturamento' ? d.faturamento : d.peso;
+                     if (currentBranchChartMode === 'faturamento') {
+                         chartArr[d.month_index] = isBonifMode ? d.bonificacao : d.faturamento;
+                     } else {
+                         chartArr[d.month_index] = d.peso;
+                     }
                  }
              });
              chartBranches[b] = chartArr;
