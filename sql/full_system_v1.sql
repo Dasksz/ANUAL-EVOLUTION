@@ -776,9 +776,10 @@ BEGIN
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND codfor = ANY(%L) ', p_fornecedor);
     END IF;
-    IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
-    END IF;
+    -- IMPORTANT: tipovenda filter REMOVED from base WHERE to handle conditional aggregation logic
+    -- IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
+    --    v_where_base := v_where_base || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+    -- END IF;
     
     -- REDE Logic
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
@@ -894,24 +895,67 @@ BEGIN
             fs.ano,
             fs.mes,
             -- Agregação simples e direta
+
+            -- Faturamento: Se filtro existe, respeita. Se não, padrão 1 e 9.
             SUM(CASE 
-                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN fs.vlvenda
+                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN
+                    CASE WHEN fs.tipovenda = ANY($1) THEN fs.vlvenda ELSE 0 END
                 WHEN fs.tipovenda IN (''1'', ''9'') THEN fs.vlvenda
                 ELSE 0 
             END) as faturamento,
-            SUM(fs.peso) as peso,
-            SUM(fs.bonificacao) as bonificacao,
-            SUM(fs.devolucao) as devolucao,
+
+            -- Peso:
+            SUM(CASE
+                -- Caso A: Filtro SOMENTE tipos de bonificação (5 ou 11)
+                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0 AND $1 <@ ARRAY[''5'',''11'']) THEN
+                     CASE WHEN fs.tipovenda = ANY($1) THEN fs.peso ELSE 0 END
+
+                -- Caso B: Filtro Padrão (Sem filtro, ou filtro inclui vendas normais)
+                -- Exclui tipos 5 e 11
+                ELSE
+                    CASE
+                        -- Se filtro existe (ex: Venda Normal), aplica filtro E exclui bonus
+                        WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN
+                             CASE WHEN fs.tipovenda = ANY($1) AND fs.tipovenda NOT IN (''5'', ''11'') THEN fs.peso ELSE 0 END
+
+                        -- Se não tem filtro: Soma tudo MENOS bonus 5 e 11
+                        WHEN fs.tipovenda NOT IN (''5'', ''11'') THEN fs.peso
+                        ELSE 0
+                    END
+            END) as peso,
+
+            -- Bonificação:
+            SUM(CASE
+                -- Caso A: Filtro específico de bonificação (só 5 ou só 11 ou ambos) -> Respeita filtro
+                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0 AND $1 <@ ARRAY[''5'',''11'']) THEN
+                     CASE WHEN fs.tipovenda = ANY($1) THEN fs.bonificacao ELSE 0 END
+
+                -- Caso B: Filtro genérico ou sem filtro -> Mostra TODOS os bonus (5 e 11)
+                ELSE
+                     CASE WHEN fs.tipovenda IN (''5'', ''11'') THEN fs.bonificacao ELSE 0 END
+            END) as bonificacao,
+
+            -- Devolução: Segue lógica padrão de filtro
+            SUM(CASE
+                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN
+                    CASE WHEN fs.tipovenda = ANY($1) THEN fs.devolucao ELSE 0 END
+                ELSE fs.devolucao
+            END) as devolucao,
+
             -- Positivação Corrigida (Join com pré-cálculo por cliente)
             COALESCE(mc.active_count, 0) as positivacao_count,
+
             -- Mix pré-calculado (Respeitando regra de Venda/Venda Futura se filtro não for especificado)
             SUM(CASE 
-                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN fs.pre_mix_count
+                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN
+                    CASE WHEN fs.tipovenda = ANY($1) THEN fs.pre_mix_count ELSE 0 END
                 WHEN fs.tipovenda IN (''1'', ''9'') THEN fs.pre_mix_count
                 ELSE 0 
             END) as total_mix_sum,
+
             COUNT(DISTINCT CASE 
-                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) AND fs.pre_mix_count > 0 THEN fs.codcli
+                WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) AND fs.pre_mix_count > 0 THEN
+                    CASE WHEN fs.tipovenda = ANY($1) THEN fs.codcli ELSE NULL END
                 WHEN fs.tipovenda IN (''1'', ''9'') AND fs.pre_mix_count > 0 THEN fs.codcli
                 ELSE NULL 
             END) as mix_client_count
@@ -926,6 +970,13 @@ BEGIN
             FROM filtered_summary
             WHERE ano = $2
             ' || CASE WHEN v_is_month_filtered THEN ' AND mes = $3 ' ELSE '' END || '
+            -- Filtro Tipos de Venda para KPI Active Count (apenas Venda Normal ou Filtro Selecionado)
+            AND (
+                CASE
+                    WHEN ($1 IS NOT NULL AND array_length($1, 1) > 0) THEN tipovenda = ANY($1)
+                    ELSE tipovenda IN (''1'', ''9'')
+                END
+            )
             GROUP BY codcli
             HAVING SUM(vlvenda) >= 1
         ) t

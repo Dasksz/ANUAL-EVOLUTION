@@ -1304,6 +1304,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const calcEvo = (curr, prev) => prev > 0 ? ((curr / prev) - 1) * 100 : (curr > 0 ? 100 : 0);
 
         // --- KPI Updates ---
+        // Calc indicators for table (Perda/Devolução)
+        const processIndicators = (d) => {
+            const fat = d.faturamento || 0;
+            d.perc_perda = fat > 0 ? (d.bonificacao / fat) * 100 : null;
+            d.perc_devolucao = fat > 0 ? (d.devolucao / fat) * 100 : null;
+        };
+        currentData.forEach(processIndicators);
+        previousData.forEach(processIndicators);
+        if (data.trend_data) processIndicators(data.trend_data);
+
         updateKpiCard({
             prefix: 'fat',
             trendVal: currFat,
@@ -1534,19 +1544,25 @@ document.addEventListener('DOMContentLoaded', () => {
             { name: 'Mix PDV', key: 'mix_pdv', fmt: v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
             { name: 'Ticket Médio', key: 'ticket_medio', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
             { name: 'BONIFICAÇÃO', key: 'bonificacao', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
+            { name: '% Perda', key: 'perc_perda', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
             { name: 'DEVOLUÇÃO', key: 'devolucao', fmt: v => `<span class="text-red-400">${v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>` },
+            { name: '% Devolução', key: 'perc_devolucao', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
             { name: 'TON VENDIDA', key: 'peso', fmt: v => `${(v/1000).toFixed(2)} Kg` }
         ];
 
         indicators.forEach(ind => {
             let rowHTML = `<tr class="table-row"><td class="font-bold p-2 text-left">${ind.name}</td>`;
             for(let i=0; i<12; i++) {
-                const d = currData.find(x => x.month_index === i) || { [ind.key]: 0 };
-                const val = d[ind.key] || 0;
+                const d = currData.find(x => x.month_index === i);
+                let val = d ? d[ind.key] : null;
+                if (val === undefined) val = null;
+                if (val === null && !ind.allowNull) val = 0;
                 rowHTML += `<td class="px-2 py-1.5 text-center">${ind.fmt(val)}</td>`;
             }
             if (trendData) {
-                 const tVal = trendData[ind.key] || 0;
+                 let tVal = trendData[ind.key];
+                 if (tVal === undefined) tVal = null;
+                 if (tVal === null && !ind.allowNull) tVal = 0;
                  rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-purple-300 bg-purple-900/20">${ind.fmt(tVal)}</td>`;
             }
             rowHTML += '</tr>';
