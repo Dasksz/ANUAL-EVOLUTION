@@ -336,8 +336,16 @@
                             </div>
                         </div>
 
+                        <!-- Toggle Button for Secondary KPIs -->
+                        <div class="flex justify-start mb-2 ml-1">
+                            <button id="toggle-secondary-kpis-btn" class="flex items-center text-xs font-bold text-slate-400 hover:text-white transition-colors focus:outline-none gap-1">
+                                <svg id="toggle-kpi-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                <span id="toggle-kpi-text">KPIs</span>
+                            </button>
+                        </div>
+
                         <!-- Secondary KPI Row (New 5 KPIs) -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+                        <div id="secondary-kpi-row" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
                             <!-- KPI 1: Bonificação -->
                             <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
                                 <div class="flex justify-between items-center mb-1">
