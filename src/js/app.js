@@ -1313,12 +1313,116 @@ document.addEventListener('DOMContentLoaded', () => {
         // Calc indicators for table (Perda/Devolução)
         const processIndicators = (d) => {
             const fat = d.faturamento || 0;
-            d.perc_perda = fat > 0 ? (d.bonificacao / fat) * 100 : null;
-            d.perc_devolucao = fat > 0 ? (d.devolucao / fat) * 100 : null;
+            const fatBase = d.total_sold_base || fat; // Use specific base if available, else fat
+            d.perc_perda = fatBase > 0 ? (d.bonificacao / fatBase) * 100 : null;
+            d.perc_devolucao = fatBase > 0 ? (d.devolucao / fatBase) * 100 : null;
         };
         currentData.forEach(processIndicators);
         previousData.forEach(processIndicators);
         if (data.trend_data) processIndicators(data.trend_data);
+
+        // --- NEW KPIs (Bonification, Devolution, Mix) ---
+        try {
+            // Calculate Totals for Selected Period
+            let kpiBonifCurr = 0, kpiBonifPrev = 0;
+            let kpiDevolCurr = 0, kpiDevolPrev = 0;
+            let kpiMixCurr = 0, kpiMixPrev = 0;
+            let kpiTotalSoldBaseCurr = 0;
+
+            let kpiMixCountCurr = 0, kpiMixCountPrev = 0;
+
+            // Current Period Aggregation
+            const aggCurrent = (d) => {
+                kpiBonifCurr += (d.bonificacao || 0);
+                kpiDevolCurr += (d.devolucao || 0);
+                // Use total_sold_base if available, else fallback to faturamento
+                kpiTotalSoldBaseCurr += (d.total_sold_base !== undefined ? d.total_sold_base : (d.faturamento || 0));
+                if (d.mix_pdv > 0) { kpiMixCurr += d.mix_pdv; kpiMixCountCurr++; }
+            };
+
+            // Previous Period Aggregation
+            const aggPrevious = (d) => {
+                kpiBonifPrev += (d.bonificacao || 0);
+                kpiDevolPrev += (d.devolucao || 0);
+                if (d.mix_pdv > 0) { kpiMixPrev += d.mix_pdv; kpiMixCountPrev++; }
+            };
+
+            // Use filtered month data if month selected, otherwise all months
+            const activeCurrentData = (mesFilter.value !== '') ? currentData.filter(d => d.month_index === targetIndex) : currentData;
+            // Logic for Previous: If Month selected, compare to same month prev year. If Year selected, compare to full prev year.
+            const activePreviousData = (mesFilter.value !== '') ? previousData.filter(d => d.month_index === targetIndex) : previousData;
+
+            // Handle Trend for Current Year/Month
+            activeCurrentData.forEach(d => {
+                // If viewing Year and this is the trend month, use trend data
+                if (data.trend_allowed && data.trend_data && d.month_index === data.trend_data.month_index) {
+                    aggCurrent(data.trend_data);
+                } else {
+                    aggCurrent(d);
+                }
+            });
+            activePreviousData.forEach(aggPrevious);
+
+            // Averages for Mix
+            const avgMixCurr = kpiMixCountCurr > 0 ? kpiMixCurr / kpiMixCountCurr : 0;
+            const avgMixPrev = kpiMixCountPrev > 0 ? kpiMixPrev / kpiMixCountPrev : 0;
+
+            // Calculate Percentages
+            const percBonif = kpiTotalSoldBaseCurr > 0 ? (kpiBonifCurr / kpiTotalSoldBaseCurr) * 100 : 0;
+            const percDevol = kpiTotalSoldBaseCurr > 0 ? (kpiDevolCurr / kpiTotalSoldBaseCurr) * 100 : 0;
+
+            const varBonif = calcEvo(kpiBonifCurr, kpiBonifPrev);
+            const varDevol = calcEvo(kpiDevolCurr, kpiDevolPrev);
+            const varMix = calcEvo(avgMixCurr, avgMixPrev);
+
+            // Render New KPIs
+            const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const fmtPerc = (v) => `${(isNaN(v) ? 0 : v).toFixed(1)}%`;
+
+            // 1. Bonification
+            document.getElementById('kpi-bonif-val').textContent = fmtBRL(kpiBonifCurr);
+            const elBonifPerc = document.getElementById('kpi-bonif-perc');
+            elBonifPerc.textContent = fmtPerc(percBonif);
+            elBonifPerc.className = `text-lg font-bold ${percBonif <= 1.5 ? 'text-emerald-400' : 'text-red-400'}`;
+            document.getElementById('kpi-bonif-sec').textContent = fmtBRL(kpiTotalSoldBaseCurr);
+
+            // Update Corner Types (05, 11) - Defensive check
+            const safeTypes = (typeof selectedTiposVenda !== 'undefined' && Array.isArray(selectedTiposVenda)) ? selectedTiposVenda : [];
+            const types = safeTypes.filter(t => t === '5' || t === '11').sort().join(' e ');
+            const typeLabel = types ? types : '05 e 11';
+            document.getElementById('kpi-bonif-types').textContent = typeLabel;
+            document.getElementById('kpi-bonif-var-types').textContent = typeLabel;
+
+            // 2. Bonification Variation
+            document.getElementById('kpi-bonif-var-val').textContent = fmtBRL(kpiBonifCurr);
+            const elBonifVarPerc = document.getElementById('kpi-bonif-var-perc');
+            elBonifVarPerc.textContent = `${varBonif > 0 ? '+' : ''}${varBonif.toFixed(1)}%`;
+            elBonifVarPerc.className = `text-lg font-bold ${varBonif <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+            document.getElementById('kpi-bonif-var-sec').textContent = fmtBRL(kpiBonifPrev);
+
+            // 3. Devolução
+            document.getElementById('kpi-devol-val').textContent = fmtBRL(kpiDevolCurr);
+            const elDevolPerc = document.getElementById('kpi-devol-perc');
+            elDevolPerc.textContent = fmtPerc(percDevol);
+            elDevolPerc.className = `text-lg font-bold ${percDevol > 0 ? 'text-red-400' : 'text-emerald-400'}`;
+            document.getElementById('kpi-devol-sec').textContent = fmtBRL(kpiTotalSoldBaseCurr);
+
+            // 4. Devolução Variation
+            document.getElementById('kpi-devol-var-val').textContent = fmtBRL(kpiDevolCurr);
+            const elDevolVarPerc = document.getElementById('kpi-devol-var-perc');
+            elDevolVarPerc.textContent = `${varDevol > 0 ? '+' : ''}${varDevol.toFixed(1)}%`;
+            elDevolVarPerc.className = `text-lg font-bold ${varDevol <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+            document.getElementById('kpi-devol-var-sec').textContent = fmtBRL(kpiDevolPrev);
+
+            // 5. Mix PDV
+            document.getElementById('kpi-mix-val').textContent = avgMixCurr.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const elMixPerc = document.getElementById('kpi-mix-perc');
+            elMixPerc.textContent = `${varMix > 0 ? '+' : ''}${varMix.toFixed(1)}%`;
+            elMixPerc.className = `text-lg font-bold ${varMix >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+            document.getElementById('kpi-mix-sec').textContent = avgMixPrev.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        } catch (err) {
+            console.error('Error updating new KPIs:', err);
+        }
 
         updateKpiCard({
             prefix: 'fat',
