@@ -914,6 +914,12 @@ BEGIN
                 ELSE 0 
             END) as faturamento,
 
+            -- Venda Base (Total Vendido Normal - Ignora filtro de Tipo Venda para denominador de KPI)
+            SUM(CASE
+                WHEN fs.tipovenda NOT IN (''5'', ''11'') THEN fs.vlvenda
+                ELSE 0
+            END) as total_sold_base,
+
             -- Peso:
             SUM(CASE
                 -- Caso A: Filtro SOMENTE tipos de bonificação (5 ou 11)
@@ -1006,6 +1012,7 @@ BEGIN
         COALESCE(json_agg(json_build_object(
             ''month_index'', a.mes - 1, 
             ''faturamento'', a.faturamento, 
+            ''total_sold_base'', a.total_sold_base,
             ''peso'', a.peso, 
             ''bonificacao'', a.bonificacao, 
             ''devolucao'', a.devolucao, 
@@ -1017,6 +1024,7 @@ BEGIN
         COALESCE(json_agg(json_build_object(
             ''month_index'', a.mes - 1, 
             ''faturamento'', a.faturamento, 
+            ''total_sold_base'', a.total_sold_base,
             ''peso'', a.peso, 
             ''bonificacao'', a.bonificacao, 
             ''devolucao'', a.devolucao, 
