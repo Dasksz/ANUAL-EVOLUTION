@@ -42,6 +42,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const calendarBtn = document.getElementById('calendar-btn'); // New Calendar Button
     const chartToggleBtn = document.getElementById('chart-toggle-btn'); // Chart Mode Toggle
 
+    // Toggle Secondary KPIs
+    const toggleSecondaryKpisBtn = document.getElementById('toggle-secondary-kpis-btn');
+    const secondaryKpiRow = document.getElementById('secondary-kpi-row');
+    const toggleKpiIcon = document.getElementById('toggle-kpi-icon');
+
+    if(toggleSecondaryKpisBtn && secondaryKpiRow) {
+        toggleSecondaryKpisBtn.addEventListener('click', () => {
+            secondaryKpiRow.classList.toggle('hidden');
+            const isHidden = secondaryKpiRow.classList.contains('hidden');
+
+            // Icon Paths
+            const plusPath = "M12 4v16m8-8H4"; // Heroicons Plus
+            const minusPath = "M20 12H4"; // Heroicons Minus
+
+            // Update Icon
+            if(toggleKpiIcon) {
+                toggleKpiIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${isHidden ? plusPath : minusPath}"></path>`;
+            }
+        });
+    }
+
     // Calendar Modal Elements
     const calendarModal = document.getElementById('calendar-modal');
     const calendarModalBackdrop = document.getElementById('calendar-modal-backdrop');
