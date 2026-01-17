@@ -936,13 +936,14 @@ BEGIN
                     END
             END) as peso,
 
-            -- Bonificação: CORRIGIDO
+            -- Bonificação: CORRIGIDO V2 (Intersection Logic)
             SUM(CASE
-                -- Caso A: Filtro existe (de qualquer tipo) -> Respeita o filtro exato
-                WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN
+                -- Caso A: Filtro contem tipos de bonificação explicitos -> Respeita o filtro
+                -- Verifica overlap com ARRAY[''5'',''11'']
+                WHEN ($1 IS NOT NULL AND $1 && ARRAY[''5'',''11'']) THEN
                      CASE WHEN fs.tipovenda = ANY($1) THEN fs.bonificacao ELSE 0 END
 
-                -- Caso B: Sem filtro -> Padrão mostra TODOS os bonus (5 e 11)
+                -- Caso B: Filtro nao tem bonificação (ex: só 1,9) ou é nulo -> Mostra TODOS os bonus (5 e 11)
                 ELSE
                      CASE WHEN fs.tipovenda IN (''5'', ''11'') THEN fs.bonificacao ELSE 0 END
             END) as bonificacao,
