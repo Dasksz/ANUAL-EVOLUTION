@@ -1,6 +1,6 @@
 
 -- ==============================================================================
--- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT
+-- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT (OPTIMIZED VERSION)
 -- Contains: Tables, Dynamic SQL, Partial Indexes, Summary Logic, RLS, Trends, Caching
 -- Consolidates all previous SQL files into one master schema.
 -- ==============================================================================
@@ -102,6 +102,17 @@ BEGIN
     END IF;
 END $$;
 
+-- Add Ramo column to SALES TABLES (Optimization for Comparison View)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_detailed' AND column_name = 'ramo') THEN
+        ALTER TABLE public.data_detailed ADD COLUMN ramo text;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_history' AND column_name = 'ramo') THEN
+        ALTER TABLE public.data_history ADD COLUMN ramo text;
+    END IF;
+END $$;
+
 -- Holidays Table
 create table if not exists public.data_holidays (
     date date PRIMARY KEY,
@@ -157,6 +168,19 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'codfor') THEN
         ALTER TABLE public.dim_produtos ADD COLUMN codfor text;
+    END IF;
+
+    -- Add Boolean Flags for Products (Optimized Mix Calculation)
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'is_cheetos') THEN
+        ALTER TABLE public.dim_produtos ADD COLUMN is_cheetos boolean DEFAULT false;
+        ALTER TABLE public.dim_produtos ADD COLUMN is_doritos boolean DEFAULT false;
+        ALTER TABLE public.dim_produtos ADD COLUMN is_fandangos boolean DEFAULT false;
+        ALTER TABLE public.dim_produtos ADD COLUMN is_ruffles boolean DEFAULT false;
+        ALTER TABLE public.dim_produtos ADD COLUMN is_torcida boolean DEFAULT false;
+        ALTER TABLE public.dim_produtos ADD COLUMN is_toddynho boolean DEFAULT false;
+        ALTER TABLE public.dim_produtos ADD COLUMN is_toddy boolean DEFAULT false;
+        ALTER TABLE public.dim_produtos ADD COLUMN is_quaker boolean DEFAULT false;
+        ALTER TABLE public.dim_produtos ADD COLUMN is_kerococo boolean DEFAULT false;
     END IF;
 END $$;
 
@@ -224,6 +248,11 @@ CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
 CREATE INDEX IF NOT EXISTS idx_clients_bloqueio_cidade ON public.data_clients (bloqueio, cidade);
 CREATE INDEX IF NOT EXISTS idx_clients_ramo ON public.data_clients (ramo);
 CREATE INDEX IF NOT EXISTS idx_clients_busca ON public.data_clients (codigo_cliente, rca1, cidade);
+
+-- NEW INDEXES FOR COMPARISON VIEW OPTIMIZATION
+CREATE INDEX IF NOT EXISTS idx_detailed_ramo ON public.data_detailed (ramo);
+CREATE INDEX IF NOT EXISTS idx_history_ramo ON public.data_history (ramo);
+CREATE INDEX IF NOT EXISTS idx_dim_produtos_flags ON public.dim_produtos (is_cheetos, is_doritos, is_fandangos, is_ruffles, is_torcida, is_toddynho, is_toddy, is_quaker, is_kerococo);
 
 -- Summary Table Targeted Indexes (For Dynamic SQL)
 -- V2 Optimized Indexes (Year + Dimension) - Removing Month from prefix
@@ -471,10 +500,10 @@ BEGIN
         ramo
     )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto 
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, ramo
         FROM public.data_detailed
         UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto 
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, ramo
         FROM public.data_history
     ),
     augmented_data AS (
@@ -492,7 +521,7 @@ BEGIN
             s.tipovenda, 
             s.codcli,
             s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto,
-            c.ramo
+            COALESCE(s.ramo, c.ramo) as ramo
         FROM raw_data s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
         LEFT JOIN public.dim_supervisores ds ON s.codsupervisor = ds.codigo
@@ -1591,7 +1620,6 @@ DECLARE
     
     -- Filter Clause
     v_where text := ' WHERE 1=1 ';
-    v_where_rede text := '';
     
     -- Trend Vars
     v_max_sale_date date;
@@ -1678,71 +1706,79 @@ BEGIN
         v_where := v_where || format(' AND cidade = ANY(%L) ', p_cidade);
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
+        -- Optimized: Use code match if possible, but input is name
         v_where := v_where || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
         v_where := v_where || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        -- Handle Special Fornecedor Groups if needed, or assume raw codes
-        -- JS logic handled "ELMA", "FOODS" etc by codes. Here we assume p_fornecedor contains codes.
         v_where := v_where || format(' AND codfor = ANY(%L) ', p_fornecedor);
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where := v_where || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
     END IF;
 
-    -- REDE Logic (Requires Join with Clients or Ramo check if denormalized)
-    -- data_detailed/history do NOT have 'ramo'. We must join data_clients.
+    -- OPTIMIZED REDE Logic (Using Ramo column directly)
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
        v_has_com_rede := ('C/ REDE' = ANY(p_rede));
        v_has_sem_rede := ('S/ REDE' = ANY(p_rede));
        v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
        
        IF array_length(v_specific_redes, 1) > 0 THEN
-           v_rede_condition := format('c.ramo = ANY(%L)', v_specific_redes);
+           v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
        END IF;
        
        IF v_has_com_rede THEN
            IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
-           v_rede_condition := v_rede_condition || ' (c.ramo IS NOT NULL AND c.ramo NOT IN (''N/A'', ''N/D'')) ';
+           v_rede_condition := v_rede_condition || ' (ramo IS NOT NULL AND ramo NOT IN (''N/A'', ''N/D'')) ';
        END IF;
        
        IF v_has_sem_rede THEN
            IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
-           v_rede_condition := v_rede_condition || ' (c.ramo IS NULL OR c.ramo IN (''N/A'', ''N/D'')) ';
+           v_rede_condition := v_rede_condition || ' (ramo IS NULL OR ramo IN (''N/A'', ''N/D'')) ';
        END IF;
        
        IF v_rede_condition != '' THEN
-           v_where_rede := ' AND EXISTS (SELECT 1 FROM public.data_clients c WHERE c.codigo_cliente = s.codcli AND (' || v_rede_condition || ')) ';
+           v_where := v_where || ' AND (' || v_rede_condition || ') ';
        END IF;
     END IF;
 
-    -- 3. Aggregation Queries (Optimized with CTEs)
+    -- 3. Aggregation Queries (Optimized with CTEs + Boolean Flags)
     
     EXECUTE format('
         WITH target_sales AS (
             SELECT dtped, vlvenda, totpesoliq, codcli, codsupervisor, produto, descricao, codfor
-            FROM public.data_detailed s %s %s AND dtped >= %L AND dtped <= %L
+            FROM public.data_detailed s %s AND dtped >= %L AND dtped <= %L
             UNION ALL
             SELECT dtped, vlvenda, totpesoliq, codcli, codsupervisor, produto, descricao, codfor
-            FROM public.data_history s %s %s AND dtped >= %L AND dtped <= %L
+            FROM public.data_history s %s AND dtped >= %L AND dtped <= %L
         ),
         history_sales AS (
             SELECT dtped, vlvenda, totpesoliq, codcli, codsupervisor, produto, descricao, codfor
-            FROM public.data_detailed s %s %s AND dtped >= %L AND dtped <= %L
+            FROM public.data_detailed s %s AND dtped >= %L AND dtped <= %L
             UNION ALL
             SELECT dtped, vlvenda, totpesoliq, codcli, codsupervisor, produto, descricao, codfor
-            FROM public.data_history s %s %s AND dtped >= %L AND dtped <= %L
+            FROM public.data_history s %s AND dtped >= %L AND dtped <= %L
         ),
         -- Current Aggregates
         curr_daily AS (
             SELECT dtped::date as d, SUM(vlvenda) as f, SUM(totpesoliq) as p
             FROM target_sales GROUP BY 1
         ),
-        -- Current Aggregates for Product Mix (Product Level >= 1)
+        -- Current Aggregates for Product Mix (Product Level >= 1) - USING DIM_PRODUTOS FLAGS
         curr_prod_agg AS (
-            SELECT s.codcli, s.produto, MAX(dp.descricao) as descricao, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val
+            SELECT s.codcli, s.produto, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val,
+                   -- Flags retrieval (max or distinct, assume dim is unique per code)
+                   bool_or(dp.is_cheetos) as is_cheetos,
+                   bool_or(dp.is_doritos) as is_doritos,
+                   bool_or(dp.is_fandangos) as is_fandangos,
+                   bool_or(dp.is_ruffles) as is_ruffles,
+                   bool_or(dp.is_torcida) as is_torcida,
+                   bool_or(dp.is_toddynho) as is_toddynho,
+                   bool_or(dp.is_toddy) as is_toddy,
+                   bool_or(dp.is_quaker) as is_quaker,
+                   bool_or(dp.is_kerococo) as is_kerococo
             FROM target_sales s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             GROUP BY 1, 2
@@ -1752,15 +1788,15 @@ BEGIN
                 codcli,
                 SUM(prod_val) as total_val,
                 COUNT(CASE WHEN codfor IN (''707'', ''708'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%CHEETOS%%'' THEN 1 ELSE 0 END) as has_cheetos,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%DORITOS%%'' THEN 1 ELSE 0 END) as has_doritos,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%FANDANGOS%%'' THEN 1 ELSE 0 END) as has_fandangos,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%RUFFLES%%'' THEN 1 ELSE 0 END) as has_ruffles,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TORCIDA%%'' THEN 1 ELSE 0 END) as has_torcida,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDYNHO%%'' THEN 1 ELSE 0 END) as has_toddynho,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDY %%'' THEN 1 ELSE 0 END) as has_toddy,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%QUAKER%%'' THEN 1 ELSE 0 END) as has_quaker,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%KEROCOCO%%'' THEN 1 ELSE 0 END) as has_kerococo
+                MAX(CASE WHEN prod_val >= 1 AND is_cheetos THEN 1 ELSE 0 END) as has_cheetos,
+                MAX(CASE WHEN prod_val >= 1 AND is_doritos THEN 1 ELSE 0 END) as has_doritos,
+                MAX(CASE WHEN prod_val >= 1 AND is_fandangos THEN 1 ELSE 0 END) as has_fandangos,
+                MAX(CASE WHEN prod_val >= 1 AND is_ruffles THEN 1 ELSE 0 END) as has_ruffles,
+                MAX(CASE WHEN prod_val >= 1 AND is_torcida THEN 1 ELSE 0 END) as has_torcida,
+                MAX(CASE WHEN prod_val >= 1 AND is_toddynho THEN 1 ELSE 0 END) as has_toddynho,
+                MAX(CASE WHEN prod_val >= 1 AND is_toddy THEN 1 ELSE 0 END) as has_toddy,
+                MAX(CASE WHEN prod_val >= 1 AND is_quaker THEN 1 ELSE 0 END) as has_quaker,
+                MAX(CASE WHEN prod_val >= 1 AND is_kerococo THEN 1 ELSE 0 END) as has_kerococo
             FROM curr_prod_agg
             GROUP BY 1
         ),
@@ -1782,9 +1818,18 @@ BEGIN
             SELECT dtped::date as d, SUM(vlvenda) as f, SUM(totpesoliq) as p
             FROM history_sales GROUP BY 1
         ),
-        -- History Aggregates for Product Mix (Product Level >= 1)
+        -- History Aggregates for Product Mix (Product Level >= 1) - USING DIM_PRODUTOS FLAGS
         hist_prod_agg AS (
-            SELECT date_trunc(''month'', dtped) as m_date, s.codcli, s.produto, MAX(dp.descricao) as descricao, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val
+            SELECT date_trunc(''month'', dtped) as m_date, s.codcli, s.produto, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val,
+                   bool_or(dp.is_cheetos) as is_cheetos,
+                   bool_or(dp.is_doritos) as is_doritos,
+                   bool_or(dp.is_fandangos) as is_fandangos,
+                   bool_or(dp.is_ruffles) as is_ruffles,
+                   bool_or(dp.is_torcida) as is_torcida,
+                   bool_or(dp.is_toddynho) as is_toddynho,
+                   bool_or(dp.is_toddy) as is_toddy,
+                   bool_or(dp.is_quaker) as is_quaker,
+                   bool_or(dp.is_kerococo) as is_kerococo
             FROM history_sales s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             GROUP BY 1, 2, 3
@@ -1795,15 +1840,15 @@ BEGIN
                 codcli,
                 SUM(prod_val) as total_val,
                 COUNT(CASE WHEN codfor IN (''707'', ''708'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%CHEETOS%%'' THEN 1 ELSE 0 END) as has_cheetos,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%DORITOS%%'' THEN 1 ELSE 0 END) as has_doritos,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%FANDANGOS%%'' THEN 1 ELSE 0 END) as has_fandangos,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%RUFFLES%%'' THEN 1 ELSE 0 END) as has_ruffles,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TORCIDA%%'' THEN 1 ELSE 0 END) as has_torcida,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDYNHO%%'' THEN 1 ELSE 0 END) as has_toddynho,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDY %%'' THEN 1 ELSE 0 END) as has_toddy,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%QUAKER%%'' THEN 1 ELSE 0 END) as has_quaker,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%KEROCOCO%%'' THEN 1 ELSE 0 END) as has_kerococo
+                MAX(CASE WHEN prod_val >= 1 AND is_cheetos THEN 1 ELSE 0 END) as has_cheetos,
+                MAX(CASE WHEN prod_val >= 1 AND is_doritos THEN 1 ELSE 0 END) as has_doritos,
+                MAX(CASE WHEN prod_val >= 1 AND is_fandangos THEN 1 ELSE 0 END) as has_fandangos,
+                MAX(CASE WHEN prod_val >= 1 AND is_ruffles THEN 1 ELSE 0 END) as has_ruffles,
+                MAX(CASE WHEN prod_val >= 1 AND is_torcida THEN 1 ELSE 0 END) as has_torcida,
+                MAX(CASE WHEN prod_val >= 1 AND is_toddynho THEN 1 ELSE 0 END) as has_toddynho,
+                MAX(CASE WHEN prod_val >= 1 AND is_toddy THEN 1 ELSE 0 END) as has_toddy,
+                MAX(CASE WHEN prod_val >= 1 AND is_quaker THEN 1 ELSE 0 END) as has_quaker,
+                MAX(CASE WHEN prod_val >= 1 AND is_kerococo THEN 1 ELSE 0 END) as has_kerococo
             FROM hist_prod_agg
             GROUP BY 1, 2
         ),
@@ -1852,10 +1897,10 @@ BEGIN
             ), ''[]''),
             COALESCE((SELECT json_agg(row_to_json(hist_monthly.*)) FROM hist_monthly), ''[]'')
     ', 
-    v_where, v_where_rede, v_start_target, v_end_target, 
-    v_where, v_where_rede, v_start_target, v_end_target,
-    v_where, v_where_rede, v_start_quarter, v_end_quarter,
-    v_where, v_where_rede, v_start_quarter, v_end_quarter
+    v_where, v_start_target, v_end_target,
+    v_where, v_start_target, v_end_target,
+    v_where, v_start_quarter, v_end_quarter,
+    v_where, v_start_quarter, v_end_quarter
     ) INTO v_current_daily, v_current_kpi, v_history_daily, v_history_kpi, v_supervisor_data, v_history_monthly;
 
     RETURN json_build_object(
@@ -1976,5 +2021,41 @@ ON CONFLICT (codigo) DO UPDATE SET nome = 'BALCAO';
 
 INSERT INTO public.dim_supervisores (codigo, nome) VALUES ('SV_AMERICANAS', 'SV AMERICANAS')
 ON CONFLICT (codigo) DO UPDATE SET nome = 'SV AMERICANAS';
+
+-- MIGRATION: Populate Ramo in Sales from Clients (For existing data)
+-- This is a one-time heavy operation, done conditionally if null
+DO $$
+BEGIN
+    -- Update Detailed
+    UPDATE public.data_detailed s
+    SET ramo = c.ramo
+    FROM public.data_clients c
+    WHERE s.codcli = c.codigo_cliente
+    AND s.ramo IS NULL;
+
+    -- Update History
+    UPDATE public.data_history s
+    SET ramo = c.ramo
+    FROM public.data_clients c
+    WHERE s.codcli = c.codigo_cliente
+    AND s.ramo IS NULL;
+END $$;
+
+-- MIGRATION: Populate Product Flags in Dimensions (For existing data)
+DO $$
+BEGIN
+    UPDATE public.dim_produtos
+    SET
+        is_cheetos = (descricao ILIKE '%CHEETOS%'),
+        is_doritos = (descricao ILIKE '%DORITOS%'),
+        is_fandangos = (descricao ILIKE '%FANDANGOS%'),
+        is_ruffles = (descricao ILIKE '%RUFFLES%'),
+        is_torcida = (descricao ILIKE '%TORCIDA%'),
+        is_toddynho = (descricao ILIKE '%TODDYNHO%'),
+        is_toddy = (descricao ILIKE '%TODDY %'),
+        is_quaker = (descricao ILIKE '%QUAKER%'),
+        is_kerococo = (descricao ILIKE '%KEROCOCO%')
+    WHERE is_cheetos IS FALSE AND is_doritos IS FALSE; -- Conditionally run
+END $$;
 
 -- SELECT refresh_dashboard_cache(); -- Disabled auto-run to prevent immediate locking

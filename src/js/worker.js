@@ -163,7 +163,8 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
             codsupervisor: String(rawRow['CODSUPERVISOR'] || '').trim(),
             estoqueunit: parseBrazilianNumber(rawRow['ESTOQUEUNIT']),
             qtvenda_embalagem_master: isNaN(qtdeMaster) || qtdeMaster === 0 ? 0 : qtVenda / qtdeMaster,
-            tipovenda: String(rawRow['TIPOVENDA'] || '').trim()
+            tipovenda: String(rawRow['TIPOVENDA'] || '').trim(),
+            ramo: clientInfo.ramo || 'N/A'
         };
     });
 };
@@ -285,12 +286,13 @@ self.onmessage = async (event) => {
                 cidade: clientData.cidade,
                 bairro: clientData.bairro,
                 rca1: rca1,
-                razaosocial: clientData.razaosocial
+                razaosocial: clientData.razaosocial,
+                ramo: clientData.ramo
             });
             clientsToInsert.push(clientData);
         });
 
-        self.postMessage({ type: 'progress', status: 'Mapeando produtos...', percentage: 30 });
+        self.postMessage({ type: 'progress', status: 'Mapeando produtos e marcas...', percentage: 30 });
         const productMasterMap = new Map();
         const dimProducts = new Map();
 
@@ -303,8 +305,23 @@ self.onmessage = async (event) => {
             productMasterMap.set(productCode, qtdeMaster);
 
             const desc = String(prod['Descrição'] || '').trim();
+            const descUpper = desc.toUpperCase();
             const codFor = String(prod['Fornecedor'] || '').trim();
-            dimProducts.set(productCode, { descricao: desc, codfor: codFor });
+
+            // Brand categorization for optimized query performance
+            const flags = {
+                is_cheetos: descUpper.includes('CHEETOS'),
+                is_doritos: descUpper.includes('DORITOS'),
+                is_fandangos: descUpper.includes('FANDANGOS'),
+                is_ruffles: descUpper.includes('RUFFLES'),
+                is_torcida: descUpper.includes('TORCIDA'),
+                is_toddynho: descUpper.includes('TODDYNHO'),
+                is_toddy: descUpper.includes('TODDY '), // Matches 'TODDY ' with space to avoid TODDYNHO overlap if needed, matching legacy SQL
+                is_quaker: descUpper.includes('QUAKER'),
+                is_kerococo: descUpper.includes('KEROCOCO')
+            };
+
+            dimProducts.set(productCode, { descricao: desc, codfor: codFor, ...flags });
         });
 
         // --- Logic for Inactive Clients (City -> Filial -> Supervisor) ---
@@ -643,7 +660,20 @@ self.onmessage = async (event) => {
             newSupervisors: mapToObjArray(dimSupervisors),
             newVendors: mapToObjArray(dimVendors),
             newProviders: mapToObjArray(dimProviders),
-            newProducts: Array.from(dimProducts.entries()).map(([codigo, val]) => ({ codigo, descricao: val.descricao, codfor: val.codfor }))
+            newProducts: Array.from(dimProducts.entries()).map(([codigo, val]) => ({
+                codigo,
+                descricao: val.descricao,
+                codfor: val.codfor,
+                is_cheetos: val.is_cheetos,
+                is_doritos: val.is_doritos,
+                is_fandangos: val.is_fandangos,
+                is_ruffles: val.is_ruffles,
+                is_torcida: val.is_torcida,
+                is_toddynho: val.is_toddynho,
+                is_toddy: val.is_toddy,
+                is_quaker: val.is_quaker,
+                is_kerococo: val.is_kerococo
+            }))
         };
 
         self.postMessage({ type: 'result', data: resultPayload });
