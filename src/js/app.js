@@ -29,9 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const uploaderModal = document.getElementById('uploader-modal');
     const closeUploaderBtn = document.getElementById('close-uploader-btn');
 
-    // Export PDF Button
-    const exportComparisonPdfBtn = document.getElementById('export-comparison-pdf-btn');
-
     // Dashboard Internal Views
     const mainDashboardView = document.getElementById('main-dashboard-view');
     const mainDashboardHeader = document.getElementById('main-dashboard-header');
@@ -379,65 +376,6 @@ document.addEventListener('DOMContentLoaded', () => {
             navComparativoBtn.classList.add('bg-slate-700', 'text-white');
             loadComparisonView();
             closeSidebar();
-        });
-    }
-
-    if (exportComparisonPdfBtn) {
-        exportComparisonPdfBtn.addEventListener('click', async () => {
-            const originalText = exportComparisonPdfBtn.innerHTML;
-            exportComparisonPdfBtn.innerHTML = 'Gerando PDF...';
-            exportComparisonPdfBtn.disabled = true;
-
-            try {
-                // Ensure everything is rendered
-                // Temporarily expand height if needed or scroll to top?
-                // html2canvas renders what is in DOM.
-
-                const element = document.getElementById('comparison-view');
-                if (!element) throw new Error('Elemento não encontrado');
-
-                const { jsPDF } = window.jspdf;
-                if (!jsPDF) throw new Error('Biblioteca jsPDF não carregada');
-
-                const canvas = await window.html2canvas(element, {
-                    scale: 2, // Improve quality
-                    useCORS: true,
-                    logging: false,
-                    backgroundColor: '#0d1126' // Match background
-                });
-
-                const imgData = canvas.toDataURL('image/png');
-                const pdf = new jsPDF('p', 'mm', 'a4');
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = pdf.internal.pageSize.getHeight();
-
-                const imgWidth = pdfWidth;
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-                let heightLeft = imgHeight;
-                let position = 0;
-
-                // Add first page
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                heightLeft -= pdfHeight;
-
-                // Add subsequent pages if content overflows
-                while (heightLeft >= 0) {
-                    position = heightLeft - imgHeight;
-                    pdf.addPage();
-                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                    heightLeft -= pdfHeight;
-                }
-
-                pdf.save('Painel_Vendas_Comparativo.pdf');
-
-            } catch (err) {
-                console.error('Erro ao gerar PDF:', err);
-                alert('Ocorreu um erro ao gerar o PDF. Verifique o console.');
-            } finally {
-                exportComparisonPdfBtn.innerHTML = originalText;
-                exportComparisonPdfBtn.disabled = false;
-            }
         });
     }
 
