@@ -777,9 +777,6 @@ BEGIN
         v_where_base := v_where_base || format(' AND codfor = ANY(%L) ', p_fornecedor);
     END IF;
     -- IMPORTANT: tipovenda filter REMOVED from base WHERE to handle conditional aggregation logic
-    -- IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-    --    v_where_base := v_where_base || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
-    -- END IF;
     
     -- REDE Logic
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
@@ -871,7 +868,6 @@ BEGIN
     END IF;
 
     -- 4. Execute Main Aggregation Query (VERSÃO OTIMIZADA)
-    -- Removemos todas as subqueries complexas (mix_raw_data, monthly_mix_stats, etc)
     v_sql := '
     WITH filtered_summary AS (
         SELECT ano, mes, vlvenda, peso, bonificacao, devolucao, pre_positivacao_val, pre_mix_count, codcli, tipovenda
@@ -940,13 +936,14 @@ BEGIN
                     END
             END) as peso,
 
-            -- Bonificação:
+            -- Bonificação: CORRIGIDO V2 (Intersection Logic)
             SUM(CASE
-                -- Caso A: Filtro específico de bonificação (só 5 ou só 11 ou ambos) -> Respeita filtro
-                WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) THEN
+                -- Caso A: Filtro contem tipos de bonificação explicitos -> Respeita o filtro
+                -- Verifica overlap com ARRAY[''5'',''11'']
+                WHEN ($1 IS NOT NULL AND $1 && ARRAY[''5'',''11'']) THEN
                      CASE WHEN fs.tipovenda = ANY($1) THEN fs.bonificacao ELSE 0 END
 
-                -- Caso B: Filtro genérico ou sem filtro -> Mostra TODOS os bonus (5 e 11)
+                -- Caso B: Filtro nao tem bonificação (ex: só 1,9) ou é nulo -> Mostra TODOS os bonus (5 e 11)
                 ELSE
                      CASE WHEN fs.tipovenda IN (''5'', ''11'') THEN fs.bonificacao ELSE 0 END
             END) as bonificacao,
