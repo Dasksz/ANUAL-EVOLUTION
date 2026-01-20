@@ -530,7 +530,8 @@ BEGIN
         ramo
     FROM client_agg;
     
-    CLUSTER public.data_summary USING idx_summary_ano_filial;
+    -- CLUSTER removed to prevent timeouts during auto-refresh. Moved to optimize_database().
+    -- CLUSTER public.data_summary USING idx_summary_ano_filial;
     ANALYZE public.data_summary;
 END;
 $$;
@@ -585,6 +586,13 @@ BEGIN
     CREATE INDEX IF NOT EXISTS idx_summary_ano_codcli ON public.data_summary (ano, codcli);
     CREATE INDEX IF NOT EXISTS idx_summary_ano_ramo ON public.data_summary (ano, ramo);
     
+    -- Re-cluster table for physical order optimization (Manual Only)
+    BEGIN
+        CLUSTER public.data_summary USING idx_summary_ano_filial;
+    EXCEPTION WHEN OTHERS THEN
+        NULL; -- Ignore clustering errors if any
+    END;
+
     RETURN 'Banco de dados otimizado com sucesso! Índices reconstruídos.';
 EXCEPTION WHEN OTHERS THEN
     RETURN 'Erro ao otimizar banco: ' || SQLERRM;
