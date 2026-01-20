@@ -635,7 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
-        const BATCH_SIZE = 5000;
+        const BATCH_SIZE = 4000;
         const CONCURRENT_REQUESTS = 10;
 
         const uploadBatch = async (table, items) => {
