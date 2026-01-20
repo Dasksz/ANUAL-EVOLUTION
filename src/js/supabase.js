@@ -8,6 +8,12 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
             // Safely merge headers using the Headers constructor
             // This handles whether options.headers is a plain object or a Headers instance
             const headers = new Headers(options?.headers);
+
+            // Ensure apikey is present (fixes "No API key found in request" error)
+            if (!headers.has('apikey')) {
+                headers.set('apikey', SUPABASE_KEY);
+            }
+
             headers.set('Cache-Control', 'max-age=60'); // Cache de 1 min em rede
 
             const newOptions = {
