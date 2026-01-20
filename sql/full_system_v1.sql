@@ -1986,3 +1986,7 @@ INSERT INTO public.dim_supervisores (codigo, nome) VALUES ('SV_AMERICANAS', 'SV 
 ON CONFLICT (codigo) DO UPDATE SET nome = 'SV AMERICANAS';
 
 -- SELECT refresh_dashboard_cache(); -- Disabled auto-run to prevent immediate locking
+
+-- GRANTs for client-side execution (Split logic)
+GRANT EXECUTE ON FUNCTION public.refresh_cache_filters() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_cache_summary() TO authenticated;
