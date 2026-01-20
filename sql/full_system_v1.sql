@@ -185,8 +185,6 @@ create table if not exists public.data_summary (
     peso numeric,
     bonificacao numeric,
     devolucao numeric,
-    mix_produtos text[],
-    mix_details jsonb, -- Stores product-level values for accurate Mix calculation
     pre_mix_count int DEFAULT 0,
     pre_positivacao_val int DEFAULT 0, -- 1 se positivou, 0 se não
     ramo text, -- ADDED: Rede Filter
@@ -466,7 +464,6 @@ BEGIN
     INSERT INTO public.data_summary (
         ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, 
         vlvenda, peso, bonificacao, devolucao, 
-        mix_produtos, mix_details,
         pre_mix_count, pre_positivacao_val,
         ramo
     )
@@ -515,17 +512,15 @@ BEGIN
             SUM(pa.prod_peso) as total_peso,
             SUM(pa.prod_bonific) as total_bonific,
             SUM(pa.prod_devol) as total_devol,
-            ARRAY_AGG(DISTINCT pa.produto) FILTER (WHERE pa.produto IS NOT NULL) as arr_prod,
-            jsonb_object_agg(pa.produto, pa.prod_val) FILTER (WHERE pa.produto IS NOT NULL) as json_prod
+            -- Cálculo de Mix Direto na Agregação (Substitui JSONB)
+            COUNT(CASE WHEN pa.prod_val >= 1 AND pa.codfor IN ('707', '708') THEN 1 END) as mix_calc
         FROM product_agg pa
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
     )
     SELECT 
         ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli,
         total_val, total_peso, total_bonific, total_devol,
-        arr_prod, json_prod,
-        -- CÁLCULOS PRÉVIOS AQUI:
-        (SELECT COUNT(*) FROM jsonb_each_text(json_prod) WHERE (value)::numeric >= 1 AND codfor IN ('707', '708')) as mix_calc,
+        mix_calc,
         CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
         ramo
     FROM client_agg;
