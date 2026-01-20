@@ -595,28 +595,48 @@ document.addEventListener('DOMContentLoaded', () => {
             statusText.textContent = msg;
             progressBar.style.width = `${percent}%`;
         };
+
+        const retryOperation = async (operation, retries = 3, delay = 1000) => {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    return await operation();
+                } catch (error) {
+                    if (i === retries - 1) throw error;
+                    console.warn(`Tentativa ${i + 1} falhou. Retentando em ${delay}ms...`, error);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; // Exponential backoff
+                }
+            }
+        };
+
         const performUpsert = async (table, batch) => {
-            const { error } = await supabase.from(table).insert(batch);
-            if (error) throw new Error(`Erro ${table}: ${error.message}`);
+            await retryOperation(async () => {
+                const { error } = await supabase.from(table).insert(batch);
+                if (error) throw new Error(`Erro ${table}: ${error.message}`);
+            });
         };
         const performDimensionUpsert = async (table, batch) => {
              // For dimensions, we must upsert (update if exists)
              // Supabase JS upsert needs onConflict column
-             const { error } = await supabase.from(table).upsert(batch, { onConflict: 'codigo' });
-             if (error) {
-                 if (error.message && (error.message.includes('Could not find the table') || error.message.includes('relation') || error.code === '42P01')) {
-                     alert("Erro de Configuração: As tabelas novas (dimensões) não foram encontradas. \n\nPor favor, execute o script 'sql/optimization_plan.sql' no Editor SQL do Supabase para criar as tabelas necessárias e tente novamente.");
+             await retryOperation(async () => {
+                 const { error } = await supabase.from(table).upsert(batch, { onConflict: 'codigo' });
+                 if (error) {
+                     if (error.message && (error.message.includes('Could not find the table') || error.message.includes('relation') || error.code === '42P01')) {
+                         alert("Erro de Configuração: As tabelas novas (dimensões) não foram encontradas. \n\nPor favor, execute o script 'sql/optimization_plan.sql' no Editor SQL do Supabase para criar as tabelas necessárias e tente novamente.");
+                     }
+                     throw new Error(`Erro upsert ${table}: ${error.message}`);
                  }
-                 throw new Error(`Erro upsert ${table}: ${error.message}`);
-             }
+             });
         };
         const clearTable = async (table) => {
-            const { error } = await supabase.rpc('truncate_table', { table_name: table });
-            if (error) throw new Error(`Erro clear ${table}: ${error.message}`);
+            await retryOperation(async () => {
+                const { error } = await supabase.rpc('truncate_table', { table_name: table });
+                if (error) throw new Error(`Erro clear ${table}: ${error.message}`);
+            });
         };
 
         const BATCH_SIZE = 1000;
-        const CONCURRENT_REQUESTS = 1;
+        const CONCURRENT_REQUESTS = 5;
 
         const uploadBatch = async (table, items) => {
             const totalBatches = Math.ceil(items.length / BATCH_SIZE);
