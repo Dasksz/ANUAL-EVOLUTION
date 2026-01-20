@@ -683,8 +683,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.detailed?.length) { updateStatus('Limpar det...', 40); await clearTable('data_detailed'); await uploadBatch('data_detailed', data.detailed); }
             if (data.clients?.length) { updateStatus('Limpar cli...', 70); await clearTable('data_clients'); await uploadBatch('data_clients', data.clients); }
 
-            updateStatus('Atualizando cache...', 90);
-            await supabase.rpc('refresh_dashboard_cache');
+            updateStatus('Atualizando filtros...', 90);
+            await supabase.rpc('refresh_cache_filters');
+            
+            updateStatus('Atualizando resumo...', 95);
+            await supabase.rpc('refresh_cache_summary');
 
         } catch (error) {
             console.error(error);
