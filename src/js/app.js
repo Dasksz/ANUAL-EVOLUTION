@@ -1,7 +1,8 @@
 
-import supabase from './supabase.js';
+import supabase from './supabase.js?v=2';
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("App Version: 2.0 (Cache Refresh Split)");
     // --- Auth & Navigation Elements ---
     const loginView = document.getElementById('login-view');
     const appLayout = document.getElementById('app-layout');
@@ -545,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         statusText.textContent = 'Processando...';
         
-        const worker = new Worker('src/js/worker.js');
+        const worker = new Worker('src/js/worker.js?v=2');
         // Pass files AND the city map
         worker.postMessage({ ...files, cityBranchMap });
 
