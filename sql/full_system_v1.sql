@@ -945,11 +945,12 @@ BEGIN
 
             -- Bonificação:
             SUM(CASE
-                -- Caso A: Filtro específico de bonificação (só 5 ou só 11 ou ambos) -> Respeita filtro
-                WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) THEN
-                     CASE WHEN fs.tipovenda = ANY($1) THEN fs.bonificacao ELSE 0 END
+                -- Caso A: Filtro contém ALGUM tipo de bonificação (5 ou 11) -> Respeita filtro
+                -- (Altera lógica de subset <@ para overlap && para permitir mixes como [1, 11])
+                WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 && ARRAY[''5'',''11'']) THEN
+                     CASE WHEN fs.tipovenda = ANY($1) AND fs.tipovenda IN (''5'', ''11'') THEN fs.bonificacao ELSE 0 END
 
-                -- Caso B: Filtro genérico ou sem filtro -> Mostra TODOS os bonus (5 e 11)
+                -- Caso B: Filtro não contém nenhum tipo de bonificação -> Mostra TODOS os bonus (5 e 11)
                 ELSE
                      CASE WHEN fs.tipovenda IN (''5'', ''11'') THEN fs.bonificacao ELSE 0 END
             END) as bonificacao,
