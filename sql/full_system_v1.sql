@@ -887,7 +887,7 @@ BEGIN
     -- Removemos todas as subqueries complexas (mix_raw_data, monthly_mix_stats, etc)
     v_sql := '
     WITH filtered_summary AS (
-        SELECT ano, mes, vlvenda, peso, bonificacao, devolucao, pre_positivacao_val, pre_mix_count, codcli, tipovenda
+        SELECT ano, mes, vlvenda, peso, bonificacao, devolucao, pre_positivacao_val, pre_mix_count, codcli, tipovenda, codfor
         FROM public.data_summary
         ' || v_where_base || '
     ),
