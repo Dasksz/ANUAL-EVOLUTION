@@ -104,6 +104,176 @@ document.addEventListener('DOMContentLoaded', () => {
     const STORE_NAME = 'data_store';
     const DB_VERSION = 1;
 
+    // --- URL Routing & Filter Persistence Logic ---
+
+    function getActiveViewId() {
+        if (!mainDashboardView.classList.contains('hidden')) return 'dashboard';
+        if (!cityView.classList.contains('hidden')) return 'city';
+        if (!branchView.classList.contains('hidden')) return 'branch';
+        if (comparisonView && !comparisonView.classList.contains('hidden')) return 'comparison';
+        return 'dashboard';
+    }
+
+    function getFiltersFromActiveView() {
+        const view = getActiveViewId();
+        const state = {};
+
+        if (view === 'dashboard') {
+            state.ano = anoFilter.value;
+            state.mes = mesFilter.value;
+            state.filiais = selectedFiliais;
+            state.cidades = selectedCidades;
+            state.supervisores = selectedSupervisores;
+            state.vendedores = selectedVendedores;
+            state.fornecedores = selectedFornecedores;
+            state.tiposvenda = selectedTiposVenda;
+            state.redes = selectedRedes;
+        } else if (view === 'city') {
+            state.ano = cityAnoFilter.value;
+            state.mes = cityMesFilter.value;
+            state.filiais = citySelectedFiliais;
+            state.cidades = citySelectedCidades;
+            state.supervisores = citySelectedSupervisores;
+            state.vendedores = citySelectedVendedores;
+            state.fornecedores = citySelectedFornecedores;
+            state.tiposvenda = citySelectedTiposVenda;
+            state.redes = citySelectedRedes;
+        } else if (view === 'branch') {
+            state.ano = branchAnoFilter.value;
+            state.mes = branchMesFilter.value;
+            state.filiais = branchSelectedFiliais;
+            state.cidades = branchSelectedCidades;
+            state.supervisores = branchSelectedSupervisores;
+            state.vendedores = branchSelectedVendedores;
+            state.fornecedores = branchSelectedFornecedores;
+            state.tiposvenda = branchSelectedTiposVenda;
+            state.redes = branchSelectedRedes;
+        } else if (view === 'comparison') {
+            state.ano = comparisonAnoFilter.value;
+            state.mes = comparisonMesFilter.value;
+            state.filiais = comparisonFilialFilter.value === 'ambas' ? [] : [comparisonFilialFilter.value];
+            state.cidades = comparisonCityFilter.value ? [comparisonCityFilter.value] : [];
+            state.supervisores = selectedComparisonSupervisores;
+            state.vendedores = selectedComparisonSellers;
+            state.fornecedores = selectedComparisonSuppliers;
+            state.tiposvenda = selectedComparisonTiposVenda;
+            state.redes = selectedComparisonRedes;
+        }
+
+        const serialize = (key, val) => {
+            if (Array.isArray(val)) return val.join(',');
+            return val;
+        };
+
+        const params = new URLSearchParams();
+        for (const [key, val] of Object.entries(state)) {
+            if (val && val.length > 0) {
+                 params.set(key, serialize(key, val));
+            }
+        }
+        return params;
+    }
+
+    function applyFiltersToView(view, params) {
+        const getList = (key) => {
+            const val = params.get(key);
+            return val ? val.split(',') : [];
+        };
+        const getVal = (key) => params.get(key);
+
+        if (view === 'dashboard') {
+            if (getVal('ano')) anoFilter.value = getVal('ano');
+            if (getVal('mes')) mesFilter.value = getVal('mes');
+
+            selectedFiliais = getList('filiais');
+            selectedCidades = getList('cidades');
+            selectedSupervisores = getList('supervisores');
+            selectedVendedores = getList('vendedores');
+            selectedFornecedores = getList('fornecedores');
+            selectedTiposVenda = getList('tiposvenda');
+            selectedRedes = getList('redes');
+
+        } else if (view === 'city') {
+            if (getVal('ano')) cityAnoFilter.value = getVal('ano');
+            if (getVal('mes')) cityMesFilter.value = getVal('mes');
+
+            citySelectedFiliais = getList('filiais');
+            citySelectedCidades = getList('cidades');
+            citySelectedSupervisores = getList('supervisores');
+            citySelectedVendedores = getList('vendedores');
+            citySelectedFornecedores = getList('fornecedores');
+            citySelectedTiposVenda = getList('tiposvenda');
+            citySelectedRedes = getList('redes');
+
+        } else if (view === 'branch') {
+             if (getVal('ano')) branchAnoFilter.value = getVal('ano');
+             if (getVal('mes')) branchMesFilter.value = getVal('mes');
+
+             branchSelectedFiliais = getList('filiais');
+             branchSelectedCidades = getList('cidades');
+             branchSelectedSupervisores = getList('supervisores');
+             branchSelectedVendedores = getList('vendedores');
+             branchSelectedFornecedores = getList('fornecedores');
+             branchSelectedTiposVenda = getList('tiposvenda');
+             branchSelectedRedes = getList('redes');
+
+        } else if (view === 'comparison') {
+             if (getVal('ano')) comparisonAnoFilter.value = getVal('ano');
+             if (getVal('mes')) comparisonMesFilter.value = getVal('mes');
+
+             const filiais = getList('filiais');
+             if (filiais.length > 0) comparisonFilialFilter.value = filiais[0];
+
+             const cidades = getList('cidades');
+             if (cidades.length > 0) comparisonCityFilter.value = cidades[0];
+
+             selectedComparisonSupervisores = getList('supervisores');
+             selectedComparisonSellers = getList('vendedores');
+             selectedComparisonSuppliers = getList('fornecedores');
+             selectedComparisonTiposVenda = getList('tiposvenda');
+             selectedComparisonRedes = getList('redes');
+        }
+    }
+
+    async function handleInitialRouting() {
+        const params = new URLSearchParams(window.location.search);
+        const view = params.get('view');
+
+        if (view) {
+            applyFiltersToView(view, params);
+            showScreen('app-layout');
+
+            if (view === 'city') {
+                navCityAnalysisBtn.click();
+            } else if (view === 'branch') {
+                navBranchBtn.click();
+            } else if (view === 'comparison') {
+                navComparativoBtn.click();
+            } else {
+                navDashboardBtn.click();
+                initDashboard();
+            }
+        } else {
+            showScreen('app-layout');
+            initDashboard();
+        }
+    }
+
+    function navigateWithCtrl(e, targetViewId) {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const params = getFiltersFromActiveView();
+            params.set('view', targetViewId);
+
+            const url = `${window.location.pathname}?${params.toString()}`;
+            window.open(url, '_blank');
+            return true;
+        }
+        return false;
+    }
+
     const initDB = () => {
         return idb.openDB(DB_NAME, DB_VERSION, {
             upgrade(db) {
@@ -208,8 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (status === 'aprovado') {
                     window.userRole = role;
                     isAppReady = true;
-                    showScreen('app-layout');
-                    initDashboard();
+                    handleInitialRouting();
                     return;
                 }
             } catch (e) {
@@ -246,8 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const currentScreen = document.getElementById('app-layout');
                 if (currentScreen.classList.contains('hidden')) {
                     isAppReady = true;
-                    showScreen('app-layout');
-                    initDashboard();
+                    handleInitialRouting();
                 } else {
                     isAppReady = true;
                 }
@@ -287,8 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (payload.new && payload.new.status === 'aprovado') {
                     supabase.removeChannel(statusListener);
                     statusListener = null;
-                    showScreen('app-layout');
-                    initDashboard();
+                    handleInitialRouting();
                 }
             })
             .subscribe();
@@ -355,14 +522,16 @@ document.addEventListener('DOMContentLoaded', () => {
         [navDashboardBtn, navCityAnalysisBtn, navBranchBtn, navUploaderBtn, navComparativoBtn].forEach(btn => btn?.classList.remove('bg-slate-700', 'text-white'));
     };
 
-    navDashboardBtn.addEventListener('click', () => {
+    navDashboardBtn.addEventListener('click', (e) => {
+        if (navigateWithCtrl(e, 'dashboard')) return;
         resetViews();
         mainDashboardView.classList.remove('hidden');
         navDashboardBtn.classList.add('bg-slate-700', 'text-white');
         closeSidebar();
     });
 
-    navCityAnalysisBtn.addEventListener('click', () => {
+    navCityAnalysisBtn.addEventListener('click', (e) => {
+        if (navigateWithCtrl(e, 'city')) return;
         resetViews();
         cityView.classList.remove('hidden');
         navCityAnalysisBtn.classList.add('bg-slate-700', 'text-white');
@@ -371,7 +540,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (navComparativoBtn) {
-        navComparativoBtn.addEventListener('click', () => {
+        navComparativoBtn.addEventListener('click', (e) => {
+            if (navigateWithCtrl(e, 'comparison')) return;
             resetViews();
             comparisonView.classList.remove('hidden');
             navComparativoBtn.classList.add('bg-slate-700', 'text-white');
@@ -381,7 +551,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (navBranchBtn) {
-        navBranchBtn.addEventListener('click', () => {
+        navBranchBtn.addEventListener('click', (e) => {
+            if (navigateWithCtrl(e, 'branch')) return;
             resetViews();
             branchView.classList.remove('hidden');
             navBranchBtn.classList.add('bg-slate-700', 'text-white');
