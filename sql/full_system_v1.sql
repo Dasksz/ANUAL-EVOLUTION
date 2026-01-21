@@ -513,7 +513,7 @@ BEGIN
             SUM(pa.prod_bonific) as total_bonific,
             SUM(pa.prod_devol) as total_devol,
             -- Cálculo de Mix Direto na Agregação (Substitui JSONB)
-            COUNT(CASE WHEN pa.prod_val >= 1 AND pa.codfor IN ('707', '708') THEN 1 END) as mix_calc
+            COUNT(CASE WHEN pa.prod_val >= 1 THEN 1 END) as mix_calc
         FROM product_agg pa
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
     )
@@ -704,6 +704,9 @@ DECLARE
     v_specific_redes text[];
     v_rede_condition text := '';
     v_is_month_filtered boolean := false;
+    
+    -- Mix Logic Vars
+    v_mix_constraint text;
 
     -- New KPI Logic Vars
     v_filial_cities text[];
@@ -809,6 +812,13 @@ BEGIN
        END IF;
     END IF;
 
+    -- MIX Constraint Logic (Default to 707/708 if no provider filter, else use all filtered)
+    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
+        v_mix_constraint := ' 1=1 ';
+    ELSE
+        v_mix_constraint := ' fs.codfor IN (''707'', ''708'') ';
+    END IF;
+
     -- KPI Base Filter (Table: data_clients)
     v_where_kpi := ' WHERE bloqueio != ''S'' ';
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
@@ -877,7 +887,7 @@ BEGIN
     -- Removemos todas as subqueries complexas (mix_raw_data, monthly_mix_stats, etc)
     v_sql := '
     WITH filtered_summary AS (
-        SELECT ano, mes, vlvenda, peso, bonificacao, devolucao, pre_positivacao_val, pre_mix_count, codcli, tipovenda
+        SELECT ano, mes, vlvenda, peso, bonificacao, devolucao, pre_positivacao_val, pre_mix_count, codcli, tipovenda, codfor
         FROM public.data_summary
         ' || v_where_base || '
     ),
@@ -968,15 +978,15 @@ BEGIN
             -- Mix pré-calculado (Respeitando regra de Venda/Venda Futura se filtro não for especificado)
             SUM(CASE 
                 WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN
-                    CASE WHEN fs.tipovenda = ANY($1) THEN fs.pre_mix_count ELSE 0 END
-                WHEN fs.tipovenda IN (''1'', ''9'') THEN fs.pre_mix_count
+                    CASE WHEN fs.tipovenda = ANY($1) AND (' || v_mix_constraint || ') THEN fs.pre_mix_count ELSE 0 END
+                WHEN fs.tipovenda IN (''1'', ''9'') AND (' || v_mix_constraint || ') THEN fs.pre_mix_count
                 ELSE 0 
             END) as total_mix_sum,
 
             COUNT(DISTINCT CASE 
                 WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) AND fs.pre_mix_count > 0 THEN
-                    CASE WHEN fs.tipovenda = ANY($1) THEN fs.codcli ELSE NULL END
-                WHEN fs.tipovenda IN (''1'', ''9'') AND fs.pre_mix_count > 0 THEN fs.codcli
+                    CASE WHEN fs.tipovenda = ANY($1) AND (' || v_mix_constraint || ') THEN fs.codcli ELSE NULL END
+                WHEN fs.tipovenda IN (''1'', ''9'') AND fs.pre_mix_count > 0 AND (' || v_mix_constraint || ') THEN fs.codcli
                 ELSE NULL 
             END) as mix_client_count
         FROM filtered_summary fs
