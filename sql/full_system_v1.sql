@@ -226,6 +226,8 @@ CREATE INDEX IF NOT EXISTS idx_history_dtped_composite ON public.data_history (d
 CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
 CREATE INDEX IF NOT EXISTS idx_detailed_codfor_dtped ON public.data_detailed (codfor, dtped);
 CREATE INDEX IF NOT EXISTS idx_history_codfor_dtped ON public.data_history (codfor, dtped);
+CREATE INDEX IF NOT EXISTS idx_detailed_produto ON public.data_detailed (produto);
+CREATE INDEX IF NOT EXISTS idx_history_produto ON public.data_history (produto);
 CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
 CREATE INDEX IF NOT EXISTS idx_clients_bloqueio_cidade ON public.data_clients (bloqueio, cidade);
 CREATE INDEX IF NOT EXISTS idx_clients_ramo ON public.data_clients (ramo);
@@ -1338,7 +1340,7 @@ BEGIN
         ORDER BY ano DESC
     ) INTO v_anos;
 
-    -- 9. Produtos (NEW - Filtered by Fornecedor if present)
+    -- 9. Produtos (Filtered by Fornecedor AND Sales Existence)
     SELECT json_agg(json_build_object('cod', codigo, 'name', descricao || ' (' || codigo || ')') ORDER BY descricao)
     INTO v_produtos
     FROM public.dim_produtos
@@ -1354,6 +1356,12 @@ BEGIN
                 END
             ELSE 1=1
         END
+    )
+    -- NEW: Filter to only include products that have sales
+    AND (
+        EXISTS (SELECT 1 FROM public.data_detailed d WHERE d.produto = public.dim_produtos.codigo)
+        OR
+        EXISTS (SELECT 1 FROM public.data_history h WHERE h.produto = public.dim_produtos.codigo)
     );
 
     RETURN json_build_object(
