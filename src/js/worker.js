@@ -582,7 +582,10 @@ self.onmessage = async (event) => {
                 if (sale.codusur && sale.nome) dimVendors.set(sale.codusur, sale.nome);
                 if (sale.codfor && sale.fornecedor) dimProviders.set(sale.codfor, sale.fornecedor);
                 if (sale.produto && !dimProducts.has(sale.produto)) {
-                    dimProducts.set(sale.produto, { descricao: sale.descricao, codfor: sale.codfor });
+                    // Strict Filter: Only add if supplier is allowed
+                    if (allowedSuppliers.has(sale.codfor)) {
+                        dimProducts.set(sale.produto, { descricao: sale.descricao, codfor: sale.codfor });
+                    }
                 }
             });
         };
