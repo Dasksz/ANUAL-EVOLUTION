@@ -1049,6 +1049,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Boxes Logic
     let boxesFilterDebounceTimer;
+    let boxesSelectedFiliais = [];
+    let boxesSelectedCidades = [];
+    let boxesSelectedSupervisores = [];
+    let boxesSelectedVendedores = [];
+    let boxesSelectedFornecedores = [];
+    let boxesSelectedProducts = [];
+
     const handleBoxesFilterChange = async () => {
         clearTimeout(boxesFilterDebounceTimer);
         boxesFilterDebounceTimer = setTimeout(async () => {
