@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sidebar
     const sideMenu = document.getElementById('side-menu');
     const openSidebarBtn = document.getElementById('open-sidebar-btn'); // Main Header Hamburger
+    const openSidebarBoxesBtn = document.getElementById('open-sidebar-boxes-btn'); // Boxes Header Hamburger
     const openSidebarBranchBtn = document.getElementById('open-sidebar-branch-btn'); // Branch Header Hamburger
     const openSidebarCityBtn = document.getElementById('open-sidebar-city-btn'); // City Header Hamburger
     // No close button explicit in new design, clicking outside handles it
@@ -21,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const navDashboardBtn = document.getElementById('nav-dashboard');
     const navCityAnalysisBtn = document.getElementById('nav-city-analysis');
+    const navBoxesBtn = document.getElementById('nav-boxes-btn'); // New Boxes Nav
     const navBranchBtn = document.getElementById('nav-branch-btn');
     const navUploaderBtn = document.getElementById('nav-uploader');
     const navComparativoBtn = document.getElementById('nav-comparativo-btn'); // New
@@ -35,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainDashboardHeader = document.getElementById('main-dashboard-header');
     const mainDashboardContent = document.getElementById('main-dashboard-content');
     const cityView = document.getElementById('city-view');
+    const boxesView = document.getElementById('boxes-view'); // New Boxes View
     const branchView = document.getElementById('branch-view');
     const comparisonView = document.getElementById('comparison-view'); // New
 
@@ -109,6 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getActiveViewId() {
         if (!mainDashboardView.classList.contains('hidden')) return 'dashboard';
         if (!cityView.classList.contains('hidden')) return 'city';
+        if (!boxesView.classList.contains('hidden')) return 'boxes';
         if (!branchView.classList.contains('hidden')) return 'branch';
         if (comparisonView && !comparisonView.classList.contains('hidden')) return 'comparison';
         return 'dashboard';
@@ -138,6 +142,16 @@ document.addEventListener('DOMContentLoaded', () => {
             state.fornecedores = citySelectedFornecedores;
             state.tiposvenda = citySelectedTiposVenda;
             state.redes = citySelectedRedes;
+        } else if (view === 'boxes') {
+            state.ano = boxesAnoFilter.value;
+            state.mes = boxesMesFilter.value;
+            state.filiais = boxesSelectedFiliais;
+            state.cidades = boxesSelectedCidades;
+            state.supervisores = boxesSelectedSupervisores;
+            state.vendedores = boxesSelectedVendedores;
+            state.fornecedores = boxesSelectedFornecedores;
+            state.produtos = boxesSelectedProducts;
+            // state.tiposvenda = ... if added later
         } else if (view === 'branch') {
             state.ano = branchAnoFilter.value;
             state.mes = branchMesFilter.value;
@@ -205,6 +219,17 @@ document.addEventListener('DOMContentLoaded', () => {
             citySelectedTiposVenda = getList('tiposvenda');
             citySelectedRedes = getList('redes');
 
+        } else if (view === 'boxes') {
+            if (getVal('ano')) boxesAnoFilter.value = getVal('ano');
+            if (getVal('mes')) boxesMesFilter.value = getVal('mes');
+
+            boxesSelectedFiliais = getList('filiais');
+            boxesSelectedCidades = getList('cidades');
+            boxesSelectedSupervisores = getList('supervisores');
+            boxesSelectedVendedores = getList('vendedores');
+            boxesSelectedFornecedores = getList('fornecedores');
+            boxesSelectedProducts = getList('produtos');
+
         } else if (view === 'branch') {
              if (getVal('ano')) branchAnoFilter.value = getVal('ano');
              if (getVal('mes')) branchMesFilter.value = getVal('mes');
@@ -245,6 +270,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (view === 'city') {
                 navCityAnalysisBtn.click();
+            } else if (view === 'boxes') {
+                navBoxesBtn.click();
             } else if (view === 'branch') {
                 navBranchBtn.click();
             } else if (view === 'comparison') {
@@ -516,10 +543,11 @@ document.addEventListener('DOMContentLoaded', () => {
         uploaderModal.classList.add('hidden');
         mainDashboardView.classList.add('hidden');
         cityView.classList.add('hidden');
+        boxesView.classList.add('hidden');
         branchView.classList.add('hidden');
         comparisonView.classList.add('hidden');
         // Reset active state styles (simple)
-        [navDashboardBtn, navCityAnalysisBtn, navBranchBtn, navUploaderBtn, navComparativoBtn].forEach(btn => btn?.classList.remove('bg-slate-700', 'text-white'));
+        [navDashboardBtn, navCityAnalysisBtn, navBoxesBtn, navBranchBtn, navUploaderBtn, navComparativoBtn].forEach(btn => btn?.classList.remove('bg-slate-700', 'text-white'));
     };
 
     navDashboardBtn.addEventListener('click', (e) => {
@@ -538,6 +566,17 @@ document.addEventListener('DOMContentLoaded', () => {
         loadCityView();
         closeSidebar();
     });
+
+    if (navBoxesBtn) {
+        navBoxesBtn.addEventListener('click', (e) => {
+            if (navigateWithCtrl(e, 'boxes')) return;
+            resetViews();
+            boxesView.classList.remove('hidden');
+            navBoxesBtn.classList.add('bg-slate-700', 'text-white');
+            loadBoxesView();
+            closeSidebar();
+        });
+    }
 
     if (navComparativoBtn) {
         navComparativoBtn.addEventListener('click', (e) => {
@@ -894,6 +933,203 @@ document.addEventListener('DOMContentLoaded', () => {
     const redeFilterDropdown = document.getElementById('rede-filter-dropdown');
     const redeFilterList = document.getElementById('rede-filter-list');
     const redeFilterSearch = document.getElementById('rede-filter-search');
+
+    // Boxes Logic
+    let boxesFilterDebounceTimer;
+    const handleBoxesFilterChange = async () => {
+        clearTimeout(boxesFilterDebounceTimer);
+        boxesFilterDebounceTimer = setTimeout(async () => {
+            await loadBoxesView();
+        }, 500);
+    };
+
+    if (boxesAnoFilter) boxesAnoFilter.addEventListener('change', handleBoxesFilterChange);
+    if (boxesMesFilter) boxesMesFilter.addEventListener('change', handleBoxesFilterChange);
+
+    document.addEventListener('click', (e) => {
+        const dropdowns = [boxesFilialFilterDropdown, boxesProdutoFilterDropdown, boxesSupervisorFilterDropdown, boxesVendedorFilterDropdown, boxesFornecedorFilterDropdown, boxesCidadeFilterDropdown];
+        const btns = [boxesFilialFilterBtn, boxesProdutoFilterBtn, boxesSupervisorFilterBtn, boxesVendedorFilterBtn, boxesFornecedorFilterBtn, boxesCidadeFilterBtn];
+        let anyClosed = false;
+        dropdowns.forEach((dd, idx) => {
+            if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
+                dd.classList.add('hidden');
+                anyClosed = true;
+            }
+        });
+        if (anyClosed && !boxesView.classList.contains('hidden')) {
+            handleBoxesFilterChange();
+        }
+    });
+
+    if (boxesClearFiltersBtn) {
+        boxesClearFiltersBtn.addEventListener('click', () => {
+            boxesAnoFilter.value = 'todos';
+            boxesMesFilter.value = '';
+            boxesSelectedFiliais = [];
+            boxesSelectedProducts = [];
+            boxesSelectedSupervisores = [];
+            boxesSelectedVendedores = [];
+            boxesSelectedFornecedores = [];
+            boxesSelectedCidades = [];
+            initBoxesFilters().then(loadBoxesView);
+        });
+    }
+
+    async function initBoxesFilters() {
+        const filters = {
+            p_ano: 'todos',
+            p_mes: null,
+            p_filial: [],
+            p_cidade: [],
+            p_supervisor: [],
+            p_vendedor: [],
+            p_fornecedor: [],
+            p_tipovenda: [],
+            p_rede: []
+        };
+        const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
+        if (error) console.error('Error fetching boxes filters:', error);
+        if (!filterData) return;
+
+        if (filterData.anos && boxesAnoFilter) {
+            const currentVal = boxesAnoFilter.value;
+            boxesAnoFilter.innerHTML = '<option value="todos">Todos</option>';
+            filterData.anos.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a;
+                opt.textContent = a;
+                boxesAnoFilter.appendChild(opt);
+            });
+            if (currentVal && currentVal !== 'todos') boxesAnoFilter.value = currentVal;
+            else if (filterData.anos.length > 0) boxesAnoFilter.value = filterData.anos[0];
+        }
+
+        if (boxesMesFilter && boxesMesFilter.options.length <= 1) {
+            boxesMesFilter.innerHTML = '<option value="">Todos</option>';
+            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; boxesMesFilter.appendChild(opt); });
+        }
+
+        setupCityMultiSelect(boxesFilialFilterBtn, boxesFilialFilterDropdown, boxesFilialFilterDropdown, filterData.filiais, boxesSelectedFiliais);
+        setupCityMultiSelect(boxesSupervisorFilterBtn, boxesSupervisorFilterDropdown, boxesSupervisorFilterDropdown, filterData.supervisors, boxesSelectedSupervisores);
+        setupCityMultiSelect(boxesVendedorFilterBtn, boxesVendedorFilterDropdown, boxesVendedorFilterList, filterData.vendedores, boxesSelectedVendedores, boxesVendedorFilterSearch);
+        setupCityMultiSelect(boxesFornecedorFilterBtn, boxesFornecedorFilterDropdown, boxesFornecedorFilterList, filterData.fornecedores, boxesSelectedFornecedores, boxesFornecedorFilterSearch, true);
+        setupCityMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, filterData.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
+
+        // Products - filterData.produtos
+        setupCityMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, filterData.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
+    }
+
+    async function loadBoxesView() {
+        showDashboardLoading('boxes-view');
+
+        if (typeof initBoxesFilters === 'function' && boxesAnoFilter && boxesAnoFilter.options.length <= 1) {
+             await initBoxesFilters();
+        }
+
+        const filters = {
+            p_filial: boxesSelectedFiliais.length > 0 ? boxesSelectedFiliais : null,
+            p_cidade: boxesSelectedCidades.length > 0 ? boxesSelectedCidades : null,
+            p_supervisor: boxesSelectedSupervisores.length > 0 ? boxesSelectedSupervisores : null,
+            p_vendedor: boxesSelectedVendedores.length > 0 ? boxesSelectedVendedores : null,
+            p_fornecedor: boxesSelectedFornecedores.length > 0 ? boxesSelectedFornecedores : null,
+            p_produto: boxesSelectedProducts.length > 0 ? boxesSelectedProducts : null,
+            p_ano: boxesAnoFilter.value === 'todos' ? null : boxesAnoFilter.value,
+            p_mes: boxesMesFilter.value === '' ? null : boxesMesFilter.value
+        };
+
+        const { data, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
+
+        hideDashboardLoading();
+
+        if (error) {
+            console.error(error);
+            if (error.message.includes('function get_boxes_dashboard_data') && error.message.includes('does not exist')) {
+                alert("Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
+            }
+            return;
+        }
+
+        renderBoxesDashboard(data);
+    }
+
+    function renderBoxesDashboard(data) {
+        // KPIs
+        const kpis = data.kpis || { total_fat: 0, total_peso: 0, total_caixas: 0 };
+        document.getElementById('boxes-kpi-fat').textContent = (kpis.total_fat || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        document.getElementById('boxes-kpi-peso').textContent = ((kpis.total_peso || 0) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
+        document.getElementById('boxes-kpi-caixas').textContent = Math.round(kpis.total_caixas || 0).toLocaleString('pt-BR');
+
+        // Chart
+        const monthlyData = data.monthly_data || [];
+        // Map to 12 months (0-11)
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        const labels = monthNames;
+        const boxesValues = new Array(12).fill(0);
+
+        monthlyData.forEach(d => {
+            if (d.month_index >= 0 && d.month_index < 12) {
+                boxesValues[d.month_index] = d.caixas;
+            }
+        });
+
+        createChart('boxesChart', 'bar', labels, [{
+            label: 'Caixas',
+            data: boxesValues,
+            backgroundColor: '#10b981', // Emerald
+            borderColor: '#10b981',
+            borderWidth: 1
+        }], (v) => Math.round(v).toLocaleString('pt-BR')); // Formatter for boxes
+
+        // Table
+        const products = data.products_table || [];
+        const tableBody = document.getElementById('boxesProductTableBody');
+        if (products.length > 0) {
+            tableBody.innerHTML = products.map(p => `
+                <tr class="table-row">
+                    <td class="p-2">${p.produto}</td>
+                    <td class="p-2">${p.descricao}</td>
+                    <td class="p-2 text-right font-bold text-emerald-400">${Math.round(p.caixas || 0).toLocaleString('pt-BR')}</td>
+                    <td class="p-2 text-right">${(p.faturamento || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td class="p-2 text-right">${((p.peso || 0) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} Ton</td>
+                </tr>
+            `).join('');
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">Nenhum produto encontrado.</td></tr>';
+        }
+    }
+
+    // Boxes Filter Elements
+    const boxesAnoFilter = document.getElementById('boxes-ano-filter');
+    const boxesMesFilter = document.getElementById('boxes-mes-filter');
+    const boxesFilialFilterBtn = document.getElementById('boxes-filial-filter-btn');
+    const boxesFilialFilterDropdown = document.getElementById('boxes-filial-filter-dropdown');
+    const boxesProdutoFilterBtn = document.getElementById('boxes-produto-filter-btn');
+    const boxesProdutoFilterDropdown = document.getElementById('boxes-produto-filter-dropdown');
+    const boxesProdutoFilterList = document.getElementById('boxes-produto-filter-list');
+    const boxesProdutoFilterSearch = document.getElementById('boxes-produto-filter-search');
+    const boxesSupervisorFilterBtn = document.getElementById('boxes-supervisor-filter-btn');
+    const boxesSupervisorFilterDropdown = document.getElementById('boxes-supervisor-filter-dropdown');
+    const boxesVendedorFilterBtn = document.getElementById('boxes-vendedor-filter-btn');
+    const boxesVendedorFilterDropdown = document.getElementById('boxes-vendedor-filter-dropdown');
+    const boxesVendedorFilterList = document.getElementById('boxes-vendedor-filter-list');
+    const boxesVendedorFilterSearch = document.getElementById('boxes-vendedor-filter-search');
+    const boxesFornecedorFilterBtn = document.getElementById('boxes-fornecedor-filter-btn');
+    const boxesFornecedorFilterDropdown = document.getElementById('boxes-fornecedor-filter-dropdown');
+    const boxesFornecedorFilterList = document.getElementById('boxes-fornecedor-filter-list');
+    const boxesFornecedorFilterSearch = document.getElementById('boxes-fornecedor-filter-search');
+    const boxesCidadeFilterBtn = document.getElementById('boxes-cidade-filter-btn');
+    const boxesCidadeFilterDropdown = document.getElementById('boxes-cidade-filter-dropdown');
+    const boxesCidadeFilterList = document.getElementById('boxes-cidade-filter-list');
+    const boxesCidadeFilterSearch = document.getElementById('boxes-cidade-filter-search');
+    const boxesClearFiltersBtn = document.getElementById('boxes-clear-filters-btn');
+
+    let boxesSelectedFiliais = [];
+    let boxesSelectedProducts = [];
+    let boxesSelectedSupervisores = [];
+    let boxesSelectedVendedores = [];
+    let boxesSelectedFornecedores = [];
+    let boxesSelectedCidades = [];
 
     // State
     let currentCityPage = 0;
