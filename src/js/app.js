@@ -51,6 +51,144 @@ document.addEventListener('DOMContentLoaded', () => {
     const secondaryKpiRow = document.getElementById('secondary-kpi-row');
     const toggleKpiIcon = document.getElementById('toggle-kpi-icon');
 
+    // --- Filter Element Declarations (Hoisted to top of DOMContentLoaded) ---
+    // Dashboard Filters
+    const anoFilter = document.getElementById('ano-filter');
+    const mesFilter = document.getElementById('mes-filter');
+    const filialFilterBtn = document.getElementById('filial-filter-btn');
+    const filialFilterDropdown = document.getElementById('filial-filter-dropdown');
+    const cidadeFilterBtn = document.getElementById('cidade-filter-btn');
+    const cidadeFilterDropdown = document.getElementById('cidade-filter-dropdown');
+    const cidadeFilterList = document.getElementById('cidade-filter-list');
+    const cidadeFilterSearch = document.getElementById('cidade-filter-search');
+    const supervisorFilterBtn = document.getElementById('supervisor-filter-btn');
+    const supervisorFilterDropdown = document.getElementById('supervisor-filter-dropdown');
+    const vendedorFilterBtn = document.getElementById('vendedor-filter-btn');
+    const vendedorFilterDropdown = document.getElementById('vendedor-filter-dropdown');
+    const vendedorFilterList = document.getElementById('vendedor-filter-list');
+    const vendedorFilterSearch = document.getElementById('vendedor-filter-search');
+    const fornecedorFilterBtn = document.getElementById('fornecedor-filter-btn');
+    const fornecedorFilterDropdown = document.getElementById('fornecedor-filter-dropdown');
+    const fornecedorFilterList = document.getElementById('fornecedor-filter-list');
+    const fornecedorFilterSearch = document.getElementById('fornecedor-filter-search');
+    const tipovendaFilterBtn = document.getElementById('tipovenda-filter-btn');
+    const tipovendaFilterDropdown = document.getElementById('tipovenda-filter-dropdown');
+    const redeFilterBtn = document.getElementById('rede-filter-btn');
+    const redeFilterDropdown = document.getElementById('rede-filter-dropdown');
+    const redeFilterList = document.getElementById('rede-filter-list');
+    const redeFilterSearch = document.getElementById('rede-filter-search');
+
+    // Boxes Filter Elements
+    const boxesAnoFilter = document.getElementById('boxes-ano-filter');
+    const boxesMesFilter = document.getElementById('boxes-mes-filter');
+    const boxesFilialFilterBtn = document.getElementById('boxes-filial-filter-btn');
+    const boxesFilialFilterDropdown = document.getElementById('boxes-filial-filter-dropdown');
+    const boxesProdutoFilterBtn = document.getElementById('boxes-produto-filter-btn');
+    const boxesProdutoFilterDropdown = document.getElementById('boxes-produto-filter-dropdown');
+    const boxesProdutoFilterList = document.getElementById('boxes-produto-filter-list');
+    const boxesProdutoFilterSearch = document.getElementById('boxes-produto-filter-search');
+    const boxesSupervisorFilterBtn = document.getElementById('boxes-supervisor-filter-btn');
+    const boxesSupervisorFilterDropdown = document.getElementById('boxes-supervisor-filter-dropdown');
+    const boxesVendedorFilterBtn = document.getElementById('boxes-vendedor-filter-btn');
+    const boxesVendedorFilterDropdown = document.getElementById('boxes-vendedor-filter-dropdown');
+    const boxesVendedorFilterList = document.getElementById('boxes-vendedor-filter-list');
+    const boxesVendedorFilterSearch = document.getElementById('boxes-vendedor-filter-search');
+    const boxesFornecedorFilterBtn = document.getElementById('boxes-fornecedor-filter-btn');
+    const boxesFornecedorFilterDropdown = document.getElementById('boxes-fornecedor-filter-dropdown');
+    const boxesFornecedorFilterList = document.getElementById('boxes-fornecedor-filter-list');
+    const boxesFornecedorFilterSearch = document.getElementById('boxes-fornecedor-filter-search');
+    const boxesCidadeFilterBtn = document.getElementById('boxes-cidade-filter-btn');
+    const boxesCidadeFilterDropdown = document.getElementById('boxes-cidade-filter-dropdown');
+    const boxesCidadeFilterList = document.getElementById('boxes-cidade-filter-list');
+    const boxesCidadeFilterSearch = document.getElementById('boxes-cidade-filter-search');
+    const boxesClearFiltersBtn = document.getElementById('boxes-clear-filters-btn');
+
+    // City View Filter Logic
+    const cityFilialFilterBtn = document.getElementById('city-filial-filter-btn');
+    const cityFilialFilterDropdown = document.getElementById('city-filial-filter-dropdown');
+    const cityAnoFilter = document.getElementById('city-ano-filter');
+    const cityMesFilter = document.getElementById('city-mes-filter');
+    const cityCidadeFilterBtn = document.getElementById('city-cidade-filter-btn');
+    const cityCidadeFilterDropdown = document.getElementById('city-cidade-filter-dropdown');
+    const cityCidadeFilterList = document.getElementById('city-cidade-filter-list');
+    const cityCidadeFilterSearch = document.getElementById('city-cidade-filter-search');
+    const citySupervisorFilterBtn = document.getElementById('city-supervisor-filter-btn');
+    const citySupervisorFilterDropdown = document.getElementById('city-supervisor-filter-dropdown');
+    const cityVendedorFilterBtn = document.getElementById('city-vendedor-filter-btn');
+    const cityVendedorFilterDropdown = document.getElementById('city-vendedor-filter-dropdown');
+    const cityVendedorFilterList = document.getElementById('city-vendedor-filter-list');
+    const cityVendedorFilterSearch = document.getElementById('city-vendedor-filter-search');
+    const cityFornecedorFilterBtn = document.getElementById('city-fornecedor-filter-btn');
+    const cityFornecedorFilterDropdown = document.getElementById('city-fornecedor-filter-dropdown');
+    const cityFornecedorFilterList = document.getElementById('city-fornecedor-filter-list');
+    const cityFornecedorFilterSearch = document.getElementById('city-fornecedor-filter-search');
+    const cityRedeFilterBtn = document.getElementById('city-rede-filter-btn');
+    const cityRedeFilterDropdown = document.getElementById('city-rede-filter-dropdown');
+    const cityRedeFilterList = document.getElementById('city-rede-filter-list');
+    const cityRedeFilterSearch = document.getElementById('city-rede-filter-search');
+    const cityTipovendaFilterBtn = document.getElementById('city-tipovenda-filter-btn');
+    const cityTipovendaFilterDropdown = document.getElementById('city-tipovenda-filter-dropdown');
+    const cityClearFiltersBtn = document.getElementById('city-clear-filters-btn');
+
+    // Branch View Logic
+    const branchFilialFilterBtn = document.getElementById('branch-filial-filter-btn');
+    const branchFilialFilterDropdown = document.getElementById('branch-filial-filter-dropdown');
+    const branchAnoFilter = document.getElementById('branch-ano-filter');
+    const branchMesFilter = document.getElementById('branch-mes-filter');
+    const branchCidadeFilterBtn = document.getElementById('branch-cidade-filter-btn');
+    const branchCidadeFilterDropdown = document.getElementById('branch-cidade-filter-dropdown');
+    const branchCidadeFilterList = document.getElementById('branch-cidade-filter-list');
+    const branchCidadeFilterSearch = document.getElementById('branch-cidade-filter-search');
+    const branchSupervisorFilterBtn = document.getElementById('branch-supervisor-filter-btn');
+    const branchSupervisorFilterDropdown = document.getElementById('branch-supervisor-filter-dropdown');
+    const branchVendedorFilterBtn = document.getElementById('branch-vendedor-filter-btn');
+    const branchVendedorFilterDropdown = document.getElementById('branch-vendedor-filter-dropdown');
+    const branchVendedorFilterList = document.getElementById('branch-vendedor-filter-list');
+    const branchVendedorFilterSearch = document.getElementById('branch-vendedor-filter-search');
+    const branchFornecedorFilterBtn = document.getElementById('branch-fornecedor-filter-btn');
+    const branchFornecedorFilterDropdown = document.getElementById('branch-fornecedor-filter-dropdown');
+    const branchFornecedorFilterList = document.getElementById('branch-fornecedor-filter-list');
+    const branchFornecedorFilterSearch = document.getElementById('branch-fornecedor-filter-search');
+    const branchRedeFilterBtn = document.getElementById('branch-rede-filter-btn');
+    const branchRedeFilterDropdown = document.getElementById('branch-rede-filter-dropdown');
+    const branchRedeFilterList = document.getElementById('branch-rede-filter-list');
+    const branchRedeFilterSearch = document.getElementById('branch-rede-filter-search');
+    const branchTipovendaFilterBtn = document.getElementById('branch-tipovenda-filter-btn');
+    const branchTipovendaFilterDropdown = document.getElementById('branch-tipovenda-filter-dropdown');
+    const branchClearFiltersBtn = document.getElementById('branch-clear-filters-btn');
+    const branchCalendarBtn = document.getElementById('branch-calendar-btn');
+    const branchChartToggleBtn = document.getElementById('branch-chart-toggle-btn');
+
+    // Comparison View Filters
+    const comparisonAnoFilter = document.getElementById('comparison-ano-filter');
+    const comparisonMesFilter = document.getElementById('comparison-mes-filter');
+    const comparisonSupervisorFilterBtn = document.getElementById('comparison-supervisor-filter-btn');
+    const comparisonSupervisorFilterDropdown = document.getElementById('comparison-supervisor-filter-dropdown');
+    const comparisonVendedorFilterBtn = document.getElementById('comparison-vendedor-filter-btn');
+    const comparisonVendedorFilterDropdown = document.getElementById('comparison-vendedor-filter-dropdown');
+    const comparisonSupplierFilterBtn = document.getElementById('comparison-supplier-filter-btn');
+    const comparisonSupplierFilterDropdown = document.getElementById('comparison-supplier-filter-dropdown');
+    const comparisonProductFilterBtn = document.getElementById('comparison-product-filter-btn');
+    const comparisonProductFilterDropdown = document.getElementById('comparison-product-filter-dropdown');
+    const comparisonTipoVendaFilterBtn = document.getElementById('comparison-tipo-venda-filter-btn');
+    const comparisonTipoVendaFilterDropdown = document.getElementById('comparison-tipo-venda-filter-dropdown');
+    const comparisonRedeFilterDropdown = document.getElementById('comparison-rede-filter-dropdown');
+    const comparisonComRedeBtn = document.getElementById('comparison-com-rede-btn');
+    const comparisonRedeGroupContainer = document.getElementById('comparison-rede-group-container');
+    const comparisonFilialFilter = document.getElementById('comparison-filial-filter');
+    const comparisonCityFilter = document.getElementById('comparison-city-filter');
+    const comparisonCitySuggestions = document.getElementById('comparison-city-suggestions');
+    const clearComparisonFiltersBtn = document.getElementById('clear-comparison-filters-btn');
+    const comparisonFornecedorToggleContainer = document.getElementById('comparison-fornecedor-toggle-container');
+    const comparisonTendencyToggle = document.getElementById('comparison-tendency-toggle');
+    const toggleWeeklyBtn = document.getElementById('toggle-weekly-btn');
+    const toggleMonthlyBtn = document.getElementById('toggle-monthly-btn');
+    const comparisonChartTitle = document.getElementById('comparison-chart-title');
+    const weeklyComparisonChartContainer = document.getElementById('weeklyComparisonChartContainer');
+    const monthlyComparisonChartContainer = document.getElementById('monthlyComparisonChartContainer');
+    const toggleMonthlyFatBtn = document.getElementById('toggle-monthly-fat-btn');
+    const toggleMonthlyClientsBtn = document.getElementById('toggle-monthly-clients-btn');
+
     if(toggleSecondaryKpisBtn && secondaryKpiRow) {
         toggleSecondaryKpisBtn.addEventListener('click', () => {
             secondaryKpiRow.classList.toggle('hidden');
@@ -908,31 +1046,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Dashboard Data Logic ---
 
-    // Filter Elements
-    const anoFilter = document.getElementById('ano-filter');
-    const mesFilter = document.getElementById('mes-filter');
-    const filialFilterBtn = document.getElementById('filial-filter-btn');
-    const filialFilterDropdown = document.getElementById('filial-filter-dropdown');
-    const cidadeFilterBtn = document.getElementById('cidade-filter-btn');
-    const cidadeFilterDropdown = document.getElementById('cidade-filter-dropdown');
-    const cidadeFilterList = document.getElementById('cidade-filter-list');
-    const cidadeFilterSearch = document.getElementById('cidade-filter-search');
-    const supervisorFilterBtn = document.getElementById('supervisor-filter-btn');
-    const supervisorFilterDropdown = document.getElementById('supervisor-filter-dropdown');
-    const vendedorFilterBtn = document.getElementById('vendedor-filter-btn');
-    const vendedorFilterDropdown = document.getElementById('vendedor-filter-dropdown');
-    const vendedorFilterList = document.getElementById('vendedor-filter-list');
-    const vendedorFilterSearch = document.getElementById('vendedor-filter-search');
-    const fornecedorFilterBtn = document.getElementById('fornecedor-filter-btn');
-    const fornecedorFilterDropdown = document.getElementById('fornecedor-filter-dropdown');
-    const fornecedorFilterList = document.getElementById('fornecedor-filter-list');
-    const fornecedorFilterSearch = document.getElementById('fornecedor-filter-search');
-    const tipovendaFilterBtn = document.getElementById('tipovenda-filter-btn');
-    const tipovendaFilterDropdown = document.getElementById('tipovenda-filter-dropdown');
-    const redeFilterBtn = document.getElementById('rede-filter-btn');
-    const redeFilterDropdown = document.getElementById('rede-filter-dropdown');
-    const redeFilterList = document.getElementById('rede-filter-list');
-    const redeFilterSearch = document.getElementById('rede-filter-search');
 
     // Boxes Logic
     let boxesFilterDebounceTimer;
@@ -1099,37 +1212,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Boxes Filter Elements
-    const boxesAnoFilter = document.getElementById('boxes-ano-filter');
-    const boxesMesFilter = document.getElementById('boxes-mes-filter');
-    const boxesFilialFilterBtn = document.getElementById('boxes-filial-filter-btn');
-    const boxesFilialFilterDropdown = document.getElementById('boxes-filial-filter-dropdown');
-    const boxesProdutoFilterBtn = document.getElementById('boxes-produto-filter-btn');
-    const boxesProdutoFilterDropdown = document.getElementById('boxes-produto-filter-dropdown');
-    const boxesProdutoFilterList = document.getElementById('boxes-produto-filter-list');
-    const boxesProdutoFilterSearch = document.getElementById('boxes-produto-filter-search');
-    const boxesSupervisorFilterBtn = document.getElementById('boxes-supervisor-filter-btn');
-    const boxesSupervisorFilterDropdown = document.getElementById('boxes-supervisor-filter-dropdown');
-    const boxesVendedorFilterBtn = document.getElementById('boxes-vendedor-filter-btn');
-    const boxesVendedorFilterDropdown = document.getElementById('boxes-vendedor-filter-dropdown');
-    const boxesVendedorFilterList = document.getElementById('boxes-vendedor-filter-list');
-    const boxesVendedorFilterSearch = document.getElementById('boxes-vendedor-filter-search');
-    const boxesFornecedorFilterBtn = document.getElementById('boxes-fornecedor-filter-btn');
-    const boxesFornecedorFilterDropdown = document.getElementById('boxes-fornecedor-filter-dropdown');
-    const boxesFornecedorFilterList = document.getElementById('boxes-fornecedor-filter-list');
-    const boxesFornecedorFilterSearch = document.getElementById('boxes-fornecedor-filter-search');
-    const boxesCidadeFilterBtn = document.getElementById('boxes-cidade-filter-btn');
-    const boxesCidadeFilterDropdown = document.getElementById('boxes-cidade-filter-dropdown');
-    const boxesCidadeFilterList = document.getElementById('boxes-cidade-filter-list');
-    const boxesCidadeFilterSearch = document.getElementById('boxes-cidade-filter-search');
-    const boxesClearFiltersBtn = document.getElementById('boxes-clear-filters-btn');
-
-    let boxesSelectedFiliais = [];
-    let boxesSelectedProducts = [];
-    let boxesSelectedSupervisores = [];
-    let boxesSelectedVendedores = [];
-    let boxesSelectedFornecedores = [];
-    let boxesSelectedCidades = [];
+    // Boxes Filter Elements - MOVED UP
 
     // State
     let currentCityPage = 0;
@@ -1158,7 +1241,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isPrefetching = false;
 
     // --- Loading Helpers ---
-    const showDashboardLoading = (targetId = 'main-dashboard-view') => {
+    function showDashboardLoading(targetId = 'main-dashboard-view') {
         const container = document.getElementById(targetId);
         let overlay = document.getElementById('dashboard-loading-overlay');
 
@@ -1181,12 +1264,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (overlay) {
             overlay.classList.remove('hidden');
         }
-    };
+    }
 
-    const hideDashboardLoading = () => {
+    function hideDashboardLoading() {
         const overlay = document.getElementById('dashboard-loading-overlay');
         if (overlay) overlay.classList.add('hidden');
-    };
+    }
 
     async function initDashboard() {
         showDashboardLoading();
@@ -2138,32 +2221,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- City View Filter Logic ---
-    const cityFilialFilterBtn = document.getElementById('city-filial-filter-btn');
-    const cityFilialFilterDropdown = document.getElementById('city-filial-filter-dropdown');
-    const cityAnoFilter = document.getElementById('city-ano-filter');
-    const cityMesFilter = document.getElementById('city-mes-filter');
-    const cityCidadeFilterBtn = document.getElementById('city-cidade-filter-btn');
-    const cityCidadeFilterDropdown = document.getElementById('city-cidade-filter-dropdown');
-    const cityCidadeFilterList = document.getElementById('city-cidade-filter-list');
-    const cityCidadeFilterSearch = document.getElementById('city-cidade-filter-search');
-    const citySupervisorFilterBtn = document.getElementById('city-supervisor-filter-btn');
-    const citySupervisorFilterDropdown = document.getElementById('city-supervisor-filter-dropdown');
-    const cityVendedorFilterBtn = document.getElementById('city-vendedor-filter-btn');
-    const cityVendedorFilterDropdown = document.getElementById('city-vendedor-filter-dropdown');
-    const cityVendedorFilterList = document.getElementById('city-vendedor-filter-list');
-    const cityVendedorFilterSearch = document.getElementById('city-vendedor-filter-search');
-    const cityFornecedorFilterBtn = document.getElementById('city-fornecedor-filter-btn');
-    const cityFornecedorFilterDropdown = document.getElementById('city-fornecedor-filter-dropdown');
-    const cityFornecedorFilterList = document.getElementById('city-fornecedor-filter-list');
-    const cityFornecedorFilterSearch = document.getElementById('city-fornecedor-filter-search');
-    const cityRedeFilterBtn = document.getElementById('city-rede-filter-btn');
-    const cityRedeFilterDropdown = document.getElementById('city-rede-filter-dropdown');
-    const cityRedeFilterList = document.getElementById('city-rede-filter-list');
-    const cityRedeFilterSearch = document.getElementById('city-rede-filter-search');
-    const cityTipovendaFilterBtn = document.getElementById('city-tipovenda-filter-btn');
-    const cityTipovendaFilterDropdown = document.getElementById('city-tipovenda-filter-dropdown');
-    const cityClearFiltersBtn = document.getElementById('city-clear-filters-btn');
 
     let citySelectedFiliais = [];
     let citySelectedCidades = [];
@@ -2416,34 +2473,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCityInactivePaginationControls();
     }
 
-    // --- Branch View Logic ---
-    const branchFilialFilterBtn = document.getElementById('branch-filial-filter-btn');
-    const branchFilialFilterDropdown = document.getElementById('branch-filial-filter-dropdown');
-    const branchAnoFilter = document.getElementById('branch-ano-filter');
-    const branchMesFilter = document.getElementById('branch-mes-filter');
-    const branchCidadeFilterBtn = document.getElementById('branch-cidade-filter-btn');
-    const branchCidadeFilterDropdown = document.getElementById('branch-cidade-filter-dropdown');
-    const branchCidadeFilterList = document.getElementById('branch-cidade-filter-list');
-    const branchCidadeFilterSearch = document.getElementById('branch-cidade-filter-search');
-    const branchSupervisorFilterBtn = document.getElementById('branch-supervisor-filter-btn');
-    const branchSupervisorFilterDropdown = document.getElementById('branch-supervisor-filter-dropdown');
-    const branchVendedorFilterBtn = document.getElementById('branch-vendedor-filter-btn');
-    const branchVendedorFilterDropdown = document.getElementById('branch-vendedor-filter-dropdown');
-    const branchVendedorFilterList = document.getElementById('branch-vendedor-filter-list');
-    const branchVendedorFilterSearch = document.getElementById('branch-vendedor-filter-search');
-    const branchFornecedorFilterBtn = document.getElementById('branch-fornecedor-filter-btn');
-    const branchFornecedorFilterDropdown = document.getElementById('branch-fornecedor-filter-dropdown');
-    const branchFornecedorFilterList = document.getElementById('branch-fornecedor-filter-list');
-    const branchFornecedorFilterSearch = document.getElementById('branch-fornecedor-filter-search');
-    const branchRedeFilterBtn = document.getElementById('branch-rede-filter-btn');
-    const branchRedeFilterDropdown = document.getElementById('branch-rede-filter-dropdown');
-    const branchRedeFilterList = document.getElementById('branch-rede-filter-list');
-    const branchRedeFilterSearch = document.getElementById('branch-rede-filter-search');
-    const branchTipovendaFilterBtn = document.getElementById('branch-tipovenda-filter-btn');
-    const branchTipovendaFilterDropdown = document.getElementById('branch-tipovenda-filter-dropdown');
-    const branchClearFiltersBtn = document.getElementById('branch-clear-filters-btn');
-    const branchCalendarBtn = document.getElementById('branch-calendar-btn');
-    const branchChartToggleBtn = document.getElementById('branch-chart-toggle-btn');
 
     let branchSelectedFiliais = [];
     let branchSelectedCidades = [];
@@ -3109,35 +3138,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
  
-        // --- Comparison View Logic ---
-        const comparisonAnoFilter = document.getElementById('comparison-ano-filter');
-        const comparisonMesFilter = document.getElementById('comparison-mes-filter');
-        const comparisonSupervisorFilterBtn = document.getElementById('comparison-supervisor-filter-btn');
-        const comparisonSupervisorFilterDropdown = document.getElementById('comparison-supervisor-filter-dropdown');
-        const comparisonVendedorFilterBtn = document.getElementById('comparison-vendedor-filter-btn');
-        const comparisonVendedorFilterDropdown = document.getElementById('comparison-vendedor-filter-dropdown');
-        const comparisonSupplierFilterBtn = document.getElementById('comparison-supplier-filter-btn');
-        const comparisonSupplierFilterDropdown = document.getElementById('comparison-supplier-filter-dropdown');
-        const comparisonProductFilterBtn = document.getElementById('comparison-product-filter-btn');
-        const comparisonProductFilterDropdown = document.getElementById('comparison-product-filter-dropdown');
-        const comparisonTipoVendaFilterBtn = document.getElementById('comparison-tipo-venda-filter-btn');
-        const comparisonTipoVendaFilterDropdown = document.getElementById('comparison-tipo-venda-filter-dropdown');
-        const comparisonRedeFilterDropdown = document.getElementById('comparison-rede-filter-dropdown');
-        const comparisonComRedeBtn = document.getElementById('comparison-com-rede-btn');
-        const comparisonRedeGroupContainer = document.getElementById('comparison-rede-group-container');
-        const comparisonFilialFilter = document.getElementById('comparison-filial-filter');
-        const comparisonCityFilter = document.getElementById('comparison-city-filter');
-        const comparisonCitySuggestions = document.getElementById('comparison-city-suggestions');
-        const clearComparisonFiltersBtn = document.getElementById('clear-comparison-filters-btn');
-        const comparisonFornecedorToggleContainer = document.getElementById('comparison-fornecedor-toggle-container');
-        const comparisonTendencyToggle = document.getElementById('comparison-tendency-toggle');
-        const toggleWeeklyBtn = document.getElementById('toggle-weekly-btn');
-        const toggleMonthlyBtn = document.getElementById('toggle-monthly-btn');
-        const comparisonChartTitle = document.getElementById('comparison-chart-title');
-        const weeklyComparisonChartContainer = document.getElementById('weeklyComparisonChartContainer');
-        const monthlyComparisonChartContainer = document.getElementById('monthlyComparisonChartContainer');
-        const toggleMonthlyFatBtn = document.getElementById('toggle-monthly-fat-btn');
-        const toggleMonthlyClientsBtn = document.getElementById('toggle-monthly-clients-btn');
 
         let selectedComparisonSupervisors = [];
         let selectedComparisonSellers = [];
