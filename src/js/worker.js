@@ -617,7 +617,7 @@ self.onmessage = async (event) => {
                     delete newSale.pedido;
                     delete newSale.estoqueunit;
                     delete newSale.posicao;
-                    delete newSale.qtvenda_embalagem_master;
+                    // delete newSale.qtvenda_embalagem_master; // Kept for Boxes Page
                     // Note: We KEEP 'cidade' for both history and detailed to ensure safety if client is missing from clients table
                 }
 
