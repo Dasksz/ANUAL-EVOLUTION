@@ -149,7 +149,9 @@ ALTER TABLE public.dim_fornecedores ENABLE ROW LEVEL SECURITY;
 CREATE TABLE IF NOT EXISTS public.dim_produtos (
     codigo text PRIMARY KEY,
     descricao text,
-    codfor text
+    codfor text,
+    mix_marca text,    -- NEW: Optimized Mix Logic
+    mix_categoria text -- NEW: Optimized Mix Logic
 );
 ALTER TABLE public.dim_produtos ENABLE ROW LEVEL SECURITY;
 
@@ -157,6 +159,12 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'codfor') THEN
         ALTER TABLE public.dim_produtos ADD COLUMN codfor text;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'mix_marca') THEN
+        ALTER TABLE public.dim_produtos ADD COLUMN mix_marca text;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'mix_categoria') THEN
+        ALTER TABLE public.dim_produtos ADD COLUMN mix_categoria text;
     END IF;
 END $$;
 
@@ -222,6 +230,11 @@ CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
 CREATE INDEX IF NOT EXISTS idx_clients_bloqueio_cidade ON public.data_clients (bloqueio, cidade);
 CREATE INDEX IF NOT EXISTS idx_clients_ramo ON public.data_clients (ramo);
 CREATE INDEX IF NOT EXISTS idx_clients_busca ON public.data_clients (codigo_cliente, rca1, cidade);
+
+-- NEW OPTIMIZATION INDEXES
+CREATE INDEX IF NOT EXISTS idx_dim_produtos_mix_marca ON public.dim_produtos (mix_marca);
+CREATE INDEX IF NOT EXISTS idx_dim_produtos_mix_categoria ON public.dim_produtos (mix_categoria);
+CREATE INDEX IF NOT EXISTS idx_data_clients_rede_lookup ON public.data_clients (codigo_cliente, ramo);
 
 -- Summary Table Targeted Indexes (For Dynamic SQL)
 -- V2 Optimized Indexes (Year + Dimension) - Removing Month from prefix
@@ -379,6 +392,50 @@ END $$;
 -- ==============================================================================
 -- 4. RPCS & FUNCTIONS (LOGIC)
 -- ==============================================================================
+
+-- Function to classify products based on description (Auto-Mix)
+CREATE OR REPLACE FUNCTION classify_product_mix()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Initialize as null
+    NEW.mix_marca := NULL;
+    NEW.mix_categoria := NULL;
+
+    -- Brand Logic (Optimization: avoid ILIKE if possible, but description is unstructured)
+    IF NEW.descricao ILIKE '%CHEETOS%' THEN NEW.mix_marca := 'CHEETOS';
+    ELSIF NEW.descricao ILIKE '%DORITOS%' THEN NEW.mix_marca := 'DORITOS';
+    ELSIF NEW.descricao ILIKE '%FANDANGOS%' THEN NEW.mix_marca := 'FANDANGOS';
+    ELSIF NEW.descricao ILIKE '%RUFFLES%' THEN NEW.mix_marca := 'RUFFLES';
+    ELSIF NEW.descricao ILIKE '%TORCIDA%' THEN NEW.mix_marca := 'TORCIDA';
+    ELSIF NEW.descricao ILIKE '%TODDYNHO%' THEN NEW.mix_marca := 'TODDYNHO';
+    ELSIF NEW.descricao ILIKE '%TODDY %' THEN NEW.mix_marca := 'TODDY';
+    ELSIF NEW.descricao ILIKE '%QUAKER%' THEN NEW.mix_marca := 'QUAKER';
+    ELSIF NEW.descricao ILIKE '%KEROCOCO%' THEN NEW.mix_marca := 'KEROCOCO';
+    END IF;
+
+    -- Category Logic
+    IF NEW.mix_marca IN ('CHEETOS', 'DORITOS', 'FANDANGOS', 'RUFFLES', 'TORCIDA') THEN
+        NEW.mix_categoria := 'SALTY';
+    ELSIF NEW.mix_marca IN ('TODDYNHO', 'TODDY', 'QUAKER', 'KEROCOCO') THEN
+        NEW.mix_categoria := 'FOODS';
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+-- Trigger to keep mix columns updated
+DROP TRIGGER IF EXISTS trg_classify_products ON public.dim_produtos;
+CREATE TRIGGER trg_classify_products
+BEFORE INSERT OR UPDATE OF descricao ON public.dim_produtos
+FOR EACH ROW
+EXECUTE FUNCTION classify_product_mix();
+
+-- Run classification on existing rows that are null (Migration)
+UPDATE public.dim_produtos SET descricao = descricao WHERE mix_marca IS NULL;
+
 
 -- Clear Data Function
 CREATE OR REPLACE FUNCTION clear_all_data()
@@ -1797,7 +1854,7 @@ BEGIN
        END IF;
     END IF;
 
-    -- 3. Aggregation Queries (Optimized with CTEs)
+    -- 3. Aggregation Queries (Optimized with CTEs & Auto-Mix)
     
     EXECUTE format('
         WITH target_sales AS (
@@ -1819,9 +1876,9 @@ BEGIN
             SELECT dtped::date as d, SUM(vlvenda) as f, SUM(totpesoliq) as p
             FROM target_sales GROUP BY 1
         ),
-        -- Current Aggregates for Product Mix (Product Level >= 1)
+        -- Current Aggregates for Product Mix (Joined with Dimensions)
         curr_prod_agg AS (
-            SELECT s.codcli, s.produto, MAX(dp.descricao) as descricao, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val
+            SELECT s.codcli, s.produto, MAX(dp.mix_marca) as mix_marca, MAX(dp.mix_categoria) as mix_cat, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val
             FROM target_sales s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             GROUP BY 1, 2
@@ -1831,15 +1888,15 @@ BEGIN
                 codcli,
                 SUM(prod_val) as total_val,
                 COUNT(CASE WHEN codfor IN (''707'', ''708'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%CHEETOS%%'' THEN 1 ELSE 0 END) as has_cheetos,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%DORITOS%%'' THEN 1 ELSE 0 END) as has_doritos,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%FANDANGOS%%'' THEN 1 ELSE 0 END) as has_fandangos,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%RUFFLES%%'' THEN 1 ELSE 0 END) as has_ruffles,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TORCIDA%%'' THEN 1 ELSE 0 END) as has_torcida,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDYNHO%%'' THEN 1 ELSE 0 END) as has_toddynho,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDY %%'' THEN 1 ELSE 0 END) as has_toddy,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%QUAKER%%'' THEN 1 ELSE 0 END) as has_quaker,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%KEROCOCO%%'' THEN 1 ELSE 0 END) as has_kerococo
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''RUFFLES'' THEN 1 ELSE 0 END) as has_ruffles,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TORCIDA'' THEN 1 ELSE 0 END) as has_torcida,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDYNHO'' THEN 1 ELSE 0 END) as has_toddynho,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDY'' THEN 1 ELSE 0 END) as has_toddy,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''QUAKER'' THEN 1 ELSE 0 END) as has_quaker,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''KEROCOCO'' THEN 1 ELSE 0 END) as has_kerococo
             FROM curr_prod_agg
             GROUP BY 1
         ),
@@ -1861,9 +1918,9 @@ BEGIN
             SELECT dtped::date as d, SUM(vlvenda) as f, SUM(totpesoliq) as p
             FROM history_sales GROUP BY 1
         ),
-        -- History Aggregates for Product Mix (Product Level >= 1)
+        -- History Aggregates for Product Mix (Joined with Dimensions)
         hist_prod_agg AS (
-            SELECT date_trunc(''month'', dtped) as m_date, s.codcli, s.produto, MAX(dp.descricao) as descricao, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val
+            SELECT date_trunc(''month'', dtped) as m_date, s.codcli, s.produto, MAX(dp.mix_marca) as mix_marca, MAX(dp.mix_categoria) as mix_cat, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val
             FROM history_sales s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             GROUP BY 1, 2, 3
@@ -1874,15 +1931,15 @@ BEGIN
                 codcli,
                 SUM(prod_val) as total_val,
                 COUNT(CASE WHEN codfor IN (''707'', ''708'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%CHEETOS%%'' THEN 1 ELSE 0 END) as has_cheetos,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%DORITOS%%'' THEN 1 ELSE 0 END) as has_doritos,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%FANDANGOS%%'' THEN 1 ELSE 0 END) as has_fandangos,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%RUFFLES%%'' THEN 1 ELSE 0 END) as has_ruffles,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TORCIDA%%'' THEN 1 ELSE 0 END) as has_torcida,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDYNHO%%'' THEN 1 ELSE 0 END) as has_toddynho,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%TODDY %%'' THEN 1 ELSE 0 END) as has_toddy,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%QUAKER%%'' THEN 1 ELSE 0 END) as has_quaker,
-                MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%%KEROCOCO%%'' THEN 1 ELSE 0 END) as has_kerococo
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''RUFFLES'' THEN 1 ELSE 0 END) as has_ruffles,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TORCIDA'' THEN 1 ELSE 0 END) as has_torcida,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDYNHO'' THEN 1 ELSE 0 END) as has_toddynho,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDY'' THEN 1 ELSE 0 END) as has_toddy,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''QUAKER'' THEN 1 ELSE 0 END) as has_quaker,
+                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''KEROCOCO'' THEN 1 ELSE 0 END) as has_kerococo
             FROM hist_prod_agg
             GROUP BY 1, 2
         ),
