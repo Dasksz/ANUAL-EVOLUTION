@@ -1059,9 +1059,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleBoxesFilterChange = async () => {
         clearTimeout(boxesFilterDebounceTimer);
         boxesFilterDebounceTimer = setTimeout(async () => {
+            const filters = {
+                p_filial: boxesSelectedFiliais.length > 0 ? boxesSelectedFiliais : null,
+                p_cidade: boxesSelectedCidades.length > 0 ? boxesSelectedCidades : null,
+                p_supervisor: boxesSelectedSupervisores.length > 0 ? boxesSelectedSupervisores : null,
+                p_vendedor: boxesSelectedVendedores.length > 0 ? boxesSelectedVendedores : null,
+                p_fornecedor: boxesSelectedFornecedores.length > 0 ? boxesSelectedFornecedores : null,
+                p_produto: boxesSelectedProducts.length > 0 ? boxesSelectedProducts : null,
+                p_ano: boxesAnoFilter.value === 'todos' ? null : boxesAnoFilter.value,
+                p_mes: boxesMesFilter.value === '' ? null : boxesMesFilter.value
+            };
+            
+            await loadBoxesFilters(filters);
             await loadBoxesView();
         }, 500);
     };
+
+    async function loadBoxesFilters(currentFilters) {
+        // Exclude p_produto from filter fetch to prevent self-filtering if that's desired behavior?
+        // Usually dependent filters (Supplier -> Product) mean selection in Supplier narrows Product.
+        // But selection in Product shouldn't necessarily narrow Supplier in a way that hides the current selection?
+        // For now, pass all filters as is standard.
+        
+        const { data, error } = await supabase.rpc('get_dashboard_filters', currentFilters);
+        if (error) {
+            console.error('Error refreshing boxes filters:', error);
+            return;
+        }
+
+        if (data) {
+             // Update Dropdowns (Re-render options)
+             // Note: We do NOT reset the selected arrays here, we just re-render the available options.
+             // If a selected item is no longer in the returned data, it remains in the selected array (logic in setupCityMultiSelect handles check status based on array)
+             // However, visually it won't be in the list.
+
+             setupCityMultiSelect(boxesFilialFilterBtn, boxesFilialFilterDropdown, boxesFilialFilterDropdown, data.filiais, boxesSelectedFiliais);
+             setupCityMultiSelect(boxesSupervisorFilterBtn, boxesSupervisorFilterDropdown, boxesSupervisorFilterDropdown, data.supervisors, boxesSelectedSupervisores);
+             setupCityMultiSelect(boxesVendedorFilterBtn, boxesVendedorFilterDropdown, boxesVendedorFilterList, data.vendedores, boxesSelectedVendedores, boxesVendedorFilterSearch);
+             setupCityMultiSelect(boxesFornecedorFilterBtn, boxesFornecedorFilterDropdown, boxesFornecedorFilterList, data.fornecedores, boxesSelectedFornecedores, boxesFornecedorFilterSearch, true);
+             setupCityMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, data.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
+             setupCityMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, data.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
+        }
+    }
 
     if (boxesAnoFilter) boxesAnoFilter.addEventListener('change', handleBoxesFilterChange);
     if (boxesMesFilter) boxesMesFilter.addEventListener('change', handleBoxesFilterChange);
