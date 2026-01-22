@@ -1059,7 +1059,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleBoxesFilterChange = async () => {
         clearTimeout(boxesFilterDebounceTimer);
         boxesFilterDebounceTimer = setTimeout(async () => {
-            const filters = {
+            const viewFilters = {
                 p_filial: boxesSelectedFiliais.length > 0 ? boxesSelectedFiliais : null,
                 p_cidade: boxesSelectedCidades.length > 0 ? boxesSelectedCidades : null,
                 p_supervisor: boxesSelectedSupervisores.length > 0 ? boxesSelectedSupervisores : null,
@@ -1070,7 +1070,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 p_mes: boxesMesFilter.value === '' ? null : boxesMesFilter.value
             };
 
-            await loadBoxesFilters(filters);
+            // Filters for dropdowns should NOT include the product itself to avoid signature mismatch
+            // and usually we don't want selecting a product to filter the other dropdowns backwards in this context.
+            const { p_produto, ...dropdownFilters } = viewFilters;
+
+            await loadBoxesFilters(dropdownFilters);
             await loadBoxesView();
         }, 500);
     };
