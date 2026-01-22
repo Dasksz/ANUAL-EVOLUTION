@@ -435,9 +435,9 @@ BEGIN
             ELSE t.codfor 
         END as codfor,
         CASE 
-            WHEN t.codfor = '707' THEN 'Extrusados'
-            WHEN t.codfor = '708' THEN 'Ñ Extrusados'
-            WHEN t.codfor = '752' THEN 'Torcida'
+            WHEN t.codfor = '707' THEN 'EXTRUSADOS'
+            WHEN t.codfor = '708' THEN 'Ñ EXTRUSADOS'
+            WHEN t.codfor = '752' THEN 'TORCIDA'
             WHEN t.codfor = '1119' AND t.descricao ILIKE '%TODDYNHO%' THEN 'TODDYNHO'
             WHEN t.codfor = '1119' AND t.descricao ILIKE '%TODDY %' THEN 'TODDY'
             WHEN t.codfor = '1119' AND t.descricao ILIKE '%QUAKER%' THEN 'QUAKER'
