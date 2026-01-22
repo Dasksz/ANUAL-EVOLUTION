@@ -1566,7 +1566,7 @@ DECLARE
     v_current_year int;
     v_target_month int;
     v_where text := ' WHERE 1=1 ';
-
+    
     -- Rede Logic Vars
     v_has_com_rede boolean;
     v_has_sem_rede boolean;
@@ -1595,7 +1595,7 @@ BEGIN
 
     -- 2. Build WHERE Clause (Applied to data_detailed/history)
     v_where := v_where || format(' AND EXTRACT(YEAR FROM dtped) = %L ', v_current_year);
-
+    
     IF v_target_month IS NOT NULL THEN
         v_where := v_where || format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month);
     END IF;
@@ -1657,21 +1657,21 @@ BEGIN
        v_has_com_rede := ('C/ REDE' = ANY(p_rede));
        v_has_sem_rede := ('S/ REDE' = ANY(p_rede));
        v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
-
+       
        IF array_length(v_specific_redes, 1) > 0 THEN
            v_rede_condition := format('c.ramo = ANY(%L)', v_specific_redes);
        END IF;
-
+       
        IF v_has_com_rede THEN
            IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
            v_rede_condition := v_rede_condition || ' (c.ramo IS NOT NULL AND c.ramo NOT IN (''N/A'', ''N/D'')) ';
        END IF;
-
+       
        IF v_has_sem_rede THEN
            IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
            v_rede_condition := v_rede_condition || ' (c.ramo IS NULL OR c.ramo IN (''N/A'', ''N/D'')) ';
        END IF;
-
+       
        IF v_rede_condition != '' THEN
            v_where := v_where || ' AND EXISTS (SELECT 1 FROM public.data_clients c WHERE c.codigo_cliente = s.codcli AND (' || v_rede_condition || ')) ';
        END IF;
@@ -1690,7 +1690,7 @@ BEGIN
             %s
         ),
         monthly_agg AS (
-            SELECT
+            SELECT 
                 mes,
                 SUM(vlvenda) as faturamento,
                 SUM(totpesoliq) as peso,
@@ -1717,7 +1717,7 @@ BEGIN
             ORDER BY caixas DESC
             LIMIT 50
         )
-        SELECT
+        SELECT 
             (SELECT row_to_json(k) FROM kpi_agg k),
             (SELECT json_agg(json_build_object(
                 ''month_index'', mes - 1,
@@ -2334,3 +2334,15 @@ ON CONFLICT (codigo) DO UPDATE SET nome = 'SV AMERICANAS';
 -- GRANTs for client-side execution (Split logic)
 GRANT EXECUTE ON FUNCTION public.refresh_cache_filters() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.refresh_cache_summary() TO authenticated;
+
+-- Migration: Add qtvenda_embalagem_master to data tables if missing
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_detailed' AND column_name = 'qtvenda_embalagem_master') THEN
+        ALTER TABLE public.data_detailed ADD COLUMN qtvenda_embalagem_master numeric;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_history' AND column_name = 'qtvenda_embalagem_master') THEN
+        ALTER TABLE public.data_history ADD COLUMN qtvenda_embalagem_master numeric;
+    END IF;
+END $$;
