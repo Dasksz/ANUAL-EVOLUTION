@@ -2334,3 +2334,15 @@ ON CONFLICT (codigo) DO UPDATE SET nome = 'SV AMERICANAS';
 -- GRANTs for client-side execution (Split logic)
 GRANT EXECUTE ON FUNCTION public.refresh_cache_filters() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.refresh_cache_summary() TO authenticated;
+
+-- Migration: Add qtvenda_embalagem_master to data tables if missing
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_detailed' AND column_name = 'qtvenda_embalagem_master') THEN
+        ALTER TABLE public.data_detailed ADD COLUMN qtvenda_embalagem_master numeric;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_history' AND column_name = 'qtvenda_embalagem_master') THEN
+        ALTER TABLE public.data_history ADD COLUMN qtvenda_embalagem_master numeric;
+    END IF;
+END $$;
