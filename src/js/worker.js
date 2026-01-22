@@ -293,17 +293,22 @@ self.onmessage = async (event) => {
         self.postMessage({ type: 'progress', status: 'Mapeando produtos...', percentage: 30 });
         const productMasterMap = new Map();
         const dimProducts = new Map();
+        const allowedSuppliers = new Set(['707', '708', '752', '1119']);
 
         productsDataRaw.forEach(prod => {
             const productCode = String(prod['Código'] || '').trim();
             if (!productCode) return;
+
+            const codFor = String(prod['Fornecedor'] || '').trim();
+
+            // Filter: Only process allowed suppliers (Pepsico)
+            if (!allowedSuppliers.has(codFor)) return;
             
             let qtdeMaster = parseInt(prod['Qtde embalagem master(Compra)'], 10);
             if (isNaN(qtdeMaster) || qtdeMaster <= 0) qtdeMaster = 1;
             productMasterMap.set(productCode, qtdeMaster);
 
             const desc = String(prod['Descrição'] || '').trim();
-            const codFor = String(prod['Fornecedor'] || '').trim();
             dimProducts.set(productCode, { descricao: desc, codfor: codFor });
         });
 
