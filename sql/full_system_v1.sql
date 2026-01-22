@@ -426,22 +426,25 @@ BEGIN
         COALESCE(t.cidade, c.cidade) as cidade, 
         ds.nome as superv, 
         COALESCE(dv.nome, c.nomecliente) as nome, 
-        CASE
+        CASE 
             WHEN t.codfor = '1119' AND t.descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
             WHEN t.codfor = '1119' AND t.descricao ILIKE '%TODDY %' THEN '1119_TODDY'
             WHEN t.codfor = '1119' AND t.descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
             WHEN t.codfor = '1119' AND t.descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
             WHEN t.codfor = '1119' THEN '1119_OUTROS'
-            ELSE t.codfor
+            ELSE t.codfor 
         END as codfor,
-        CASE
+        CASE 
+            WHEN t.codfor = '707' THEN 'Extrusados'
+            WHEN t.codfor = '708' THEN 'Ñ Extrusados'
+            WHEN t.codfor = '752' THEN 'Torcida'
             WHEN t.codfor = '1119' AND t.descricao ILIKE '%TODDYNHO%' THEN 'TODDYNHO'
             WHEN t.codfor = '1119' AND t.descricao ILIKE '%TODDY %' THEN 'TODDY'
             WHEN t.codfor = '1119' AND t.descricao ILIKE '%QUAKER%' THEN 'QUAKER'
             WHEN t.codfor = '1119' AND t.descricao ILIKE '%KEROCOCO%' THEN 'KEROCOCO'
             WHEN t.codfor = '1119' THEN 'FOODS (Outros)'
-            ELSE df.nome
-        END as fornecedor,
+            ELSE df.nome 
+        END as fornecedor, 
         t.tipovenda, 
         t.yr, 
         t.mth,
@@ -482,10 +485,10 @@ BEGIN
         ramo
     )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, descricao
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, descricao 
         FROM public.data_detailed
         UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, descricao
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, descricao 
         FROM public.data_history
     ),
     augmented_data AS (
@@ -499,14 +502,14 @@ BEGIN
             COALESCE(s.cidade, c.cidade) as cidade, 
             ds.nome as superv, 
             COALESCE(dv.nome, c.nomecliente) as nome, 
-            CASE
+            CASE 
                 WHEN s.codfor = '1119' AND s.descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
                 WHEN s.codfor = '1119' AND s.descricao ILIKE '%TODDY %' THEN '1119_TODDY'
                 WHEN s.codfor = '1119' AND s.descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
                 WHEN s.codfor = '1119' AND s.descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
                 WHEN s.codfor = '1119' THEN '1119_OUTROS'
-                ELSE s.codfor
-            END as codfor,
+                ELSE s.codfor 
+            END as codfor, 
             s.tipovenda, 
             s.codcli,
             s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto,
@@ -1226,17 +1229,17 @@ BEGIN
     ) INTO v_tipos_venda;
 
     -- 6. Fornecedores
-    SELECT json_agg(json_build_object('cod', codfor, 'name', fornecedor) ORDER BY
-        CASE
-            WHEN codfor = '707' THEN 1
-            WHEN codfor = '708' THEN 2
-            WHEN codfor = '752' THEN 3
+    SELECT json_agg(json_build_object('cod', codfor, 'name', fornecedor) ORDER BY 
+        CASE 
+            WHEN codfor = '707' THEN 1 
+            WHEN codfor = '708' THEN 2 
+            WHEN codfor = '752' THEN 3 
             WHEN codfor = '1119_TODDYNHO' THEN 4
             WHEN codfor = '1119_TODDY' THEN 5
             WHEN codfor = '1119_QUAKER' THEN 6
             WHEN codfor = '1119_KEROCOCO' THEN 7
             WHEN codfor = '1119_OUTROS' THEN 8
-            ELSE 99
+            ELSE 99 
         END, fornecedor
     ) INTO v_fornecedores
     FROM (
@@ -1730,7 +1733,7 @@ BEGIN
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
         v_where := v_where || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
     END IF;
-
+    
     -- FORNECEDOR LOGIC (DYNAMIC OR/AND)
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         DECLARE
