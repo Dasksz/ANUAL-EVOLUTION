@@ -3190,7 +3190,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentComparisonFornecedor === 'ELMA') {
                     filters.p_fornecedor.push('707', '708', '752');
                 } else if (currentComparisonFornecedor === 'FOODS') {
-                    filters.p_fornecedor.push('1119');
+                    filters.p_fornecedor.push('1119_TODDYNHO', '1119_TODDY', '1119_QUAKER', '1119_KEROCOCO', '1119_OUTROS');
                 }
                 // Note: Legacy "Pasta" logic might need clearer mapping if codes vary
             }
