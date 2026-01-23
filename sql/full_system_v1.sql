@@ -247,6 +247,11 @@ CREATE INDEX IF NOT EXISTS idx_dim_produtos_mix_marca ON public.dim_produtos (mi
 CREATE INDEX IF NOT EXISTS idx_dim_produtos_mix_categoria ON public.dim_produtos (mix_categoria);
 CREATE INDEX IF NOT EXISTS idx_data_clients_rede_lookup ON public.data_clients (codigo_cliente, ramo);
 
+-- OPTIMIZATION FOR BOXES DASHBOARD (Product Table Speed)
+-- Composite index (dtped, produto) to optimize range scans by date
+CREATE INDEX IF NOT EXISTS idx_detailed_dtped_prod ON public.data_detailed (dtped, produto);
+CREATE INDEX IF NOT EXISTS idx_history_dtped_prod ON public.data_history (dtped, produto);
+
 -- Summary Table Targeted Indexes (For Dynamic SQL)
 -- V2 Optimized Indexes (Year + Dimension) - Removing Month from prefix
 CREATE INDEX IF NOT EXISTS idx_summary_composite_main ON public.data_summary (ano, mes, filial, cidade);
