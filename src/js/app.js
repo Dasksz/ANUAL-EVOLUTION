@@ -101,6 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const boxesCidadeFilterDropdown = document.getElementById('boxes-cidade-filter-dropdown');
     const boxesCidadeFilterList = document.getElementById('boxes-cidade-filter-list');
     const boxesCidadeFilterSearch = document.getElementById('boxes-cidade-filter-search');
+    const boxesTipovendaFilterBtn = document.getElementById('boxes-tipovenda-filter-btn');
+    const boxesTipovendaFilterDropdown = document.getElementById('boxes-tipovenda-filter-dropdown');
     const boxesClearFiltersBtn = document.getElementById('boxes-clear-filters-btn');
 
     // City View Filter Logic
@@ -1056,6 +1058,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let boxesSelectedVendedores = [];
     let boxesSelectedFornecedores = [];
     let boxesSelectedProducts = [];
+    let boxesSelectedTiposVenda = [];
 
     const handleBoxesFilterChange = async () => {
         clearTimeout(boxesFilterDebounceTimer);
@@ -1067,6 +1070,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 p_vendedor: boxesSelectedVendedores.length > 0 ? boxesSelectedVendedores : null,
                 p_fornecedor: boxesSelectedFornecedores.length > 0 ? boxesSelectedFornecedores : null,
                 p_produto: boxesSelectedProducts.length > 0 ? boxesSelectedProducts : null,
+                p_tipovenda: boxesSelectedTiposVenda.length > 0 ? boxesSelectedTiposVenda : null,
                 p_ano: boxesAnoFilter.value === 'todos' ? null : boxesAnoFilter.value,
                 p_mes: boxesMesFilter.value === '' ? null : boxesMesFilter.value
             };
@@ -1104,6 +1108,7 @@ document.addEventListener('DOMContentLoaded', () => {
              setupCityMultiSelect(boxesFornecedorFilterBtn, boxesFornecedorFilterDropdown, boxesFornecedorFilterList, data.fornecedores, boxesSelectedFornecedores, boxesFornecedorFilterSearch, true);
              setupCityMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, data.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
              setupCityMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, data.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
+             setupCityMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, data.tipos_venda || [], boxesSelectedTiposVenda);
         }
     }
 
@@ -1111,8 +1116,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (boxesMesFilter) boxesMesFilter.addEventListener('change', handleBoxesFilterChange);
 
     document.addEventListener('click', (e) => {
-        const dropdowns = [boxesFilialFilterDropdown, boxesProdutoFilterDropdown, boxesSupervisorFilterDropdown, boxesVendedorFilterDropdown, boxesFornecedorFilterDropdown, boxesCidadeFilterDropdown];
-        const btns = [boxesFilialFilterBtn, boxesProdutoFilterBtn, boxesSupervisorFilterBtn, boxesVendedorFilterBtn, boxesFornecedorFilterBtn, boxesCidadeFilterBtn];
+        const dropdowns = [boxesFilialFilterDropdown, boxesProdutoFilterDropdown, boxesSupervisorFilterDropdown, boxesVendedorFilterDropdown, boxesFornecedorFilterDropdown, boxesCidadeFilterDropdown, boxesTipovendaFilterDropdown];
+        const btns = [boxesFilialFilterBtn, boxesProdutoFilterBtn, boxesSupervisorFilterBtn, boxesVendedorFilterBtn, boxesFornecedorFilterBtn, boxesCidadeFilterBtn, boxesTipovendaFilterBtn];
         let anyClosed = false;
         dropdowns.forEach((dd, idx) => {
             if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
@@ -1135,6 +1140,7 @@ document.addEventListener('DOMContentLoaded', () => {
             boxesSelectedVendedores = [];
             boxesSelectedFornecedores = [];
             boxesSelectedCidades = [];
+            boxesSelectedTiposVenda = [];
             initBoxesFilters().then(loadBoxesView);
         });
     }
@@ -1179,6 +1185,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupCityMultiSelect(boxesVendedorFilterBtn, boxesVendedorFilterDropdown, boxesVendedorFilterList, filterData.vendedores, boxesSelectedVendedores, boxesVendedorFilterSearch);
         setupCityMultiSelect(boxesFornecedorFilterBtn, boxesFornecedorFilterDropdown, boxesFornecedorFilterList, filterData.fornecedores, boxesSelectedFornecedores, boxesFornecedorFilterSearch, true);
         setupCityMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, filterData.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
+        setupCityMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, filterData.tipos_venda || [], boxesSelectedTiposVenda);
         
         // Products - filterData.produtos
         setupCityMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, filterData.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
@@ -1198,6 +1205,7 @@ document.addEventListener('DOMContentLoaded', () => {
             p_vendedor: boxesSelectedVendedores.length > 0 ? boxesSelectedVendedores : null,
             p_fornecedor: boxesSelectedFornecedores.length > 0 ? boxesSelectedFornecedores : null,
             p_produto: boxesSelectedProducts.length > 0 ? boxesSelectedProducts : null,
+            p_tipovenda: boxesSelectedTiposVenda.length > 0 ? boxesSelectedTiposVenda : null,
             p_ano: boxesAnoFilter.value === 'todos' ? null : boxesAnoFilter.value,
             p_mes: boxesMesFilter.value === '' ? null : boxesMesFilter.value
         };
@@ -1218,32 +1226,87 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderBoxesDashboard(data) {
-        // KPIs
-        const kpis = data.kpis || { total_fat: 0, total_peso: 0, total_caixas: 0 };
-        document.getElementById('boxes-kpi-fat').textContent = (kpis.total_fat || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        document.getElementById('boxes-kpi-peso').textContent = ((kpis.total_peso || 0) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
-        document.getElementById('boxes-kpi-caixas').textContent = Math.round(kpis.total_caixas || 0).toLocaleString('pt-BR');
+        // Safe access helpers
+        const safeVal = (v) => v || 0;
+        const fmtBRL = (v) => safeVal(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const fmtKg = (v) => (safeVal(v) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
+        const fmtCaixas = (v) => Math.round(safeVal(v)).toLocaleString('pt-BR');
+        
+        const calcVar = (curr, prev) => {
+            if (prev > 0) return ((curr / prev) - 1) * 100;
+            return curr > 0 ? 100 : 0;
+        };
+        const fmtVar = (v) => {
+            const cls = v >= 0 ? 'text-emerald-400' : 'text-red-400';
+            const sign = v > 0 ? '+' : '';
+            return `<span class="${cls}">${sign}${v.toFixed(1)}%</span>`;
+        };
 
-        // Chart
-        const monthlyData = data.monthly_data || [];
-        // Map to 12 months (0-11)
+        const updateBoxKpi = (prefix, key, formatFn) => {
+            const curr = safeVal(data.kpi_current[key]);
+            const prev = safeVal(data.kpi_previous[key]);
+            const tri = safeVal(data.kpi_tri_avg[key]);
+
+            const elMain = document.getElementById(`boxes-kpi-${prefix}`);
+            if(elMain) elMain.textContent = formatFn(curr);
+
+            const elPrevVal = document.getElementById(`boxes-kpi-${prefix}-prev`);
+            const elPrevVar = document.getElementById(`boxes-kpi-${prefix}-prev-var`);
+            if(elPrevVal) elPrevVal.textContent = formatFn(prev);
+            if(elPrevVar) elPrevVar.innerHTML = fmtVar(calcVar(curr, prev));
+
+            const elTriVal = document.getElementById(`boxes-kpi-${prefix}-tri`);
+            const elTriVar = document.getElementById(`boxes-kpi-${prefix}-tri-var`);
+            if(elTriVal) elTriVal.textContent = formatFn(tri);
+            if(elTriVar) elTriVar.innerHTML = fmtVar(calcVar(curr, tri));
+        };
+
+        updateBoxKpi('fat', 'fat', fmtBRL);
+        updateBoxKpi('peso', 'peso', fmtKg);
+        updateBoxKpi('caixas', 'caixas', fmtCaixas);
+
+        // Chart (2 datasets: Current vs Previous)
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         const labels = monthNames;
-        const boxesValues = new Array(12).fill(0);
+        const currentYear = new Date().getFullYear(); 
+        // Note: data.chart_data contains year info, but typically we assume Current vs Prev based on request
+        // We can infer year from filter or just label as "Ano Atual" vs "Ano Anterior"
         
-        monthlyData.forEach(d => {
+        const boxesCurrent = new Array(12).fill(0);
+        const boxesPrev = new Array(12).fill(0);
+        const chartData = data.chart_data || [];
+        
+        // We need to identify which year is which.
+        // The RPC returns 'year' column.
+        // Filter year logic in JS:
+        const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : currentYear;
+        const prevYear = filterYear - 1;
+
+        chartData.forEach(d => {
             if (d.month_index >= 0 && d.month_index < 12) {
-                boxesValues[d.month_index] = d.caixas;
+                if (d.year === filterYear) boxesCurrent[d.month_index] = d.caixas;
+                if (d.year === prevYear) boxesPrev[d.month_index] = d.caixas;
             }
         });
 
-        createChart('boxesChart', 'bar', labels, [{
-            label: 'Caixas',
-            data: boxesValues,
-            backgroundColor: '#10b981', // Emerald
-            borderColor: '#10b981',
-            borderWidth: 1
-        }], (v) => Math.round(v).toLocaleString('pt-BR')); // Formatter for boxes
+        createChart('boxesChart', 'bar', labels, [
+            {
+                label: `Ano ${prevYear}`,
+                data: boxesPrev,
+                backgroundColor: '#f97316', // Orange
+                borderColor: '#f97316',
+                borderWidth: 1,
+                isPrevious: true
+            },
+            {
+                label: `Ano ${filterYear}`,
+                data: boxesCurrent,
+                backgroundColor: '#10b981', // Emerald
+                borderColor: '#10b981',
+                borderWidth: 1,
+                isCurrent: true
+            }
+        ], (v) => Math.round(v).toLocaleString('pt-BR')); 
 
         // Table
         const products = data.products_table || [];
@@ -1253,9 +1316,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 <tr class="table-row">
                     <td class="p-2">${p.produto}</td>
                     <td class="p-2">${p.descricao}</td>
-                    <td class="p-2 text-right font-bold text-emerald-400">${Math.round(p.caixas || 0).toLocaleString('pt-BR')}</td>
-                    <td class="p-2 text-right">${(p.faturamento || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                    <td class="p-2 text-right">${((p.peso || 0) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} Ton</td>
+                    <td class="p-2 text-right font-bold text-emerald-400">${Math.round(safeVal(p.caixas)).toLocaleString('pt-BR')}</td>
+                    <td class="p-2 text-right">${safeVal(p.faturamento).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td class="p-2 text-right">${(safeVal(p.peso) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} Ton</td>
                 </tr>
             `).join('');
         } else {
