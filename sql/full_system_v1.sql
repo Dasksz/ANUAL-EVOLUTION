@@ -736,6 +736,21 @@ END;
 $$;
 
 -- Get Main Dashboard Data (Dynamic SQL, Parallelism, Pre-Aggregation)
+
+-- Drop existing overloaded functions to prevent ambiguity (PGRST203)
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN SELECT oid::regprocedure AS func_signature
+             FROM pg_proc
+             WHERE proname IN ('get_main_dashboard_data', 'get_comparison_view_data', 'get_boxes_dashboard_data', 'get_branch_comparison_data', 'get_city_view_data')
+             AND pg_function_is_visible(oid)
+    LOOP
+        EXECUTE 'DROP FUNCTION ' || r.func_signature || ' CASCADE';
+    END LOOP;
+END $$;
+
 CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -1195,7 +1210,8 @@ CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_ano text default null,
     p_mes text default null,
     p_tipovenda text[] default null,
-    p_rede text[] default null
+    p_rede text[] default null,
+    p_produto text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -1576,7 +1592,8 @@ CREATE OR REPLACE FUNCTION get_boxes_dashboard_data(
     p_ano text default null,
     p_mes text default null,
     p_tipovenda text[] default null,
-    p_rede text[] default null
+    p_rede text[] default null,
+    p_produto text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -1990,7 +2007,8 @@ CREATE OR REPLACE FUNCTION get_comparison_view_data(
     p_ano text default null,
     p_mes text default null,
     p_tipovenda text[] default null,
-    p_rede text[] default null
+    p_rede text[] default null,
+    p_produto text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
