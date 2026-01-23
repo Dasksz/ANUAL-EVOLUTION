@@ -196,8 +196,17 @@ create table if not exists public.data_summary (
     pre_mix_count int DEFAULT 0,
     pre_positivacao_val int DEFAULT 0, -- 1 se positivou, 0 se não
     ramo text, -- ADDED: Rede Filter
+    caixas numeric DEFAULT 0,
     created_at timestamp with time zone default now()
 );
+
+-- Migration: Add caixas to data_summary if missing
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary' AND column_name = 'caixas') THEN
+        ALTER TABLE public.data_summary ADD COLUMN caixas numeric DEFAULT 0;
+    END IF;
+END $$;
 
 -- Cache Table (For Filter Dropdowns)
 DROP TABLE IF EXISTS public.cache_filters CASCADE;
@@ -541,13 +550,13 @@ BEGIN
         ano, mes, filial, cidade, superv, nome, codfor, tipovenda, codcli, 
         vlvenda, peso, bonificacao, devolucao, 
         pre_mix_count, pre_positivacao_val,
-        ramo
+        ramo, caixas
     )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, descricao 
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, descricao, qtvenda_embalagem_master
         FROM public.data_detailed
         UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, descricao 
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, descricao, qtvenda_embalagem_master
         FROM public.data_history
     ),
     augmented_data AS (
@@ -571,7 +580,7 @@ BEGIN
             END as codfor, 
             s.tipovenda, 
             s.codcli,
-            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto,
+            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
             c.ramo
         FROM raw_data s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
@@ -584,7 +593,8 @@ BEGIN
             SUM(vlvenda) as prod_val,
             SUM(totpesoliq) as prod_peso,
             SUM(vlbonific) as prod_bonific,
-            SUM(COALESCE(vldevolucao, 0)) as prod_devol
+            SUM(COALESCE(vldevolucao, 0)) as prod_devol,
+            SUM(COALESCE(qtvenda_embalagem_master, 0)) as prod_caixas
         FROM augmented_data
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
     ),
@@ -595,6 +605,7 @@ BEGIN
             SUM(pa.prod_peso) as total_peso,
             SUM(pa.prod_bonific) as total_bonific,
             SUM(pa.prod_devol) as total_devol,
+            SUM(pa.prod_caixas) as total_caixas,
             -- Cálculo de Mix Direto na Agregação (Substitui JSONB)
             COUNT(CASE WHEN pa.prod_val >= 1 THEN 1 END) as mix_calc
         FROM product_agg pa
@@ -605,7 +616,8 @@ BEGIN
         total_val, total_peso, total_bonific, total_devol,
         mix_calc,
         CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
-        ramo
+        ramo,
+        total_caixas
     FROM client_agg;
     
     -- CLUSTER removed to prevent timeouts during auto-refresh. Moved to optimize_database().
@@ -1608,7 +1620,9 @@ DECLARE
     v_tri_start date;
     v_tri_end date;
     
-    v_where_common text := ' WHERE 1=1 ';
+    -- Two sets of filters: one for Cache (Summary), one for Raw (Detailed)
+    v_where_summary text := ' WHERE 1=1 ';
+    v_where_raw text := ' WHERE 1=1 ';
     
     -- Outputs
     v_chart_data json;
@@ -1622,6 +1636,7 @@ DECLARE
     v_has_com_rede boolean;
     v_has_sem_rede boolean;
     v_specific_redes text[];
+    v_use_cache boolean := true;
 BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
     SET LOCAL work_mem = '64MB';
@@ -1638,53 +1653,54 @@ BEGIN
     -- Determine Reference Date for Tri Logic
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_target_month := p_mes::int + 1;
-        -- Target is 1st of selected month. Tri is previous 3 months.
         v_ref_date := make_date(v_current_year, v_target_month, 1);
     ELSE
-        -- No month selected.
         IF v_current_year < EXTRACT(YEAR FROM CURRENT_DATE)::int THEN
-            -- Past year -> Dec is reference (so Tri is Sep/Oct/Nov?)
-            -- User: "média do trimestre anterior ao mês mais recente"
-            -- If year is full, most recent is Dec. Tri anterior to Dec is Sep/Oct/Nov.
-            -- v_ref_date = 1st Dec.
             v_ref_date := make_date(v_current_year, 12, 1);
         ELSE
-             -- Current Year -> Current Month.
              v_ref_date := date_trunc('month', CURRENT_DATE)::date;
         END IF;
     END IF;
 
-    -- Tri Calculation: 3 months before v_ref_date.
-    -- e.g. Ref = May 1st. Tri = Feb 1st to Apr 30th.
+    -- Tri Calculation
     v_tri_end := (v_ref_date - interval '1 day')::date;
     v_tri_start := (v_ref_date - interval '3 months')::date;
 
+    -- 2. Build FILTERS
+    -- If product is selected, we MUST use RAW data completely because Cache doesn't have Product dimension.
+    IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
+        v_use_cache := false;
+        v_where_raw := v_where_raw || format(' AND produto = ANY(%L) ', p_produto);
+    END IF;
 
-    -- 2. Build COMMON WHERE (Exclude Time filters)
-    -- Applied to data_detailed/history directly
-    
+    -- Apply other filters to both contexts
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where_common := v_where_common || format(' AND filial = ANY(%L) ', p_filial);
+        v_where_raw := v_where_raw || format(' AND filial = ANY(%L) ', p_filial);
+        v_where_summary := v_where_summary || format(' AND filial = ANY(%L) ', p_filial);
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_common := v_where_common || format(' AND cidade = ANY(%L) ', p_cidade);
+        v_where_raw := v_where_raw || format(' AND cidade = ANY(%L) ', p_cidade);
+        v_where_summary := v_where_summary || format(' AND cidade = ANY(%L) ', p_cidade);
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-         -- Optimization: Join is better but for dynamic string building:
-         v_where_common := v_where_common || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
+         v_where_raw := v_where_raw || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
+         v_where_summary := v_where_summary || format(' AND superv = ANY(%L) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-         v_where_common := v_where_common || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
+         v_where_raw := v_where_raw || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
+         v_where_summary := v_where_summary || format(' AND nome = ANY(%L) ', p_vendedor);
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_common := v_where_common || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
-    END IF;
-    IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
-        v_where_common := v_where_common || format(' AND produto = ANY(%L) ', p_produto);
+        v_where_raw := v_where_raw || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+        v_where_summary := v_where_summary || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
     END IF;
     
-    -- Fornecedor Logic
+    -- Fornecedor Logic (Handling Cache Mapped Codes vs Raw)
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
+        -- Cache: Simple IN clause (Codes are already mapped in data_summary.codfor)
+        v_where_summary := v_where_summary || format(' AND codfor = ANY(%L) ', p_fornecedor);
+
+        -- Raw: Complex OR/AND
         DECLARE
             v_code text;
             v_conditions text[] := '{}';
@@ -1709,139 +1725,203 @@ BEGIN
                 v_conditions := array_append(v_conditions, format('codfor = ANY(%L)', v_simple_codes));
             END IF;
             IF array_length(v_conditions, 1) > 0 THEN
-                v_where_common := v_where_common || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
+                v_where_raw := v_where_raw || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
             END IF;
         END;
     END IF;
 
-    -- REDE Logic (Exists check on Clients)
+    -- REDE Logic
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
        v_has_com_rede := ('C/ REDE' = ANY(p_rede));
        v_has_sem_rede := ('S/ REDE' = ANY(p_rede));
        v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
        
        IF array_length(v_specific_redes, 1) > 0 THEN
-           v_rede_condition := format('c.ramo = ANY(%L)', v_specific_redes);
+           v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
        END IF;
        
        IF v_has_com_rede THEN
            IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
-           v_rede_condition := v_rede_condition || ' (c.ramo IS NOT NULL AND c.ramo NOT IN (''N/A'', ''N/D'')) ';
+           v_rede_condition := v_rede_condition || ' (ramo IS NOT NULL AND ramo NOT IN (''N/A'', ''N/D'')) ';
        END IF;
        
        IF v_has_sem_rede THEN
            IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
-           v_rede_condition := v_rede_condition || ' (c.ramo IS NULL OR c.ramo IN (''N/A'', ''N/D'')) ';
+           v_rede_condition := v_rede_condition || ' (ramo IS NULL OR ramo IN (''N/A'', ''N/D'')) ';
        END IF;
        
        IF v_rede_condition != '' THEN
-           v_where_common := v_where_common || ' AND EXISTS (SELECT 1 FROM public.data_clients c WHERE c.codigo_cliente = s.codcli AND (' || v_rede_condition || ')) ';
+           v_where_summary := v_where_summary || ' AND (' || v_rede_condition || ') ';
+           -- For Raw, we need EXISTS
+           v_where_raw := v_where_raw || ' AND EXISTS (SELECT 1 FROM public.data_clients c WHERE c.codigo_cliente = s.codcli AND (' || v_rede_condition || ')) ';
        END IF;
     END IF;
 
     -- 3. Execute Queries
 
-    EXECUTE format('
-        WITH base_data AS (
-            SELECT dtped, vlvenda, totpesoliq, qtvenda_embalagem_master, produto, descricao, filial
-            FROM public.data_detailed s
-            %s
-            UNION ALL
-            SELECT dtped, vlvenda, totpesoliq, qtvenda_embalagem_master, produto, descricao, filial
-            FROM public.data_history s
-            %s
-        ),
-        -- Chart Data (Current vs Previous Year, Full 12 Months)
-        chart_agg AS (
+    IF v_use_cache THEN
+        -- FAST PATH (Uses data_summary for totals)
+        EXECUTE format('
+            WITH
+            -- Chart Data (From Cache)
+            chart_agg AS (
+                SELECT
+                    mes - 1 as m_idx,
+                    ano as yr,
+                    SUM(vlvenda) as fat,
+                    SUM(peso) as peso,
+                    SUM(COALESCE(caixas, 0)) as caixas
+                FROM public.data_summary
+                %s AND ano IN (%L, %L)
+                GROUP BY 1, 2
+            ),
+            -- KPI Current (From Cache)
+            kpi_curr AS (
+                SELECT
+                    SUM(vlvenda) as fat,
+                    SUM(peso) as peso,
+                    SUM(COALESCE(caixas, 0)) as caixas
+                FROM public.data_summary
+                %s AND ano = %L %s
+            ),
+            -- KPI Previous (From Cache)
+            kpi_prev AS (
+                SELECT
+                    SUM(vlvenda) as fat,
+                    SUM(peso) as peso,
+                    SUM(COALESCE(caixas, 0)) as caixas
+                FROM public.data_summary
+                %s AND ano = %L %s
+            ),
+            -- KPI Tri (From Cache - Date Logic)
+            kpi_tri AS (
+                SELECT
+                    SUM(vlvenda) / 3 as fat,
+                    SUM(peso) / 3 as peso,
+                    SUM(COALESCE(caixas, 0)) / 3 as caixas
+                FROM public.data_summary
+                %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
+            ),
+            -- Products Table (MUST use RAW data + Date Optimization)
+            prod_base AS (
+                SELECT vlvenda, totpesoliq, qtvenda_embalagem_master, produto, descricao
+                FROM public.data_detailed s %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
+                UNION ALL
+                SELECT vlvenda, totpesoliq, qtvenda_embalagem_master, produto, descricao
+                FROM public.data_history s %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
+            ),
+            prod_agg AS (
+                SELECT
+                    produto,
+                    MAX(descricao) as descricao,
+                    SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas,
+                    SUM(vlvenda) as faturamento,
+                    SUM(totpesoliq) as peso
+                FROM prod_base
+                GROUP BY 1
+                ORDER BY caixas DESC
+                LIMIT 50
+            )
             SELECT 
-                EXTRACT(MONTH FROM dtped)::int - 1 as m_idx,
-                EXTRACT(YEAR FROM dtped)::int as yr,
-                SUM(vlvenda) as fat,
-                SUM(totpesoliq) as peso,
-                SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas
-            FROM base_data
-            WHERE EXTRACT(YEAR FROM dtped) IN (%L, %L)
-            GROUP BY 1, 2
-        ),
-        -- KPI Current (Selected Year + Optional Month)
-        kpi_curr AS (
-            SELECT 
-                SUM(vlvenda) as fat,
-                SUM(totpesoliq) as peso,
-                SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas
-            FROM base_data
-            WHERE EXTRACT(YEAR FROM dtped) = %L
-            %s -- Optional Month Filter
-        ),
-        -- KPI Previous (Previous Year + Optional Month)
-        kpi_prev AS (
-            SELECT 
-                SUM(vlvenda) as fat,
-                SUM(totpesoliq) as peso,
-                SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas
-            FROM base_data
-            WHERE EXTRACT(YEAR FROM dtped) = %L
-            %s -- Optional Month Filter (Same month index)
-        ),
-        -- KPI Tri Avg (Specific Date Range)
-        kpi_tri AS (
-            SELECT 
-                SUM(vlvenda) / 3 as fat,
-                SUM(totpesoliq) / 3 as peso,
-                SUM(COALESCE(qtvenda_embalagem_master, 0)) / 3 as caixas
-            FROM base_data
-            WHERE dtped >= %L AND dtped <= %L
-        ),
-        -- Products Table (Selected Year + Optional Month)
-        prod_agg AS (
-            SELECT
-                produto,
-                MAX(descricao) as descricao,
-                SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas,
-                SUM(vlvenda) as faturamento,
-                SUM(totpesoliq) as peso
-            FROM base_data
-            WHERE EXTRACT(YEAR FROM dtped) = %L
-            %s -- Optional Month Filter
-            GROUP BY 1
-            ORDER BY caixas DESC
-            LIMIT 50
+                (SELECT json_agg(json_build_object(''month_index'', m_idx, ''year'', yr, ''faturamento'', fat, ''peso'', peso, ''caixas'', caixas)) FROM chart_agg),
+                (SELECT row_to_json(c) FROM kpi_curr c),
+                (SELECT row_to_json(p) FROM kpi_prev p),
+                (SELECT row_to_json(t) FROM kpi_tri t),
+                (SELECT json_agg(pa) FROM prod_agg pa)
+        ',
+        v_where_summary, v_current_year, v_previous_year, -- Chart
+        v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
+        v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
+        v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri (Clean months)
+        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
+        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END  -- Prod
         )
-        SELECT 
-            (SELECT json_agg(json_build_object(
-                ''month_index'', m_idx, 
-                ''year'', yr, 
-                ''faturamento'', fat, 
-                ''peso'', peso, 
-                ''caixas'', caixas
-             )) FROM chart_agg),
-             
-            (SELECT row_to_json(c) FROM kpi_curr c),
-            (SELECT row_to_json(p) FROM kpi_prev p),
-            (SELECT row_to_json(t) FROM kpi_tri t),
-            (SELECT json_agg(pa) FROM prod_agg pa)
-    ', 
-    v_where_common, v_where_common, -- CTE
-    v_current_year, v_previous_year, -- Chart
-    v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr
-    v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev
-    v_tri_start, v_tri_end, -- KPI Tri
-    v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END -- Prod Table
-    )
-    INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
+        INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
 
-    -- Transform Chart Data into friendly structure (group by month)
-    -- Or let JS do it. JS expects array of months.
-    -- Let's stick to raw rows and map in JS, or format nicely here.
-    -- Better format here: Array of 12 items, each with current and previous.
-    
+    ELSE
+        -- SLOW PATH (Full Raw Data - But with optimized date range where possible)
+        -- We define a global range to avoid full table scan: Start of Previous Year to End of Current Year
+        EXECUTE format('
+            WITH base_data AS (
+                SELECT dtped, vlvenda, totpesoliq, qtvenda_embalagem_master, produto, descricao
+                FROM public.data_detailed s %s AND dtped >= make_date(%L, 1, 1)
+                UNION ALL
+                SELECT dtped, vlvenda, totpesoliq, qtvenda_embalagem_master, produto, descricao
+                FROM public.data_history s %s AND dtped >= make_date(%L, 1, 1)
+            ),
+            chart_agg AS (
+                SELECT
+                    EXTRACT(MONTH FROM dtped)::int - 1 as m_idx,
+                    EXTRACT(YEAR FROM dtped)::int as yr,
+                    SUM(vlvenda) as fat,
+                    SUM(totpesoliq) as peso,
+                    SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas
+                FROM base_data
+                WHERE EXTRACT(YEAR FROM dtped) IN (%L, %L)
+                GROUP BY 1, 2
+            ),
+            kpi_curr AS (
+                SELECT
+                    SUM(vlvenda) as fat,
+                    SUM(totpesoliq) as peso,
+                    SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas
+                FROM base_data
+                WHERE EXTRACT(YEAR FROM dtped) = %L %s
+            ),
+            kpi_prev AS (
+                SELECT
+                    SUM(vlvenda) as fat,
+                    SUM(totpesoliq) as peso,
+                    SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas
+                FROM base_data
+                WHERE EXTRACT(YEAR FROM dtped) = %L %s
+            ),
+            kpi_tri AS (
+                SELECT
+                    SUM(vlvenda) / 3 as fat,
+                    SUM(totpesoliq) / 3 as peso,
+                    SUM(COALESCE(qtvenda_embalagem_master, 0)) / 3 as caixas
+                FROM base_data
+                WHERE dtped >= %L AND dtped <= %L
+            ),
+            prod_agg AS (
+                SELECT
+                    produto,
+                    MAX(descricao) as descricao,
+                    SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas,
+                    SUM(vlvenda) as faturamento,
+                    SUM(totpesoliq) as peso
+                FROM base_data
+                WHERE EXTRACT(YEAR FROM dtped) = %L %s
+                GROUP BY 1
+                ORDER BY caixas DESC
+                LIMIT 50
+            )
+            SELECT 
+                (SELECT json_agg(json_build_object(''month_index'', m_idx, ''year'', yr, ''faturamento'', fat, ''peso'', peso, ''caixas'', caixas)) FROM chart_agg),
+                (SELECT row_to_json(c) FROM kpi_curr c),
+                (SELECT row_to_json(p) FROM kpi_prev p),
+                (SELECT row_to_json(t) FROM kpi_tri t),
+                (SELECT json_agg(pa) FROM prod_agg pa)
+        ',
+        v_where_raw, v_previous_year, -- Base Data 1
+        v_where_raw, v_previous_year, -- Base Data 2
+        v_current_year, v_previous_year, -- Chart
+        v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr
+        v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev
+        v_tri_start, v_tri_end, -- KPI Tri
+        v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END -- Prod
+        )
+        INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
+    END IF;
+
     RETURN json_build_object(
         'chart_data', COALESCE(v_chart_data, '[]'::json),
         'kpi_current', COALESCE(v_kpis_current, '{"fat":0,"peso":0,"caixas":0}'::json),
         'kpi_previous', COALESCE(v_kpis_previous, '{"fat":0,"peso":0,"caixas":0}'::json),
         'kpi_tri_avg', COALESCE(v_kpis_tri_avg, '{"fat":0,"peso":0,"caixas":0}'::json),
         'products_table', COALESCE(v_products_table, '[]'::json),
-        'debug_tri', json_build_object('start', v_tri_start, 'end', v_tri_end)
+        'debug_tri', json_build_object('start', v_tri_start, 'end', v_tri_end, 'cached', v_use_cache)
     );
 END;
 $$;
