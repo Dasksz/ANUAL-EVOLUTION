@@ -668,6 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     openSidebarBtn.addEventListener('click', openSidebar);
+    if (openSidebarBoxesBtn) openSidebarBoxesBtn.addEventListener('click', openSidebar);
     if (openSidebarBranchBtn) openSidebarBranchBtn.addEventListener('click', openSidebar);
     if (openSidebarCityBtn) openSidebarCityBtn.addEventListener('click', openSidebar);
     const openSidebarComparisonBtn = document.getElementById('open-sidebar-comparison-btn');
