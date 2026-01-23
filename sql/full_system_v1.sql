@@ -1352,17 +1352,23 @@ BEGIN
     WHERE (
         CASE
             WHEN p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-                CASE
-                   -- Special Handling for 1119 subtypes (Simplification: just check codfor)
-                   WHEN '1119_TODDYNHO' = ANY(p_fornecedor) OR '1119_TODDY' = ANY(p_fornecedor) OR '1119_QUAKER' = ANY(p_fornecedor) OR '1119_KEROCOCO' = ANY(p_fornecedor) OR '1119_OUTROS' = ANY(p_fornecedor) THEN
-                       codfor = '1119' OR codfor = ANY(p_fornecedor)
-                   ELSE
-                       codfor = ANY(p_fornecedor)
-                END
+               (
+                 -- 1. Standard match for non-1119 codes
+                 (codfor != '1119' AND codfor = ANY(p_fornecedor))
+                 OR
+                 -- 2. 1119 match logic (Check description for specific subtypes)
+                 (codfor = '1119' AND (
+                     ('1119_KEROCOCO' = ANY(p_fornecedor) AND descricao ILIKE '%KEROCOCO%') OR
+                     ('1119_QUAKER'   = ANY(p_fornecedor) AND descricao ILIKE '%QUAKER%') OR
+                     ('1119_TODDYNHO' = ANY(p_fornecedor) AND descricao ILIKE '%TODDYNHO%') OR
+                     ('1119_TODDY'    = ANY(p_fornecedor) AND descricao ILIKE '%TODDY %') OR
+                     ('1119_OUTROS'   = ANY(p_fornecedor) AND descricao NOT ILIKE '%KEROCOCO%' AND descricao NOT ILIKE '%QUAKER%' AND descricao NOT ILIKE '%TODDYNHO%' AND descricao NOT ILIKE '%TODDY %')
+                 ))
+               )
             ELSE 1=1
         END
     )
-    -- NEW: Filter to only include products that have sales
+    -- Filter to only include products that have sales
     AND (
         EXISTS (SELECT 1 FROM public.data_detailed d WHERE d.produto = public.dim_produtos.codigo)
         OR
