@@ -3550,7 +3550,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 p_supervisor: selectedComparisonSupervisors.length > 0 ? selectedComparisonSupervisors : null,
                 p_vendedor: selectedComparisonSellers.length > 0 ? selectedComparisonSellers : null,
                 p_fornecedor: selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null,
-                // p_produto: selectedComparisonProducts.length > 0 ? selectedComparisonProducts : null, -- Backend RPC update required
+                p_produto: selectedComparisonProducts.length > 0 ? selectedComparisonProducts : null,
                 p_tipovenda: selectedComparisonTiposVenda.length > 0 ? selectedComparisonTiposVenda : null,
                 p_rede: selectedComparisonRedes.length > 0 ? selectedComparisonRedes : null,
                 p_ano: comparisonAnoFilter.value === 'todos' ? null : comparisonAnoFilter.value,
