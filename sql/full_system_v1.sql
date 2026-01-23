@@ -1180,6 +1180,11 @@ END;
 $$;
 
 -- Get Dashboard Filters (Split Queries for Speed)
+-- NOTE: We explicitly drop potential overlapping signatures before re-creating the definitive one.
+DROP FUNCTION IF EXISTS public.get_dashboard_filters(text[], text[], text[], text[], text[], text, text, text[], text[]);
+DROP FUNCTION IF EXISTS public.get_dashboard_filters(text[], text[], text[], text[], text[], text, text, text[]);
+DROP FUNCTION IF EXISTS public.get_dashboard_filters(text[], text[], text[], text[], text[], text, text);
+
 CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -2336,6 +2341,14 @@ ON CONFLICT (codigo) DO UPDATE SET nome = 'BALCAO';
 
 INSERT INTO public.dim_supervisores (codigo, nome) VALUES ('SV_AMERICANAS', 'SV AMERICANAS')
 ON CONFLICT (codigo) DO UPDATE SET nome = 'SV AMERICANAS';
+
+-- Cleanup dim_produtos logic (Ensure only specific suppliers are kept)
+-- Run in DO block to execute as a statement
+DO $$
+BEGIN
+    DELETE FROM public.dim_produtos
+    WHERE codfor NOT IN ('707', '708', '752', '1119');
+END $$;
 
 -- SELECT refresh_dashboard_cache(); -- Disabled auto-run to prevent immediate locking
 
