@@ -736,6 +736,21 @@ END;
 $$;
 
 -- Get Main Dashboard Data (Dynamic SQL, Parallelism, Pre-Aggregation)
+
+-- Drop existing overloaded functions to prevent ambiguity (PGRST203)
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN SELECT oid::regprocedure AS func_signature
+             FROM pg_proc
+             WHERE proname IN ('get_main_dashboard_data', 'get_comparison_view_data', 'get_boxes_dashboard_data', 'get_branch_comparison_data', 'get_city_view_data')
+             AND pg_function_is_visible(oid)
+    LOOP
+        EXECUTE 'DROP FUNCTION ' || r.func_signature || ' CASCADE';
+    END LOOP;
+END $$;
+
 CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -745,7 +760,8 @@ CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_ano text default null,
     p_mes text default null,
     p_tipovenda text[] default null,
-    p_rede text[] default null
+    p_rede text[] default null,
+    p_produto text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -1194,7 +1210,8 @@ CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_ano text default null,
     p_mes text default null,
     p_tipovenda text[] default null,
-    p_rede text[] default null
+    p_rede text[] default null,
+    p_produto text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -1608,6 +1625,7 @@ DECLARE
 BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
     SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 
     -- 1. Date Logic
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
@@ -1840,7 +1858,8 @@ CREATE OR REPLACE FUNCTION get_branch_comparison_data(
     p_ano text default null,
     p_mes text default null,
     p_tipovenda text[] default null,
-    p_rede text[] default null
+    p_rede text[] default null,
+    p_produto text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -1988,7 +2007,8 @@ CREATE OR REPLACE FUNCTION get_comparison_view_data(
     p_ano text default null,
     p_mes text default null,
     p_tipovenda text[] default null,
-    p_rede text[] default null
+    p_rede text[] default null,
+    p_produto text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -2133,6 +2153,9 @@ BEGIN
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where := v_where || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+    END IF;
+    IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
+        v_where := v_where || format(' AND produto = ANY(%L) ', p_produto);
     END IF;
 
     -- REDE Logic (Requires Join with Clients or Ramo check if denormalized)
