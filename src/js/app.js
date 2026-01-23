@@ -178,8 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const comparisonComRedeBtn = document.getElementById('comparison-com-rede-btn');
     const comparisonRedeGroupContainer = document.getElementById('comparison-rede-group-container');
     const comparisonFilialFilter = document.getElementById('comparison-filial-filter');
-    const comparisonCityFilter = document.getElementById('comparison-city-filter');
-    const comparisonCitySuggestions = document.getElementById('comparison-city-suggestions');
+    const comparisonCityFilterBtn = document.getElementById('comparison-city-filter-btn');
+    const comparisonCityFilterDropdown = document.getElementById('comparison-city-filter-dropdown');
+    const comparisonCityFilterList = document.getElementById('comparison-city-filter-list');
+    const comparisonCityFilterSearch = document.getElementById('comparison-city-filter-search');
     const clearComparisonFiltersBtn = document.getElementById('clear-comparison-filters-btn');
     const comparisonFornecedorToggleContainer = document.getElementById('comparison-fornecedor-toggle-container');
     const comparisonTendencyToggle = document.getElementById('comparison-tendency-toggle');
@@ -306,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.ano = comparisonAnoFilter.value;
             state.mes = comparisonMesFilter.value;
             state.filiais = comparisonFilialFilter.value === 'ambas' ? [] : [comparisonFilialFilter.value];
-            state.cidades = comparisonCityFilter.value ? [comparisonCityFilter.value] : [];
+            state.cidades = selectedComparisonCities;
             state.supervisores = selectedComparisonSupervisores;
             state.vendedores = selectedComparisonSellers;
             state.fornecedores = selectedComparisonSuppliers;
@@ -389,8 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
              const filiais = getList('filiais');
              if (filiais.length > 0) comparisonFilialFilter.value = filiais[0];
 
-             const cidades = getList('cidades');
-             if (cidades.length > 0) comparisonCityFilter.value = cidades[0];
+             selectedComparisonCities = getList('cidades');
 
              selectedComparisonSupervisores = getList('supervisores');
              selectedComparisonSellers = getList('vendedores');
@@ -1210,18 +1211,33 @@ document.addEventListener('DOMContentLoaded', () => {
             p_mes: boxesMesFilter.value === '' ? null : boxesMesFilter.value
         };
 
-        const { data, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
-        
-        hideDashboardLoading();
+        const cacheKey = generateCacheKey('boxes_dashboard_data', filters);
+        let data = null;
 
-        if (error) {
-            console.error(error);
-            if (error.message.includes('function get_boxes_dashboard_data') && error.message.includes('does not exist')) {
-                alert("Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
+        try {
+            const cachedEntry = await getFromCache(cacheKey);
+            if (cachedEntry && cachedEntry.data) {
+                console.log('Serving Boxes View from Cache');
+                data = cachedEntry.data;
             }
-            return;
+        } catch (e) { console.warn('Cache error:', e); }
+
+        if (!data) {
+            const { data: rpcData, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
+
+            if (error) {
+                console.error(error);
+                hideDashboardLoading();
+                if (error.message.includes('function get_boxes_dashboard_data') && error.message.includes('does not exist')) {
+                    alert("Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
+                }
+                return;
+            }
+            data = rpcData;
+            saveToCache(cacheKey, data);
         }
 
+        hideDashboardLoading();
         renderBoxesDashboard(data);
     }
 
@@ -3259,6 +3275,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let selectedComparisonProducts = [];
         let selectedComparisonTiposVenda = [];
         let selectedComparisonRedes = [];
+        let selectedComparisonCities = [];
         let comparisonRedeGroupFilter = '';
         let currentComparisonFornecedor = '';
         let useTendencyComparison = false;
@@ -3370,7 +3387,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 selectedComparisonRedes = [];
                 comparisonRedeGroupFilter = '';
                 currentComparisonFornecedor = '';
-                comparisonCityFilter.value = '';
+                selectedComparisonCities = [];
                 comparisonFilialFilter.value = 'ambas';
 
                 // Reset UI active states
@@ -3383,8 +3400,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         document.addEventListener('click', (e) => {
-            const dropdowns = [comparisonSupervisorFilterDropdown, comparisonVendedorFilterDropdown, comparisonSupplierFilterDropdown, comparisonProductFilterDropdown, comparisonTipoVendaFilterDropdown, comparisonRedeFilterDropdown];
-            const btns = [comparisonSupervisorFilterBtn, comparisonVendedorFilterBtn, comparisonSupplierFilterBtn, comparisonProductFilterBtn, comparisonTipoVendaFilterBtn, comparisonComRedeBtn];
+            const dropdowns = [comparisonSupervisorFilterDropdown, comparisonVendedorFilterDropdown, comparisonSupplierFilterDropdown, comparisonProductFilterDropdown, comparisonTipoVendaFilterDropdown, comparisonRedeFilterDropdown, comparisonCityFilterDropdown];
+            const btns = [comparisonSupervisorFilterBtn, comparisonVendedorFilterBtn, comparisonSupplierFilterBtn, comparisonProductFilterBtn, comparisonTipoVendaFilterBtn, comparisonComRedeBtn, comparisonCityFilterBtn];
             let anyClosed = false;
 
             dropdowns.forEach((dd, idx) => {
@@ -3503,8 +3520,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tipoList = getList('comparison-tipo-venda-filter-list') || comparisonTipoVendaFilterDropdown;
                 setupCityMultiSelect(comparisonTipoVendaFilterBtn, comparisonTipoVendaFilterDropdown, tipoList, filterData.tipos_venda, selectedComparisonTiposVenda);
 
-                // Autocomplete
-                setupAutocomplete(comparisonCityFilter, comparisonCitySuggestions, filterData.cidades || []);
+                // Products (Using same structure as boxes if available, assuming filterData.produtos is present or empty)
+                const prodList = getList('comparison-product-list') || comparisonProductFilterDropdown;
+                const prodSearch = document.getElementById('comparison-product-search-input');
+                setupCityMultiSelect(comparisonProductFilterBtn, comparisonProductFilterDropdown, prodList, filterData.produtos || [], selectedComparisonProducts, prodSearch, true);
+
+                // Cities (Multi Select)
+                setupCityMultiSelect(comparisonCityFilterBtn, comparisonCityFilterDropdown, comparisonCityFilterList, filterData.cidades || [], selectedComparisonCities, comparisonCityFilterSearch);
 
                 // Redes
                 const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
@@ -3524,10 +3546,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const filters = {
                 p_filial: comparisonFilialFilter.value === 'ambas' ? null : [comparisonFilialFilter.value],
-                p_cidade: comparisonCityFilter.value ? [comparisonCityFilter.value] : null,
+                p_cidade: selectedComparisonCities.length > 0 ? selectedComparisonCities : null,
                 p_supervisor: selectedComparisonSupervisors.length > 0 ? selectedComparisonSupervisors : null,
                 p_vendedor: selectedComparisonSellers.length > 0 ? selectedComparisonSellers : null,
                 p_fornecedor: selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null,
+                // p_produto: selectedComparisonProducts.length > 0 ? selectedComparisonProducts : null, -- Backend RPC update required
                 p_tipovenda: selectedComparisonTiposVenda.length > 0 ? selectedComparisonTiposVenda : null,
                 p_rede: selectedComparisonRedes.length > 0 ? selectedComparisonRedes : null,
                 p_ano: comparisonAnoFilter.value === 'todos' ? null : comparisonAnoFilter.value,
@@ -3545,15 +3568,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Note: Legacy "Pasta" logic might need clearer mapping if codes vary
             }
 
-            const { data, error } = await supabase.rpc('get_comparison_view_data', filters);
+            const cacheKey = generateCacheKey('comparison_view_data', filters);
+            let data = null;
 
-            if (error) {
-                console.error("RPC Error:", error);
-                hideDashboardLoading();
-                if (error.message.includes('function get_comparison_view_data') && error.message.includes('does not exist')) {
-                    alert("A função 'get_comparison_view_data' não foi encontrada no banco de dados. \n\nPor favor, execute o script 'sql/comparison_view_rpc.sql' no Supabase SQL Editor para corrigir isso.");
+            try {
+                const cachedEntry = await getFromCache(cacheKey);
+                if (cachedEntry && cachedEntry.data) {
+                    console.log('Serving Comparison View from Cache');
+                    data = cachedEntry.data;
                 }
-                return;
+            } catch (e) { console.warn('Cache error:', e); }
+
+            if (!data) {
+                const { data: rpcData, error } = await supabase.rpc('get_comparison_view_data', filters);
+
+                if (error) {
+                    console.error("RPC Error:", error);
+                    hideDashboardLoading();
+                    if (error.message.includes('function get_comparison_view_data') && error.message.includes('does not exist')) {
+                        alert("A função 'get_comparison_view_data' não foi encontrada no banco de dados. \n\nPor favor, execute o script 'sql/comparison_view_rpc.sql' no Supabase SQL Editor para corrigir isso.");
+                    }
+                    return;
+                }
+                data = rpcData;
+                saveToCache(cacheKey, data);
             }
 
             // Map RPC Data to UI format
