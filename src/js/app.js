@@ -1036,13 +1036,29 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.detailed?.length) { updateStatus('Limpar det...', 40); await clearTable('data_detailed'); await uploadBatch('data_detailed', data.detailed); }
             if (data.clients?.length) { updateStatus('Limpar cli...', 70); await clearTable('data_clients'); await uploadBatch('data_clients', data.clients); }
 
-            updateStatus('Atualizando resumo (Histórico)...', 80);
-            await supabase.rpc('refresh_cache_summary_history');
+            // CHUNKED CACHE REFRESH LOGIC
+            updateStatus('Iniciando processamento do resumo...', 80);
+            
+            // 1. Explicitly clear Summary Table
+            await clearTable('data_summary');
 
-            updateStatus('Atualizando resumo (Detalhado)...', 85);
-            await supabase.rpc('refresh_cache_summary_detailed');
+            // 2. Get Years
+            const { data: years, error: yearErr } = await supabase.rpc('get_available_years');
+            if (yearErr) throw new Error(`Erro ao buscar anos: ${yearErr.message}`);
 
-            updateStatus('Atualizando filtros...', 95);
+            if (years && years.length > 0) {
+                // 3. Loop and Process Each Year
+                for (let i = 0; i < years.length; i++) {
+                    const year = years[i];
+                    const progress = 80 + Math.round(((i + 1) / years.length) * 15); // 80% to 95%
+                    updateStatus(`Processando ano ${year}...`, progress);
+                    
+                    const { error: chunkErr } = await supabase.rpc('refresh_summary_year', { p_year: year });
+                    if (chunkErr) throw new Error(`Erro processando ano ${year}: ${chunkErr.message}`);
+                }
+            }
+
+            updateStatus('Atualizando filtros...', 98);
             await supabase.rpc('refresh_cache_filters');
 
         } catch (error) {
