@@ -671,11 +671,11 @@ BEGIN
     WITH raw_data AS (
         SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
         FROM public.data_detailed
-        WHERE EXTRACT(YEAR FROM dtped)::int = p_year AND EXTRACT(MONTH FROM dtped)::int = p_month
+        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
         UNION ALL
         SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
         FROM public.data_history
-        WHERE EXTRACT(YEAR FROM dtped)::int = p_year AND EXTRACT(MONTH FROM dtped)::int = p_month
+        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
     ),
     augmented_data AS (
         SELECT 
