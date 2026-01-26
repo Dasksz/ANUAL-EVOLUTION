@@ -509,6 +509,7 @@ GRANT EXECUTE ON FUNCTION public.truncate_table(text) TO authenticated;
 -- REFRESH CACHE FUNCTIONS (Split for Timeout Optimization - Chunked by Year)
 
 -- 1. Get Available Years
+-- 1. Get Available Years (Optimized using Range)
 CREATE OR REPLACE FUNCTION get_available_years()
 RETURNS int[]
 LANGUAGE plpgsql
@@ -516,14 +517,43 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+    min_year int;
+    max_year int;
     years int[];
 BEGIN
-    SELECT array_agg(DISTINCT y ORDER BY y DESC) INTO years
-    FROM (
-        SELECT EXTRACT(YEAR FROM dtped)::int as y FROM public.data_detailed
-        UNION
-        SELECT EXTRACT(YEAR FROM dtped)::int as y FROM public.data_history
-    ) t;
+    -- Get Min/Max from both tables efficiently using indexes
+    SELECT
+        LEAST(
+            (SELECT EXTRACT(YEAR FROM MIN(dtped))::int FROM public.data_detailed),
+            (SELECT EXTRACT(YEAR FROM MIN(dtped))::int FROM public.data_history)
+        ),
+        GREATEST(
+            (SELECT EXTRACT(YEAR FROM MAX(dtped))::int FROM public.data_detailed),
+            (SELECT EXTRACT(YEAR FROM MAX(dtped))::int FROM public.data_history)
+        )
+    INTO min_year, max_year;
+
+    -- Handle empty tables
+    IF min_year IS NULL THEN
+        min_year := COALESCE(
+            (SELECT EXTRACT(YEAR FROM MIN(dtped))::int FROM public.data_detailed),
+            (SELECT EXTRACT(YEAR FROM MIN(dtped))::int FROM public.data_history),
+            EXTRACT(YEAR FROM CURRENT_DATE)::int
+        );
+    END IF;
+
+    IF max_year IS NULL THEN
+        max_year := COALESCE(
+            (SELECT EXTRACT(YEAR FROM MAX(dtped))::int FROM public.data_detailed),
+            (SELECT EXTRACT(YEAR FROM MAX(dtped))::int FROM public.data_history),
+            EXTRACT(YEAR FROM CURRENT_DATE)::int
+        );
+    END IF;
+
+    -- Generate series
+    SELECT array_agg(y ORDER BY y DESC) INTO years
+    FROM generate_series(min_year, max_year) as y;
+
     RETURN years;
 END;
 $$;
