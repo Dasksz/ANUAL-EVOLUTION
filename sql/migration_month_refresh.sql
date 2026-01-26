@@ -1,6 +1,56 @@
--- Migration: Add refresh_summary_month function for granular updates
--- Use this to avoid timeouts when refreshing large datasets by year.
+-- Migration: Add refresh_summary_month function and optimize cache refresh logic
+-- Use this script to patch an existing database to avoid timeouts.
 
+-- 1. Optimize Year Fetching (Avoids Sequence Scans on large tables)
+CREATE OR REPLACE FUNCTION get_available_years()
+RETURNS int[]
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    min_year int;
+    max_year int;
+    years int[];
+BEGIN
+    -- Get Min/Max from both tables efficiently using indexes
+    SELECT
+        LEAST(
+            (SELECT EXTRACT(YEAR FROM MIN(dtped))::int FROM public.data_detailed),
+            (SELECT EXTRACT(YEAR FROM MIN(dtped))::int FROM public.data_history)
+        ),
+        GREATEST(
+            (SELECT EXTRACT(YEAR FROM MAX(dtped))::int FROM public.data_detailed),
+            (SELECT EXTRACT(YEAR FROM MAX(dtped))::int FROM public.data_history)
+        )
+    INTO min_year, max_year;
+
+    -- Handle empty tables
+    IF min_year IS NULL THEN
+        min_year := COALESCE(
+            (SELECT EXTRACT(YEAR FROM MIN(dtped))::int FROM public.data_detailed),
+            (SELECT EXTRACT(YEAR FROM MIN(dtped))::int FROM public.data_history),
+            EXTRACT(YEAR FROM CURRENT_DATE)::int
+        );
+    END IF;
+
+    IF max_year IS NULL THEN
+        max_year := COALESCE(
+            (SELECT EXTRACT(YEAR FROM MAX(dtped))::int FROM public.data_detailed),
+            (SELECT EXTRACT(YEAR FROM MAX(dtped))::int FROM public.data_history),
+            EXTRACT(YEAR FROM CURRENT_DATE)::int
+        );
+    END IF;
+
+    -- Generate series
+    SELECT array_agg(y ORDER BY y DESC) INTO years
+    FROM generate_series(min_year, max_year) as y;
+
+    RETURN years;
+END;
+$$;
+
+-- 2. Create Monthly Refresh Function (Granular Logic)
 CREATE OR REPLACE FUNCTION refresh_summary_month(p_year int, p_month int)
 RETURNS void
 LANGUAGE plpgsql
@@ -86,12 +136,10 @@ BEGIN
         ramo,
         total_caixas
     FROM client_agg;
-
-    -- No internal ANALYZE to keep chunks fast
 END;
 $$;
 
--- Update refresh_cache_filters to include ANALYZE
+-- 3. Update Refresh Filters Cache (Optimized: Analyze first)
 CREATE OR REPLACE FUNCTION refresh_cache_filters()
 RETURNS void
 LANGUAGE plpgsql
@@ -132,5 +180,33 @@ BEGIN
     LEFT JOIN public.dim_supervisores ds ON t.codsupervisor = ds.codigo
     LEFT JOIN public.dim_vendedores dv ON t.codusur = dv.codigo
     LEFT JOIN public.dim_fornecedores df ON t.codfor = df.codigo;
+END;
+$$;
+
+-- 4. Update Main Dashboard Cache Refresh (Updated to loop by MONTH)
+CREATE OR REPLACE FUNCTION refresh_dashboard_cache()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    r_year int;
+    r_month int;
+BEGIN
+    -- 1. Truncate Main
+    TRUNCATE TABLE public.data_summary;
+
+    -- 2. Loop Years and Months
+    FOR r_year IN SELECT y FROM unnest(get_available_years()) as y
+    LOOP
+        FOR r_month IN 1..12
+        LOOP
+            PERFORM refresh_summary_month(r_year, r_month);
+        END LOOP;
+    END LOOP;
+
+    -- 3. Refresh Filters
+    PERFORM refresh_cache_filters();
 END;
 $$;

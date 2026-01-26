@@ -793,14 +793,18 @@ SET search_path = public
 AS $$
 DECLARE
     r_year int;
+    r_month int;
 BEGIN
     -- 1. Truncate Main
     TRUNCATE TABLE public.data_summary;
 
-    -- 2. Loop Years
+    -- 2. Loop Years and Months
     FOR r_year IN SELECT y FROM unnest(get_available_years()) as y
     LOOP
-        PERFORM refresh_summary_year(r_year);
+        FOR r_month IN 1..12
+        LOOP
+            PERFORM refresh_summary_month(r_year, r_month);
+        END LOOP;
     END LOOP;
 
     -- 3. Refresh Filters
