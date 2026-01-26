@@ -1047,14 +1047,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (yearErr) throw new Error(`Erro ao buscar anos: ${yearErr.message}`);
 
             if (years && years.length > 0) {
-                // 3. Loop and Process Each Year
+                // 3. Loop and Process Each Year and Month (Granular to avoid timeout)
                 for (let i = 0; i < years.length; i++) {
                     const year = years[i];
-                    const progress = 80 + Math.round(((i + 1) / years.length) * 15); // 80% to 95%
-                    updateStatus(`Processando ano ${year}...`, progress);
-                    
-                    const { error: chunkErr } = await supabase.rpc('refresh_summary_year', { p_year: year });
-                    if (chunkErr) throw new Error(`Erro processando ano ${year}: ${chunkErr.message}`);
+                    for (let m = 1; m <= 12; m++) {
+                        // Calculate progress
+                        const yearStep = 15 / years.length;
+                        const monthStep = yearStep / 12;
+                        const progress = 80 + Math.round((i * yearStep) + (m * monthStep));
+                        
+                        updateStatus(`Processando ${m}/${year}...`, progress);
+                        const { error: chunkErr } = await supabase.rpc('refresh_summary_month', { p_year: year, p_month: m });
+                        
+                        if (chunkErr) throw new Error(`Erro processando ${m}/${year}: ${chunkErr.message}`);
+                    }
                 }
             }
 
