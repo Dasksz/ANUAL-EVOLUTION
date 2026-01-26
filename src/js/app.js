@@ -988,7 +988,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
-        const BATCH_SIZE = 4000;
+        // Reduced Batch Size to avoid 60s timeout during heavy inserts
+        const BATCH_SIZE = 2000;
         const CONCURRENT_REQUESTS = 10;
 
         const uploadBatch = async (table, items) => {
