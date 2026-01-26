@@ -612,7 +612,7 @@ self.onmessage = async (event) => {
                 // Unconditionally remove redundant fields to save space/bandwidth
                 delete newSale.cliente_nome;
                 delete newSale.bairro;
-                // delete newSale.descricao; // Kept for classification logic
+        delete newSale.descricao;
                 delete newSale.observacaofor;
                 
                 // 3. Normalization (Remove Text Columns, keep Codes)
