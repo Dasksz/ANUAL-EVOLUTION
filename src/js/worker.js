@@ -438,6 +438,24 @@ self.onmessage = async (event) => {
                 if (configuredFilial) {
                     newSale['FILIAL'] = configuredFilial;
                 }
+
+                // Specific Rule for Client 11625 in Dec 2025
+                if (originalCodCli === '11625') {
+                    let dtPed = newSale['DTPED'];
+                    const dtSaida = newSale['DTSAIDA'];
+                    let parsedDtPed = parseDate(dtPed);
+                    const parsedDtSaida = parseDate(dtSaida);
+
+                    if (parsedDtPed && parsedDtSaida && (parsedDtPed.getFullYear() < parsedDtSaida.getFullYear() || (parsedDtPed.getFullYear() === parsedDtSaida.getFullYear() && parsedDtPed.getMonth() < parsedDtSaida.getMonth()))) {
+                        parsedDtPed = parsedDtSaida;
+                    }
+                    const effectiveDate = parsedDtPed || parsedDtSaida;
+
+                    if (effectiveDate && effectiveDate.getFullYear() === 2025 && effectiveDate.getMonth() === 11) {
+                        newSale['FILIAL'] = '05';
+                    }
+                }
+
                 const finalFilial = String(newSale['FILIAL'] || '00').trim();
 
                 // 2. Identify Client Status (Active vs Inactive)
