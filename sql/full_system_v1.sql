@@ -1560,12 +1560,12 @@ BEGIN
             ),
             -- Products Table (Updated to JOIN dim_produtos)
             prod_base AS (
-                SELECT s.vlvenda, s.totpesoliq, s.qtvenda_embalagem_master, s.produto, dp.descricao
+                SELECT s.vlvenda, s.totpesoliq, s.qtvenda_embalagem_master, s.produto, dp.descricao, s.dtped
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
                 UNION ALL
-                SELECT s.vlvenda, s.totpesoliq, s.qtvenda_embalagem_master, s.produto, dp.descricao
+                SELECT s.vlvenda, s.totpesoliq, s.qtvenda_embalagem_master, s.produto, dp.descricao, s.dtped
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
@@ -1576,7 +1576,8 @@ BEGIN
                     MAX(descricao) as descricao,
                     SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas,
                     SUM(vlvenda) as faturamento,
-                    SUM(totpesoliq) as peso
+                    SUM(totpesoliq) as peso,
+                    MAX(dtped) as ultima_venda
                 FROM prod_base
                 GROUP BY 1
                 ORDER BY caixas DESC
@@ -1653,7 +1654,8 @@ BEGIN
                     MAX(descricao) as descricao,
                     SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas,
                     SUM(vlvenda) as faturamento,
-                    SUM(totpesoliq) as peso
+                    SUM(totpesoliq) as peso,
+                    MAX(dtped) as ultima_venda
                 FROM base_data
                 WHERE EXTRACT(YEAR FROM dtped) = %L %s
                 GROUP BY 1
