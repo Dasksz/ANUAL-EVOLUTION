@@ -24,6 +24,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/idb@7/build/umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="src/css/styles.css">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -968,9 +971,22 @@
 
                         <!-- Table -->
                         <div class="bg-[#1d2347] p-4 rounded-lg border border-slate-700 shadow-sm">
-                            <h2 class="text-lg font-semibold text-white text-center mb-4">Top Produtos por Caixas</h2>
+                            <div class="flex flex-col md:flex-row justify-between items-center mb-4">
+                                <h2 class="text-lg font-semibold text-white">Top Produtos por Caixas</h2>
+                                <div class="relative mt-2 md:mt-0">
+                                    <button id="boxes-export-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                        Exportar
+                                    </button>
+                                    <!-- Dropdown for export options -->
+                                    <div id="boxes-export-dropdown" class="hidden absolute right-0 mt-2 w-32 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-50">
+                                        <button id="boxes-export-excel" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white rounded-t-lg">Excel (.xlsx)</button>
+                                        <button id="boxes-export-pdf" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white rounded-b-lg">PDF</button>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="overflow-x-auto custom-scrollbar" style="max-height: 50vh;">
-                                <table class="min-w-full text-sm text-left text-slate-300">
+                                <table class="min-w-full text-sm text-left text-slate-300" id="boxes-products-table">
                                     <thead class="text-xs text-slate-400 uppercase sticky-header">
                                         <tr>
                                             <th class="px-4 py-3">Código</th>
@@ -978,6 +994,7 @@
                                             <th class="px-4 py-3 text-right">Caixas</th>
                                             <th class="px-4 py-3 text-right">Faturamento</th>
                                             <th class="px-4 py-3 text-right">Peso</th>
+                                            <th class="px-4 py-3 text-center">Última Venda</th>
                                         </tr>
                                     </thead>
                                     <tbody id="boxesProductTableBody" class="divide-y divide-slate-700"></tbody>
