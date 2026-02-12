@@ -104,6 +104,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const boxesTipovendaFilterBtn = document.getElementById('boxes-tipovenda-filter-btn');
     const boxesTipovendaFilterDropdown = document.getElementById('boxes-tipovenda-filter-dropdown');
     const boxesClearFiltersBtn = document.getElementById('boxes-clear-filters-btn');
+    // Boxes Export
+    const boxesExportBtn = document.getElementById('boxes-export-btn');
+    const boxesExportDropdown = document.getElementById('boxes-export-dropdown');
+    const boxesExportExcelBtn = document.getElementById('boxes-export-excel');
+    const boxesExportPdfBtn = document.getElementById('boxes-export-pdf');
 
     // City View Filter Logic
     const cityFilialFilterBtn = document.getElementById('city-filial-filter-btn');
@@ -1142,6 +1147,122 @@ document.addEventListener('DOMContentLoaded', () => {
     if (boxesAnoFilter) boxesAnoFilter.addEventListener('change', handleBoxesFilterChange);
     if (boxesMesFilter) boxesMesFilter.addEventListener('change', handleBoxesFilterChange);
 
+    // Boxes Export Logic
+    let currentBoxesTableData = [];
+
+    if (boxesExportBtn) {
+        boxesExportBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            boxesExportDropdown.classList.toggle('hidden');
+        });
+    }
+
+    if (boxesExportExcelBtn) {
+        boxesExportExcelBtn.addEventListener('click', () => {
+            exportBoxesTable('excel');
+            boxesExportDropdown.classList.add('hidden');
+        });
+    }
+
+    if (boxesExportPdfBtn) {
+        boxesExportPdfBtn.addEventListener('click', () => {
+            exportBoxesTable('pdf');
+            boxesExportDropdown.classList.add('hidden');
+        });
+    }
+
+    function exportBoxesTable(format) {
+        if (!currentBoxesTableData || currentBoxesTableData.length === 0) {
+            alert('Sem dados para exportar.');
+            return;
+        }
+
+        const filters = {
+            Ano: boxesAnoFilter.value !== 'todos' ? boxesAnoFilter.value : 'Todos',
+            Mes: boxesMesFilter.options[boxesMesFilter.selectedIndex]?.text || 'Todos',
+            Filiais: boxesSelectedFiliais.length > 0 ? boxesSelectedFiliais.join(', ') : 'Todas',
+            Supervisores: boxesSelectedSupervisores.length > 0 ? `${boxesSelectedSupervisores.length} selecionados` : 'Todos',
+            Fornecedores: boxesSelectedFornecedores.length > 0 ? `${boxesSelectedFornecedores.length} selecionados` : 'Todos',
+            Vendedores: boxesSelectedVendedores.length > 0 ? `${boxesSelectedVendedores.length} selecionados` : 'Todos',
+            Cidades: boxesSelectedCidades.length > 0 ? `${boxesSelectedCidades.length} selecionadas` : 'Todas'
+        };
+
+        const reportData = currentBoxesTableData.map(row => ({
+            "Código": row.produto,
+            "Descrição": row.descricao,
+            "Caixas": row.caixas,
+            "Faturamento": row.faturamento,
+            "Peso (kg)": row.peso,
+            "Última Venda": row.ultima_venda ? new Date(row.ultima_venda).toLocaleDateString('pt-BR') : '-'
+        }));
+
+        if (format === 'excel') {
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+
+            // Prepare Filter Info rows
+            const filterInfo = [
+                ["Relatório de Produtos por Caixas"],
+                ["Gerado em:", new Date().toLocaleString('pt-BR')],
+                [],
+                ["Filtros Aplicados:"],
+                ...Object.entries(filters).map(([k, v]) => [k, v]),
+                []
+            ];
+
+            // Create Worksheet
+            const ws = XLSX.utils.aoa_to_sheet(filterInfo);
+
+            // Append Data starting at row after filters
+            XLSX.utils.sheet_add_json(ws, reportData, { origin: -1 });
+
+            // Append sheet
+            XLSX.utils.book_append_sheet(wb, ws, "Produtos");
+
+            // Download
+            XLSX.writeFile(wb, `Relatorio_Caixas_${new Date().toISOString().slice(0,10)}.xlsx`);
+
+        } else if (format === 'pdf') {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFontSize(16);
+            doc.text("Relatório de Produtos por Caixas", 14, 15);
+
+            doc.setFontSize(10);
+            doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 22);
+
+            let yPos = 30;
+            doc.text("Filtros Aplicados:", 14, yPos);
+            yPos += 5;
+
+            doc.setFontSize(9);
+            Object.entries(filters).forEach(([k, v]) => {
+                doc.text(`${k}: ${v}`, 14, yPos);
+                yPos += 5;
+            });
+
+            // Table
+            doc.autoTable({
+                startY: yPos + 5,
+                head: [['Código', 'Descrição', 'Caixas', 'Faturamento', 'Peso (kg)', 'Última Venda']],
+                body: reportData.map(r => [
+                    r["Código"],
+                    r["Descrição"],
+                    Math.round(r["Caixas"]).toLocaleString('pt-BR'),
+                    r["Faturamento"].toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                    (r["Peso (kg)"]/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton',
+                    r["Última Venda"]
+                ]),
+                theme: 'striped',
+                headStyles: { fillColor: [22, 163, 74] }, // Emerald-600
+                styles: { fontSize: 8 }
+            });
+
+            doc.save(`Relatorio_Caixas_${new Date().toISOString().slice(0,10)}.pdf`);
+        }
+    }
+
     document.addEventListener('click', (e) => {
         const dropdowns = [boxesFilialFilterDropdown, boxesProdutoFilterDropdown, boxesSupervisorFilterDropdown, boxesVendedorFilterDropdown, boxesFornecedorFilterDropdown, boxesCidadeFilterDropdown, boxesTipovendaFilterDropdown];
         const btns = [boxesFilialFilterBtn, boxesProdutoFilterBtn, boxesSupervisorFilterBtn, boxesVendedorFilterBtn, boxesFornecedorFilterBtn, boxesCidadeFilterBtn, boxesTipovendaFilterBtn];
@@ -1152,6 +1273,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 anyClosed = true;
             }
         });
+
+        // Close export dropdown if clicked outside
+        if (boxesExportDropdown && !boxesExportDropdown.classList.contains('hidden') && !boxesExportDropdown.contains(e.target) && !boxesExportBtn.contains(e.target)) {
+            boxesExportDropdown.classList.add('hidden');
+        }
+
         if (anyClosed && !boxesView.classList.contains('hidden')) {
             handleBoxesFilterChange();
         }
@@ -1352,6 +1479,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Table
         const products = data.products_table || [];
+        currentBoxesTableData = products; // Store for export
+
         const tableBody = document.getElementById('boxesProductTableBody');
         if (products.length > 0) {
             tableBody.innerHTML = products.map(p => `
@@ -1361,10 +1490,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="p-2 text-right font-bold text-emerald-400">${Math.round(safeVal(p.caixas)).toLocaleString('pt-BR')}</td>
                     <td class="p-2 text-right">${safeVal(p.faturamento).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                     <td class="p-2 text-right">${(safeVal(p.peso) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} Ton</td>
+                    <td class="p-2 text-center text-slate-400">${p.ultima_venda ? new Date(p.ultima_venda).toLocaleDateString('pt-BR') : '-'}</td>
                 </tr>
             `).join('');
         } else {
-            tableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">Nenhum produto encontrado.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Nenhum produto encontrado.</td></tr>';
         }
     }
 
