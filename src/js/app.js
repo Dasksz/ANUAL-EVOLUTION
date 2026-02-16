@@ -997,7 +997,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const BATCH_SIZE = 2000;
         const CONCURRENT_REQUESTS = 10;
 
-        const uploadBatch = async (table, items) => {
+        const uploadBatch = async (table, items, customProgressMsg) => {
             const totalBatches = Math.ceil(items.length / BATCH_SIZE);
             let processedBatches = 0;
             const processChunk = async (chunkIndex) => {
@@ -1007,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await performUpsert(table, batch);
                 processedBatches++;
                 const progress = Math.round((processedBatches / totalBatches) * 100);
-                updateStatus(`Enviando ${table}... ${progress}%`, progress);
+                updateStatus(customProgressMsg ? `${customProgressMsg} ${progress}%` : `Enviando ${table}... ${progress}%`, progress);
             };
              const queue = Array.from({ length: totalBatches }, (_, i) => i);
              const worker = async () => {
@@ -1017,6 +1017,72 @@ document.addEventListener('DOMContentLoaded', () => {
                  }
              };
              await Promise.all(Array.from({ length: Math.min(CONCURRENT_REQUESTS, totalBatches) }, worker));
+        };
+
+        // Incremental Sync Logic
+        const syncTable = async (table, newRows, progressLabel) => {
+            updateStatus(`Sincronizando ${progressLabel}: Verificando...`, 0);
+
+            // 1. Fetch Remote Hashes (Server-Side)
+            const { data: remoteHashesData, error: hashError } = await supabase.rpc('get_table_hashes', { p_table_name: table });
+            if (hashError) {
+                // Fallback to truncate if hash function missing or error
+                console.warn(`Hash sync failed for ${table}, falling back to truncate.`, hashError);
+                await clearTable(table);
+                await uploadBatch(table, newRows);
+                return;
+            }
+
+            const remoteHashes = new Set((remoteHashesData || []).map(r => r.row_hash));
+
+            // 2. Diff Calculation
+            updateStatus(`Sincronizando ${progressLabel}: Calculando diff...`, 10);
+
+            const rowsToInsert = [];
+            const localHashes = new Set();
+
+            // Identify Inserts
+            newRows.forEach(row => {
+                if (row.row_hash) {
+                    localHashes.add(row.row_hash);
+                    if (!remoteHashes.has(row.row_hash)) {
+                        rowsToInsert.push(row);
+                    }
+                } else {
+                    // Safety net
+                    rowsToInsert.push(row);
+                }
+            });
+
+            // Identify Deletes
+            const hashesToDelete = [];
+            remoteHashes.forEach(hash => {
+                if (!localHashes.has(hash)) {
+                    hashesToDelete.push(hash);
+                }
+            });
+
+            console.log(`[Sync ${table}] Local: ${newRows.length}, Remote: ${remoteHashes.size} -> Insert: ${rowsToInsert.length}, Delete: ${hashesToDelete.length}`);
+
+            // 3. Perform Deletions
+            if (hashesToDelete.length > 0) {
+                updateStatus(`Sincronizando ${progressLabel}: Removendo obsoletos...`, 20);
+                const BATCH_DELETE = 5000;
+                for (let i = 0; i < hashesToDelete.length; i += BATCH_DELETE) {
+                     const batch = hashesToDelete.slice(i, i + BATCH_DELETE);
+                     await retryOperation(async () => {
+                         const { error } = await supabase.rpc('delete_by_hashes', { p_table_name: table, p_hashes: batch });
+                         if (error) throw error;
+                     });
+                }
+            }
+
+            // 4. Perform Inserts
+            if (rowsToInsert.length > 0) {
+                await uploadBatch(table, rowsToInsert, `Sincronizando ${progressLabel}: Enviando novos`);
+            } else {
+                updateStatus(`${progressLabel}: Sincronizado!`, 100);
+            }
         };
 
         try {
@@ -1038,9 +1104,16 @@ document.addEventListener('DOMContentLoaded', () => {
                  await performDimensionUpsert('dim_fornecedores', data.newProviders);
             }
 
-            if (data.history?.length) { updateStatus('Limpar hist...', 10); await clearTable('data_history'); await uploadBatch('data_history', data.history); }
-            if (data.detailed?.length) { updateStatus('Limpar det...', 40); await clearTable('data_detailed'); await uploadBatch('data_detailed', data.detailed); }
-            if (data.clients?.length) { updateStatus('Limpar cli...', 70); await clearTable('data_clients'); await uploadBatch('data_clients', data.clients); }
+            // Incremental Sync Execution
+            if (data.history?.length) {
+                await syncTable('data_history', data.history, 'Histórico');
+            }
+            if (data.detailed?.length) {
+                await syncTable('data_detailed', data.detailed, 'Vendas Mês');
+            }
+            if (data.clients?.length) {
+                await syncTable('data_clients', data.clients, 'Clientes');
+            }
 
             // CHUNKED CACHE REFRESH LOGIC
             updateStatus('Iniciando processamento do resumo...', 80);
