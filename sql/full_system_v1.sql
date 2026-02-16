@@ -841,6 +841,7 @@ END;
 $$;
 
 -- 4. Refresh Dashboard Cache Wrapper (Looping version for manual use)
+-- 4. Refresh Dashboard Cache Wrapper (Optimized for manual use)
 CREATE OR REPLACE FUNCTION refresh_dashboard_cache()
 RETURNS void
 LANGUAGE plpgsql
@@ -849,18 +850,17 @@ SET search_path = public
 AS $$
 DECLARE
     r_year int;
-    r_month int;
 BEGIN
+    -- Increase timeout for this bulk operation
+    SET LOCAL statement_timeout = '300s';
+
     -- 1. Truncate Main
     TRUNCATE TABLE public.data_summary;
     
-    -- 2. Loop Years and Months
+    -- 2. Loop Years (More efficient than months)
     FOR r_year IN SELECT y FROM unnest(get_available_years()) as y
     LOOP
-        FOR r_month IN 1..12
-        LOOP
-            PERFORM refresh_summary_month(r_year, r_month);
-        END LOOP;
+        PERFORM refresh_summary_year(r_year);
     END LOOP;
 
     -- 3. Refresh Filters
