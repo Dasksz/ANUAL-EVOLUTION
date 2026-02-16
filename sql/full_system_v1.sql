@@ -39,7 +39,6 @@ create table if not exists public.data_detailed (
   tipovenda text,
   filial text,
   row_hash text,
-  row_hash text,
   created_at timestamp with time zone default now()
 );
 
@@ -69,6 +68,7 @@ create table if not exists public.data_history (
   qtvenda_embalagem_master numeric,
   tipovenda text,
   filial text,
+  row_hash text,
   created_at timestamp with time zone default now()
 );
 
@@ -501,8 +501,10 @@ END;
 $$;
 
 -- Incremental Upload: Get Hashes
-CREATE OR REPLACE FUNCTION public.get_table_hashes(p_table_name text)
-RETURNS TABLE (row_hash text)
+DROP FUNCTION IF EXISTS public.get_table_hashes(text);
+
+CREATE OR REPLACE FUNCTION public.get_table_hashes(p_table_name text, p_offset int, p_limit int)
+RETURNS TABLE (hash text)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
@@ -513,11 +515,25 @@ BEGIN
     END IF;
 
     IF p_table_name = 'data_detailed' THEN
-        RETURN QUERY SELECT t.row_hash FROM public.data_detailed t WHERE t.row_hash IS NOT NULL;
+        RETURN QUERY SELECT t.row_hash 
+                     FROM public.data_detailed t 
+                     WHERE t.row_hash IS NOT NULL 
+                     ORDER BY t.row_hash 
+                     LIMIT p_limit OFFSET p_offset;
+                     
     ELSIF p_table_name = 'data_history' THEN
-        RETURN QUERY SELECT t.row_hash FROM public.data_history t WHERE t.row_hash IS NOT NULL;
+        RETURN QUERY SELECT t.row_hash 
+                     FROM public.data_history t 
+                     WHERE t.row_hash IS NOT NULL 
+                     ORDER BY t.row_hash 
+                     LIMIT p_limit OFFSET p_offset;
+                     
     ELSIF p_table_name = 'data_clients' THEN
-        RETURN QUERY SELECT t.row_hash FROM public.data_clients t WHERE t.row_hash IS NOT NULL;
+        RETURN QUERY SELECT t.row_hash 
+                     FROM public.data_clients t 
+                     WHERE t.row_hash IS NOT NULL 
+                     ORDER BY t.row_hash 
+                     LIMIT p_limit OFFSET p_offset;
     ELSE
         RAISE EXCEPTION 'Tabela inválida: %', p_table_name;
     END IF;
@@ -713,27 +729,53 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    SET LOCAL statement_timeout = '600s';
+    SET LOCAL statement_timeout = '1200s'; -- Increased to 20 mins
 
     -- Clear data for this year/month first (avoid duplicates)
     DELETE FROM public.data_summary WHERE ano = p_year AND mes = p_month;
     
+    -- Use Temp Table to materialize raw data and index it before joining
+    CREATE TEMPORARY TABLE IF NOT EXISTS temp_raw_sales (
+        dtped timestamp with time zone,
+        filial text,
+        cidade text,
+        codsupervisor text,
+        codusur text,
+        codfor text,
+        tipovenda text,
+        codcli text,
+        vlvenda numeric,
+        totpesoliq numeric,
+        vlbonific numeric,
+        vldevolucao numeric,
+        produto text,
+        qtvenda_embalagem_master numeric
+    ) ON COMMIT DROP;
+    
+    TRUNCATE TABLE temp_raw_sales;
+
+    INSERT INTO temp_raw_sales
+    SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+    FROM public.data_detailed
+    WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month');
+
+    INSERT INTO temp_raw_sales
+    SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+    FROM public.data_history
+    WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month');
+
+    CREATE INDEX IF NOT EXISTS idx_temp_raw_sales_codcli ON temp_raw_sales(codcli);
+    CREATE INDEX IF NOT EXISTS idx_temp_raw_sales_produto ON temp_raw_sales(produto);
+    
+    ANALYZE temp_raw_sales;
+
     INSERT INTO public.data_summary (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao, 
         pre_mix_count, pre_positivacao_val,
         ramo, caixas
     )
-    WITH raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
-        FROM public.data_detailed
-        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
-        UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
-        FROM public.data_history
-        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
-    ),
-    augmented_data AS (
+    WITH augmented_data AS (
         SELECT 
             EXTRACT(YEAR FROM s.dtped)::int as ano,
             EXTRACT(MONTH FROM s.dtped)::int as mes,
@@ -756,7 +798,7 @@ BEGIN
             s.codcli,
             s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
             c.ramo
-        FROM raw_data s
+        FROM temp_raw_sales s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
         LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
     ),
@@ -792,7 +834,7 @@ BEGIN
         total_caixas
     FROM client_agg;
     
-    -- No internal ANALYZE to keep chunks fast
+    DROP TABLE temp_raw_sales;
 END;
 $$;
 
@@ -841,6 +883,7 @@ END;
 $$;
 
 -- 4. Refresh Dashboard Cache Wrapper (Looping version for manual use)
+-- 4. Refresh Dashboard Cache Wrapper (Optimized for manual use)
 CREATE OR REPLACE FUNCTION refresh_dashboard_cache()
 RETURNS void
 LANGUAGE plpgsql
@@ -849,18 +892,17 @@ SET search_path = public
 AS $$
 DECLARE
     r_year int;
-    r_month int;
 BEGIN
+    -- Increase timeout for this bulk operation
+    SET LOCAL statement_timeout = '300s';
+
     -- 1. Truncate Main
     TRUNCATE TABLE public.data_summary;
     
-    -- 2. Loop Years and Months
+    -- 2. Loop Years (More efficient than months)
     FOR r_year IN SELECT y FROM unnest(get_available_years()) as y
     LOOP
-        FOR r_month IN 1..12
-        LOOP
-            PERFORM refresh_summary_month(r_year, r_month);
-        END LOOP;
+        PERFORM refresh_summary_year(r_year);
     END LOOP;
 
     -- 3. Refresh Filters
