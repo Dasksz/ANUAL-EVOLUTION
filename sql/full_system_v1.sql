@@ -729,27 +729,53 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    SET LOCAL statement_timeout = '600s';
+    SET LOCAL statement_timeout = '1200s'; -- Increased to 20 mins
 
     -- Clear data for this year/month first (avoid duplicates)
     DELETE FROM public.data_summary WHERE ano = p_year AND mes = p_month;
     
+    -- Use Temp Table to materialize raw data and index it before joining
+    CREATE TEMPORARY TABLE IF NOT EXISTS temp_raw_sales (
+        dtped timestamp with time zone,
+        filial text,
+        cidade text,
+        codsupervisor text,
+        codusur text,
+        codfor text,
+        tipovenda text,
+        codcli text,
+        vlvenda numeric,
+        totpesoliq numeric,
+        vlbonific numeric,
+        vldevolucao numeric,
+        produto text,
+        qtvenda_embalagem_master numeric
+    ) ON COMMIT DROP;
+
+    TRUNCATE TABLE temp_raw_sales;
+
+    INSERT INTO temp_raw_sales
+    SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+    FROM public.data_detailed
+    WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month');
+
+    INSERT INTO temp_raw_sales
+    SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+    FROM public.data_history
+    WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month');
+
+    CREATE INDEX IF NOT EXISTS idx_temp_raw_sales_codcli ON temp_raw_sales(codcli);
+    CREATE INDEX IF NOT EXISTS idx_temp_raw_sales_produto ON temp_raw_sales(produto);
+
+    ANALYZE temp_raw_sales;
+
     INSERT INTO public.data_summary (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao, 
         pre_mix_count, pre_positivacao_val,
         ramo, caixas
     )
-    WITH raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
-        FROM public.data_detailed
-        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
-        UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
-        FROM public.data_history
-        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
-    ),
-    augmented_data AS (
+    WITH augmented_data AS (
         SELECT 
             EXTRACT(YEAR FROM s.dtped)::int as ano,
             EXTRACT(MONTH FROM s.dtped)::int as mes,
@@ -772,7 +798,7 @@ BEGIN
             s.codcli,
             s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
             c.ramo
-        FROM raw_data s
+        FROM temp_raw_sales s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
         LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
     ),
@@ -808,7 +834,7 @@ BEGIN
         total_caixas
     FROM client_agg;
     
-    -- No internal ANALYZE to keep chunks fast
+    DROP TABLE temp_raw_sales;
 END;
 $$;
 

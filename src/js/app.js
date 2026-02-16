@@ -959,10 +959,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     return await operation();
                 } catch (error) {
+                    // Check for timeout explicitly to potentially retry with longer backoff
+                    const isTimeout = error.message && (error.message.includes('timeout') || error.message.includes('504'));
+
                     if (i === retries - 1) throw error;
-                    console.warn(`Tentativa ${i + 1} falhou. Retentando em ${delay}ms...`, error);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    delay *= 2; // Exponential backoff
+
+                    const backoff = isTimeout ? delay * 3 : delay * 2; // Aggressive backoff for timeouts
+                    console.warn(`Tentativa ${i + 1} falhou. Retentando em ${backoff}ms...`, error);
+                    await new Promise(resolve => setTimeout(resolve, backoff));
+                    delay = backoff;
                 }
             }
         };
