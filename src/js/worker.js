@@ -16,23 +16,6 @@ function parseDate(dateString) {
     return !isNaN(isoDate.getTime()) ? isoDate : null;
 }
 
-async function generateHash(obj) {
-    // Deterministic string representation: Sort keys and stringify values
-    const keys = Object.keys(obj).sort();
-    const values = keys.map(k => {
-        const val = obj[k];
-        if (val === null || val === undefined) return '';
-        if (val instanceof Date) return val.toISOString();
-        return String(val);
-    });
-    const message = values.join('|'); // Use pipe separator to avoid JSON ambiguity issues with strings
-    
-    const msgBuffer = new TextEncoder().encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
 function parseBrazilianNumber(value) {
     if (typeof value === 'number') return value;
     if (typeof value !== 'string' || !value) return 0;
@@ -268,16 +251,11 @@ self.onmessage = async (event) => {
         // Process Clients
         self.postMessage({ type: 'progress', status: 'Processando clientes...', percentage: 20 });
         const clientMap = new Map();
-        const processedClientCodes = new Set();
         const clientsToInsert = [];
 
         clientsDataRaw.forEach(client => {
             const codCli = String(client['Código'] || '').trim();
             if (!codCli) return;
-            
-            // Deduplication: Skip if already processed
-            if (processedClientCodes.has(codCli)) return;
-            processedClientCodes.add(codCli);
 
             const rca1 = String(client['RCA 1'] || '');
             // RCA 2 Removed
@@ -619,8 +597,8 @@ self.onmessage = async (event) => {
         // --- Final Processing (Bonification Only) ---
         // Note: Branch Override and Tiago Rule removed as City Map now dictates branch assignment.
 
-        const finalizeSalesData = async (salesArray, isHistory = false) => {
-             const processed = salesArray.map(sale => {
+        const finalizeSalesData = (salesArray, isHistory = false) => {
+             return salesArray.map(sale => {
                 let newSale = { ...sale };
 
                 // 1. Bonification Logic
@@ -634,7 +612,7 @@ self.onmessage = async (event) => {
                 // Unconditionally remove redundant fields to save space/bandwidth
                 delete newSale.cliente_nome;
                 delete newSale.bairro;
-                delete newSale.descricao;
+        delete newSale.descricao;
                 delete newSale.observacaofor;
                 
                 // 3. Normalization (Remove Text Columns, keep Codes)
@@ -653,22 +631,11 @@ self.onmessage = async (event) => {
 
                 return newSale;
              });
-
-             return Promise.all(processed.map(async (item) => {
-                 item.row_hash = await generateHash(item);
-                 return item;
-             }));
         };
 
-        const finalPrevYear = await finalizeSalesData(processedPrevYear, true);
-        const finalCurrYearHist = await finalizeSalesData(processedCurrYearHist, true);
-        const finalCurrMonth = await finalizeSalesData(processedCurrMonth, false);
-
-        // Process Clients Hash
-        const finalClients = await Promise.all(clientsToInsert.map(async (c) => {
-            c.row_hash = await generateHash(c);
-            return c;
-        }));
+        const finalPrevYear = finalizeSalesData(processedPrevYear, true);
+        const finalCurrYearHist = finalizeSalesData(processedCurrYearHist, true);
+        const finalCurrMonth = finalizeSalesData(processedCurrMonth, false);
 
         self.postMessage({ type: 'progress', status: 'Preparando dados para envio...', percentage: 90 });
 
@@ -679,7 +646,7 @@ self.onmessage = async (event) => {
         const resultPayload = {
             history: [...finalPrevYear, ...finalCurrYearHist],
             detailed: finalCurrMonth,
-            clients: finalClients,
+            clients: clientsToInsert,
             newCities: Array.from(newCitiesSet),
             newSupervisors: mapToObjArray(dimSupervisors),
             newVendors: mapToObjArray(dimVendors),
