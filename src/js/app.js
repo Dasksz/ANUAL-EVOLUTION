@@ -969,7 +969,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const performUpsert = async (table, batch) => {
             await retryOperation(async () => {
-                const { error } = await supabase.from(table).insert(batch);
+                // Determine method: UPSERT for clients (unique key), INSERT for others (transactional)
+                const isClients = (table === 'data_clients');
+
+                let query = supabase.from(table);
+                if (isClients) {
+                    // Use Upsert to handle unique constraint conflicts on codigo_cliente
+                    query = query.upsert(batch, { onConflict: 'codigo_cliente' });
+                } else {
+                    query = query.insert(batch);
+                }
+
+                const { error } = await query;
                 if (error) throw new Error(`Erro ${table}: ${error.message}`);
             });
         };
@@ -1023,18 +1034,40 @@ document.addEventListener('DOMContentLoaded', () => {
         const syncTable = async (table, newRows, progressLabel) => {
             updateStatus(`Sincronizando ${progressLabel}: Verificando...`, 0);
 
-            // 1. Fetch Remote Hashes (Server-Side)
-            const { data: remoteHashesData, error: hashError } = await supabase.rpc('get_table_hashes', { p_table_name: table });
-            if (hashError) {
+            // 1. Fetch Remote Hashes (Paginated)
+            const remoteHashes = new Set();
+            const PAGE_SIZE = 50000; // Fetch 50k hashes at a time
+            let offset = 0;
+            let hasMore = true;
+
+            try {
+                while (hasMore) {
+                    const { data: pageData, error: hashError } = await supabase.rpc('get_table_hashes', {
+                        p_table_name: table,
+                        p_offset: offset,
+                        p_limit: PAGE_SIZE
+                    });
+
+                    if (hashError) throw hashError;
+
+                    if (pageData && pageData.length > 0) {
+                        pageData.forEach(r => remoteHashes.add(r.hash || r.row_hash));
+                        offset += PAGE_SIZE;
+                        // Safety: if we got less than requested, we are done
+                        if (pageData.length < PAGE_SIZE) hasMore = false;
+                    } else {
+                        hasMore = false;
+                    }
+
+                    updateStatus(`Sincronizando ${progressLabel}: Lendo hashes (${remoteHashes.size})...`, 5);
+                }
+            } catch (hashError) {
                 // Fallback to truncate if hash function missing or error
                 console.warn(`Hash sync failed for ${table}, falling back to truncate.`, hashError);
                 await clearTable(table);
                 await uploadBatch(table, newRows);
                 return;
             }
-
-            // Map hash column from RPC (renamed to avoid ambiguity)
-            const remoteHashes = new Set((remoteHashesData || []).map(r => r.hash || r.row_hash));
 
             // 2. Diff Calculation
             updateStatus(`Sincronizando ${progressLabel}: Calculando diff...`, 10);

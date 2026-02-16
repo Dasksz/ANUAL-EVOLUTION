@@ -268,11 +268,16 @@ self.onmessage = async (event) => {
         // Process Clients
         self.postMessage({ type: 'progress', status: 'Processando clientes...', percentage: 20 });
         const clientMap = new Map();
+        const processedClientCodes = new Set();
         const clientsToInsert = [];
 
         clientsDataRaw.forEach(client => {
             const codCli = String(client['Código'] || '').trim();
             if (!codCli) return;
+
+            // Deduplication: Skip if already processed
+            if (processedClientCodes.has(codCli)) return;
+            processedClientCodes.add(codCli);
 
             const rca1 = String(client['RCA 1'] || '');
             // RCA 2 Removed

@@ -68,6 +68,7 @@ create table if not exists public.data_history (
   qtvenda_embalagem_master numeric,
   tipovenda text,
   filial text,
+  row_hash text,
   created_at timestamp with time zone default now()
 );
 
@@ -500,8 +501,10 @@ END;
 $$;
 
 -- Incremental Upload: Get Hashes
-CREATE OR REPLACE FUNCTION public.get_table_hashes(p_table_name text)
-RETURNS TABLE (row_hash text)
+DROP FUNCTION IF EXISTS public.get_table_hashes(text);
+
+CREATE OR REPLACE FUNCTION public.get_table_hashes(p_table_name text, p_offset int, p_limit int)
+RETURNS TABLE (hash text)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
@@ -512,11 +515,25 @@ BEGIN
     END IF;
 
     IF p_table_name = 'data_detailed' THEN
-        RETURN QUERY SELECT t.row_hash FROM public.data_detailed t WHERE t.row_hash IS NOT NULL;
+        RETURN QUERY SELECT t.row_hash
+                     FROM public.data_detailed t
+                     WHERE t.row_hash IS NOT NULL
+                     ORDER BY t.row_hash
+                     LIMIT p_limit OFFSET p_offset;
+
     ELSIF p_table_name = 'data_history' THEN
-        RETURN QUERY SELECT t.row_hash FROM public.data_history t WHERE t.row_hash IS NOT NULL;
+        RETURN QUERY SELECT t.row_hash
+                     FROM public.data_history t
+                     WHERE t.row_hash IS NOT NULL
+                     ORDER BY t.row_hash
+                     LIMIT p_limit OFFSET p_offset;
+
     ELSIF p_table_name = 'data_clients' THEN
-        RETURN QUERY SELECT t.row_hash FROM public.data_clients t WHERE t.row_hash IS NOT NULL;
+        RETURN QUERY SELECT t.row_hash
+                     FROM public.data_clients t
+                     WHERE t.row_hash IS NOT NULL
+                     ORDER BY t.row_hash
+                     LIMIT p_limit OFFSET p_offset;
     ELSE
         RAISE EXCEPTION 'Tabela inválida: %', p_table_name;
     END IF;
