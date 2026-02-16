@@ -994,8 +994,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // Reduced Batch Size to avoid 60s timeout during heavy inserts
-        const BATCH_SIZE = 2000;
-        const CONCURRENT_REQUESTS = 10;
+        const BATCH_SIZE = 500;
+        const CONCURRENT_REQUESTS = 3;
 
         const uploadBatch = async (table, items, customProgressMsg) => {
             const totalBatches = Math.ceil(items.length / BATCH_SIZE);
@@ -1033,7 +1033,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const remoteHashes = new Set((remoteHashesData || []).map(r => r.row_hash));
+            // Map hash column from RPC (renamed to avoid ambiguity)
+            const remoteHashes = new Set((remoteHashesData || []).map(r => r.hash || r.row_hash));
 
             // 2. Diff Calculation
             updateStatus(`Sincronizando ${progressLabel}: Calculando diff...`, 10);

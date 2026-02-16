@@ -39,7 +39,6 @@ create table if not exists public.data_detailed (
   tipovenda text,
   filial text,
   row_hash text,
-  row_hash text,
   created_at timestamp with time zone default now()
 );
 
