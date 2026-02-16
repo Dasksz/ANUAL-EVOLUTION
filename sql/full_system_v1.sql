@@ -38,6 +38,8 @@ create table if not exists public.data_detailed (
   qtvenda_embalagem_master numeric,
   tipovenda text,
   filial text,
+  row_hash text,
+  row_hash text,
   created_at timestamp with time zone default now()
 );
 
@@ -115,6 +117,7 @@ create table if not exists public.data_clients (
   ramo text,
   ultimacompra timestamp with time zone,
   bloqueio text,
+  row_hash text,
   created_at timestamp with time zone default now()
 );
 
@@ -264,6 +267,11 @@ CREATE INDEX IF NOT EXISTS idx_clients_cidade ON public.data_clients(cidade);
 CREATE INDEX IF NOT EXISTS idx_clients_bloqueio_cidade ON public.data_clients (bloqueio, cidade);
 CREATE INDEX IF NOT EXISTS idx_clients_ramo ON public.data_clients (ramo);
 CREATE INDEX IF NOT EXISTS idx_clients_busca ON public.data_clients (codigo_cliente, rca1, cidade);
+
+-- HASH INDEXES (Incremental Upload)
+CREATE INDEX IF NOT EXISTS idx_detailed_hash ON public.data_detailed (row_hash);
+CREATE INDEX IF NOT EXISTS idx_history_hash ON public.data_history (row_hash);
+CREATE INDEX IF NOT EXISTS idx_clients_hash ON public.data_clients (row_hash);
 
 -- NEW OPTIMIZATION INDEXES
 CREATE INDEX IF NOT EXISTS idx_dim_produtos_mix_marca ON public.dim_produtos (mix_marca);
@@ -489,6 +497,54 @@ BEGIN
     -- Also clear derived tables
     TRUNCATE TABLE public.data_summary;
     TRUNCATE TABLE public.cache_filters;
+END;
+$$;
+
+-- Incremental Upload: Get Hashes
+CREATE OR REPLACE FUNCTION public.get_table_hashes(p_table_name text)
+RETURNS TABLE (row_hash text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF NOT public.is_admin() THEN
+        RAISE EXCEPTION 'Acesso negado. Apenas administradores podem sincronizar dados.';
+    END IF;
+
+    IF p_table_name = 'data_detailed' THEN
+        RETURN QUERY SELECT t.row_hash FROM public.data_detailed t WHERE t.row_hash IS NOT NULL;
+    ELSIF p_table_name = 'data_history' THEN
+        RETURN QUERY SELECT t.row_hash FROM public.data_history t WHERE t.row_hash IS NOT NULL;
+    ELSIF p_table_name = 'data_clients' THEN
+        RETURN QUERY SELECT t.row_hash FROM public.data_clients t WHERE t.row_hash IS NOT NULL;
+    ELSE
+        RAISE EXCEPTION 'Tabela inválida: %', p_table_name;
+    END IF;
+END;
+$$;
+
+-- Incremental Upload: Delete by Hashes
+CREATE OR REPLACE FUNCTION public.delete_by_hashes(p_table_name text, p_hashes text[])
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF NOT public.is_admin() THEN
+        RAISE EXCEPTION 'Acesso negado.';
+    END IF;
+
+    IF p_table_name = 'data_detailed' THEN
+        DELETE FROM public.data_detailed WHERE row_hash = ANY(p_hashes);
+    ELSIF p_table_name = 'data_history' THEN
+        DELETE FROM public.data_history WHERE row_hash = ANY(p_hashes);
+    ELSIF p_table_name = 'data_clients' THEN
+        DELETE FROM public.data_clients WHERE row_hash = ANY(p_hashes);
+    ELSE
+        RAISE EXCEPTION 'Tabela inválida: %', p_table_name;
+    END IF;
 END;
 $$;
 
