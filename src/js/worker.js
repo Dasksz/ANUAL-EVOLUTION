@@ -26,7 +26,7 @@ async function generateHash(obj) {
         return String(val);
     });
     const message = values.join('|'); // Use pipe separator to avoid JSON ambiguity issues with strings
-
+    
     const msgBuffer = new TextEncoder().encode(message);
     const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -268,11 +268,16 @@ self.onmessage = async (event) => {
         // Process Clients
         self.postMessage({ type: 'progress', status: 'Processando clientes...', percentage: 20 });
         const clientMap = new Map();
+        const processedClientCodes = new Set();
         const clientsToInsert = [];
 
         clientsDataRaw.forEach(client => {
             const codCli = String(client['Código'] || '').trim();
             if (!codCli) return;
+            
+            // Deduplication: Skip if already processed
+            if (processedClientCodes.has(codCli)) return;
+            processedClientCodes.add(codCli);
 
             const rca1 = String(client['RCA 1'] || '');
             // RCA 2 Removed
