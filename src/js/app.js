@@ -959,33 +959,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     return await operation();
                 } catch (error) {
-                    // Check for timeout explicitly to potentially retry with longer backoff
-                    const isTimeout = error.message && (error.message.includes('timeout') || error.message.includes('504'));
-                    
                     if (i === retries - 1) throw error;
-                    
-                    const backoff = isTimeout ? delay * 3 : delay * 2; // Aggressive backoff for timeouts
-                    console.warn(`Tentativa ${i + 1} falhou. Retentando em ${backoff}ms...`, error);
-                    await new Promise(resolve => setTimeout(resolve, backoff));
-                    delay = backoff;
+                    console.warn(`Tentativa ${i + 1} falhou. Retentando em ${delay}ms...`, error);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; // Exponential backoff
                 }
             }
         };
 
         const performUpsert = async (table, batch) => {
             await retryOperation(async () => {
-                // Determine method: UPSERT for clients (unique key), INSERT for others (transactional)
-                const isClients = (table === 'data_clients');
-                
-                let query = supabase.from(table);
-                if (isClients) {
-                    // Use Upsert to handle unique constraint conflicts on codigo_cliente
-                    query = query.upsert(batch, { onConflict: 'codigo_cliente' });
-                } else {
-                    query = query.insert(batch);
-                }
-                
-                const { error } = await query;
+                const { error } = await supabase.from(table).insert(batch);
                 if (error) throw new Error(`Erro ${table}: ${error.message}`);
             });
         };
@@ -1010,10 +994,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // Reduced Batch Size to avoid 60s timeout during heavy inserts
-        const BATCH_SIZE = 500;
-        const CONCURRENT_REQUESTS = 3;
+        const BATCH_SIZE = 2000;
+        const CONCURRENT_REQUESTS = 10;
 
-        const uploadBatch = async (table, items, customProgressMsg) => {
+        const uploadBatch = async (table, items) => {
             const totalBatches = Math.ceil(items.length / BATCH_SIZE);
             let processedBatches = 0;
             const processChunk = async (chunkIndex) => {
@@ -1023,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await performUpsert(table, batch);
                 processedBatches++;
                 const progress = Math.round((processedBatches / totalBatches) * 100);
-                updateStatus(customProgressMsg ? `${customProgressMsg} ${progress}%` : `Enviando ${table}... ${progress}%`, progress);
+                updateStatus(`Enviando ${table}... ${progress}%`, progress);
             };
              const queue = Array.from({ length: totalBatches }, (_, i) => i);
              const worker = async () => {
@@ -1033,95 +1017,6 @@ document.addEventListener('DOMContentLoaded', () => {
                  }
              };
              await Promise.all(Array.from({ length: Math.min(CONCURRENT_REQUESTS, totalBatches) }, worker));
-        };
-
-        // Incremental Sync Logic
-        const syncTable = async (table, newRows, progressLabel) => {
-            updateStatus(`Sincronizando ${progressLabel}: Verificando...`, 0);
-            
-            // 1. Fetch Remote Hashes (Paginated)
-            const remoteHashes = new Set();
-            const PAGE_SIZE = 50000; // Fetch 50k hashes at a time
-            let offset = 0;
-            let hasMore = true;
-            
-            try {
-                while (hasMore) {
-                    const { data: pageData, error: hashError } = await supabase.rpc('get_table_hashes', { 
-                        p_table_name: table, 
-                        p_offset: offset, 
-                        p_limit: PAGE_SIZE 
-                    });
-
-                    if (hashError) throw hashError;
-
-                    if (pageData && pageData.length > 0) {
-                        pageData.forEach(r => remoteHashes.add(r.hash || r.row_hash));
-                        offset += PAGE_SIZE;
-                        // Safety: if we got less than requested, we are done
-                        if (pageData.length < PAGE_SIZE) hasMore = false;
-                    } else {
-                        hasMore = false;
-                    }
-                    
-                    updateStatus(`Sincronizando ${progressLabel}: Lendo hashes (${remoteHashes.size})...`, 5);
-                }
-            } catch (hashError) {
-                // Fallback to truncate if hash function missing or error
-                console.warn(`Hash sync failed for ${table}, falling back to truncate.`, hashError);
-                await clearTable(table);
-                await uploadBatch(table, newRows);
-                return;
-            }
-            
-            // 2. Diff Calculation
-            updateStatus(`Sincronizando ${progressLabel}: Calculando diff...`, 10);
-            
-            const rowsToInsert = [];
-            const localHashes = new Set();
-
-            // Identify Inserts
-            newRows.forEach(row => {
-                if (row.row_hash) {
-                    localHashes.add(row.row_hash);
-                    if (!remoteHashes.has(row.row_hash)) {
-                        rowsToInsert.push(row);
-                    }
-                } else {
-                    // Safety net
-                    rowsToInsert.push(row);
-                }
-            });
-
-            // Identify Deletes
-            const hashesToDelete = [];
-            remoteHashes.forEach(hash => {
-                if (!localHashes.has(hash)) {
-                    hashesToDelete.push(hash);
-                }
-            });
-
-            console.log(`[Sync ${table}] Local: ${newRows.length}, Remote: ${remoteHashes.size} -> Insert: ${rowsToInsert.length}, Delete: ${hashesToDelete.length}`);
-
-            // 3. Perform Deletions
-            if (hashesToDelete.length > 0) {
-                updateStatus(`Sincronizando ${progressLabel}: Removendo obsoletos...`, 20);
-                const BATCH_DELETE = 5000;
-                for (let i = 0; i < hashesToDelete.length; i += BATCH_DELETE) {
-                     const batch = hashesToDelete.slice(i, i + BATCH_DELETE);
-                     await retryOperation(async () => {
-                         const { error } = await supabase.rpc('delete_by_hashes', { p_table_name: table, p_hashes: batch });
-                         if (error) throw error;
-                     });
-                }
-            }
-
-            // 4. Perform Inserts
-            if (rowsToInsert.length > 0) {
-                await uploadBatch(table, rowsToInsert, `Sincronizando ${progressLabel}: Enviando novos`);
-            } else {
-                updateStatus(`${progressLabel}: Sincronizado!`, 100);
-            }
         };
 
         try {
@@ -1143,16 +1038,9 @@ document.addEventListener('DOMContentLoaded', () => {
                  await performDimensionUpsert('dim_fornecedores', data.newProviders);
             }
 
-            // Incremental Sync Execution
-            if (data.history?.length) { 
-                await syncTable('data_history', data.history, 'Histórico'); 
-            }
-            if (data.detailed?.length) { 
-                await syncTable('data_detailed', data.detailed, 'Vendas Mês'); 
-            }
-            if (data.clients?.length) { 
-                await syncTable('data_clients', data.clients, 'Clientes'); 
-            }
+            if (data.history?.length) { updateStatus('Limpar hist...', 10); await clearTable('data_history'); await uploadBatch('data_history', data.history); }
+            if (data.detailed?.length) { updateStatus('Limpar det...', 40); await clearTable('data_detailed'); await uploadBatch('data_detailed', data.detailed); }
+            if (data.clients?.length) { updateStatus('Limpar cli...', 70); await clearTable('data_clients'); await uploadBatch('data_clients', data.clients); }
 
             // CHUNKED CACHE REFRESH LOGIC
             updateStatus('Iniciando processamento do resumo...', 80);
