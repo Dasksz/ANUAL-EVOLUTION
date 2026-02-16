@@ -994,8 +994,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // Reduced Batch Size to avoid 60s timeout during heavy inserts
-        const BATCH_SIZE = 2000;
-        const CONCURRENT_REQUESTS = 10;
+        const BATCH_SIZE = 500;
+        const CONCURRENT_REQUESTS = 3;
 
         const uploadBatch = async (table, items, customProgressMsg) => {
             const totalBatches = Math.ceil(items.length / BATCH_SIZE);
@@ -1022,7 +1022,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Incremental Sync Logic
         const syncTable = async (table, newRows, progressLabel) => {
             updateStatus(`Sincronizando ${progressLabel}: Verificando...`, 0);
-
+            
             // 1. Fetch Remote Hashes (Server-Side)
             const { data: remoteHashesData, error: hashError } = await supabase.rpc('get_table_hashes', { p_table_name: table });
             if (hashError) {
@@ -1033,11 +1033,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const remoteHashes = new Set((remoteHashesData || []).map(r => r.row_hash));
-
+            // Map hash column from RPC (renamed to avoid ambiguity)
+            const remoteHashes = new Set((remoteHashesData || []).map(r => r.hash || r.row_hash));
+            
             // 2. Diff Calculation
             updateStatus(`Sincronizando ${progressLabel}: Calculando diff...`, 10);
-
+            
             const rowsToInsert = [];
             const localHashes = new Set();
 
@@ -1105,14 +1106,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Incremental Sync Execution
-            if (data.history?.length) {
-                await syncTable('data_history', data.history, 'Histórico');
+            if (data.history?.length) { 
+                await syncTable('data_history', data.history, 'Histórico'); 
             }
-            if (data.detailed?.length) {
-                await syncTable('data_detailed', data.detailed, 'Vendas Mês');
+            if (data.detailed?.length) { 
+                await syncTable('data_detailed', data.detailed, 'Vendas Mês'); 
             }
-            if (data.clients?.length) {
-                await syncTable('data_clients', data.clients, 'Clientes');
+            if (data.clients?.length) { 
+                await syncTable('data_clients', data.clients, 'Clientes'); 
             }
 
             // CHUNKED CACHE REFRESH LOGIC
