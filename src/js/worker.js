@@ -56,6 +56,24 @@ async function fetchIbgeMapping() {
     }
 }
 
+// Hashing Helper
+async function generateHash(row) {
+    // Sort keys to ensure deterministic order
+    const keys = Object.keys(row).sort();
+    const values = keys.map(k => {
+        const val = row[k];
+        if (val === null || val === undefined) return '';
+        if (val instanceof Date) return val.toISOString(); // Ensure Date determinism
+        return String(val);
+    });
+    const stringData = values.join('|'); // Delimiter to avoid boundary collisions
+    const encoder = new TextEncoder();
+    const data = encoder.encode(stringData);
+    const hashBuffer = await self.crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 const readFile = (file) => {
     return new Promise((resolve, reject) => {
         if (!file) {
@@ -253,9 +271,9 @@ self.onmessage = async (event) => {
         const clientMap = new Map();
         const clientsToInsert = [];
 
-        clientsDataRaw.forEach(client => {
+        for (const client of clientsDataRaw) {
             const codCli = String(client['Código'] || '').trim();
-            if (!codCli) return;
+            if (!codCli) continue;
 
             const rca1 = String(client['RCA 1'] || '');
             // RCA 2 Removed
@@ -280,6 +298,9 @@ self.onmessage = async (event) => {
                 bloqueio: String(client['Bloqueio'] || '').trim().toUpperCase(),
             };
 
+            // Generate Hash for Client Row
+            clientData.row_hash = await generateHash(clientData);
+
             clientMap.set(codCli, {
                 nomeCliente: clientData.nomecliente,
                 cidade: clientData.cidade,
@@ -288,7 +309,7 @@ self.onmessage = async (event) => {
                 razaosocial: clientData.razaosocial
             });
             clientsToInsert.push(clientData);
-        });
+        }
 
         self.postMessage({ type: 'progress', status: 'Mapeando produtos...', percentage: 30 });
         const productMasterMap = new Map();
@@ -594,11 +615,11 @@ self.onmessage = async (event) => {
         collectDimensions(processedCurrYearHist);
         collectDimensions(processedCurrMonth);
 
-        // --- Final Processing (Bonification Only) ---
-        // Note: Branch Override and Tiago Rule removed as City Map now dictates branch assignment.
+        // --- Final Processing (Bonification Only & Hashing) ---
 
-        const finalizeSalesData = (salesArray, isHistory = false) => {
-             return salesArray.map(sale => {
+        const finalizeSalesData = async (salesArray, isHistory = false) => {
+             const results = [];
+             for (const sale of salesArray) {
                 let newSale = { ...sale };
 
                 // 1. Bonification Logic
@@ -609,10 +630,9 @@ self.onmessage = async (event) => {
                 }
 
                 // 2. Data Optimization
-                // Unconditionally remove redundant fields to save space/bandwidth
                 delete newSale.cliente_nome;
                 delete newSale.bairro;
-        delete newSale.descricao;
+                delete newSale.descricao;
                 delete newSale.observacaofor;
                 
                 // 3. Normalization (Remove Text Columns, keep Codes)
@@ -625,17 +645,19 @@ self.onmessage = async (event) => {
                     delete newSale.pedido;
                     delete newSale.estoqueunit;
                     delete newSale.posicao;
-                    // delete newSale.qtvenda_embalagem_master; // Kept for Boxes Page
-                    // Note: We KEEP 'cidade' for both history and detailed to ensure safety if client is missing from clients table
                 }
 
-                return newSale;
-             });
+                // 4. Generate Hash (Must happen after all modifications)
+                newSale.row_hash = await generateHash(newSale);
+
+                results.push(newSale);
+             }
+             return results;
         };
 
-        const finalPrevYear = finalizeSalesData(processedPrevYear, true);
-        const finalCurrYearHist = finalizeSalesData(processedCurrYearHist, true);
-        const finalCurrMonth = finalizeSalesData(processedCurrMonth, false);
+        const finalPrevYear = await finalizeSalesData(processedPrevYear, true);
+        const finalCurrYearHist = await finalizeSalesData(processedCurrYearHist, true);
+        const finalCurrMonth = await finalizeSalesData(processedCurrMonth, false);
 
         self.postMessage({ type: 'progress', status: 'Preparando dados para envio...', percentage: 90 });
 
