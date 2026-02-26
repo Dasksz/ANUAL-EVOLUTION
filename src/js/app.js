@@ -77,6 +77,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const redeFilterDropdown = document.getElementById('rede-filter-dropdown');
     const redeFilterList = document.getElementById('rede-filter-list');
     const redeFilterSearch = document.getElementById('rede-filter-search');
+    const categoriaFilterBtn = document.getElementById('categoria-filter-btn');
+    const categoriaFilterDropdown = document.getElementById('categoria-filter-dropdown');
+    const categoriaFilterList = document.getElementById('categoria-filter-list');
+    const categoriaFilterSearch = document.getElementById('categoria-filter-search');
 
     // Boxes Filter Elements
     const boxesAnoFilter = document.getElementById('boxes-ano-filter');
@@ -279,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.fornecedores = selectedFornecedores;
             state.tiposvenda = selectedTiposVenda;
             state.redes = selectedRedes;
+            state.categorias = selectedCategorias;
         } else if (view === 'city') {
             state.ano = cityAnoFilter.value;
             state.mes = cityMesFilter.value;
@@ -353,6 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedFornecedores = getList('fornecedores');
             selectedTiposVenda = getList('tiposvenda');
             selectedRedes = getList('redes');
+            selectedCategorias = getList('categorias');
 
         } else if (view === 'city') {
             if (getVal('ano')) cityAnoFilter.value = getVal('ano');
@@ -787,6 +793,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedFornecedores = [];
         selectedTiposVenda = [];
         selectedRedes = [];
+        selectedCategorias = [];
 
         // Note: loadFilters will re-render the dropdowns with checked status based on these empty arrays,
         // effectively clearing the checkboxes visually.
@@ -1649,6 +1656,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedFornecedores = [];
     let selectedTiposVenda = [];
     let selectedRedes = [];
+    let selectedCategorias = [];
     let currentCharts = {};
     let holidays = [];
     let lastSalesDate = null;
@@ -1656,7 +1664,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastDashboardData = null;
 
     // Prefetch State
-    let availableFiltersState = { filiais: [], supervisors: [], cidades: [], vendedores: [], fornecedores: [], tipos_venda: [], redes: [] };
+    let availableFiltersState = { filiais: [], supervisors: [], cidades: [], vendedores: [], fornecedores: [], tipos_venda: [], redes: [], categorias: [] };
     let prefetchQueue = [];
     let isPrefetching = false;
 
@@ -1737,7 +1745,8 @@ document.addEventListener('DOMContentLoaded', () => {
             p_ano: anoFilter.value,
             p_mes: mesFilter.value,
             p_tipovenda: selectedTiposVenda,
-            p_rede: selectedRedes
+            p_rede: selectedRedes,
+            p_categoria: selectedCategorias
         };
     }
 
@@ -1848,6 +1857,7 @@ document.addEventListener('DOMContentLoaded', () => {
         availableFiltersState.fornecedores = data.fornecedores || []; // Array of objects
         availableFiltersState.tipos_venda = data.tipos_venda || [];
         availableFiltersState.redes = data.redes || [];
+        availableFiltersState.categorias = data.categorias || [];
 
         const updateSingleSelect = (element, items) => {
             const currentVal = element.value;
@@ -1887,6 +1897,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupMultiSelect(vendedorFilterBtn, vendedorFilterDropdown, vendedorFilterList, data.vendedores, selectedVendedores, () => {}, false, vendedorFilterSearch);
         setupMultiSelect(fornecedorFilterBtn, fornecedorFilterDropdown, fornecedorFilterList, data.fornecedores, selectedFornecedores, () => {}, true, fornecedorFilterSearch);
         setupMultiSelect(tipovendaFilterBtn, tipovendaFilterDropdown, tipovendaFilterDropdown, data.tipos_venda, selectedTiposVenda, () => {});
+        setupMultiSelect(categoriaFilterBtn, categoriaFilterDropdown, categoriaFilterList, data.categorias, selectedCategorias, () => {}, false, categoriaFilterSearch);
 
         // Rede Logic with "Com Rede" and "Sem Rede"
         const redes = ['C/ REDE', 'S/ REDE', ...(data.redes || [])];
@@ -1894,8 +1905,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.addEventListener('click', (e) => {
-        const dropdowns = [filialFilterDropdown, cidadeFilterDropdown, supervisorFilterDropdown, vendedorFilterDropdown, fornecedorFilterDropdown, tipovendaFilterDropdown, redeFilterDropdown];
-        const btns = [filialFilterBtn, cidadeFilterBtn, supervisorFilterBtn, vendedorFilterBtn, fornecedorFilterBtn, tipovendaFilterBtn, redeFilterBtn];
+        const dropdowns = [filialFilterDropdown, cidadeFilterDropdown, supervisorFilterDropdown, vendedorFilterDropdown, fornecedorFilterDropdown, tipovendaFilterDropdown, redeFilterDropdown, categoriaFilterDropdown];
+        const btns = [filialFilterBtn, cidadeFilterBtn, supervisorFilterBtn, vendedorFilterBtn, fornecedorFilterBtn, tipovendaFilterBtn, redeFilterBtn, categoriaFilterBtn];
         let anyClosed = false;
         dropdowns.forEach((dd, idx) => {
             if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) {
@@ -2128,6 +2139,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // 7. Redes
         availableFiltersState.redes.forEach(v => tasks.push(checkAndAdd(`Rede: ${v}`, { ...baseFilters, p_rede: [v] })));
+
+        // 8. Categorias
+        availableFiltersState.categorias.forEach(v => tasks.push(checkAndAdd(`Categoria: ${v}`, { ...baseFilters, p_categoria: [v] })));
 
         // Wait for all checks
         await Promise.all(tasks);
