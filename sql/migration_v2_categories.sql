@@ -342,6 +342,9 @@ $$;
 -- 5. Update Get Filters (Create if missing)
 -- ------------------------------------------------------------------------------
 
+-- Drop existing function to allow signature change (p_produto -> p_categoria or added)
+DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[]);
+
 CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_filial text[] default null,
     p_cidade text[] default null,
