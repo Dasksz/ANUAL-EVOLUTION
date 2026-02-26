@@ -83,6 +83,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const categoriaFilterSearch = document.getElementById('categoria-filter-search');
 
     // Boxes Filter Elements
+    const boxesCategoriaFilterBtn = document.getElementById('boxes-categoria-filter-btn');
+    const boxesCategoriaFilterDropdown = document.getElementById('boxes-categoria-filter-dropdown');
+    const boxesCategoriaFilterList = document.getElementById('boxes-categoria-filter-list');
+    const boxesCategoriaFilterSearch = document.getElementById('boxes-categoria-filter-search');
+
     const boxesAnoFilter = document.getElementById('boxes-ano-filter');
     const boxesMesFilter = document.getElementById('boxes-mes-filter');
     const boxesFilialFilterBtn = document.getElementById('boxes-filial-filter-btn');
@@ -141,6 +146,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const cityTipovendaFilterDropdown = document.getElementById('city-tipovenda-filter-dropdown');
     const cityClearFiltersBtn = document.getElementById('city-clear-filters-btn');
 
+    const cityCategoriaFilterBtn = document.getElementById('city-categoria-filter-btn');
+    const cityCategoriaFilterDropdown = document.getElementById('city-categoria-filter-dropdown');
+    const cityCategoriaFilterList = document.getElementById('city-categoria-filter-list');
+    const cityCategoriaFilterSearch = document.getElementById('city-categoria-filter-search');
+
     // Branch View Logic
     const branchFilialFilterBtn = document.getElementById('branch-filial-filter-btn');
     const branchFilialFilterDropdown = document.getElementById('branch-filial-filter-dropdown');
@@ -170,6 +180,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const branchCalendarBtn = document.getElementById('branch-calendar-btn');
     const branchChartToggleBtn = document.getElementById('branch-chart-toggle-btn');
 
+    const branchCategoriaFilterBtn = document.getElementById('branch-categoria-filter-btn');
+    const branchCategoriaFilterDropdown = document.getElementById('branch-categoria-filter-dropdown');
+    const branchCategoriaFilterList = document.getElementById('branch-categoria-filter-list');
+    const branchCategoriaFilterSearch = document.getElementById('branch-categoria-filter-search');
+
     // Comparison View Filters
     const comparisonAnoFilter = document.getElementById('comparison-ano-filter');
     const comparisonMesFilter = document.getElementById('comparison-mes-filter');
@@ -191,6 +206,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const comparisonCityFilterDropdown = document.getElementById('comparison-city-filter-dropdown');
     const comparisonCityFilterList = document.getElementById('comparison-city-filter-list');
     const comparisonCityFilterSearch = document.getElementById('comparison-city-filter-search');
+    const comparisonCategoriaFilterBtn = document.getElementById('comparison-categoria-filter-btn');
+    const comparisonCategoriaFilterDropdown = document.getElementById('comparison-categoria-filter-dropdown');
     const clearComparisonFiltersBtn = document.getElementById('clear-comparison-filters-btn');
     const comparisonFornecedorToggleContainer = document.getElementById('comparison-fornecedor-toggle-container');
     const comparisonTendencyToggle = document.getElementById('comparison-tendency-toggle');
@@ -1232,6 +1249,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let boxesSelectedFornecedores = [];
     let boxesSelectedProducts = [];
     let boxesSelectedTiposVenda = [];
+    let boxesSelectedCategorias = [];
 
     const handleBoxesFilterChange = async () => {
         clearTimeout(boxesFilterDebounceTimer);
@@ -1244,6 +1262,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 p_fornecedor: boxesSelectedFornecedores.length > 0 ? boxesSelectedFornecedores : null,
                 p_produto: boxesSelectedProducts.length > 0 ? boxesSelectedProducts : null,
                 p_tipovenda: boxesSelectedTiposVenda.length > 0 ? boxesSelectedTiposVenda : null,
+                p_categoria: boxesSelectedCategorias.length > 0 ? boxesSelectedCategorias : null,
                 p_ano: boxesAnoFilter.value === 'todos' ? null : boxesAnoFilter.value,
                 p_mes: boxesMesFilter.value === '' ? null : boxesMesFilter.value
             };
@@ -1282,6 +1301,7 @@ document.addEventListener('DOMContentLoaded', () => {
              setupCityMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, data.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
              setupCityMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, data.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
              setupCityMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, data.tipos_venda || [], boxesSelectedTiposVenda);
+             setupCityMultiSelect(boxesCategoriaFilterBtn, boxesCategoriaFilterDropdown, boxesCategoriaFilterList, data.categorias || [], boxesSelectedCategorias, boxesCategoriaFilterSearch);
         }
     }
 
@@ -1405,8 +1425,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.addEventListener('click', (e) => {
-        const dropdowns = [boxesFilialFilterDropdown, boxesProdutoFilterDropdown, boxesSupervisorFilterDropdown, boxesVendedorFilterDropdown, boxesFornecedorFilterDropdown, boxesCidadeFilterDropdown, boxesTipovendaFilterDropdown];
-        const btns = [boxesFilialFilterBtn, boxesProdutoFilterBtn, boxesSupervisorFilterBtn, boxesVendedorFilterBtn, boxesFornecedorFilterBtn, boxesCidadeFilterBtn, boxesTipovendaFilterBtn];
+        const dropdowns = [boxesFilialFilterDropdown, boxesProdutoFilterDropdown, boxesSupervisorFilterDropdown, boxesVendedorFilterDropdown, boxesFornecedorFilterDropdown, boxesCidadeFilterDropdown, boxesTipovendaFilterDropdown, boxesCategoriaFilterDropdown];
+        const btns = [boxesFilialFilterBtn, boxesProdutoFilterBtn, boxesSupervisorFilterBtn, boxesVendedorFilterBtn, boxesFornecedorFilterBtn, boxesCidadeFilterBtn, boxesTipovendaFilterBtn, boxesCategoriaFilterBtn];
         let anyClosed = false;
         dropdowns.forEach((dd, idx) => {
             if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
@@ -1436,6 +1456,7 @@ document.addEventListener('DOMContentLoaded', () => {
             boxesSelectedFornecedores = [];
             boxesSelectedCidades = [];
             boxesSelectedTiposVenda = [];
+            boxesSelectedCategorias = [];
             initBoxesFilters().then(loadBoxesView);
         });
     }
@@ -1450,7 +1471,8 @@ document.addEventListener('DOMContentLoaded', () => {
             p_vendedor: [],
             p_fornecedor: [],
             p_tipovenda: [],
-            p_rede: []
+            p_rede: [],
+            p_categoria: []
         };
         const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
         if (error) console.error('Error fetching boxes filters:', error);
@@ -1481,6 +1503,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupCityMultiSelect(boxesFornecedorFilterBtn, boxesFornecedorFilterDropdown, boxesFornecedorFilterList, filterData.fornecedores, boxesSelectedFornecedores, boxesFornecedorFilterSearch, true);
         setupCityMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, filterData.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
         setupCityMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, filterData.tipos_venda || [], boxesSelectedTiposVenda);
+        setupCityMultiSelect(boxesCategoriaFilterBtn, boxesCategoriaFilterDropdown, boxesCategoriaFilterList, filterData.categorias || [], boxesSelectedCategorias, boxesCategoriaFilterSearch);
         
         // Products - filterData.produtos
         setupCityMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, filterData.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
@@ -1501,6 +1524,7 @@ document.addEventListener('DOMContentLoaded', () => {
             p_fornecedor: boxesSelectedFornecedores.length > 0 ? boxesSelectedFornecedores : null,
             p_produto: boxesSelectedProducts.length > 0 ? boxesSelectedProducts : null,
             p_tipovenda: boxesSelectedTiposVenda.length > 0 ? boxesSelectedTiposVenda : null,
+            p_categoria: boxesSelectedCategorias.length > 0 ? boxesSelectedCategorias : null,
             p_ano: boxesAnoFilter.value === 'todos' ? null : boxesAnoFilter.value,
             p_mes: boxesMesFilter.value === '' ? null : boxesMesFilter.value
         };
@@ -2671,6 +2695,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let citySelectedFornecedores = [];
     let citySelectedTiposVenda = [];
     let citySelectedRedes = [];
+    let citySelectedCategorias = [];
 
     let cityFilterDebounceTimer;
     const handleCityFilterChange = () => {
@@ -2696,13 +2721,14 @@ document.addEventListener('DOMContentLoaded', () => {
              citySelectedFornecedores = [];
              citySelectedTiposVenda = [];
              citySelectedRedes = [];
+             citySelectedCategorias = [];
              initCityFilters().then(loadCityView);
         });
     }
 
     document.addEventListener('click', (e) => {
-        const dropdowns = [cityFilialFilterDropdown, cityCidadeFilterDropdown, citySupervisorFilterDropdown, cityVendedorFilterDropdown, cityFornecedorFilterDropdown, cityTipovendaFilterDropdown, cityRedeFilterDropdown];
-        const btns = [cityFilialFilterBtn, cityCidadeFilterBtn, citySupervisorFilterBtn, cityVendedorFilterBtn, cityFornecedorFilterBtn, cityTipovendaFilterBtn, cityRedeFilterBtn];
+        const dropdowns = [cityFilialFilterDropdown, cityCidadeFilterDropdown, citySupervisorFilterDropdown, cityVendedorFilterDropdown, cityFornecedorFilterDropdown, cityTipovendaFilterDropdown, cityRedeFilterDropdown, cityCategoriaFilterDropdown];
+        const btns = [cityFilialFilterBtn, cityCidadeFilterBtn, citySupervisorFilterBtn, cityVendedorFilterBtn, cityFornecedorFilterBtn, cityTipovendaFilterBtn, cityRedeFilterBtn, cityCategoriaFilterBtn];
         let anyClosed = false;
         dropdowns.forEach((dd, idx) => {
             if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
@@ -2805,7 +2831,8 @@ document.addEventListener('DOMContentLoaded', () => {
             p_vendedor: [],
             p_fornecedor: [],
             p_tipovenda: [],
-            p_rede: []
+            p_rede: [],
+            p_categoria: []
         };
          const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
          if (error) console.error('Error fetching city filters:', error);
@@ -2836,6 +2863,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupCityMultiSelect(cityVendedorFilterBtn, cityVendedorFilterDropdown, cityVendedorFilterList, filterData.vendedores, citySelectedVendedores, cityVendedorFilterSearch);
         setupCityMultiSelect(cityFornecedorFilterBtn, cityFornecedorFilterDropdown, cityFornecedorFilterList, filterData.fornecedores, citySelectedFornecedores, cityFornecedorFilterSearch, true);
         setupCityMultiSelect(cityTipovendaFilterBtn, cityTipovendaFilterDropdown, cityTipovendaFilterDropdown, filterData.tipos_venda, citySelectedTiposVenda);
+        setupCityMultiSelect(cityCategoriaFilterBtn, cityCategoriaFilterDropdown, cityCategoriaFilterList, filterData.categorias || [], citySelectedCategorias, cityCategoriaFilterSearch);
 
         const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
         setupCityMultiSelect(cityRedeFilterBtn, cityRedeFilterDropdown, cityRedeFilterList, redes, citySelectedRedes, cityRedeFilterSearch);
@@ -2856,6 +2884,7 @@ document.addEventListener('DOMContentLoaded', () => {
             p_fornecedor: citySelectedFornecedores.length > 0 ? citySelectedFornecedores : null,
             p_tipovenda: citySelectedTiposVenda.length > 0 ? citySelectedTiposVenda : null,
             p_rede: citySelectedRedes.length > 0 ? citySelectedRedes : null,
+            p_categoria: citySelectedCategorias.length > 0 ? citySelectedCategorias : null,
             p_ano: cityAnoFilter.value === 'todos' ? null : cityAnoFilter.value,
             p_mes: cityMesFilter.value === '' ? null : cityMesFilter.value,
             p_page: currentCityPage,
@@ -2923,6 +2952,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let branchSelectedFornecedores = [];
     let branchSelectedTiposVenda = [];
     let branchSelectedRedes = [];
+    let branchSelectedCategorias = [];
     let currentBranchChartMode = 'faturamento';
 
     // Filter Change Handler
@@ -2943,8 +2973,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.addEventListener('click', (e) => {
-        const dropdowns = [branchFilialFilterDropdown, branchCidadeFilterDropdown, branchSupervisorFilterDropdown, branchVendedorFilterDropdown, branchFornecedorFilterDropdown, branchTipovendaFilterDropdown, branchRedeFilterDropdown];
-        const btns = [branchFilialFilterBtn, branchCidadeFilterBtn, branchSupervisorFilterBtn, branchVendedorFilterBtn, branchFornecedorFilterBtn, branchTipovendaFilterBtn, branchRedeFilterBtn];
+        const dropdowns = [branchFilialFilterDropdown, branchCidadeFilterDropdown, branchSupervisorFilterDropdown, branchVendedorFilterDropdown, branchFornecedorFilterDropdown, branchTipovendaFilterDropdown, branchRedeFilterDropdown, branchCategoriaFilterDropdown];
+        const btns = [branchFilialFilterBtn, branchCidadeFilterBtn, branchSupervisorFilterBtn, branchVendedorFilterBtn, branchFornecedorFilterBtn, branchTipovendaFilterBtn, branchRedeFilterBtn, branchCategoriaFilterBtn];
         let anyClosed = false;
         dropdowns.forEach((dd, idx) => {
             if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) {
@@ -2967,6 +2997,7 @@ document.addEventListener('DOMContentLoaded', () => {
          branchSelectedFornecedores = [];
          branchSelectedTiposVenda = [];
          branchSelectedRedes = [];
+         branchSelectedCategorias = [];
          // Re-init filters to update UI
          initBranchFilters().then(loadBranchView);
     });
@@ -2982,7 +3013,8 @@ document.addEventListener('DOMContentLoaded', () => {
             p_vendedor: [],
             p_fornecedor: [],
             p_tipovenda: [],
-            p_rede: []
+            p_rede: [],
+            p_categoria: []
         };
          const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
          if (error) console.error('Error fetching branch filters:', error);
@@ -3017,6 +3049,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupBranchMultiSelect(branchVendedorFilterBtn, branchVendedorFilterDropdown, branchVendedorFilterList, filterData.vendedores, branchSelectedVendedores, branchVendedorFilterSearch);
         setupBranchMultiSelect(branchFornecedorFilterBtn, branchFornecedorFilterDropdown, branchFornecedorFilterList, filterData.fornecedores, branchSelectedFornecedores, branchFornecedorFilterSearch, true);
         setupBranchMultiSelect(branchTipovendaFilterBtn, branchTipovendaFilterDropdown, branchTipovendaFilterDropdown, filterData.tipos_venda, branchSelectedTiposVenda);
+        setupBranchMultiSelect(branchCategoriaFilterBtn, branchCategoriaFilterDropdown, branchCategoriaFilterList, filterData.categorias || [], branchSelectedCategorias, branchCategoriaFilterSearch);
 
         const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
         setupBranchMultiSelect(branchRedeFilterBtn, branchRedeFilterDropdown, branchRedeFilterList, redes, branchSelectedRedes, branchRedeFilterSearch);
@@ -3164,7 +3197,8 @@ document.addEventListener('DOMContentLoaded', () => {
             p_vendedor: branchSelectedVendedores.length > 0 ? branchSelectedVendedores : null,
             p_fornecedor: branchSelectedFornecedores.length > 0 ? branchSelectedFornecedores : null,
             p_tipovenda: branchSelectedTiposVenda.length > 0 ? branchSelectedTiposVenda : null,
-            p_rede: branchSelectedRedes.length > 0 ? branchSelectedRedes : null
+            p_rede: branchSelectedRedes.length > 0 ? branchSelectedRedes : null,
+            p_categoria: branchSelectedCategorias.length > 0 ? branchSelectedCategorias : null
         };
 
         // Aggregated Fetch (Fast Response)
@@ -3588,6 +3622,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let selectedComparisonTiposVenda = [];
         let selectedComparisonRedes = [];
         let selectedComparisonCities = [];
+        let selectedComparisonCategorias = [];
         let comparisonRedeGroupFilter = '';
         let currentComparisonFornecedor = '';
         let useTendencyComparison = false;
@@ -3697,6 +3732,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 selectedComparisonProducts = [];
                 selectedComparisonTiposVenda = [];
                 selectedComparisonRedes = [];
+                selectedComparisonCategorias = [];
                 comparisonRedeGroupFilter = '';
                 currentComparisonFornecedor = '';
                 selectedComparisonCities = [];
@@ -3712,8 +3748,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         document.addEventListener('click', (e) => {
-            const dropdowns = [comparisonSupervisorFilterDropdown, comparisonVendedorFilterDropdown, comparisonSupplierFilterDropdown, comparisonProductFilterDropdown, comparisonTipoVendaFilterDropdown, comparisonRedeFilterDropdown, comparisonCityFilterDropdown];
-            const btns = [comparisonSupervisorFilterBtn, comparisonVendedorFilterBtn, comparisonSupplierFilterBtn, comparisonProductFilterBtn, comparisonTipoVendaFilterBtn, comparisonComRedeBtn, comparisonCityFilterBtn];
+            const dropdowns = [comparisonSupervisorFilterDropdown, comparisonVendedorFilterDropdown, comparisonSupplierFilterDropdown, comparisonProductFilterDropdown, comparisonTipoVendaFilterDropdown, comparisonRedeFilterDropdown, comparisonCityFilterDropdown, comparisonCategoriaFilterDropdown];
+            const btns = [comparisonSupervisorFilterBtn, comparisonVendedorFilterBtn, comparisonSupplierFilterBtn, comparisonProductFilterBtn, comparisonTipoVendaFilterBtn, comparisonComRedeBtn, comparisonCityFilterBtn, comparisonCategoriaFilterBtn];
             let anyClosed = false;
 
             dropdowns.forEach((dd, idx) => {
@@ -3787,7 +3823,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 p_vendedor: [],
                 p_fornecedor: [],
                 p_tipovenda: [],
-                p_rede: []
+                p_rede: [],
+                p_categoria: []
             };
             const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
             if (error) console.error('Error fetching comparison filters:', error);
@@ -3840,6 +3877,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Cities (Multi Select)
                 setupCityMultiSelect(comparisonCityFilterBtn, comparisonCityFilterDropdown, comparisonCityFilterList, filterData.cidades || [], selectedComparisonCities, comparisonCityFilterSearch);
 
+                // Categories
+                const catList = getList('comparison-categoria-filter-list') || comparisonCategoriaFilterDropdown;
+                const catSearch = document.getElementById('comparison-categoria-filter-search');
+                setupCityMultiSelect(comparisonCategoriaFilterBtn, comparisonCategoriaFilterDropdown, catList, filterData.categorias || [], selectedComparisonCategorias, catSearch);
+
                 // Redes
                 const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
                 const redeList = getList('comparison-rede-filter-list') || comparisonRedeFilterDropdown;
@@ -3865,6 +3907,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 p_produto: selectedComparisonProducts.length > 0 ? selectedComparisonProducts : null,
                 p_tipovenda: selectedComparisonTiposVenda.length > 0 ? selectedComparisonTiposVenda : null,
                 p_rede: selectedComparisonRedes.length > 0 ? selectedComparisonRedes : null,
+                p_categoria: selectedComparisonCategorias.length > 0 ? selectedComparisonCategorias : null,
                 p_ano: comparisonAnoFilter.value === 'todos' ? null : comparisonAnoFilter.value,
                 p_mes: comparisonMesFilter.value === '' ? null : comparisonMesFilter.value
             };
