@@ -1862,13 +1862,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const updateSingleSelect = (element, items) => {
             const currentVal = element.value;
             element.innerHTML = '';
-            // Only add 'Todos' if it's NOT the year filter
-            if (element.id !== 'ano-filter') {
-                const allOpt = document.createElement('option');
-                allOpt.value = (element.id === 'ano-filter') ? 'todos' : ''; // Fallback, though ano-filter skips this block
-                allOpt.textContent = 'Todos';
-                element.appendChild(allOpt);
-            }
+
+            // Always add 'Todos' option (value='todos' for year, '' for others)
+            const allOpt = document.createElement('option');
+            allOpt.value = (element.id === 'ano-filter') ? 'todos' : '';
+            allOpt.textContent = 'Todos';
+            element.appendChild(allOpt);
+
             if (items) {
                 items.forEach(item => {
                     const opt = document.createElement('option');
@@ -1880,9 +1880,17 @@ document.addEventListener('DOMContentLoaded', () => {
             // Logic to set default or preserve selection
             if (currentVal && Array.from(element.options).some(o => o.value === currentVal)) {
                 element.value = currentVal;
-            } else if (element.id === 'ano-filter' && items && items.length > 0) {
-                 // Default to first year (usually current/max)
-                 element.value = items[0];
+        } else if (element.id === 'ano-filter' && items && items.length > 0 && currentVal !== 'todos') {
+             // Default to first year only if not explicitly 'todos' and 'todos' isn't valid (though we just added it)
+             // Actually, if currentVal was 'todos', it matches the first option we added.
+             // If currentVal was something else invalid, fallback to items[0].
+             // But if we want default 'Todos', we should let it fall through to first option?
+             // If the user wants specific year by default on load, logic handles it.
+             // If user wants 'Todos' (e.g. clear filters), it matches.
+
+             // If currentVal was invalid (e.g. old year not in list), default to Todos (index 0) or First Year?
+             // Usually defaulting to 'Todos' (index 0) is safer now that we added it.
+             if (!element.value) element.value = 'todos';
             }
         };
         updateSingleSelect(anoFilter, data.anos);
