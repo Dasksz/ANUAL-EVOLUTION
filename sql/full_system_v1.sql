@@ -476,7 +476,7 @@ BEGIN
     ELSIF NEW.descricao ILIKE '%LAYS RUSTICAS%' THEN NEW.categoria_produto := 'LAYS RUSTICA';
     ELSIF NEW.descricao ILIKE '%STAX%' THEN NEW.categoria_produto := 'STAX'; -- Check before LAYS
     ELSIF NEW.descricao ILIKE '%SENSACOES%' THEN NEW.categoria_produto := 'SENSACOES'; -- Check before LAYS
-
+    
     -- General Matches
     ELSIF NEW.descricao ILIKE '%BACONZITOS%' THEN NEW.categoria_produto := 'BACONZITOS';
     ELSIF NEW.descricao ILIKE '%CEBOLITOS%' THEN NEW.categoria_produto := 'CEBOLITOS';
@@ -497,7 +497,7 @@ BEGIN
     ELSIF NEW.descricao ILIKE '%EQLIBRI%' THEN NEW.categoria_produto := 'EQLIBRI';
     ELSIF NEW.descricao ILIKE '%FOFURA%' THEN NEW.categoria_produto := 'FOFURA';
     ELSIF NEW.descricao ILIKE '%TORCIDA%' THEN NEW.categoria_produto := 'TORCIDA';
-
+    
     -- Foods / Others (Mapped to same names as legacy mix but in new column)
     ELSIF NEW.descricao ILIKE '%TODDYNHO%' THEN NEW.categoria_produto := 'TODDYNHO';
     ELSIF NEW.descricao ILIKE '%TODDY %' THEN NEW.categoria_produto := 'TODDY';
@@ -834,6 +834,8 @@ END;
 $$;
 
 -- 5. Update Get Filters
+DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[]);
+
 CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -897,7 +899,7 @@ BEGIN
         ''supervisors'', (SELECT array_agg(DISTINCT superv ORDER BY superv) FROM public.cache_filters ' || v_where || '),
         ''vendedores'', (SELECT array_agg(DISTINCT nome ORDER BY nome) FROM public.cache_filters ' || v_where || '),
         ''fornecedores'', (
-            SELECT json_agg(DISTINCT jsonb_build_object(''cod'', codfor, ''name'', fornecedor))
+            SELECT json_agg(DISTINCT jsonb_build_object(''cod'', codfor, ''name'', fornecedor)) 
             FROM public.cache_filters ' || v_where || '
         ),
         ''tipos_venda'', (SELECT array_agg(DISTINCT tipovenda ORDER BY tipovenda) FROM public.cache_filters ' || v_where || '),
