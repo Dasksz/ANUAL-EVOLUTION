@@ -2351,26 +2351,46 @@ END;
 $$;
 
 -- ==============================================================================
--- INCREMENTAL UPLOAD SUPPORT (HASHING)
+-- INCREMENTAL UPLOAD SUPPORT (METADATA CHUNKING FOR SALES, ROW HASH FOR CLIENTS)
 -- ==============================================================================
 
--- 1. Add Hash Columns
-ALTER TABLE public.data_detailed ADD COLUMN IF NOT EXISTS row_hash text;
-ALTER TABLE public.data_history ADD COLUMN IF NOT EXISTS row_hash text;
+-- 1. Metadata Table for Chunk-Based Sync
+CREATE TABLE IF NOT EXISTS public.data_metadata (
+    id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+    table_name text NOT NULL,
+    chunk_key text NOT NULL, -- e.g., 'YYYY-MM'
+    chunk_hash text NOT NULL,
+    updated_at timestamp with time zone DEFAULT now(),
+    UNIQUE(table_name, chunk_key)
+);
+ALTER TABLE public.data_metadata ENABLE ROW LEVEL SECURITY;
+
+-- Metadata Policies
+DROP POLICY IF EXISTS "Unified Read Access" ON public.data_metadata;
+CREATE POLICY "Unified Read Access" ON public.data_metadata FOR SELECT USING (public.is_admin()); -- Only admins need to see metadata for upload
+
+DROP POLICY IF EXISTS "Admin All" ON public.data_metadata;
+CREATE POLICY "Admin All" ON public.data_metadata FOR ALL USING (public.is_admin());
+
+-- 2. Add Hash Column ONLY for Clients (Sales use Chunking)
 ALTER TABLE public.data_clients ADD COLUMN IF NOT EXISTS row_hash text;
 
--- 1.1 Truncate tables to prevent duplication (Legacy Data Cleanup)
--- Necessary because existing rows have NULL hash, which would cause syncTable to re-upload them as new.
-TRUNCATE TABLE public.data_detailed;
-TRUNCATE TABLE public.data_history;
-TRUNCATE TABLE public.data_clients;
+-- Remove Row Hash from Sales if it exists (Cleanup)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_detailed' AND column_name = 'row_hash') THEN
+        ALTER TABLE public.data_detailed DROP COLUMN row_hash;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_history' AND column_name = 'row_hash') THEN
+        ALTER TABLE public.data_history DROP COLUMN row_hash;
+    END IF;
+END $$;
 
--- 2. Create Hash Indexes (High Performance Lookup)
-CREATE INDEX IF NOT EXISTS idx_detailed_hash ON public.data_detailed (row_hash);
-CREATE INDEX IF NOT EXISTS idx_history_hash ON public.data_history (row_hash);
+-- 3. Indexes
 CREATE INDEX IF NOT EXISTS idx_clients_hash ON public.data_clients (row_hash);
+CREATE INDEX IF NOT EXISTS idx_metadata_lookup ON public.data_metadata (table_name, chunk_key);
 
--- 3. RPC: Get Existing Hashes (For Client-Side Diffing)
+-- 4. RPC: Get Existing Hashes (Clients Only)
 CREATE OR REPLACE FUNCTION public.get_table_hashes(p_table_name text)
 RETURNS TABLE (row_hash text)
 LANGUAGE plpgsql
@@ -2378,24 +2398,17 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    -- Security Check
-    IF NOT public.is_admin() THEN
-        RAISE EXCEPTION 'Acesso negado. Apenas administradores podem sincronizar dados.';
-    END IF;
+    IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
 
-    IF p_table_name = 'data_detailed' THEN
-        RETURN QUERY SELECT t.row_hash FROM public.data_detailed t WHERE t.row_hash IS NOT NULL;
-    ELSIF p_table_name = 'data_history' THEN
-        RETURN QUERY SELECT t.row_hash FROM public.data_history t WHERE t.row_hash IS NOT NULL;
-    ELSIF p_table_name = 'data_clients' THEN
+    IF p_table_name = 'data_clients' THEN
         RETURN QUERY SELECT t.row_hash FROM public.data_clients t WHERE t.row_hash IS NOT NULL;
     ELSE
-        RAISE EXCEPTION 'Tabela inválida: %', p_table_name;
+        RAISE EXCEPTION 'Esta função suporta apenas data_clients. Use sync_sales_chunk para vendas.';
     END IF;
 END;
 $$;
 
--- 4. RPC: Delete Rows by Hash (Incremental Deletion)
+-- 5. RPC: Delete Rows by Hash (Clients Only)
 CREATE OR REPLACE FUNCTION public.delete_by_hashes(p_table_name text, p_hashes text[])
 RETURNS void
 LANGUAGE plpgsql
@@ -2403,19 +2416,62 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    -- Security Check
-    IF NOT public.is_admin() THEN
-        RAISE EXCEPTION 'Acesso negado.';
-    END IF;
+    IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
 
-    IF p_table_name = 'data_detailed' THEN
-        DELETE FROM public.data_detailed WHERE row_hash = ANY(p_hashes);
-    ELSIF p_table_name = 'data_history' THEN
-        DELETE FROM public.data_history WHERE row_hash = ANY(p_hashes);
-    ELSIF p_table_name = 'data_clients' THEN
+    IF p_table_name = 'data_clients' THEN
         DELETE FROM public.data_clients WHERE row_hash = ANY(p_hashes);
     ELSE
+        RAISE EXCEPTION 'Esta função suporta apenas data_clients.';
+    END IF;
+END;
+$$;
+
+-- 6. RPC: Sync Sales Chunk (Atomic Replace by Month)
+CREATE OR REPLACE FUNCTION public.sync_sales_chunk(
+    p_table_name text,
+    p_chunk_key text,
+    p_rows jsonb,
+    p_hash text
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
+
+    SET LOCAL statement_timeout = '300s'; -- 5 minutes for large chunks
+
+    -- 1. Validate Table
+    IF p_table_name NOT IN ('data_detailed', 'data_history') THEN
         RAISE EXCEPTION 'Tabela inválida: %', p_table_name;
     END IF;
+
+    -- 2. Delete Existing Data for this Chunk (Month)
+    EXECUTE format('DELETE FROM public.%I WHERE to_char(dtped, ''YYYY-MM'') = $1', p_table_name) USING p_chunk_key;
+
+    -- 3. Insert New Data
+    -- We assume p_rows is an array of objects. We use json_populate_recordset.
+    -- Note: This requires the JSON keys to match column names.
+    EXECUTE format('
+        INSERT INTO public.%I (
+            pedido, codusur, codsupervisor, produto, codfor, codcli, cidade,
+            qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq,
+            dtped, dtsaida, posicao, estoqueunit, qtvenda_embalagem_master, tipovenda, filial
+        )
+        SELECT
+            pedido, codusur, codsupervisor, produto, codfor, codcli, cidade,
+            qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq,
+            dtped, dtsaida, posicao, estoqueunit, qtvenda_embalagem_master, tipovenda, filial
+        FROM jsonb_populate_recordset(null::public.%I, $1)
+    ', p_table_name, p_table_name) USING p_rows;
+
+    -- 4. Update Metadata
+    INSERT INTO public.data_metadata (table_name, chunk_key, chunk_hash, updated_at)
+    VALUES (p_table_name, p_chunk_key, p_hash, now())
+    ON CONFLICT (table_name, chunk_key)
+    DO UPDATE SET chunk_hash = EXCLUDED.chunk_hash, updated_at = now();
+
 END;
 $$;

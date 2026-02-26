@@ -615,10 +615,13 @@ self.onmessage = async (event) => {
         collectDimensions(processedCurrYearHist);
         collectDimensions(processedCurrMonth);
 
-        // --- Final Processing (Bonification Only & Hashing) ---
+        // --- Final Processing (Bonification Only, No Hashing for Sales - Using Chunking) ---
 
-        const finalizeSalesData = async (salesArray, isHistory = false) => {
-             const results = [];
+        // Chunk Helper
+        const chunkData = async (salesArray, isHistory = false) => {
+             const chunks = {}; // Key: 'YYYY-MM', Value: { rows: [], hash: '' }
+
+             // Process rows
              for (const sale of salesArray) {
                 let newSale = { ...sale };
 
@@ -647,17 +650,44 @@ self.onmessage = async (event) => {
                     delete newSale.posicao;
                 }
 
-                // 4. Generate Hash (Must happen after all modifications)
-                newSale.row_hash = await generateHash(newSale);
+                // Identify Chunk Key (YYYY-MM)
+                let dateStr = newSale.dtped; // ISO String
+                if (!dateStr && newSale.dtped instanceof Date) dateStr = newSale.dtped.toISOString();
 
-                results.push(newSale);
+                let chunkKey = 'INVALID';
+                if (dateStr && dateStr.length >= 7) {
+                    chunkKey = dateStr.substring(0, 7); // 'YYYY-MM'
+                }
+
+                if (!chunks[chunkKey]) chunks[chunkKey] = { rows: [] };
+                chunks[chunkKey].rows.push(newSale);
              }
-             return results;
+
+             // Hash Chunks
+             const chunkKeys = Object.keys(chunks);
+             for (const key of chunkKeys) {
+                 // Sort rows to ensure deterministic hash (by order ID or composite key if possible, else rely on input order stability + sort)
+                 // Sorting by 'pedido' + 'produto' + 'vlvenda' for determinism
+                 chunks[key].rows.sort((a, b) => {
+                     const ka = (a.pedido || '') + (a.produto || '') + (a.vlvenda || 0);
+                     const kb = (b.pedido || '') + (b.produto || '') + (b.vlvenda || 0);
+                     return ka.localeCompare(kb);
+                 });
+
+                 // Calculate Chunk Hash (SHA-256 of JSON string of sorted rows)
+                 const jsonStr = JSON.stringify(chunks[key].rows);
+                 const encoder = new TextEncoder();
+                 const data = encoder.encode(jsonStr);
+                 const hashBuffer = await self.crypto.subtle.digest('SHA-256', data);
+                 const hashArray = Array.from(new Uint8Array(hashBuffer));
+                 chunks[key].hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+             }
+
+             return chunks;
         };
 
-        const finalPrevYear = await finalizeSalesData(processedPrevYear, true);
-        const finalCurrYearHist = await finalizeSalesData(processedCurrYearHist, true);
-        const finalCurrMonth = await finalizeSalesData(processedCurrMonth, false);
+        const historyChunks = await chunkData([...processedPrevYear, ...processedCurrYearHist], true);
+        const detailedChunks = await chunkData(processedCurrMonth, false);
 
         self.postMessage({ type: 'progress', status: 'Preparando dados para envio...', percentage: 90 });
 
@@ -666,8 +696,8 @@ self.onmessage = async (event) => {
 
         // Collect all data to return
         const resultPayload = {
-            history: [...finalPrevYear, ...finalCurrYearHist],
-            detailed: finalCurrMonth,
+            historyChunks: historyChunks,
+            detailedChunks: detailedChunks,
             clients: clientsToInsert,
             newCities: Array.from(newCitiesSet),
             newSupervisors: mapToObjArray(dimSupervisors),
