@@ -1018,7 +1018,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Incremental Sync Logic (Chunked for Sales, Row-Hash for Clients) ---
         
-        // Sync Logic for Sales (Metadata + Chunking)
+        // Sync Logic for Sales (Metadata + Chunking + Batched HTTP Requests)
         const syncSalesChunks = async (tableName, localChunks, progressStart, progressEnd) => {
             updateStatus(`Verificando metadados de ${tableName}...`, progressStart);
 
@@ -1043,18 +1043,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 const serverHash = serverMap.get(key);
 
                 if (serverHash !== localChunk.hash) {
-                    console.log(`[${tableName}] Syncing chunk ${key}...`);
+                    console.log(`[${tableName}] Syncing chunk ${key} (Size: ${localChunk.rows.length})...`);
                     updateStatus(`Sincronizando ${tableName} (${key})...`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
                     
-                    // Upload Chunk via RPC
-                    const { error: syncErr } = await supabase.rpc('sync_sales_chunk', {
+                    // --- GRANULAR UPLOAD STRATEGY ---
+                    // 1. Wipe Data for Month
+                    const { error: wipeErr } = await supabase.rpc('begin_sync_chunk', {
+                        p_table_name: tableName,
+                        p_chunk_key: key
+                    });
+                    if (wipeErr) throw new Error(`Erro WIPE chunk ${key}: ${wipeErr.message}`);
+
+                    // 2. Batch Append (e.g. 2000 rows per request to avoid Gateway Timeouts)
+                    const ROWS_PER_REQUEST = 2000;
+                    const totalRows = localChunk.rows.length;
+
+                    for (let i = 0; i < totalRows; i += ROWS_PER_REQUEST) {
+                        const batch = localChunk.rows.slice(i, i + ROWS_PER_REQUEST);
+                        const progress = Math.round(((i + batch.length) / totalRows) * 100);
+                        updateStatus(`Enviando ${tableName} (${key}): ${progress}%`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
+
+                        await retryOperation(async () => {
+                            const { error: appendErr } = await supabase.rpc('append_sync_chunk', {
+                                p_table_name: tableName,
+                                p_rows: batch
+                            });
+                            if (appendErr) throw new Error(`Erro APPEND chunk ${key} batch ${i}: ${appendErr.message}`);
+                        });
+                    }
+
+                    // 3. Commit/Finalize
+                    const { error: commitErr } = await supabase.rpc('commit_sync_chunk', {
                         p_table_name: tableName,
                         p_chunk_key: key,
-                        p_rows: localChunk.rows,
                         p_hash: localChunk.hash
                     });
+                    if (commitErr) throw new Error(`Erro COMMIT chunk ${key}: ${commitErr.message}`);
 
-                    if (syncErr) throw new Error(`Erro sync chunk ${key} em ${tableName}: ${syncErr.message}`);
                 } else {
                     console.log(`[${tableName}] Chunk ${key} is up-to-date.`);
                 }
