@@ -1016,7 +1016,54 @@ document.addEventListener('DOMContentLoaded', () => {
              await Promise.all(Array.from({ length: Math.min(CONCURRENT_REQUESTS, totalBatches) }, worker));
         };
 
-        // --- Incremental Sync Logic ---
+        // --- Incremental Sync Logic (Chunked for Sales, Row-Hash for Clients) ---
+        
+        // Sync Logic for Sales (Metadata + Chunking)
+        const syncSalesChunks = async (tableName, localChunks, progressStart, progressEnd) => {
+            updateStatus(`Verificando metadados de ${tableName}...`, progressStart);
+
+            // 1. Get Server Metadata
+            const { data: serverMeta, error: metaErr } = await supabase.from('data_metadata').select('chunk_key, chunk_hash').eq('table_name', tableName);
+            if (metaErr) throw new Error(`Erro metadados ${tableName}: ${metaErr.message}`);
+
+            const serverMap = new Map();
+            if (serverMeta) {
+                serverMeta.forEach(m => serverMap.set(m.chunk_key, m.chunk_hash));
+            }
+
+            const localKeys = Object.keys(localChunks);
+            const totalChunks = localKeys.length;
+            let processedChunks = 0;
+
+            console.log(`[${tableName}] Total Chunks: ${totalChunks}`);
+
+            // 2. Iterate Chunks
+            for (const key of localKeys) {
+                const localChunk = localChunks[key];
+                const serverHash = serverMap.get(key);
+
+                if (serverHash !== localChunk.hash) {
+                    console.log(`[${tableName}] Syncing chunk ${key}...`);
+                    updateStatus(`Sincronizando ${tableName} (${key})...`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
+                    
+                    // Upload Chunk via RPC
+                    const { error: syncErr } = await supabase.rpc('sync_sales_chunk', {
+                        p_table_name: tableName,
+                        p_chunk_key: key,
+                        p_rows: localChunk.rows,
+                        p_hash: localChunk.hash
+                    });
+
+                    if (syncErr) throw new Error(`Erro sync chunk ${key} em ${tableName}: ${syncErr.message}`);
+                } else {
+                    console.log(`[${tableName}] Chunk ${key} is up-to-date.`);
+                }
+                processedChunks++;
+            }
+            updateStatus(`${tableName} sincronizada.`, progressEnd);
+        };
+
+        // Legacy Row-Hash Sync (Kept for Clients)
         const syncTable = async (tableName, clientRows, progressStart, progressEnd) => {
             updateStatus(`Sincronizando ${tableName}...`, progressStart);
             
@@ -1088,9 +1135,11 @@ document.addEventListener('DOMContentLoaded', () => {
                  await performDimensionUpsert('dim_fornecedores', data.newProviders);
             }
 
-            // Use Sync instead of Clear & Insert
-            if (data.history) await syncTable('data_history', data.history, 10, 40);
-            if (data.detailed) await syncTable('data_detailed', data.detailed, 40, 70);
+            // Sales Tables (Use Chunk Sync)
+            if (data.historyChunks) await syncSalesChunks('data_history', data.historyChunks, 10, 40);
+            if (data.detailedChunks) await syncSalesChunks('data_detailed', data.detailedChunks, 40, 70);
+            
+            // Clients Table (Use Row Sync)
             if (data.clients) await syncTable('data_clients', data.clients, 70, 80);
 
             // CHUNKED CACHE REFRESH LOGIC
