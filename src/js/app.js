@@ -113,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const boxesTipovendaFilterBtn = document.getElementById('boxes-tipovenda-filter-btn');
     const boxesTipovendaFilterDropdown = document.getElementById('boxes-tipovenda-filter-dropdown');
     const boxesClearFiltersBtn = document.getElementById('boxes-clear-filters-btn');
+    const boxesTrendToggleBtn = document.getElementById('boxes-trend-toggle-btn');
     // Boxes Export
     const boxesExportBtn = document.getElementById('boxes-export-btn');
     const boxesExportDropdown = document.getElementById('boxes-export-dropdown');
@@ -1250,6 +1251,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let boxesSelectedProducts = [];
     let boxesSelectedTiposVenda = [];
     let boxesSelectedCategorias = [];
+    let boxesTrendActive = false; // State for Trend Toggle
 
     const handleBoxesFilterChange = async () => {
         clearTimeout(boxesFilterDebounceTimer);
@@ -1307,6 +1309,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (boxesAnoFilter) boxesAnoFilter.addEventListener('change', handleBoxesFilterChange);
     if (boxesMesFilter) boxesMesFilter.addEventListener('change', handleBoxesFilterChange);
+
+    if (boxesTrendToggleBtn) {
+        boxesTrendToggleBtn.addEventListener('click', () => {
+            boxesTrendActive = !boxesTrendActive;
+            const span = document.getElementById('boxes-trend-text');
+
+            if (boxesTrendActive) {
+                boxesTrendToggleBtn.classList.remove('text-orange-500', 'hover:text-orange-400');
+                boxesTrendToggleBtn.classList.add('text-purple-500', 'hover:text-purple-400');
+                if (span) span.textContent = 'Ver Realizado';
+            } else {
+                boxesTrendToggleBtn.classList.remove('text-purple-500', 'hover:text-purple-400');
+                boxesTrendToggleBtn.classList.add('text-orange-500', 'hover:text-orange-400');
+                if (span) span.textContent = 'Calcular Tendência';
+            }
+
+            // Re-render only (data already has trend info if RPC updated)
+            // But we need to make sure we have the data.
+            // Ideally we re-fetch if we suspect cache is stale, but usually RPC returns trend info always if available.
+            // Let's just re-render first.
+            loadBoxesView();
+        });
+    }
 
     // Boxes Export Logic
     let currentBoxesTableData = [];
@@ -1457,6 +1482,13 @@ document.addEventListener('DOMContentLoaded', () => {
             boxesSelectedCidades = [];
             boxesSelectedTiposVenda = [];
             boxesSelectedCategorias = [];
+            boxesTrendActive = false; // Reset Trend
+            const span = document.getElementById('boxes-trend-text');
+            if(span) span.textContent = 'Calcular Tendência';
+            if(boxesTrendToggleBtn) {
+                boxesTrendToggleBtn.classList.remove('text-purple-500', 'hover:text-purple-400');
+                boxesTrendToggleBtn.classList.add('text-orange-500', 'hover:text-orange-400');
+            }
             initBoxesFilters().then(loadBoxesView);
         });
     }
@@ -1560,6 +1592,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderBoxesDashboard(data) {
+        // Trend Data Extraction
+        const trendInfo = data.trend_info || { allowed: false, factor: 1, current_month_index: -1 };
+        const applyTrend = boxesTrendActive && trendInfo.allowed;
+
         // Safe access helpers
         const safeVal = (v) => v || 0;
         const fmtBRL = (v) => safeVal(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -1576,43 +1612,127 @@ document.addEventListener('DOMContentLoaded', () => {
             return `<span class="${cls}">${sign}${v.toFixed(1)}%</span>`;
         };
 
+        // Determine View Mode (Year vs Month)
+        // If boxesMesFilter is empty -> Year View (Accumulated)
+        // If boxesMesFilter has value -> Month View (Specific Month)
+        const isYearView = (boxesMesFilter.value === '');
+
+        // --- KPI Logic Update for Trend ---
         const updateBoxKpi = (prefix, key, formatFn) => {
-            const curr = safeVal(data.kpi_current[key]);
+            let curr = safeVal(data.kpi_current[key]);
             const prev = safeVal(data.kpi_previous[key]);
             const tri = safeVal(data.kpi_tri_avg[key]);
 
+            let mainDisplayVal = curr;
+            let triComparisonVal = curr; // Default: Compare current realized vs Tri Avg
+
+            if (applyTrend) {
+                if (isYearView) {
+                    // YEAR VIEW + TREND
+                    // Main Value: Stays as Realized (YTD) per requirements.
+                    // Tri Indicator: Uses Trended Current Month vs Tri Avg.
+
+                    // We need to calculate the Trended Monthly Value for the current month to use in the Tri indicator.
+                    // The `kpi_current` in Year View is the SUM of the year.
+                    // We need to find the specific current month's realized value from the chart data to apply trend.
+
+                    // Filter chart data for current year and current month index
+                    const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
+                    const currMonthData = (data.chart_data || []).find(d => d.year === filterYear && d.month_index === trendInfo.current_month_index);
+
+                    let currMonthRealized = 0;
+                    if (currMonthData) {
+                        if (key === 'fat') currMonthRealized = currMonthData.faturamento;
+                        else if (key === 'peso') currMonthRealized = currMonthData.peso;
+                        else if (key === 'caixas') currMonthRealized = currMonthData.caixas;
+                    }
+
+                    // Apply Trend Factor to get Projected Month
+                    triComparisonVal = currMonthRealized * trendInfo.factor;
+
+                    // Main Display stays curr (Realized YTD)
+
+                } else {
+                    // MONTH VIEW + TREND
+                    // Main Value: Trended Monthly Value.
+                    // Tri Indicator: Trended Monthly Value.
+                    mainDisplayVal = curr * trendInfo.factor;
+                    triComparisonVal = mainDisplayVal;
+                }
+            } else {
+                // NO TREND
+                // In Year View: triComparisonVal should ideally be the current month's realized vs Tri Avg?
+                // The prompt says: "no indicador de trimestre... sempre será o mês mais recente contra o trimestre mais recente"
+                // So even without trend, if in Year View, Tri comparison is Month vs Month.
+                if (isYearView) {
+                     const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
+                     // Find max month in data or current month index
+                     // If trend is not allowed (e.g. past year), use the last month available in data?
+                     // Or just use the average of the year vs tri? Usually it's Month vs Tri.
+
+                     // Let's assume for Year View, Tri indicator is always "Last Active Month" vs "Previous 3 Months Avg".
+                     // If we are in 2025 (current), it's Current Month.
+                     // If we are in 2024 (past), it's Dec 2024 vs Oct-Nov-Dec 2024 avg? Or Jan 2025 vs Q4 2024?
+                     // Simplified: If trend allowed (Current Year), use current month.
+                     if (trendInfo.allowed) {
+                         const currMonthData = (data.chart_data || []).find(d => d.year === filterYear && d.month_index === trendInfo.current_month_index);
+                         if (currMonthData) {
+                             if (key === 'fat') triComparisonVal = currMonthData.faturamento;
+                             else if (key === 'peso') triComparisonVal = currMonthData.peso;
+                             else if (key === 'caixas') triComparisonVal = currMonthData.caixas;
+                         }
+                     } else {
+                         // If past year, maybe just leave it as average vs average or hide?
+                         // Logic: "always the most recent month".
+                         // For now, let's keep triComparisonVal = curr (which is Total Year) ONLY if we can't isolate month,
+                         // but standard logic suggests we shouldn't compare Year Total vs Monthly Average.
+                         // Let's stick to: if chart data exists, pick last month.
+                         const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
+                         const monthsData = (data.chart_data || []).filter(d => d.year === filterYear).sort((a,b) => b.month_index - a.month_index);
+                         if (monthsData.length > 0) {
+                             const lastM = monthsData[0];
+                             if (key === 'fat') triComparisonVal = lastM.faturamento;
+                             else if (key === 'peso') triComparisonVal = lastM.peso;
+                             else if (key === 'caixas') triComparisonVal = lastM.caixas;
+                         }
+                     }
+                }
+            }
+
             const elMain = document.getElementById(`boxes-kpi-${prefix}`);
-            if(elMain) elMain.textContent = formatFn(curr);
+            if(elMain) elMain.textContent = formatFn(mainDisplayVal);
 
             const elPrevVal = document.getElementById(`boxes-kpi-${prefix}-prev`);
             const elPrevVar = document.getElementById(`boxes-kpi-${prefix}-prev-var`);
             if(elPrevVal) elPrevVal.textContent = formatFn(prev);
-            if(elPrevVar) elPrevVar.innerHTML = fmtVar(calcVar(curr, prev));
+
+            // Year vs Year variation (using Main Display Val which might be Trended Month or Realized Year)
+            // If Year View: Realized Year vs Previous Year.
+            // If Month View + Trend: Trended Month vs Previous Month (same period prev year).
+            // Logic: calcVar(mainDisplayVal, prev).
+            if(elPrevVar) elPrevVar.innerHTML = fmtVar(calcVar(mainDisplayVal, prev));
 
             const elTriVal = document.getElementById(`boxes-kpi-${prefix}-tri`);
             const elTriVar = document.getElementById(`boxes-kpi-${prefix}-tri-var`);
             if(elTriVal) elTriVal.textContent = formatFn(tri);
-            if(elTriVar) elTriVar.innerHTML = fmtVar(calcVar(curr, tri));
+
+            // Tri Variation: Always Monthly (Recent/Trended) vs Tri Avg
+            if(elTriVar) elTriVar.innerHTML = fmtVar(calcVar(triComparisonVal, tri));
         };
 
         updateBoxKpi('fat', 'fat', fmtBRL);
         updateBoxKpi('peso', 'peso', fmtKg);
         updateBoxKpi('caixas', 'caixas', fmtCaixas);
 
-        // Chart (2 datasets: Current vs Previous)
+        // Chart (2 datasets: Current vs Previous + Trend if active)
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        const labels = monthNames;
+        const labels = [...monthNames];
         const currentYear = new Date().getFullYear(); 
-        // Note: data.chart_data contains year info, but typically we assume Current vs Prev based on request
-        // We can infer year from filter or just label as "Ano Atual" vs "Ano Anterior"
         
         const boxesCurrent = new Array(12).fill(0);
         const boxesPrev = new Array(12).fill(0);
         const chartData = data.chart_data || [];
         
-        // We need to identify which year is which.
-        // The RPC returns 'year' column.
-        // Filter year logic in JS:
         const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : currentYear;
         const prevYear = filterYear - 1;
 
@@ -1623,7 +1743,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        createChart('boxesChart', 'bar', labels, [
+        const datasets = [
             {
                 label: `Ano ${prevYear}`,
                 data: boxesPrev,
@@ -1640,7 +1760,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 borderWidth: 1,
                 isCurrent: true
             }
-        ], (v) => Math.round(v).toLocaleString('pt-BR')); 
+        ];
+
+        // Chart Trend Logic
+        if (applyTrend) {
+            // Add "Tendência" Bar
+            labels.push('Tendência');
+
+            // Calculate Trended Value for the current month
+            // We need the realized value of the current month to project
+            const currMonthData = chartData.find(d => d.year === filterYear && d.month_index === trendInfo.current_month_index);
+            const realizedCaixas = currMonthData ? currMonthData.caixas : 0;
+            const trendCaixas = realizedCaixas * trendInfo.factor;
+
+            // Create a dataset for Trend that is empty for months and has value for "Tendência" label
+            // BUT simpler: extend current year dataset? No, distinct color.
+            // Let's add a new dataset "Tendência" with 13 points (12 null + 1 val)
+            // And pad others with 0 or null
+
+            // Pad existing
+            datasets.forEach(ds => ds.data.push(null));
+
+            const trendData = new Array(13).fill(null);
+            trendData[12] = trendCaixas;
+
+            datasets.push({
+                label: `Tendência ${monthNames[trendInfo.current_month_index]}`,
+                data: trendData,
+                backgroundColor: '#8b5cf6', // Violet
+                borderColor: '#8b5cf6',
+                borderWidth: 1,
+                isTrend: true
+            });
+        }
+
+        createChart('boxesChart', 'bar', labels, datasets, (v) => Math.round(v).toLocaleString('pt-BR'));
 
         // Table
         const products = data.products_table || [];
