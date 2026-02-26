@@ -846,7 +846,7 @@ CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_mes text default null,
     p_tipovenda text[] default null,
     p_rede text[] default null,
-    p_categoria text[] default null -- Added
+    p_categoria text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -1600,7 +1600,7 @@ BEGIN
         v_where_summary := v_where_summary || format(' AND categoria_produto = ANY(%L) ', p_categoria);
         v_where_raw := v_where_raw || format(' AND dp.categoria_produto = ANY(%L) ', p_categoria);
     END IF;
-
+    
     -- Fornecedor Logic
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_where_summary := v_where_summary || format(' AND codfor = ANY(%L) ', p_fornecedor);
@@ -1921,7 +1921,7 @@ BEGIN
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN v_where := v_where || format(' AND codfor = ANY(%L) ', p_fornecedor); END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN v_where := v_where || format(' AND tipovenda = ANY(%L) ', p_tipovenda); END IF;
-
+    
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where := v_where || format(' AND categoria_produto = ANY(%L) ', p_categoria);
@@ -2070,7 +2070,7 @@ BEGIN
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where := v_where || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
     END IF;
-
+    
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where := v_where || format(' AND categoria_produto = ANY(%L) ', p_categoria);
@@ -2322,7 +2322,7 @@ BEGIN
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
         v_where := v_where || format(' AND produto = ANY(%L) ', p_produto);
     END IF;
-
+    
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where := v_where || format(' AND dp.categoria_produto = ANY(%L) ', p_categoria);
