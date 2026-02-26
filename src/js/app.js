@@ -113,7 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const boxesTipovendaFilterBtn = document.getElementById('boxes-tipovenda-filter-btn');
     const boxesTipovendaFilterDropdown = document.getElementById('boxes-tipovenda-filter-dropdown');
     const boxesClearFiltersBtn = document.getElementById('boxes-clear-filters-btn');
-    const boxesTendencyToggle = document.getElementById('boxes-tendency-toggle');
     // Boxes Export
     const boxesExportBtn = document.getElementById('boxes-export-btn');
     const boxesExportDropdown = document.getElementById('boxes-export-dropdown');
@@ -1251,7 +1250,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let boxesSelectedProducts = [];
     let boxesSelectedTiposVenda = [];
     let boxesSelectedCategorias = [];
-    let boxesTrendMode = false;
 
     const handleBoxesFilterChange = async () => {
         clearTimeout(boxesFilterDebounceTimer);
@@ -1277,39 +1275,6 @@ document.addEventListener('DOMContentLoaded', () => {
             await loadBoxesView();
         }, 500);
     };
-
-    if (boxesTendencyToggle) {
-        boxesTendencyToggle.addEventListener('click', () => {
-            boxesTrendMode = !boxesTrendMode;
-            boxesTendencyToggle.textContent = boxesTrendMode ? 'Ver Dados Reais' : 'Calcular Tendência';
-            boxesTendencyToggle.classList.toggle('bg-orange-600');
-            boxesTendencyToggle.classList.toggle('hover:bg-orange-500');
-            boxesTendencyToggle.classList.toggle('bg-purple-600');
-            boxesTendencyToggle.classList.toggle('hover:bg-purple-500');
-
-            // Re-render if data is available, else fetch
-            const currentCacheKey = generateCacheKey('boxes_dashboard_data', {
-                p_filial: boxesSelectedFiliais.length > 0 ? boxesSelectedFiliais : null,
-                p_cidade: boxesSelectedCidades.length > 0 ? boxesSelectedCidades : null,
-                p_supervisor: boxesSelectedSupervisores.length > 0 ? boxesSelectedSupervisores : null,
-                p_vendedor: boxesSelectedVendedores.length > 0 ? boxesSelectedVendedores : null,
-                p_fornecedor: boxesSelectedFornecedores.length > 0 ? boxesSelectedFornecedores : null,
-                p_produto: boxesSelectedProducts.length > 0 ? boxesSelectedProducts : null,
-                p_tipovenda: boxesSelectedTiposVenda.length > 0 ? boxesSelectedTiposVenda : null,
-                p_categoria: boxesSelectedCategorias.length > 0 ? boxesSelectedCategorias : null,
-                p_ano: boxesAnoFilter.value === 'todos' ? null : boxesAnoFilter.value,
-                p_mes: boxesMesFilter.value === '' ? null : boxesMesFilter.value
-            });
-
-            getFromCache(currentCacheKey).then(entry => {
-                if (entry && entry.data) {
-                    renderBoxesDashboard(entry.data);
-                } else {
-                    loadBoxesView();
-                }
-            });
-        });
-    }
 
     async function loadBoxesFilters(currentFilters) {
         // Exclude p_produto from filter fetch to prevent self-filtering if that's desired behavior?
@@ -1492,14 +1457,6 @@ document.addEventListener('DOMContentLoaded', () => {
             boxesSelectedCidades = [];
             boxesSelectedTiposVenda = [];
             boxesSelectedCategorias = [];
-
-            boxesTrendMode = false;
-            if(boxesTendencyToggle) {
-                boxesTendencyToggle.textContent = 'Calcular Tendência';
-                boxesTendencyToggle.classList.remove('bg-orange-600', 'hover:bg-orange-500');
-                boxesTendencyToggle.classList.add('bg-purple-600', 'hover:bg-purple-500');
-            }
-
             initBoxesFilters().then(loadBoxesView);
         });
     }
@@ -1619,126 +1576,43 @@ document.addEventListener('DOMContentLoaded', () => {
             return `<span class="${cls}">${sign}${v.toFixed(1)}%</span>`;
         };
 
-        const isTrendAllowed = data.trend_info && data.trend_info.allowed;
-        const trendData = data.trend_info ? data.trend_info.data : null;
-        const trendMonthIdx = data.trend_info ? data.trend_info.month_index : -1;
-
-        // Is Year View? (Ano filter selected, Mes filter empty)
-        const isYearView = (boxesAnoFilter.value !== 'todos' && boxesMesFilter.value === '');
-        // Is Specific Month View?
-        const isMonthView = (boxesMesFilter.value !== '');
-
         const updateBoxKpi = (prefix, key, formatFn) => {
-            let currVal = safeVal(data.kpi_current[key]);
-            const prevVal = safeVal(data.kpi_previous[key]);
-            const triAvg = safeVal(data.kpi_tri_avg[key]);
-
-            // Trend Logic Implementation
-            if (boxesTrendMode && isTrendAllowed) {
-                if (isMonthView) {
-                    // Month View: If selected month matches current trend month, use projection
-                    // Note: boxesMesFilter.value is string '0'-'11'. trendMonthIdx is int 0-11.
-                    if (parseInt(boxesMesFilter.value) === trendMonthIdx && trendData) {
-                        currVal = trendData[key] || 0;
-                    }
-                } else if (isYearView) {
-                    // Year View: Calculate Annual Trend
-                    // Formula: (Current Total + (Projected Current Month - Actual Current Month)) / (Months So Far) * 12 ??
-                    // OR User Request: "Teremos na informação principal o realizado do ano... e o indicador de trimestre será o mês mais recente... contra os três meses anteriores"
-                    // Wait, re-reading request: "Teremos na informação principal o realizado, abaixo o valor do ano anterior... e o indicador de trimestre será janeiro de 2026 contra os três meses anteriores"
-                    // Actually, if Trend Mode is ON, user expects Trend Value.
-
-                    // Logic for Annual Projection:
-                    // 1. We have `currVal` which is YTD total (including partial current month).
-                    // 2. We need to project the rest of the year? Or just extrapolate current month?
-                    // User said: "assim como é calculada a tendencia nos KPIs da pagina principal"
-                    // Main Dashboard Logic: `(Accumulated YTD + Projected Current Month Diff?) / Months Passed * 12`
-                    // Actually Main Dashboard logic used: `(currSums / monthsPassed) * 12` where currSums includes projected current month.
-
-                    // Let's replicate Main Dashboard logic:
-                    // We need the accumulated value up to now, but replacing the partial current month with the projected one.
-                    // However, `data.kpi_current` comes pre-summed from backend.
-
-                    // Let's assume `data.kpi_current` includes the partial current month data.
-                    // We need to add the difference between projected and actual for the current month?
-                    // Or if backend returns monthly array, we can sum it up.
-
-                    // Backend returns `chart_data`. We can use that to reconstruct proper sum if needed.
-                    // Let's find current month actual in chart data.
-                    const filterYear = parseInt(boxesAnoFilter.value);
-                    const currentMonthActual = (data.chart_data || []).find(d => d.year === filterYear && d.month_index === trendMonthIdx)?.[key] || 0;
-
-                    // Projected Month Value
-                    const projectedMonth = trendData ? (trendData[key] || 0) : 0;
-
-                    // Adjusted YTD = (Total YTD - Actual Current Month) + Projected Current Month
-                    // Wait, `kpi_current` from RPC is simple SUM.
-                    const adjustedYTD = (currVal - currentMonthActual) + projectedMonth;
-
-                    // Annual Projection = (Adjusted YTD / (trendMonthIdx + 1)) * 12
-                    const monthsPassed = trendMonthIdx + 1;
-                    if (monthsPassed > 0) {
-                        currVal = (adjustedYTD / monthsPassed) * 12;
-                    }
-                }
-            }
-
-            // Tri Comparison Logic
-            // Request: "indicator que compara o trimestre... sempre será o mês mais recente contra o trimestre mais recente"
-            // i.e., Compare (Current Month OR Projected Month) vs (Tri Avg)
-            // Even if Year View is active.
-
-            let triComparisonVal;
-
-            if (boxesTrendMode && isTrendAllowed && trendData) {
-                // If trend mode, use projected current month
-                triComparisonVal = trendData[key] || 0;
-            } else {
-                // Use actual current month (need to fetch from chart data or dedicated field, kpi_current might be total year)
-                if (isYearView) {
-                    const filterYear = parseInt(boxesAnoFilter.value);
-                    // Find the last available month in chart data for current year
-                    // trendMonthIdx is the index of current active month (e.g. today is Jan 20th, index 0).
-                    // If we are looking at a past year, trend_allowed is false.
-                    // So if trend_allowed is true, we are in current year.
-                    const lastMonthIdx = trendMonthIdx; // e.g. 0 for Jan
-                    triComparisonVal = (data.chart_data || []).find(d => d.year === filterYear && d.month_index === lastMonthIdx)?.[key] || 0;
-                } else {
-                    // Month View: kpi_current is already the month value
-                    triComparisonVal = currVal;
-                }
-            }
+            const curr = safeVal(data.kpi_current[key]);
+            const prev = safeVal(data.kpi_previous[key]);
+            const tri = safeVal(data.kpi_tri_avg[key]);
 
             const elMain = document.getElementById(`boxes-kpi-${prefix}`);
-            if(elMain) elMain.textContent = formatFn(currVal);
+            if(elMain) elMain.textContent = formatFn(curr);
 
             const elPrevVal = document.getElementById(`boxes-kpi-${prefix}-prev`);
             const elPrevVar = document.getElementById(`boxes-kpi-${prefix}-prev-var`);
-            if(elPrevVal) elPrevVal.textContent = formatFn(prevVal);
-            if(elPrevVar) elPrevVar.innerHTML = fmtVar(calcVar(currVal, prevVal));
+            if(elPrevVal) elPrevVal.textContent = formatFn(prev);
+            if(elPrevVar) elPrevVar.innerHTML = fmtVar(calcVar(curr, prev));
 
-            // Tri Card Update
             const elTriVal = document.getElementById(`boxes-kpi-${prefix}-tri`);
             const elTriVar = document.getElementById(`boxes-kpi-${prefix}-tri-var`);
-            if(elTriVal) elTriVal.textContent = formatFn(triAvg);
-
-            // Compare Specific Month (Real or Trend) vs Tri Avg
-            if(elTriVar) elTriVar.innerHTML = fmtVar(calcVar(triComparisonVal, triAvg));
+            if(elTriVal) elTriVal.textContent = formatFn(tri);
+            if(elTriVar) elTriVar.innerHTML = fmtVar(calcVar(curr, tri));
         };
 
         updateBoxKpi('fat', 'fat', fmtBRL);
         updateBoxKpi('peso', 'peso', fmtKg);
         updateBoxKpi('caixas', 'caixas', fmtCaixas);
 
-        // Chart (2 datasets: Current vs Previous + Trend)
+        // Chart (2 datasets: Current vs Previous)
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        const labels = [...monthNames];
+        const labels = monthNames;
         const currentYear = new Date().getFullYear(); 
+        // Note: data.chart_data contains year info, but typically we assume Current vs Prev based on request
+        // We can infer year from filter or just label as "Ano Atual" vs "Ano Anterior"
         
         const boxesCurrent = new Array(12).fill(0);
         const boxesPrev = new Array(12).fill(0);
         const chartData = data.chart_data || [];
         
+        // We need to identify which year is which.
+        // The RPC returns 'year' column.
+        // Filter year logic in JS:
         const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : currentYear;
         const prevYear = filterYear - 1;
 
@@ -1749,7 +1623,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        const datasets = [
+        createChart('boxesChart', 'bar', labels, [
             {
                 label: `Ano ${prevYear}`,
                 data: boxesPrev,
@@ -1766,31 +1640,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 borderWidth: 1,
                 isCurrent: true
             }
-        ];
-
-        // Add Trend Bar if Enabled
-        if (boxesTrendMode && isTrendAllowed && trendData) {
-            // Add "Trend" label
-            labels.push('Tendência');
-
-            // Pad previous datasets
-            datasets.forEach(ds => ds.data.push(null));
-
-            // Create Trend Dataset
-            const trendArr = new Array(13).fill(null);
-            trendArr[12] = trendData.caixas || 0; // 13th position
-
-            datasets.push({
-                label: `Tendência ${monthNames[trendMonthIdx]}`,
-                data: trendArr,
-                backgroundColor: '#8b5cf6', // Purple
-                borderColor: '#8b5cf6',
-                borderWidth: 1,
-                isTrend: true
-            });
-        }
-
-        createChart('boxesChart', 'bar', labels, datasets, (v) => Math.round(v).toLocaleString('pt-BR'));
+        ], (v) => Math.round(v).toLocaleString('pt-BR')); 
 
         // Table
         const products = data.products_table || [];
