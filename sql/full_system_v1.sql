@@ -1510,7 +1510,8 @@ CREATE OR REPLACE FUNCTION get_boxes_dashboard_data(
     p_mes text default null,
     p_tipovenda text[] default null,
     p_rede text[] default null,
-    p_produto text[] default null
+    p_produto text[] default null,
+    p_categoria text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -1580,7 +1581,7 @@ BEGIN
         v_where_raw := v_where_raw || format(' AND cidade = ANY(%L) ', p_cidade);
         v_where_summary := v_where_summary || format(' AND cidade = ANY(%L) ', p_cidade);
     END IF;
-    -- Update: Map Name to Code for Summary
+    -- Map Name to Code
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
          v_where_raw := v_where_raw || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
          v_where_summary := v_where_summary || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
@@ -1594,6 +1595,12 @@ BEGIN
         v_where_summary := v_where_summary || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
     END IF;
     
+    -- Category Filter
+    IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
+        v_where_summary := v_where_summary || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where_raw := v_where_raw || format(' AND dp.categoria_produto = ANY(%L) ', p_categoria);
+    END IF;
+
     -- Fornecedor Logic
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_where_summary := v_where_summary || format(' AND codfor = ANY(%L) ', p_fornecedor);
@@ -1605,11 +1612,6 @@ BEGIN
             v_simple_codes text[] := '{}';
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
-                -- For Raw, we now check dim_produtos for description!
-                -- This is tricky in dynamic SQL for complex ORs.
-                -- Simplified approach: Join dim_produtos and check mapped description in query
-
-                -- Construct conditions assuming query will have dp alias for dim_produtos
                 IF v_code = '1119_TODDYNHO' THEN
                     v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%TODDYNHO%'')');
                 ELSIF v_code = '1119_TODDY' THEN
@@ -1843,7 +1845,8 @@ CREATE OR REPLACE FUNCTION get_branch_comparison_data(
     p_mes text default null,
     p_tipovenda text[] default null,
     p_rede text[] default null,
-    p_produto text[] default null
+    p_produto text[] default null,
+    p_categoria text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -1918,6 +1921,11 @@ BEGIN
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN v_where := v_where || format(' AND codfor = ANY(%L) ', p_fornecedor); END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN v_where := v_where || format(' AND tipovenda = ANY(%L) ', p_tipovenda); END IF;
+
+    -- Category Filter
+    IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
+        v_where := v_where || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+    END IF;
 
     -- REDE Logic
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
@@ -1998,7 +2006,8 @@ CREATE OR REPLACE FUNCTION get_city_view_data(
     p_page int default 0,
     p_limit int default 50,
     p_inactive_page int default 0,
-    p_inactive_limit int default 50
+    p_inactive_limit int default 50,
+    p_categoria text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -2060,6 +2069,11 @@ BEGIN
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where := v_where || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+    END IF;
+
+    -- Category Filter
+    IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
+        v_where := v_where || format(' AND categoria_produto = ANY(%L) ', p_categoria);
     END IF;
 
     -- REDE Logic
@@ -2164,7 +2178,8 @@ CREATE OR REPLACE FUNCTION get_comparison_view_data(
     p_mes text default null,
     p_tipovenda text[] default null,
     p_rede text[] default null,
-    p_produto text[] default null
+    p_produto text[] default null,
+    p_categoria text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -2306,6 +2321,11 @@ BEGIN
     END IF;
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
         v_where := v_where || format(' AND produto = ANY(%L) ', p_produto);
+    END IF;
+
+    -- Category Filter
+    IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
+        v_where := v_where || format(' AND dp.categoria_produto = ANY(%L) ', p_categoria);
     END IF;
 
     -- REDE Logic
