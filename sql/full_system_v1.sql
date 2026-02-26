@@ -855,37 +855,49 @@ SET search_path = public
 AS $$
 DECLARE
     v_where text := ' WHERE 1=1 ';
+    v_where_cat text := ' WHERE 1=1 '; -- NEW: Where clause specifically for Category List (excludes category filter)
     v_result json;
 BEGIN
     -- Construct Where Clause
     IF p_ano IS NOT NULL AND p_ano != 'todos' THEN
         v_where := v_where || format(' AND ano = %L ', p_ano::int);
+        v_where_cat := v_where_cat || format(' AND ano = %L ', p_ano::int);
     END IF;
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_where := v_where || format(' AND mes = %L ', p_mes::int + 1);
+        v_where_cat := v_where_cat || format(' AND mes = %L ', p_mes::int + 1);
     END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where := v_where || format(' AND filial = ANY(%L) ', p_filial);
+        v_where_cat := v_where_cat || format(' AND filial = ANY(%L) ', p_filial);
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where := v_where || format(' AND cidade = ANY(%L) ', p_cidade);
+        v_where_cat := v_where_cat || format(' AND cidade = ANY(%L) ', p_cidade);
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where := v_where || format(' AND superv = ANY(%L) ', p_supervisor);
+        v_where_cat := v_where_cat || format(' AND superv = ANY(%L) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
         v_where := v_where || format(' AND nome = ANY(%L) ', p_vendedor);
+        v_where_cat := v_where_cat || format(' AND nome = ANY(%L) ', p_vendedor);
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_where := v_where || format(' AND codfor = ANY(%L) ', p_fornecedor);
+        v_where_cat := v_where_cat || format(' AND codfor = ANY(%L) ', p_fornecedor);
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where := v_where || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+        v_where_cat := v_where_cat || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
     END IF;
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
         -- Basic filtering for dropdowns
         v_where := v_where || format(' AND rede = ANY(%L) ', p_rede);
+        v_where_cat := v_where_cat || format(' AND rede = ANY(%L) ', p_rede);
     END IF;
+
+    -- Category Filter (Applied to main v_where, BUT NOT v_where_cat)
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where := v_where || format(' AND categoria_produto = ANY(%L) ', p_categoria);
     END IF;
@@ -904,7 +916,7 @@ BEGIN
         ),
         ''tipos_venda'', (SELECT array_agg(DISTINCT tipovenda ORDER BY tipovenda) FROM public.cache_filters ' || v_where || '),
         ''redes'', (SELECT array_agg(DISTINCT rede ORDER BY rede) FROM public.cache_filters ' || v_where || ' AND rede IS NOT NULL),
-        ''categorias'', (SELECT array_agg(DISTINCT categoria_produto ORDER BY categoria_produto) FROM public.cache_filters ' || v_where || ' AND categoria_produto IS NOT NULL)
+        ''categorias'', (SELECT array_agg(DISTINCT categoria_produto ORDER BY categoria_produto) FROM public.cache_filters ' || v_where_cat || ' AND categoria_produto IS NOT NULL)
     )' INTO v_result;
 
     RETURN v_result;
