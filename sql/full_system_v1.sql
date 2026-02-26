@@ -2438,20 +2438,44 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+    v_start_date date;
+    v_end_date date;
+    v_deleted_count int;
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
     
-    SET LOCAL statement_timeout = '300s'; -- 5 minutes for large chunks
+    SET LOCAL statement_timeout = '600s'; -- 10 minutes for huge chunks (e.g. 2025)
 
     -- 1. Validate Table
     IF p_table_name NOT IN ('data_detailed', 'data_history') THEN
         RAISE EXCEPTION 'Tabela inválida: %', p_table_name;
     END IF;
 
-    -- 2. Delete Existing Data for this Chunk (Month)
-    EXECUTE format('DELETE FROM public.%I WHERE to_char(dtped, ''YYYY-MM'') = $1', p_table_name) USING p_chunk_key;
+    -- 2. Calculate Date Range from Chunk Key (YYYY-MM) for Index Optimization
+    -- Using TO_DATE and Range allows Postgres to use the dtped index instead of full scan
+    v_start_date := TO_DATE(p_chunk_key || '-01', 'YYYY-MM-DD');
+    v_end_date := v_start_date + interval '1 month';
 
-    -- 3. Insert New Data
+    -- 3. Delete Existing Data for this Chunk (Range Delete with Batching)
+    -- Deleting massive amounts of data in one go can cause timeouts.
+    -- We delete in batches of 10,000 rows.
+    LOOP
+        EXECUTE format('
+            DELETE FROM public.%I 
+            WHERE id IN (
+                SELECT id FROM public.%I 
+                WHERE dtped >= $1 AND dtped < $2 
+                LIMIT 10000
+            )', p_table_name, p_table_name) 
+        USING v_start_date, v_end_date;
+        
+        -- Exit if no rows were deleted (row_count is 0)
+        GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
+        EXIT WHEN v_deleted_count = 0;
+    END LOOP;
+
+    -- 4. Insert New Data
     -- We assume p_rows is an array of objects. We use json_populate_recordset.
     -- Note: This requires the JSON keys to match column names.
     EXECUTE format('
