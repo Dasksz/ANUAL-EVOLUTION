@@ -183,7 +183,8 @@ CREATE TABLE IF NOT EXISTS public.dim_produtos (
     descricao text,
     codfor text,
     mix_marca text,    -- NEW: Optimized Mix Logic
-    mix_categoria text -- NEW: Optimized Mix Logic
+    mix_categoria text, -- NEW: Optimized Mix Logic
+    categoria_produto text -- NEW: Brand/Category Filter
 );
 ALTER TABLE public.dim_produtos ENABLE ROW LEVEL SECURITY;
 
@@ -197,6 +198,9 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'mix_categoria') THEN
         ALTER TABLE public.dim_produtos ADD COLUMN mix_categoria text;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'categoria_produto') THEN
+        ALTER TABLE public.dim_produtos ADD COLUMN categoria_produto text;
     END IF;
 END $$;
 
@@ -228,6 +232,7 @@ create table if not exists public.data_summary (
     pre_positivacao_val int DEFAULT 0, -- 1 se positivou, 0 se não
     ramo text, -- ADDED: Rede Filter
     caixas numeric DEFAULT 0,
+    categoria_produto text, -- NEW: Brand/Category Filter
     created_at timestamp with time zone default now()
 );
 
@@ -245,6 +250,7 @@ create table if not exists public.cache_filters (
     ano int,
     mes int,
     rede text, -- ADDED: Rede Filter
+    categoria_produto text, -- NEW: Brand/Category Filter
     created_at timestamp with time zone default now()
 );
 
@@ -287,9 +293,11 @@ CREATE INDEX IF NOT EXISTS idx_summary_ano_codfor ON public.data_summary (ano, c
 CREATE INDEX IF NOT EXISTS idx_summary_ano_tipovenda ON public.data_summary (ano, tipovenda);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_codcli ON public.data_summary (ano, codcli);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_ramo ON public.data_summary (ano, ramo);
+CREATE INDEX IF NOT EXISTS idx_summary_categoria ON public.data_summary (categoria_produto);
 
 -- Cache Filters Indexes
 CREATE INDEX IF NOT EXISTS idx_cache_filters_composite ON public.cache_filters (ano, mes, filial, cidade, superv, nome, codfor, tipovenda);
+CREATE INDEX IF NOT EXISTS idx_cache_filters_categoria ON public.cache_filters (categoria_produto);
 CREATE INDEX IF NOT EXISTS idx_cache_filters_superv_lookup ON public.cache_filters (filial, cidade, ano, superv);
 CREATE INDEX IF NOT EXISTS idx_cache_filters_nome_lookup ON public.cache_filters (filial, cidade, superv, ano, nome);
 CREATE INDEX IF NOT EXISTS idx_cache_filters_cidade_lookup ON public.cache_filters (filial, ano, cidade);
@@ -438,11 +446,10 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    -- Initialize as null
+    -- 1. Legacy Mix Logic (Keep for backward compatibility)
     NEW.mix_marca := NULL;
     NEW.mix_categoria := NULL;
 
-    -- Brand Logic (Optimization: avoid ILIKE if possible, but description is unstructured)
     IF NEW.descricao ILIKE '%CHEETOS%' THEN NEW.mix_marca := 'CHEETOS';
     ELSIF NEW.descricao ILIKE '%DORITOS%' THEN NEW.mix_marca := 'DORITOS';
     ELSIF NEW.descricao ILIKE '%FANDANGOS%' THEN NEW.mix_marca := 'FANDANGOS';
@@ -454,11 +461,48 @@ BEGIN
     ELSIF NEW.descricao ILIKE '%KEROCOCO%' THEN NEW.mix_marca := 'KEROCOCO';
     END IF;
 
-    -- Category Logic
     IF NEW.mix_marca IN ('CHEETOS', 'DORITOS', 'FANDANGOS', 'RUFFLES', 'TORCIDA') THEN
         NEW.mix_categoria := 'SALTY';
     ELSIF NEW.mix_marca IN ('TODDYNHO', 'TODDY', 'QUAKER', 'KEROCOCO') THEN
         NEW.mix_categoria := 'FOODS';
+    END IF;
+
+    -- 2. New Robust Category Logic (categoria_produto)
+    NEW.categoria_produto := 'OUTROS'; -- Default
+
+    -- Priority Matches (Specific Variations & Sub-brands)
+    IF NEW.descricao ILIKE '%CHEETOS CRUNCHY%' THEN NEW.categoria_produto := 'CHEETOS CRUNCHY';
+    ELSIF NEW.descricao ILIKE '%DORITOS DIN%' THEN NEW.categoria_produto := 'DORITOS DINAMITA';
+    ELSIF NEW.descricao ILIKE '%LAYS RUSTICAS%' THEN NEW.categoria_produto := 'LAYS RUSTICA';
+    ELSIF NEW.descricao ILIKE '%STAX%' THEN NEW.categoria_produto := 'STAX'; -- Check before LAYS
+    ELSIF NEW.descricao ILIKE '%SENSACOES%' THEN NEW.categoria_produto := 'SENSACOES'; -- Check before LAYS
+
+    -- General Matches
+    ELSIF NEW.descricao ILIKE '%BACONZITOS%' THEN NEW.categoria_produto := 'BACONZITOS';
+    ELSIF NEW.descricao ILIKE '%CEBOLITOS%' THEN NEW.categoria_produto := 'CEBOLITOS';
+    ELSIF NEW.descricao ILIKE '%CHEETOS%' THEN NEW.categoria_produto := 'CHEETOS';
+    ELSIF NEW.descricao ILIKE '%DORITOS%' THEN NEW.categoria_produto := 'DORITOS';
+    ELSIF NEW.descricao ILIKE '%AMENDOIM%' THEN NEW.categoria_produto := 'ELMA-CHIPS AMENDOIM';
+    ELSIF NEW.descricao ILIKE '%PALHA%' THEN NEW.categoria_produto := 'ELMA-CHIPS PALHA';
+    ELSIF NEW.descricao ILIKE '%FANDANGOS%' THEN NEW.categoria_produto := 'FANDANGOS';
+    ELSIF NEW.descricao ILIKE '%LANCHINHO%' THEN NEW.categoria_produto := 'LANCHINHO';
+    ELSIF NEW.descricao ILIKE '%LAYS%' THEN NEW.categoria_produto := 'LAYS';
+    ELSIF NEW.descricao ILIKE '%PINGO DOURO%' THEN NEW.categoria_produto := 'PINGO DOURO';
+    ELSIF NEW.descricao ILIKE '%POPCORNERS%' THEN NEW.categoria_produto := 'POPCORNERS';
+    ELSIF NEW.descricao ILIKE '%RUFFLES%' THEN NEW.categoria_produto := 'RUFFLES';
+    -- SENSACOES moved up
+    -- STAX moved up
+    ELSIF NEW.descricao ILIKE '%STIKSY%' THEN NEW.categoria_produto := 'STIKSY';
+    ELSIF NEW.descricao ILIKE '%TOSTITOS%' THEN NEW.categoria_produto := 'TOSTITOS';
+    ELSIF NEW.descricao ILIKE '%EQLIBRI%' THEN NEW.categoria_produto := 'EQLIBRI';
+    ELSIF NEW.descricao ILIKE '%FOFURA%' THEN NEW.categoria_produto := 'FOFURA';
+    ELSIF NEW.descricao ILIKE '%TORCIDA%' THEN NEW.categoria_produto := 'TORCIDA';
+
+    -- Foods / Others (Mapped to same names as legacy mix but in new column)
+    ELSIF NEW.descricao ILIKE '%TODDYNHO%' THEN NEW.categoria_produto := 'TODDYNHO';
+    ELSIF NEW.descricao ILIKE '%TODDY %' THEN NEW.categoria_produto := 'TODDY';
+    ELSIF NEW.descricao ILIKE '%QUAKER%' THEN NEW.categoria_produto := 'QUAKER';
+    ELSIF NEW.descricao ILIKE '%KEROCOCO%' THEN NEW.categoria_produto := 'KEROCOCO';
     END IF;
 
     RETURN NEW;
@@ -575,7 +619,7 @@ BEGIN
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao, 
         pre_mix_count, pre_positivacao_val,
-        ramo, caixas
+        ramo, caixas, categoria_produto
     )
     WITH raw_data AS (
         SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
@@ -608,25 +652,26 @@ BEGIN
             s.tipovenda, 
             s.codcli,
             s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
-            c.ramo
+            c.ramo,
+            dp.categoria_produto -- Added
         FROM raw_data s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
         LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
     ),
     product_agg AS (
         SELECT 
-            ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, produto,
+            ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, categoria_produto, produto,
             SUM(vlvenda) as prod_val,
             SUM(totpesoliq) as prod_peso,
             SUM(vlbonific) as prod_bonific,
             SUM(COALESCE(vldevolucao, 0)) as prod_devol,
             SUM(COALESCE(qtvenda_embalagem_master, 0)) as prod_caixas
         FROM augmented_data
-        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
     ),
     client_agg AS (
         SELECT 
-            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo,
+            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo, pa.categoria_produto,
             SUM(pa.prod_val) as total_val,
             SUM(pa.prod_peso) as total_peso,
             SUM(pa.prod_bonific) as total_bonific,
@@ -634,7 +679,7 @@ BEGIN
             SUM(pa.prod_caixas) as total_caixas,
             COUNT(CASE WHEN pa.prod_val >= 1 THEN 1 END) as mix_calc
         FROM product_agg pa
-        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
     )
     SELECT 
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
@@ -642,7 +687,8 @@ BEGIN
         mix_calc,
         CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
         ramo,
-        total_caixas
+        total_caixas,
+        categoria_produto
     FROM client_agg;
     
     ANALYZE public.data_summary;
@@ -666,7 +712,7 @@ BEGIN
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao, 
         pre_mix_count, pre_positivacao_val,
-        ramo, caixas
+        ramo, caixas, categoria_produto
     )
     WITH raw_data AS (
         SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
@@ -699,25 +745,26 @@ BEGIN
             s.tipovenda, 
             s.codcli,
             s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
-            c.ramo
+            c.ramo,
+            dp.categoria_produto -- Added
         FROM raw_data s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
         LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
     ),
     product_agg AS (
         SELECT 
-            ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, produto,
+            ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, categoria_produto, produto,
             SUM(vlvenda) as prod_val,
             SUM(totpesoliq) as prod_peso,
             SUM(vlbonific) as prod_bonific,
             SUM(COALESCE(vldevolucao, 0)) as prod_devol,
             SUM(COALESCE(qtvenda_embalagem_master, 0)) as prod_caixas
         FROM augmented_data
-        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
     ),
     client_agg AS (
         SELECT 
-            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo,
+            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo, pa.categoria_produto,
             SUM(pa.prod_val) as total_val,
             SUM(pa.prod_peso) as total_peso,
             SUM(pa.prod_bonific) as total_bonific,
@@ -725,7 +772,7 @@ BEGIN
             SUM(pa.prod_caixas) as total_caixas,
             COUNT(CASE WHEN pa.prod_val >= 1 THEN 1 END) as mix_calc
         FROM product_agg pa
-        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
     )
     SELECT 
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
@@ -733,7 +780,8 @@ BEGIN
         mix_calc,
         CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
         ramo,
-        total_caixas
+        total_caixas,
+        categoria_produto
     FROM client_agg;
     
     -- No internal ANALYZE to keep chunks fast
@@ -754,7 +802,7 @@ BEGIN
     ANALYZE public.data_summary;
 
     TRUNCATE TABLE public.cache_filters;
-    INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes, rede)
+    INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes, rede, categoria_produto)
     SELECT DISTINCT 
         t.filial, 
         t.cidade, 
@@ -776,11 +824,88 @@ BEGIN
         t.tipovenda, 
         t.ano, 
         t.mes,
-        t.ramo as rede
+        t.ramo as rede,
+        t.categoria_produto
     FROM public.data_summary t
     LEFT JOIN public.dim_supervisores ds ON t.codsupervisor = ds.codigo
     LEFT JOIN public.dim_vendedores dv ON t.codusur = dv.codigo
     LEFT JOIN public.dim_fornecedores df ON t.codfor = df.codigo;
+END;
+$$;
+
+-- 5. Update Get Filters
+CREATE OR REPLACE FUNCTION get_dashboard_filters(
+    p_filial text[] default null,
+    p_cidade text[] default null,
+    p_supervisor text[] default null,
+    p_vendedor text[] default null,
+    p_fornecedor text[] default null,
+    p_ano text default null,
+    p_mes text default null,
+    p_tipovenda text[] default null,
+    p_rede text[] default null,
+    p_categoria text[] default null -- Added
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_where text := ' WHERE 1=1 ';
+    v_result json;
+BEGIN
+    -- Construct Where Clause
+    IF p_ano IS NOT NULL AND p_ano != 'todos' THEN
+        v_where := v_where || format(' AND ano = %L ', p_ano::int);
+    END IF;
+    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
+        v_where := v_where || format(' AND mes = %L ', p_mes::int + 1);
+    END IF;
+    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+        v_where := v_where || format(' AND filial = ANY(%L) ', p_filial);
+    END IF;
+    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
+        v_where := v_where || format(' AND cidade = ANY(%L) ', p_cidade);
+    END IF;
+    IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
+        v_where := v_where || format(' AND superv = ANY(%L) ', p_supervisor);
+    END IF;
+    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+        v_where := v_where || format(' AND nome = ANY(%L) ', p_vendedor);
+    END IF;
+    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
+        v_where := v_where || format(' AND codfor = ANY(%L) ', p_fornecedor);
+    END IF;
+    IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
+        v_where := v_where || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+    END IF;
+    IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
+        -- Basic filtering for dropdowns
+        v_where := v_where || format(' AND rede = ANY(%L) ', p_rede);
+    END IF;
+    IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
+        v_where := v_where || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+    END IF;
+
+    -- Execute with dynamic JSON construction
+    EXECUTE '
+    SELECT json_build_object(
+        ''anos'', (SELECT array_agg(DISTINCT ano ORDER BY ano DESC) FROM public.cache_filters),
+        ''filiais'', (SELECT array_agg(DISTINCT filial ORDER BY filial) FROM public.cache_filters ' || v_where || '),
+        ''cidades'', (SELECT array_agg(DISTINCT cidade ORDER BY cidade) FROM public.cache_filters ' || v_where || '),
+        ''supervisors'', (SELECT array_agg(DISTINCT superv ORDER BY superv) FROM public.cache_filters ' || v_where || '),
+        ''vendedores'', (SELECT array_agg(DISTINCT nome ORDER BY nome) FROM public.cache_filters ' || v_where || '),
+        ''fornecedores'', (
+            SELECT json_agg(DISTINCT jsonb_build_object(''cod'', codfor, ''name'', fornecedor))
+            FROM public.cache_filters ' || v_where || '
+        ),
+        ''tipos_venda'', (SELECT array_agg(DISTINCT tipovenda ORDER BY tipovenda) FROM public.cache_filters ' || v_where || '),
+        ''redes'', (SELECT array_agg(DISTINCT rede ORDER BY rede) FROM public.cache_filters ' || v_where || ' AND rede IS NOT NULL),
+        ''categorias'', (SELECT array_agg(DISTINCT categoria_produto ORDER BY categoria_produto) FROM public.cache_filters ' || v_where || ' AND categoria_produto IS NOT NULL)
+    )' INTO v_result;
+
+    RETURN v_result;
 END;
 $$;
 
@@ -951,7 +1076,8 @@ CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_mes text default null,
     p_tipovenda text[] default null,
     p_rede text[] default null,
-    p_produto text[] default null
+    p_produto text[] default null,
+    p_categoria text[] default null -- Added
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -1060,7 +1186,6 @@ BEGIN
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND cidade = ANY(%L) ', p_cidade);
     END IF;
-    -- UPDATE: Use Codes for filtering
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
     END IF;
@@ -1069,6 +1194,9 @@ BEGIN
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND codfor = ANY(%L) ', p_fornecedor);
+    END IF;
+    IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
+        v_where_base := v_where_base || format(' AND categoria_produto = ANY(%L) ', p_categoria);
     END IF;
     
     -- REDE Logic
@@ -1122,7 +1250,7 @@ BEGIN
         END IF;
     END IF;
 
-    -- SUPERVISOR LOGIC FOR KPI (Map Name -> Code -> RCA1)
+    -- SUPERVISOR LOGIC FOR KPI
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         SELECT array_agg(DISTINCT d.codusur) INTO v_supervisor_rcas
         FROM public.data_detailed d
@@ -1136,7 +1264,7 @@ BEGIN
         END IF;
     END IF;
 
-    -- VENDEDOR LOGIC FOR KPI (Map Name -> Code -> RCA1)
+    -- VENDEDOR LOGIC FOR KPI
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
         SELECT array_agg(DISTINCT codigo) INTO v_vendedor_rcas
         FROM public.dim_vendedores
@@ -1171,7 +1299,7 @@ BEGIN
     -- 4. Execute Main Aggregation Query
     v_sql := '
     WITH filtered_summary AS (
-        SELECT ano, mes, vlvenda, peso, bonificacao, devolucao, pre_positivacao_val, pre_mix_count, codcli, tipovenda, codfor
+        SELECT ano, mes, vlvenda, peso, bonificacao, devolucao, pre_positivacao_val, pre_mix_count, codcli, tipovenda, codfor, categoria_produto
         FROM public.data_summary
         ' || v_where_base || '
     ),
