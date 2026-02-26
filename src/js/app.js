@@ -992,8 +992,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // Reduced Batch Size to avoid 60s timeout during heavy inserts
-        const BATCH_SIZE = 2000;
-        const CONCURRENT_REQUESTS = 10;
+        const BATCH_SIZE = 500;
+        const CONCURRENT_REQUESTS = 3;
 
         const uploadBatch = async (table, items) => {
             const totalBatches = Math.ceil(items.length / BATCH_SIZE);
@@ -1985,7 +1985,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .select('dtped')
                 .order('dtped', { ascending: false })
                 .limit(1)
-                .single();
+                .maybeSingle();
             
             if (data && data.dtped) {
                 // dtped is timestamp with time zone, e.g., "2026-01-20T14:00:00+00:00"
