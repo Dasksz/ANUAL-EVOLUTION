@@ -969,7 +969,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const performUpsert = async (table, batch) => {
             await retryOperation(async () => {
-                const { error } = await supabase.from(table).insert(batch);
+                let error;
+                if (table === 'data_clients') {
+                    // Use Upsert for clients to handle updates gracefully and avoid unique constraint errors
+                    const { error: upsertErr } = await supabase.from(table).upsert(batch, { onConflict: 'codigo_cliente' });
+                    error = upsertErr;
+                } else {
+                    const { error: insertErr } = await supabase.from(table).insert(batch);
+                    error = insertErr;
+                }
+                
                 if (error) throw new Error(`Erro ${table}: ${error.message}`);
             });
         };
@@ -1057,7 +1066,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 2. Batch Append (e.g. 2000 rows per request to avoid Gateway Timeouts)
                     const ROWS_PER_REQUEST = 2000;
                     const totalRows = localChunk.rows.length;
-
+                    
                     for (let i = 0; i < totalRows; i += ROWS_PER_REQUEST) {
                         const batch = localChunk.rows.slice(i, i + ROWS_PER_REQUEST);
                         const progress = Math.round(((i + batch.length) / totalRows) * 100);
