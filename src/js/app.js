@@ -969,7 +969,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const performUpsert = async (table, batch) => {
             await retryOperation(async () => {
-                const { error } = await supabase.from(table).insert(batch);
+                let error;
+                if (table === 'data_clients') {
+                    // Use Upsert for clients to handle updates gracefully and avoid unique constraint errors
+                    const { error: upsertErr } = await supabase.from(table).upsert(batch, { onConflict: 'codigo_cliente' });
+                    error = upsertErr;
+                } else {
+                    const { error: insertErr } = await supabase.from(table).insert(batch);
+                    error = insertErr;
+                }
+
                 if (error) throw new Error(`Erro ${table}: ${error.message}`);
             });
         };
