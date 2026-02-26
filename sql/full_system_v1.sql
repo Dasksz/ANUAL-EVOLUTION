@@ -846,7 +846,7 @@ CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_mes text default null,
     p_tipovenda text[] default null,
     p_rede text[] default null,
-    p_categoria text[] default null -- Added
+    p_categoria text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
