@@ -896,7 +896,7 @@ BEGIN
         v_where := v_where || format(' AND rede = ANY(%L) ', p_rede);
         v_where_cat := v_where_cat || format(' AND rede = ANY(%L) ', p_rede);
     END IF;
-
+    
     -- Category Filter (Applied to main v_where, BUT NOT v_where_cat)
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where := v_where || format(' AND categoria_produto = ANY(%L) ', p_categoria);
