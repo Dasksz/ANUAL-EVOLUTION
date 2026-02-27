@@ -946,6 +946,65 @@ document.addEventListener('DOMContentLoaded', () => {
             kpiTitleKg = `Tend. TON ${mName} vs Ano Ant.`;
         }
 
+        // --- Quarterly KPI Logic (Trend vs Previous Quarter Avg) ---
+        // Logic:
+        // 1. Identify Current Reference Month (Last Sales Month or Selected Month)
+        // 2. Identify 3 Preceding Months
+        // 3. Calculate Sum of those 3 months / 3
+        // 4. Compare Current Trend vs that Average
+
+        let quarterAvgFat = 0;
+        let quarterAvgKg = 0;
+
+        // Find reference month index (0-11)
+        let refMonthIdx = -1;
+        if (mesFilter.value !== '') {
+            refMonthIdx = parseInt(mesFilter.value);
+        } else if (data.trend_allowed && data.trend_data) {
+            refMonthIdx = data.trend_data.month_index;
+        } else {
+            // Use max available month in current data
+            const maxM = Math.max(...currentData.map(d => d.month_index), -1);
+            if (maxM >= 0) refMonthIdx = maxM;
+        }
+
+        if (refMonthIdx >= 0) {
+            // Calculate indices of 3 previous months (handling loop back to previous year logic if needed,
+            // but we only have current/prev year data usually loaded in arrays).
+            // Actually, we usually only have Jan-Dec of Current Year in 'currentData'.
+            // If refMonth is Jan (0), prev 3 are Oct, Nov, Dec of PREVIOUS year.
+            // If refMonth is Mar (2), prev 3 are Dec (Prev), Jan (Curr), Feb (Curr).
+
+            const getMonthData = (yearType, mIdx) => {
+                const ds = yearType === 'current' ? currentData : previousData;
+                return ds.find(d => d.month_index === mIdx) || { faturamento: 0, peso: 0 };
+            };
+
+            let sumFat = 0;
+            let sumKg = 0;
+            let count = 0;
+
+            for (let i = 1; i <= 3; i++) {
+                let targetIdx = refMonthIdx - i;
+                let yearType = 'current';
+
+                if (targetIdx < 0) {
+                    targetIdx += 12;
+                    yearType = 'previous';
+                }
+
+                const d = getMonthData(yearType, targetIdx);
+                sumFat += d.faturamento;
+                sumKg += d.peso;
+                count++;
+            }
+
+            if (count > 0) {
+                quarterAvgFat = sumFat / count;
+                quarterAvgKg = sumKg / count;
+            }
+        }
+
         const calcEvo = (curr, prev) => prev > 0 ? ((curr / prev) - 1) * 100 : (curr > 0 ? 100 : 0);
 
         // --- KPI Updates ---
@@ -960,13 +1019,148 @@ document.addEventListener('DOMContentLoaded', () => {
         previousData.forEach(processIndicators);
         if (data.trend_data) processIndicators(data.trend_data);
 
-        // Update KPIs
+        // Update Primary KPIs (Year/Month vs Prev Year)
         updateKpiCard({ prefix: 'fat', trendVal: currFat, prevVal: prevFat, fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), calcEvo });
         updateKpiCard({ prefix: 'kg', trendVal: currKg, prevVal: prevKg, fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Ton`, calcEvo });
+
+        // Update Quarterly KPIs (Trend vs Prev Quarter)
+        updateKpiCard({ prefix: 'tri-fat', trendVal: currFat, prevVal: quarterAvgFat, fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), calcEvo });
+        updateKpiCard({ prefix: 'tri-kg', trendVal: currKg, prevVal: quarterAvgKg, fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Ton`, calcEvo });
 
         // Update Titles
         document.getElementById('kpi-title-evo-ano-fat').textContent = kpiTitleFat;
         document.getElementById('kpi-title-evo-ano-kg').textContent = kpiTitleKg;
+
+        // --- Secondary KPIs Logic (Bonification, Devolution, Mix) ---
+        // Sums for Bonification/Devolution (Year View = Sum All, Month View = Single Month)
+        let totalBonif = 0;
+        let totalDevol = 0;
+        let totalFatBase = 0;
+        let mixPdv = 0;
+        let mixPdvPrev = 0;
+
+        // Helper to sum
+        const sumSec = (ds) => {
+            let b = 0, d = 0, f = 0;
+            ds.forEach(item => {
+                const isFatMode = currentChartMode === 'faturamento';
+                // For Bonif/Devol, we use values from item
+                // Base Faturamento for % calculation
+                b += (item.bonificacao || 0);
+                d += (item.devolucao || 0);
+                // "Faturamento" is the denominator for % Perda
+                // item.total_sold_base is usually "Faturamento Real" excluding bonificacao
+                // But RPC returns faturamento as total. Let's use item.faturamento.
+                f += (item.faturamento || 0);
+            });
+            return { b, d, f };
+        };
+
+        // Determine Dataset for Secondary KPIs
+        // If Trend Allowed and Year View -> Includes Trend Data?
+        // Usually Secondary KPIs show "Realized" or "Projected"?
+        // Let's use Projected if Trend Allowed.
+
+        let secDataset = [...currentData];
+        if (data.trend_allowed && data.trend_data && (mesFilter.value === '' || parseInt(mesFilter.value) === data.trend_data.month_index)) {
+            // Remove the partial month if it exists in dataset (usually it does as last item)
+            // and replace/add trend data
+            secDataset = secDataset.filter(d => d.month_index !== data.trend_data.month_index);
+            secDataset.push(data.trend_data);
+        }
+
+        const secSums = sumSec(secDataset);
+        totalBonif = secSums.b;
+        totalDevol = secSums.d;
+        totalFatBase = secSums.f;
+
+        // Mix PDV: Weighted Average or Last Value?
+        // Usually Mix is "Average Monthly Mix" for Year View.
+        if (secDataset.length > 0) {
+            const sumMix = secDataset.reduce((acc, d) => acc + (d.mix_pdv || 0), 0);
+            mixPdv = sumMix / secDataset.length;
+        }
+
+        // Previous Period for Secondary (Year vs Year or Month vs Month)
+        let prevSecDataset = [...previousData];
+        const prevSecSums = sumSec(prevSecDataset);
+        let prevTotalBonif = prevSecSums.b;
+        let prevTotalDevol = prevSecSums.d;
+        let prevTotalFatBase = prevSecSums.f;
+
+        if (prevSecDataset.length > 0) {
+            const sumMixPrev = prevSecDataset.reduce((acc, d) => acc + (d.mix_pdv || 0), 0);
+            mixPdvPrev = sumMixPrev / prevSecDataset.length;
+        }
+
+        // --- Render Secondary KPIs ---
+
+        // 1. Bonificação
+        const bonifElVal = document.getElementById('kpi-bonif-val');
+        const bonifElPerc = document.getElementById('kpi-bonif-perc');
+        const bonifElSec = document.getElementById('kpi-bonif-sec');
+
+        if (bonifElVal) bonifElVal.textContent = totalBonif.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        if (bonifElPerc) {
+            const perc = totalFatBase > 0 ? (totalBonif / totalFatBase) * 100 : 0;
+            bonifElPerc.textContent = `${perc.toFixed(1)}%`;
+            bonifElPerc.className = `text-lg font-bold ${perc > 5 ? 'text-red-400' : 'text-white'}`; // Alert if > 5%
+        }
+        if (bonifElSec) bonifElSec.textContent = `Fat: ${totalFatBase.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+
+        // 2. Variação Bonificação (vs Previous)
+        const bonifVarElVal = document.getElementById('kpi-bonif-var-val');
+        const bonifVarElPerc = document.getElementById('kpi-bonif-var-perc');
+        const bonifVarElSec = document.getElementById('kpi-bonif-var-sec');
+
+        const diffBonif = totalBonif - prevTotalBonif;
+        const diffBonifPerc = prevTotalBonif > 0 ? (diffBonif / prevTotalBonif) * 100 : 0;
+
+        if (bonifVarElVal) bonifVarElVal.textContent = diffBonif.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        if (bonifVarElPerc) {
+            bonifVarElPerc.innerHTML = fmtVar(diffBonifPerc);
+        }
+        if (bonifVarElSec) bonifVarElSec.textContent = `Ant: ${prevTotalBonif.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+
+        // 3. Devolução
+        const devolElVal = document.getElementById('kpi-devol-val');
+        const devolElPerc = document.getElementById('kpi-devol-perc');
+        const devolElSec = document.getElementById('kpi-devol-sec');
+
+        if (devolElVal) devolElVal.textContent = totalDevol.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        if (devolElPerc) {
+            const perc = totalFatBase > 0 ? (totalDevol / totalFatBase) * 100 : 0;
+            devolElPerc.textContent = `${perc.toFixed(1)}%`;
+            devolElPerc.className = `text-lg font-bold ${perc > 2 ? 'text-red-400' : 'text-white'}`;
+        }
+        if (devolElSec) devolElSec.textContent = `Fat: ${totalFatBase.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+
+        // 4. Variação Devolução
+        const devolVarElVal = document.getElementById('kpi-devol-var-val');
+        const devolVarElPerc = document.getElementById('kpi-devol-var-perc');
+        const devolVarElSec = document.getElementById('kpi-devol-var-sec');
+
+        const diffDevol = totalDevol - prevTotalDevol;
+        const diffDevolPerc = prevTotalDevol > 0 ? (diffDevol / prevTotalDevol) * 100 : 0;
+
+        if (devolVarElVal) devolVarElVal.textContent = diffDevol.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        if (devolVarElPerc) {
+            devolVarElPerc.innerHTML = fmtVar(diffDevolPerc); // Use existing fmtVar helper
+        }
+        if (devolVarElSec) devolVarElSec.textContent = `Ant: ${prevTotalDevol.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+
+        // 5. Mix PDV
+        const mixElVal = document.getElementById('kpi-mix-val');
+        const mixElPerc = document.getElementById('kpi-mix-perc');
+        const mixElSec = document.getElementById('kpi-mix-sec');
+
+        if (mixElVal) mixElVal.textContent = mixPdv.toFixed(2);
+        if (mixElSec) mixElSec.textContent = mixPdvPrev.toFixed(2);
+        if (mixElPerc) {
+            const diffMix = mixPdv - mixPdvPrev;
+            const diffMixPerc = mixPdvPrev > 0 ? (diffMix / mixPdvPrev) * 100 : 0;
+            mixElPerc.innerHTML = fmtVar(diffMixPerc);
+        }
 
         // --- NEW AMCHARTS RENDERING ---
         const mainChartTitle = document.getElementById('main-chart-title');
@@ -2235,6 +2429,30 @@ let boxesFilterDebounceTimer;
     };
     anoFilter.onchange = handleFilterChange;
     mesFilter.onchange = handleFilterChange;
+
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', async () => {
+            // Reset UI elements
+            anoFilter.value = 'todos';
+            mesFilter.value = '';
+
+            // Reset State Variables
+            selectedFiliais = [];
+            selectedCidades = [];
+            selectedSupervisores = [];
+            selectedVendedores = [];
+            selectedFornecedores = [];
+            selectedTiposVenda = [];
+            selectedRedes = [];
+            selectedCategorias = [];
+
+            // Trigger Reload
+            showDashboardLoading();
+            const filters = getCurrentFilters();
+            await loadFilters(filters);
+            await loadMainDashboardData();
+        });
+    }
 
     // Unified Fetch & Cache Logic
     async function fetchDashboardData(filters, isBackground = false, forceRefresh = false) {
