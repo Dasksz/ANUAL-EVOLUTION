@@ -4083,4 +4083,158 @@ let boxesFilterDebounceTimer;
             }).join('');
         }
 
+    // --- Helper Functions ---
+
+    function updateKpiCard({ prefix, trendVal, prevVal, fmt, calcEvo }) {
+        const elMain = document.getElementById(`kpi-value-trend-${prefix}`);
+        if (elMain) elMain.textContent = fmt(trendVal);
+
+        const elPrev = document.getElementById(`kpi-value-prev-${prefix}`);
+        if (elPrev) elPrev.textContent = fmt(prevVal);
+
+        const elVar = document.getElementById(`kpi-var-${prefix}`);
+        if (elVar) {
+            const evo = calcEvo(trendVal, prevVal);
+            elVar.textContent = `${evo > 0 ? '+' : ''}${evo.toFixed(1)}%`;
+            elVar.className = `text-sm font-bold ${evo >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+        }
+    }
+
+    function updateTable(currentData, previousData, currentYear, previousYear, trendData) {
+        const tableBody = document.getElementById('monthly-summary-table-body');
+        const tableHeadRow = document.querySelector('#monthly-summary-table thead tr');
+        if (!tableBody || !tableHeadRow) return;
+
+        // Headers
+        tableHeadRow.innerHTML = `
+            <th class="p-3 text-left">Mês</th>
+            <th class="p-3 text-right">Fat. ${previousYear}</th>
+            <th class="p-3 text-right">Fat. ${currentYear}</th>
+            <th class="p-3 text-right">Var %</th>
+            <th class="p-3 text-right">Ton. ${previousYear}</th>
+            <th class="p-3 text-right">Ton. ${currentYear}</th>
+            <th class="p-3 text-right">Var %</th>
+        `;
+
+        const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        let html = '';
+
+        for (let i = 0; i < 12; i++) {
+            const prev = previousData.find(d => d.month_index === i) || { faturamento: 0, peso: 0 };
+            let curr = currentData.find(d => d.month_index === i) || { faturamento: 0, peso: 0 };
+
+            let isTrend = false;
+            if (trendData && trendData.month_index === i) {
+                curr = trendData;
+                isTrend = true;
+            }
+
+            const varFat = prev.faturamento > 0 ? ((curr.faturamento / prev.faturamento) - 1) * 100 : 0;
+            const varKg = prev.peso > 0 ? ((curr.peso / prev.peso) - 1) * 100 : 0;
+
+            const rowClass = i % 2 === 0 ? 'bg-[#1e293b]' : 'bg-[#0d1126]';
+            const trendClass = isTrend ? 'text-purple-400 font-bold' : '';
+
+            html += `
+                <tr class="${rowClass} border-b border-slate-700 hover:bg-slate-700 transition-colors">
+                    <td class="p-3 ${trendClass}">${monthNames[i]} ${isTrend ? '(Tend)' : ''}</td>
+                    <td class="p-3 text-right text-slate-400">${prev.faturamento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td class="p-3 text-right text-white font-medium ${trendClass}">${curr.faturamento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td class="p-3 text-right ${varFat >= 0 ? 'text-emerald-400' : 'text-red-400'}">${varFat > 0 ? '+' : ''}${varFat.toFixed(1)}%</td>
+                    <td class="p-3 text-right text-slate-400">${(prev.peso / 1000).toFixed(1)}</td>
+                    <td class="p-3 text-right text-white font-medium ${trendClass}">${(curr.peso / 1000).toFixed(1)}</td>
+                    <td class="p-3 text-right ${varKg >= 0 ? 'text-emerald-400' : 'text-red-400'}">${varKg > 0 ? '+' : ''}${varKg.toFixed(1)}%</td>
+                </tr>
+            `;
+        }
+        tableBody.innerHTML = html;
+    }
+
+    function createChart(chartId, type, labels, datasets, valueFormatter) {
+        const containerId = `${chartId}Container`;
+        const container = document.getElementById(containerId);
+        if (!container) {
+            console.warn(`Container ${containerId} not found for chart ${chartId}`);
+            return;
+        }
+
+        if (currentCharts[chartId]) {
+            currentCharts[chartId].destroy();
+            delete currentCharts[chartId];
+        }
+
+        container.innerHTML = `<canvas id="${chartId}"></canvas>`;
+        const ctx = document.getElementById(chartId).getContext('2d');
+
+        const fmt = valueFormatter || ((val) => val.toLocaleString('pt-BR'));
+
+        currentCharts[chartId] = new Chart(ctx, {
+            type: type,
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#94a3b8' }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                if (context.parsed.y !== null) label += fmt(context.parsed.y);
+                                return label;
+                            }
+                        }
+                    },
+                    datalabels: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#334155' },
+                        ticks: { color: '#94a3b8', callback: function(value) { return fmt(value); } }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+    }
+
+    function showNoDataMessage(containerId, message) {
+        const container = document.getElementById(containerId);
+        if (container) {
+            container.innerHTML = `<div class="flex items-center justify-center h-full text-slate-500">${message}</div>`;
+        }
+    }
+
+    function openCalendar() {
+        if (calendarModal) {
+            calendarModal.classList.remove('hidden');
+            renderCalendar();
+        }
+    }
+
+    if (closeCalendarModalBtn) {
+        closeCalendarModalBtn.addEventListener('click', () => {
+            calendarModal.classList.add('hidden');
+        });
+    }
+    if (calendarModalBackdrop) {
+        calendarModalBackdrop.addEventListener('click', () => {
+            calendarModal.classList.add('hidden');
+        });
+    }
+    if (calendarBtn) calendarBtn.addEventListener('click', openCalendar);
+
 });
