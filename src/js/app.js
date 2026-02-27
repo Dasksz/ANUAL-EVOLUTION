@@ -510,11 +510,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Define Dark Theme Colors
         const colors = {
-            previous: am5.color(0xf97316), // Orange
-            current: am5.color(0x06b6d4), // Cyan
-            trend: am5.color(0x8b5cf6),    // Purple
-            text: am5.color(0xcbd5e1),     // Slate-300
-            grid: am5.color(0xffffff),      // White with opacity
+            previous: am5.color(0xfb923c), // Orange-400 (Brighter)
+            current: am5.color(0x22d3ee), // Cyan-400 (Brighter)
+            trend: am5.color(0xa78bfa),    // Purple-400 (Brighter)
+            text: am5.color(0xe2e8f0),     // Slate-200 (Brighter text)
+            grid: am5.color(0xffffff),      // White
             green: am5.color(0x34d399),    // Emerald
             red: am5.color(0xf87171)       // Red
         };
@@ -535,6 +535,8 @@ document.addEventListener('DOMContentLoaded', () => {
             behavior: "none"
         }));
         cursor.lineY.set("visible", false);
+        cursor.lineX.set("stroke", colors.text);
+        cursor.lineX.set("strokeOpacity", 0.5);
 
         // Prepare Data
         let seriesDataPrev = [];
@@ -674,13 +676,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Series Function with Custom Tooltip for % Variation
         function createSeries(name, dataItems, color, isDashed = false, isReference = false) {
-            const series = chart.series.push(am5xy.LineSeries.new(mainChartRoot, {
+            // Use SmoothedXLineSeries for smoother lines
+            const series = chart.series.push(am5xy.SmoothedXLineSeries.new(mainChartRoot, {
                 name: name,
                 xAxis: xAxis,
                 yAxis: yAxis,
                 valueYField: "value",
                 valueXField: "date",
-                calculateAggregates: true // Required for % change logic
+                calculateAggregates: true, // Required for % change logic
+                tension: 0.8
             }));
 
             // Custom Tooltip Logic
@@ -746,14 +750,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             series.strokes.template.setAll({
                 stroke: color,
-                strokeWidth: 2
+                strokeWidth: 3
             });
             
             if (isDashed) {
                 series.strokes.template.set("strokeDasharray", [5, 3]);
             }
 
-            // Bullet (Circle point)
+            // Removed Bullets (Markers) as requested
+            /*
             series.bullets.push(function() {
                 return am5.Bullet.new(mainChartRoot, {
                     sprite: am5.Circle.new(mainChartRoot, {
@@ -764,6 +769,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     })
                 });
             });
+            */
 
             series.data.setAll(dataItems);
             series.appear(1000);
@@ -791,6 +797,13 @@ document.addEventListener('DOMContentLoaded', () => {
             marginTop: 15,
             marginBottom: 15
         }));
+
+        // Improve Legend Labels
+        legend.labels.template.setAll({
+            fill: colors.text,
+            fontSize: 14,
+            fontWeight: "500"
+        });
 
         legend.itemContainers.template.events.on("pointerover", function(e) {
             e.target.dataItem.dataContext.hover();
@@ -850,6 +863,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // Switch back to Absolute Mode
                 yAxis.set("numberFormat", currentChartMode === 'faturamento' ? "#.0a" : "#.0' Ton'");
+
+                // Explicitly clear min/max to ensure auto-scaling recalculates correctly
+                yAxis.set("min", null);
+                yAxis.set("max", null);
+
                 chart.series.each(function (series) {
                     series.set("valueYShow", "value");
                 });
