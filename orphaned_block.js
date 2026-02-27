@@ -1,0 +1,468 @@
+    }
+
+     else { baseEl.classList.add('hidden'); }
+
+        let currentData = data.monthly_data_current || [];
+        let previousData = data.monthly_data_previous || [];
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        const targetIndex = data.target_month_index;
+
+        // KPI Calculation Variables
+        let currFat, currKg, prevFat, prevKg, triAvgFat, triAvgPeso;
+        let kpiTitleFat, kpiTitleKg;
+
+        // --- KPI LOGIC (Scenario Check) ---
+        if (anoFilter.value !== 'todos' && mesFilter.value === '') {
+            // SCENARIO A: Year Selected, Month All -> Show Year vs Previous Year (Accumulated)
+
+            const sumData = (dataset, useTrend) => {
+                let sumFat = 0;
+                let sumKg = 0;
+                // Sum available months (0 to 11)
+                dataset.forEach(d => {
+                    // Check if this month is the trend month and use trend data if applicable
+                    if (useTrend && data.trend_allowed && data.trend_data && d.month_index === data.trend_data.month_index) {
+                        sumFat += data.trend_data.faturamento;
+                        sumKg += data.trend_data.peso;
+                    } else {
+                        sumFat += d.faturamento;
+                        sumKg += d.peso;
+                    }
+                });
+                return { faturamento: sumFat, peso: sumKg };
+            };
+
+            const currSums = sumData(currentData, true);
+            const prevSums = sumData(previousData, false);
+
+            // Logic for Annual Trend Projection (Current Year Only)
+            if (data.trend_allowed && data.trend_data) {
+                // Formula: (Accumulated YTD + Projected Current Month) / (Months Passed) * 12
+                // Note: sumData already includes the Projected Current Month if trend_allowed is true.
+                const monthsPassed = data.trend_data.month_index + 1;
+
+                currFat = (currSums.faturamento / monthsPassed) * 12;
+                currKg = (currSums.peso / monthsPassed) * 12;
+            } else {
+                currFat = currSums.faturamento;
+                currKg = currSums.peso;
+            }
+
+            prevFat = prevSums.faturamento;
+            prevKg = prevSums.peso;
+
+            kpiTitleFat = `Tend. FAT ${data.current_year} vs Ano Ant.`;
+            kpiTitleKg = `Tend. TON ${data.current_year} vs Ano Ant.`;
+
+        } else {
+            // SCENARIO B: Default (Month vs Month or Filtered Month)
+
+            if (mesFilter.value !== '') {
+                const selectedMonthIndex = parseInt(mesFilter.value);
+                currentData = currentData.filter(d => d.month_index === selectedMonthIndex);
+                previousData = previousData.filter(d => d.month_index === selectedMonthIndex);
+            }
+
+            const currMonthData = currentData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
+            const prevMonthData = previousData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
+
+            // Helper for Trend Logic
+            const getTrendValue = (key, baseValue) => {
+                if (data.trend_allowed && data.trend_data && data.trend_data.month_index === targetIndex) {
+                    return data.trend_data[key] || 0;
+                }
+                return baseValue;
+            };
+
+            currFat = getTrendValue('faturamento', currMonthData.faturamento);
+            currKg = getTrendValue('peso', currMonthData.peso);
+            prevFat = prevMonthData.faturamento;
+            prevKg = prevMonthData.peso;
+
+            const mName = monthNames[targetIndex]?.toUpperCase() || "";
+            kpiTitleFat = `Tend. FAT ${mName} vs Ano Ant.`;
+            kpiTitleKg = `Tend. TON ${mName} vs Ano Ant.`;
+        }
+
+        // Variation Calc
+        const calcEvo = (curr, prev) => prev > 0 ? ((curr / prev) - 1) * 100 : (curr > 0 ? 100 : 0);
+
+        // --- KPI Updates ---
+        // Calc indicators for table (Perda/Devolução)
+        const processIndicators = (d) => {
+            const fat = d.faturamento || 0;
+            const fatBase = d.total_sold_base || fat; // Use specific base if available, else fat
+            d.perc_perda = fatBase > 0 ? (d.bonificacao / fatBase) * 100 : null;
+            d.perc_devolucao = fatBase > 0 ? (d.devolucao / fatBase) * 100 : null;
+        };
+        currentData.forEach(processIndicators);
+        previousData.forEach(processIndicators);
+        if (data.trend_data) processIndicators(data.trend_data);
+
+        // --- NEW KPIs (Bonification, Devolution, Mix) ---
+        try {
+            // Calculate Totals for Selected Period
+            let kpiBonifCurr = 0, kpiBonifPrev = 0;
+            let kpiDevolCurr = 0, kpiDevolPrev = 0;
+            let kpiMixCurr = 0, kpiMixPrev = 0;
+            let kpiTotalSoldBaseCurr = 0;
+
+            let kpiMixCountCurr = 0, kpiMixCountPrev = 0;
+
+            // Current Period Aggregation
+            const aggCurrent = (d) => {
+                kpiBonifCurr += (d.bonificacao || 0);
+                kpiDevolCurr += (d.devolucao || 0);
+                // Use total_sold_base if available, else fallback to faturamento
+                kpiTotalSoldBaseCurr += (d.total_sold_base !== undefined ? d.total_sold_base : (d.faturamento || 0));
+                if (d.mix_pdv > 0) { kpiMixCurr += d.mix_pdv; kpiMixCountCurr++; }
+            };
+
+            // Previous Period Aggregation
+            const aggPrevious = (d) => {
+                kpiBonifPrev += (d.bonificacao || 0);
+                kpiDevolPrev += (d.devolucao || 0);
+                if (d.mix_pdv > 0) { kpiMixPrev += d.mix_pdv; kpiMixCountPrev++; }
+            };
+
+            // Use filtered month data if month selected, otherwise all months
+            const activeCurrentData = (mesFilter.value !== '') ? currentData.filter(d => d.month_index === targetIndex) : currentData;
+            // Logic for Previous: If Month selected, compare to same month prev year. If Year selected, compare to full prev year.
+            const activePreviousData = (mesFilter.value !== '') ? previousData.filter(d => d.month_index === targetIndex) : previousData;
+
+            // Handle Trend for Current Year/Month
+            activeCurrentData.forEach(d => {
+                // If viewing Year and this is the trend month, use trend data
+                if (data.trend_allowed && data.trend_data && d.month_index === data.trend_data.month_index) {
+                    aggCurrent(data.trend_data);
+                } else {
+                    aggCurrent(d);
+                }
+            });
+            activePreviousData.forEach(aggPrevious);
+
+            // Averages for Mix
+            const avgMixCurr = kpiMixCountCurr > 0 ? kpiMixCurr / kpiMixCountCurr : 0;
+            const avgMixPrev = kpiMixCountPrev > 0 ? kpiMixPrev / kpiMixCountPrev : 0;
+
+            // Calculate Percentages
+            const percBonif = kpiTotalSoldBaseCurr > 0 ? (kpiBonifCurr / kpiTotalSoldBaseCurr) * 100 : 0;
+            const percDevol = kpiTotalSoldBaseCurr > 0 ? (kpiDevolCurr / kpiTotalSoldBaseCurr) * 100 : 0;
+
+            const varBonif = calcEvo(kpiBonifCurr, kpiBonifPrev);
+            const varDevol = calcEvo(kpiDevolCurr, kpiDevolPrev);
+            const varMix = calcEvo(avgMixCurr, avgMixPrev);
+
+            // Render New KPIs
+            const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const fmtPerc = (v) => `${(isNaN(v) ? 0 : v).toFixed(1)}%`;
+
+            // 1. Bonification
+            document.getElementById('kpi-bonif-val').textContent = fmtBRL(kpiBonifCurr);
+            const elBonifPerc = document.getElementById('kpi-bonif-perc');
+            elBonifPerc.textContent = fmtPerc(percBonif);
+            elBonifPerc.className = `text-lg font-bold ${percBonif <= 1.5 ? 'text-emerald-400' : 'text-red-400'}`;
+            document.getElementById('kpi-bonif-sec').textContent = fmtBRL(kpiTotalSoldBaseCurr);
+
+            // Update Corner Types (05, 11) - Defensive check
+            const safeTypes = (typeof selectedTiposVenda !== 'undefined' && Array.isArray(selectedTiposVenda)) ? selectedTiposVenda : [];
+            const types = safeTypes.filter(t => t === '5' || t === '11').sort().join(' e ');
+            const typeLabel = types ? types : '05 e 11';
+            document.getElementById('kpi-bonif-types').textContent = typeLabel;
+            document.getElementById('kpi-bonif-var-types').textContent = typeLabel;
+
+            // 2. Bonification Variation
+            document.getElementById('kpi-bonif-var-val').textContent = fmtBRL(kpiBonifCurr);
+            const elBonifVarPerc = document.getElementById('kpi-bonif-var-perc');
+            elBonifVarPerc.textContent = `${varBonif > 0 ? '+' : ''}${varBonif.toFixed(1)}%`;
+            elBonifVarPerc.className = `text-lg font-bold ${varBonif <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+            document.getElementById('kpi-bonif-var-sec').textContent = fmtBRL(kpiBonifPrev);
+
+            // 3. Devolução
+            document.getElementById('kpi-devol-val').textContent = fmtBRL(kpiDevolCurr);
+            const elDevolPerc = document.getElementById('kpi-devol-perc');
+            elDevolPerc.textContent = fmtPerc(percDevol);
+            elDevolPerc.className = `text-lg font-bold ${percDevol > 0 ? 'text-red-400' : 'text-emerald-400'}`;
+            document.getElementById('kpi-devol-sec').textContent = fmtBRL(kpiTotalSoldBaseCurr);
+
+            // 4. Devolução Variation
+            document.getElementById('kpi-devol-var-val').textContent = fmtBRL(kpiDevolCurr);
+            const elDevolVarPerc = document.getElementById('kpi-devol-var-perc');
+            elDevolVarPerc.textContent = `${varDevol > 0 ? '+' : ''}${varDevol.toFixed(1)}%`;
+            elDevolVarPerc.className = `text-lg font-bold ${varDevol <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+            document.getElementById('kpi-devol-var-sec').textContent = fmtBRL(kpiDevolPrev);
+
+            // 5. Mix PDV
+            document.getElementById('kpi-mix-val').textContent = avgMixCurr.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const elMixPerc = document.getElementById('kpi-mix-perc');
+            elMixPerc.textContent = `${varMix > 0 ? '+' : ''}${varMix.toFixed(1)}%`;
+            elMixPerc.className = `text-lg font-bold ${varMix >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+            document.getElementById('kpi-mix-sec').textContent = avgMixPrev.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        } catch (err) {
+            console.error('Error updating new KPIs:', err);
+        }
+
+        updateKpiCard({
+            prefix: 'fat',
+            trendVal: currFat,
+            prevVal: prevFat,
+            fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+            calcEvo
+        });
+
+        updateKpiCard({
+            prefix: 'kg',
+            trendVal: currKg,
+            prevVal: prevKg,
+            fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Ton`,
+            calcEvo
+        });
+
+        // --- KPI Month vs Trimester (Keep standard logic based on target month) ---
+        let triSumFat = 0, triSumPeso = 0, triCount = 0;
+        for (let i = 1; i <= 3; i++) {
+            const idx = targetIndex - i;
+            let mData;
+            if (idx >= 0) {
+                mData = data.monthly_data_current.find(d => d.month_index === idx);
+            } else {
+                const prevIdx = 12 + idx;
+                mData = data.monthly_data_previous.find(d => d.month_index === prevIdx);
+            }
+            if (mData) { triSumFat += mData.faturamento; triSumPeso += mData.peso; triCount++; }
+        }
+        triAvgFat = triCount > 0 ? triSumFat / triCount : 0;
+        triAvgPeso = triCount > 0 ? triSumPeso / triCount : 0;
+
+        let currMonthFatForTri, currMonthKgForTri;
+
+        if (anoFilter.value !== 'todos' && mesFilter.value === '') {
+             // In Year View, we still want the Tri card to make sense (Current Month vs Tri).
+             // Let's re-fetch the specific current month data for the Tri calculation.
+             const cMonthData = data.monthly_data_current.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
+             if (data.trend_allowed && data.trend_data && data.trend_data.month_index === targetIndex) {
+                 currMonthFatForTri = data.trend_data.faturamento;
+                 currMonthKgForTri = data.trend_data.peso;
+             } else {
+                 currMonthFatForTri = cMonthData.faturamento;
+                 currMonthKgForTri = cMonthData.peso;
+             }
+        } else {
+             // In Month View, currFat is already the monthly value
+             currMonthFatForTri = currFat;
+             currMonthKgForTri = currKg;
+        }
+
+        updateKpiCard({
+            prefix: 'tri-fat',
+            trendVal: currMonthFatForTri,
+            prevVal: triAvgFat,
+            fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+            calcEvo
+        });
+
+        updateKpiCard({
+            prefix: 'tri-kg',
+            trendVal: currMonthKgForTri,
+            prevVal: triAvgPeso,
+            fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Ton`,
+            calcEvo
+        });
+
+        const mName = monthNames[targetIndex]?.toUpperCase() || "";
+
+        // Update Titles
+        document.getElementById('kpi-title-evo-ano-fat').textContent = kpiTitleFat;
+        document.getElementById('kpi-title-evo-ano-kg').textContent = kpiTitleKg;
+        document.getElementById('kpi-title-evo-tri-fat').textContent = `Tend. FAT ${mName} vs Trim. Ant.`;
+        document.getElementById('kpi-title-evo-tri-kg').textContent = `Tend. TON ${mName} vs Trim. Ant.`;
+
+        // --- CHART PREP (Responsive to Mode) ---
+        const mainChartTitle = document.getElementById('main-chart-title');
+
+        // Determine Bonification Mode
+        const isBonifMode = isBonificationMode(getCurrentFilters().p_tipovenda);
+
+        // Data Mapping Helper based on Mode
+        const getDataValue = (d) => {
+            if (isBonifMode && currentChartMode === 'faturamento') return d.bonificacao;
+            return currentChartMode === 'faturamento' ? d.faturamento : d.peso;
+        };
+
+        // Formatters
+        const currencyFormatter = (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''));
+        const weightFormatter = (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
+        const currentFormatter = currentChartMode === 'faturamento' ? currencyFormatter : weightFormatter;
+
+        if (currentChartMode === 'faturamento') {
+            mainChartTitle.textContent = isBonifMode ? "BONIFICADO MENSAL" : "FATURAMENTO MENSAL";
+        } else {
+            mainChartTitle.textContent = "TONELAGEM MENSAL";
+        }
+
+        const mapTo12 = (arr) => {
+            const res = new Array(12).fill(0);
+            arr.forEach(d => res[d.month_index] = getDataValue(d));
+            return res;
+        };
+
+        const datasets = [];
+
+        datasets.push({ label: `Ano ${data.previous_year}`, data: mapTo12(previousData), isPrevious: true });
+        datasets.push({ label: `Ano ${data.current_year}`, data: mapTo12(currentData), isCurrent: true });
+
+        // Trend Logic (Chart)
+        if (data.trend_allowed && data.trend_data) {
+            const trendArray = new Array(13).fill(null); // Increased to 13 to separate trend
+            // Pad previous datasets to 13
+            datasets.forEach(ds => ds.data.push(null));
+
+            trendArray[12] = getDataValue(data.trend_data); // Use 13th slot
+
+            datasets.push({
+                label: `Tendência ${monthNames[data.trend_data.month_index]}`,
+                data: trendArray,
+                isTrend: true
+            });
+        }
+
+        const chartLabels = [...monthNames];
+        if (data.trend_allowed) chartLabels.push('Tendência');
+
+        createChart('main-chart', 'bar', chartLabels, datasets, currentFormatter);
+        updateTable(currentData, previousData, data.current_year, data.previous_year, data.trend_allowed ? data.trend_data : null);
+    }
+
+    function updateKpi(id, value) {
+        const el = document.getElementById(id);
+        if(!el) return;
+        el.textContent = `${value.toFixed(1)}%`;
+        el.className = `text-2xl font-bold ${value >= 0 ? 'text-green-400' : 'text-red-400'}`;
+    }
+
+    function updateKpiCard({ prefix, trendVal, prevVal, fmt, calcEvo }) {
+        const evo = calcEvo(trendVal, prevVal);
+
+        const elTrend = document.getElementById(`kpi-value-trend-${prefix}`);
+        const elPrev = document.getElementById(`kpi-value-prev-${prefix}`);
+        const elVar = document.getElementById(`kpi-var-${prefix}`);
+
+        if (elTrend) elTrend.textContent = fmt(trendVal);
+        if (elPrev) elPrev.textContent = fmt(prevVal);
+        if (elVar) {
+            elVar.textContent = `${evo > 0 ? '+' : ''}${evo.toFixed(1)}%`;
+            elVar.className = `font-bold ${evo >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+        }
+    }
+
+    function createChart(canvasId, type, labels, datasetsData, formatterVal) {
+        const container = document.getElementById(canvasId + 'Container');
+        if (!container) return;
+        container.innerHTML = '';
+        const newCanvas = document.createElement('canvas');
+        newCanvas.id = canvasId;
+        container.appendChild(newCanvas);
+
+        const ctx = newCanvas.getContext('2d');
+        const professionalPalette = { 'current': '#06b6d4', 'previous': '#f97316', 'trend': '#8b5cf6' };
+
+        const datasets = datasetsData.map((d, i) => {
+            let color = '#94a3b8'; // default
+            if (d.isPrevious) color = professionalPalette.previous;
+            if (d.isCurrent) color = professionalPalette.current;
+            if (d.isTrend) color = professionalPalette.trend;
+
+            return {
+                ...d,
+                label: d.label,
+                data: d.data,
+                backgroundColor: d.backgroundColor || color,
+                borderColor: d.borderColor || color,
+                borderWidth: 1,
+                skipNull: true
+            };
+        });
+
+        if (currentCharts[canvasId]) currentCharts[canvasId].destroy();
+
+        currentCharts[canvasId] = new Chart(ctx, {
+            type: type,
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#cbd5e1' } },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        offset: 4,
+                        color: '#cbd5e1',
+                        font: { size: 9, weight: 'bold' },
+                        formatter: formatterVal || ((v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : '')))
+                    }
+                },
+                scales: {
+                    y: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        afterFit: (axis) => { axis.width = 150; } // Force Y-axis width to match table first column
+                    },
+                    x: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    }
+
+    function updateTable(currData, prevData, currYear, prevYear, trendData) {
+        const tableBody = document.getElementById('monthly-summary-table-body');
+        const tableHead = document.querySelector('#monthly-summary-table thead tr');
+        tableBody.innerHTML = '';
+
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        let headerHTML = '<th class="px-2 py-2 text-left">INDICADOR</th>';
+        monthNames.forEach(m => headerHTML += `<th class="px-2 py-2 text-center">${m}</th>`);
+        if (trendData) {
+            headerHTML += `<th class="px-2 py-2 text-center bg-purple-900/30 text-purple-200">Tendência</th>`;
+        }
+        tableHead.innerHTML = headerHTML;
+
+        const indicators = [
+            { name: 'POSITIVAÇÃO', key: 'positivacao', fmt: v => v.toLocaleString('pt-BR') },
+            { name: 'FATURAMENTO', key: 'faturamento', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
+            { name: 'Mix PDV', key: 'mix_pdv', fmt: v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+            { name: 'Ticket Médio', key: 'ticket_medio', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
+            { name: 'BONIFICAÇÃO', key: 'bonificacao', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
+            { name: '% Perda', key: 'perc_perda', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
+            { name: 'DEVOLUÇÃO', key: 'devolucao', fmt: v => `<span class="text-red-400">${v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>` },
+            { name: '% Devolução', key: 'perc_devolucao', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
+            { name: 'TON VENDIDA', key: 'peso', fmt: v => `${(v/1000).toFixed(2)} Kg` }
+        ];
+
+        indicators.forEach(ind => {
+            let rowHTML = `<tr class="table-row"><td class="font-bold p-2 text-left">${ind.name}</td>`;
+            for(let i=0; i<12; i++) {
+                const d = currData.find(x => x.month_index === i);
+                let val = d ? d[ind.key] : null;
+                if (val === undefined) val = null;
+                if (val === null && !ind.allowNull) val = 0;
+                rowHTML += `<td class="px-2 py-1.5 text-center">${ind.fmt(val)}</td>`;
+            }
+            if (trendData) {
+                 let tVal = trendData[ind.key];
+                 if (tVal === undefined) tVal = null;
+                 if (tVal === null && !ind.allowNull) tVal = 0;
+                 rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-purple-300 bg-purple-900/20">${ind.fmt(tVal)}</td>`;
+            }
+            rowHTML += '</tr>';
+            tableBody.innerHTML += rowHTML;
+        });
+    }
+
+
+    let citySelectedFiliais = [];
