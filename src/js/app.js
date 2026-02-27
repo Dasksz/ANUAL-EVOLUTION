@@ -881,8 +881,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 yAxis.set("numberFormat", currentChartMode === 'faturamento' ? "#.0a" : "#.0' Ton'");
 
                 // Explicitly clear min/max to ensure auto-scaling recalculates correctly
-                yAxis.set("min", undefined);
-                yAxis.set("max", undefined);
+                yAxis.set("min", null);
+                yAxis.set("max", null);
 
                 chart.series.each(function (series) {
                     series.set("valueYShow", "value");
