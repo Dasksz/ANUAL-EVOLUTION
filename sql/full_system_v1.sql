@@ -1449,7 +1449,7 @@ BEGIN
             IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND cidade = ANY(%L) ', p_cidade); END IF;
             IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor); END IF;
             IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor); END IF;
-            IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND codfor = ANY(%L) ', p_fornecedor); END IF;
+            IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND s.codfor = ANY(%L) ', p_fornecedor); END IF;
             IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND tipovenda = ANY(%L) ', p_tipovenda); END IF;
             
             -- Category (Need join for this in raw tables)
@@ -1466,7 +1466,7 @@ BEGIN
                 ' || v_raw_where || '
                 AND EXTRACT(MONTH FROM dtped) = $3
                 AND EXTRACT(YEAR FROM dtped) IN ($2, $4)
-                ' || CASE WHEN p_categoria IS NOT NULL THEN format(' AND dp.categoria_produto = ANY(%L) ', p_categoria) ELSE '' END || '
+                ' || CASE WHEN p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN format(' AND dp.categoria_produto = ANY(%L) ', p_categoria) ELSE '' END || '
                 ' || CASE WHEN v_rede_condition != '' THEN ' AND (' || v_rede_condition || ') ' ELSE '' END || '
                 
                 UNION ALL
@@ -1478,7 +1478,7 @@ BEGIN
                 ' || v_raw_where || '
                 AND EXTRACT(MONTH FROM dtped) = $3
                 AND EXTRACT(YEAR FROM dtped) IN ($2, $4)
-                ' || CASE WHEN p_categoria IS NOT NULL THEN format(' AND dp.categoria_produto = ANY(%L) ', p_categoria) ELSE '' END || '
+                ' || CASE WHEN p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN format(' AND dp.categoria_produto = ANY(%L) ', p_categoria) ELSE '' END || '
                 ' || CASE WHEN v_rede_condition != '' THEN ' AND (' || v_rede_condition || ') ' ELSE '' END || '
             ),
             daily_agg AS (
