@@ -3,6 +3,12 @@ import supabase from './supabase.js?v=2';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("App Version: 2.1 (amCharts + New Nav)");
+    
+    // --- Global State Variables (Hoisted for Scope Access) ---
+    let checkProfileLock = false;
+    let isAppReady = false;
+    let mainChartRoot = null; // Global reference to amCharts root
+
     // --- Auth & Navigation Elements ---
     const loginView = document.getElementById('login-view');
     const appLayout = document.getElementById('app-layout');
@@ -42,8 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Buttons in Dashboard
     const clearFiltersBtn = document.getElementById('clear-filters-btn');
-    const calendarBtn = document.getElementById('calendar-btn');
-    const chartToggleBtn = document.getElementById('chart-toggle-btn');
+    const calendarBtn = document.getElementById('calendar-btn'); 
+    const chartToggleBtn = document.getElementById('chart-toggle-btn'); 
 
     // Toggle Secondary KPIs
     const toggleSecondaryKpisBtn = document.getElementById('toggle-secondary-kpis-btn');
@@ -218,8 +224,8 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleSecondaryKpisBtn.addEventListener('click', () => {
             secondaryKpiRow.classList.toggle('hidden');
             const isHidden = secondaryKpiRow.classList.contains('hidden');
-            const plusPath = "M12 4v16m8-8H4";
-            const minusPath = "M20 12H4";
+            const plusPath = "M12 4v16m8-8H4"; 
+            const minusPath = "M20 12H4"; 
             if(toggleKpiIcon) toggleKpiIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${isHidden ? plusPath : minusPath}"></path>`;
         });
     }
@@ -295,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // (getFiltersFromActiveView, applyFiltersToView, navigateWithCtrl... kept same)
     // ... Copy of getFiltersFromActiveView, applyFiltersToView, navigateWithCtrl from previous version ...
-    function getFiltersFromActiveView() { /* Same implementation as before */
+    function getFiltersFromActiveView() { /* Same implementation as before */ 
         const view = getActiveViewId();
         const state = {};
         if (view === 'dashboard') { state.ano = anoFilter.value; state.mes = mesFilter.value; state.filiais = selectedFiliais; state.cidades = selectedCidades; state.supervisores = selectedSupervisores; state.vendedores = selectedVendedores; state.fornecedores = selectedFornecedores; state.tiposvenda = selectedTiposVenda; state.redes = selectedRedes; state.categorias = selectedCategorias; }
@@ -476,8 +482,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // (Other Uploader & Sync logic remains unchanged)
 
     // --- AMCHARTS 5 IMPLEMENTATION ---
-    let mainChartRoot = null; // Global reference to chart root
-
     function renderMainChartAmCharts(data) {
         if (mainChartRoot) {
             mainChartRoot.dispose();
@@ -546,14 +550,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let seriesDataTrend = [];
         if (data.trend_allowed && data.trend_data) {
-            // Trend is a single point, but lines need 2 points?
+            // Trend is a single point, but lines need 2 points? 
             // Usually we connect Current Last Month -> Trend Month.
             // Find last current month
             const lastCurr = seriesDataCurr[seriesDataCurr.length - 1];
             if (lastCurr) {
                 // Add last actual point to trend line start to ensure connection
-                seriesDataTrend.push(lastCurr);
-
+                seriesDataTrend.push(lastCurr); 
+                
                 const trendDate = new Date(2000, data.trend_data.month_index, 15).getTime();
                 seriesDataTrend.push({
                     date: trendDate,
@@ -682,7 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderDashboard(data) {
         // Init Holidays
         holidays = data.holidays || [];
-
+        
         // ... (Keep existing KPI rendering logic) ...
         document.getElementById('kpi-clients-attended').textContent = data.kpi_clients_attended.toLocaleString('pt-BR');
         const baseEl = document.getElementById('kpi-clients-base');
@@ -697,7 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetIndex = data.target_month_index;
 
         // KPI Calculation Variables (Standard Logic)
-        let currFat, currKg, prevFat, prevKg;
+        let currFat, currKg, prevFat, prevKg; 
         let kpiTitleFat, kpiTitleKg;
         
         if (anoFilter.value !== 'todos' && mesFilter.value === '') {
@@ -739,14 +743,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const currMonthData = currentData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
             const prevMonthData = previousData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
-
+            
             const getTrendValue = (key, baseValue) => (data.trend_allowed && data.trend_data && data.trend_data.month_index === targetIndex) ? (data.trend_data[key] || 0) : baseValue;
-
+            
             currFat = getTrendValue('faturamento', currMonthData.faturamento);
             currKg = getTrendValue('peso', currMonthData.peso);
             prevFat = prevMonthData.faturamento;
             prevKg = prevMonthData.peso;
-
+            
             const mName = monthNames[targetIndex]?.toUpperCase() || "";
             kpiTitleFat = `Tend. FAT ${mName} vs Ano Ant.`;
             kpiTitleKg = `Tend. TON ${mName} vs Ano Ant.`;
@@ -777,11 +781,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ... (Keep existing updateTable, updateKpiCard, and other helper functions) ...
-    // Note: createChart (legacy Chart.js) can be kept if used by other views (Branch/Comparison),
+    // Note: createChart (legacy Chart.js) can be kept if used by other views (Branch/Comparison), 
     // or refactored later if they need amCharts too. Currently plan is only Main Dashboard Chart replacement.
     
-    // Existing helper functions like updateKpiCard, updateTable are presumed available
-    // or need to be inside this scope if not modular. They are already in the file structure
+    // Existing helper functions like updateKpiCard, updateTable are presumed available 
+    // or need to be inside this scope if not modular. They are already in the file structure 
     // from previous read, so just ensuring the logic flow calls renderDashboard -> renderMainChartAmCharts.
 
     // ... (Rest of logic: City View, Boxes View, etc. remains mostly same logic-wise) ...
