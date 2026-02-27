@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let checkProfileLock = false;
     let isAppReady = false;
     let mainChartRoot = null; // Global reference to amCharts root
-
+    
     // Expose root for testing
     if (typeof window !== 'undefined') window.getMainChartRoot = () => mainChartRoot;
 
@@ -885,7 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 yAxis.set("max", undefined);
 
                 chart.series.each(function (series) {
-                    series.set("valueYShow", undefined);
+                    series.set("valueYShow", "value");
                 });
             }
         });
