@@ -379,7 +379,7 @@ BEGIN
 
             v_sql := v_sql || ',
             daily_raw AS (
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.bonificacao, s.tipovenda
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.vlbonific as bonificacao, s.tipovenda
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente -- Need clients for Rede logic
@@ -391,7 +391,7 @@ BEGIN
 
                 UNION ALL
 
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.bonificacao, s.tipovenda
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.vlbonific as bonificacao, s.tipovenda
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
