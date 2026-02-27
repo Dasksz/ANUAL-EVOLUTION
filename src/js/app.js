@@ -37,6 +37,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const uploaderModal = document.getElementById('uploader-modal');
     const closeUploaderBtn = document.getElementById('close-uploader-btn');
 
+    if (closeUploaderBtn) {
+        closeUploaderBtn.addEventListener('click', () => {
+            uploaderModal.classList.add('hidden');
+        });
+    }
+
     // Dashboard Internal Views
     const mainDashboardView = document.getElementById('main-dashboard-view');
     const mainDashboardHeader = document.getElementById('main-dashboard-header');
@@ -1015,7 +1021,7 @@ async function fetchCityBranchMap() {
             return;
         }
         uploaderModal.classList.remove('hidden');
-        closeSidebar();
+        // closeSidebar(); // Removed as sidebar is deprecated
         checkMissingBranches();
     });
 
