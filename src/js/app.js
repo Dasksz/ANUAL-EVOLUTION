@@ -254,6 +254,56 @@ document.addEventListener('DOMContentLoaded', () => {
     const productsFileInput = document.getElementById('products-file-input');
     const generateBtn = document.getElementById('generate-btn');
     const optimizeDbBtn = document.getElementById('optimize-db-btn'); // Keep standard one if exists
+    const files = {
+        salesPrevYearFile: null,
+        salesCurrYearFile: null,
+        salesCurrMonthFile: null,
+        clientsFile: null,
+        productsFile: null
+    };
+
+    function checkFiles() {
+        if (files.salesPrevYearFile && files.salesCurrYearFile && files.salesCurrMonthFile && files.clientsFile && files.productsFile) {
+            generateBtn.disabled = false;
+        } else {
+            generateBtn.disabled = true;
+        }
+    }
+
+    if (salesPrevYearInput) {
+        salesPrevYearInput.addEventListener("change", (e) => {
+            files.salesPrevYearFile = e.target.files[0];
+            checkFiles();
+        });
+    }
+
+    if (salesCurrYearInput) {
+        salesCurrYearInput.addEventListener("change", (e) => {
+            files.salesCurrYearFile = e.target.files[0];
+            checkFiles();
+        });
+    }
+
+    if (salesCurrMonthInput) {
+        salesCurrMonthInput.addEventListener("change", (e) => {
+            files.salesCurrMonthFile = e.target.files[0];
+            checkFiles();
+        });
+    }
+
+    if (clientsFileInput) {
+        clientsFileInput.addEventListener("change", (e) => {
+            files.clientsFile = e.target.files[0];
+            checkFiles();
+        });
+    }
+
+    if (productsFileInput) {
+        productsFileInput.addEventListener("change", (e) => {
+            files.productsFile = e.target.files[0];
+            checkFiles();
+        });
+    }
     const statusContainer = document.getElementById('status-container');
     const statusText = document.getElementById('status-text');
     const progressBar = document.getElementById('progress-bar');
