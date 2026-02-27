@@ -21,21 +21,21 @@
     <link rel="icon" type="image/png" href="logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/idb@7/build/umd.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-    
     <!-- amCharts 5 -->
     <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
     <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
     <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
     <script src="https://cdn.amcharts.com/lib/5/locales/pt_BR.js"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/idb@7/build/umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="src/css/styles.css">
+    <link rel="stylesheet" href="src/css/nav.css">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <style>
         body { 
@@ -66,9 +66,15 @@
         .table-row:nth-child(even) { background-color: #1e293b; }
         .sticky-header th { position: sticky; top: 0; z-index: 10; background-color: #334155; }
         
+        /* Sidebar transition */
+        #side-menu {
+            transition: transform 0.3s ease-in-out;
+        }
+        
+    
         /* New Top Navigation Styles */
         .top-nav {
-            background-color: #0d1126; /* Dark background matching body */
+            background-color: #0d1126;
             border-bottom: 1px solid #1e293b;
             padding: 0.75rem 2rem;
             display: flex;
@@ -87,7 +93,7 @@
             color: white;
         }
         .top-nav-brand span {
-            color: #94a3b8; /* Slate-400 for separator/subtitle */
+            color: #94a3b8;
             font-weight: 400;
             font-size: 1rem;
         }
@@ -110,7 +116,7 @@
         }
         .nav-link.active {
             color: white;
-            border-bottom-color: #f97316; /* Orange accent */
+            border-bottom-color: #f97316;
         }
         .top-nav-actions {
             display: flex;
@@ -136,6 +142,7 @@
             color: white;
             font-size: 0.875rem;
         }
+
     </style>
 </head>
 <body class="min-h-screen">
@@ -179,8 +186,14 @@
         </div>
     </div>
 
-    <!-- New Top Navigation Bar -->
-    <header id="top-navbar" class="top-nav hidden">
+    <!-- Sidebar Backdrop -->
+    
+
+    <!-- Sidebar (Drawer) -->
+    
+
+    <!-- Main Content -->
+    <header id="top-navbar" class="top-nav">
         <div class="top-nav-brand">
             <div class="w-8 h-8 relative mr-2">
                 <img src="logo.png" alt="PRIME Logo" class="w-full h-full object-contain">
@@ -208,341 +221,329 @@
         </div>
     </header>
 
-    <!-- Sidebar Backdrop (Deprecated but kept to avoid immediate JS breakage before cleanup) -->
-    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity duration-300"></div>
-
-    <!-- Sidebar (Drawer) - Hidden/Deprecated -->
-    <aside id="side-menu" class="hidden fixed inset-y-0 left-0 z-50 w-64 bg-[#1d2347] border-r border-slate-700 flex flex-col transform -translate-x-full shadow-2xl">
-       <!-- Content removed, structure kept temporarily if JS references it directly on load -->
-    </aside>
-
-    <!-- Main Content -->
     <div id="app-layout" class="hidden flex h-screen overflow-hidden flex-col">
-        
-        <!-- Content Scrollable Area -->
-        <main class="flex-1 overflow-y-auto bg-[#0d1126] p-4">
+        <div class="flex-1 flex flex-col h-full overflow-hidden relative">
+            
+            <!-- Content Scrollable Area -->
+            <main class="flex-1 overflow-y-auto bg-[#0d1126] p-4">
 
-            <!-- Dashboard Container -->
-            <div id="dashboard-container" class="container mx-auto">
-                <div id="main-dashboard-view">
-                <!-- Main Dashboard Header (Visible only in Dashboard View) -->
-                <div id="main-dashboard-header">
-                    <!-- Filters & Header -->
-                    <header class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div class="flex items-center gap-3">
-                            <!-- Sidebar toggle removed -->
-                            <div>
-                                <h1 class="text-3xl font-bold text-white">ACOMPANHAMENTO DE EVOLUÇÃO</h1>
-                                <p class="text-slate-400 text-sm">Dados obtidos via banco de dados</p>
+                <!-- Dashboard Container -->
+                <div id="dashboard-container" class="container mx-auto">
+                    <div id="main-dashboard-view">
+                    <!-- Main Dashboard Header (Visible only in Dashboard View) -->
+                    <div id="main-dashboard-header">
+                        <!-- Filters & Header -->
+                        <header class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div class="flex items-center gap-3">
+                                
+                                <div>
+                                    <h1 class="text-3xl font-bold text-white">ACOMPANHAMENTO DE EVOLUÇÃO</h1>
+                                    <p class="text-slate-400 text-sm">Dados obtidos via banco de dados</p>
+                                </div>
+                            </div>
+                        </header>
+
+                        <!-- Filters Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4 items-end">
+                            <div><label class="text-xs text-slate-400">Ano</label><select id="ano-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="todos">Todos</option></select></div>
+                            <div><label class="text-xs text-slate-400">Mês</label><select id="mes-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="">Todos</option></select></div>
+                            
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Filial</label>
+                                <button id="filial-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todas</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="filial-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Cidade</label>
+                                <button id="cidade-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todas</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="cidade-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="cidade-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="cidade-filter-list"></div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Supervisor</label>
+                                <button id="supervisor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todos</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="supervisor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Vendedor</label>
+                                <button id="vendedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todos</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="vendedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="vendedor-filter-list"></div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Fornecedor</label>
+                                <button id="fornecedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todos</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="fornecedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="fornecedor-filter-list"></div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Categoria</label>
+                                <button id="categoria-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todas</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="categoria-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="categoria-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="categoria-filter-list"></div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Rede</label>
+                                <button id="rede-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todas</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="rede-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                     <input type="text" id="rede-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                     <div id="rede-filter-list"></div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Tipo Venda</label>
+                                <button id="tipovenda-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todos</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="tipovenda-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
                         </div>
-                    </header>
 
-                    <!-- Filters Grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4 items-end">
-                        <div><label class="text-xs text-slate-400">Ano</label><select id="ano-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="todos">Todos</option></select></div>
-                        <div><label class="text-xs text-slate-400">Mês</label><select id="mes-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="">Todos</option></select></div>
-                        
-                        <div class="relative">
-                            <label class="text-xs text-slate-400 block mb-1">Filial</label>
-                            <button id="filial-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                                <span class="truncate">Todas</span>
-                                <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-                            </button>
-                            <div id="filial-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
-                        </div>
-
-                        <div class="relative">
-                            <label class="text-xs text-slate-400 block mb-1">Cidade</label>
-                            <button id="cidade-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                                <span class="truncate">Todas</span>
-                                <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-                            </button>
-                            <div id="cidade-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                <input type="text" id="cidade-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
-                                <div id="cidade-filter-list"></div>
-                            </div>
-                        </div>
-
-                        <div class="relative">
-                            <label class="text-xs text-slate-400 block mb-1">Supervisor</label>
-                            <button id="supervisor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                                <span class="truncate">Todas</span>
-                                <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-                            </button>
-                            <div id="supervisor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
-                        </div>
-
-                        <div class="relative">
-                            <label class="text-xs text-slate-400 block mb-1">Vendedor</label>
-                            <button id="vendedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                                <span class="truncate">Todos</span>
-                                <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-                            </button>
-                            <div id="vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                <input type="text" id="vendedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
-                                <div id="vendedor-filter-list"></div>
-                            </div>
-                        </div>
-
-                        <div class="relative">
-                            <label class="text-xs text-slate-400 block mb-1">Fornecedor</label>
-                            <button id="fornecedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                                <span class="truncate">Todos</span>
-                                <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-                            </button>
-                            <div id="fornecedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                <input type="text" id="fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
-                                <div id="fornecedor-filter-list"></div>
-                            </div>
-                        </div>
-
-                        <div class="relative">
-                            <label class="text-xs text-slate-400 block mb-1">Categoria</label>
-                            <button id="categoria-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                                <span class="truncate">Todas</span>
-                                <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-                            </button>
-                            <div id="categoria-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                <input type="text" id="categoria-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
-                                <div id="categoria-filter-list"></div>
-                            </div>
-                        </div>
-
-                        <div class="relative">
-                            <label class="text-xs text-slate-400 block mb-1">Rede</label>
-                            <button id="rede-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                                <span class="truncate">Todas</span>
-                                <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-                            </button>
-                            <div id="rede-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="rede-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
-                                    <div id="rede-filter-list"></div>
-                            </div>
-                        </div>
-
-                        <div class="relative">
-                            <label class="text-xs text-slate-400 block mb-1">Tipo Venda</label>
-                            <button id="tipovenda-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                                <span class="truncate">Todas</span>
-                                <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-                            </button>
-                            <div id="tipovenda-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                        <div class="flex gap-4 mb-4">
+                            <button id="clear-filters-btn" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full md:w-auto">Limpar Filtros</button>
                         </div>
                     </div>
 
-                    <div class="flex gap-4 mb-4">
-                        <button id="clear-filters-btn" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full md:w-auto">Limpar Filtros</button>
-                    </div>
-                </div>
-
-                <!-- Main Dashboard Content -->
-                <div id="main-dashboard-content">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
-                        <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
-                            <div class="flex justify-between items-center mb-1">
-                                <p id="kpi-title-evo-ano-fat" class="text-xs text-slate-400 font-bold">Tend. FAT vs Ano Ant.</p>
-                                <span class="text-[10px] text-slate-500">R$</span>
-                            </div>
-                            <div class="mb-1">
-                                <p id="kpi-value-trend-fat" class="text-xl font-bold text-white">R$ 0,00</p>
-                            </div>
-                            <div class="flex justify-between items-end">
-                                <div class="text-left text-slate-500">
-                                    <span class="block text-[10px]">Ano ant.</span>
-                                    <span id="kpi-value-prev-fat" class="text-xs font-semibold text-slate-300">R$ 0,00</span>
-                                </div>
-                                <span id="kpi-var-fat" class="text-sm font-bold text-white">0.0%</span>
-                            </div>
-                        </div>
-                        <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
-                            <div class="flex justify-between items-center mb-1">
-                                <p id="kpi-title-evo-ano-kg" class="text-xs text-slate-400 font-bold">Tend. TON vs Ano Ant.</p>
-                                <span class="text-[10px] text-slate-500">Ton</span>
-                            </div>
-                            <div class="mb-1">
-                                <p id="kpi-value-trend-kg" class="text-xl font-bold text-white">0 Kg</p>
-                            </div>
-                            <div class="flex justify-between items-end">
-                                <div class="text-left text-slate-500">
-                                    <span class="block text-[10px]">Ano ant.</span>
-                                    <span id="kpi-value-prev-kg" class="text-xs font-semibold text-slate-300">0 Kg</span>
-                                </div>
-                                <span id="kpi-var-kg" class="text-sm font-bold text-white">0.0%</span>
-                            </div>
-                        </div>
-                        <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
-                            <div class="flex justify-between items-center mb-1">
-                                <p id="kpi-title-evo-tri-fat" class="text-xs text-slate-400 font-bold">Tend. FAT vs Trim. Ant.</p>
-                                <span class="text-[10px] text-slate-500">R$</span>
-                            </div>
-                            <div class="mb-1">
-                                <p id="kpi-value-trend-tri-fat" class="text-xl font-bold text-white">R$ 0,00</p>
-                            </div>
-                            <div class="flex justify-between items-end">
-                                <div class="text-left text-slate-500">
-                                    <span class="block text-[10px]">Trim. ant.</span>
-                                    <span id="kpi-value-prev-tri-fat" class="text-xs font-semibold text-slate-300">R$ 0,00</span>
-                                </div>
-                                <span id="kpi-var-tri-fat" class="text-sm font-bold text-white">0.0%</span>
-                            </div>
-                        </div>
+                    <!-- Main Dashboard Content -->
+                    <div id="main-dashboard-content">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
                             <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
-                            <div class="flex justify-between items-center mb-1">
-                                <p id="kpi-title-evo-tri-kg" class="text-xs text-slate-400 font-bold">Tend. TON vs Trim. Ant.</p>
-                                <span class="text-[10px] text-slate-500">Ton</span>
-                            </div>
-                            <div class="mb-1">
-                                <p id="kpi-value-trend-tri-kg" class="text-xl font-bold text-white">0 Kg</p>
-                            </div>
-                            <div class="flex justify-between items-end">
-                                <div class="text-left text-slate-500">
-                                    <span class="block text-[10px]">Trim. ant.</span>
-                                    <span id="kpi-value-prev-tri-kg" class="text-xs font-semibold text-slate-300">0 Kg</span>
+                                <div class="flex justify-between items-center mb-1">
+                                    <p id="kpi-title-evo-ano-fat" class="text-xs text-slate-400 font-bold">Tend. FAT vs Ano Ant.</p>
+                                    <span class="text-[10px] text-slate-500">R$</span>
                                 </div>
-                                <span id="kpi-var-tri-kg" class="text-sm font-bold text-white">0.0%</span>
+                                <div class="mb-1">
+                                    <p id="kpi-value-trend-fat" class="text-xl font-bold text-white">R$ 0,00</p>
+                                </div>
+                                <div class="flex justify-between items-end">
+                                    <div class="text-left text-slate-500">
+                                        <span class="block text-[10px]">Ano ant.</span>
+                                        <span id="kpi-value-prev-fat" class="text-xs font-semibold text-slate-300">R$ 0,00</span>
+                                    </div>
+                                    <span id="kpi-var-fat" class="text-sm font-bold text-white">0.0%</span>
+                                </div>
+                            </div>
+                            <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
+                                <div class="flex justify-between items-center mb-1">
+                                    <p id="kpi-title-evo-ano-kg" class="text-xs text-slate-400 font-bold">Tend. TON vs Ano Ant.</p>
+                                    <span class="text-[10px] text-slate-500">Ton</span>
+                                </div>
+                                <div class="mb-1">
+                                    <p id="kpi-value-trend-kg" class="text-xl font-bold text-white">0 Kg</p>
+                                </div>
+                                <div class="flex justify-between items-end">
+                                    <div class="text-left text-slate-500">
+                                        <span class="block text-[10px]">Ano ant.</span>
+                                        <span id="kpi-value-prev-kg" class="text-xs font-semibold text-slate-300">0 Kg</span>
+                                    </div>
+                                    <span id="kpi-var-kg" class="text-sm font-bold text-white">0.0%</span>
+                                </div>
+                            </div>
+                            <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
+                                <div class="flex justify-between items-center mb-1">
+                                    <p id="kpi-title-evo-tri-fat" class="text-xs text-slate-400 font-bold">Tend. FAT vs Trim. Ant.</p>
+                                    <span class="text-[10px] text-slate-500">R$</span>
+                                </div>
+                                <div class="mb-1">
+                                    <p id="kpi-value-trend-tri-fat" class="text-xl font-bold text-white">R$ 0,00</p>
+                                </div>
+                                <div class="flex justify-between items-end">
+                                    <div class="text-left text-slate-500">
+                                        <span class="block text-[10px]">Trim. ant.</span>
+                                        <span id="kpi-value-prev-tri-fat" class="text-xs font-semibold text-slate-300">R$ 0,00</span>
+                                    </div>
+                                    <span id="kpi-var-tri-fat" class="text-sm font-bold text-white">0.0%</span>
+                                </div>
+                            </div>
+                             <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
+                                <div class="flex justify-between items-center mb-1">
+                                    <p id="kpi-title-evo-tri-kg" class="text-xs text-slate-400 font-bold">Tend. TON vs Trim. Ant.</p>
+                                    <span class="text-[10px] text-slate-500">Ton</span>
+                                </div>
+                                <div class="mb-1">
+                                    <p id="kpi-value-trend-tri-kg" class="text-xl font-bold text-white">0 Kg</p>
+                                </div>
+                                <div class="flex justify-between items-end">
+                                    <div class="text-left text-slate-500">
+                                        <span class="block text-[10px]">Trim. ant.</span>
+                                        <span id="kpi-value-prev-tri-kg" class="text-xs font-semibold text-slate-300">0 Kg</span>
+                                    </div>
+                                    <span id="kpi-var-tri-kg" class="text-sm font-bold text-white">0.0%</span>
+                                </div>
+                            </div>
+                            <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
+                                <div class="flex justify-between items-center mb-1">
+                                    <p class="text-xs text-slate-400 font-bold">CLIENTES ATENDIDOS</p>
+                                </div>
+                                <div class="flex items-baseline justify-between gap-2 mb-1">
+                                    <p id="kpi-clients-attended" class="text-xl font-bold text-white">0</p>
+                                </div>
+                                <div class="text-left text-slate-500">
+                                    <span class="block text-[10px]">Base Total</span>
+                                    <span id="kpi-clients-base" class="text-xs font-semibold text-slate-300">de 0 na base</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
-                            <div class="flex justify-between items-center mb-1">
-                                <p class="text-xs text-slate-400 font-bold">CLIENTES ATENDIDOS</p>
+
+                        <!-- Toggle Button for Secondary KPIs -->
+                        <div class="flex justify-start mb-2 ml-1">
+                            <button id="toggle-secondary-kpis-btn" class="flex items-center text-xs font-bold text-slate-400 hover:text-white transition-colors focus:outline-none gap-1">
+                                <svg id="toggle-kpi-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                <span id="toggle-kpi-text">KPIs</span>
+                            </button>
+                        </div>
+
+                        <!-- Secondary KPI Row (New 5 KPIs) -->
+                        <div id="secondary-kpi-row" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+                            <!-- KPI 1: Bonificação -->
+                            <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
+                                <div class="flex justify-between items-center mb-1">
+                                    <p class="text-xs text-slate-400 font-bold">BONIFICAÇÃO:</p>
+                                    <span id="kpi-bonif-types" class="text-[10px] text-slate-500"></span>
+                                </div>
+                                <div class="flex items-baseline justify-between gap-2 mb-1">
+                                    <p id="kpi-bonif-val" class="text-xl font-bold text-white">R$ 0,00</p>
+                                    <p id="kpi-bonif-perc" class="text-lg font-bold text-white">0.0%</p>
+                                </div>
+                                <div class="text-left text-slate-500">
+                                    <span class="block text-[10px]">Faturamento</span>
+                                    <span id="kpi-bonif-sec" class="text-xs font-semibold text-slate-300">R$ 0,00</span>
+                                </div>
                             </div>
-                            <div class="flex items-baseline justify-between gap-2 mb-1">
-                                <p id="kpi-clients-attended" class="text-xl font-bold text-white">0</p>
+
+                            <!-- KPI 2: Bonificação Variação -->
+                            <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
+                                <div class="flex justify-between items-center mb-1">
+                                    <p class="text-xs text-slate-400 font-bold">VAR. BONIF:</p>
+                                    <span id="kpi-bonif-var-types" class="text-[10px] text-slate-500"></span>
+                                </div>
+                                <div class="flex items-baseline justify-between gap-2 mb-1">
+                                    <p id="kpi-bonif-var-val" class="text-xl font-bold text-white">R$ 0,00</p>
+                                    <p id="kpi-bonif-var-perc" class="text-lg font-bold text-white">0.0%</p>
+                                </div>
+                                <div class="text-left text-slate-500">
+                                    <span class="block text-[10px]">Período Anterior</span>
+                                    <span id="kpi-bonif-var-sec" class="text-xs font-semibold text-slate-300">R$ 0,00</span>
+                                </div>
                             </div>
-                            <div class="text-left text-slate-500">
-                                <span class="block text-[10px]">Base Total</span>
-                                <span id="kpi-clients-base" class="text-xs font-semibold text-slate-300">de 0 na base</span>
+
+                            <!-- KPI 3: Devolução -->
+                            <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
+                                <div class="flex justify-between items-center mb-1">
+                                    <p class="text-xs text-slate-400 font-bold">DEVOLUÇÃO:</p>
+                                </div>
+                                <div class="flex items-baseline justify-between gap-2 mb-1">
+                                    <p id="kpi-devol-val" class="text-xl font-bold text-white">R$ 0,00</p>
+                                    <p id="kpi-devol-perc" class="text-lg font-bold text-white">0.0%</p>
+                                </div>
+                                <div class="text-left text-slate-500">
+                                    <span class="block text-[10px]">Faturamento</span>
+                                    <span id="kpi-devol-sec" class="text-xs font-semibold text-slate-300">R$ 0,00</span>
+                                </div>
                             </div>
+
+                            <!-- KPI 4: Devolução Variação -->
+                            <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
+                                <div class="flex justify-between items-center mb-1">
+                                    <p class="text-xs text-slate-400 font-bold">VAR. DEVOL:</p>
+                                </div>
+                                <div class="flex items-baseline justify-between gap-2 mb-1">
+                                    <p id="kpi-devol-var-val" class="text-xl font-bold text-white">R$ 0,00</p>
+                                    <p id="kpi-devol-var-perc" class="text-lg font-bold text-white">0.0%</p>
+                                </div>
+                                <div class="text-left text-slate-500">
+                                    <span class="block text-[10px]">Período Anterior</span>
+                                    <span id="kpi-devol-var-sec" class="text-xs font-semibold text-slate-300">R$ 0,00</span>
+                                </div>
+                            </div>
+
+                            <!-- KPI 5: Mix PDV -->
+                            <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
+                                <div class="flex justify-between items-center mb-1">
+                                    <p class="text-xs text-slate-400 font-bold">MIX PDV:</p>
+                                </div>
+                                <div class="flex items-baseline justify-between gap-2 mb-1">
+                                    <p id="kpi-mix-val" class="text-xl font-bold text-white">0.00</p>
+                                    <p id="kpi-mix-perc" class="text-lg font-bold text-white">0.0%</p>
+                                </div>
+                                <div class="text-left text-slate-500">
+                                    <span class="block text-[10px]">Média Período Anterior</span>
+                                    <span id="kpi-mix-sec" class="text-xs font-semibold text-slate-300">0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chart Container with Calendar Button -->
+                        <div class="bg-[#1e293b] p-4 rounded-lg border border-slate-700 mb-4 relative">
+                            <button id="calendar-btn" class="absolute top-4 left-4 text-slate-400 hover:text-white focus:outline-none" title="Abrir Calendário">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            </button>
+                            <button id="chart-toggle-btn" class="absolute top-4 right-4 text-xs bg-slate-700 hover:bg-slate-600 text-white font-semibold py-1 px-2 rounded border border-slate-600 focus:outline-none transition-colors" title="Alternar Visualização">
+                                R$ / Ton
+                            </button>
+                            <h2 id="main-chart-title" class="font-bold text-center mb-2 text-white">FATURAMENTO MENSAL</h2>
+                            <div id="main-chartContainer" class="relative h-96"></div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table id="monthly-summary-table" class="min-w-full text-xs text-white">
+                                <thead class="sticky-header"><tr></tr></thead>
+                                <tbody id="monthly-summary-table-body"></tbody>
+                            </table>
                         </div>
                     </div>
-
-                    <!-- Toggle Button for Secondary KPIs -->
-                    <div class="flex justify-start mb-2 ml-1">
-                        <button id="toggle-secondary-kpis-btn" class="flex items-center text-xs font-bold text-slate-400 hover:text-white transition-colors focus:outline-none gap-1">
-                            <svg id="toggle-kpi-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            <span id="toggle-kpi-text">KPIs</span>
-                        </button>
                     </div>
 
-                    <!-- Secondary KPI Row (New 5 KPIs) -->
-                    <div id="secondary-kpi-row" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
-                        <!-- KPI 1: Bonificação -->
-                        <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
-                            <div class="flex justify-between items-center mb-1">
-                                <p class="text-xs text-slate-400 font-bold">BONIFICAÇÃO:</p>
-                                <span id="kpi-bonif-types" class="text-[10px] text-slate-500"></span>
+                    <!-- Branch View Content -->
+                    <div id="branch-view" class="hidden">
+                        <header class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div class="flex items-center gap-3">
+                                
+                                <div>
+                                    <h1 class="text-3xl font-bold text-white">ACOMPANHAMENTO POR FILIAL</h1>
+                                    <p class="text-slate-400 text-sm">Comparativo entre Filiais</p>
+                                </div>
                             </div>
-                            <div class="flex items-baseline justify-between gap-2 mb-1">
-                                <p id="kpi-bonif-val" class="text-xl font-bold text-white">R$ 0,00</p>
-                                <p id="kpi-bonif-perc" class="text-lg font-bold text-white">0.0%</p>
-                            </div>
-                            <div class="text-left text-slate-500">
-                                <span class="block text-[10px]">Faturamento</span>
-                                <span id="kpi-bonif-sec" class="text-xs font-semibold text-slate-300">R$ 0,00</span>
-                            </div>
-                        </div>
+                        </header>
 
-                        <!-- KPI 2: Bonificação Variação -->
-                        <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
-                            <div class="flex justify-between items-center mb-1">
-                                <p class="text-xs text-slate-400 font-bold">VAR. BONIF:</p>
-                                <span id="kpi-bonif-var-types" class="text-[10px] text-slate-500"></span>
-                            </div>
-                            <div class="flex items-baseline justify-between gap-2 mb-1">
-                                <p id="kpi-bonif-var-val" class="text-xl font-bold text-white">R$ 0,00</p>
-                                <p id="kpi-bonif-var-perc" class="text-lg font-bold text-white">0.0%</p>
-                            </div>
-                            <div class="text-left text-slate-500">
-                                <span class="block text-[10px]">Período Anterior</span>
-                                <span id="kpi-bonif-var-sec" class="text-xs font-semibold text-slate-300">R$ 0,00</span>
-                            </div>
-                        </div>
-
-                        <!-- KPI 3: Devolução -->
-                        <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
-                            <div class="flex justify-between items-center mb-1">
-                                <p class="text-xs text-slate-400 font-bold">DEVOLUÇÃO:</p>
-                            </div>
-                            <div class="flex items-baseline justify-between gap-2 mb-1">
-                                <p id="kpi-devol-val" class="text-xl font-bold text-white">R$ 0,00</p>
-                                <p id="kpi-devol-perc" class="text-lg font-bold text-white">0.0%</p>
-                            </div>
-                            <div class="text-left text-slate-500">
-                                <span class="block text-[10px]">Faturamento</span>
-                                <span id="kpi-devol-sec" class="text-xs font-semibold text-slate-300">R$ 0,00</span>
-                            </div>
-                        </div>
-
-                        <!-- KPI 4: Devolução Variação -->
-                        <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
-                            <div class="flex justify-between items-center mb-1">
-                                <p class="text-xs text-slate-400 font-bold">VAR. DEVOL:</p>
-                            </div>
-                            <div class="flex items-baseline justify-between gap-2 mb-1">
-                                <p id="kpi-devol-var-val" class="text-xl font-bold text-white">R$ 0,00</p>
-                                <p id="kpi-devol-var-perc" class="text-lg font-bold text-white">0.0%</p>
-                            </div>
-                            <div class="text-left text-slate-500">
-                                <span class="block text-[10px]">Período Anterior</span>
-                                <span id="kpi-devol-var-sec" class="text-xs font-semibold text-slate-300">R$ 0,00</span>
-                            </div>
-                        </div>
-
-                        <!-- KPI 5: Mix PDV -->
-                        <div class="kpi-card p-3 rounded-lg flex flex-col justify-between h-[120px]">
-                            <div class="flex justify-between items-center mb-1">
-                                <p class="text-xs text-slate-400 font-bold">MIX PDV:</p>
-                            </div>
-                            <div class="flex items-baseline justify-between gap-2 mb-1">
-                                <p id="kpi-mix-val" class="text-xl font-bold text-white">0.00</p>
-                                <p id="kpi-mix-perc" class="text-lg font-bold text-white">0.0%</p>
-                            </div>
-                            <div class="text-left text-slate-500">
-                                <span class="block text-[10px]">Média Período Anterior</span>
-                                <span id="kpi-mix-sec" class="text-xs font-semibold text-slate-300">0.00</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Chart Container with Calendar Button -->
-                    <div class="bg-[#1e293b] p-4 rounded-lg border border-slate-700 mb-4 relative">
-                        <button id="calendar-btn" class="absolute top-4 left-4 text-slate-400 hover:text-white focus:outline-none z-10" title="Abrir Calendário">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        </button>
-                        <button id="chart-toggle-btn" class="absolute top-4 right-4 text-xs bg-slate-700 hover:bg-slate-600 text-white font-semibold py-1 px-2 rounded border border-slate-600 focus:outline-none transition-colors z-10" title="Alternar Visualização">
-                            R$ / Ton
-                        </button>
-                        <h2 id="main-chart-title" class="font-bold text-center mb-2 text-white">FATURAMENTO MENSAL</h2>
-                        <div id="main-chartContainer" class="relative h-96 w-full"></div>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table id="monthly-summary-table" class="min-w-full text-xs text-white">
-                            <thead class="sticky-header"><tr></tr></thead>
-                            <tbody id="monthly-summary-table-body"></tbody>
-                        </table>
-                    </div>
-                </div>
-                </div>
-
-                <!-- Branch View Content, Comparison View, Boxes View, City View kept as is, but adjusted for new Nav -->
-                <!-- The structure is the same, just ensuring they are inside dashboard-container -->
-                
-                <!-- Branch View -->
-                <div id="branch-view" class="hidden">
-                    <header class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div class="flex items-center gap-3">
-                            <div>
-                                <h1 class="text-3xl font-bold text-white">ACOMPANHAMENTO POR FILIAL</h1>
-                                <p class="text-slate-400 text-sm">Comparativo entre Filiais</p>
-                            </div>
-                        </div>
-                    </header>
-                    <!-- Content injected via JS or existing structure -->
-                    <!-- Reusing the existing HTML structure for branch-view content -->
-                    <!-- ... Branch View Content ... -->
-                     <!-- Filters Grid -->
+                        <!-- Filters Grid -->
                         <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4 items-end">
                             <div class="relative">
                                 <label class="text-xs text-slate-400 block mb-1">Filial</label>
@@ -552,218 +553,724 @@
                                 </button>
                                 <div id="branch-filial-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
-                            <!-- ... other branch filters ... -->
-                            <!-- Simply keeping the placeholders to be filled by JS as before -->
-                            <!-- Re-pasting critical IDs for JS to find -->
                             <div><label class="text-xs text-slate-400">Ano</label><select id="branch-ano-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="todos">Todos</option></select></div>
                             <div><label class="text-xs text-slate-400">Mês</label><select id="branch-mes-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="">Todos</option></select></div>
-                            <div class="relative"><label class="text-xs text-slate-400 block mb-1">Cidade</label><button id="branch-cidade-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todas</span></button><div id="branch-cidade-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"><input type="text" id="branch-cidade-filter-search" class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded"><div id="branch-cidade-filter-list"></div></div></div>
-                            <div class="relative"><label class="text-xs text-slate-400 block mb-1">Supervisor</label><button id="branch-supervisor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todos</span></button><div id="branch-supervisor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div></div>
-                            <div class="relative"><label class="text-xs text-slate-400 block mb-1">Vendedor</label><button id="branch-vendedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todos</span></button><div id="branch-vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"><input type="text" id="branch-vendedor-filter-search" class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded"><div id="branch-vendedor-filter-list"></div></div></div>
-                            <div class="relative"><label class="text-xs text-slate-400 block mb-1">Fornecedor</label><button id="branch-fornecedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todos</span></button><div id="branch-fornecedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"><input type="text" id="branch-fornecedor-filter-search" class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded"><div id="branch-fornecedor-filter-list"></div></div></div>
-                            <div class="relative"><label class="text-xs text-slate-400 block mb-1">Categoria</label><button id="branch-categoria-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todas</span></button><div id="branch-categoria-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"><input type="text" id="branch-categoria-filter-search" class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded"><div id="branch-categoria-filter-list"></div></div></div>
-                            <div class="relative"><label class="text-xs text-slate-400 block mb-1">Rede</label><button id="branch-rede-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todas</span></button><div id="branch-rede-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"><input type="text" id="branch-rede-filter-search" class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded"><div id="branch-rede-filter-list"></div></div></div>
-                            <div class="relative"><label class="text-xs text-slate-400 block mb-1">Tipo Venda</label><button id="branch-tipovenda-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todas</span></button><div id="branch-tipovenda-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div></div>
+                            
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Cidade</label>
+                                <button id="branch-cidade-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todas</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="branch-cidade-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="branch-cidade-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="branch-cidade-filter-list"></div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Supervisor</label>
+                                <button id="branch-supervisor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todos</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="branch-supervisor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Vendedor</label>
+                                <button id="branch-vendedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todos</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="branch-vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="branch-vendedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="branch-vendedor-filter-list"></div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Fornecedor</label>
+                                <button id="branch-fornecedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todos</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="branch-fornecedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="branch-fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="branch-fornecedor-filter-list"></div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Categoria</label>
+                                <button id="branch-categoria-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todas</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="branch-categoria-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="branch-categoria-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="branch-categoria-filter-list"></div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Rede</label>
+                                <button id="branch-rede-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todas</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="branch-rede-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                     <input type="text" id="branch-rede-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                     <div id="branch-rede-filter-list"></div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Tipo Venda</label>
+                                <button id="branch-tipovenda-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todos</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="branch-tipovenda-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                            </div>
                         </div>
+
                         <div class="flex gap-4 mb-4">
                             <button id="branch-clear-filters-btn" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full md:w-auto">Limpar Filtros</button>
                         </div>
-                        <!-- Branch KPIs and Chart -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+
+                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                             <!-- KPI Faturamento -->
                             <div class="kpi-card p-4 rounded-lg flex flex-col justify-between h-full">
-                                <div class="flex justify-between items-start mb-2 relative"><p id="branch-kpi-title-fat" class="text-sm text-slate-400 text-center w-full">Faturamento</p></div>
-                                <div class="flex justify-around items-start"><div class="text-center flex flex-col items-center"><p class="text-xs text-slate-500 mb-1" id="branch-name-1">Filial 1</p><p id="branch-val-1-fat" class="text-xl font-bold text-white">R$ 0,00</p><p id="branch-var-1-fat" class="text-sm font-bold mt-1">0.0%</p></div><div class="text-center text-slate-600 font-bold mt-6">VS</div><div class="text-center flex flex-col items-center"><p class="text-xs text-slate-500 mb-1" id="branch-name-2">Filial 2</p><p id="branch-val-2-fat" class="text-xl font-bold text-white">R$ 0,00</p><p id="branch-var-2-fat" class="text-sm font-bold mt-1">0.0%</p></div></div>
+                                <div class="flex justify-between items-start mb-2 relative">
+                                    <p id="branch-kpi-title-fat" class="text-sm text-slate-400 text-center w-full">Faturamento</p>
+                                    <span class="absolute top-0 right-0 text-xs font-bold text-slate-500">R$</span>
+                                </div>
+                                <div class="flex justify-around items-start">
+                                    <div class="text-center flex flex-col items-center">
+                                         <p class="text-xs text-slate-500 mb-1" id="branch-name-1">Filial 1</p>
+                                         <p id="branch-val-1-fat" class="text-xl font-bold text-white">R$ 0,00</p>
+                                         <p id="branch-var-1-fat" class="text-sm font-bold mt-1">0.0%</p>
+                                    </div>
+                                    <div class="text-center text-slate-600 font-bold mt-6">VS</div>
+                                    <div class="text-center flex flex-col items-center">
+                                         <p class="text-xs text-slate-500 mb-1" id="branch-name-2">Filial 2</p>
+                                         <p id="branch-val-2-fat" class="text-xl font-bold text-white">R$ 0,00</p>
+                                         <p id="branch-var-2-fat" class="text-sm font-bold mt-1">0.0%</p>
+                                    </div>
+                                </div>
                             </div>
+
                             <!-- KPI Tonelada -->
                             <div class="kpi-card p-4 rounded-lg flex flex-col justify-between h-full">
-                                <div class="flex justify-between items-start mb-2 relative"><p id="branch-kpi-title-kg" class="text-sm text-slate-400 text-center w-full">Tonelagem</p></div>
-                                <div class="flex justify-around items-start"><div class="text-center flex flex-col items-center"><p class="text-xs text-slate-500 mb-1" id="branch-name-1-kg">Filial 1</p><p id="branch-val-1-kg" class="text-xl font-bold text-white">0 Kg</p><p id="branch-var-1-kg" class="text-sm font-bold mt-1">0.0%</p></div><div class="text-center text-slate-600 font-bold mt-6">VS</div><div class="text-center flex flex-col items-center"><p class="text-xs text-slate-500 mb-1" id="branch-name-2-kg">Filial 2</p><p id="branch-val-2-kg" class="text-xl font-bold text-white">0 Kg</p><p id="branch-var-2-kg" class="text-sm font-bold mt-1">0.0%</p></div></div>
+                                <div class="flex justify-between items-start mb-2 relative">
+                                    <p id="branch-kpi-title-kg" class="text-sm text-slate-400 text-center w-full">Tonelagem</p>
+                                    <span class="absolute top-0 right-0 text-xs font-bold text-slate-500">Ton</span>
+                                </div>
+                                <div class="flex justify-around items-start">
+                                    <div class="text-center flex flex-col items-center">
+                                         <p class="text-xs text-slate-500 mb-1" id="branch-name-1-kg">Filial 1</p>
+                                         <p id="branch-val-1-kg" class="text-xl font-bold text-white">0 Kg</p>
+                                         <p id="branch-var-1-kg" class="text-sm font-bold mt-1">0.0%</p>
+                                    </div>
+                                    <div class="text-center text-slate-600 font-bold mt-6">VS</div>
+                                    <div class="text-center flex flex-col items-center">
+                                         <p class="text-xs text-slate-500 mb-1" id="branch-name-2-kg">Filial 2</p>
+                                         <p id="branch-val-2-kg" class="text-xl font-bold text-white">0 Kg</p>
+                                         <p id="branch-var-2-kg" class="text-sm font-bold mt-1">0.0%</p>
+                                    </div>
+                                </div>
                             </div>
-                            <!-- KPI Total Fat -->
+
+                            <!-- KPI Total Faturamento -->
                             <div class="kpi-card p-4 rounded-lg flex flex-col justify-between h-full">
-                                <div class="flex justify-between items-start mb-2 relative"><p id="branch-total-kpi-title-fat" class="text-sm text-slate-400 text-center w-full">Faturamento Total</p></div>
-                                <div class="text-center mb-2 flex-1 flex flex-col justify-center"><p id="branch-total-fat-val" class="text-3xl font-bold text-white">R$ 0,00</p></div>
+                                <div class="flex justify-between items-start mb-2 relative">
+                                    <p id="branch-total-kpi-title-fat" class="text-sm text-slate-400 text-center w-full">Faturamento Total</p>
+                                    <span class="absolute top-0 right-0 text-xs font-bold text-slate-500">R$</span>
+                                </div>
+                                <div class="text-center mb-2 flex-1 flex flex-col justify-center">
+                                    <p id="branch-total-fat-val" class="text-3xl font-bold text-white">R$ 0,00</p>
+                                </div>
                             </div>
-                            <!-- KPI Total Ton -->
+
+                            <!-- KPI Total Tonelagem -->
                             <div class="kpi-card p-4 rounded-lg flex flex-col justify-between h-full">
-                                <div class="flex justify-between items-start mb-2 relative"><p id="branch-total-kpi-title-kg" class="text-sm text-slate-400 text-center w-full">Tonelagem Total</p></div>
-                                <div class="text-center mb-2 flex-1 flex flex-col justify-center"><p id="branch-total-kg-val" class="text-3xl font-bold text-white">0 Kg</p></div>
+                                <div class="flex justify-between items-start mb-2 relative">
+                                    <p id="branch-total-kpi-title-kg" class="text-sm text-slate-400 text-center w-full">Tonelagem Total</p>
+                                    <span class="absolute top-0 right-0 text-xs font-bold text-slate-500">Ton</span>
+                                </div>
+                                <div class="text-center mb-2 flex-1 flex flex-col justify-center">
+                                    <p id="branch-total-kg-val" class="text-3xl font-bold text-white">0 Kg</p>
+                                </div>
                             </div>
                         </div>
+
+                        <!-- Chart -->
                         <div class="bg-[#1e293b] p-4 rounded-lg border border-slate-700 mb-4 relative">
-                             <button id="branch-calendar-btn" class="absolute top-4 left-4 text-slate-400 hover:text-white focus:outline-none"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></button>
-                            <button id="branch-chart-toggle-btn" class="absolute top-4 right-4 text-xs bg-slate-700 hover:bg-slate-600 text-white font-semibold py-1 px-2 rounded border border-slate-600">R$ / Ton</button>
+                             <button id="branch-calendar-btn" class="absolute top-4 left-4 text-slate-400 hover:text-white focus:outline-none" title="Abrir Calendário">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            </button>
+                            <button id="branch-chart-toggle-btn" class="absolute top-4 right-4 text-xs bg-slate-700 hover:bg-slate-600 text-white font-semibold py-1 px-2 rounded border border-slate-600 focus:outline-none transition-colors" title="Alternar Visualização">
+                                R$ / Ton
+                            </button>
                              <h2 id="branch-chart-title" class="font-bold text-center mb-2 text-white">COMPARATIVO POR FILIAL</h2>
                              <div id="branch-chartContainer" class="relative h-96"></div>
                         </div>
-                </div>
+                    </div>
 
-                <!-- Comparison View -->
-                <div id="comparison-view" class="hidden">
-                    <header class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div class="flex items-center gap-3">
-                            <div>
-                                <h1 class="text-3xl font-bold text-white">PAINEL DE VENDAS</h1>
-                                <p class="text-slate-400 text-sm">Comparativo entre Meses</p>
+                    <!-- Comparison View Content -->
+                    <div id="comparison-view" class="hidden">
+                        <header class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div class="flex items-center gap-3">
+                                
+                                <div>
+                                    <h1 class="text-3xl font-bold text-white">PAINEL DE VENDAS</h1>
+                                    <p class="text-slate-400 text-sm">Comparativo entre Meses</p>
+                                </div>
                             </div>
-                        </div>
-                    </header>
-                    <!-- ... Filters ... -->
-                    <div class="mb-6 p-4 bg-[#1d2347] rounded-lg shadow-sm border border-slate-700">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div><label class="text-xs text-slate-400">Ano</label><select id="comparison-ano-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="todos">Todos</option></select></div>
-                            <div><label class="text-xs text-slate-400">Mês</label><select id="comparison-mes-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="">Todos</option></select></div>
-                        </div>
-                        <div id="comparison-rede-filter-wrapper" class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
-                            <div class="relative w-full sm:w-1/2">
-                                <label class="block mb-2 text-xs font-medium text-slate-400">Rede</label>
-                                <div id="comparison-rede-group-container" class="inline-flex rounded-md shadow-sm w-full" role="group">
-                                    <button type="button" data-group="" class="group-btn active py-2 px-4 text-sm font-medium text-slate-300 bg-slate-700 border border-slate-600 rounded-l-lg hover:bg-slate-600 flex-1">Todos</button>
-                                    <div class="relative flex-1">
-                                        <button type="button" data-group="com_rede" id="comparison-com-rede-btn" class="group-btn py-2 px-4 text-sm font-medium text-slate-300 bg-slate-700 border-t border-b border-slate-600 hover:bg-slate-600 flex items-center justify-center gap-2 w-full"><span id="comparison-com-rede-btn-text">Com Rede</span><svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg></button>
-                                        <div id="comparison-rede-filter-dropdown" class="hidden absolute z-20 w-full mt-1 top-full left-0 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar text-left text-white p-2"></div>
+                        </header>
+
+                        <!-- Filtros (Comparativo) -->
+                        <div class="mb-6 p-4 bg-[#1d2347] rounded-lg shadow-sm border border-slate-700">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div><label class="text-xs text-slate-400">Ano</label><select id="comparison-ano-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="todos">Todos</option></select></div>
+                                <div><label class="text-xs text-slate-400">Mês</label><select id="comparison-mes-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="">Todos</option></select></div>
+                            </div>
+                            <div id="comparison-rede-filter-wrapper" class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+                                <div class="relative w-full sm:w-1/2">
+                                    <label class="block mb-2 text-xs font-medium text-slate-400">Rede</label>
+                                    <div id="comparison-rede-group-container" class="inline-flex rounded-md shadow-sm w-full" role="group">
+                                        <button type="button" data-group="" class="group-btn active py-2 px-4 text-sm font-medium text-slate-300 bg-slate-700 border border-slate-600 rounded-l-lg hover:bg-slate-600 flex-1">Todos</button>
+                                        <div class="relative flex-1">
+                                            <button type="button" data-group="com_rede" id="comparison-com-rede-btn" class="group-btn py-2 px-4 text-sm font-medium text-slate-300 bg-slate-700 border-t border-b border-slate-600 hover:bg-slate-600 flex items-center justify-center gap-2 w-full">
+                                                <span id="comparison-com-rede-btn-text">Com Rede</span>
+                                                <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                            </button>
+                                            <div id="comparison-rede-filter-dropdown" class="hidden absolute z-20 w-full mt-1 top-full left-0 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar text-left text-white p-2"></div>
+                                        </div>
+                                        <button type="button" data-group="sem_rede" class="group-btn py-2 px-4 text-sm font-medium text-slate-300 bg-slate-700 border border-slate-600 rounded-r-lg hover:bg-slate-600 flex-1">Sem Rede</button>
                                     </div>
-                                    <button type="button" data-group="sem_rede" class="group-btn py-2 px-4 text-sm font-medium text-slate-300 bg-slate-700 border border-slate-600 rounded-r-lg hover:bg-slate-600 flex-1">Sem Rede</button>
+                                </div>
+                                <div class="w-full sm:w-1/2">
+                                    <label class="block mb-2 text-xs font-medium text-slate-400">Pasta</label>
+                                    <div id="comparison-fornecedor-toggle-container" class="w-full rounded-lg p-1 flex justify-center gap-2">
+                                        <button data-fornecedor="ELMA" class="fornecedor-btn bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-2 px-4 rounded-lg flex-1">ELMA</button>
+                                        <button data-fornecedor="FOODS" class="fornecedor-btn bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-2 px-4 rounded-lg flex-1">FOODS</button>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="w-full sm:w-1/2">
-                                <label class="block mb-2 text-xs font-medium text-slate-400">Pasta</label>
-                                <div id="comparison-fornecedor-toggle-container" class="w-full rounded-lg p-1 flex justify-center gap-2">
-                                    <button data-fornecedor="ELMA" class="fornecedor-btn bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-2 px-4 rounded-lg flex-1">ELMA</button>
-                                    <button data-fornecedor="FOODS" class="fornecedor-btn bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-2 px-4 rounded-lg flex-1">FOODS</button>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                                <div class="relative">
+                                    <label for="comparison-supervisor-filter-btn" class="block mb-2 text-xs font-medium text-slate-400">Supervisor</label>
+                                    <button id="comparison-supervisor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <span id="comparison-supervisor-filter-text" class="truncate">Todos</span>
+                                        <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div id="comparison-supervisor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar text-white p-2"></div>
+                                </div>
+                                <div class="relative">
+                                    <label for="comparison-vendedor-filter-btn" class="block mb-2 text-xs font-medium text-slate-400">Vendedor</label>
+                                    <button id="comparison-vendedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <span id="comparison-vendedor-filter-text" class="truncate">Todos</span>
+                                        <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div id="comparison-vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar text-white p-2"></div>
+                                </div>
+                                <div class="relative">
+                                    <label for="comparison-supplier-filter-btn" class="block mb-2 text-xs font-medium text-slate-400">Fornecedor</label>
+                                    <button id="comparison-supplier-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <span id="comparison-supplier-filter-text" class="truncate">Todos Fornecedores</span>
+                                        <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div id="comparison-supplier-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar text-white p-2"></div>
+                                </div>
+                                <div class="relative">
+                                    <label for="comparison-city-filter-btn" class="block mb-2 text-xs font-medium text-slate-400">Cidade</label>
+                                    <button id="comparison-city-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <span class="truncate">Todas</span>
+                                        <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div id="comparison-city-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="comparison-city-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                        <div id="comparison-city-filter-list"></div>
+                                    </div>
+                                </div>
+                                <div class="relative">
+                                    <label for="comparison-categoria-filter-btn" class="block mb-2 text-xs font-medium text-slate-400">Categoria</label>
+                                    <button id="comparison-categoria-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <span class="truncate">Todas</span>
+                                        <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div id="comparison-categoria-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="comparison-categoria-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                        <div id="comparison-categoria-filter-list"></div>
+                                    </div>
                                 </div>
                             </div>
+                            <div class="grid grid-cols-1 mt-4">
+                                <div class="relative">
+                                    <label for="comparison-product-filter-btn" class="block mb-2 text-xs font-medium text-slate-400">Filtrar por Produto</label>
+                                    <button id="comparison-product-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <span id="comparison-product-filter-text" class="truncate">Todos os Produtos</span>
+                                        <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div id="comparison-product-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg p-2">
+                                        <div class="p-2 border-b border-slate-700"><input type="text" id="comparison-product-search-input" placeholder="Buscar produto..." class="bg-slate-600 text-xs rounded-lg block w-full p-2 border border-slate-500 placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-teal-500"></div>
+                                        <div id="comparison-product-list" class="max-h-60 overflow-y-auto custom-scrollbar text-white"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end border-t border-slate-700 pt-4 mt-4">
+                                <div><label for="comparison-filial-filter" class="block mb-2 text-xs font-medium text-slate-400">Filial</label><select id="comparison-filial-filter" class="bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 focus:outline-none focus:ring-2 focus:ring-teal-500 block w-full"><option value="ambas" selected>Ambas</option><option value="05">Filial 05</option><option value="08">Filial 08</option></select></div>
+                                <div class="relative">
+                                    <label for="comparison-tipo-venda-filter-btn" class="block mb-2 text-xs font-medium text-slate-400">Tipo Venda</label>
+                                    <button id="comparison-tipo-venda-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <span id="comparison-tipo-venda-filter-text" class="truncate">Todos os Tipos</span>
+                                        <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div id="comparison-tipo-venda-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar text-white p-2"></div>
+                                </div>
+                                <button id="comparison-tendency-toggle" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-lg h-[38px]">Calcular Tendência</button>
+                                <div>
+                                    <label for="comparison-holiday-picker-btn" class="block mb-2 text-xs font-medium text-slate-400">Feriados do Mês</label>
+                                    <button id="comparison-holiday-picker-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left focus:outline-none focus:ring-2 focus:ring-teal-500">Selecionar Feriados</button>
+                                </div>
+                                <button id="clear-comparison-filters-btn" class="w-full bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg h-[38px]">Limpar Filtros</button>
+                            </div>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                            <!-- Filters buttons/dropdowns -->
-                            <div class="relative"><label class="block mb-2 text-xs font-medium text-slate-400">Supervisor</label><button id="comparison-supervisor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center"><span class="truncate">Todos</span></button><div id="comparison-supervisor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar text-white p-2"></div></div>
-                            <div class="relative"><label class="block mb-2 text-xs font-medium text-slate-400">Vendedor</label><button id="comparison-vendedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center"><span class="truncate">Todos</span></button><div id="comparison-vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar text-white p-2"></div></div>
-                            <div class="relative"><label class="block mb-2 text-xs font-medium text-slate-400">Fornecedor</label><button id="comparison-supplier-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center"><span class="truncate">Todos Fornecedores</span></button><div id="comparison-supplier-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar text-white p-2"></div></div>
-                            <div class="relative"><label class="block mb-2 text-xs font-medium text-slate-400">Cidade</label><button id="comparison-city-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todas</span></button><div id="comparison-city-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"><input type="text" id="comparison-city-filter-search" class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded"><div id="comparison-city-filter-list"></div></div></div>
-                            <div class="relative"><label class="block mb-2 text-xs font-medium text-slate-400">Categoria</label><button id="comparison-categoria-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todas</span></button><div id="comparison-categoria-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"><input type="text" id="comparison-categoria-filter-search" class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded"><div id="comparison-categoria-filter-list"></div></div></div>
+                        <!-- KPIs (Comparativo) -->
+                        <div id="comparison-kpi-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
+                            <!-- KPIs serão renderizados aqui pelo JS -->
                         </div>
-                        <div class="grid grid-cols-1 mt-4">
-                            <div class="relative"><label class="block mb-2 text-xs font-medium text-slate-400">Filtrar por Produto</label><button id="comparison-product-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center"><span class="truncate">Todos os Produtos</span></button><div id="comparison-product-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg p-2"><div class="p-2 border-b border-slate-700"><input type="text" id="comparison-product-search-input" class="bg-slate-600 text-xs rounded-lg block w-full p-2 border border-slate-500 placeholder-slate-400 text-white"></div><div id="comparison-product-list" class="max-h-60 overflow-y-auto custom-scrollbar text-white"></div></div></div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end border-t border-slate-700 pt-4 mt-4">
-                            <div><label class="block mb-2 text-xs font-medium text-slate-400">Filial</label><select id="comparison-filial-filter" class="bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 block w-full"><option value="ambas" selected>Ambas</option><option value="05">Filial 05</option><option value="08">Filial 08</option></select></div>
-                            <div class="relative"><label class="block mb-2 text-xs font-medium text-slate-400">Tipo Venda</label><button id="comparison-tipo-venda-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center"><span class="truncate">Todos os Tipos</span></button><div id="comparison-tipo-venda-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar text-white p-2"></div></div>
-                            <button id="comparison-tendency-toggle" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-lg h-[38px]">Calcular Tendência</button>
-                            <div><label class="block mb-2 text-xs font-medium text-slate-400">Feriados do Mês</label><button id="comparison-holiday-picker-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left">Selecionar Feriados</button></div>
-                            <button id="clear-comparison-filters-btn" class="w-full bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg h-[38px]">Limpar Filtros</button>
+                        <!-- Gráficos (Comparativo) -->
+                        <div class="grid grid-cols-1 gap-6">
+                            <div class="bg-[#1d2347] p-4 rounded-lg border border-slate-700 shadow-sm">
+                                <div class="flex justify-center items-center mb-4 relative">
+                                    <!-- Metric Toggle (Left Side) - Only visible for Monthly View -->
+                                    <div id="comparison-monthly-metric-container" class="absolute left-0 top-0 bottom-0 flex items-center hidden">
+                                        <div class="flex bg-slate-700 rounded-lg p-1">
+                                            <button id="toggle-monthly-fat-btn" class="metric-btn active px-3 py-1 text-sm rounded-md text-white">Faturamento</button>
+                                            <button id="toggle-monthly-clients-btn" class="metric-btn px-3 py-1 text-sm rounded-md text-slate-300">Clientes</button>
+                                        </div>
+                                    </div>
+
+                                    <h2 id="comparison-chart-title" class="text-lg font-semibold text-white text-center">Comparativo de Faturamento Semanal</h2>
+                                    <div class="absolute right-0 top-0 bottom-0 flex items-center">
+                                        <div id="comparison-chart-toggle" class="flex bg-slate-700 rounded-lg p-1">
+                                            <button id="toggle-weekly-btn" class="comparison-toggle-btn active px-3 py-1 text-sm rounded-md text-white">Semanal</button>
+                                            <button id="toggle-monthly-btn" class="comparison-toggle-btn px-3 py-1 text-sm rounded-md text-slate-300">Mensal</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="weeklyComparisonChartContainer" class="relative h-96"></div>
+                                <div id="monthlyComparisonChartContainer" class="relative h-96 hidden"></div>
+                            </div>
+                            <div class="bg-[#1d2347] p-4 rounded-lg border border-slate-700 shadow-sm">
+                                <h2 class="text-lg font-semibold text-white text-center mb-4">Faturamento por Dia da Semana</h2>
+                                <div id="dailyWeeklyComparisonChartContainer" class="relative h-96"></div>
+                            </div>
+                            <!-- Tabela (Comparativo) -->
+                            <div class="bg-[#1d2347] p-4 rounded-lg border border-slate-700 shadow-sm">
+                                <h2 class="text-lg font-semibold text-white text-center mb-4">Variação de Faturamento por Supervisor</h2>
+                                <div class="overflow-x-auto custom-scrollbar" style="max-height: 40vh;">
+                                    <table class="min-w-full text-sm text-left text-slate-300">
+                                        <thead class="text-xs text-slate-400 uppercase sticky-header">
+                                            <tr>
+                                                <th class="px-4 py-3">Supervisor</th>
+                                                <th class="px-4 py-3 text-right">Média Trim.</th>
+                                                <th class="px-4 py-3 text-right">Fat. Mês Atual</th>
+                                                <th class="px-4 py-3 text-right">Variação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="supervisorComparisonTableBody" class="divide-y divide-slate-700"></tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <!-- KPIs -->
-                    <div id="comparison-kpi-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6"></div>
-                    <!-- Charts -->
-                    <div class="grid grid-cols-1 gap-6">
-                        <div class="bg-[#1d2347] p-4 rounded-lg border border-slate-700 shadow-sm">
-                            <div class="flex justify-center items-center mb-4 relative">
-                                <div id="comparison-monthly-metric-container" class="absolute left-0 top-0 bottom-0 flex items-center hidden">
-                                    <div class="flex bg-slate-700 rounded-lg p-1"><button id="toggle-monthly-fat-btn" class="metric-btn active px-3 py-1 text-sm rounded-md text-white">Faturamento</button><button id="toggle-monthly-clients-btn" class="metric-btn px-3 py-1 text-sm rounded-md text-slate-300">Clientes</button></div>
-                                </div>
-                                <h2 id="comparison-chart-title" class="text-lg font-semibold text-white text-center">Comparativo de Faturamento Semanal</h2>
-                                <div class="absolute right-0 top-0 bottom-0 flex items-center">
-                                    <div id="comparison-chart-toggle" class="flex bg-slate-700 rounded-lg p-1"><button id="toggle-weekly-btn" class="comparison-toggle-btn active px-3 py-1 text-sm rounded-md text-white">Semanal</button><button id="toggle-monthly-btn" class="comparison-toggle-btn px-3 py-1 text-sm rounded-md text-slate-300">Mensal</button></div>
+
+                    <!-- Boxes View Content -->
+                    <div id="boxes-view" class="hidden">
+                        <header class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div class="flex items-center gap-3">
+                                
+                                <div>
+                                    <h1 class="text-3xl font-bold text-white">ANÁLISE DE CAIXAS</h1>
+                                    <p class="text-slate-400 text-sm">Faturamento, Tonelada e Caixas</p>
                                 </div>
                             </div>
-                            <div id="weeklyComparisonChartContainer" class="relative h-96"></div>
-                            <div id="monthlyComparisonChartContainer" class="relative h-96 hidden"></div>
+                        </header>
+
+                        <!-- Filters -->
+                        <div class="mb-6 p-4 bg-[#1d2347] rounded-lg shadow-sm border border-slate-700">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                                <div><label class="text-xs text-slate-400">Ano</label><select id="boxes-ano-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="todos">Todos</option></select></div>
+                                <div><label class="text-xs text-slate-400">Mês</label><select id="boxes-mes-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="">Todos</option></select></div>
+
+                                <div class="relative">
+                                    <label class="text-xs text-slate-400 block mb-1">Filial</label>
+                                    <button id="boxes-filial-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <span class="truncate">Todas</span>
+                                        <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div id="boxes-filial-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                </div>
+
+                                <div class="relative">
+                                    <label class="text-xs text-slate-400 block mb-1">Produto</label>
+                                    <button id="boxes-produto-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <span class="truncate">Todos</span>
+                                        <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div id="boxes-produto-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="boxes-produto-filter-search" placeholder="Buscar produto..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                        <div id="boxes-produto-filter-list"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- More Filters Expander -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                                <div class="relative">
+                                    <label class="text-xs text-slate-400 block mb-1">Supervisor</label>
+                                    <button id="boxes-supervisor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <span class="truncate">Todos</span>
+                                        <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div id="boxes-supervisor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                </div>
+                                <div class="relative">
+                                    <label class="text-xs text-slate-400 block mb-1">Vendedor</label>
+                                    <button id="boxes-vendedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <span class="truncate">Todos</span>
+                                        <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div id="boxes-vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="boxes-vendedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                        <div id="boxes-vendedor-filter-list"></div>
+                                    </div>
+                                </div>
+                                <div class="relative">
+                                    <label class="text-xs text-slate-400 block mb-1">Categoria</label>
+                                    <button id="boxes-categoria-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <span class="truncate">Todas</span>
+                                        <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div id="boxes-categoria-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="boxes-categoria-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                        <div id="boxes-categoria-filter-list"></div>
+                                    </div>
+                                </div>
+                                <div class="relative">
+                                    <label class="text-xs text-slate-400 block mb-1">Fornecedor</label>
+                                    <button id="boxes-fornecedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <span class="truncate">Todos</span>
+                                        <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div id="boxes-fornecedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="boxes-fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                        <div id="boxes-fornecedor-filter-list"></div>
+                                    </div>
+                                </div>
+                                <div class="relative">
+                                    <label class="text-xs text-slate-400 block mb-1">Cidade</label>
+                                    <button id="boxes-cidade-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <span class="truncate">Todas</span>
+                                        <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div id="boxes-cidade-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="boxes-cidade-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                        <div id="boxes-cidade-filter-list"></div>
+                                    </div>
+                                </div>
+                                <div class="relative">
+                                    <label class="text-xs text-slate-400 block mb-1">Tipo Venda</label>
+                                    <button id="boxes-tipovenda-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                        <span class="truncate">Todos</span>
+                                        <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <div id="boxes-tipovenda-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                </div>
+                            </div>
+
+                            <button id="boxes-clear-filters-btn" class="w-full bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg h-[38px] transition-colors">Limpar Filtros</button>
                         </div>
-                        <div class="bg-[#1d2347] p-4 rounded-lg border border-slate-700 shadow-sm">
-                            <h2 class="text-lg font-semibold text-white text-center mb-4">Faturamento por Dia da Semana</h2>
-                            <div id="dailyWeeklyComparisonChartContainer" class="relative h-96"></div>
+
+                        <!-- Trend Button -->
+                        <div class="flex justify-start mb-2 ml-1">
+                            <button id="boxes-trend-toggle-btn" class="flex items-center text-xs font-bold text-orange-500 hover:text-orange-400 transition-colors focus:outline-none gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                                <span id="boxes-trend-text">Calcular Tendência</span>
+                            </button>
                         </div>
+
+                        <!-- KPIs -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="kpi-card p-4 rounded-lg flex flex-col justify-between h-full">
+                                <div class="text-center mb-2">
+                                    <p class="text-sm text-slate-400 mb-1">Faturamento Total</p>
+                                    <p id="boxes-kpi-fat" class="text-3xl font-bold text-white">R$ 0,00</p>
+                                </div>
+                                <div class="flex justify-between items-end text-sm">
+                                    <div class="text-left text-slate-500">
+                                        <span class="block text-xs">Ano ant.</span>
+                                        <span id="boxes-kpi-fat-prev" class="font-semibold text-slate-300">R$ 0,00</span>
+                                        <span id="boxes-kpi-fat-prev-var" class="font-bold ml-1">0.0%</span>
+                                    </div>
+                                    <div class="text-right text-slate-500">
+                                        <span class="block text-xs">Méd. Tri</span>
+                                        <span id="boxes-kpi-fat-tri" class="font-semibold text-slate-300">R$ 0,00</span>
+                                        <span id="boxes-kpi-fat-tri-var" class="font-bold ml-1">0.0%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="kpi-card p-4 rounded-lg flex flex-col justify-between h-full">
+                                <div class="text-center mb-2">
+                                    <p class="text-sm text-slate-400 mb-1">Tonelada Total</p>
+                                    <p id="boxes-kpi-peso" class="text-3xl font-bold text-white">0 Ton</p>
+                                </div>
+                                <div class="flex justify-between items-end text-sm">
+                                    <div class="text-left text-slate-500">
+                                        <span class="block text-xs">Ano ant.</span>
+                                        <span id="boxes-kpi-peso-prev" class="font-semibold text-slate-300">0 Ton</span>
+                                        <span id="boxes-kpi-peso-prev-var" class="font-bold ml-1">0.0%</span>
+                                    </div>
+                                    <div class="text-right text-slate-500">
+                                        <span class="block text-xs">Méd. Tri</span>
+                                        <span id="boxes-kpi-peso-tri" class="font-semibold text-slate-300">0 Ton</span>
+                                        <span id="boxes-kpi-peso-tri-var" class="font-bold ml-1">0.0%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="kpi-card p-4 rounded-lg flex flex-col justify-between h-full border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                                <div class="text-center mb-2">
+                                    <p class="text-sm text-slate-400 mb-1 font-bold text-emerald-400">CAIXAS</p>
+                                    <p id="boxes-kpi-caixas" class="text-4xl font-bold text-white">0</p>
+                                </div>
+                                <div class="flex justify-between items-end text-sm">
+                                    <div class="text-left text-slate-500">
+                                        <span class="block text-xs">Ano ant.</span>
+                                        <span id="boxes-kpi-caixas-prev" class="font-semibold text-slate-300">0</span>
+                                        <span id="boxes-kpi-caixas-prev-var" class="font-bold ml-1">0.0%</span>
+                                    </div>
+                                    <div class="text-right text-slate-500">
+                                        <span class="block text-xs">Méd. Tri</span>
+                                        <span id="boxes-kpi-caixas-tri" class="font-semibold text-slate-300">0</span>
+                                        <span id="boxes-kpi-caixas-tri-var" class="font-bold ml-1">0.0%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chart -->
+                        <div class="bg-[#1d2347] p-4 rounded-lg border border-slate-700 shadow-sm mb-6">
+                            <h2 class="text-lg font-semibold text-white text-center mb-4">Evolução Mensal de Caixas</h2>
+                            <div id="boxesChartContainer" class="relative h-96"></div>
+                        </div>
+
                         <!-- Table -->
                         <div class="bg-[#1d2347] p-4 rounded-lg border border-slate-700 shadow-sm">
-                            <h2 class="text-lg font-semibold text-white text-center mb-4">Variação de Faturamento por Supervisor</h2>
-                            <div class="overflow-x-auto custom-scrollbar" style="max-height: 40vh;">
-                                <table class="min-w-full text-sm text-left text-slate-300">
-                                    <thead class="text-xs text-slate-400 uppercase sticky-header"><tr><th class="px-4 py-3">Supervisor</th><th class="px-4 py-3 text-right">Média Trim.</th><th class="px-4 py-3 text-right">Fat. Mês Atual</th><th class="px-4 py-3 text-right">Variação</th></tr></thead>
-                                    <tbody id="supervisorComparisonTableBody" class="divide-y divide-slate-700"></tbody>
+                            <div class="flex flex-col md:flex-row justify-between items-center mb-4">
+                                <h2 class="text-lg font-semibold text-white">Top Produtos por Caixas</h2>
+                                <div class="relative mt-2 md:mt-0">
+                                    <button id="boxes-export-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                        Exportar
+                                    </button>
+                                    <!-- Dropdown for export options -->
+                                    <div id="boxes-export-dropdown" class="hidden absolute right-0 mt-2 w-32 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-50">
+                                        <button id="boxes-export-excel" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white rounded-t-lg">Excel (.xlsx)</button>
+                                        <button id="boxes-export-pdf" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white rounded-b-lg">PDF</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto custom-scrollbar" style="max-height: 50vh;">
+                                <table class="min-w-full text-sm text-left text-slate-300" id="boxes-products-table">
+                                    <thead class="text-xs text-slate-400 uppercase sticky-header">
+                                        <tr>
+                                            <th class="px-4 py-3">Código</th>
+                                            <th class="px-4 py-3">Descrição</th>
+                                            <th class="px-4 py-3 text-right">Caixas</th>
+                                            <th class="px-4 py-3 text-right">Faturamento</th>
+                                            <th class="px-4 py-3 text-right">Peso</th>
+                                            <th class="px-4 py-3 text-center">Última Venda</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="boxesProductTableBody" class="divide-y divide-slate-700"></tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Boxes View -->
-                <div id="boxes-view" class="hidden">
-                    <header class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div class="flex items-center gap-3">
-                            <div>
-                                <h1 class="text-3xl font-bold text-white">ANÁLISE DE CAIXAS</h1>
-                                <p class="text-slate-400 text-sm">Faturamento, Tonelada e Caixas</p>
-                            </div>
+                    <!-- City View Content -->
+                    <div id="city-view" class="hidden">
+                        <div class="flex items-center gap-3 mb-6">
+                            
+                            <h2 class="text-2xl font-bold text-white">Análise de Vendas por Cidade</h2>
                         </div>
-                    </header>
-                    <!-- ... Filters & Content ... -->
-                    <div class="mb-6 p-4 bg-[#1d2347] rounded-lg shadow-sm border border-slate-700">
-                        <!-- Filters layout reused -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                            <div><label class="text-xs text-slate-400">Ano</label><select id="boxes-ano-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="todos">Todos</option></select></div>
-                            <div><label class="text-xs text-slate-400">Mês</label><select id="boxes-mes-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="">Todos</option></select></div>
-                            <div class="relative"><label class="text-xs text-slate-400 block mb-1">Filial</label><button id="boxes-filial-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todas</span></button><div id="boxes-filial-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div></div>
-                            <div class="relative"><label class="text-xs text-slate-400 block mb-1">Produto</label><button id="boxes-produto-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todos</span></button><div id="boxes-produto-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"><input type="text" id="boxes-produto-filter-search" class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded"><div id="boxes-produto-filter-list"></div></div></div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                            <!-- Expander filters -->
-                            <div class="relative"><label class="text-xs text-slate-400 block mb-1">Supervisor</label><button id="boxes-supervisor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todos</span></button><div id="boxes-supervisor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div></div>
-                            <div class="relative"><label class="text-xs text-slate-400 block mb-1">Vendedor</label><button id="boxes-vendedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todos</span></button><div id="boxes-vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"><input type="text" id="boxes-vendedor-filter-search" class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded"><div id="boxes-vendedor-filter-list"></div></div></div>
-                            <div class="relative"><label class="text-xs text-slate-400 block mb-1">Categoria</label><button id="boxes-categoria-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todas</span></button><div id="boxes-categoria-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"><input type="text" id="boxes-categoria-filter-search" class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded"><div id="boxes-categoria-filter-list"></div></div></div>
-                            <div class="relative"><label class="text-xs text-slate-400 block mb-1">Fornecedor</label><button id="boxes-fornecedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todos</span></button><div id="boxes-fornecedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"><input type="text" id="boxes-fornecedor-filter-search" class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded"><div id="boxes-fornecedor-filter-list"></div></div></div>
-                            <div class="relative"><label class="text-xs text-slate-400 block mb-1">Cidade</label><button id="boxes-cidade-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todas</span></button><div id="boxes-cidade-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"><input type="text" id="boxes-cidade-filter-search" class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded"><div id="boxes-cidade-filter-list"></div></div></div>
-                            <div class="relative"><label class="text-xs text-slate-400 block mb-1">Tipo Venda</label><button id="boxes-tipovenda-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9"><span class="truncate">Todos</span></button><div id="boxes-tipovenda-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div></div>
-                        </div>
-                        <button id="boxes-clear-filters-btn" class="w-full bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg h-[38px] transition-colors">Limpar Filtros</button>
-                    </div>
-                    <!-- Trend Button -->
-                    <div class="flex justify-start mb-2 ml-1">
-                        <button id="boxes-trend-toggle-btn" class="flex items-center text-xs font-bold text-orange-500 hover:text-orange-400 transition-colors focus:outline-none gap-1">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-                            <span id="boxes-trend-text">Calcular Tendência</span>
-                        </button>
-                    </div>
-                    <!-- KPIs -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div class="kpi-card p-4 rounded-lg flex flex-col justify-between h-full"><div class="text-center mb-2"><p class="text-sm text-slate-400 mb-1">Faturamento Total</p><p id="boxes-kpi-fat" class="text-3xl font-bold text-white">R$ 0,00</p></div><div class="flex justify-between items-end text-sm"><div class="text-left text-slate-500"><span class="block text-xs">Ano ant.</span><span id="boxes-kpi-fat-prev" class="font-semibold text-slate-300">R$ 0,00</span><span id="boxes-kpi-fat-prev-var" class="font-bold ml-1">0.0%</span></div><div class="text-right text-slate-500"><span class="block text-xs">Méd. Tri</span><span id="boxes-kpi-fat-tri" class="font-semibold text-slate-300">R$ 0,00</span><span id="boxes-kpi-fat-tri-var" class="font-bold ml-1">0.0%</span></div></div></div>
-                        <div class="kpi-card p-4 rounded-lg flex flex-col justify-between h-full"><div class="text-center mb-2"><p class="text-sm text-slate-400 mb-1">Tonelada Total</p><p id="boxes-kpi-peso" class="text-3xl font-bold text-white">0 Ton</p></div><div class="flex justify-between items-end text-sm"><div class="text-left text-slate-500"><span class="block text-xs">Ano ant.</span><span id="boxes-kpi-peso-prev" class="font-semibold text-slate-300">0 Ton</span><span id="boxes-kpi-peso-prev-var" class="font-bold ml-1">0.0%</span></div><div class="text-right text-slate-500"><span class="block text-xs">Méd. Tri</span><span id="boxes-kpi-peso-tri" class="font-semibold text-slate-300">0 Ton</span><span id="boxes-kpi-peso-tri-var" class="font-bold ml-1">0.0%</span></div></div></div>
-                        <div class="kpi-card p-4 rounded-lg flex flex-col justify-between h-full border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]"><div class="text-center mb-2"><p class="text-sm text-slate-400 mb-1 font-bold text-emerald-400">CAIXAS</p><p id="boxes-kpi-caixas" class="text-4xl font-bold text-white">0</p></div><div class="flex justify-between items-end text-sm"><div class="text-left text-slate-500"><span class="block text-xs">Ano ant.</span><span id="boxes-kpi-caixas-prev" class="font-semibold text-slate-300">0</span><span id="boxes-kpi-caixas-prev-var" class="font-bold ml-1">0.0%</span></div><div class="text-right text-slate-500"><span class="block text-xs">Méd. Tri</span><span id="boxes-kpi-caixas-tri" class="font-semibold text-slate-300">0</span><span id="boxes-kpi-caixas-tri-var" class="font-bold ml-1">0.0%</span></div></div></div>
-                    </div>
-                    <!-- Chart -->
-                    <div class="bg-[#1d2347] p-4 rounded-lg border border-slate-700 shadow-sm mb-6">
-                        <h2 class="text-lg font-semibold text-white text-center mb-4">Evolução Mensal de Caixas</h2>
-                        <div id="boxesChartContainer" class="relative h-96"></div>
-                    </div>
-                    <!-- Table -->
-                    <div class="bg-[#1d2347] p-4 rounded-lg border border-slate-700 shadow-sm">
-                        <div class="flex flex-col md:flex-row justify-between items-center mb-4">
-                            <h2 class="text-lg font-semibold text-white">Top Produtos por Caixas</h2>
-                            <div class="relative mt-2 md:mt-0">
-                                <button id="boxes-export-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                    Exportar
+
+                        <!-- Filters Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4 items-end">
+                            <div><label class="text-xs text-slate-400">Ano</label><select id="city-ano-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="todos">Todos</option></select></div>
+                            <div><label class="text-xs text-slate-400">Mês</label><select id="city-mes-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="">Todos</option></select></div>
+                            
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Filial</label>
+                                <button id="city-filial-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todas</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="boxes-export-dropdown" class="hidden absolute right-0 mt-2 w-32 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-50">
-                                    <button id="boxes-export-excel" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white rounded-t-lg">Excel (.xlsx)</button>
-                                    <button id="boxes-export-pdf" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white rounded-b-lg">PDF</button>
+                                <div id="city-filial-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Cidade</label>
+                                <button id="city-cidade-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todas</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="city-cidade-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="city-cidade-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="city-cidade-filter-list"></div>
                                 </div>
                             </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Supervisor</label>
+                                <button id="city-supervisor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todos</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="city-supervisor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Vendedor</label>
+                                <button id="city-vendedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todos</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="city-vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="city-vendedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="city-vendedor-filter-list"></div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Fornecedor</label>
+                                <button id="city-fornecedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todos</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="city-fornecedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="city-fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="city-fornecedor-filter-list"></div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Categoria</label>
+                                <button id="city-categoria-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todas</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="city-categoria-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="city-categoria-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="city-categoria-filter-list"></div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Rede</label>
+                                <button id="city-rede-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todas</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="city-rede-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                     <input type="text" id="city-rede-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                     <div id="city-rede-filter-list"></div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <label class="text-xs text-slate-400 block mb-1">Tipo Venda</label>
+                                <button id="city-tipovenda-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <span class="truncate">Todos</span>
+                                    <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div id="city-tipovenda-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                            </div>
                         </div>
-                        <div class="overflow-x-auto custom-scrollbar" style="max-height: 50vh;">
-                            <table class="min-w-full text-sm text-left text-slate-300" id="boxes-products-table">
-                                <thead class="text-xs text-slate-400 uppercase sticky-header">
-                                    <tr><th class="px-4 py-3">Código</th><th class="px-4 py-3">Descrição</th><th class="px-4 py-3 text-right">Caixas</th><th class="px-4 py-3 text-right">Faturamento</th><th class="px-4 py-3 text-right">Peso</th><th class="px-4 py-3 text-center">Última Venda</th></tr>
-                                </thead>
-                                <tbody id="boxesProductTableBody" class="divide-y divide-slate-700"></tbody>
-                            </table>
+
+                        <div class="flex gap-4 mb-4">
+                            <button id="city-clear-filters-btn" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full md:w-auto">Limpar Filtros</button>
                         </div>
+
+                         <div class="bg-[#1d2347] p-4 rounded-lg mt-6 border border-slate-700">
+                            <h3 class="text-lg font-semibold text-white mb-4 px-4">Clientes Ativos (Selecionado)</h3>
+                            <div class="overflow-x-auto" style="max-height: 40vh;">
+                                <table class="min-w-full text-sm text-left text-slate-300"><thead class="text-xs text-slate-300 uppercase sticky-header"><tr><th class="px-4 py-3">Código</th><th class="px-4 py-3">Nome Fantasia</th><th class="px-4 py-3 text-right">Faturamento</th><th class="px-4 py-3">Cidade</th><th class="px-4 py-3">Bairro</th><th class="px-4 py-3">RCA 1</th></tr></thead><tbody id="city-active-detail-table-body" class="divide-y divide-slate-700"></tbody></table>
+                            </div>
+                            <div id="city-pagination-container"></div>
+                         </div>
+                         <div class="bg-[#1d2347] p-4 rounded-lg mt-6 border border-slate-700">
+                            <h3 class="text-lg font-semibold text-white mb-4 px-4">Clientes S/ Vendas (Selecionado)</h3>
+                            <div class="overflow-x-auto" style="max-height: 40vh;">
+                                <table class="min-w-full text-sm text-left text-slate-300"><thead class="text-xs text-slate-300 uppercase sticky-header"><tr><th class="px-4 py-3">Código</th><th class="px-4 py-3">Nome Fantasia</th><th class="px-4 py-3">Cidade</th><th class="px-4 py-3">Bairro</th><th class="px-4 py-3 text-center">Última Compra</th><th class="px-4 py-3">RCA 1</th></tr></thead><tbody id="city-inactive-detail-table-body" class="divide-y divide-slate-700"></tbody></table>
+                            </div>
+                            <div id="city-inactive-pagination-container"></div>
+                         </div>
                     </div>
                 </div>
+            </main>
+        </div>
+    </div>
 
+    <!-- Calendar Modal -->
+    <div id="calendar-modal" class="fixed inset-0 z-[4000] hidden flex items-center justify-center">
+        <div id="calendar-modal-backdrop" class="absolute inset-0 bg-black/50"></div>
+        <div class="bg-[#1d2347] rounded-lg shadow-2xl p-6 border border-slate-700 z-50 w-80">
+            <h3 class="text-lg font-bold text-white mb-4 text-center">Calendário de Feriados</h3>
+            <div id="calendar-modal-content"></div>
+            <div class="mt-4 text-center">
+                <button id="close-calendar-modal-btn" class="text-sm text-slate-400 hover:text-white underline">Fechar</button>
             </div>
-        </main>
+        </div>
+    </div>
+
+    <!-- Modal Uploader (Admin) -->
+    <div id="uploader-modal" class="modal-overlay hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[3000]">
+        <div class="bg-[#1d2347] rounded-lg shadow-2xl max-w-lg w-full p-8 border border-slate-700 relative">
+            <button id="close-uploader-btn" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl">&times;</button>
+            <div class="absolute top-4 left-4">
+                <div id="missing-branches-notification" class="hidden relative group cursor-pointer">
+                    <svg class="w-6 h-6 text-yellow-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    <span class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">!</span>
+                    <div class="absolute left-0 mt-2 w-48 bg-slate-800 text-slate-200 text-xs rounded shadow-lg p-2 hidden group-hover:block z-50">
+                        Cidades sem filial definida. Verifique a tabela no banco.
+                    </div>
+                </div>
+            </div>
+            <h1 class="text-2xl font-bold text-white mb-4 text-center">Atualizar Base de Dados</h1>
+            <p class="text-slate-400 mb-6 text-center text-sm">Carregue os arquivos para atualizar o Supabase.</p>
+
+            <div class="space-y-4 mb-6">
+                <div><label class="file-input-label">1. Vendas Ano Anterior (Completo)</label><input type="file" id="sales-prev-year-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/></div>
+                <div><label class="file-input-label">2. Vendas Ano Atual (Histórico)</label><input type="file" id="sales-curr-year-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/></div>
+                <div><label class="file-input-label">3. Vendas Mês Atual (Atualização)</label><input type="file" id="sales-curr-month-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/></div>
+                <div><label class="file-input-label">4. Cadastro de Clientes</label><input type="file" id="clients-file-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/></div>
+                <div><label class="file-input-label">5. Cadastro de Produtos</label><input type="file" id="products-file-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/></div>
+            </div>
+
+            <button id="generate-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg disabled:bg-slate-600 mb-4" disabled>Atualizar Base</button>
+
+            <div id="status-container" class="hidden mt-6 text-sm h-12 flex flex-col justify-center">
+                <p id="status-text" class="mb-2 text-center text-slate-300"></p>
+                <div class="progress-bar-container w-full h-2">
+                    <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="src/js/app.js?v=2"></script>
