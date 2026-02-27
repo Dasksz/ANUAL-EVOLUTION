@@ -622,13 +622,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
             }));
 
-            series.stroke.template.setAll({
+            series.strokes.template.setAll({
                 stroke: color,
                 strokeWidth: 2
             });
             
             if (isDashed) {
-                series.stroke.template.set("strokeDasharray", [5, 3]);
+                series.strokes.template.set("strokeDasharray", [5, 3]);
             }
 
             // Bullet (Circle point)
