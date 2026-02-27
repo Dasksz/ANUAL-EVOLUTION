@@ -1445,12 +1445,12 @@ BEGIN
             v_raw_where text := ' WHERE 1=1 ';
         BEGIN
             -- Reconstruct minimal where for raw tables using same params
-            IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND filial = ANY(%L) ', p_filial); END IF;
-            IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND cidade = ANY(%L) ', p_cidade); END IF;
-            IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor); END IF;
-            IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor); END IF;
+            IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND s.filial = ANY(%L) ', p_filial); END IF;
+            IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND s.cidade = ANY(%L) ', p_cidade); END IF;
+            IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor); END IF;
+            IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor); END IF;
             IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND s.codfor = ANY(%L) ', p_fornecedor); END IF;
-            IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND tipovenda = ANY(%L) ', p_tipovenda); END IF;
+            IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND s.tipovenda = ANY(%L) ', p_tipovenda); END IF;
             
             -- Category (Need join for this in raw tables)
             -- If category is used, we need to join dim_produtos
