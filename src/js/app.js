@@ -422,6 +422,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function isBonificationMode(selectedTypes) { if (!selectedTypes || selectedTypes.length === 0) return false; return selectedTypes.every(t => t === '5' || t === '11'); }
     function generateCacheKey(prefix, filters) { const sortedFilters = {}; Object.keys(filters).sort().forEach(k => { let val = filters[k]; if (Array.isArray(val)) { val = [...val].sort(); } sortedFilters[k] = val; }); return `${prefix}_${JSON.stringify(sortedFilters)}`; }
 
+    // Shared Formatting Helper for Variance %
+    const fmtVar = (v) => {
+        const cls = v >= 0 ? 'text-emerald-400' : 'text-red-400';
+        const sign = v > 0 ? '+' : '';
+        return `<span class="${cls}">${sign}${v.toFixed(1)}%</span>`;
+    };
+
     // --- Session & Initial Load ---
     async function handleInitialRouting() {
         const params = new URLSearchParams(window.location.search);
@@ -1928,11 +1935,6 @@ let boxesFilterDebounceTimer;
         const calcVar = (curr, prev) => {
             if (prev > 0) return ((curr / prev) - 1) * 100;
             return curr > 0 ? 100 : 0;
-        };
-        const fmtVar = (v) => {
-            const cls = v >= 0 ? 'text-emerald-400' : 'text-red-400';
-            const sign = v > 0 ? '+' : '';
-            return `<span class="${cls}">${sign}${v.toFixed(1)}%</span>`;
         };
 
         // Determine View Mode (Year vs Month)
