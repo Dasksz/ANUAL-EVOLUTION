@@ -1540,6 +1540,16 @@ DECLARE
     v_has_sem_rede boolean;
     v_specific_redes text[];
     v_use_cache boolean := true;
+
+    -- Trend Vars
+    v_max_sale_date date;
+    v_trend_allowed boolean;
+    v_trend_factor numeric := 1;
+    v_month_start date;
+    v_month_end date;
+    v_work_days_passed int;
+    v_work_days_total int;
+    v_curr_month_idx int;
 BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
     SET LOCAL work_mem = '64MB';
@@ -1567,7 +1577,36 @@ BEGIN
     v_tri_end := (v_ref_date - interval '1 day')::date;
     v_tri_start := (v_ref_date - interval '3 months')::date;
 
-    -- 2. Build FILTERS
+    -- Trend Logic Calculation
+    SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
+    IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
+
+    v_trend_allowed := (v_current_year = EXTRACT(YEAR FROM v_max_sale_date)::int);
+
+    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
+       IF (p_mes::int + 1) != EXTRACT(MONTH FROM v_max_sale_date)::int THEN
+           v_trend_allowed := false;
+       END IF;
+    END IF;
+
+    IF v_trend_allowed THEN
+        v_month_start := make_date(v_current_year, EXTRACT(MONTH FROM v_max_sale_date)::int, 1);
+        v_month_end := (v_month_start + interval '1 month' - interval '1 day')::date;
+        -- Cap max sale date to end of month just in case
+        IF v_max_sale_date > v_month_end THEN v_max_sale_date := v_month_end; END IF;
+
+        v_work_days_passed := public.calc_working_days(v_month_start, v_max_sale_date);
+        v_work_days_total := public.calc_working_days(v_month_start, v_month_end);
+
+        IF v_work_days_passed > 0 AND v_work_days_total > 0 THEN
+            v_trend_factor := v_work_days_total::numeric / v_work_days_passed::numeric;
+        ELSE
+            v_trend_factor := 1;
+        END IF;
+        v_curr_month_idx := EXTRACT(MONTH FROM v_max_sale_date)::int - 1;
+    END IF;
+
+    -- 2. Build FILTERS (Keep existing logic)
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
         v_use_cache := false;
         v_where_raw := v_where_raw || format(' AND produto = ANY(%L) ', p_produto);
@@ -1829,7 +1868,12 @@ BEGIN
         'kpi_current', COALESCE(v_kpis_current, '{"fat":0,"peso":0,"caixas":0}'::json),
         'kpi_previous', COALESCE(v_kpis_previous, '{"fat":0,"peso":0,"caixas":0}'::json),
         'kpi_tri_avg', COALESCE(v_kpis_tri_avg, '{"fat":0,"peso":0,"caixas":0}'::json),
-        'products_table', COALESCE(v_products_table, '[]'::json)
+        'products_table', COALESCE(v_products_table, '[]'::json),
+        'trend_info', json_build_object(
+            'allowed', v_trend_allowed,
+            'factor', v_trend_factor,
+            'current_month_index', v_curr_month_idx
+        )
     );
 END;
 $$;
