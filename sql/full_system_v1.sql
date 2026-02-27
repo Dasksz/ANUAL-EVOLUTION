@@ -1125,8 +1125,6 @@ DECLARE
     v_kpi_clients_base int;
     v_monthly_chart_current json;
     v_monthly_chart_previous json;
-    v_daily_data_current json;
-    v_daily_data_previous json;
     v_curr_month_idx int;
     
     -- Rede Logic Vars
@@ -1313,9 +1311,6 @@ BEGIN
     END IF;
 
     -- 4. Execute Main Aggregation Query
-    -- Logic Split: If Month is filtered, we need Daily Data. If not, only Monthly.
-    -- To optimize, if Month Filter is active, we add a CTE for daily agg.
-    
     v_sql := '
     WITH filtered_summary AS (
         SELECT ano, mes, vlvenda, peso, bonificacao, devolucao, pre_positivacao_val, pre_mix_count, codcli, tipovenda, codfor, categoria_produto
@@ -1427,155 +1422,38 @@ BEGIN
     kpi_base_count AS (
         SELECT COUNT(*) as val FROM public.data_clients
         ' || v_where_kpi || '
-    )';
-
-    -- Add Daily Aggregation Logic (Conditionally)
-    IF v_is_month_filtered THEN
-        -- We need raw data for daily aggregation, data_summary is monthly.
-        -- So we query data_detailed/data_history based on filters.
-        -- Reuse v_where_base logic but apply to raw tables context if possible?
-        -- Actually, data_summary filters (filial, cidade, supervisor codes) map directly.
-        -- BUT we need granular day info.
-        
-        -- Optimized: Raw Data Query for Daily Chart
-        -- We construct a WHERE clause for raw tables similar to summary
-        -- NOTE: Using materialized view or direct table access? Direct tables with indexes.
-        
-        DECLARE
-            v_raw_where text := ' WHERE 1=1 ';
-        BEGIN
-            -- Reconstruct minimal where for raw tables using same params
-            IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND s.filial = ANY(%L) ', p_filial); END IF;
-            IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND s.cidade = ANY(%L) ', p_cidade); END IF;
-            IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor); END IF;
-            IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor); END IF;
-            IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND s.codfor = ANY(%L) ', p_fornecedor); END IF;
-            IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN v_raw_where := v_raw_where || format(' AND s.tipovenda = ANY(%L) ', p_tipovenda); END IF;
-            
-            -- Category (Need join for this in raw tables)
-            -- If category is used, we need to join dim_produtos
-            -- v_raw_where will handle standard columns.
-            -- Complex Rede logic also needs handling.
-            
-            v_sql := v_sql || ',
-            daily_raw AS (
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.vlbonific as bonificacao, s.tipovenda
-                FROM public.data_detailed s
-                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente -- Need clients for Rede logic
-                ' || v_raw_where || '
-                AND EXTRACT(MONTH FROM dtped) = $3
-                AND EXTRACT(YEAR FROM dtped) IN ($2, $4)
-                ' || CASE WHEN p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN format(' AND dp.categoria_produto = ANY(%L) ', p_categoria) ELSE '' END || '
-                ' || CASE WHEN v_rede_condition != '' THEN ' AND (' || v_rede_condition || ') ' ELSE '' END || '
-                
-                UNION ALL
-                
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.vlbonific as bonificacao, s.tipovenda
-                FROM public.data_history s
-                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
-                ' || v_raw_where || '
-                AND EXTRACT(MONTH FROM dtped) = $3
-                AND EXTRACT(YEAR FROM dtped) IN ($2, $4)
-                ' || CASE WHEN p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN format(' AND dp.categoria_produto = ANY(%L) ', p_categoria) ELSE '' END || '
-                ' || CASE WHEN v_rede_condition != '' THEN ' AND (' || v_rede_condition || ') ' ELSE '' END || '
-            ),
-            daily_agg AS (
-                SELECT 
-                    EXTRACT(YEAR FROM dtped)::int as yr,
-                    EXTRACT(DAY FROM dtped)::int as dy,
-                    SUM(CASE 
-                        WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN
-                            CASE WHEN tipovenda = ANY($1) THEN vlvenda ELSE 0 END
-                        WHEN tipovenda IN (''1'', ''9'') THEN vlvenda
-                        ELSE 0 
-                    END) as faturamento,
-                    SUM(CASE
-                        WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) THEN
-                             CASE WHEN tipovenda = ANY($1) THEN totpesoliq ELSE 0 END
-                        ELSE
-                            CASE
-                                WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN
-                                     CASE WHEN tipovenda = ANY($1) AND tipovenda NOT IN (''5'', ''11'') THEN totpesoliq ELSE 0 END
-                                WHEN tipovenda NOT IN (''5'', ''11'') THEN totpesoliq
-                                ELSE 0
-                            END
-                    END) as peso,
-                    SUM(CASE
-                        WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 && ARRAY[''5'',''11'']) THEN
-                             CASE WHEN tipovenda = ANY($1) AND tipovenda IN (''5'', ''11'') THEN bonificacao ELSE 0 END
-                        ELSE
-                             CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao ELSE 0 END
-                    END) as bonificacao
-                FROM daily_raw
-                GROUP BY 1, 2
-            ) ';
-        END;
-    ELSE
-        -- No daily CTE needed
-        v_sql := v_sql || ', daily_agg AS (SELECT null::int as yr, null::int as dy, null::numeric as faturamento, null::numeric as peso, null::numeric as bonificacao WHERE 1=0) ';
-    END IF;
-
-    -- Final Select
-    v_sql := v_sql || '
+    )
     SELECT
         (SELECT val FROM kpi_active_count),
         (SELECT val FROM kpi_base_count),
-        (
-            SELECT COALESCE(json_agg(json_build_object(
-                ''month_index'', a.mes - 1, 
-                ''faturamento'', a.faturamento, 
-                ''total_sold_base'', a.total_sold_base,
-                ''peso'', a.peso, 
-                ''bonificacao'', a.bonificacao, 
-                ''devolucao'', a.devolucao, 
-                ''positivacao'', a.positivacao_count, 
-                ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END, 
-                ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
-            ) ORDER BY a.mes), ''[]''::json)
-            FROM agg_data a
-            WHERE a.ano = $2
-        ),
-        (
-            SELECT COALESCE(json_agg(json_build_object(
-                ''month_index'', a.mes - 1, 
-                ''faturamento'', a.faturamento, 
-                ''total_sold_base'', a.total_sold_base,
-                ''peso'', a.peso, 
-                ''bonificacao'', a.bonificacao, 
-                ''devolucao'', a.devolucao, 
-                ''positivacao'', a.positivacao_count, 
-                ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END, 
-                ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
-            ) ORDER BY a.mes), ''[]''::json)
-            FROM agg_data a
-            WHERE a.ano = $4
-        ),
-        (
-            SELECT COALESCE(json_agg(json_build_object(
-                ''day'', da.dy,
-                ''faturamento'', da.faturamento,
-                ''peso'', da.peso,
-                ''bonificacao'', da.bonificacao
-            ) ORDER BY da.dy), ''[]''::json)
-            FROM daily_agg da
-            WHERE da.yr = $2
-        ),
-        (
-            SELECT COALESCE(json_agg(json_build_object(
-                ''day'', da.dy,
-                ''faturamento'', da.faturamento,
-                ''peso'', da.peso,
-                ''bonificacao'', da.bonificacao
-            ) ORDER BY da.dy), ''[]''::json)
-            FROM daily_agg da
-            WHERE da.yr = $4
-        )
+        COALESCE(json_agg(json_build_object(
+            ''month_index'', a.mes - 1, 
+            ''faturamento'', a.faturamento, 
+            ''total_sold_base'', a.total_sold_base,
+            ''peso'', a.peso, 
+            ''bonificacao'', a.bonificacao, 
+            ''devolucao'', a.devolucao, 
+            ''positivacao'', a.positivacao_count, 
+            ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END, 
+            ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
+        ) ORDER BY a.mes) FILTER (WHERE a.ano = $2), ''[]''::json),
+        
+        COALESCE(json_agg(json_build_object(
+            ''month_index'', a.mes - 1, 
+            ''faturamento'', a.faturamento, 
+            ''total_sold_base'', a.total_sold_base,
+            ''peso'', a.peso, 
+            ''bonificacao'', a.bonificacao, 
+            ''devolucao'', a.devolucao, 
+            ''positivacao'', a.positivacao_count, 
+            ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END, 
+            ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
+        ) ORDER BY a.mes) FILTER (WHERE a.ano = $4), ''[]''::json)
+    FROM agg_data a
     ';
 
     EXECUTE v_sql 
-    INTO v_kpi_clients_attended, v_kpi_clients_base, v_monthly_chart_current, v_monthly_chart_previous, v_daily_data_current, v_daily_data_previous
+    INTO v_kpi_clients_attended, v_kpi_clients_base, v_monthly_chart_current, v_monthly_chart_previous
     USING p_tipovenda, v_current_year, v_target_month, v_previous_year;
 
     -- 5. Calculate Trend (Post-Processing)
@@ -1613,8 +1491,6 @@ BEGIN
         'kpi_clients_base', COALESCE(v_kpi_clients_base, 0),
         'monthly_data_current', v_monthly_chart_current,
         'monthly_data_previous', v_monthly_chart_previous,
-        'daily_data_current', v_daily_data_current,
-        'daily_data_previous', v_daily_data_previous,
         'trend_data', v_trend_data,
         'trend_allowed', v_trend_allowed,
         'holidays', COALESCE(v_holidays, '[]'::json)

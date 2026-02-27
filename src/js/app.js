@@ -2,16 +2,7 @@
 import supabase from './supabase.js?v=2';
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("App Version: 2.1 (amCharts + New Nav)");
-    
-    // --- Global State Variables (Hoisted for Scope Access) ---
-    let checkProfileLock = false;
-    let isAppReady = false;
-    let mainChartRoot = null; // Global reference to amCharts root
-    
-    // Expose root for testing
-    if (typeof window !== 'undefined') window.getMainChartRoot = () => mainChartRoot;
-
+    console.log("App Version: 2.0 (Cache Refresh Split)");
     // --- Auth & Navigation Elements ---
     const loginView = document.getElementById('login-view');
     const appLayout = document.getElementById('app-layout');
@@ -20,52 +11,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logout-btn');
     const logoutBtnPendente = document.getElementById('logout-btn-pendente');
 
-    // New Top Navbar Elements
-    const topNavbar = document.getElementById('top-navbar');
+    // Sidebar
+    const sideMenu = document.getElementById('side-menu');
+    const openSidebarBtn = document.getElementById('open-sidebar-btn'); // Main Header Hamburger
+    const openSidebarBoxesBtn = document.getElementById('open-sidebar-boxes-btn'); // Boxes Header Hamburger
+    const openSidebarBranchBtn = document.getElementById('open-sidebar-branch-btn'); // Branch Header Hamburger
+    const openSidebarCityBtn = document.getElementById('open-sidebar-city-btn'); // City Header Hamburger
+    // No close button explicit in new design, clicking outside handles it
+    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+    
     const navDashboardBtn = document.getElementById('nav-dashboard');
     const navCityAnalysisBtn = document.getElementById('nav-city-analysis');
-    const navBoxesBtn = document.getElementById('nav-boxes-btn');
+    const navBoxesBtn = document.getElementById('nav-boxes-btn'); // New Boxes Nav
     const navBranchBtn = document.getElementById('nav-branch-btn');
     const navUploaderBtn = document.getElementById('nav-uploader');
-    const navComparativoBtn = document.getElementById('nav-comparativo-btn');
-    const optimizeDbBtnNav = document.getElementById('optimize-db-btn-nav');
-
-    // Sidebar - Deprecated but kept to avoid immediate errors if referenced
-    const sideMenu = document.getElementById('side-menu');
-    const openSidebarBtn = document.getElementById('open-sidebar-btn'); // Can be removed or hidden
-    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+    const navComparativoBtn = document.getElementById('nav-comparativo-btn'); // New
 
     // Views
     const dashboardContainer = document.getElementById('dashboard-container');
     const uploaderModal = document.getElementById('uploader-modal');
     const closeUploaderBtn = document.getElementById('close-uploader-btn');
 
-    if (closeUploaderBtn) {
-        closeUploaderBtn.addEventListener('click', () => {
-            uploaderModal.classList.add('hidden');
-        });
-    }
-
     // Dashboard Internal Views
     const mainDashboardView = document.getElementById('main-dashboard-view');
     const mainDashboardHeader = document.getElementById('main-dashboard-header');
     const mainDashboardContent = document.getElementById('main-dashboard-content');
     const cityView = document.getElementById('city-view');
-    const boxesView = document.getElementById('boxes-view');
+    const boxesView = document.getElementById('boxes-view'); // New Boxes View
     const branchView = document.getElementById('branch-view');
-    const comparisonView = document.getElementById('comparison-view');
+    const comparisonView = document.getElementById('comparison-view'); // New
 
     // Buttons in Dashboard
     const clearFiltersBtn = document.getElementById('clear-filters-btn');
-    const calendarBtn = document.getElementById('calendar-btn'); 
-    const chartToggleBtn = document.getElementById('chart-toggle-btn'); 
+    const calendarBtn = document.getElementById('calendar-btn'); // New Calendar Button
+    const chartToggleBtn = document.getElementById('chart-toggle-btn'); // Chart Mode Toggle
 
     // Toggle Secondary KPIs
     const toggleSecondaryKpisBtn = document.getElementById('toggle-secondary-kpis-btn');
     const secondaryKpiRow = document.getElementById('secondary-kpi-row');
     const toggleKpiIcon = document.getElementById('toggle-kpi-icon');
 
-    // --- Filter Element Declarations ---
+    // --- Filter Element Declarations (Hoisted to top of DOMContentLoaded) ---
+    // Dashboard Filters
     const anoFilter = document.getElementById('ano-filter');
     const mesFilter = document.getElementById('mes-filter');
     const filialFilterBtn = document.getElementById('filial-filter-btn');
@@ -95,11 +82,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const categoriaFilterList = document.getElementById('categoria-filter-list');
     const categoriaFilterSearch = document.getElementById('categoria-filter-search');
 
-    // Boxes Filter Elements (Keep existing references)
+    // Boxes Filter Elements
     const boxesCategoriaFilterBtn = document.getElementById('boxes-categoria-filter-btn');
     const boxesCategoriaFilterDropdown = document.getElementById('boxes-categoria-filter-dropdown');
     const boxesCategoriaFilterList = document.getElementById('boxes-categoria-filter-list');
     const boxesCategoriaFilterSearch = document.getElementById('boxes-categoria-filter-search');
+
     const boxesAnoFilter = document.getElementById('boxes-ano-filter');
     const boxesMesFilter = document.getElementById('boxes-mes-filter');
     const boxesFilialFilterBtn = document.getElementById('boxes-filial-filter-btn');
@@ -126,12 +114,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const boxesTipovendaFilterDropdown = document.getElementById('boxes-tipovenda-filter-dropdown');
     const boxesClearFiltersBtn = document.getElementById('boxes-clear-filters-btn');
     const boxesTrendToggleBtn = document.getElementById('boxes-trend-toggle-btn');
+    // Boxes Export
     const boxesExportBtn = document.getElementById('boxes-export-btn');
     const boxesExportDropdown = document.getElementById('boxes-export-dropdown');
     const boxesExportExcelBtn = document.getElementById('boxes-export-excel');
     const boxesExportPdfBtn = document.getElementById('boxes-export-pdf');
 
-    // City View Filter Logic (Keep existing)
+    // City View Filter Logic
     const cityFilialFilterBtn = document.getElementById('city-filial-filter-btn');
     const cityFilialFilterDropdown = document.getElementById('city-filial-filter-dropdown');
     const cityAnoFilter = document.getElementById('city-ano-filter');
@@ -157,12 +146,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const cityTipovendaFilterBtn = document.getElementById('city-tipovenda-filter-btn');
     const cityTipovendaFilterDropdown = document.getElementById('city-tipovenda-filter-dropdown');
     const cityClearFiltersBtn = document.getElementById('city-clear-filters-btn');
+
     const cityCategoriaFilterBtn = document.getElementById('city-categoria-filter-btn');
     const cityCategoriaFilterDropdown = document.getElementById('city-categoria-filter-dropdown');
     const cityCategoriaFilterList = document.getElementById('city-categoria-filter-list');
     const cityCategoriaFilterSearch = document.getElementById('city-categoria-filter-search');
 
-    // Branch View Logic (Keep existing)
+    // Branch View Logic
     const branchFilialFilterBtn = document.getElementById('branch-filial-filter-btn');
     const branchFilialFilterDropdown = document.getElementById('branch-filial-filter-dropdown');
     const branchAnoFilter = document.getElementById('branch-ano-filter');
@@ -190,12 +180,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const branchClearFiltersBtn = document.getElementById('branch-clear-filters-btn');
     const branchCalendarBtn = document.getElementById('branch-calendar-btn');
     const branchChartToggleBtn = document.getElementById('branch-chart-toggle-btn');
+
     const branchCategoriaFilterBtn = document.getElementById('branch-categoria-filter-btn');
     const branchCategoriaFilterDropdown = document.getElementById('branch-categoria-filter-dropdown');
     const branchCategoriaFilterList = document.getElementById('branch-categoria-filter-list');
     const branchCategoriaFilterSearch = document.getElementById('branch-categoria-filter-search');
 
-    // Comparison View Filters (Keep existing)
+    // Comparison View Filters
     const comparisonAnoFilter = document.getElementById('comparison-ano-filter');
     const comparisonMesFilter = document.getElementById('comparison-mes-filter');
     const comparisonSupervisorFilterBtn = document.getElementById('comparison-supervisor-filter-btn');
@@ -233,9 +224,15 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleSecondaryKpisBtn.addEventListener('click', () => {
             secondaryKpiRow.classList.toggle('hidden');
             const isHidden = secondaryKpiRow.classList.contains('hidden');
-            const plusPath = "M12 4v16m8-8H4"; 
-            const minusPath = "M20 12H4"; 
-            if(toggleKpiIcon) toggleKpiIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${isHidden ? plusPath : minusPath}"></path>`;
+
+            // Icon Paths
+            const plusPath = "M12 4v16m8-8H4"; // Heroicons Plus
+            const minusPath = "M20 12H4"; // Heroicons Minus
+
+            // Update Icon
+            if(toggleKpiIcon) {
+                toggleKpiIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${isHidden ? plusPath : minusPath}"></path>`;
+            }
         });
     }
 
@@ -244,6 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const calendarModalBackdrop = document.getElementById('calendar-modal-backdrop');
     const closeCalendarModalBtn = document.getElementById('close-calendar-modal-btn');
     const calendarModalContent = document.getElementById('calendar-modal-content');
+    // For comparison view:
     const comparisonHolidayPickerBtn = document.getElementById('comparison-holiday-picker-btn');
 
     // Uploader Elements
@@ -253,102 +251,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const clientsFileInput = document.getElementById('clients-file-input');
     const productsFileInput = document.getElementById('products-file-input');
     const generateBtn = document.getElementById('generate-btn');
-    const optimizeDbBtn = document.getElementById('optimize-db-btn'); // Keep standard one if exists
-    const files = {
-        salesPrevYearFile: null,
-        salesCurrYearFile: null,
-        salesCurrMonthFile: null,
-        clientsFile: null,
-        productsFile: null
-    };
-
-    function checkFiles() {
-        if (files.salesPrevYearFile && files.salesCurrYearFile && files.salesCurrMonthFile && files.clientsFile && files.productsFile) {
-            generateBtn.disabled = false;
-        } else {
-            generateBtn.disabled = true;
-        }
-    }
-
-    if (salesPrevYearInput) {
-        salesPrevYearInput.addEventListener("change", (e) => {
-            files.salesPrevYearFile = e.target.files[0];
-            checkFiles();
-        });
-    }
-
-    if (salesCurrYearInput) {
-        salesCurrYearInput.addEventListener("change", (e) => {
-            files.salesCurrYearFile = e.target.files[0];
-            checkFiles();
-        });
-    }
-
-    if (salesCurrMonthInput) {
-        salesCurrMonthInput.addEventListener("change", (e) => {
-            files.salesCurrMonthFile = e.target.files[0];
-            checkFiles();
-        });
-    }
-
-    if (clientsFileInput) {
-        clientsFileInput.addEventListener("change", (e) => {
-            files.clientsFile = e.target.files[0];
-            checkFiles();
-        });
-    }
-
-    if (productsFileInput) {
-        productsFileInput.addEventListener("change", (e) => {
-            files.productsFile = e.target.files[0];
-            checkFiles();
-        });
-    }
+    const optimizeDbBtn = document.getElementById('optimize-db-btn');
     const statusContainer = document.getElementById('status-container');
     const statusText = document.getElementById('status-text');
     const progressBar = document.getElementById('progress-bar');
     const missingBranchesNotification = document.getElementById('missing-branches-notification');
 
-    // Auth Logic
+    // --- Auth Logic ---
     const telaLoading = document.getElementById('tela-loading');
     const telaPendente = document.getElementById('tela-pendente');
 
     // UI Functions
     const showScreen = (screenId) => {
+        // Hide all auth/app screens first
         [loginView, telaLoading, telaPendente, appLayout].forEach(el => el?.classList.add('hidden'));
         if (screenId) {
             const screen = document.getElementById(screenId);
             screen?.classList.remove('hidden');
-            // Ensure Top Nav is visible if authenticated and in app
-            if (screenId === 'app-layout' && topNavbar) {
-                topNavbar.classList.remove('hidden');
-            }
         }
     };
 
-    // Cache Logic
+    // --- Cache (IndexedDB) Logic ---
     const DB_NAME = 'PrimeDashboardDB';
     const STORE_NAME = 'data_store';
     const DB_VERSION = 1;
 
-    // --- Navigation Logic (Updated for Top Nav) ---
-    function setActiveNavLink(link) {
-        if (!link) return;
-        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-        link.classList.add('active');
-    }
+    // --- URL Routing & Filter Persistence Logic ---
 
-    const resetViews = () => {
-        dashboardContainer.classList.remove('hidden');
-        uploaderModal.classList.add('hidden');
-        mainDashboardView.classList.add('hidden');
-        cityView.classList.add('hidden');
-        boxesView.classList.add('hidden');
-        branchView.classList.add('hidden');
-        comparisonView.classList.add('hidden');
-    };
-
-    // Routing Logic Reuse
     function getActiveViewId() {
         if (!mainDashboardView.classList.contains('hidden')) return 'dashboard';
         if (!cityView.classList.contains('hidden')) return 'city';
@@ -358,50 +287,455 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'dashboard';
     }
 
-    // (getFiltersFromActiveView, applyFiltersToView, navigateWithCtrl... kept same)
-    // ... Copy of getFiltersFromActiveView, applyFiltersToView, navigateWithCtrl from previous version ...
-    function getFiltersFromActiveView() { /* Same implementation as before */ 
+    function getFiltersFromActiveView() {
         const view = getActiveViewId();
         const state = {};
-        if (view === 'dashboard') { state.ano = anoFilter.value; state.mes = mesFilter.value; state.filiais = selectedFiliais; state.cidades = selectedCidades; state.supervisores = selectedSupervisores; state.vendedores = selectedVendedores; state.fornecedores = selectedFornecedores; state.tiposvenda = selectedTiposVenda; state.redes = selectedRedes; state.categorias = selectedCategorias; }
-        else if (view === 'city') { state.ano = cityAnoFilter.value; state.mes = cityMesFilter.value; state.filiais = citySelectedFiliais; state.cidades = citySelectedCidades; state.supervisores = citySelectedSupervisores; state.vendedores = citySelectedVendedores; state.fornecedores = citySelectedFornecedores; state.tiposvenda = citySelectedTiposVenda; state.redes = citySelectedRedes; }
-        else if (view === 'boxes') { state.ano = boxesAnoFilter.value; state.mes = boxesMesFilter.value; state.filiais = boxesSelectedFiliais; state.cidades = boxesSelectedCidades; state.supervisores = boxesSelectedSupervisores; state.vendedores = boxesSelectedVendedores; state.fornecedores = boxesSelectedFornecedores; state.produtos = boxesSelectedProducts; }
-        else if (view === 'branch') { state.ano = branchAnoFilter.value; state.mes = branchMesFilter.value; state.filiais = branchSelectedFiliais; state.cidades = branchSelectedCidades; state.supervisores = branchSelectedSupervisores; state.vendedores = branchSelectedVendedores; state.fornecedores = branchSelectedFornecedores; state.tiposvenda = branchSelectedTiposVenda; state.redes = branchSelectedRedes; }
-        else if (view === 'comparison') { state.ano = comparisonAnoFilter.value; state.mes = comparisonMesFilter.value; state.filiais = comparisonFilialFilter.value === 'ambas' ? [] : [comparisonFilialFilter.value]; state.cidades = selectedComparisonCities; state.supervisores = selectedComparisonSupervisores; state.vendedores = selectedComparisonSellers; state.fornecedores = selectedComparisonSuppliers; state.tiposvenda = selectedComparisonTiposVenda; state.redes = selectedComparisonRedes; }
-        const serialize = (key, val) => { if (Array.isArray(val)) return val.join(','); return val; };
+
+        if (view === 'dashboard') {
+            state.ano = anoFilter.value;
+            state.mes = mesFilter.value;
+            state.filiais = selectedFiliais;
+            state.cidades = selectedCidades;
+            state.supervisores = selectedSupervisores;
+            state.vendedores = selectedVendedores;
+            state.fornecedores = selectedFornecedores;
+            state.tiposvenda = selectedTiposVenda;
+            state.redes = selectedRedes;
+            state.categorias = selectedCategorias;
+        } else if (view === 'city') {
+            state.ano = cityAnoFilter.value;
+            state.mes = cityMesFilter.value;
+            state.filiais = citySelectedFiliais;
+            state.cidades = citySelectedCidades;
+            state.supervisores = citySelectedSupervisores;
+            state.vendedores = citySelectedVendedores;
+            state.fornecedores = citySelectedFornecedores;
+            state.tiposvenda = citySelectedTiposVenda;
+            state.redes = citySelectedRedes;
+        } else if (view === 'boxes') {
+            state.ano = boxesAnoFilter.value;
+            state.mes = boxesMesFilter.value;
+            state.filiais = boxesSelectedFiliais;
+            state.cidades = boxesSelectedCidades;
+            state.supervisores = boxesSelectedSupervisores;
+            state.vendedores = boxesSelectedVendedores;
+            state.fornecedores = boxesSelectedFornecedores;
+            state.produtos = boxesSelectedProducts;
+            // state.tiposvenda = ... if added later
+        } else if (view === 'branch') {
+            state.ano = branchAnoFilter.value;
+            state.mes = branchMesFilter.value;
+            state.filiais = branchSelectedFiliais;
+            state.cidades = branchSelectedCidades;
+            state.supervisores = branchSelectedSupervisores;
+            state.vendedores = branchSelectedVendedores;
+            state.fornecedores = branchSelectedFornecedores;
+            state.tiposvenda = branchSelectedTiposVenda;
+            state.redes = branchSelectedRedes;
+        } else if (view === 'comparison') {
+            state.ano = comparisonAnoFilter.value;
+            state.mes = comparisonMesFilter.value;
+            state.filiais = comparisonFilialFilter.value === 'ambas' ? [] : [comparisonFilialFilter.value];
+            state.cidades = selectedComparisonCities;
+            state.supervisores = selectedComparisonSupervisores;
+            state.vendedores = selectedComparisonSellers;
+            state.fornecedores = selectedComparisonSuppliers;
+            state.tiposvenda = selectedComparisonTiposVenda;
+            state.redes = selectedComparisonRedes;
+        }
+
+        const serialize = (key, val) => {
+            if (Array.isArray(val)) return val.join(',');
+            return val;
+        };
+
         const params = new URLSearchParams();
-        for (const [key, val] of Object.entries(state)) { if (val && val.length > 0) { params.set(key, serialize(key, val)); } }
+        for (const [key, val] of Object.entries(state)) {
+            if (val && val.length > 0) {
+                 params.set(key, serialize(key, val));
+            }
+        }
         return params;
     }
 
-    function applyFiltersToView(view, params) { /* Same implementation as before */
-        const getList = (key) => { const val = params.get(key); return val ? val.split(',') : []; };
+    function applyFiltersToView(view, params) {
+        const getList = (key) => {
+            const val = params.get(key);
+            return val ? val.split(',') : [];
+        };
         const getVal = (key) => params.get(key);
-        if (view === 'dashboard') { if (getVal('ano')) anoFilter.value = getVal('ano'); if (getVal('mes')) mesFilter.value = getVal('mes'); selectedFiliais = getList('filiais'); selectedCidades = getList('cidades'); selectedSupervisores = getList('supervisores'); selectedVendedores = getList('vendedores'); selectedFornecedores = getList('fornecedores'); selectedTiposVenda = getList('tiposvenda'); selectedRedes = getList('redes'); selectedCategorias = getList('categorias'); }
-        else if (view === 'city') { if (getVal('ano')) cityAnoFilter.value = getVal('ano'); if (getVal('mes')) cityMesFilter.value = getVal('mes'); citySelectedFiliais = getList('filiais'); citySelectedCidades = getList('cidades'); citySelectedSupervisores = getList('supervisores'); citySelectedVendedores = getList('vendedores'); citySelectedFornecedores = getList('fornecedores'); citySelectedTiposVenda = getList('tiposvenda'); citySelectedRedes = getList('redes'); }
-        else if (view === 'boxes') { if (getVal('ano')) boxesAnoFilter.value = getVal('ano'); if (getVal('mes')) boxesMesFilter.value = getVal('mes'); boxesSelectedFiliais = getList('filiais'); boxesSelectedCidades = getList('cidades'); boxesSelectedSupervisores = getList('supervisores'); boxesSelectedVendedores = getList('vendedores'); boxesSelectedFornecedores = getList('fornecedores'); boxesSelectedProducts = getList('produtos'); }
-        else if (view === 'branch') { if (getVal('ano')) branchAnoFilter.value = getVal('ano'); if (getVal('mes')) branchMesFilter.value = getVal('mes'); branchSelectedFiliais = getList('filiais'); branchSelectedCidades = getList('cidades'); branchSelectedSupervisores = getList('supervisores'); branchSelectedVendedores = getList('vendedores'); branchSelectedFornecedores = getList('fornecedores'); branchSelectedTiposVenda = getList('tiposvenda'); branchSelectedRedes = getList('redes'); }
-        else if (view === 'comparison') { if (getVal('ano')) comparisonAnoFilter.value = getVal('ano'); if (getVal('mes')) comparisonMesFilter.value = getVal('mes'); const filiais = getList('filiais'); if (filiais.length > 0) comparisonFilialFilter.value = filiais[0]; selectedComparisonCities = getList('cidades'); selectedComparisonSupervisores = getList('supervisores'); selectedComparisonSellers = getList('vendedores'); selectedComparisonSuppliers = getList('fornecedores'); selectedComparisonTiposVenda = getList('tiposvenda'); selectedComparisonRedes = getList('redes'); }
+
+        if (view === 'dashboard') {
+            if (getVal('ano')) anoFilter.value = getVal('ano');
+            if (getVal('mes')) mesFilter.value = getVal('mes');
+
+            selectedFiliais = getList('filiais');
+            selectedCidades = getList('cidades');
+            selectedSupervisores = getList('supervisores');
+            selectedVendedores = getList('vendedores');
+            selectedFornecedores = getList('fornecedores');
+            selectedTiposVenda = getList('tiposvenda');
+            selectedRedes = getList('redes');
+            selectedCategorias = getList('categorias');
+
+        } else if (view === 'city') {
+            if (getVal('ano')) cityAnoFilter.value = getVal('ano');
+            if (getVal('mes')) cityMesFilter.value = getVal('mes');
+
+            citySelectedFiliais = getList('filiais');
+            citySelectedCidades = getList('cidades');
+            citySelectedSupervisores = getList('supervisores');
+            citySelectedVendedores = getList('vendedores');
+            citySelectedFornecedores = getList('fornecedores');
+            citySelectedTiposVenda = getList('tiposvenda');
+            citySelectedRedes = getList('redes');
+
+        } else if (view === 'boxes') {
+            if (getVal('ano')) boxesAnoFilter.value = getVal('ano');
+            if (getVal('mes')) boxesMesFilter.value = getVal('mes');
+
+            boxesSelectedFiliais = getList('filiais');
+            boxesSelectedCidades = getList('cidades');
+            boxesSelectedSupervisores = getList('supervisores');
+            boxesSelectedVendedores = getList('vendedores');
+            boxesSelectedFornecedores = getList('fornecedores');
+            boxesSelectedProducts = getList('produtos');
+
+        } else if (view === 'branch') {
+             if (getVal('ano')) branchAnoFilter.value = getVal('ano');
+             if (getVal('mes')) branchMesFilter.value = getVal('mes');
+
+             branchSelectedFiliais = getList('filiais');
+             branchSelectedCidades = getList('cidades');
+             branchSelectedSupervisores = getList('supervisores');
+             branchSelectedVendedores = getList('vendedores');
+             branchSelectedFornecedores = getList('fornecedores');
+             branchSelectedTiposVenda = getList('tiposvenda');
+             branchSelectedRedes = getList('redes');
+
+        } else if (view === 'comparison') {
+             if (getVal('ano')) comparisonAnoFilter.value = getVal('ano');
+             if (getVal('mes')) comparisonMesFilter.value = getVal('mes');
+
+             const filiais = getList('filiais');
+             if (filiais.length > 0) comparisonFilialFilter.value = filiais[0];
+
+             selectedComparisonCities = getList('cidades');
+
+             selectedComparisonSupervisores = getList('supervisores');
+             selectedComparisonSellers = getList('vendedores');
+             selectedComparisonSuppliers = getList('fornecedores');
+             selectedComparisonTiposVenda = getList('tiposvenda');
+             selectedComparisonRedes = getList('redes');
+        }
     }
 
-    function navigateWithCtrl(e, targetViewId) { /* Same */
-        if (e.ctrlKey || e.metaKey) { e.preventDefault(); e.stopPropagation(); const params = getFiltersFromActiveView(); params.set('view', targetViewId); const url = `${window.location.pathname}?${params.toString()}`; window.open(url, '_blank'); return true; } return false;
+    async function handleInitialRouting() {
+        const params = new URLSearchParams(window.location.search);
+        const view = params.get('view');
+
+        if (view) {
+            applyFiltersToView(view, params);
+            showScreen('app-layout');
+
+            if (view === 'city') {
+                navCityAnalysisBtn.click();
+            } else if (view === 'boxes') {
+                navBoxesBtn.click();
+            } else if (view === 'branch') {
+                navBranchBtn.click();
+            } else if (view === 'comparison') {
+                navComparativoBtn.click();
+            } else {
+                navDashboardBtn.click();
+                initDashboard();
+            }
+        } else {
+            showScreen('app-layout');
+            initDashboard();
+        }
     }
 
-    // Handlers for Navigation
+    function navigateWithCtrl(e, targetViewId) {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const params = getFiltersFromActiveView();
+            params.set('view', targetViewId);
+
+            const url = `${window.location.pathname}?${params.toString()}`;
+            window.open(url, '_blank');
+            return true;
+        }
+        return false;
+    }
+
+    const initDB = () => {
+        return idb.openDB(DB_NAME, DB_VERSION, {
+            upgrade(db) {
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME);
+                }
+            },
+        });
+    };
+
+    const getFromCache = async (key) => {
+        try {
+            const db = await initDB();
+            return await db.get(STORE_NAME, key);
+        } catch (e) {
+            console.warn('Erro ao ler cache:', e);
+            return null;
+        }
+    };
+
+    const saveToCache = async (key, value) => {
+        try {
+            const db = await initDB();
+            // Wrap data with timestamp for TTL
+            const payload = { timestamp: Date.now(), data: value };
+            await db.put(STORE_NAME, payload, key);
+        } catch (e) {
+            console.warn('Erro ao salvar cache:', e);
+        }
+    };
+
+    // Helper to check if bonification mode is active (Only Type 5 or 11 or both)
+    function isBonificationMode(selectedTypes) {
+        if (!selectedTypes || selectedTypes.length === 0) return false;
+        return selectedTypes.every(t => t === '5' || t === '11');
+    }
+
+    // Helper to generate canonical cache keys (sorted arrays)
+    function generateCacheKey(prefix, filters) {
+        const sortedFilters = {};
+        Object.keys(filters).sort().forEach(k => {
+            let val = filters[k];
+            if (Array.isArray(val)) {
+                // Clone and sort array to ensure ['A', 'B'] == ['B', 'A']
+                val = [...val].sort();
+            }
+            sortedFilters[k] = val;
+        });
+        return `${prefix}_${JSON.stringify(sortedFilters)}`;
+    }
+
+    let checkProfileLock = false;
+    let isAppReady = false;
+
+    // --- Visibility & Reconnection Logic ---
+    document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible') {
+            const { data } = await supabase.auth.getSession();
+            if (data && data.session) {
+                if (!isAppReady) {
+                     checkProfileStatus(data.session.user);
+                }
+            } else {
+                if (isAppReady) {
+                     window.location.reload();
+                }
+            }
+        }
+    });
+
+    async function checkSession() {
+        showScreen('tela-loading');
+
+        supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_OUT') {
+                isAppReady = false;
+                showScreen('login-view');
+                return;
+            }
+
+            if (session) {
+                if (isAppReady) return;
+
+                if (!checkProfileLock) {
+                    await checkProfileStatus(session.user);
+                }
+            } else {
+                showScreen('login-view');
+            }
+        });
+    }
+
+    async function checkProfileStatus(user) {
+        if (isAppReady) return;
+
+        const cacheKey = `user_auth_cache_${user.id}`;
+        const cachedAuth = localStorage.getItem(cacheKey);
+
+        if (cachedAuth) {
+            try {
+                const { status, role } = JSON.parse(cachedAuth);
+                if (status === 'aprovado') {
+                    window.userRole = role;
+                    isAppReady = true;
+                    handleInitialRouting();
+                    return;
+                }
+            } catch (e) {
+                localStorage.removeItem(cacheKey);
+            }
+        }
+
+        checkProfileLock = true;
+        
+        try {
+            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Tempo limite de conexão excedido. Verifique sua internet.')), 10000));
+            const profileQuery = supabase.from('profiles').select('status, role').eq('id', user.id).single();
+
+            const { data: profile, error } = await Promise.race([profileQuery, timeout]);
+
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    // Profile doesn't exist, create it
+                    const { error: insertError } = await supabase
+                        .from('profiles')
+                        .insert([{ id: user.id, email: user.email, status: 'pendente' }]);
+
+                    if (insertError) throw insertError;
+                } else {
+                    throw error;
+                }
+            }
+
+            const status = profile?.status || 'pendente';
+            if (profile?.role) window.userRole = profile.role;
+
+            if (status === 'aprovado') {
+                localStorage.setItem(cacheKey, JSON.stringify({ status: 'aprovado', role: profile?.role }));
+                const currentScreen = document.getElementById('app-layout');
+                if (currentScreen.classList.contains('hidden')) {
+                    isAppReady = true;
+                    handleInitialRouting();
+                } else {
+                    isAppReady = true;
+                }
+            } else {
+                showScreen('tela-pendente');
+                if (status === 'bloqueado') {
+                        const statusMsg = document.getElementById('status-text-pendente'); 
+                        if(statusMsg) statusMsg.textContent = "Acesso Bloqueado";
+                }
+                startStatusListener(user.id);
+            }
+        } catch (err) {
+            checkProfileLock = false;
+            if (!isAppReady) {
+                if (err.message !== 'Tempo limite de conexão excedido. Verifique sua internet.') {
+                    alert("Erro de conexão: " + (err.message || 'Erro desconhecido'));
+                    showScreen('login-view');
+                }
+            }
+        } finally {
+            checkProfileLock = false;
+        }
+    }
+
+    let statusListener = null;
+    function startStatusListener(userId) {
+        if (statusListener) return;
+
+        statusListener = supabase
+            .channel(`public:profiles:id=eq.${userId}`)
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'profiles',
+                filter: `id=eq.${userId}`
+            }, (payload) => {
+                if (payload.new && payload.new.status === 'aprovado') {
+                    supabase.removeChannel(statusListener);
+                    statusListener = null;
+                    handleInitialRouting();
+                }
+            })
+            .subscribe();
+    }
+
+    googleLoginBtn.addEventListener('click', async () => {
+        loginError.classList.add('hidden');
+        const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: window.location.origin + window.location.pathname }
+        });
+        if (error) {
+            loginError.textContent = 'Erro ao iniciar login: ' + error.message;
+            loginError.classList.remove('hidden');
+        }
+    });
+
+    const handleLogout = async () => {
+        if(statusListener) {
+            supabase.removeChannel(statusListener);
+            statusListener = null;
+        }
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+            localStorage.removeItem(`user_auth_cache_${session.user.id}`);
+        }
+        await supabase.auth.signOut();
+    };
+
+    logoutBtn.addEventListener('click', handleLogout);
+    if(logoutBtnPendente) logoutBtnPendente.addEventListener('click', handleLogout);
+
+    checkSession();
+
+    // --- Navigation & Sidebar Logic ---
+
+    function openSidebar() {
+        sideMenu.classList.remove('-translate-x-full');
+        sidebarBackdrop.classList.remove('hidden');
+    }
+
+    function closeSidebar() {
+        sideMenu.classList.add('-translate-x-full');
+        sidebarBackdrop.classList.add('hidden');
+    }
+
+    openSidebarBtn.addEventListener('click', openSidebar);
+    if (openSidebarBoxesBtn) openSidebarBoxesBtn.addEventListener('click', openSidebar);
+    if (openSidebarBranchBtn) openSidebarBranchBtn.addEventListener('click', openSidebar);
+    if (openSidebarCityBtn) openSidebarCityBtn.addEventListener('click', openSidebar);
+    const openSidebarComparisonBtn = document.getElementById('open-sidebar-comparison-btn');
+    if (openSidebarComparisonBtn) openSidebarComparisonBtn.addEventListener('click', openSidebar);
+
+    sidebarBackdrop.addEventListener('click', closeSidebar);
+
+    // Nav Links (Close sidebar on click)
+    const resetViews = () => {
+        dashboardContainer.classList.remove('hidden');
+        uploaderModal.classList.add('hidden');
+        mainDashboardView.classList.add('hidden');
+        cityView.classList.add('hidden');
+        boxesView.classList.add('hidden');
+        branchView.classList.add('hidden');
+        comparisonView.classList.add('hidden');
+        // Reset active state styles (simple)
+        [navDashboardBtn, navCityAnalysisBtn, navBoxesBtn, navBranchBtn, navUploaderBtn, navComparativoBtn].forEach(btn => btn?.classList.remove('bg-slate-700', 'text-white'));
+    };
+
     navDashboardBtn.addEventListener('click', (e) => {
         if (navigateWithCtrl(e, 'dashboard')) return;
         resetViews();
         mainDashboardView.classList.remove('hidden');
-        setActiveNavLink(navDashboardBtn);
+        navDashboardBtn.classList.add('bg-slate-700', 'text-white');
+        closeSidebar();
     });
 
     navCityAnalysisBtn.addEventListener('click', (e) => {
         if (navigateWithCtrl(e, 'city')) return;
         resetViews();
         cityView.classList.remove('hidden');
-        setActiveNavLink(navCityAnalysisBtn);
+        navCityAnalysisBtn.classList.add('bg-slate-700', 'text-white');
         loadCityView();
+        closeSidebar();
     });
 
     if (navBoxesBtn) {
@@ -409,8 +743,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (navigateWithCtrl(e, 'boxes')) return;
             resetViews();
             boxesView.classList.remove('hidden');
-            setActiveNavLink(navBoxesBtn);
+            navBoxesBtn.classList.add('bg-slate-700', 'text-white');
             loadBoxesView();
+            closeSidebar();
         });
     }
 
@@ -419,8 +754,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (navigateWithCtrl(e, 'comparison')) return;
             resetViews();
             comparisonView.classList.remove('hidden');
-            setActiveNavLink(navComparativoBtn);
+            navComparativoBtn.classList.add('bg-slate-700', 'text-white');
             loadComparisonView();
+            closeSidebar();
         });
     }
 
@@ -429,841 +765,121 @@ document.addEventListener('DOMContentLoaded', () => {
             if (navigateWithCtrl(e, 'branch')) return;
             resetViews();
             branchView.classList.remove('hidden');
-            setActiveNavLink(navBranchBtn);
+            navBranchBtn.classList.add('bg-slate-700', 'text-white');
             loadBranchView();
+            closeSidebar();
         });
     }
 
-    if (navUploaderBtn) {
-        navUploaderBtn.addEventListener('click', () => {
-            if (window.userRole !== 'adm') return;
-            uploaderModal.classList.remove('hidden');
-            checkMissingBranches();
-        });
-    }
-
-    if (optimizeDbBtnNav) {
-        optimizeDbBtnNav.addEventListener('click', async () => {
-            if (window.userRole !== 'adm') return;
-            if (!confirm('Recriar índices do banco de dados?')) return;
-            // Logic similar to old button
-            try {
-                const { data, error } = await supabase.rpc('optimize_database');
-                if (error) throw error;
-                alert(data || 'Otimização concluída!');
-            } catch(e) { alert('Erro: ' + e.message); }
-        });
-    }
-
-    // Role Check for Uploader Visibility
-    function checkRoleForUI() {
-        if (window.userRole === 'adm') {
-            if(navUploaderBtn) navUploaderBtn.classList.remove('hidden');
+    navUploaderBtn.addEventListener('click', () => {
+        if (window.userRole !== 'adm') {
+            alert('Acesso negado: Apenas administradores podem acessar o uploader.');
+            return;
         }
+        uploaderModal.classList.remove('hidden');
+        closeSidebar();
+    });
+
+    closeUploaderBtn.addEventListener('click', () => {
+        uploaderModal.classList.add('hidden');
+    });
+
+    // Set initial active state
+    navDashboardBtn.classList.add('bg-slate-700', 'text-white');
+
+
+    // --- Dashboard Internal Navigation ---
+    if (chartToggleBtn) {
+        chartToggleBtn.addEventListener('click', () => {
+            currentChartMode = currentChartMode === 'faturamento' ? 'peso' : 'faturamento';
+            if (lastDashboardData) {
+                renderDashboard(lastDashboardData);
+            }
+        });
     }
 
-    // DB Init
-    const initDB = () => {
-        return idb.openDB(DB_NAME, DB_VERSION, {
-            upgrade(db) { if (!db.objectStoreNames.contains(STORE_NAME)) { db.createObjectStore(STORE_NAME); } },
-        });
+    clearFiltersBtn.addEventListener('click', async () => {
+        // Reset Single Selects
+        anoFilter.value = 'todos';
+        mesFilter.value = '';
+
+        // Reset Multi Select Arrays
+        selectedFiliais = [];
+        selectedCidades = [];
+        selectedSupervisores = [];
+        selectedVendedores = [];
+        selectedFornecedores = [];
+        selectedTiposVenda = [];
+        selectedRedes = [];
+        selectedCategorias = [];
+
+        // Note: loadFilters will re-render the dropdowns with checked status based on these empty arrays,
+        // effectively clearing the checkboxes visually.
+        
+        await loadFilters(getCurrentFilters());
+        loadMainDashboardData();
+    });
+
+    // --- Calendar Modal Logic ---
+    function openCalendar() {
+        calendarModal.classList.remove('hidden');
+        renderCalendar();
+    }
+
+    function closeCalendar() {
+        calendarModal.classList.add('hidden');
+    }
+
+    if(calendarBtn) calendarBtn.addEventListener('click', openCalendar);
+    if(comparisonHolidayPickerBtn) comparisonHolidayPickerBtn.addEventListener('click', openCalendar);
+    if(closeCalendarModalBtn) closeCalendarModalBtn.addEventListener('click', closeCalendar);
+    if(calendarModalBackdrop) calendarModalBackdrop.addEventListener('click', closeCalendar);
+
+
+    // --- Uploader Logic ---
+    let files = {};
+    const checkFiles = () => {
+        const hasFiles = files.salesPrevYearFile && files.salesCurrYearFile && files.salesCurrMonthFile && files.clientsFile && files.productsFile;
+        generateBtn.disabled = !hasFiles;
     };
-    const getFromCache = async (key) => { try { const db = await initDB(); return await db.get(STORE_NAME, key); } catch (e) { return null; } };
-    const saveToCache = async (key, value) => { try { const db = await initDB(); const payload = { timestamp: Date.now(), data: value }; await db.put(STORE_NAME, payload, key); } catch (e) {} };
 
-    // --- Helpers (Same as before) ---
-    function isBonificationMode(selectedTypes) { if (!selectedTypes || selectedTypes.length === 0) return false; return selectedTypes.every(t => t === '5' || t === '11'); }
-    function generateCacheKey(prefix, filters) { const sortedFilters = {}; Object.keys(filters).sort().forEach(k => { let val = filters[k]; if (Array.isArray(val)) { val = [...val].sort(); } sortedFilters[k] = val; }); return `${prefix}_${JSON.stringify(sortedFilters)}`; }
-    
-    // Shared Formatting Helper for Variance %
-    const fmtVar = (v) => {
-        const cls = v >= 0 ? 'text-emerald-400' : 'text-red-400';
-        const sign = v > 0 ? '+' : '';
-        return `<span class="${cls}">${sign}${v.toFixed(1)}%</span>`;
-    };
+    if(salesPrevYearInput) salesPrevYearInput.addEventListener('change', (e) => { files.salesPrevYearFile = e.target.files[0]; checkFiles(); });
+    if(salesCurrYearInput) salesCurrYearInput.addEventListener('change', (e) => { files.salesCurrYearFile = e.target.files[0]; checkFiles(); });
+    if(salesCurrMonthInput) salesCurrMonthInput.addEventListener('change', (e) => { files.salesCurrMonthFile = e.target.files[0]; checkFiles(); });
+    if(clientsFileInput) clientsFileInput.addEventListener('change', (e) => { files.clientsFile = e.target.files[0]; checkFiles(); });
+    if(productsFileInput) productsFileInput.addEventListener('change', (e) => { files.productsFile = e.target.files[0]; checkFiles(); });
 
-    // --- Session & Initial Load ---
-    async function handleInitialRouting() {
-        const params = new URLSearchParams(window.location.search);
-        const view = params.get('view');
-        checkRoleForUI();
-
-        if (view) {
-            applyFiltersToView(view, params);
-            showScreen('app-layout');
-            if (view === 'city') navCityAnalysisBtn.click();
-            else if (view === 'boxes') navBoxesBtn.click();
-            else if (view === 'branch') navBranchBtn.click();
-            else if (view === 'comparison') navComparativoBtn.click();
-            else { navDashboardBtn.click(); initDashboard(); }
-        } else {
-            showScreen('app-layout');
-            initDashboard();
+    if(optimizeDbBtn) optimizeDbBtn.addEventListener('click', async () => {
+        if (window.userRole !== 'adm') {
+            alert('Apenas administradores podem executar esta ação.');
+            return;
         }
-    }
+        if (!confirm('Recriar índices do banco de dados?')) return;
 
-    // Session Check & Logic (Same)
-    async function checkSession() {
-        showScreen('tela-loading');
-        supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_OUT') { isAppReady = false; showScreen('login-view'); return; }
-            if (session) {
-                if (isAppReady) return;
-                if (!checkProfileLock) await checkProfileStatus(session.user);
-            } else { showScreen('login-view'); }
-        });
-    }
-    // ... checkProfileStatus, startStatusListener, etc. same ...
-    async function checkProfileStatus(user) {
-        if (isAppReady) return;
-        const cacheKey = `user_auth_cache_${user.id}`;
-        const cachedAuth = localStorage.getItem(cacheKey);
-        if (cachedAuth) {
-            try {
-                const { status, role } = JSON.parse(cachedAuth);
-                if (status === 'aprovado') { window.userRole = role; isAppReady = true; handleInitialRouting(); return; }
-            } catch (e) { localStorage.removeItem(cacheKey); }
-        }
-        checkProfileLock = true;
+        optimizeDbBtn.disabled = true;
+        optimizeDbBtn.textContent = 'Otimizando...';
+        statusContainer.classList.remove('hidden');
+        statusText.textContent = 'Otimizando...';
+        progressBar.style.width = '50%';
+
         try {
-            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000));
-            const profileQuery = supabase.from('profiles').select('status, role').eq('id', user.id).single();
-            const { data: profile, error } = await Promise.race([profileQuery, timeout]);
-            if (error) { if (error.code === 'PGRST116') { await supabase.from('profiles').insert([{ id: user.id, email: user.email, status: 'pendente' }]); } else throw error; }
-            const status = profile?.status || 'pendente';
-            if (profile?.role) window.userRole = profile.role;
-            if (status === 'aprovado') {
-                localStorage.setItem(cacheKey, JSON.stringify({ status: 'aprovado', role: profile?.role }));
-                isAppReady = true;
-                handleInitialRouting();
-            } else {
-                showScreen('tela-pendente');
-                startStatusListener(user.id);
-            }
-        } catch (err) { checkProfileLock = false; if (!isAppReady) showScreen('login-view'); } finally { checkProfileLock = false; }
-    }
-    // ... (rest of session/upload logic) ...
-
-    checkSession();
-    // (Other Uploader & Sync logic remains unchanged)
-
-    // --- AMCHARTS 5 IMPLEMENTATION ---
-    function renderMainChartAmCharts(data) {
-        if (mainChartRoot) {
-            mainChartRoot.dispose();
+            const { data, error } = await supabase.rpc('optimize_database');
+            if (error) throw error;
+            statusText.textContent = data || 'Concluído!';
+            progressBar.style.width = '100%';
+            alert(data);
+        } catch (e) {
+            statusText.textContent = 'Erro: ' + e.message;
+            alert('Erro: ' + e.message);
+        } finally {
+            optimizeDbBtn.disabled = false;
+            optimizeDbBtn.textContent = 'Otimizar Banco de Dados (Reduzir Espaço)';
+            setTimeout(() => { statusContainer.classList.add('hidden'); }, 5000);
         }
+    });
 
-        // 1. Determine Granularity (Daily if month filter active, else Monthly)
-        // Check if daily data arrays exist and are populated
-        const isDaily = (data.daily_data_current && data.daily_data_current.length > 0) || (data.daily_data_previous && data.daily_data_previous.length > 0);
-        
-        // Determine Mode (Fat vs Ton) and Bonification
-        const isBonifMode = isBonificationMode(getCurrentFilters().p_tipovenda);
-        const getDataValue = (d) => {
-            if (isBonifMode && currentChartMode === 'faturamento') return d.bonificacao;
-            return currentChartMode === 'faturamento' ? d.faturamento : d.peso;
-        };
-
-        const chartContainer = document.getElementById('main-chartContainer');
-        if (!chartContainer) return;
-
-        mainChartRoot = am5.Root.new("main-chartContainer");
-
-        // Themes
-        mainChartRoot.setThemes([
-            am5themes_Animated.new(mainChartRoot)
-        ]);
-
-        // Define Dark Theme Colors
-        const colors = {
-            previous: am5.color(0xfb923c), // Orange-400 (Brighter)
-            current: am5.color(0x22d3ee), // Cyan-400 (Brighter)
-            trend: am5.color(0xa78bfa),    // Purple-400 (Brighter)
-            text: am5.color(0xe2e8f0),     // Slate-200 (Brighter text)
-            grid: am5.color(0xffffff),      // White
-            green: am5.color(0x34d399),    // Emerald
-            red: am5.color(0xf87171)       // Red
-        };
-
-        // Create Chart
-        const chart = mainChartRoot.container.children.push(am5xy.XYChart.new(mainChartRoot, {
-            panX: true,
-            panY: true,
-            wheelX: "panX",
-            wheelY: "zoomX",
-            pinchZoomX: true,
-            paddingLeft: 0,
-            layout: mainChartRoot.verticalLayout
-        }));
-
-        // Cursor
-        const cursor = chart.set("cursor", am5xy.XYCursor.new(mainChartRoot, {
-            behavior: "none"
-        }));
-        cursor.lineY.set("visible", false);
-        cursor.lineX.set("stroke", colors.text);
-        cursor.lineX.set("strokeOpacity", 0.5);
-
-        // Prepare Data
-        let seriesDataPrev = [];
-        let seriesDataCurr = [];
-        let baseInterval = {};
-
-        if (isDaily) {
-            // DAILY MODE
-            // Map Day of Month (1-31) to a unified month (e.g., Jan 2000) for overlay
-            baseInterval = { timeUnit: "day", count: 1 };
-            
-            const prepareDaily = (sourceData, yearLabel) => {
-                if (!sourceData) return [];
-                return sourceData.map(d => {
-                    // d.day is 1-31
-                    // Create date object: Year 2000, Month 0 (Jan), Day d.day
-                    // We use Jan 2000 as base. 
-                    // Note: Jan has 31 days, so it fits most months. 
-                    // If filtering Feb, we might have issues if we map day 30 to Jan 30? 
-                    // Better to map to the ACTUAL selected month index in year 2000? 
-                    // RPC returns `target_month_index` (0-11).
-                    // Let's use that to be safe with day counts (e.g. Feb 29).
-                    // Or just use Jan 2000 for simplicity if day numbers match?
-                    // Let's use the actual month index but Year 2000.
-                    
-                    const mIdx = data.target_month_index; // 0-11
-                    const date = new Date(2000, mIdx, d.day).getTime();
-                    return {
-                        date: date,
-                        value: getDataValue(d),
-                        realYear: yearLabel,
-                        dayNum: d.day
-                    };
-                });
-            };
-            
-            seriesDataPrev = prepareDaily(data.daily_data_previous, data.previous_year);
-            seriesDataCurr = prepareDaily(data.daily_data_current, data.current_year);
-
-        } else {
-            // MONTHLY MODE
-            // Map 0-11 to Jan-Dec 2000. 
-            // Use 1st of month to reduce start gap, but amCharts date axis might still pad.
-            // We set location to 0.5 to center bars if needed, but for lines, start/end padding matters.
-            baseInterval = { timeUnit: "month", count: 1 };
-            
-            const prepareMonthly = (sourceData, yearLabel) => {
-                if (!sourceData) return [];
-                return sourceData.map(d => {
-                    // d.month_index is 0-11.
-                    // Use 1st of month (hour 12 to avoid TZ shifts)
-                    const date = new Date(2000, d.month_index, 1, 12).getTime();
-                    return {
-                        date: date,
-                        value: getDataValue(d),
-                        realYear: yearLabel,
-                        monthIdx: d.month_index
-                    };
-                });
-            };
-
-            seriesDataPrev = prepareMonthly(data.monthly_data_previous, data.previous_year);
-            seriesDataCurr = prepareMonthly(data.monthly_data_current, data.current_year);
-        }
-        
-        // Trend Data
-        let seriesDataTrend = [];
-        if (!isDaily && data.trend_allowed && data.trend_data) {
-            const lastCurr = seriesDataCurr[seriesDataCurr.length - 1];
-            if (lastCurr) {
-                seriesDataTrend.push(lastCurr); 
-                const trendDate = new Date(2000, data.trend_data.month_index, 1, 12).getTime();
-                seriesDataTrend.push({
-                    date: trendDate,
-                    value: getDataValue(data.trend_data),
-                    realYear: "Tendência"
-                });
-            }
-        }
-
-        // Axes
-        const xRenderer = am5xy.AxisRendererX.new(mainChartRoot, {
-            minorGridEnabled: true,
-            minGridDistance: isDaily ? 30 : 50,
-            cellStartLocation: 0.1,
-            cellEndLocation: 0.9
-        });
-        
-        xRenderer.labels.template.setAll({
-            fill: colors.text,
-            fontSize: 12
-        });
-        xRenderer.grid.template.setAll({
-            stroke: colors.grid,
-            strokeOpacity: 0.1,
-            location: 0
-        });
-
-        // Date Axis
-        const xAxis = chart.xAxes.push(am5xy.DateAxis.new(mainChartRoot, {
-            maxDeviation: 0,
-            baseInterval: baseInterval,
-            renderer: xRenderer,
-            tooltip: am5.Tooltip.new(mainChartRoot, {}),
-            startLocation: 0, // Ensure starts at edge
-            endLocation: 1    // Ensure ends at edge
-        }));
-        
-        // Format based on granularity
-        if (isDaily) {
-            xAxis.get("dateFormats")["day"] = "dd";
-            xAxis.get("periodChangeDateFormats")["day"] = "MMM dd";
-        } else {
-            xAxis.get("dateFormats")["month"] = "MMM";
-            xAxis.get("periodChangeDateFormats")["month"] = "MMM";
-        }
-
-        const yRenderer = am5xy.AxisRendererY.new(mainChartRoot, {
-            pan: "zoom"
-        });
-        
-        // Hide Y-Axis Labels as requested
-        yRenderer.labels.template.set("visible", false);
-        
-        yRenderer.grid.template.setAll({
-            stroke: colors.grid,
-            strokeOpacity: 0.1
-        });
-
-        // Y-Axis (Absolute Values)
-        const yAxis = chart.yAxes.push(am5xy.ValueAxis.new(mainChartRoot, {
-            renderer: yRenderer,
-            numberFormat: currentChartMode === 'faturamento' ? "#.0a" : "#.0' Ton'" 
-        }));
-
-        let isPercentMode = false;
-
-        // Series Function with Custom Tooltip for % Variation
-        function createSeries(name, dataItems, color, isDashed = false, isReference = false) {
-            // Use SmoothedXLineSeries for smoother lines
-            const series = chart.series.push(am5xy.SmoothedXLineSeries.new(mainChartRoot, {
-                name: name,
-                xAxis: xAxis,
-                yAxis: yAxis,
-                valueYField: "value",
-                valueXField: "date",
-                calculateAggregates: true, // Required for % change logic
-                tension: 0.8
-            }));
-
-            // Custom Tooltip Logic
-            const tooltip = am5.Tooltip.new(mainChartRoot, {
-                getFillFromSprite: false,
-                autoTextColor: false
-            });
-            
-            tooltip.get("background").setAll({
-                fill: am5.color(0x1e293b), // Slate-800
-                stroke: am5.color(0x334155),
-                strokeOpacity: 0.8
-            });
-            
-            tooltip.label.setAll({
-                fill: am5.color(0xffffff),
-                fontSize: 12
-            });
-
-            // Adapter to calculate variation relative to Previous Year Series OR show Evolution %
-            tooltip.label.adapters.add("text", function(text, target) {
-                // Safety check: target.dataItem might be undefined initially
-                if (!target.dataItem || !target.dataItem.dataContext) return text;
-                
-                const context = target.dataItem.dataContext; // Current Point
-                
-                // Value formatting
-                const val = context.value;
-                const fmtVal = currentChartMode === 'faturamento' 
-                    ? val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                    : (val/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1 }) + ' Ton';
-                
-                let result = `[bold]${name}[/]\n${fmtVal}`;
-
-                if (isPercentMode) {
-                    // Evolution Mode: Show change from start
-                    const change = target.dataItem.get("valueYChangePercent");
-                    if (change !== undefined && change !== null) {
-                        const sign = change > 0 ? '+' : '';
-                        const colorHex = change >= 0 ? '#34d399' : '#f87171';
-                        result += `\nEvolução: [${colorHex}]${sign}${change.toFixed(2)}%[/]`;
-                    }
-                } else {
-                    // Absolute Mode: Year over Year comparison (Current vs Previous)
-                    // If this is the "Current Year" series, try to find matching point in "Previous Year" series
-                    if (name.includes(data.current_year) && seriesDataPrev.length > 0) {
-                        const match = seriesDataPrev.find(p => p.date === context.date);
-                        if (match && match.value > 0) {
-                            const diff = val - match.value;
-                            const perc = (diff / match.value) * 100;
-                            const sign = perc > 0 ? '+' : '';
-                            const colorHex = perc >= 0 ? '#34d399' : '#f87171'; // Green : Red
-                            
-                            result += `\n[${colorHex}]${sign}${perc.toFixed(1)}%[/]`;
-                        }
-                    }
-                }
-                
-                return result;
-            });
-
-            series.set("tooltip", tooltip);
-
-            series.strokes.template.setAll({
-                stroke: color,
-                strokeWidth: 3
-            });
-            
-            if (isDashed) {
-                series.strokes.template.set("strokeDasharray", [5, 3]);
-            }
-
-            // Removed Bullets (Markers) as requested
-            /*
-            series.bullets.push(function() {
-                return am5.Bullet.new(mainChartRoot, {
-                    sprite: am5.Circle.new(mainChartRoot, {
-                        radius: 4,
-                        fill: color,
-                        stroke: mainChartRoot.interfaceColors.get("background"),
-                        strokeWidth: 1
-                    })
-                });
-            });
-            */
-
-            series.data.setAll(dataItems);
-            series.appear(1000);
-            return series;
-        }
-
-        // Add Series
-        createSeries(`Ano ${data.previous_year}`, seriesDataPrev, colors.previous, false, true);
-        createSeries(`Ano ${data.current_year}`, seriesDataCurr, colors.current);
-        
-        if (seriesDataTrend.length > 0) {
-            createSeries("Tendência", seriesDataTrend, colors.trend, true);
-        }
-
-        // Scrollbar
-        chart.set("scrollbarX", am5.Scrollbar.new(mainChartRoot, {
-            orientation: "horizontal",
-            marginBottom: 20
-        }));
-
-        // Legend (Bottom)
-        const legend = chart.children.push(am5.Legend.new(mainChartRoot, {
-            centerX: am5.p50,
-            x: am5.p50,
-            marginTop: 15,
-            marginBottom: 15
-        }));
-
-        // Improve Legend Labels
-        legend.labels.template.setAll({
-            fill: colors.text,
-            fontSize: 14,
-            fontWeight: "500"
-        });
-
-        legend.itemContainers.template.events.on("pointerover", function(e) {
-            e.target.dataItem.dataContext.hover();
-        });
-        legend.itemContainers.template.events.on("pointerout", function(e) {
-            e.target.dataItem.dataContext.unhover();
-        });
-
-        legend.data.setAll(chart.series.values);
-
-        // --- Percentage Change Toggle ---
-        const cont = chart.plotContainer.children.push(am5.Container.new(mainChartRoot, {
-            layout: mainChartRoot.horizontalLayout,
-            x: 20,
-            y: 20,
-            background: am5.Rectangle.new(mainChartRoot, {
-                fill: am5.color(0x000000),
-                fillOpacity: 0.5,
-                cornerRadiusTL: 5,
-                cornerRadiusTR: 5,
-                cornerRadiusBL: 5,
-                cornerRadiusBR: 5
-            })
-        }));
-
-        // Add padding to container
-        cont.set("paddingTop", 5);
-        cont.set("paddingBottom", 5);
-        cont.set("paddingLeft", 10);
-        cont.set("paddingRight", 10);
-
-        cont.children.push(am5.Label.new(mainChartRoot, {
-            centerY: am5.p50,
-            text: "Valor Real",
-            fill: colors.text,
-            fontSize: 12,
-            paddingRight: 8
-        }));
-
-        const switchButton = cont.children.push(am5.Button.new(mainChartRoot, {
-            themeTags: ["switch"],
-            centerY: am5.p50,
-            icon: am5.Circle.new(mainChartRoot, {
-                themeTags: ["icon"]
-            })
-        }));
-
-        switchButton.on("active", function () {
-            isPercentMode = switchButton.get("active");
-            
-            if (isPercentMode) {
-                // Switch to Evolution Mode (Percent from Start)
-                yAxis.set("numberFormat", "#'%s'"); // Show % on axis
-                chart.series.each(function (series) {
-                    series.set("valueYShow", "valueYChangePercent");
-                });
-            } else {
-                // Switch back to Absolute Mode
-                yAxis.set("numberFormat", currentChartMode === 'faturamento' ? "#.0a" : "#.0' Ton'");
-
-                // Explicitly clear min/max to ensure auto-scaling recalculates correctly
-                yAxis.set("min", null);
-                yAxis.set("max", null);
-
-                chart.series.each(function (series) {
-                    series.set("valueYShow", "value");
-                });
-            }
-        });
-
-        cont.children.push(
-            am5.Label.new(mainChartRoot, {
-                centerY: am5.p50,
-                text: "Evolução %",
-                fill: colors.text,
-                fontSize: 12,
-                paddingLeft: 8
-            })
-        );
-
-        // Animate
-        chart.appear(1000, 100);
-    }
-    // Expose for testing
-    if (typeof window !== 'undefined') {
-        window.renderMainChartAmCharts = renderMainChartAmCharts;
-    }
-
-    // Override renderDashboard to use new chart
-    function renderDashboard(data) {
-        // Init Holidays
-        holidays = data.holidays || [];
-        
-        // ... (Keep existing KPI rendering logic) ...
-        document.getElementById('kpi-clients-attended').textContent = data.kpi_clients_attended.toLocaleString('pt-BR');
-        const baseEl = document.getElementById('kpi-clients-base');
-        if (data.kpi_clients_base > 0) {
-            baseEl.textContent = `de ${data.kpi_clients_base.toLocaleString('pt-BR')} na base`;
-            baseEl.classList.remove('hidden');
-        } else { baseEl.classList.add('hidden'); }
-
-        let currentData = data.monthly_data_current || [];
-        let previousData = data.monthly_data_previous || [];
-        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        const targetIndex = data.target_month_index;
-
-        // KPI Calculation Variables (Standard Logic)
-        let currFat, currKg, prevFat, prevKg; 
-        let kpiTitleFat, kpiTitleKg;
-        
-        if (anoFilter.value !== 'todos' && mesFilter.value === '') {
-            // SCENARIO A: Year Selected, Month All
-            const sumData = (dataset, useTrend) => {
-                let sumFat = 0, sumKg = 0;
-                dataset.forEach(d => {
-                    if (useTrend && data.trend_allowed && data.trend_data && d.month_index === data.trend_data.month_index) {
-                        sumFat += data.trend_data.faturamento;
-                        sumKg += data.trend_data.peso;
-                    } else {
-                        sumFat += d.faturamento;
-                        sumKg += d.peso;
-                    }
-                });
-                return { faturamento: sumFat, peso: sumKg };
-            };
-            const currSums = sumData(currentData, true);
-            const prevSums = sumData(previousData, false);
-
-            if (data.trend_allowed && data.trend_data) {
-                const monthsPassed = data.trend_data.month_index + 1;
-                currFat = (currSums.faturamento / monthsPassed) * 12;
-                currKg = (currSums.peso / monthsPassed) * 12;
-            } else {
-                currFat = currSums.faturamento;
-                currKg = currSums.peso;
-            }
-            prevFat = prevSums.faturamento;
-            prevKg = prevSums.peso;
-            kpiTitleFat = `Tend. FAT ${data.current_year} vs Ano Ant.`;
-            kpiTitleKg = `Tend. TON ${data.current_year} vs Ano Ant.`;
-        } else {
-            // SCENARIO B: Month vs Month
-            if (mesFilter.value !== '') {
-                const selectedMonthIndex = parseInt(mesFilter.value);
-                currentData = currentData.filter(d => d.month_index === selectedMonthIndex);
-                previousData = previousData.filter(d => d.month_index === selectedMonthIndex);
-            }
-            const currMonthData = currentData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
-            const prevMonthData = previousData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
-            
-            const getTrendValue = (key, baseValue) => (data.trend_allowed && data.trend_data && data.trend_data.month_index === targetIndex) ? (data.trend_data[key] || 0) : baseValue;
-            
-            currFat = getTrendValue('faturamento', currMonthData.faturamento);
-            currKg = getTrendValue('peso', currMonthData.peso);
-            prevFat = prevMonthData.faturamento;
-            prevKg = prevMonthData.peso;
-            
-            const mName = monthNames[targetIndex]?.toUpperCase() || "";
-            kpiTitleFat = `Tend. FAT ${mName} vs Ano Ant.`;
-            kpiTitleKg = `Tend. TON ${mName} vs Ano Ant.`;
-        }
-
-        // --- Quarterly KPI Logic (Trend vs Previous Quarter Avg) ---
-        // Logic:
-        // 1. Identify Current Reference Month (Last Sales Month or Selected Month)
-        // 2. Identify 3 Preceding Months
-        // 3. Calculate Sum of those 3 months / 3
-        // 4. Compare Current Trend vs that Average
-
-        let quarterAvgFat = 0;
-        let quarterAvgKg = 0;
-
-        // Find reference month index (0-11)
-        let refMonthIdx = -1;
-        if (mesFilter.value !== '') {
-            refMonthIdx = parseInt(mesFilter.value);
-        } else if (data.trend_allowed && data.trend_data) {
-            refMonthIdx = data.trend_data.month_index;
-        } else {
-            // Use max available month in current data
-            const maxM = Math.max(...currentData.map(d => d.month_index), -1);
-            if (maxM >= 0) refMonthIdx = maxM;
-        }
-
-        if (refMonthIdx >= 0) {
-            // Calculate indices of 3 previous months (handling loop back to previous year logic if needed,
-            // but we only have current/prev year data usually loaded in arrays).
-            // Actually, we usually only have Jan-Dec of Current Year in 'currentData'.
-            // If refMonth is Jan (0), prev 3 are Oct, Nov, Dec of PREVIOUS year.
-            // If refMonth is Mar (2), prev 3 are Dec (Prev), Jan (Curr), Feb (Curr).
-
-            const getMonthData = (yearType, mIdx) => {
-                const ds = yearType === 'current' ? currentData : previousData;
-                return ds.find(d => d.month_index === mIdx) || { faturamento: 0, peso: 0 };
-            };
-
-            let sumFat = 0;
-            let sumKg = 0;
-            let count = 0;
-
-            for (let i = 1; i <= 3; i++) {
-                let targetIdx = refMonthIdx - i;
-                let yearType = 'current';
-
-                if (targetIdx < 0) {
-                    targetIdx += 12;
-                    yearType = 'previous';
-                }
-
-                const d = getMonthData(yearType, targetIdx);
-                sumFat += d.faturamento;
-                sumKg += d.peso;
-                count++;
-            }
-
-            if (count > 0) {
-                quarterAvgFat = sumFat / count;
-                quarterAvgKg = sumKg / count;
-            }
-        }
-
-        const calcEvo = (curr, prev) => prev > 0 ? ((curr / prev) - 1) * 100 : (curr > 0 ? 100 : 0);
-
-        // --- KPI Updates ---
-        // Calc indicators for table (Perda/Devolução)
-        const processIndicators = (d) => {
-            const fat = d.faturamento || 0;
-            const fatBase = d.total_sold_base || fat; // Use specific base if available, else fat
-            d.perc_perda = fatBase > 0 ? (d.bonificacao / fatBase) * 100 : null;
-            d.perc_devolucao = fatBase > 0 ? (d.devolucao / fatBase) * 100 : null;
-        };
-        currentData.forEach(processIndicators);
-        previousData.forEach(processIndicators);
-        if (data.trend_data) processIndicators(data.trend_data);
-
-        // Update Primary KPIs (Year/Month vs Prev Year)
-        updateKpiCard({ prefix: 'fat', trendVal: currFat, prevVal: prevFat, fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), calcEvo });
-        updateKpiCard({ prefix: 'kg', trendVal: currKg, prevVal: prevKg, fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Ton`, calcEvo });
-
-        // Update Quarterly KPIs (Trend vs Prev Quarter)
-        updateKpiCard({ prefix: 'tri-fat', trendVal: currFat, prevVal: quarterAvgFat, fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), calcEvo });
-        updateKpiCard({ prefix: 'tri-kg', trendVal: currKg, prevVal: quarterAvgKg, fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Ton`, calcEvo });
-
-        // Update Titles
-        document.getElementById('kpi-title-evo-ano-fat').textContent = kpiTitleFat;
-        document.getElementById('kpi-title-evo-ano-kg').textContent = kpiTitleKg;
-
-        // --- Secondary KPIs Logic (Bonification, Devolution, Mix) ---
-        // Sums for Bonification/Devolution (Year View = Sum All, Month View = Single Month)
-        let totalBonif = 0;
-        let totalDevol = 0;
-        let totalFatBase = 0;
-        let mixPdv = 0;
-        let mixPdvPrev = 0;
-
-        // Helper to sum
-        const sumSec = (ds) => {
-            let b = 0, d = 0, f = 0;
-            ds.forEach(item => {
-                const isFatMode = currentChartMode === 'faturamento';
-                // For Bonif/Devol, we use values from item
-                // Base Faturamento for % calculation
-                b += (item.bonificacao || 0);
-                d += (item.devolucao || 0);
-                // "Faturamento" is the denominator for % Perda
-                // item.total_sold_base is usually "Faturamento Real" excluding bonificacao
-                // But RPC returns faturamento as total. Let's use item.faturamento.
-                f += (item.faturamento || 0);
-            });
-            return { b, d, f };
-        };
-
-        // Determine Dataset for Secondary KPIs
-        // If Trend Allowed and Year View -> Includes Trend Data?
-        // Usually Secondary KPIs show "Realized" or "Projected"?
-        // Let's use Projected if Trend Allowed.
-
-        let secDataset = [...currentData];
-        if (data.trend_allowed && data.trend_data && (mesFilter.value === '' || parseInt(mesFilter.value) === data.trend_data.month_index)) {
-            // Remove the partial month if it exists in dataset (usually it does as last item)
-            // and replace/add trend data
-            secDataset = secDataset.filter(d => d.month_index !== data.trend_data.month_index);
-            secDataset.push(data.trend_data);
-        }
-
-        const secSums = sumSec(secDataset);
-        totalBonif = secSums.b;
-        totalDevol = secSums.d;
-        totalFatBase = secSums.f;
-
-        // Mix PDV: Weighted Average or Last Value?
-        // Usually Mix is "Average Monthly Mix" for Year View.
-        if (secDataset.length > 0) {
-            const sumMix = secDataset.reduce((acc, d) => acc + (d.mix_pdv || 0), 0);
-            mixPdv = sumMix / secDataset.length;
-        }
-
-        // Previous Period for Secondary (Year vs Year or Month vs Month)
-        let prevSecDataset = [...previousData];
-        const prevSecSums = sumSec(prevSecDataset);
-        let prevTotalBonif = prevSecSums.b;
-        let prevTotalDevol = prevSecSums.d;
-        let prevTotalFatBase = prevSecSums.f;
-
-        if (prevSecDataset.length > 0) {
-            const sumMixPrev = prevSecDataset.reduce((acc, d) => acc + (d.mix_pdv || 0), 0);
-            mixPdvPrev = sumMixPrev / prevSecDataset.length;
-        }
-
-        // --- Render Secondary KPIs ---
-
-        // 1. Bonificação
-        const bonifElVal = document.getElementById('kpi-bonif-val');
-        const bonifElPerc = document.getElementById('kpi-bonif-perc');
-        const bonifElSec = document.getElementById('kpi-bonif-sec');
-
-        if (bonifElVal) bonifElVal.textContent = totalBonif.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        if (bonifElPerc) {
-            const perc = totalFatBase > 0 ? (totalBonif / totalFatBase) * 100 : 0;
-            bonifElPerc.textContent = `${perc.toFixed(1)}%`;
-            bonifElPerc.className = `text-lg font-bold ${perc > 5 ? 'text-red-400' : 'text-white'}`; // Alert if > 5%
-        }
-        if (bonifElSec) bonifElSec.textContent = `Fat: ${totalFatBase.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
-
-        // 2. Variação Bonificação (vs Previous)
-        const bonifVarElVal = document.getElementById('kpi-bonif-var-val');
-        const bonifVarElPerc = document.getElementById('kpi-bonif-var-perc');
-        const bonifVarElSec = document.getElementById('kpi-bonif-var-sec');
-
-        const diffBonif = totalBonif - prevTotalBonif;
-        const diffBonifPerc = prevTotalBonif > 0 ? (diffBonif / prevTotalBonif) * 100 : 0;
-
-        if (bonifVarElVal) bonifVarElVal.textContent = diffBonif.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        if (bonifVarElPerc) {
-            bonifVarElPerc.innerHTML = fmtVar(diffBonifPerc);
-        }
-        if (bonifVarElSec) bonifVarElSec.textContent = `Ant: ${prevTotalBonif.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
-
-        // 3. Devolução
-        const devolElVal = document.getElementById('kpi-devol-val');
-        const devolElPerc = document.getElementById('kpi-devol-perc');
-        const devolElSec = document.getElementById('kpi-devol-sec');
-
-        if (devolElVal) devolElVal.textContent = totalDevol.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        if (devolElPerc) {
-            const perc = totalFatBase > 0 ? (totalDevol / totalFatBase) * 100 : 0;
-            devolElPerc.textContent = `${perc.toFixed(1)}%`;
-            devolElPerc.className = `text-lg font-bold ${perc > 2 ? 'text-red-400' : 'text-white'}`;
-        }
-        if (devolElSec) devolElSec.textContent = `Fat: ${totalFatBase.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
-
-        // 4. Variação Devolução
-        const devolVarElVal = document.getElementById('kpi-devol-var-val');
-        const devolVarElPerc = document.getElementById('kpi-devol-var-perc');
-        const devolVarElSec = document.getElementById('kpi-devol-var-sec');
-
-        const diffDevol = totalDevol - prevTotalDevol;
-        const diffDevolPerc = prevTotalDevol > 0 ? (diffDevol / prevTotalDevol) * 100 : 0;
-
-        if (devolVarElVal) devolVarElVal.textContent = diffDevol.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        if (devolVarElPerc) {
-            devolVarElPerc.innerHTML = fmtVar(diffDevolPerc); // Use existing fmtVar helper
-        }
-        if (devolVarElSec) devolVarElSec.textContent = `Ant: ${prevTotalDevol.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
-
-        // 5. Mix PDV
-        const mixElVal = document.getElementById('kpi-mix-val');
-        const mixElPerc = document.getElementById('kpi-mix-perc');
-        const mixElSec = document.getElementById('kpi-mix-sec');
-
-        if (mixElVal) mixElVal.textContent = mixPdv.toFixed(2);
-        if (mixElSec) mixElSec.textContent = mixPdvPrev.toFixed(2);
-        if (mixElPerc) {
-            const diffMix = mixPdv - mixPdvPrev;
-            const diffMixPerc = mixPdvPrev > 0 ? (diffMix / mixPdvPrev) * 100 : 0;
-            mixElPerc.innerHTML = fmtVar(diffMixPerc);
-        }
-
-        // --- NEW AMCHARTS RENDERING ---
-        const mainChartTitle = document.getElementById('main-chart-title');
-        const isBonifMode = isBonificationMode(getCurrentFilters().p_tipovenda);
-        if (currentChartMode === 'faturamento') {
-            mainChartTitle.textContent = isBonifMode ? "BONIFICADO MENSAL" : "FATURAMENTO MENSAL";
-        } else {
-            mainChartTitle.textContent = "TONELAGEM MENSAL";
-        }
-
-        renderMainChartAmCharts(data); // Call new chart function
-
-        updateTable(data.monthly_data_current || [], data.monthly_data_previous || [], data.current_year, data.previous_year, data.trend_allowed ? data.trend_data : null);
-    }
-
-
-async function fetchCityBranchMap() {
+    // --- Config City Branches Logic ---
+    async function fetchCityBranchMap() {
         const { data, error } = await supabase.from('config_city_branches').select('cidade, filial');
         if (error) {
             console.error("Erro ao buscar mapa de cidades:", error);
@@ -1295,7 +911,7 @@ async function fetchCityBranchMap() {
             return;
         }
         uploaderModal.classList.remove('hidden');
-        // closeSidebar(); // Removed as sidebar is deprecated
+        closeSidebar();
         checkMissingBranches();
     });
 
@@ -1626,8 +1242,7 @@ async function fetchCityBranchMap() {
 
 
     // Boxes Logic
-    
-let boxesFilterDebounceTimer;
+    let boxesFilterDebounceTimer;
     let boxesSelectedFiliais = [];
     let boxesSelectedCidades = [];
     let boxesSelectedSupervisores = [];
@@ -1990,6 +1605,11 @@ let boxesFilterDebounceTimer;
         const calcVar = (curr, prev) => {
             if (prev > 0) return ((curr / prev) - 1) * 100;
             return curr > 0 ? 100 : 0;
+        };
+        const fmtVar = (v) => {
+            const cls = v >= 0 ? 'text-emerald-400' : 'text-red-400';
+            const sign = v > 0 ? '+' : '';
+            return `<span class="${cls}">${sign}${v.toFixed(1)}%</span>`;
         };
 
         // Determine View Mode (Year vs Month)
@@ -2511,30 +2131,6 @@ let boxesFilterDebounceTimer;
     anoFilter.onchange = handleFilterChange;
     mesFilter.onchange = handleFilterChange;
 
-    if (clearFiltersBtn) {
-        clearFiltersBtn.addEventListener('click', async () => {
-            // Reset UI elements
-            anoFilter.value = 'todos';
-            mesFilter.value = '';
-
-            // Reset State Variables
-            selectedFiliais = [];
-            selectedCidades = [];
-            selectedSupervisores = [];
-            selectedVendedores = [];
-            selectedFornecedores = [];
-            selectedTiposVenda = [];
-            selectedRedes = [];
-            selectedCategorias = [];
-
-            // Trigger Reload
-            showDashboardLoading();
-            const filters = getCurrentFilters();
-            await loadFilters(filters);
-            await loadMainDashboardData();
-        });
-    }
-
     // Unified Fetch & Cache Logic
     async function fetchDashboardData(filters, isBackground = false, forceRefresh = false) {
         const cacheKey = generateCacheKey('dashboard_data', filters);
@@ -2782,6 +2378,481 @@ let boxesFilterDebounceTimer;
         // Schedule next task with a delay to yield to main thread (UI responsiveness)
         setTimeout(processQueue, 500); 
     }
+
+    function renderDashboard(data) {
+        // Init Holidays
+        holidays = data.holidays || [];
+        // Calendar is now rendered on modal open
+
+        document.getElementById('kpi-clients-attended').textContent = data.kpi_clients_attended.toLocaleString('pt-BR');
+        const baseEl = document.getElementById('kpi-clients-base');
+        if (data.kpi_clients_base > 0) {
+            baseEl.textContent = `de ${data.kpi_clients_base.toLocaleString('pt-BR')} na base`;
+            baseEl.classList.remove('hidden');
+        } else { baseEl.classList.add('hidden'); }
+
+        let currentData = data.monthly_data_current || [];
+        let previousData = data.monthly_data_previous || [];
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        const targetIndex = data.target_month_index;
+
+        // KPI Calculation Variables
+        let currFat, currKg, prevFat, prevKg, triAvgFat, triAvgPeso;
+        let kpiTitleFat, kpiTitleKg;
+        
+        // --- KPI LOGIC (Scenario Check) ---
+        if (anoFilter.value !== 'todos' && mesFilter.value === '') {
+            // SCENARIO A: Year Selected, Month All -> Show Year vs Previous Year (Accumulated)
+            
+            const sumData = (dataset, useTrend) => {
+                let sumFat = 0; 
+                let sumKg = 0;
+                // Sum available months (0 to 11)
+                dataset.forEach(d => {
+                    // Check if this month is the trend month and use trend data if applicable
+                    if (useTrend && data.trend_allowed && data.trend_data && d.month_index === data.trend_data.month_index) {
+                        sumFat += data.trend_data.faturamento;
+                        sumKg += data.trend_data.peso;
+                    } else {
+                        sumFat += d.faturamento;
+                        sumKg += d.peso;
+                    }
+                });
+                return { faturamento: sumFat, peso: sumKg };
+            };
+
+            const currSums = sumData(currentData, true);
+            const prevSums = sumData(previousData, false);
+
+            // Logic for Annual Trend Projection (Current Year Only)
+            if (data.trend_allowed && data.trend_data) {
+                // Formula: (Accumulated YTD + Projected Current Month) / (Months Passed) * 12
+                // Note: sumData already includes the Projected Current Month if trend_allowed is true.
+                const monthsPassed = data.trend_data.month_index + 1;
+
+                currFat = (currSums.faturamento / monthsPassed) * 12;
+                currKg = (currSums.peso / monthsPassed) * 12;
+            } else {
+                currFat = currSums.faturamento;
+                currKg = currSums.peso;
+            }
+
+            prevFat = prevSums.faturamento;
+            prevKg = prevSums.peso;
+            
+            kpiTitleFat = `Tend. FAT ${data.current_year} vs Ano Ant.`;
+            kpiTitleKg = `Tend. TON ${data.current_year} vs Ano Ant.`;
+
+        } else {
+            // SCENARIO B: Default (Month vs Month or Filtered Month)
+            
+            if (mesFilter.value !== '') {
+                const selectedMonthIndex = parseInt(mesFilter.value);
+                currentData = currentData.filter(d => d.month_index === selectedMonthIndex);
+                previousData = previousData.filter(d => d.month_index === selectedMonthIndex);
+            }
+
+            const currMonthData = currentData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
+            const prevMonthData = previousData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
+
+            // Helper for Trend Logic
+            const getTrendValue = (key, baseValue) => {
+                if (data.trend_allowed && data.trend_data && data.trend_data.month_index === targetIndex) {
+                    return data.trend_data[key] || 0;
+                }
+                return baseValue;
+            };
+
+            currFat = getTrendValue('faturamento', currMonthData.faturamento);
+            currKg = getTrendValue('peso', currMonthData.peso);
+            prevFat = prevMonthData.faturamento;
+            prevKg = prevMonthData.peso;
+
+            const mName = monthNames[targetIndex]?.toUpperCase() || "";
+            kpiTitleFat = `Tend. FAT ${mName} vs Ano Ant.`;
+            kpiTitleKg = `Tend. TON ${mName} vs Ano Ant.`;
+        }
+
+        // Variation Calc
+        const calcEvo = (curr, prev) => prev > 0 ? ((curr / prev) - 1) * 100 : (curr > 0 ? 100 : 0);
+
+        // --- KPI Updates ---
+        // Calc indicators for table (Perda/Devolução)
+        const processIndicators = (d) => {
+            const fat = d.faturamento || 0;
+            const fatBase = d.total_sold_base || fat; // Use specific base if available, else fat
+            d.perc_perda = fatBase > 0 ? (d.bonificacao / fatBase) * 100 : null;
+            d.perc_devolucao = fatBase > 0 ? (d.devolucao / fatBase) * 100 : null;
+        };
+        currentData.forEach(processIndicators);
+        previousData.forEach(processIndicators);
+        if (data.trend_data) processIndicators(data.trend_data);
+
+        // --- NEW KPIs (Bonification, Devolution, Mix) ---
+        try {
+            // Calculate Totals for Selected Period
+            let kpiBonifCurr = 0, kpiBonifPrev = 0;
+            let kpiDevolCurr = 0, kpiDevolPrev = 0;
+            let kpiMixCurr = 0, kpiMixPrev = 0;
+            let kpiTotalSoldBaseCurr = 0;
+
+            let kpiMixCountCurr = 0, kpiMixCountPrev = 0;
+
+            // Current Period Aggregation
+            const aggCurrent = (d) => {
+                kpiBonifCurr += (d.bonificacao || 0);
+                kpiDevolCurr += (d.devolucao || 0);
+                // Use total_sold_base if available, else fallback to faturamento
+                kpiTotalSoldBaseCurr += (d.total_sold_base !== undefined ? d.total_sold_base : (d.faturamento || 0));
+                if (d.mix_pdv > 0) { kpiMixCurr += d.mix_pdv; kpiMixCountCurr++; }
+            };
+
+            // Previous Period Aggregation
+            const aggPrevious = (d) => {
+                kpiBonifPrev += (d.bonificacao || 0);
+                kpiDevolPrev += (d.devolucao || 0);
+                if (d.mix_pdv > 0) { kpiMixPrev += d.mix_pdv; kpiMixCountPrev++; }
+            };
+
+            // Use filtered month data if month selected, otherwise all months
+            const activeCurrentData = (mesFilter.value !== '') ? currentData.filter(d => d.month_index === targetIndex) : currentData;
+            // Logic for Previous: If Month selected, compare to same month prev year. If Year selected, compare to full prev year.
+            const activePreviousData = (mesFilter.value !== '') ? previousData.filter(d => d.month_index === targetIndex) : previousData;
+
+            // Handle Trend for Current Year/Month
+            activeCurrentData.forEach(d => {
+                // If viewing Year and this is the trend month, use trend data
+                if (data.trend_allowed && data.trend_data && d.month_index === data.trend_data.month_index) {
+                    aggCurrent(data.trend_data);
+                } else {
+                    aggCurrent(d);
+                }
+            });
+            activePreviousData.forEach(aggPrevious);
+
+            // Averages for Mix
+            const avgMixCurr = kpiMixCountCurr > 0 ? kpiMixCurr / kpiMixCountCurr : 0;
+            const avgMixPrev = kpiMixCountPrev > 0 ? kpiMixPrev / kpiMixCountPrev : 0;
+
+            // Calculate Percentages
+            const percBonif = kpiTotalSoldBaseCurr > 0 ? (kpiBonifCurr / kpiTotalSoldBaseCurr) * 100 : 0;
+            const percDevol = kpiTotalSoldBaseCurr > 0 ? (kpiDevolCurr / kpiTotalSoldBaseCurr) * 100 : 0;
+
+            const varBonif = calcEvo(kpiBonifCurr, kpiBonifPrev);
+            const varDevol = calcEvo(kpiDevolCurr, kpiDevolPrev);
+            const varMix = calcEvo(avgMixCurr, avgMixPrev);
+
+            // Render New KPIs
+            const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const fmtPerc = (v) => `${(isNaN(v) ? 0 : v).toFixed(1)}%`;
+
+            // 1. Bonification
+            document.getElementById('kpi-bonif-val').textContent = fmtBRL(kpiBonifCurr);
+            const elBonifPerc = document.getElementById('kpi-bonif-perc');
+            elBonifPerc.textContent = fmtPerc(percBonif);
+            elBonifPerc.className = `text-lg font-bold ${percBonif <= 1.5 ? 'text-emerald-400' : 'text-red-400'}`;
+            document.getElementById('kpi-bonif-sec').textContent = fmtBRL(kpiTotalSoldBaseCurr);
+
+            // Update Corner Types (05, 11) - Defensive check
+            const safeTypes = (typeof selectedTiposVenda !== 'undefined' && Array.isArray(selectedTiposVenda)) ? selectedTiposVenda : [];
+            const types = safeTypes.filter(t => t === '5' || t === '11').sort().join(' e ');
+            const typeLabel = types ? types : '05 e 11';
+            document.getElementById('kpi-bonif-types').textContent = typeLabel;
+            document.getElementById('kpi-bonif-var-types').textContent = typeLabel;
+
+            // 2. Bonification Variation
+            document.getElementById('kpi-bonif-var-val').textContent = fmtBRL(kpiBonifCurr);
+            const elBonifVarPerc = document.getElementById('kpi-bonif-var-perc');
+            elBonifVarPerc.textContent = `${varBonif > 0 ? '+' : ''}${varBonif.toFixed(1)}%`;
+            elBonifVarPerc.className = `text-lg font-bold ${varBonif <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+            document.getElementById('kpi-bonif-var-sec').textContent = fmtBRL(kpiBonifPrev);
+
+            // 3. Devolução
+            document.getElementById('kpi-devol-val').textContent = fmtBRL(kpiDevolCurr);
+            const elDevolPerc = document.getElementById('kpi-devol-perc');
+            elDevolPerc.textContent = fmtPerc(percDevol);
+            elDevolPerc.className = `text-lg font-bold ${percDevol > 0 ? 'text-red-400' : 'text-emerald-400'}`;
+            document.getElementById('kpi-devol-sec').textContent = fmtBRL(kpiTotalSoldBaseCurr);
+
+            // 4. Devolução Variation
+            document.getElementById('kpi-devol-var-val').textContent = fmtBRL(kpiDevolCurr);
+            const elDevolVarPerc = document.getElementById('kpi-devol-var-perc');
+            elDevolVarPerc.textContent = `${varDevol > 0 ? '+' : ''}${varDevol.toFixed(1)}%`;
+            elDevolVarPerc.className = `text-lg font-bold ${varDevol <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+            document.getElementById('kpi-devol-var-sec').textContent = fmtBRL(kpiDevolPrev);
+
+            // 5. Mix PDV
+            document.getElementById('kpi-mix-val').textContent = avgMixCurr.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const elMixPerc = document.getElementById('kpi-mix-perc');
+            elMixPerc.textContent = `${varMix > 0 ? '+' : ''}${varMix.toFixed(1)}%`;
+            elMixPerc.className = `text-lg font-bold ${varMix >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+            document.getElementById('kpi-mix-sec').textContent = avgMixPrev.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        } catch (err) {
+            console.error('Error updating new KPIs:', err);
+        }
+
+        updateKpiCard({
+            prefix: 'fat',
+            trendVal: currFat,
+            prevVal: prevFat,
+            fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+            calcEvo
+        });
+        
+        updateKpiCard({
+            prefix: 'kg',
+            trendVal: currKg,
+            prevVal: prevKg,
+            fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Ton`,
+            calcEvo
+        });
+
+        // --- KPI Month vs Trimester (Keep standard logic based on target month) ---
+        let triSumFat = 0, triSumPeso = 0, triCount = 0;
+        for (let i = 1; i <= 3; i++) {
+            const idx = targetIndex - i;
+            let mData;
+            if (idx >= 0) {
+                mData = data.monthly_data_current.find(d => d.month_index === idx);
+            } else {
+                const prevIdx = 12 + idx;
+                mData = data.monthly_data_previous.find(d => d.month_index === prevIdx);
+            }
+            if (mData) { triSumFat += mData.faturamento; triSumPeso += mData.peso; triCount++; }
+        }
+        triAvgFat = triCount > 0 ? triSumFat / triCount : 0;
+        triAvgPeso = triCount > 0 ? triSumPeso / triCount : 0;
+
+        let currMonthFatForTri, currMonthKgForTri;
+        
+        if (anoFilter.value !== 'todos' && mesFilter.value === '') {
+             // In Year View, we still want the Tri card to make sense (Current Month vs Tri).
+             // Let's re-fetch the specific current month data for the Tri calculation.
+             const cMonthData = data.monthly_data_current.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
+             if (data.trend_allowed && data.trend_data && data.trend_data.month_index === targetIndex) {
+                 currMonthFatForTri = data.trend_data.faturamento;
+                 currMonthKgForTri = data.trend_data.peso;
+             } else {
+                 currMonthFatForTri = cMonthData.faturamento;
+                 currMonthKgForTri = cMonthData.peso;
+             }
+        } else {
+             // In Month View, currFat is already the monthly value
+             currMonthFatForTri = currFat;
+             currMonthKgForTri = currKg;
+        }
+
+        updateKpiCard({
+            prefix: 'tri-fat',
+            trendVal: currMonthFatForTri,
+            prevVal: triAvgFat,
+            fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+            calcEvo
+        });
+
+        updateKpiCard({
+            prefix: 'tri-kg',
+            trendVal: currMonthKgForTri,
+            prevVal: triAvgPeso,
+            fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Ton`,
+            calcEvo
+        });
+
+        const mName = monthNames[targetIndex]?.toUpperCase() || "";
+        
+        // Update Titles
+        document.getElementById('kpi-title-evo-ano-fat').textContent = kpiTitleFat;
+        document.getElementById('kpi-title-evo-ano-kg').textContent = kpiTitleKg;
+        document.getElementById('kpi-title-evo-tri-fat').textContent = `Tend. FAT ${mName} vs Trim. Ant.`;
+        document.getElementById('kpi-title-evo-tri-kg').textContent = `Tend. TON ${mName} vs Trim. Ant.`;
+
+        // --- CHART PREP (Responsive to Mode) ---
+        const mainChartTitle = document.getElementById('main-chart-title');
+        
+        // Determine Bonification Mode
+        const isBonifMode = isBonificationMode(getCurrentFilters().p_tipovenda);
+
+        // Data Mapping Helper based on Mode
+        const getDataValue = (d) => {
+            if (isBonifMode && currentChartMode === 'faturamento') return d.bonificacao;
+            return currentChartMode === 'faturamento' ? d.faturamento : d.peso;
+        };
+        
+        // Formatters
+        const currencyFormatter = (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''));
+        const weightFormatter = (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
+        const currentFormatter = currentChartMode === 'faturamento' ? currencyFormatter : weightFormatter;
+
+        if (currentChartMode === 'faturamento') {
+            mainChartTitle.textContent = isBonifMode ? "BONIFICADO MENSAL" : "FATURAMENTO MENSAL";
+        } else {
+            mainChartTitle.textContent = "TONELAGEM MENSAL";
+        }
+
+        const mapTo12 = (arr) => { 
+            const res = new Array(12).fill(0); 
+            arr.forEach(d => res[d.month_index] = getDataValue(d)); 
+            return res; 
+        };
+        
+        const datasets = [];
+
+        datasets.push({ label: `Ano ${data.previous_year}`, data: mapTo12(previousData), isPrevious: true });
+        datasets.push({ label: `Ano ${data.current_year}`, data: mapTo12(currentData), isCurrent: true });
+
+        // Trend Logic (Chart)
+        if (data.trend_allowed && data.trend_data) {
+            const trendArray = new Array(13).fill(null); // Increased to 13 to separate trend
+            // Pad previous datasets to 13
+            datasets.forEach(ds => ds.data.push(null));
+            
+            trendArray[12] = getDataValue(data.trend_data); // Use 13th slot
+            
+            datasets.push({ 
+                label: `Tendência ${monthNames[data.trend_data.month_index]}`, 
+                data: trendArray,
+                isTrend: true 
+            });
+        }
+
+        const chartLabels = [...monthNames];
+        if (data.trend_allowed) chartLabels.push('Tendência');
+
+        createChart('main-chart', 'bar', chartLabels, datasets, currentFormatter);
+        updateTable(currentData, previousData, data.current_year, data.previous_year, data.trend_allowed ? data.trend_data : null);
+    }
+
+    function updateKpi(id, value) {
+        const el = document.getElementById(id);
+        if(!el) return;
+        el.textContent = `${value.toFixed(1)}%`;
+        el.className = `text-2xl font-bold ${value >= 0 ? 'text-green-400' : 'text-red-400'}`;
+    }
+
+    function updateKpiCard({ prefix, trendVal, prevVal, fmt, calcEvo }) {
+        const evo = calcEvo(trendVal, prevVal);
+        
+        const elTrend = document.getElementById(`kpi-value-trend-${prefix}`);
+        const elPrev = document.getElementById(`kpi-value-prev-${prefix}`);
+        const elVar = document.getElementById(`kpi-var-${prefix}`);
+
+        if (elTrend) elTrend.textContent = fmt(trendVal);
+        if (elPrev) elPrev.textContent = fmt(prevVal);
+        if (elVar) {
+            elVar.textContent = `${evo > 0 ? '+' : ''}${evo.toFixed(1)}%`;
+            elVar.className = `font-bold ${evo >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+        }
+    }
+
+    function createChart(canvasId, type, labels, datasetsData, formatterVal) {
+        const container = document.getElementById(canvasId + 'Container');
+        if (!container) return;
+        container.innerHTML = '';
+        const newCanvas = document.createElement('canvas');
+        newCanvas.id = canvasId;
+        container.appendChild(newCanvas);
+
+        const ctx = newCanvas.getContext('2d');
+        const professionalPalette = { 'current': '#06b6d4', 'previous': '#f97316', 'trend': '#8b5cf6' };
+
+        const datasets = datasetsData.map((d, i) => {
+            let color = '#94a3b8'; // default
+            if (d.isPrevious) color = professionalPalette.previous;
+            if (d.isCurrent) color = professionalPalette.current;
+            if (d.isTrend) color = professionalPalette.trend;
+            
+            return {
+                ...d,
+                label: d.label,
+                data: d.data,
+                backgroundColor: d.backgroundColor || color,
+                borderColor: d.borderColor || color,
+                borderWidth: 1,
+                skipNull: true
+            };
+        });
+
+        if (currentCharts[canvasId]) currentCharts[canvasId].destroy();
+
+        currentCharts[canvasId] = new Chart(ctx, {
+            type: type,
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#cbd5e1' } },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        offset: 4,
+                        color: '#cbd5e1',
+                        font: { size: 9, weight: 'bold' },
+                        formatter: formatterVal || ((v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : '')))
+                    }
+                },
+                scales: {
+                    y: { 
+                        ticks: { color: '#94a3b8' }, 
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        afterFit: (axis) => { axis.width = 150; } // Force Y-axis width to match table first column
+                    },
+                    x: { 
+                        ticks: { color: '#94a3b8' }, 
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' } 
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    }
+
+    function updateTable(currData, prevData, currYear, prevYear, trendData) {
+        const tableBody = document.getElementById('monthly-summary-table-body');
+        const tableHead = document.querySelector('#monthly-summary-table thead tr');
+        tableBody.innerHTML = '';
+
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        let headerHTML = '<th class="px-2 py-2 text-left">INDICADOR</th>';
+        monthNames.forEach(m => headerHTML += `<th class="px-2 py-2 text-center">${m}</th>`);
+        if (trendData) {
+            headerHTML += `<th class="px-2 py-2 text-center bg-purple-900/30 text-purple-200">Tendência</th>`;
+        }
+        tableHead.innerHTML = headerHTML;
+
+        const indicators = [
+            { name: 'POSITIVAÇÃO', key: 'positivacao', fmt: v => v.toLocaleString('pt-BR') },
+            { name: 'FATURAMENTO', key: 'faturamento', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
+            { name: 'Mix PDV', key: 'mix_pdv', fmt: v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+            { name: 'Ticket Médio', key: 'ticket_medio', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
+            { name: 'BONIFICAÇÃO', key: 'bonificacao', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
+            { name: '% Perda', key: 'perc_perda', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
+            { name: 'DEVOLUÇÃO', key: 'devolucao', fmt: v => `<span class="text-red-400">${v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>` },
+            { name: '% Devolução', key: 'perc_devolucao', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
+            { name: 'TON VENDIDA', key: 'peso', fmt: v => `${(v/1000).toFixed(2)} Kg` }
+        ];
+
+        indicators.forEach(ind => {
+            let rowHTML = `<tr class="table-row"><td class="font-bold p-2 text-left">${ind.name}</td>`;
+            for(let i=0; i<12; i++) {
+                const d = currData.find(x => x.month_index === i);
+                let val = d ? d[ind.key] : null;
+                if (val === undefined) val = null;
+                if (val === null && !ind.allowNull) val = 0;
+                rowHTML += `<td class="px-2 py-1.5 text-center">${ind.fmt(val)}</td>`;
+            }
+            if (trendData) {
+                 let tVal = trendData[ind.key];
+                 if (tVal === undefined) tVal = null;
+                 if (tVal === null && !ind.allowNull) tVal = 0;
+                 rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-purple-300 bg-purple-900/20">${ind.fmt(tVal)}</td>`;
+            }
+            rowHTML += '</tr>';
+            tableBody.innerHTML += rowHTML;
+        });
+    }
+
 
     let citySelectedFiliais = [];
     let citySelectedCidades = [];
@@ -4583,155 +4654,4 @@ let boxesFilterDebounceTimer;
                         </tr>`;
             }).join('');
         }
-
-    // --- Helper Functions ---
-    
-    function updateKpiCard({ prefix, trendVal, prevVal, fmt, calcEvo }) {
-        const elMain = document.getElementById(`kpi-value-trend-${prefix}`);
-        if (elMain) elMain.textContent = fmt(trendVal);
-
-        const elPrev = document.getElementById(`kpi-value-prev-${prefix}`);
-        if (elPrev) elPrev.textContent = fmt(prevVal);
-
-        const elVar = document.getElementById(`kpi-var-${prefix}`);
-        if (elVar) {
-            const evo = calcEvo(trendVal, prevVal);
-            elVar.textContent = `${evo > 0 ? '+' : ''}${evo.toFixed(1)}%`;
-            elVar.className = `text-sm font-bold ${evo >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-        }
-    }
-
-    function updateTable(currData, prevData, currYear, prevYear, trendData) {
-        const tableBody = document.getElementById('monthly-summary-table-body');
-        const tableHead = document.querySelector('#monthly-summary-table thead tr');
-        tableBody.innerHTML = '';
-
-        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        let headerHTML = '<th class="px-2 py-2 text-left">INDICADOR</th>';
-        monthNames.forEach(m => headerHTML += `<th class="px-2 py-2 text-center">${m}</th>`);
-        if (trendData) {
-            headerHTML += `<th class="px-2 py-2 text-center bg-purple-900/30 text-purple-200">Tendência</th>`;
-        }
-        tableHead.innerHTML = headerHTML;
-
-        const indicators = [
-            { name: 'POSITIVAÇÃO', key: 'positivacao', fmt: v => v.toLocaleString('pt-BR') },
-            { name: 'FATURAMENTO', key: 'faturamento', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
-            { name: 'Mix PDV', key: 'mix_pdv', fmt: v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
-            { name: 'Ticket Médio', key: 'ticket_medio', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
-            { name: 'BONIFICAÇÃO', key: 'bonificacao', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
-            { name: '% Perda', key: 'perc_perda', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
-            { name: 'DEVOLUÇÃO', key: 'devolucao', fmt: v => `<span class="text-red-400">${v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>` },
-            { name: '% Devolução', key: 'perc_devolucao', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
-            { name: 'TON VENDIDA', key: 'peso', fmt: v => `${(v/1000).toFixed(2)} Kg` }
-        ];
-
-        indicators.forEach(ind => {
-            let rowHTML = `<tr class="table-row"><td class="font-bold p-2 text-left">${ind.name}</td>`;
-            for(let i=0; i<12; i++) {
-                const d = currData.find(x => x.month_index === i);
-                let val = d ? d[ind.key] : null;
-                if (val === undefined) val = null;
-                if (val === null && !ind.allowNull) val = 0;
-                rowHTML += `<td class="px-2 py-1.5 text-center">${ind.fmt(val)}</td>`;
-            }
-            if (trendData) {
-                 let tVal = trendData[ind.key];
-                 if (tVal === undefined) tVal = null;
-                 if (tVal === null && !ind.allowNull) tVal = 0;
-                 rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-purple-300 bg-purple-900/20">${ind.fmt(tVal)}</td>`;
-            }
-            rowHTML += '</tr>';
-            tableBody.innerHTML += rowHTML;
-        });
-    }
-    window.updateTable = updateTable;
-
-    function createChart(chartId, type, labels, datasets, valueFormatter) {
-        const containerId = `${chartId}Container`;
-        const container = document.getElementById(containerId);
-        if (!container) {
-            console.warn(`Container ${containerId} not found for chart ${chartId}`);
-            return;
-        }
-
-        if (currentCharts[chartId]) {
-            currentCharts[chartId].destroy();
-            delete currentCharts[chartId];
-        }
-        
-        container.innerHTML = `<canvas id="${chartId}"></canvas>`;
-        const ctx = document.getElementById(chartId).getContext('2d');
-
-        const fmt = valueFormatter || ((val) => val.toLocaleString('pt-BR'));
-
-        currentCharts[chartId] = new Chart(ctx, {
-            type: type,
-            data: {
-                labels: labels,
-                datasets: datasets
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { color: '#94a3b8' }
-                    },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) label += ': ';
-                                if (context.parsed.y !== null) label += fmt(context.parsed.y);
-                                return label;
-                            }
-                        }
-                    },
-                    datalabels: { display: false }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: '#334155' },
-                        ticks: { color: '#94a3b8', callback: function(value) { return fmt(value); } }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: '#94a3b8' }
-                    }
-                }
-            }
-        });
-    }
-
-    function showNoDataMessage(containerId, message) {
-        const container = document.getElementById(containerId);
-        if (container) {
-            container.innerHTML = `<div class="flex items-center justify-center h-full text-slate-500">${message}</div>`;
-        }
-    }
-
-    function openCalendar() {
-        if (calendarModal) {
-            calendarModal.classList.remove('hidden');
-            renderCalendar();
-        }
-    }
-
-    if (closeCalendarModalBtn) {
-        closeCalendarModalBtn.addEventListener('click', () => {
-            calendarModal.classList.add('hidden');
-        });
-    }
-    if (calendarModalBackdrop) {
-        calendarModalBackdrop.addEventListener('click', () => {
-            calendarModal.classList.add('hidden');
-        });
-    }
-    if (calendarBtn) calendarBtn.addEventListener('click', openCalendar);
-
 });
