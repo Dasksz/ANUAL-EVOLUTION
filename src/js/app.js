@@ -487,6 +487,10 @@ document.addEventListener('DOMContentLoaded', () => {
             mainChartRoot.dispose();
         }
 
+        // 1. Determine Granularity (Daily if month filter active, else Monthly)
+        // Check if daily data arrays exist and are populated
+        const isDaily = (data.daily_data_current && data.daily_data_current.length > 0) || (data.daily_data_previous && data.daily_data_previous.length > 0);
+        
         // Determine Mode (Fat vs Ton) and Bonification
         const isBonifMode = isBonificationMode(getCurrentFilters().p_tipovenda);
         const getDataValue = (d) => {
@@ -510,7 +514,9 @@ document.addEventListener('DOMContentLoaded', () => {
             current: am5.color(0x06b6d4), // Cyan
             trend: am5.color(0x8b5cf6),    // Purple
             text: am5.color(0xcbd5e1),     // Slate-300
-            grid: am5.color(0xffffff)      // White with opacity
+            grid: am5.color(0xffffff),      // White with opacity
+            green: am5.color(0x34d399),    // Emerald
+            red: am5.color(0xf87171)       // Red
         };
 
         // Create Chart
@@ -531,34 +537,76 @@ document.addEventListener('DOMContentLoaded', () => {
         cursor.lineY.set("visible", false);
 
         // Prepare Data
-        // Map Monthly Data to a unified timeframe (e.g., 2000 as a dummy year) to overlay lines
-        const prepareSeriesData = (sourceData, yearLabel) => {
-            return sourceData.map(d => {
-                // d.month_index is 0-11.
-                // Create date object for axis: Year 2000, Month, Day 15 (middle)
-                const date = new Date(2000, d.month_index, 15).getTime();
-                return {
-                    date: date,
-                    value: getDataValue(d),
-                    realYear: yearLabel // For tooltip context
-                };
-            });
-        };
+        let seriesDataPrev = [];
+        let seriesDataCurr = [];
+        let baseInterval = {};
 
-        const seriesDataPrev = prepareSeriesData(data.monthly_data_previous || [], data.previous_year);
-        const seriesDataCurr = prepareSeriesData(data.monthly_data_current || [], data.current_year);
+        if (isDaily) {
+            // DAILY MODE
+            // Map Day of Month (1-31) to a unified month (e.g., Jan 2000) for overlay
+            baseInterval = { timeUnit: "day", count: 1 };
+            
+            const prepareDaily = (sourceData, yearLabel) => {
+                if (!sourceData) return [];
+                return sourceData.map(d => {
+                    // d.day is 1-31
+                    // Create date object: Year 2000, Month 0 (Jan), Day d.day
+                    // We use Jan 2000 as base. 
+                    // Note: Jan has 31 days, so it fits most months. 
+                    // If filtering Feb, we might have issues if we map day 30 to Jan 30? 
+                    // Better to map to the ACTUAL selected month index in year 2000? 
+                    // RPC returns `target_month_index` (0-11).
+                    // Let's use that to be safe with day counts (e.g. Feb 29).
+                    // Or just use Jan 2000 for simplicity if day numbers match?
+                    // Let's use the actual month index but Year 2000.
+                    
+                    const mIdx = data.target_month_index; // 0-11
+                    const date = new Date(2000, mIdx, d.day).getTime();
+                    return {
+                        date: date,
+                        value: getDataValue(d),
+                        realYear: yearLabel,
+                        dayNum: d.day
+                    };
+                });
+            };
+            
+            seriesDataPrev = prepareDaily(data.daily_data_previous, data.previous_year);
+            seriesDataCurr = prepareDaily(data.daily_data_current, data.current_year);
+
+        } else {
+            // MONTHLY MODE
+            // Map 0-11 to Jan-Dec 2000. 
+            // Use 1st of month to reduce start gap, but amCharts date axis might still pad.
+            // We set location to 0.5 to center bars if needed, but for lines, start/end padding matters.
+            baseInterval = { timeUnit: "month", count: 1 };
+            
+            const prepareMonthly = (sourceData, yearLabel) => {
+                if (!sourceData) return [];
+                return sourceData.map(d => {
+                    // d.month_index is 0-11.
+                    // Use 1st of month (hour 12 to avoid TZ shifts)
+                    const date = new Date(2000, d.month_index, 1, 12).getTime();
+                    return {
+                        date: date,
+                        value: getDataValue(d),
+                        realYear: yearLabel,
+                        monthIdx: d.month_index
+                    };
+                });
+            };
+
+            seriesDataPrev = prepareMonthly(data.monthly_data_previous, data.previous_year);
+            seriesDataCurr = prepareMonthly(data.monthly_data_current, data.current_year);
+        }
         
+        // Trend Data
         let seriesDataTrend = [];
-        if (data.trend_allowed && data.trend_data) {
-            // Trend is a single point, but lines need 2 points? 
-            // Usually we connect Current Last Month -> Trend Month.
-            // Find last current month
+        if (!isDaily && data.trend_allowed && data.trend_data) {
             const lastCurr = seriesDataCurr[seriesDataCurr.length - 1];
             if (lastCurr) {
-                // Add last actual point to trend line start to ensure connection
                 seriesDataTrend.push(lastCurr); 
-                
-                const trendDate = new Date(2000, data.trend_data.month_index, 15).getTime();
+                const trendDate = new Date(2000, data.trend_data.month_index, 1, 12).getTime();
                 seriesDataTrend.push({
                     date: trendDate,
                     value: getDataValue(data.trend_data),
@@ -570,57 +618,131 @@ document.addEventListener('DOMContentLoaded', () => {
         // Axes
         const xRenderer = am5xy.AxisRendererX.new(mainChartRoot, {
             minorGridEnabled: true,
-            minGridDistance: 50
+            minGridDistance: isDaily ? 30 : 50,
+            cellStartLocation: 0.1,
+            cellEndLocation: 0.9
         });
+        
         xRenderer.labels.template.setAll({
             fill: colors.text,
             fontSize: 12
         });
         xRenderer.grid.template.setAll({
             stroke: colors.grid,
-            strokeOpacity: 0.1
+            strokeOpacity: 0.1,
+            location: 0
         });
 
+        // Date Axis
         const xAxis = chart.xAxes.push(am5xy.DateAxis.new(mainChartRoot, {
-            maxDeviation: 0.2,
-            baseInterval: { timeUnit: "month", count: 1 },
+            maxDeviation: 0,
+            baseInterval: baseInterval,
             renderer: xRenderer,
-            tooltip: am5.Tooltip.new(mainChartRoot, {})
+            tooltip: am5.Tooltip.new(mainChartRoot, {}),
+            startLocation: 0, // Ensure starts at edge
+            endLocation: 1    // Ensure ends at edge
         }));
         
-        // Force format to Month Name only since we overlay years
-        xAxis.get("dateFormats")["month"] = "MMM";
-        xAxis.get("periodChangeDateFormats")["month"] = "MMM";
+        // Format based on granularity
+        if (isDaily) {
+            xAxis.get("dateFormats")["day"] = "dd";
+            xAxis.get("periodChangeDateFormats")["day"] = "MMM dd";
+        } else {
+            xAxis.get("dateFormats")["month"] = "MMM";
+            xAxis.get("periodChangeDateFormats")["month"] = "MMM";
+        }
 
         const yRenderer = am5xy.AxisRendererY.new(mainChartRoot, {
             pan: "zoom"
         });
-        yRenderer.labels.template.setAll({
-            fill: colors.text,
-            fontSize: 12
-        });
+        
+        // Hide Y-Axis Labels as requested
+        yRenderer.labels.template.set("visible", false);
+        
         yRenderer.grid.template.setAll({
             stroke: colors.grid,
             strokeOpacity: 0.1
         });
 
+        // Y-Axis (Absolute Values)
         const yAxis = chart.yAxes.push(am5xy.ValueAxis.new(mainChartRoot, {
             renderer: yRenderer,
-            numberFormat: currentChartMode === 'faturamento' ? "#.0a" : "#.0' Ton'" // k for currency, Ton for weight
+            numberFormat: currentChartMode === 'faturamento' ? "#.0a" : "#.0' Ton'" 
         }));
 
-        // Series Function
-        function createSeries(name, dataItems, color, isDashed = false) {
+        let isPercentMode = false;
+
+        // Series Function with Custom Tooltip for % Variation
+        function createSeries(name, dataItems, color, isDashed = false, isReference = false) {
             const series = chart.series.push(am5xy.LineSeries.new(mainChartRoot, {
                 name: name,
                 xAxis: xAxis,
                 yAxis: yAxis,
                 valueYField: "value",
                 valueXField: "date",
-                tooltip: am5.Tooltip.new(mainChartRoot, {
-                    labelText: "{name}: {valueY}"
-                })
+                calculateAggregates: true // Required for % change logic
             }));
+
+            // Custom Tooltip Logic
+            const tooltip = am5.Tooltip.new(mainChartRoot, {
+                getFillFromSprite: false,
+                autoTextColor: false
+            });
+            
+            tooltip.get("background").setAll({
+                fill: am5.color(0x1e293b), // Slate-800
+                stroke: am5.color(0x334155),
+                strokeOpacity: 0.8
+            });
+            
+            tooltip.label.setAll({
+                fill: am5.color(0xffffff),
+                fontSize: 12
+            });
+
+            // Adapter to calculate variation relative to Previous Year Series OR show Evolution %
+            tooltip.label.adapters.add("text", function(text, target) {
+                // Safety check: target.dataItem might be undefined initially
+                if (!target.dataItem || !target.dataItem.dataContext) return text;
+                
+                const context = target.dataItem.dataContext; // Current Point
+                
+                // Value formatting
+                const val = context.value;
+                const fmtVal = currentChartMode === 'faturamento' 
+                    ? val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                    : (val/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1 }) + ' Ton';
+                
+                let result = `[bold]${name}[/]\n${fmtVal}`;
+
+                if (isPercentMode) {
+                    // Evolution Mode: Show change from start
+                    const change = target.dataItem.get("valueYChangePercent");
+                    if (change !== undefined && change !== null) {
+                        const sign = change > 0 ? '+' : '';
+                        const colorHex = change >= 0 ? '#34d399' : '#f87171';
+                        result += `\nEvolução: [${colorHex}]${sign}${change.toFixed(2)}%[/]`;
+                    }
+                } else {
+                    // Absolute Mode: Year over Year comparison (Current vs Previous)
+                    // If this is the "Current Year" series, try to find matching point in "Previous Year" series
+                    if (name.includes(data.current_year) && seriesDataPrev.length > 0) {
+                        const match = seriesDataPrev.find(p => p.date === context.date);
+                        if (match && match.value > 0) {
+                            const diff = val - match.value;
+                            const perc = (diff / match.value) * 100;
+                            const sign = perc > 0 ? '+' : '';
+                            const colorHex = perc >= 0 ? '#34d399' : '#f87171'; // Green : Red
+                            
+                            result += `\n[${colorHex}]${sign}${perc.toFixed(1)}%[/]`;
+                        }
+                    }
+                }
+                
+                return result;
+            });
+
+            series.set("tooltip", tooltip);
 
             series.strokes.template.setAll({
                 stroke: color,
@@ -649,7 +771,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Add Series
-        createSeries(`Ano ${data.previous_year}`, seriesDataPrev, colors.previous);
+        createSeries(`Ano ${data.previous_year}`, seriesDataPrev, colors.previous, false, true);
         createSeries(`Ano ${data.current_year}`, seriesDataCurr, colors.current);
         
         if (seriesDataTrend.length > 0) {
@@ -662,11 +784,12 @@ document.addEventListener('DOMContentLoaded', () => {
             marginBottom: 20
         }));
 
-        // Legend
-        const legend = chart.rightAxesContainer.children.push(am5.Legend.new(mainChartRoot, {
-            width: 200,
-            paddingLeft: 15,
-            height: am5.percent(100)
+        // Legend (Bottom)
+        const legend = chart.children.push(am5.Legend.new(mainChartRoot, {
+            centerX: am5.p50,
+            x: am5.p50,
+            marginTop: 15,
+            marginBottom: 15
         }));
 
         legend.itemContainers.template.events.on("pointerover", function(e) {
@@ -678,9 +801,76 @@ document.addEventListener('DOMContentLoaded', () => {
 
         legend.data.setAll(chart.series.values);
 
+        // --- Percentage Change Toggle ---
+        const cont = chart.plotContainer.children.push(am5.Container.new(mainChartRoot, {
+            layout: mainChartRoot.horizontalLayout,
+            x: 20,
+            y: 20,
+            background: am5.Rectangle.new(mainChartRoot, {
+                fill: am5.color(0x000000),
+                fillOpacity: 0.5,
+                cornerRadiusTL: 5,
+                cornerRadiusTR: 5,
+                cornerRadiusBL: 5,
+                cornerRadiusBR: 5
+            })
+        }));
+
+        // Add padding to container
+        cont.set("paddingTop", 5);
+        cont.set("paddingBottom", 5);
+        cont.set("paddingLeft", 10);
+        cont.set("paddingRight", 10);
+
+        cont.children.push(am5.Label.new(mainChartRoot, {
+            centerY: am5.p50,
+            text: "Valor Real",
+            fill: colors.text,
+            fontSize: 12,
+            paddingRight: 8
+        }));
+
+        const switchButton = cont.children.push(am5.Button.new(mainChartRoot, {
+            themeTags: ["switch"],
+            centerY: am5.p50,
+            icon: am5.Circle.new(mainChartRoot, {
+                themeTags: ["icon"]
+            })
+        }));
+
+        switchButton.on("active", function () {
+            isPercentMode = switchButton.get("active");
+            
+            if (isPercentMode) {
+                // Switch to Evolution Mode (Percent from Start)
+                yAxis.set("numberFormat", "#'%s'"); // Show % on axis
+                chart.series.each(function (series) {
+                    series.set("valueYShow", "valueYChangePercent");
+                });
+            } else {
+                // Switch back to Absolute Mode
+                yAxis.set("numberFormat", currentChartMode === 'faturamento' ? "#.0a" : "#.0' Ton'");
+                chart.series.each(function (series) {
+                    series.set("valueYShow", "value");
+                });
+            }
+        });
+
+        cont.children.push(
+            am5.Label.new(mainChartRoot, {
+                centerY: am5.p50,
+                text: "Evolução %",
+                fill: colors.text,
+                fontSize: 12,
+                paddingLeft: 8
+            })
+        );
+
         // Animate
         chart.appear(1000, 100);
     }
+    // Expose for testing
+    window.renderMainChartAmCharts = renderMainChartAmCharts;
 
     // Override renderDashboard to use new chart
     function renderDashboard(data) {
