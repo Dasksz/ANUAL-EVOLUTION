@@ -856,6 +856,7 @@ AS $$
 DECLARE
     v_where text := ' WHERE 1=1 ';
     v_where_cat text := ' WHERE 1=1 '; -- NEW: Where clause specifically for Category List (excludes category filter)
+    v_where_prod text := ' WHERE 1=1 '; -- NEW: Where clause for products
     v_result json;
 BEGIN
     -- Construct Where Clause
@@ -886,6 +887,7 @@ BEGIN
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_where := v_where || format(' AND codfor = ANY(%L) ', p_fornecedor);
         v_where_cat := v_where_cat || format(' AND codfor = ANY(%L) ', p_fornecedor);
+        v_where_prod := v_where_prod || format(' AND codfor = ANY(%L) ', p_fornecedor);
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where := v_where || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
@@ -900,6 +902,7 @@ BEGIN
     -- Category Filter (Applied to main v_where, BUT NOT v_where_cat)
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where := v_where || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where_prod := v_where_prod || format(' AND categoria_produto = ANY(%L) ', p_categoria);
     END IF;
 
     -- Execute with dynamic JSON construction
@@ -916,7 +919,16 @@ BEGIN
         ),
         ''tipos_venda'', (SELECT array_agg(DISTINCT tipovenda ORDER BY tipovenda) FROM public.cache_filters ' || v_where || '),
         ''redes'', (SELECT array_agg(DISTINCT rede ORDER BY rede) FROM public.cache_filters ' || v_where || ' AND rede IS NOT NULL),
-        ''categorias'', (SELECT array_agg(DISTINCT categoria_produto ORDER BY categoria_produto) FROM public.cache_filters ' || v_where_cat || ' AND categoria_produto IS NOT NULL)
+        ''categorias'', (SELECT array_agg(DISTINCT categoria_produto ORDER BY categoria_produto) FROM public.cache_filters ' || v_where_cat || ' AND categoria_produto IS NOT NULL),
+        ''produtos'', (
+            SELECT json_agg(jsonb_build_object(''cod'', codigo, ''name'', descricao))
+            FROM (
+                SELECT codigo, descricao
+                FROM public.dim_produtos
+                ' || v_where_prod || '
+                ORDER BY descricao
+            ) p
+        )
     )' INTO v_result;
 
     RETURN v_result;
