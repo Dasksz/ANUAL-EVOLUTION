@@ -885,7 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 yAxis.set("max", undefined);
 
                 chart.series.each(function (series) {
-                    series.set("valueYShow", undefined);
+                    series.set("valueYShow", "value");
                 });
             }
         });
