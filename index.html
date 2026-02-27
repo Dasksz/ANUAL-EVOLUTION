@@ -27,7 +27,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-
+    
     <!-- amCharts 5 -->
     <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
     <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
@@ -188,11 +188,11 @@
             PRIME <span>| Distribuição</span>
         </div>
         <nav class="top-nav-links">
-            <a id="nav-dashboard" class="nav-link active">Visão Geral</a>
+            <a id="nav-dashboard" class="nav-link active">Dashboard</a>
             <a id="nav-comparativo-btn" class="nav-link">Comparativo</a>
-            <a id="nav-city-analysis" class="nav-link">Cobertura</a>
-            <a id="nav-branch-btn" class="nav-link">Geo</a>
-            <a id="nav-boxes-btn" class="nav-link">Metas</a>
+            <a id="nav-city-analysis" class="nav-link">Análise por Cidade</a>
+            <a id="nav-branch-btn" class="nav-link">Filiais</a>
+            <a id="nav-boxes-btn" class="nav-link">Caixas</a>
             <a id="nav-uploader" class="nav-link hidden">Upload</a> <!-- Hidden by default, toggled via JS -->
         </nav>
         <div class="top-nav-actions">
@@ -218,7 +218,7 @@
 
     <!-- Main Content -->
     <div id="app-layout" class="hidden flex h-screen overflow-hidden flex-col">
-
+        
         <!-- Content Scrollable Area -->
         <main class="flex-1 overflow-y-auto bg-[#0d1126] p-4">
 
@@ -242,7 +242,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4 items-end">
                         <div><label class="text-xs text-slate-400">Ano</label><select id="ano-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="todos">Todos</option></select></div>
                         <div><label class="text-xs text-slate-400">Mês</label><select id="mes-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="">Todos</option></select></div>
-
+                        
                         <div class="relative">
                             <label class="text-xs text-slate-400 block mb-1">Filial</label>
                             <button id="filial-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
@@ -528,7 +528,7 @@
 
                 <!-- Branch View Content, Comparison View, Boxes View, City View kept as is, but adjusted for new Nav -->
                 <!-- The structure is the same, just ensuring they are inside dashboard-container -->
-
+                
                 <!-- Branch View -->
                 <div id="branch-view" class="hidden">
                     <header class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
