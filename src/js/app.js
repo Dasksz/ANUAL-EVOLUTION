@@ -758,6 +758,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const calcEvo = (curr, prev) => prev > 0 ? ((curr / prev) - 1) * 100 : (curr > 0 ? 100 : 0);
 
+        // --- KPI Updates ---
+        // Calc indicators for table (Perda/Devolução)
+        const processIndicators = (d) => {
+            const fat = d.faturamento || 0;
+            const fatBase = d.total_sold_base || fat; // Use specific base if available, else fat
+            d.perc_perda = fatBase > 0 ? (d.bonificacao / fatBase) * 100 : null;
+            d.perc_devolucao = fatBase > 0 ? (d.devolucao / fatBase) * 100 : null;
+        };
+        currentData.forEach(processIndicators);
+        previousData.forEach(processIndicators);
+        if (data.trend_data) processIndicators(data.trend_data);
+
         // Update KPIs
         updateKpiCard({ prefix: 'fat', trendVal: currFat, prevVal: prevFat, fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), calcEvo });
         updateKpiCard({ prefix: 'kg', trendVal: currKg, prevVal: prevKg, fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Ton`, calcEvo });
@@ -4100,55 +4112,51 @@ let boxesFilterDebounceTimer;
         }
     }
 
-    function updateTable(currentData, previousData, currentYear, previousYear, trendData) {
+    function updateTable(currData, prevData, currYear, prevYear, trendData) {
         const tableBody = document.getElementById('monthly-summary-table-body');
-        const tableHeadRow = document.querySelector('#monthly-summary-table thead tr');
-        if (!tableBody || !tableHeadRow) return;
+        const tableHead = document.querySelector('#monthly-summary-table thead tr');
+        tableBody.innerHTML = '';
 
-        // Headers
-        tableHeadRow.innerHTML = `
-            <th class="p-3 text-left">Mês</th>
-            <th class="p-3 text-right">Fat. ${previousYear}</th>
-            <th class="p-3 text-right">Fat. ${currentYear}</th>
-            <th class="p-3 text-right">Var %</th>
-            <th class="p-3 text-right">Ton. ${previousYear}</th>
-            <th class="p-3 text-right">Ton. ${currentYear}</th>
-            <th class="p-3 text-right">Var %</th>
-        `;
-
-        const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-        let html = '';
-
-        for (let i = 0; i < 12; i++) {
-            const prev = previousData.find(d => d.month_index === i) || { faturamento: 0, peso: 0 };
-            let curr = currentData.find(d => d.month_index === i) || { faturamento: 0, peso: 0 };
-            
-            let isTrend = false;
-            if (trendData && trendData.month_index === i) {
-                curr = trendData; 
-                isTrend = true;
-            }
-
-            const varFat = prev.faturamento > 0 ? ((curr.faturamento / prev.faturamento) - 1) * 100 : 0;
-            const varKg = prev.peso > 0 ? ((curr.peso / prev.peso) - 1) * 100 : 0;
-
-            const rowClass = i % 2 === 0 ? 'bg-[#1e293b]' : 'bg-[#0d1126]';
-            const trendClass = isTrend ? 'text-purple-400 font-bold' : '';
-
-            html += `
-                <tr class="${rowClass} border-b border-slate-700 hover:bg-slate-700 transition-colors">
-                    <td class="p-3 ${trendClass}">${monthNames[i]} ${isTrend ? '(Tend)' : ''}</td>
-                    <td class="p-3 text-right text-slate-400">${prev.faturamento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                    <td class="p-3 text-right text-white font-medium ${trendClass}">${curr.faturamento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                    <td class="p-3 text-right ${varFat >= 0 ? 'text-emerald-400' : 'text-red-400'}">${varFat > 0 ? '+' : ''}${varFat.toFixed(1)}%</td>
-                    <td class="p-3 text-right text-slate-400">${(prev.peso / 1000).toFixed(1)}</td>
-                    <td class="p-3 text-right text-white font-medium ${trendClass}">${(curr.peso / 1000).toFixed(1)}</td>
-                    <td class="p-3 text-right ${varKg >= 0 ? 'text-emerald-400' : 'text-red-400'}">${varKg > 0 ? '+' : ''}${varKg.toFixed(1)}%</td>
-                </tr>
-            `;
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        let headerHTML = '<th class="px-2 py-2 text-left">INDICADOR</th>';
+        monthNames.forEach(m => headerHTML += `<th class="px-2 py-2 text-center">${m}</th>`);
+        if (trendData) {
+            headerHTML += `<th class="px-2 py-2 text-center bg-purple-900/30 text-purple-200">Tendência</th>`;
         }
-        tableBody.innerHTML = html;
+        tableHead.innerHTML = headerHTML;
+
+        const indicators = [
+            { name: 'POSITIVAÇÃO', key: 'positivacao', fmt: v => v.toLocaleString('pt-BR') },
+            { name: 'FATURAMENTO', key: 'faturamento', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
+            { name: 'Mix PDV', key: 'mix_pdv', fmt: v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+            { name: 'Ticket Médio', key: 'ticket_medio', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
+            { name: 'BONIFICAÇÃO', key: 'bonificacao', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
+            { name: '% Perda', key: 'perc_perda', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
+            { name: 'DEVOLUÇÃO', key: 'devolucao', fmt: v => `<span class="text-red-400">${v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>` },
+            { name: '% Devolução', key: 'perc_devolucao', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
+            { name: 'TON VENDIDA', key: 'peso', fmt: v => `${(v/1000).toFixed(2)} Kg` }
+        ];
+
+        indicators.forEach(ind => {
+            let rowHTML = `<tr class="table-row"><td class="font-bold p-2 text-left">${ind.name}</td>`;
+            for(let i=0; i<12; i++) {
+                const d = currData.find(x => x.month_index === i);
+                let val = d ? d[ind.key] : null;
+                if (val === undefined) val = null;
+                if (val === null && !ind.allowNull) val = 0;
+                rowHTML += `<td class="px-2 py-1.5 text-center">${ind.fmt(val)}</td>`;
+            }
+            if (trendData) {
+                 let tVal = trendData[ind.key];
+                 if (tVal === undefined) tVal = null;
+                 if (tVal === null && !ind.allowNull) tVal = 0;
+                 rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-purple-300 bg-purple-900/20">${ind.fmt(tVal)}</td>`;
+            }
+            rowHTML += '</tr>';
+            tableBody.innerHTML += rowHTML;
+        });
     }
+    window.updateTable = updateTable;
 
     function createChart(chartId, type, labels, datasets, valueFormatter) {
         const containerId = `${chartId}Container`;
