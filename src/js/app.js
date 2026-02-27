@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let isAppReady = false;
     let mainChartRoot = null; // Global reference to amCharts root
 
+    // Expose root for testing
+    if (typeof window !== 'undefined') window.getMainChartRoot = () => mainChartRoot;
+
     // --- Auth & Navigation Elements ---
     const loginView = document.getElementById('login-view');
     const appLayout = document.getElementById('app-layout');
@@ -878,11 +881,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 yAxis.set("numberFormat", currentChartMode === 'faturamento' ? "#.0a" : "#.0' Ton'");
 
                 // Explicitly clear min/max to ensure auto-scaling recalculates correctly
-                yAxis.set("min", null);
-                yAxis.set("max", null);
+                yAxis.set("min", undefined);
+                yAxis.set("max", undefined);
 
                 chart.series.each(function (series) {
-                    series.set("valueYShow", "value");
+                    series.set("valueYShow", undefined);
                 });
             }
         });
@@ -901,7 +904,9 @@ document.addEventListener('DOMContentLoaded', () => {
         chart.appear(1000, 100);
     }
     // Expose for testing
-    window.renderMainChartAmCharts = renderMainChartAmCharts;
+    if (typeof window !== 'undefined') {
+        window.renderMainChartAmCharts = renderMainChartAmCharts;
+    }
 
     // Override renderDashboard to use new chart
     function renderDashboard(data) {
