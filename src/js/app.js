@@ -799,7 +799,7 @@ async function fetchCityBranchMap() {
             .from('config_city_branches')
             .select('cidade')
             .or('filial.is.null,filial.eq.""');
-
+        
         if (!error && data && data.length > 0) {
             missingBranchesNotification.classList.remove('hidden');
         } else {
@@ -829,7 +829,7 @@ async function fetchCityBranchMap() {
         const cityBranchMap = await fetchCityBranchMap();
 
         statusText.textContent = 'Processando...';
-
+        
         const worker = new Worker('src/js/worker.js?v=2');
         // Pass files AND the city map
         worker.postMessage({ ...files, cityBranchMap });
@@ -852,7 +852,7 @@ async function fetchCityBranchMap() {
                     }
 
                     await enviarDadosParaSupabase(data);
-
+                    
                     // Re-check missing branches after upload
                     await checkMissingBranches();
 
@@ -905,7 +905,7 @@ async function fetchCityBranchMap() {
                     const { error: insertErr } = await supabase.from(table).insert(batch);
                     error = insertErr;
                 }
-
+                
                 if (error) throw new Error(`Erro ${table}: ${error.message}`);
             });
         };
@@ -953,7 +953,7 @@ async function fetchCityBranchMap() {
         };
 
         // --- Incremental Sync Logic (Chunked for Sales, Row-Hash for Clients) ---
-
+        
         // Sync Logic for Sales (Metadata + Chunking + Batched HTTP Requests)
         const syncSalesChunks = async (tableName, localChunks, progressStart, progressEnd) => {
             updateStatus(`Verificando metadados de ${tableName}...`, progressStart);
@@ -981,7 +981,7 @@ async function fetchCityBranchMap() {
                 if (serverHash !== localChunk.hash) {
                     console.log(`[${tableName}] Syncing chunk ${key} (Size: ${localChunk.rows.length})...`);
                     updateStatus(`Sincronizando ${tableName} (${key})...`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
-
+                    
                     // --- GRANULAR UPLOAD STRATEGY ---
                     // 1. Wipe Data for Month
                     const { error: wipeErr } = await supabase.rpc('begin_sync_chunk', {
@@ -993,7 +993,7 @@ async function fetchCityBranchMap() {
                     // 2. Batch Append (e.g. 2000 rows per request to avoid Gateway Timeouts)
                     const ROWS_PER_REQUEST = 2000;
                     const totalRows = localChunk.rows.length;
-
+                    
                     for (let i = 0; i < totalRows; i += ROWS_PER_REQUEST) {
                         const batch = localChunk.rows.slice(i, i + ROWS_PER_REQUEST);
                         const progress = Math.round(((i + batch.length) / totalRows) * 100);
@@ -1027,11 +1027,11 @@ async function fetchCityBranchMap() {
         // Legacy Row-Hash Sync (Kept for Clients)
         const syncTable = async (tableName, clientRows, progressStart, progressEnd) => {
             updateStatus(`Sincronizando ${tableName}...`, progressStart);
-
+            
             // 1. Get Server Hashes
             const { data: serverHashes, error } = await supabase.rpc('get_table_hashes', { p_table_name: tableName });
             if (error) throw new Error(`Erro ao buscar hashes de ${tableName}: ${error.message}`);
-
+            
             const serverHashSet = new Set(serverHashes.map(h => h.row_hash));
             const clientHashMap = new Map();
             clientRows.forEach(r => {
@@ -1099,13 +1099,13 @@ async function fetchCityBranchMap() {
             // Sales Tables (Use Chunk Sync)
             if (data.historyChunks) await syncSalesChunks('data_history', data.historyChunks, 10, 40);
             if (data.detailedChunks) await syncSalesChunks('data_detailed', data.detailedChunks, 40, 70);
-
+            
             // Clients Table (Use Row Sync)
             if (data.clients) await syncTable('data_clients', data.clients, 70, 80);
 
             // CHUNKED CACHE REFRESH LOGIC
             updateStatus('Iniciando processamento do resumo...', 80);
-
+            
             // 1. Explicitly clear Summary Table
             await clearTable('data_summary');
 
@@ -1122,10 +1122,10 @@ async function fetchCityBranchMap() {
                         const yearStep = 15 / years.length;
                         const monthStep = yearStep / 12;
                         const progress = 80 + Math.round((i * yearStep) + (m * monthStep));
-
+                        
                         updateStatus(`Processando ${m}/${year}...`, progress);
                         const { error: chunkErr } = await supabase.rpc('refresh_summary_month', { p_year: year, p_month: m });
-
+                        
                         if (chunkErr) throw new Error(`Erro processando ${m}/${year}: ${chunkErr.message}`);
                     }
                 }
@@ -1175,7 +1175,7 @@ let boxesFilterDebounceTimer;
             // Filters for dropdowns should NOT include the product itself to avoid signature mismatch
             // and usually we don't want selecting a product to filter the other dropdowns backwards in this context.
             const { p_produto, ...dropdownFilters } = viewFilters;
-
+            
             await loadBoxesFilters(dropdownFilters);
             await loadBoxesView();
         }, 500);
@@ -1186,7 +1186,7 @@ let boxesFilterDebounceTimer;
         // Usually dependent filters (Supplier -> Product) mean selection in Supplier narrows Product.
         // But selection in Product shouldn't necessarily narrow Supplier in a way that hides the current selection?
         // For now, pass all filters as is standard.
-
+        
         const { data, error } = await supabase.rpc('get_dashboard_filters', currentFilters);
         if (error) {
             console.error('Error refreshing boxes filters:', error);
@@ -1217,7 +1217,7 @@ let boxesFilterDebounceTimer;
         boxesTrendToggleBtn.addEventListener('click', () => {
             boxesTrendActive = !boxesTrendActive;
             const span = document.getElementById('boxes-trend-text');
-
+            
             if (boxesTrendActive) {
                 boxesTrendToggleBtn.classList.remove('text-orange-500', 'hover:text-orange-400');
                 boxesTrendToggleBtn.classList.add('text-purple-500', 'hover:text-purple-400');
@@ -1227,12 +1227,12 @@ let boxesFilterDebounceTimer;
                 boxesTrendToggleBtn.classList.add('text-orange-500', 'hover:text-orange-400');
                 if (span) span.textContent = 'Calcular Tendência';
             }
-
+            
             // Re-render only (data already has trend info if RPC updated)
-            // But we need to make sure we have the data.
+            // But we need to make sure we have the data. 
             // Ideally we re-fetch if we suspect cache is stale, but usually RPC returns trend info always if available.
             // Let's just re-render first.
-            loadBoxesView();
+            loadBoxesView(); 
         });
     }
 
@@ -1288,7 +1288,7 @@ let boxesFilterDebounceTimer;
         if (format === 'excel') {
             // Create workbook
             const wb = XLSX.utils.book_new();
-
+            
             // Prepare Filter Info rows
             const filterInfo = [
                 ["Relatório de Produtos por Caixas"],
@@ -1301,7 +1301,7 @@ let boxesFilterDebounceTimer;
 
             // Create Worksheet
             const ws = XLSX.utils.aoa_to_sheet(filterInfo);
-
+            
             // Append Data starting at row after filters
             XLSX.utils.sheet_add_json(ws, reportData, { origin: -1 });
 
@@ -1317,14 +1317,14 @@ let boxesFilterDebounceTimer;
 
             doc.setFontSize(16);
             doc.text("Relatório de Produtos por Caixas", 14, 15);
-
+            
             doc.setFontSize(10);
             doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 22);
 
             let yPos = 30;
             doc.text("Filtros Aplicados:", 14, yPos);
             yPos += 5;
-
+            
             doc.setFontSize(9);
             Object.entries(filters).forEach(([k, v]) => {
                 doc.text(`${k}: ${v}`, 14, yPos);
@@ -1362,7 +1362,7 @@ let boxesFilterDebounceTimer;
                 anyClosed = true;
             }
         });
-
+        
         // Close export dropdown if clicked outside
         if (boxesExportDropdown && !boxesExportDropdown.classList.contains('hidden') && !boxesExportDropdown.contains(e.target) && !boxesExportBtn.contains(e.target)) {
             boxesExportDropdown.classList.add('hidden');
@@ -1439,7 +1439,7 @@ let boxesFilterDebounceTimer;
         setupCityMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, filterData.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
         setupCityMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, filterData.tipos_venda || [], boxesSelectedTiposVenda);
         setupCityMultiSelect(boxesCategoriaFilterBtn, boxesCategoriaFilterDropdown, boxesCategoriaFilterList, filterData.categorias || [], boxesSelectedCategorias, boxesCategoriaFilterSearch);
-
+        
         // Products - filterData.produtos
         setupCityMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, filterData.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
     }
@@ -1477,7 +1477,7 @@ let boxesFilterDebounceTimer;
 
         if (!data) {
             const { data: rpcData, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
-
+            
             if (error) {
                 console.error(error);
                 hideDashboardLoading();
@@ -1498,13 +1498,13 @@ let boxesFilterDebounceTimer;
         // Trend Data Extraction
         const trendInfo = data.trend_info || { allowed: false, factor: 1, current_month_index: -1 };
         const applyTrend = boxesTrendActive && trendInfo.allowed;
-
+        
         // Safe access helpers
         const safeVal = (v) => v || 0;
         const fmtBRL = (v) => safeVal(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         const fmtKg = (v) => (safeVal(v) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
         const fmtCaixas = (v) => Math.round(safeVal(v)).toLocaleString('pt-BR');
-
+        
         const calcVar = (curr, prev) => {
             if (prev > 0) return ((curr / prev) - 1) * 100;
             return curr > 0 ? 100 : 0;
@@ -1525,7 +1525,7 @@ let boxesFilterDebounceTimer;
             let curr = safeVal(data.kpi_current[key]);
             const prev = safeVal(data.kpi_previous[key]);
             const tri = safeVal(data.kpi_tri_avg[key]);
-
+            
             let mainDisplayVal = curr;
             let triComparisonVal = curr; // Default: Compare current realized vs Tri Avg
 
@@ -1534,39 +1534,39 @@ let boxesFilterDebounceTimer;
                     // YEAR VIEW + TREND
                     // Main Value: Should be Annual Projection (YTD Realized - Current Realized + Current Trended) / Months * 12
                     // Formula simplified: (YTD_Realized_Excluding_Current + (Current_Realized * Factor)) / Month_Index * 12
-
+                    
                     const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
                     const currMonthData = (data.chart_data || []).find(d => d.year === filterYear && d.month_index === trendInfo.current_month_index);
-
+                    
                     let currMonthRealized = 0;
                     if (currMonthData) {
                         if (key === 'fat') currMonthRealized = currMonthData.faturamento;
                         else if (key === 'peso') currMonthRealized = currMonthData.peso;
                         else if (key === 'caixas') currMonthRealized = currMonthData.caixas;
                     }
-
+                    
                     // Tri Indicator: Trended Current Month vs Tri Avg
                     triComparisonVal = currMonthRealized * trendInfo.factor;
-
+                    
                     // Main Display: Annual Projection
                     // 1. Calculate YTD Realized Excluding Current Month
                     // curr is the total YTD from RPC
                     const ytdExclCurrent = curr - currMonthRealized;
-
+                    
                     // 2. Add Trended Current Month
                     const ytdWithTrend = ytdExclCurrent + triComparisonVal;
-
+                    
                     // 3. Project for Full Year (12 months)
                     // If we are in Jan (index 0), divide by 1 * 12
                     // If we are in Dec (index 11), divide by 12 * 12 (basically identity)
                     const monthsPassed = trendInfo.current_month_index + 1;
-
+                    
                     if (monthsPassed > 0) {
                         mainDisplayVal = (ytdWithTrend / monthsPassed) * 12;
                     } else {
                         mainDisplayVal = ytdWithTrend; // Fallback
                     }
-
+                    
                 } else {
                     // MONTH VIEW + TREND
                     // Main Value: Trended Monthly Value.
@@ -1584,7 +1584,7 @@ let boxesFilterDebounceTimer;
                      // Find max month in data or current month index
                      // If trend is not allowed (e.g. past year), use the last month available in data?
                      // Or just use the average of the year vs tri? Usually it's Month vs Tri.
-
+                     
                      // Let's assume for Year View, Tri indicator is always "Last Active Month" vs "Previous 3 Months Avg".
                      // If we are in 2025 (current), it's Current Month.
                      // If we are in 2024 (past), it's Dec 2024 vs Oct-Nov-Dec 2024 avg? Or Jan 2025 vs Q4 2024?
@@ -1597,9 +1597,9 @@ let boxesFilterDebounceTimer;
                              else if (key === 'caixas') triComparisonVal = currMonthData.caixas;
                          }
                      } else {
-                         // If past year, maybe just leave it as average vs average or hide?
+                         // If past year, maybe just leave it as average vs average or hide? 
                          // Logic: "always the most recent month".
-                         // For now, let's keep triComparisonVal = curr (which is Total Year) ONLY if we can't isolate month,
+                         // For now, let's keep triComparisonVal = curr (which is Total Year) ONLY if we can't isolate month, 
                          // but standard logic suggests we shouldn't compare Year Total vs Monthly Average.
                          // Let's stick to: if chart data exists, pick last month.
                          const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
@@ -1620,7 +1620,7 @@ let boxesFilterDebounceTimer;
             const elPrevVal = document.getElementById(`boxes-kpi-${prefix}-prev`);
             const elPrevVar = document.getElementById(`boxes-kpi-${prefix}-prev-var`);
             if(elPrevVal) elPrevVal.textContent = formatFn(prev);
-
+            
             // Year vs Year variation (using Main Display Val which might be Trended Month or Realized Year)
             // If Year View: Realized Year vs Previous Year.
             // If Month View + Trend: Trended Month vs Previous Month (same period prev year).
@@ -1630,7 +1630,7 @@ let boxesFilterDebounceTimer;
             const elTriVal = document.getElementById(`boxes-kpi-${prefix}-tri`);
             const elTriVar = document.getElementById(`boxes-kpi-${prefix}-tri-var`);
             if(elTriVal) elTriVal.textContent = formatFn(tri);
-
+            
             // Tri Variation: Always Monthly (Recent/Trended) vs Tri Avg
             if(elTriVar) elTriVar.innerHTML = fmtVar(calcVar(triComparisonVal, tri));
         };
@@ -1642,12 +1642,12 @@ let boxesFilterDebounceTimer;
         // Chart (2 datasets: Current vs Previous + Trend if active)
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         const labels = [...monthNames];
-        const currentYear = new Date().getFullYear();
-
+        const currentYear = new Date().getFullYear(); 
+        
         const boxesCurrent = new Array(12).fill(0);
         const boxesPrev = new Array(12).fill(0);
         const chartData = data.chart_data || [];
-
+        
         const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : currentYear;
         const prevYear = filterYear - 1;
 
@@ -1681,7 +1681,7 @@ let boxesFilterDebounceTimer;
         if (applyTrend) {
             // Add "Tendência" Bar
             labels.push('Tendência');
-
+            
             // Calculate Trended Value for the current month
             // We need the realized value of the current month to project
             const currMonthData = chartData.find(d => d.year === filterYear && d.month_index === trendInfo.current_month_index);
@@ -1692,13 +1692,13 @@ let boxesFilterDebounceTimer;
             // BUT simpler: extend current year dataset? No, distinct color.
             // Let's add a new dataset "Tendência" with 13 points (12 null + 1 val)
             // And pad others with 0 or null
-
+            
             // Pad existing
             datasets.forEach(ds => ds.data.push(null));
-
+            
             const trendData = new Array(13).fill(null);
             trendData[12] = trendCaixas;
-
+            
             datasets.push({
                 label: `Tendência ${monthNames[trendInfo.current_month_index]}`,
                 data: trendData,
@@ -1709,7 +1709,7 @@ let boxesFilterDebounceTimer;
             });
         }
 
-        createChart('boxesChart', 'bar', labels, datasets, (v) => Math.round(v).toLocaleString('pt-BR'));
+        createChart('boxesChart', 'bar', labels, datasets, (v) => Math.round(v).toLocaleString('pt-BR')); 
 
         // Table
         const products = data.products_table || [];
@@ -1769,7 +1769,7 @@ let boxesFilterDebounceTimer;
         // If overlay exists but is in a different container, move it
         if (overlay && overlay.parentElement !== container) {
             overlay.remove();
-            overlay = null;
+            overlay = null; 
         }
 
         if (!overlay && container) {
@@ -1799,7 +1799,7 @@ let boxesFilterDebounceTimer;
         const filters = getCurrentFilters();
         await loadFilters(filters);
         await loadMainDashboardData();
-
+        
         // Trigger background prefetch after main load
         setTimeout(() => {
             queueCommonFilters();
@@ -1812,14 +1812,14 @@ let boxesFilterDebounceTimer;
             if (error) { console.warn('Erro ao verificar versão:', error); return; }
 
             const localVersion = localStorage.getItem('dashboard_data_version');
-
+            
             if (serverVersion && serverVersion !== localVersion) {
                 console.log('Nova versão de dados detectada. Limpando cache...', serverVersion);
-
+                
                 // Clear IndexedDB
                 const db = await initDB();
                 await db.clear(STORE_NAME);
-
+                
                 // Update Local Version
                 localStorage.setItem('dashboard_data_version', serverVersion);
             }
@@ -1847,7 +1847,7 @@ let boxesFilterDebounceTimer;
         // Cache logic for Filters
         const CACHE_TTL = 1000 * 60 * 5; // 5 minutes for filters
         const cacheKey = generateCacheKey('dashboard_filters', currentFilters);
-
+        
         try {
             const cachedEntry = await getFromCache(cacheKey);
             if (cachedEntry && cachedEntry.timestamp) {
@@ -1855,7 +1855,7 @@ let boxesFilterDebounceTimer;
                 if (age < CACHE_TTL) {
                     console.log('Serving filters from cache (fresh)');
                     applyFiltersData(cachedEntry.data);
-                    return;
+                    return; 
                 }
             }
         } catch (e) { console.warn('Cache error:', e); }
@@ -1876,7 +1876,7 @@ let boxesFilterDebounceTimer;
     function setupMultiSelect(btn, dropdown, container, items, selectedArray, labelCallback, isObject = false, searchInput = null) {
         const MAX_ITEMS = 100;
         btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
-
+        
         let debounceTimer;
         const renderItems = (filterText = '') => {
             container.innerHTML = '';
@@ -1888,9 +1888,9 @@ let boxesFilterDebounceTimer;
                     return String(val).toLowerCase().includes(lower);
                 });
             }
-
+            
             const displayItems = filteredItems.slice(0, MAX_ITEMS);
-
+            
             displayItems.forEach(item => {
                 const value = isObject ? item.cod : item;
                 const label = isObject ? item.name : item;
@@ -1932,12 +1932,12 @@ let boxesFilterDebounceTimer;
         };
         renderItems();
         updateBtnLabel();
-        if (searchInput) {
+        if (searchInput) { 
             searchInput.oninput = (e) => {
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => renderItems(e.target.value), 300);
-            };
-            searchInput.onclick = (e) => e.stopPropagation();
+            }; 
+            searchInput.onclick = (e) => e.stopPropagation(); 
         }
     }
 
@@ -1955,10 +1955,10 @@ let boxesFilterDebounceTimer;
         const updateSingleSelect = (element, items) => {
             const currentVal = element.value;
             element.innerHTML = '';
-
+        
             // Always add 'Todos' option (value='todos' for year, '' for others)
             const allOpt = document.createElement('option');
-            allOpt.value = (element.id === 'ano-filter') ? 'todos' : '';
+            allOpt.value = (element.id === 'ano-filter') ? 'todos' : ''; 
             allOpt.textContent = 'Todos';
             element.appendChild(allOpt);
 
@@ -1980,14 +1980,14 @@ let boxesFilterDebounceTimer;
              // But if we want default 'Todos', we should let it fall through to first option?
              // If the user wants specific year by default on load, logic handles it.
              // If user wants 'Todos' (e.g. clear filters), it matches.
-
+             
              // If currentVal was invalid (e.g. old year not in list), default to Todos (index 0) or First Year?
              // Usually defaulting to 'Todos' (index 0) is safer now that we added it.
              if (!element.value) element.value = 'todos';
             }
         };
         updateSingleSelect(anoFilter, data.anos);
-        if (mesFilter.options.length <= 1) {
+        if (mesFilter.options.length <= 1) { 
             mesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; mesFilter.appendChild(opt); });
@@ -2060,7 +2060,7 @@ let boxesFilterDebounceTimer;
         // 2. Network Request
         if (isBackground) console.log(`[Background] Fetching data from API...`);
         const { data, error } = await supabase.rpc('get_main_dashboard_data', filters);
-
+        
         if (error) {
             console.error('API Error:', error);
             return { data: null, error };
@@ -2076,7 +2076,7 @@ let boxesFilterDebounceTimer;
     async function loadMainDashboardData(forceRefresh = false) {
         const filters = getCurrentFilters();
         const cacheKey = generateCacheKey('dashboard_data', filters);
-
+        
         // 1. Stale-While-Revalidate: Try Cache & Render Immediately
         if (!forceRefresh) {
             try {
@@ -2115,7 +2115,7 @@ let boxesFilterDebounceTimer;
         ]);
 
         const { data, error } = dashboardResult;
-
+        
         if (data && !error) {
             console.log('SWR: Updated with fresh data.');
             lastDashboardData = data;
@@ -2124,7 +2124,7 @@ let boxesFilterDebounceTimer;
             // Prefetch Next
             prefetchViews(filters);
         }
-
+        
         hideDashboardLoading();
     }
 
@@ -2181,7 +2181,7 @@ let boxesFilterDebounceTimer;
                 .order('dtped', { ascending: false })
                 .limit(1)
                 .maybeSingle();
-
+            
             if (data && data.dtped) {
                 // dtped is timestamp with time zone, e.g., "2026-01-20T14:00:00+00:00"
                 // We want just the date part in YYYY-MM-DD for comparison
@@ -2204,7 +2204,7 @@ let boxesFilterDebounceTimer;
             p_mes: currentFilters.p_mes,
             p_filial: [], p_cidade: [], p_supervisor: [], p_vendedor: [], p_fornecedor: [], p_tipovenda: []
         };
-
+        
         // Helper to check and add
         const checkAndAdd = async (label, filters) => {
              const key = generateCacheKey('dashboard_data', filters);
@@ -2216,7 +2216,7 @@ let boxesFilterDebounceTimer;
         };
 
         const tasks = [];
-
+        
         // 1. Filiais
         availableFiltersState.filiais.forEach(v => tasks.push(checkAndAdd(`Filial: ${v}`, { ...baseFilters, p_filial: [v] })));
 
@@ -2237,7 +2237,7 @@ let boxesFilterDebounceTimer;
 
         // 6. Tipos Venda
         availableFiltersState.tipos_venda.forEach(v => tasks.push(checkAndAdd(`Tipo: ${v}`, { ...baseFilters, p_tipovenda: [v] })));
-
+        
         // 7. Redes
         availableFiltersState.redes.forEach(v => tasks.push(checkAndAdd(`Rede: ${v}`, { ...baseFilters, p_rede: [v] })));
 
@@ -2269,483 +2269,18 @@ let boxesFilterDebounceTimer;
 
         isPrefetching = true;
         const task = prefetchQueue.shift();
-
+        
         console.log(`[Background] Processando filtro para: ${task.label} (${prefetchQueue.length} restantes)`);
-
+        
         // We use fetchDashboardData which handles the "Check Cache -> Fetch -> Save Cache" loop
         // We pass isBackground=true to suppress standard logs and enable specific ones
         await fetchDashboardData(task.filters, true);
-
+        
         isPrefetching = false;
-
+        
         // Schedule next task with a delay to yield to main thread (UI responsiveness)
-        setTimeout(processQueue, 500);
+        setTimeout(processQueue, 500); 
     }
-
-     else { baseEl.classList.add('hidden'); }
-
-        let currentData = data.monthly_data_current || [];
-        let previousData = data.monthly_data_previous || [];
-        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        const targetIndex = data.target_month_index;
-
-        // KPI Calculation Variables
-        let currFat, currKg, prevFat, prevKg, triAvgFat, triAvgPeso;
-        let kpiTitleFat, kpiTitleKg;
-
-        // --- KPI LOGIC (Scenario Check) ---
-        if (anoFilter.value !== 'todos' && mesFilter.value === '') {
-            // SCENARIO A: Year Selected, Month All -> Show Year vs Previous Year (Accumulated)
-
-            const sumData = (dataset, useTrend) => {
-                let sumFat = 0;
-                let sumKg = 0;
-                // Sum available months (0 to 11)
-                dataset.forEach(d => {
-                    // Check if this month is the trend month and use trend data if applicable
-                    if (useTrend && data.trend_allowed && data.trend_data && d.month_index === data.trend_data.month_index) {
-                        sumFat += data.trend_data.faturamento;
-                        sumKg += data.trend_data.peso;
-                    } else {
-                        sumFat += d.faturamento;
-                        sumKg += d.peso;
-                    }
-                });
-                return { faturamento: sumFat, peso: sumKg };
-            };
-
-            const currSums = sumData(currentData, true);
-            const prevSums = sumData(previousData, false);
-
-            // Logic for Annual Trend Projection (Current Year Only)
-            if (data.trend_allowed && data.trend_data) {
-                // Formula: (Accumulated YTD + Projected Current Month) / (Months Passed) * 12
-                // Note: sumData already includes the Projected Current Month if trend_allowed is true.
-                const monthsPassed = data.trend_data.month_index + 1;
-
-                currFat = (currSums.faturamento / monthsPassed) * 12;
-                currKg = (currSums.peso / monthsPassed) * 12;
-            } else {
-                currFat = currSums.faturamento;
-                currKg = currSums.peso;
-            }
-
-            prevFat = prevSums.faturamento;
-            prevKg = prevSums.peso;
-
-            kpiTitleFat = `Tend. FAT ${data.current_year} vs Ano Ant.`;
-            kpiTitleKg = `Tend. TON ${data.current_year} vs Ano Ant.`;
-
-        } else {
-            // SCENARIO B: Default (Month vs Month or Filtered Month)
-
-            if (mesFilter.value !== '') {
-                const selectedMonthIndex = parseInt(mesFilter.value);
-                currentData = currentData.filter(d => d.month_index === selectedMonthIndex);
-                previousData = previousData.filter(d => d.month_index === selectedMonthIndex);
-            }
-
-            const currMonthData = currentData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
-            const prevMonthData = previousData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
-
-            // Helper for Trend Logic
-            const getTrendValue = (key, baseValue) => {
-                if (data.trend_allowed && data.trend_data && data.trend_data.month_index === targetIndex) {
-                    return data.trend_data[key] || 0;
-                }
-                return baseValue;
-            };
-
-            currFat = getTrendValue('faturamento', currMonthData.faturamento);
-            currKg = getTrendValue('peso', currMonthData.peso);
-            prevFat = prevMonthData.faturamento;
-            prevKg = prevMonthData.peso;
-
-            const mName = monthNames[targetIndex]?.toUpperCase() || "";
-            kpiTitleFat = `Tend. FAT ${mName} vs Ano Ant.`;
-            kpiTitleKg = `Tend. TON ${mName} vs Ano Ant.`;
-        }
-
-        // Variation Calc
-        const calcEvo = (curr, prev) => prev > 0 ? ((curr / prev) - 1) * 100 : (curr > 0 ? 100 : 0);
-
-        // --- KPI Updates ---
-        // Calc indicators for table (Perda/Devolução)
-        const processIndicators = (d) => {
-            const fat = d.faturamento || 0;
-            const fatBase = d.total_sold_base || fat; // Use specific base if available, else fat
-            d.perc_perda = fatBase > 0 ? (d.bonificacao / fatBase) * 100 : null;
-            d.perc_devolucao = fatBase > 0 ? (d.devolucao / fatBase) * 100 : null;
-        };
-        currentData.forEach(processIndicators);
-        previousData.forEach(processIndicators);
-        if (data.trend_data) processIndicators(data.trend_data);
-
-        // --- NEW KPIs (Bonification, Devolution, Mix) ---
-        try {
-            // Calculate Totals for Selected Period
-            let kpiBonifCurr = 0, kpiBonifPrev = 0;
-            let kpiDevolCurr = 0, kpiDevolPrev = 0;
-            let kpiMixCurr = 0, kpiMixPrev = 0;
-            let kpiTotalSoldBaseCurr = 0;
-
-            let kpiMixCountCurr = 0, kpiMixCountPrev = 0;
-
-            // Current Period Aggregation
-            const aggCurrent = (d) => {
-                kpiBonifCurr += (d.bonificacao || 0);
-                kpiDevolCurr += (d.devolucao || 0);
-                // Use total_sold_base if available, else fallback to faturamento
-                kpiTotalSoldBaseCurr += (d.total_sold_base !== undefined ? d.total_sold_base : (d.faturamento || 0));
-                if (d.mix_pdv > 0) { kpiMixCurr += d.mix_pdv; kpiMixCountCurr++; }
-            };
-
-            // Previous Period Aggregation
-            const aggPrevious = (d) => {
-                kpiBonifPrev += (d.bonificacao || 0);
-                kpiDevolPrev += (d.devolucao || 0);
-                if (d.mix_pdv > 0) { kpiMixPrev += d.mix_pdv; kpiMixCountPrev++; }
-            };
-
-            // Use filtered month data if month selected, otherwise all months
-            const activeCurrentData = (mesFilter.value !== '') ? currentData.filter(d => d.month_index === targetIndex) : currentData;
-            // Logic for Previous: If Month selected, compare to same month prev year. If Year selected, compare to full prev year.
-            const activePreviousData = (mesFilter.value !== '') ? previousData.filter(d => d.month_index === targetIndex) : previousData;
-
-            // Handle Trend for Current Year/Month
-            activeCurrentData.forEach(d => {
-                // If viewing Year and this is the trend month, use trend data
-                if (data.trend_allowed && data.trend_data && d.month_index === data.trend_data.month_index) {
-                    aggCurrent(data.trend_data);
-                } else {
-                    aggCurrent(d);
-                }
-            });
-            activePreviousData.forEach(aggPrevious);
-
-            // Averages for Mix
-            const avgMixCurr = kpiMixCountCurr > 0 ? kpiMixCurr / kpiMixCountCurr : 0;
-            const avgMixPrev = kpiMixCountPrev > 0 ? kpiMixPrev / kpiMixCountPrev : 0;
-
-            // Calculate Percentages
-            const percBonif = kpiTotalSoldBaseCurr > 0 ? (kpiBonifCurr / kpiTotalSoldBaseCurr) * 100 : 0;
-            const percDevol = kpiTotalSoldBaseCurr > 0 ? (kpiDevolCurr / kpiTotalSoldBaseCurr) * 100 : 0;
-
-            const varBonif = calcEvo(kpiBonifCurr, kpiBonifPrev);
-            const varDevol = calcEvo(kpiDevolCurr, kpiDevolPrev);
-            const varMix = calcEvo(avgMixCurr, avgMixPrev);
-
-            // Render New KPIs
-            const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            const fmtPerc = (v) => `${(isNaN(v) ? 0 : v).toFixed(1)}%`;
-
-            // 1. Bonification
-            document.getElementById('kpi-bonif-val').textContent = fmtBRL(kpiBonifCurr);
-            const elBonifPerc = document.getElementById('kpi-bonif-perc');
-            elBonifPerc.textContent = fmtPerc(percBonif);
-            elBonifPerc.className = `text-lg font-bold ${percBonif <= 1.5 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-bonif-sec').textContent = fmtBRL(kpiTotalSoldBaseCurr);
-
-            // Update Corner Types (05, 11) - Defensive check
-            const safeTypes = (typeof selectedTiposVenda !== 'undefined' && Array.isArray(selectedTiposVenda)) ? selectedTiposVenda : [];
-            const types = safeTypes.filter(t => t === '5' || t === '11').sort().join(' e ');
-            const typeLabel = types ? types : '05 e 11';
-            document.getElementById('kpi-bonif-types').textContent = typeLabel;
-            document.getElementById('kpi-bonif-var-types').textContent = typeLabel;
-
-            // 2. Bonification Variation
-            document.getElementById('kpi-bonif-var-val').textContent = fmtBRL(kpiBonifCurr);
-            const elBonifVarPerc = document.getElementById('kpi-bonif-var-perc');
-            elBonifVarPerc.textContent = `${varBonif > 0 ? '+' : ''}${varBonif.toFixed(1)}%`;
-            elBonifVarPerc.className = `text-lg font-bold ${varBonif <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-bonif-var-sec').textContent = fmtBRL(kpiBonifPrev);
-
-            // 3. Devolução
-            document.getElementById('kpi-devol-val').textContent = fmtBRL(kpiDevolCurr);
-            const elDevolPerc = document.getElementById('kpi-devol-perc');
-            elDevolPerc.textContent = fmtPerc(percDevol);
-            elDevolPerc.className = `text-lg font-bold ${percDevol > 0 ? 'text-red-400' : 'text-emerald-400'}`;
-            document.getElementById('kpi-devol-sec').textContent = fmtBRL(kpiTotalSoldBaseCurr);
-
-            // 4. Devolução Variation
-            document.getElementById('kpi-devol-var-val').textContent = fmtBRL(kpiDevolCurr);
-            const elDevolVarPerc = document.getElementById('kpi-devol-var-perc');
-            elDevolVarPerc.textContent = `${varDevol > 0 ? '+' : ''}${varDevol.toFixed(1)}%`;
-            elDevolVarPerc.className = `text-lg font-bold ${varDevol <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-devol-var-sec').textContent = fmtBRL(kpiDevolPrev);
-
-            // 5. Mix PDV
-            document.getElementById('kpi-mix-val').textContent = avgMixCurr.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const elMixPerc = document.getElementById('kpi-mix-perc');
-            elMixPerc.textContent = `${varMix > 0 ? '+' : ''}${varMix.toFixed(1)}%`;
-            elMixPerc.className = `text-lg font-bold ${varMix >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-mix-sec').textContent = avgMixPrev.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        } catch (err) {
-            console.error('Error updating new KPIs:', err);
-        }
-
-        updateKpiCard({
-            prefix: 'fat',
-            trendVal: currFat,
-            prevVal: prevFat,
-            fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-            calcEvo
-        });
-
-        updateKpiCard({
-            prefix: 'kg',
-            trendVal: currKg,
-            prevVal: prevKg,
-            fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Ton`,
-            calcEvo
-        });
-
-        // --- KPI Month vs Trimester (Keep standard logic based on target month) ---
-        let triSumFat = 0, triSumPeso = 0, triCount = 0;
-        for (let i = 1; i <= 3; i++) {
-            const idx = targetIndex - i;
-            let mData;
-            if (idx >= 0) {
-                mData = data.monthly_data_current.find(d => d.month_index === idx);
-            } else {
-                const prevIdx = 12 + idx;
-                mData = data.monthly_data_previous.find(d => d.month_index === prevIdx);
-            }
-            if (mData) { triSumFat += mData.faturamento; triSumPeso += mData.peso; triCount++; }
-        }
-        triAvgFat = triCount > 0 ? triSumFat / triCount : 0;
-        triAvgPeso = triCount > 0 ? triSumPeso / triCount : 0;
-
-        let currMonthFatForTri, currMonthKgForTri;
-
-        if (anoFilter.value !== 'todos' && mesFilter.value === '') {
-             // In Year View, we still want the Tri card to make sense (Current Month vs Tri).
-             // Let's re-fetch the specific current month data for the Tri calculation.
-             const cMonthData = data.monthly_data_current.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
-             if (data.trend_allowed && data.trend_data && data.trend_data.month_index === targetIndex) {
-                 currMonthFatForTri = data.trend_data.faturamento;
-                 currMonthKgForTri = data.trend_data.peso;
-             } else {
-                 currMonthFatForTri = cMonthData.faturamento;
-                 currMonthKgForTri = cMonthData.peso;
-             }
-        } else {
-             // In Month View, currFat is already the monthly value
-             currMonthFatForTri = currFat;
-             currMonthKgForTri = currKg;
-        }
-
-        updateKpiCard({
-            prefix: 'tri-fat',
-            trendVal: currMonthFatForTri,
-            prevVal: triAvgFat,
-            fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-            calcEvo
-        });
-
-        updateKpiCard({
-            prefix: 'tri-kg',
-            trendVal: currMonthKgForTri,
-            prevVal: triAvgPeso,
-            fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Ton`,
-            calcEvo
-        });
-
-        const mName = monthNames[targetIndex]?.toUpperCase() || "";
-
-        // Update Titles
-        document.getElementById('kpi-title-evo-ano-fat').textContent = kpiTitleFat;
-        document.getElementById('kpi-title-evo-ano-kg').textContent = kpiTitleKg;
-        document.getElementById('kpi-title-evo-tri-fat').textContent = `Tend. FAT ${mName} vs Trim. Ant.`;
-        document.getElementById('kpi-title-evo-tri-kg').textContent = `Tend. TON ${mName} vs Trim. Ant.`;
-
-        // --- CHART PREP (Responsive to Mode) ---
-        const mainChartTitle = document.getElementById('main-chart-title');
-
-        // Determine Bonification Mode
-        const isBonifMode = isBonificationMode(getCurrentFilters().p_tipovenda);
-
-        // Data Mapping Helper based on Mode
-        const getDataValue = (d) => {
-            if (isBonifMode && currentChartMode === 'faturamento') return d.bonificacao;
-            return currentChartMode === 'faturamento' ? d.faturamento : d.peso;
-        };
-
-        // Formatters
-        const currencyFormatter = (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''));
-        const weightFormatter = (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
-        const currentFormatter = currentChartMode === 'faturamento' ? currencyFormatter : weightFormatter;
-
-        if (currentChartMode === 'faturamento') {
-            mainChartTitle.textContent = isBonifMode ? "BONIFICADO MENSAL" : "FATURAMENTO MENSAL";
-        } else {
-            mainChartTitle.textContent = "TONELAGEM MENSAL";
-        }
-
-        const mapTo12 = (arr) => {
-            const res = new Array(12).fill(0);
-            arr.forEach(d => res[d.month_index] = getDataValue(d));
-            return res;
-        };
-
-        const datasets = [];
-
-        datasets.push({ label: `Ano ${data.previous_year}`, data: mapTo12(previousData), isPrevious: true });
-        datasets.push({ label: `Ano ${data.current_year}`, data: mapTo12(currentData), isCurrent: true });
-
-        // Trend Logic (Chart)
-        if (data.trend_allowed && data.trend_data) {
-            const trendArray = new Array(13).fill(null); // Increased to 13 to separate trend
-            // Pad previous datasets to 13
-            datasets.forEach(ds => ds.data.push(null));
-
-            trendArray[12] = getDataValue(data.trend_data); // Use 13th slot
-
-            datasets.push({
-                label: `Tendência ${monthNames[data.trend_data.month_index]}`,
-                data: trendArray,
-                isTrend: true
-            });
-        }
-
-        const chartLabels = [...monthNames];
-        if (data.trend_allowed) chartLabels.push('Tendência');
-
-        createChart('main-chart', 'bar', chartLabels, datasets, currentFormatter);
-        updateTable(currentData, previousData, data.current_year, data.previous_year, data.trend_allowed ? data.trend_data : null);
-    }
-
-    function updateKpi(id, value) {
-        const el = document.getElementById(id);
-        if(!el) return;
-        el.textContent = `${value.toFixed(1)}%`;
-        el.className = `text-2xl font-bold ${value >= 0 ? 'text-green-400' : 'text-red-400'}`;
-    }
-
-    function updateKpiCard({ prefix, trendVal, prevVal, fmt, calcEvo }) {
-        const evo = calcEvo(trendVal, prevVal);
-
-        const elTrend = document.getElementById(`kpi-value-trend-${prefix}`);
-        const elPrev = document.getElementById(`kpi-value-prev-${prefix}`);
-        const elVar = document.getElementById(`kpi-var-${prefix}`);
-
-        if (elTrend) elTrend.textContent = fmt(trendVal);
-        if (elPrev) elPrev.textContent = fmt(prevVal);
-        if (elVar) {
-            elVar.textContent = `${evo > 0 ? '+' : ''}${evo.toFixed(1)}%`;
-            elVar.className = `font-bold ${evo >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-        }
-    }
-
-    function createChart(canvasId, type, labels, datasetsData, formatterVal) {
-        const container = document.getElementById(canvasId + 'Container');
-        if (!container) return;
-        container.innerHTML = '';
-        const newCanvas = document.createElement('canvas');
-        newCanvas.id = canvasId;
-        container.appendChild(newCanvas);
-
-        const ctx = newCanvas.getContext('2d');
-        const professionalPalette = { 'current': '#06b6d4', 'previous': '#f97316', 'trend': '#8b5cf6' };
-
-        const datasets = datasetsData.map((d, i) => {
-            let color = '#94a3b8'; // default
-            if (d.isPrevious) color = professionalPalette.previous;
-            if (d.isCurrent) color = professionalPalette.current;
-            if (d.isTrend) color = professionalPalette.trend;
-
-            return {
-                ...d,
-                label: d.label,
-                data: d.data,
-                backgroundColor: d.backgroundColor || color,
-                borderColor: d.borderColor || color,
-                borderWidth: 1,
-                skipNull: true
-            };
-        });
-
-        if (currentCharts[canvasId]) currentCharts[canvasId].destroy();
-
-        currentCharts[canvasId] = new Chart(ctx, {
-            type: type,
-            data: { labels, datasets },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { labels: { color: '#cbd5e1' } },
-                    datalabels: {
-                        display: true,
-                        anchor: 'end',
-                        align: 'top',
-                        offset: 4,
-                        color: '#cbd5e1',
-                        font: { size: 9, weight: 'bold' },
-                        formatter: formatterVal || ((v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : '')))
-                    }
-                },
-                scales: {
-                    y: {
-                        ticks: { color: '#94a3b8' },
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                        afterFit: (axis) => { axis.width = 150; } // Force Y-axis width to match table first column
-                    },
-                    x: {
-                        ticks: { color: '#94a3b8' },
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
-                    }
-                }
-            },
-            plugins: [ChartDataLabels]
-        });
-    }
-
-    function updateTable(currData, prevData, currYear, prevYear, trendData) {
-        const tableBody = document.getElementById('monthly-summary-table-body');
-        const tableHead = document.querySelector('#monthly-summary-table thead tr');
-        tableBody.innerHTML = '';
-
-        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        let headerHTML = '<th class="px-2 py-2 text-left">INDICADOR</th>';
-        monthNames.forEach(m => headerHTML += `<th class="px-2 py-2 text-center">${m}</th>`);
-        if (trendData) {
-            headerHTML += `<th class="px-2 py-2 text-center bg-purple-900/30 text-purple-200">Tendência</th>`;
-        }
-        tableHead.innerHTML = headerHTML;
-
-        const indicators = [
-            { name: 'POSITIVAÇÃO', key: 'positivacao', fmt: v => v.toLocaleString('pt-BR') },
-            { name: 'FATURAMENTO', key: 'faturamento', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
-            { name: 'Mix PDV', key: 'mix_pdv', fmt: v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
-            { name: 'Ticket Médio', key: 'ticket_medio', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
-            { name: 'BONIFICAÇÃO', key: 'bonificacao', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
-            { name: '% Perda', key: 'perc_perda', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
-            { name: 'DEVOLUÇÃO', key: 'devolucao', fmt: v => `<span class="text-red-400">${v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>` },
-            { name: '% Devolução', key: 'perc_devolucao', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
-            { name: 'TON VENDIDA', key: 'peso', fmt: v => `${(v/1000).toFixed(2)} Kg` }
-        ];
-
-        indicators.forEach(ind => {
-            let rowHTML = `<tr class="table-row"><td class="font-bold p-2 text-left">${ind.name}</td>`;
-            for(let i=0; i<12; i++) {
-                const d = currData.find(x => x.month_index === i);
-                let val = d ? d[ind.key] : null;
-                if (val === undefined) val = null;
-                if (val === null && !ind.allowNull) val = 0;
-                rowHTML += `<td class="px-2 py-1.5 text-center">${ind.fmt(val)}</td>`;
-            }
-            if (trendData) {
-                 let tVal = trendData[ind.key];
-                 if (tVal === undefined) tVal = null;
-                 if (tVal === null && !ind.allowNull) tVal = 0;
-                 rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-purple-300 bg-purple-900/20">${ind.fmt(tVal)}</td>`;
-            }
-            rowHTML += '</tr>';
-            tableBody.innerHTML += rowHTML;
-        });
-    }
-
 
     let citySelectedFiliais = [];
     let citySelectedCidades = [];
@@ -2760,7 +2295,7 @@ let boxesFilterDebounceTimer;
     const handleCityFilterChange = () => {
         clearTimeout(cityFilterDebounceTimer);
         cityFilterDebounceTimer = setTimeout(() => {
-            currentCityPage = 0;
+            currentCityPage = 0; 
             currentCityInactivePage = 0;
             loadCityView();
         }, 500);
@@ -2807,7 +2342,7 @@ let boxesFilterDebounceTimer;
             console.warn('Container not found for filter', btn.id);
             return;
         }
-
+        
         const MAX_ITEMS = 100;
         let debounceTimer;
 
@@ -2822,7 +2357,7 @@ let boxesFilterDebounceTimer;
                     return String(val).toLowerCase().includes(lower);
                 });
             }
-
+            
             const displayItems = filteredItems.slice(0, MAX_ITEMS);
 
             displayItems.forEach(item => {
@@ -2856,7 +2391,7 @@ let boxesFilterDebounceTimer;
             const span = btn.querySelector('span');
             if (!span) {
                 // Fallback if no span, to prevent crash
-                return;
+                return; 
             }
 
             if (selectedArray.length === 0) {
@@ -2871,12 +2406,12 @@ let boxesFilterDebounceTimer;
         };
         renderItems();
         updateBtnLabel();
-        if (searchInput) {
+        if (searchInput) { 
             searchInput.oninput = (e) => {
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => renderItems(e.target.value), 300);
-            };
-            searchInput.onclick = (e) => e.stopPropagation();
+            }; 
+            searchInput.onclick = (e) => e.stopPropagation(); 
         }
     }
 
@@ -2909,7 +2444,7 @@ let boxesFilterDebounceTimer;
              if (currentVal && currentVal !== 'todos') cityAnoFilter.value = currentVal;
              else if (filterData.anos.length > 0) cityAnoFilter.value = filterData.anos[0];
          }
-
+         
          if (cityMesFilter && cityMesFilter.options.length <= 1) {
             cityMesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -2953,7 +2488,7 @@ let boxesFilterDebounceTimer;
         };
 
         const { data, error } = await supabase.rpc('get_city_view_data', filters);
-
+        
         hideDashboardLoading();
 
         if(error) { console.error(error); return; }
@@ -3045,7 +2580,7 @@ let boxesFilterDebounceTimer;
             handleBranchFilterChange();
         }
     });
-
+    
     branchClearFiltersBtn?.addEventListener('click', () => {
          branchAnoFilter.value = 'todos';
          branchMesFilter.value = '';
@@ -3093,7 +2628,7 @@ let boxesFilterDebounceTimer;
              if (currentVal && currentVal !== 'todos') branchAnoFilter.value = currentVal;
              else if (filterData.anos.length > 0) branchAnoFilter.value = filterData.anos[0];
          }
-
+         
          // Months
          if (branchMesFilter.options.length <= 1) {
             branchMesFilter.innerHTML = '<option value="">Todos</option>';
@@ -3113,7 +2648,7 @@ let boxesFilterDebounceTimer;
         const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
         setupBranchMultiSelect(branchRedeFilterBtn, branchRedeFilterDropdown, branchRedeFilterList, redes, branchSelectedRedes, branchRedeFilterSearch);
     }
-
+    
     // Specific setup for Branch Filter to enforce 2 selections
     function setupBranchFilialSelect(btn, dropdown, container, items, selectedArray) {
         // If nothing selected, default to first 2
@@ -3123,7 +2658,7 @@ let boxesFilterDebounceTimer;
         }
 
         btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
-
+        
         const renderItems = () => {
             container.innerHTML = '';
             (items || []).forEach(item => {
@@ -3137,7 +2672,7 @@ let boxesFilterDebounceTimer;
                     const checkbox = div.querySelector('input');
                     // Toggle logic
                     if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
-
+                    
                     if (checkbox.checked) {
                         if (!selectedArray.includes(val)) {
                             selectedArray.push(val);
@@ -3148,7 +2683,7 @@ let boxesFilterDebounceTimer;
                         const idx = selectedArray.indexOf(val);
                         if (idx > -1) selectedArray.splice(idx, 1);
                     }
-
+                    
                     renderItems(); // Re-render to update checks visually (e.g. if one was auto-removed)
                     updateBtnLabel();
                 };
@@ -3156,13 +2691,13 @@ let boxesFilterDebounceTimer;
             });
             if (!items || items.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
         };
-
+        
         const updateBtnLabel = () => {
             const span = btn.querySelector('span');
             if (selectedArray.length === 0) span.textContent = 'Selecione 2';
             else span.textContent = `${selectedArray.length} selecionadas`;
         };
-
+        
         renderItems();
         updateBtnLabel();
     }
@@ -3182,7 +2717,7 @@ let boxesFilterDebounceTimer;
                     return String(val).toLowerCase().includes(lower);
                 });
             }
-
+            
             const displayItems = filteredItems.slice(0, MAX_ITEMS);
 
             displayItems.forEach(item => {
@@ -3226,12 +2761,12 @@ let boxesFilterDebounceTimer;
         };
         renderItems();
         updateBtnLabel();
-        if (searchInput) {
+        if (searchInput) { 
             searchInput.oninput = (e) => {
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => renderItems(e.target.value), 300);
-            };
-            searchInput.onclick = (e) => e.stopPropagation();
+            }; 
+            searchInput.onclick = (e) => e.stopPropagation(); 
         }
     }
 
@@ -3240,7 +2775,7 @@ let boxesFilterDebounceTimer;
 
         // Populate Dropdowns if needed
         if (branchAnoFilter.options.length <= 1) {
-            await initBranchFilters();
+            await initBranchFilters(); 
         }
 
         // Prepare Filters for RPC
@@ -3281,7 +2816,7 @@ let boxesFilterDebounceTimer;
         } catch (e) {
             console.error("Erro geral no fetch de filiais:", e);
         }
-
+        
         hideDashboardLoading();
         if (branchDataMap) {
             renderBranchDashboard(branchDataMap, selectedYear, selectedMonth);
@@ -3291,7 +2826,7 @@ let boxesFilterDebounceTimer;
     function renderBranchDashboard(branchDataMap, selectedYear, selectedMonth) {
          const now = new Date();
          const branches = Object.keys(branchDataMap).sort();
-         const kpiBranches = {};
+         const kpiBranches = {}; 
          const chartBranches = {};
          const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
@@ -3312,7 +2847,7 @@ let boxesFilterDebounceTimer;
          branches.forEach(b => {
              const data = branchDataMap[b];
              let monthlyData = data.monthly_data_current || [];
-
+             
              // If month is selected, filter data
              if (selectedMonth !== null && selectedMonth !== undefined && selectedMonth !== '') {
                  const monthIdx = parseInt(selectedMonth);
@@ -3354,7 +2889,7 @@ let boxesFilterDebounceTimer;
                      kpiKg += (d.peso || 0);
                  });
              }
-
+             
              kpiBranches[b] = { faturamento: kpiFat, peso: kpiKg };
          });
 
@@ -3362,7 +2897,7 @@ let boxesFilterDebounceTimer;
          // Ensure we display consistent order as fetched/selected
          const b1 = branches[0] || 'N/A';
          const b2 = branches[1] || 'N/A';
-
+         
          const val1Fat = kpiBranches[b1]?.faturamento || 0;
          const val2Fat = kpiBranches[b2]?.faturamento || 0;
          const val1Kg = kpiBranches[b1]?.peso || 0;
@@ -3372,15 +2907,15 @@ let boxesFilterDebounceTimer;
          const elB2Name = document.getElementById('branch-name-2'); if(elB2Name) elB2Name.textContent = b2;
          const elVal1Fat = document.getElementById('branch-val-1-fat'); if(elVal1Fat) elVal1Fat.textContent = val1Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
          const elVal2Fat = document.getElementById('branch-val-2-fat'); if(elVal2Fat) elVal2Fat.textContent = val2Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-
+         
          // Variations Logic
          // Share of Total (Val / Total)
-
+         
          const calcShare = (val, total) => {
              if (total > 0) return (val / total) * 100;
              return 0;
          };
-
+         
          const totalFat = val1Fat + val2Fat;
          const share1Fat = calcShare(val1Fat, totalFat);
          const share2Fat = calcShare(val2Fat, totalFat);
@@ -3416,7 +2951,7 @@ let boxesFilterDebounceTimer;
              elVar2Kg.textContent = `${share2Kg.toFixed(1)}%`;
              elVar2Kg.className = `text-sm font-bold mt-1 ${share2Kg >= 50 ? 'text-emerald-400' : 'text-red-400'}`;
          }
-
+         
          // Update Title Context
          let kpiContext;
          if (!selectedYear || selectedYear === 'todos') {
@@ -3440,7 +2975,7 @@ let boxesFilterDebounceTimer;
 
          // --- Chart Rendering ---
          const datasets = [];
-         const colors = ['#06b6d4', '#f97316', '#8b5cf6', '#10b981'];
+         const colors = ['#06b6d4', '#f97316', '#8b5cf6', '#10b981']; 
          const trendColors = ['#c084fc', '#7e22ce']; // Lilac, Purple
 
          branches.forEach((b, idx) => {
@@ -3452,15 +2987,15 @@ let boxesFilterDebounceTimer;
                  borderWidth: 1
              });
          });
-
+         
          const chartYear = (!selectedYear || selectedYear === 'todos') ? now.getFullYear() : parseInt(selectedYear);
-
+         
          // Check if ANY branch has trend data available
          const hasTrendData = branches.some(b => {
              const bData = branchDataMap[b];
              return bData && bData.trend_allowed && bData.trend_data;
          });
-
+         
          if (hasTrendData) {
              branches.forEach((b, idx) => {
                  const bData = branchDataMap[b];
@@ -3470,27 +3005,27 @@ let boxesFilterDebounceTimer;
                  } else {
                      if (datasets[idx]) datasets[idx].data.push(0);
                  }
-
+                 
                  // Update colors to highlight trend
                  const baseColor = colors[idx % colors.length];
                  const trendColor = trendColors[idx % trendColors.length];
-
+                 
                  // Create array of colors: 12 months + 1 trend
                  const bgColors = new Array(12).fill(baseColor);
                  bgColors.push(trendColor);
-
+                 
                  datasets[idx].backgroundColor = bgColors;
                  datasets[idx].borderColor = bgColors;
              });
-
+             
              const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Tendência"];
-             const fmt = currentBranchChartMode === 'faturamento'
+             const fmt = currentBranchChartMode === 'faturamento' 
                 ? (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''))
                 : (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
              createChart('branch-chart', 'bar', labels, datasets, fmt);
          } else {
              const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-             const fmt = currentBranchChartMode === 'faturamento'
+             const fmt = currentBranchChartMode === 'faturamento' 
                 ? (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''))
                 : (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
              createChart('branch-chart', 'bar', labels, datasets, fmt);
@@ -3544,7 +3079,7 @@ let boxesFilterDebounceTimer;
         const now = new Date();
         let year = now.getFullYear();
         let month = now.getMonth();
-
+        
         // Respect Filters if selected
         if (anoFilter && anoFilter.value !== 'todos') {
             year = parseInt(anoFilter.value);
@@ -3556,14 +3091,14 @@ let boxesFilterDebounceTimer;
                  }
             }
         }
-
+        
         if (mesFilter && mesFilter.value !== '') {
             month = parseInt(mesFilter.value);
         }
 
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
-
+        
         const daysInMonth = lastDay.getDate();
         const startingDay = firstDay.getDay(); // 0 = Sunday
 
@@ -3571,7 +3106,7 @@ let boxesFilterDebounceTimer;
 
         let html = `<div class="mb-2 font-bold text-slate-300 text-center">${monthNames[month]} ${year}</div>`;
         html += `<div class="grid grid-cols-7 gap-1 text-center">`;
-
+        
         const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
         weekDays.forEach(day => html += `<div class="w-8 h-8 flex items-center justify-center text-xs font-bold text-slate-500 cursor-default">${day}</div>`);
 
@@ -3586,7 +3121,7 @@ let boxesFilterDebounceTimer;
             const isHoliday = holidays.includes(dateStr);
             const isToday = (day === now.getDate() && month === now.getMonth() && year === now.getFullYear());
             const isLastSalesDay = (dateStr === lastSalesDate);
-
+            
             let classes = 'calendar-day w-8 h-8 flex items-center justify-center rounded cursor-pointer text-xs transition-colors';
 
             if (isHoliday) {
@@ -3597,12 +3132,12 @@ let boxesFilterDebounceTimer;
 
             if (isToday) classes += ' ring-1 ring-inset ring-cyan-500';
             if (isLastSalesDay) classes += ' border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 font-bold';
-
+            
             html += `<div class="${classes}" data-date="${dateStr}" title="${isLastSalesDay ? 'Última Venda' : ''}">${day}</div>`;
         }
-
+        
         html += `</div>`;
-
+        
         // Legend
         html += `
             <div class="mt-4 flex flex-col gap-2 text-xs text-slate-400">
@@ -3627,28 +3162,28 @@ let boxesFilterDebounceTimer;
         calendarModalContent.querySelectorAll('.calendar-day[data-date]').forEach(el => {
             el.addEventListener('click', async () => {
                 console.log("Calendar day clicked:", el.getAttribute('data-date'));
-
+                
                 // Allow click even if role is unknown for debugging, but ideally check permissions
                 if (window.userRole !== 'adm') {
                     console.warn("User role not adm:", window.userRole);
                     alert("Apenas administradores podem alterar feriados.");
                     return;
                 }
-
+                
                 const date = el.getAttribute('data-date');
                 const isSelected = el.classList.contains('selected');
                 const [y, m, d] = date.split('-');
                 const formattedDate = `${d}/${m}/${y}`;
-
-                const confirmMsg = isSelected
-                    ? `Você deseja remover o feriado de ${formattedDate}?`
+                
+                const confirmMsg = isSelected 
+                    ? `Você deseja remover o feriado de ${formattedDate}?` 
                     : `Você deseja selecionar ${formattedDate} como feriado?`;
 
                 if (!confirm(confirmMsg)) return;
 
                 // Optimistic UI Update
                 el.classList.toggle('selected');
-
+                
                 // Call RPC
                 const { data: result, error } = await supabase.rpc('toggle_holiday', { p_date: date });
                 if (error) {
@@ -3657,7 +3192,7 @@ let boxesFilterDebounceTimer;
                     alert("Erro ao alterar feriado: " + error.message);
                 } else {
                     console.log("Holiday toggled successfully.");
-
+                    
                     // Update local holidays array
                     if (isSelected) {
                         holidays = holidays.filter(h => h !== date);
@@ -3672,7 +3207,7 @@ let boxesFilterDebounceTimer;
             });
         });
     }
-
+ 
 
         let selectedComparisonSupervisors = [];
         let selectedComparisonSellers = [];
@@ -3911,19 +3446,19 @@ let boxesFilterDebounceTimer;
             try {
                 // Try to find specific list containers, fallback to dropdown if not found
                 const getList = (id) => document.getElementById(id);
-
+                
                 // Supervisors
                 const supList = getList('comparison-supervisor-filter-list') || comparisonSupervisorFilterDropdown;
                 setupCityMultiSelect(comparisonSupervisorFilterBtn, comparisonSupervisorFilterDropdown, supList, filterData.supervisors, selectedComparisonSupervisors);
-
+                
                 // Vendedores
                 const vendList = getList('comparison-vendedor-filter-list') || comparisonVendedorFilterDropdown;
                 setupCityMultiSelect(comparisonVendedorFilterBtn, comparisonVendedorFilterDropdown, vendList, filterData.vendedores, selectedComparisonSellers);
-
+                
                 // Suppliers
                 const suppList = getList('comparison-supplier-filter-list') || comparisonSupplierFilterDropdown;
                 setupCityMultiSelect(comparisonSupplierFilterBtn, comparisonSupplierFilterDropdown, suppList, filterData.fornecedores, selectedComparisonSuppliers, null, true);
-
+                
                 // Tipos Venda
                 const tipoList = getList('comparison-tipo-venda-filter-list') || comparisonTipoVendaFilterDropdown;
                 setupCityMultiSelect(comparisonTipoVendaFilterBtn, comparisonTipoVendaFilterDropdown, tipoList, filterData.tipos_venda, selectedComparisonTiposVenda);
@@ -4039,10 +3574,10 @@ let boxesFilterDebounceTimer;
                 { title: 'Faturamento Total', current: curF, history: data.history_kpi.f / 3, format: 'currency' },
                 { title: 'Peso Total (Ton)', current: curP/1000, history: (data.history_kpi.p/3)/1000, format: 'decimal' },
                 { title: 'Clientes Atendidos', current: curC, history: data.history_kpi.c / 3, format: 'integer' },
-                { title: 'Ticket Médio',
-                  current: curC > 0 ? curF / curC : 0,
-                  history: data.history_kpi.c > 0 ? (data.history_kpi.f/3) / (data.history_kpi.c/3) : 0,
-                  format: 'currency'
+                { title: 'Ticket Médio', 
+                  current: curC > 0 ? curF / curC : 0, 
+                  history: data.history_kpi.c > 0 ? (data.history_kpi.f/3) / (data.history_kpi.c/3) : 0, 
+                  format: 'currency' 
                 },
                 { title: 'Mix por PDV (Pepsico)', current: Number(data.current_kpi.mix_pepsico.toFixed(2)), history: Number((data.history_kpi.sum_mix_pepsico / 3).toFixed(2)), format: 'decimal_2' },
                 { title: 'Mix Salty', current: Math.round(data.current_kpi.pos_salty * trendFactor), history: Math.round(data.history_kpi.sum_pos_salty / 3), format: 'integer' },
@@ -4052,11 +3587,11 @@ let boxesFilterDebounceTimer;
             // 2. Weekly Chart Logic
             const currentDaily = data.current_daily || [];
             const historyDaily = data.history_daily || [];
-
+            
             const getWeekIdx = (dateStr) => {
                 const d = new Date(dateStr);
                 const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
-                const offset = firstDay.getDay();
+                const offset = firstDay.getDay(); 
                 const dayOfMonth = d.getDate();
                 return Math.floor((dayOfMonth + offset - 1) / 7);
             };
@@ -4075,11 +3610,11 @@ let boxesFilterDebounceTimer;
             currentDaily.forEach(item => {
                 if (item.d > maxDateStr) maxDateStr = item.d;
                 currentActualTotal += item.f;
-
+                
                 const idx = getWeekIdx(item.d + 'T12:00:00');
                 if (idx >= 0 && idx < 6) {
                     weeklyCurrent[idx] += item.f;
-
+                    
                     // Fill Daily Actuals
                     const d = new Date(item.d + 'T12:00:00');
                     const dayIdx = d.getDay();
@@ -4099,7 +3634,7 @@ let boxesFilterDebounceTimer;
                     const day = d.getDay();
                     const dateStr = d.toISOString().split('T')[0];
                     // Access global holidays if available
-                    const hols = (typeof holidays !== 'undefined') ? holidays : [];
+                    const hols = (typeof holidays !== 'undefined') ? holidays : []; 
                     return day !== 0 && day !== 6 && !hols.includes(dateStr);
                 };
 
@@ -4117,7 +3652,7 @@ let boxesFilterDebounceTimer;
                     }
                 });
 
-                const historyWeights = historySums.map((week, wIdx) =>
+                const historyWeights = historySums.map((week, wIdx) => 
                     week.map((sum, dIdx) => {
                         const count = historyCounts[wIdx][dIdx];
                         return count > 0 ? sum / count : 0;
@@ -4133,9 +3668,9 @@ let boxesFilterDebounceTimer;
                 }
 
                 const dailyRunRate = passedWorkingDays > 0 ? currentActualTotal / passedWorkingDays : 0;
-
+                
                 // Identify Future Working Days
-                const futureDays = [];
+                const futureDays = []; 
                 let iter = new Date(lastSalesDate);
                 iter.setDate(iter.getDate() + 1); // Start from next day
 
@@ -4165,9 +3700,9 @@ let boxesFilterDebounceTimer;
                         allocation = totalProjectedPot * (weight / totalWeightDenominator);
                     } else {
                         // Fallback to equal distribution if no history for these specific slots
-                        allocation = dailyRunRate;
+                        allocation = dailyRunRate; 
                     }
-
+                    
                     weeklyCurrent[day.weekIdx] += allocation;
                     dailyDataByWeek[day.weekIdx][day.dayIdx] += allocation;
                 });
@@ -4190,7 +3725,7 @@ let boxesFilterDebounceTimer;
                 fat: m.f,
                 clients: m.c
             }));
-
+            
             monthlyData.push({ label: 'Atual', fat: curF, clients: curC });
 
             // 4. Daily Chart Datasets
