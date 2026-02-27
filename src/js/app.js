@@ -429,6 +429,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return `<span class="${cls}">${sign}${v.toFixed(1)}%</span>`;
     };
 
+    // Shared Formatting Helper for Variance %
+    const fmtVar = (v) => {
+        const cls = v >= 0 ? 'text-emerald-400' : 'text-red-400';
+        const sign = v > 0 ? '+' : '';
+        return `<span class="${cls}">${sign}${v.toFixed(1)}%</span>`;
+    };
+
     // --- Session & Initial Load ---
     async function handleInitialRouting() {
         const params = new URLSearchParams(window.location.search);
