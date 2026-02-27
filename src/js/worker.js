@@ -316,9 +316,22 @@ self.onmessage = async (event) => {
         const dimProducts = new Map();
         const allowedSuppliers = new Set(['707', '708', '752', '1119']);
 
+        // Collect Active Product Codes from Sales
+        const activeProductCodes = new Set();
+        const collectProductCodes = (row) => {
+            const code = String(row['PRODUTO'] || '').trim();
+            if (code) activeProductCodes.add(code);
+        };
+        salesPrevYearDataRaw.forEach(collectProductCodes);
+        salesCurrYearHistDataRaw.forEach(collectProductCodes);
+        salesCurrMonthDataRaw.forEach(collectProductCodes);
+
         productsDataRaw.forEach(prod => {
             const productCode = String(prod['Código'] || '').trim();
             if (!productCode) return;
+
+            // Filter: Must be active (present in sales history)
+            if (!activeProductCodes.has(productCode)) return;
 
             const codFor = String(prod['Fornecedor'] || '').trim();
 
