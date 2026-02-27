@@ -1629,14 +1629,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (applyTrend) {
                 if (isYearView) {
                     // YEAR VIEW + TREND
-                    // Main Value: Stays as Realized (YTD) per requirements.
-                    // Tri Indicator: Uses Trended Current Month vs Tri Avg.
+                    // Main Value: Should be Annual Projection (YTD Realized - Current Realized + Current Trended) / Months * 12
+                    // Formula simplified: (YTD_Realized_Excluding_Current + (Current_Realized * Factor)) / Month_Index * 12
 
-                    // We need to calculate the Trended Monthly Value for the current month to use in the Tri indicator.
-                    // The `kpi_current` in Year View is the SUM of the year.
-                    // We need to find the specific current month's realized value from the chart data to apply trend.
-
-                    // Filter chart data for current year and current month index
                     const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
                     const currMonthData = (data.chart_data || []).find(d => d.year === filterYear && d.month_index === trendInfo.current_month_index);
 
@@ -1647,10 +1642,27 @@ document.addEventListener('DOMContentLoaded', () => {
                         else if (key === 'caixas') currMonthRealized = currMonthData.caixas;
                     }
 
-                    // Apply Trend Factor to get Projected Month
+                    // Tri Indicator: Trended Current Month vs Tri Avg
                     triComparisonVal = currMonthRealized * trendInfo.factor;
 
-                    // Main Display stays curr (Realized YTD)
+                    // Main Display: Annual Projection
+                    // 1. Calculate YTD Realized Excluding Current Month
+                    // curr is the total YTD from RPC
+                    const ytdExclCurrent = curr - currMonthRealized;
+
+                    // 2. Add Trended Current Month
+                    const ytdWithTrend = ytdExclCurrent + triComparisonVal;
+
+                    // 3. Project for Full Year (12 months)
+                    // If we are in Jan (index 0), divide by 1 * 12
+                    // If we are in Dec (index 11), divide by 12 * 12 (basically identity)
+                    const monthsPassed = trendInfo.current_month_index + 1;
+
+                    if (monthsPassed > 0) {
+                        mainDisplayVal = (ytdWithTrend / monthsPassed) * 12;
+                    } else {
+                        mainDisplayVal = ytdWithTrend; // Fallback
+                    }
 
                 } else {
                     // MONTH VIEW + TREND
