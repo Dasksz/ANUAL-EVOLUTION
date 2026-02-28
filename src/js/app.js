@@ -21,15 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const navComparativoBtn = document.getElementById('nav-comparativo-btn');
     const optimizeDbBtnNav = document.getElementById('optimize-db-btn-nav');
 
-    const navConfigBtn = document.getElementById('nav-config-btn');
-    const navConfigDropdown = document.getElementById('nav-config-dropdown');
-    const navProfileBtn = document.getElementById('nav-profile-btn');
-    const navProfileDropdown = document.getElementById('nav-profile-dropdown');
-    
-    // User Display Elements
-    const userDisplayName = document.getElementById('user-display-name');
-    const userDisplayEmail = document.getElementById('user-display-email');
-
     // Views
     const dashboardContainer = document.getElementById('dashboard-container');
     const uploaderModal = document.getElementById('uploader-modal');
@@ -702,7 +693,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Navigation Logic (Updated for Top Nav) ---
     function setActiveNavLink(link) {
         if (!link) return;
-        document.querySelectorAll('.navbar__link').forEach(l => l.classList.remove('active'));
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
         link.classList.add('active');
     }
 
@@ -715,29 +706,6 @@ document.addEventListener('DOMContentLoaded', () => {
         branchView.classList.add('hidden');
         comparisonView.classList.add('hidden');
     };
-
-    // --- Dropdown Toggles ---
-    document.addEventListener('click', (e) => {
-        // Toggle Config Dropdown
-        if (navConfigBtn.contains(e.target)) {
-            navConfigDropdown.classList.toggle('hidden');
-            navProfileDropdown.classList.add('hidden'); // Close others
-        } else if (!navConfigDropdown.contains(e.target)) {
-            navConfigDropdown.classList.add('hidden');
-        }
-
-        // Toggle Profile Dropdown
-        if (navProfileBtn.contains(e.target)) {
-            navProfileDropdown.classList.toggle('hidden');
-            navConfigDropdown.classList.add('hidden'); // Close others
-        } else if (!navProfileDropdown.contains(e.target)) {
-            navProfileDropdown.classList.add('hidden');
-        }
-    });
-
-    navConfigBtn.addEventListener('click', () => {
-        setActiveNavLink(navConfigBtn);
-    });
 
     navDashboardBtn.addEventListener('click', (e) => {
         if (navigateWithCtrl(e, 'dashboard')) return;
@@ -819,14 +787,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.userRole === 'adm') {
             if(navUploaderBtn) navUploaderBtn.classList.remove('hidden');
         }
-        
-        // Update User Dropdown Name / Email from session if available
-        supabase.auth.getSession().then(({ data: { session } }) => {
-             if (session && session.user) {
-                 if (userDisplayName) userDisplayName.textContent = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Usuário';
-                 if (userDisplayEmail) userDisplayEmail.textContent = session.user.email;
-             }
-        });
     }
 
 
@@ -1870,6 +1830,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentCityPage = 0;
     const cityPageSize = 50;
     let totalActiveClients = 0;
+    let currentCityInactivePage = 0;
+    const cityInactivePageSize = 50;
+    let totalInactiveClients = 0;
 
     let selectedFiliais = [];
     let selectedCidades = [];
@@ -2004,7 +1967,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setupMultiSelect(btn, dropdown, container, items, selectedArray, labelCallback, isObject = false, searchInput = null) {
         const MAX_ITEMS = 100;
-        btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
+        btn.onclick = (e) => {
+        e.stopPropagation();
+        const isHidden = dropdown.classList.contains('hidden');
+        // Close all dropdowns
+        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+            if (!el.classList.contains('hidden')) el.classList.add('hidden');
+        });
+        // Restore this one if it was hidden
+        if (isHidden) {
+            dropdown.classList.remove('hidden');
+        }
+    };
         
         let debounceTimer;
         const renderItems = (filterText = '') => {
@@ -2034,6 +2008,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const val = String(value);
                     if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
                     updateBtnLabel();
+// Removed immediate handleFilterChange call from here if any existed
                 };
                 container.appendChild(div);
             });
@@ -2150,14 +2125,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     let filterDebounceTimer;
+    let lastMainDashboardFiltersStr = "";
     const handleFilterChange = async () => {
         const filters = getCurrentFilters();
+        const currentFiltersStr = JSON.stringify(filters);
+        if (currentFiltersStr === lastMainDashboardFiltersStr) return; // No changes made
+        lastMainDashboardFiltersStr = currentFiltersStr;
+        
         clearTimeout(filterDebounceTimer);
         filterDebounceTimer = setTimeout(async () => {
             showDashboardLoading();
             try { await loadFilters(filters); } catch (err) { console.error("Failed to load filters:", err); }
             try { await loadMainDashboardData(); } catch (err) { console.error("Failed to load dashboard data:", err); }
-            if (!cityView.classList.contains('hidden')) { currentCityPage = 0; await loadCityView(); }
+            if (!cityView.classList.contains('hidden')) { currentCityPage = 0; currentCityInactivePage = 0; await loadCityView(); }
         }, 500);
     };
     anoFilter.onchange = handleFilterChange;
@@ -2799,7 +2779,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 data: d.data,
                 backgroundColor: d.backgroundColor || color,
                 borderColor: d.borderColor || color,
-                borderWidth: 0,
+                borderWidth: d.borderWidth !== undefined ? d.borderWidth : (type === 'line' ? 2 : 0),
                 borderSkipped: 'bottom',
                 borderRadius: {
                     topLeft: 6,
@@ -2901,10 +2881,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let citySelectedCategorias = [];
 
     let cityFilterDebounceTimer;
+    let lastCityFiltersStr = "";
     const handleCityFilterChange = () => {
+        const filters = getCityCurrentFilters();
+        const currentFiltersStr = JSON.stringify(filters);
+        if (currentFiltersStr === lastCityFiltersStr) return;
+        lastCityFiltersStr = currentFiltersStr;
+        
         clearTimeout(cityFilterDebounceTimer);
         cityFilterDebounceTimer = setTimeout(() => {
             currentCityPage = 0; 
+            currentCityInactivePage = 0;
             loadCityView();
         }, 500);
     };
@@ -2954,7 +2941,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const MAX_ITEMS = 100;
         let debounceTimer;
 
-        btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
+        btn.onclick = (e) => {
+        e.stopPropagation();
+        const isHidden = dropdown.classList.contains('hidden');
+        // Close all dropdowns
+        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+            if (!el.classList.contains('hidden')) el.classList.add('hidden');
+        });
+        // Restore this one if it was hidden
+        if (isHidden) {
+            dropdown.classList.remove('hidden');
+        }
+    };
         const renderItems = (filterText = '') => {
             container.innerHTML = '';
             let filteredItems = items || [];
@@ -2982,6 +2980,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const val = String(value);
                     if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
                     updateBtnLabel();
+// Removed immediate handleFilterChange call from here if any existed
                 };
                 container.appendChild(div);
             });
@@ -3091,6 +3090,8 @@ document.addEventListener('DOMContentLoaded', () => {
             p_mes: cityMesFilter.value === '' ? null : cityMesFilter.value,
             p_page: currentCityPage,
             p_limit: cityPageSize,
+            p_inactive_page: currentCityInactivePage,
+            p_inactive_limit: cityInactivePageSize
         };
 
         const { data, error } = await supabase.rpc('get_city_view_data', filters);
@@ -3100,6 +3101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(error) { console.error(error); return; }
 
         totalActiveClients = data.total_active_count || 0;
+        totalInactiveClients = data.total_inactive_count || 0;
 
         // Helper to map array rows to object based on cols
         const mapRows = (dataObj) => {
@@ -3115,6 +3117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const activeClients = Array.isArray(data.active_clients) ? data.active_clients : mapRows(data.active_clients);
+        const inactiveClients = Array.isArray(data.inactive_clients) ? data.inactive_clients : mapRows(data.inactive_clients);
 
         const renderTable = (bodyId, items) => {
             const body = document.getElementById(bodyId);
@@ -3136,8 +3139,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         renderTable('city-active-detail-table-body', activeClients);
+        renderTable('city-inactive-detail-table-body', inactiveClients);
 
         renderCityPaginationControls();
+        renderCityInactivePaginationControls();
     }
 
 
@@ -3153,7 +3158,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Filter Change Handler
     let branchFilterDebounceTimer;
+    let lastBranchFiltersStr = "";
     const handleBranchFilterChange = () => {
+        const filters = getBranchCurrentFilters();
+        const currentFiltersStr = JSON.stringify(filters);
+        if (currentFiltersStr === lastBranchFiltersStr) return;
+        lastBranchFiltersStr = currentFiltersStr;
+        
         clearTimeout(branchFilterDebounceTimer);
         branchFilterDebounceTimer = setTimeout(loadBranchView, 500);
     };
@@ -3259,7 +3270,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if(items.length > 1) selectedArray.push(String(items[1]));
         }
 
-        btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
+        btn.onclick = (e) => {
+        e.stopPropagation();
+        const isHidden = dropdown.classList.contains('hidden');
+        // Close all dropdowns
+        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+            if (!el.classList.contains('hidden')) el.classList.add('hidden');
+        });
+        // Restore this one if it was hidden
+        if (isHidden) {
+            dropdown.classList.remove('hidden');
+        }
+    };
         
         const renderItems = () => {
             container.innerHTML = '';
@@ -3288,6 +3310,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     renderItems(); // Re-render to update checks visually (e.g. if one was auto-removed)
                     updateBtnLabel();
+// Removed immediate handleFilterChange call from here if any existed
                 };
                 container.appendChild(div);
             });
@@ -3308,7 +3331,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const MAX_ITEMS = 100;
         let debounceTimer;
 
-        btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
+        btn.onclick = (e) => {
+        e.stopPropagation();
+        const isHidden = dropdown.classList.contains('hidden');
+        // Close all dropdowns
+        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+            if (!el.classList.contains('hidden')) el.classList.add('hidden');
+        });
+        // Restore this one if it was hidden
+        if (isHidden) {
+            dropdown.classList.remove('hidden');
+        }
+    };
         const renderItems = (filterText = '') => {
             container.innerHTML = '';
             let filteredItems = items || [];
@@ -3336,6 +3370,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const val = String(value);
                     if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
                     updateBtnLabel();
+// Removed immediate handleFilterChange call from here if any existed
                 };
                 container.appendChild(div);
             });
@@ -3654,6 +3689,25 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('city-next-btn')?.addEventListener('click', () => { if(currentCityPage < totalPages-1) { currentCityPage++; loadCityView(); }});
     }
 
+    function renderCityInactivePaginationControls() {
+        const container = document.getElementById('city-inactive-pagination-container');
+        const totalPages = Math.ceil(totalInactiveClients / cityInactivePageSize);
+        const startItem = (currentCityInactivePage * cityInactivePageSize) + 1;
+        const endItem = Math.min((currentCityInactivePage + 1) * cityInactivePageSize, totalInactiveClients);
+
+        container.innerHTML = `
+            <div class="flex justify-between items-center mt-4 px-4 text-sm text-slate-400">
+                <div>Mostrando ${totalInactiveClients > 0 ? startItem : 0} a ${endItem} de ${totalInactiveClients}</div>
+                <div class="flex gap-2">
+                    <button id="city-inactive-prev-btn" class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50" ${currentCityInactivePage === 0 ? 'disabled' : ''}>Anterior</button>
+                    <span>${currentCityInactivePage + 1} / ${totalPages || 1}</span>
+                    <button id="city-inactive-next-btn" class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50" ${currentCityInactivePage >= totalPages - 1 ? 'disabled' : ''}>Próxima</button>
+                </div>
+            </div>
+        `;
+        document.getElementById('city-inactive-prev-btn')?.addEventListener('click', () => { if(currentCityInactivePage > 0) { currentCityInactivePage--; loadCityView(); }});
+        document.getElementById('city-inactive-next-btn')?.addEventListener('click', () => { if(currentCityInactivePage < totalPages-1) { currentCityInactivePage++; loadCityView(); }});
+    }
 
     // --- Calendar Logic ---
     function renderCalendar() {
@@ -3807,7 +3861,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let comparisonMonthlyMetric = 'faturamento';
 
         let comparisonFilterDebounceTimer;
+        let lastComparisonFiltersStr = "";
         const handleComparisonFilterChange = () => {
+            const filters = getComparisonCurrentFilters();
+            const currentFiltersStr = JSON.stringify(filters);
+            if (currentFiltersStr === lastComparisonFiltersStr) return;
+            lastComparisonFiltersStr = currentFiltersStr;
+            
             clearTimeout(comparisonFilterDebounceTimer);
             comparisonFilterDebounceTimer = setTimeout(() => {
                 loadComparisonView();
@@ -4620,8 +4680,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 createChart('weeklyComparisonChart', 'line',
                     chartsData.weeklyCurrent.map((_, i) => `Semana ${i+1}`),
                     [
-                        { label: 'Mês Atual', data: chartsData.weeklyCurrent, borderColor: '#14b8a6', backgroundColor: '#14b8a6', tension: 0.1, isCurrent: true },
-                        { label: 'Média Histórica', data: chartsData.weeklyHistory, borderColor: '#f97316', backgroundColor: '#f97316', tension: 0.1, isPrevious: true }
+                        { label: 'Mês Atual', data: chartsData.weeklyCurrent, borderColor: '#14b8a6', backgroundColor: '#14b8a6', tension: 0.4, isCurrent: true },
+                        { label: 'Média Histórica', data: chartsData.weeklyHistory, borderColor: '#f97316', backgroundColor: '#f97316', tension: 0.4, isPrevious: true }
                     ]
                 );
             } else {
