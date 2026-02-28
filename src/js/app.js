@@ -2762,7 +2762,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 data: d.data,
                 backgroundColor: d.backgroundColor || color,
                 borderColor: d.borderColor || color,
-                borderWidth: 0,
+                borderWidth: d.borderWidth !== undefined ? d.borderWidth : (type === 'line' ? 2 : 0),
                 borderSkipped: 'bottom',
                 borderRadius: {
                     topLeft: 6,
