@@ -1795,8 +1795,8 @@ document.addEventListener('DOMContentLoaded', () => {
             datasets.push({
                 label: `Tendência ${monthNames[trendInfo.current_month_index]}`,
                 data: trendData,
-                backgroundColor: '#316a9a', // New Dark Blue
-                borderColor: '#316a9a',
+                backgroundColor: '#ffaa4d', // New Dark Blue
+                borderColor: '#ffaa4d',
                 borderWidth: 1,
                 isTrend: true
             });
@@ -2901,7 +2901,7 @@ document.addEventListener('DOMContentLoaded', () => {
         container.appendChild(newCanvas);
 
         const ctx = newCanvas.getContext('2d');
-        const professionalPalette = { 'current': '#b0e0e6', 'previous': '#eaf7f8', 'trend': '#316a9a' };
+        const professionalPalette = { 'current': '#b0e0e6', 'previous': '#eaf7f8', 'trend': '#ffaa4d' };
 
         const datasets = datasetsData.map((d, i) => {
             let color = '#94a3b8'; // default
@@ -3786,7 +3786,7 @@ document.addEventListener('DOMContentLoaded', () => {
          // --- Chart Rendering ---
          const datasets = [];
          const colors = ['#b0e0e6', '#eaf7f8', '#06b6d4', '#8b5cf6'];
-         const trendColors = ['#316a9a', '#ffaa4d'];
+         const trendColors = ['#ffaa4d', '#ffaa4d'];
 
          branches.forEach((b, idx) => {
              datasets.push({
