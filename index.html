@@ -736,29 +736,8 @@
                             <div class="flex flex-wrap items-end gap-3 mb-4">
                                 <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ano</label><select id="comparison-ano-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="todos">Todos</option></select></div>
                                 <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Mês</label><select id="comparison-mes-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="">Todos</option></select></div>
+                                <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Filial</label><select id="comparison-filial-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="ambas">Ambas</option><option value="793">793</option><option value="1144">1144</option></select></div>
                             </div>
-                            <div id="comparison-rede-filter-wrapper" class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
-                                <div class="relative flex-1 min-w-[200px]">
-                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Rede</label>
-                                    <div id="comparison-rede-group-container" class="inline-flex rounded-lg shadow-sm w-full bg-white/5 p-1 border border-white/10" role="group">
-                                        <button type="button" data-group="" class="group-btn active flex-1 py-1.5 px-3 text-xs font-bold rounded-l-lg bg-orange-500 text-white transition-all">Todos</button>
-                                        <div class="relative flex-1">
-                                            <button type="button" data-group="com_rede" id="comparison-com-rede-btn" class="group-btn flex-1 py-1.5 px-3 text-xs font-medium text-slate-400 hover:text-white bg-white/5 border-t border-b border-white/10 transition-all flex items-center justify-center gap-1 w-full">
-                                                <span id="comparison-com-rede-btn-text">Com Rede</span>
-                                                <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-                                            </button>
-                                            <div id="comparison-rede-filter-dropdown" class="hidden absolute z-[999] w-max min-w-full max-w-[320px] mt-2 top-full left-0 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-left text-slate-300 p-2"></div>
-                                        </div>
-                                        <button type="button" data-group="sem_rede" class="group-btn flex-1 py-1.5 px-3 text-xs font-medium text-slate-400 hover:text-white bg-white/5 border border-white/10 rounded-r-lg transition-all">Sem Rede</button>
-                                    </div>
-                                </div>
-                                <div class="flex-1 min-w-[200px]">
-                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Pasta</label>
-                                    <div id="comparison-fornecedor-toggle-container" class="w-full bg-white/5 border border-white/10 rounded-lg p-1 flex justify-center gap-2">
-                                        <button data-fornecedor="ELMA" class="fornecedor-btn flex-1 py-1.5 px-3 text-xs font-bold text-slate-400 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-all">ELMA</button>
-                                        <button data-fornecedor="FOODS" class="fornecedor-btn flex-1 py-1.5 px-3 text-xs font-bold text-slate-400 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-all">FOODS</button>
-                                    </div>
-                                </div>
 
                                 <div class="relative">
                                     <label for="comparison-supervisor-filter-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Supervisor</label>
@@ -816,9 +795,9 @@
                                         <span id="comparison-rede-filter-text" class="truncate">Todas</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="comparison-product-filter-dropdown" class="hidden absolute z-[999] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl p-2">
-                                        <div class="p-2 border-b border-white/10"><input type="text" id="comparison-product-search-input" placeholder="Buscar produto..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500"></div>
-                                        <div id="comparison-product-list" class="max-h-60 overflow-y-auto custom-scrollbar text-white"></div>
+                                    <div id="comparison-rede-filter-dropdown" class="hidden absolute z-[999] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                         <input type="text" id="comparison-rede-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                         <div id="comparison-rede-filter-list"></div>
                                     </div>
                                 </div>
 
@@ -853,9 +832,10 @@
 
                                 <div class="flex-none"><button id="comparison-tendency-toggle" class="w-full bg-[#ff9800] hover:bg-orange-500 text-white font-bold py-2 px-4 rounded-lg h-[38px] transition-colors shadow-lg text-sm">Calcular Tendência</button></div>
 
-                                <div class="flex-none">
-                                    <label for="comparison-holiday-picker-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1 opacity-0">Feriados</label>
-                                    <button id="comparison-holiday-picker-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">Feriados</button>
+                                <div class="flex-none flex items-end h-[38px]">
+                                    <button id="comparison-holiday-picker-btn" class="w-[38px] h-[38px] bg-white/5 border border-white/10 text-slate-300 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500" title="Feriados">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    </button>
                                 </div>
                                 
                                 <div class="flex items-end h-[38px]"><button id="clear-comparison-filters-btn" class="w-[38px] h-[38px] bg-[#ff9800] hover:bg-orange-500 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg shrink-0" title="Limpar Filtros"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-6 6m0-6l6 6"></path></svg></button></div>

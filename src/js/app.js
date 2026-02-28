@@ -338,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (view === 'comparison') {
             state.ano = comparisonAnoFilter.value;
             state.mes = comparisonMesFilter.value;
-            state.filiais = comparisonFilialFilter.value === 'ambas' ? [] : [comparisonFilialFilter.value];
+            state.filiais = (comparisonFilialFilter && comparisonFilialFilter.value !== 'ambas') ? [comparisonFilialFilter.value] : [];
             state.cidades = selectedComparisonCities;
             state.supervisores = selectedComparisonSupervisores;
             state.vendedores = selectedComparisonSellers;
@@ -421,7 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
              if (getVal('mes')) comparisonMesFilter.value = getVal('mes');
 
              const filiais = getList('filiais');
-             if (filiais.length > 0) comparisonFilialFilter.value = filiais[0];
+             if (filiais.length > 0 && comparisonFilialFilter) comparisonFilialFilter.value = filiais[0];
 
              selectedComparisonCities = getList('cidades');
 
@@ -2160,6 +2160,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // Close on click outside
+        document.addEventListener('click', (e) => {
+            if (!dropdown.classList.contains('hidden') && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
         // Update when original select changes its value externally
         selectElement.addEventListener('change', (e) => {
             if (e.isTrusted) renderOptions();
@@ -3033,7 +3040,18 @@ document.addEventListener('DOMContentLoaded', () => {
     let cityFilterDebounceTimer;
     let lastCityFiltersStr = "";
     const handleCityFilterChange = () => {
-        const filters = getCityCurrentFilters();
+        const filters = {
+            p_filial: citySelectedFiliais.length > 0 ? citySelectedFiliais : null,
+            p_cidade: citySelectedCidades.length > 0 ? citySelectedCidades : null,
+            p_supervisor: citySelectedSupervisores.length > 0 ? citySelectedSupervisores : null,
+            p_vendedor: citySelectedVendedores.length > 0 ? citySelectedVendedores : null,
+            p_fornecedor: citySelectedFornecedores.length > 0 ? citySelectedFornecedores : null,
+            p_tipovenda: citySelectedTiposVenda.length > 0 ? citySelectedTiposVenda : null,
+            p_rede: citySelectedRedes.length > 0 ? citySelectedRedes : null,
+            p_categoria: citySelectedCategorias.length > 0 ? citySelectedCategorias : null,
+            p_ano: cityAnoFilter.value === 'todos' ? null : cityAnoFilter.value,
+            p_mes: cityMesFilter.value === '' ? null : cityMesFilter.value
+        };
         const currentFiltersStr = JSON.stringify(filters);
         if (currentFiltersStr === lastCityFiltersStr) return;
         lastCityFiltersStr = currentFiltersStr;
@@ -3303,7 +3321,18 @@ document.addEventListener('DOMContentLoaded', () => {
     let branchFilterDebounceTimer;
     let lastBranchFiltersStr = "";
     const handleBranchFilterChange = () => {
-        const filters = getBranchCurrentFilters();
+        const filters = {
+            p_ano: branchAnoFilter.value === 'todos' ? null : branchAnoFilter.value,
+            p_mes: branchMesFilter.value === '' ? null : branchMesFilter.value,
+            p_filial: branchSelectedFiliais.length > 0 ? branchSelectedFiliais : null,
+            p_cidade: branchSelectedCidades.length > 0 ? branchSelectedCidades : null,
+            p_supervisor: branchSelectedSupervisores.length > 0 ? branchSelectedSupervisores : null,
+            p_vendedor: branchSelectedVendedores.length > 0 ? branchSelectedVendedores : null,
+            p_fornecedor: branchSelectedFornecedores.length > 0 ? branchSelectedFornecedores : null,
+            p_tipovenda: branchSelectedTiposVenda.length > 0 ? branchSelectedTiposVenda : null,
+            p_rede: branchSelectedRedes.length > 0 ? branchSelectedRedes : null,
+            p_categoria: branchSelectedCategorias.length > 0 ? branchSelectedCategorias : null
+        };
         const currentFiltersStr = JSON.stringify(filters);
         if (currentFiltersStr === lastBranchFiltersStr) return;
         lastBranchFiltersStr = currentFiltersStr;
@@ -3977,8 +4006,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let selectedComparisonRedes = [];
         let selectedComparisonCities = [];
         let selectedComparisonCategorias = [];
-        let comparisonRedeGroupFilter = '';
-        let currentComparisonFornecedor = '';
         let useTendencyComparison = false;
         let comparisonChartType = 'weekly';
         let comparisonMonthlyMetric = 'faturamento';
@@ -3986,7 +4013,19 @@ document.addEventListener('DOMContentLoaded', () => {
         let comparisonFilterDebounceTimer;
         let lastComparisonFiltersStr = "";
         const handleComparisonFilterChange = () => {
-            const filters = getComparisonCurrentFilters();
+            const filters = {
+                p_filial: (comparisonFilialFilter && comparisonFilialFilter.value !== 'ambas') ? [comparisonFilialFilter.value] : null,
+                p_cidade: selectedComparisonCities.length > 0 ? selectedComparisonCities : null,
+                p_supervisor: selectedComparisonSupervisors.length > 0 ? selectedComparisonSupervisors : null,
+                p_vendedor: selectedComparisonSellers.length > 0 ? selectedComparisonSellers : null,
+                p_fornecedor: selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null,
+                p_produto: selectedComparisonProducts.length > 0 ? selectedComparisonProducts : null,
+                p_tipovenda: selectedComparisonTiposVenda.length > 0 ? selectedComparisonTiposVenda : null,
+                p_rede: selectedComparisonRedes.length > 0 ? selectedComparisonRedes : null,
+                p_categoria: selectedComparisonCategorias.length > 0 ? selectedComparisonCategorias : null,
+                p_ano: comparisonAnoFilter.value === 'todos' ? null : comparisonAnoFilter.value,
+                p_mes: comparisonMesFilter.value === '' ? null : comparisonMesFilter.value
+            };
             const currentFiltersStr = JSON.stringify(filters);
             if (currentFiltersStr === lastComparisonFiltersStr) return;
             lastComparisonFiltersStr = currentFiltersStr;
@@ -4001,23 +4040,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (comparisonMesFilter) comparisonMesFilter.addEventListener('change', handleComparisonFilterChange);
 
         if (comparisonFilialFilter) comparisonFilialFilter.addEventListener('change', handleComparisonFilterChange);
-
-        if (comparisonFornecedorToggleContainer) {
-            comparisonFornecedorToggleContainer.addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON') {
-                    const fornecedor = e.target.dataset.fornecedor;
-                    if (currentComparisonFornecedor === fornecedor) {
-                        currentComparisonFornecedor = '';
-                        e.target.classList.remove('active');
-                    } else {
-                        currentComparisonFornecedor = fornecedor;
-                        comparisonFornecedorToggleContainer.querySelectorAll('.fornecedor-btn').forEach(b => b.classList.remove('active'));
-                        e.target.classList.add('active');
-                    }
-                    handleComparisonFilterChange();
-                }
-            });
-        }
 
 
         if (comparisonTendencyToggle) {
@@ -4078,13 +4100,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 selectedComparisonTiposVenda = [];
                 selectedComparisonRedes = [];
                 selectedComparisonCategorias = [];
-                comparisonRedeGroupFilter = '';
-                currentComparisonFornecedor = '';
                 selectedComparisonCities = [];
-                comparisonFilialFilter.value = 'ambas';
-
-                // Reset UI active states
-                comparisonFornecedorToggleContainer.querySelectorAll('.fornecedor-btn').forEach(b => b.classList.remove('active'));
+                if (comparisonFilialFilter) comparisonFilialFilter.value = 'ambas';
 
                 initComparisonFilters().then(loadComparisonView);
             });
@@ -4234,7 +4251,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const filters = {
-                p_filial: comparisonFilialFilter.value === 'ambas' ? null : [comparisonFilialFilter.value],
+                p_filial: (comparisonFilialFilter && comparisonFilialFilter.value !== 'ambas') ? [comparisonFilialFilter.value] : null,
                 p_cidade: selectedComparisonCities.length > 0 ? selectedComparisonCities : null,
                 p_supervisor: selectedComparisonSupervisors.length > 0 ? selectedComparisonSupervisors : null,
                 p_vendedor: selectedComparisonSellers.length > 0 ? selectedComparisonSellers : null,
@@ -4247,16 +4264,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 p_mes: comparisonMesFilter.value === '' ? null : comparisonMesFilter.value
             };
 
-            // Handle Special Fornecedor Toggles (Client-side UI mapped to codes for RPC)
-            if (currentComparisonFornecedor) {
-                if (!filters.p_fornecedor) filters.p_fornecedor = [];
-                if (currentComparisonFornecedor === 'ELMA') {
-                    filters.p_fornecedor.push('707', '708', '752');
-                } else if (currentComparisonFornecedor === 'FOODS') {
-                    filters.p_fornecedor.push('1119_TODDYNHO', '1119_TODDY', '1119_QUAKER', '1119_KEROCOCO', '1119_OUTROS');
-                }
-                // Note: Legacy "Pasta" logic might need clearer mapping if codes vary
-            }
 
             const cacheKey = generateCacheKey('comparison_view_data', filters);
             let data = null;
