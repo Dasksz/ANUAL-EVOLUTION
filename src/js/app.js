@@ -2762,7 +2762,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 data: d.data,
                 backgroundColor: d.backgroundColor || color,
                 borderColor: d.borderColor || color,
-                borderWidth: 1,
+                borderWidth: 0,
+                borderSkipped: 'bottom',
+                borderRadius: {
+                    topLeft: 6,
+                    topRight: 6,
+                },
                 skipNull: true
             };
         });
