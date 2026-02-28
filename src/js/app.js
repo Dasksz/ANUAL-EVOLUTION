@@ -4609,8 +4609,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 createChart('weeklyComparisonChart', 'line',
                     chartsData.weeklyCurrent.map((_, i) => `Semana ${i+1}`),
                     [
-                        { label: 'Mês Atual', data: chartsData.weeklyCurrent, borderColor: '#14b8a6', backgroundColor: '#14b8a6', tension: 0.1, isCurrent: true },
-                        { label: 'Média Histórica', data: chartsData.weeklyHistory, borderColor: '#f97316', backgroundColor: '#f97316', tension: 0.1, isPrevious: true }
+                        { label: 'Mês Atual', data: chartsData.weeklyCurrent, borderColor: '#14b8a6', backgroundColor: '#14b8a6', tension: 0.4, isCurrent: true },
+                        { label: 'Média Histórica', data: chartsData.weeklyHistory, borderColor: '#f97316', backgroundColor: '#f97316', tension: 0.4, isPrevious: true }
                     ]
                 );
             } else {
