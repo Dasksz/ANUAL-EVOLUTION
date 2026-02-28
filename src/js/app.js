@@ -1870,9 +1870,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentCityPage = 0;
     const cityPageSize = 50;
     let totalActiveClients = 0;
-    let currentCityInactivePage = 0;
-    const cityInactivePageSize = 50;
-    let totalInactiveClients = 0;
 
     let selectedFiliais = [];
     let selectedCidades = [];
@@ -2160,7 +2157,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showDashboardLoading();
             try { await loadFilters(filters); } catch (err) { console.error("Failed to load filters:", err); }
             try { await loadMainDashboardData(); } catch (err) { console.error("Failed to load dashboard data:", err); }
-            if (!cityView.classList.contains('hidden')) { currentCityPage = 0; currentCityInactivePage = 0; await loadCityView(); }
+            if (!cityView.classList.contains('hidden')) { currentCityPage = 0; await loadCityView(); }
         }, 500);
     };
     anoFilter.onchange = handleFilterChange;
@@ -2908,7 +2905,6 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(cityFilterDebounceTimer);
         cityFilterDebounceTimer = setTimeout(() => {
             currentCityPage = 0; 
-            currentCityInactivePage = 0;
             loadCityView();
         }, 500);
     };
@@ -3095,8 +3091,6 @@ document.addEventListener('DOMContentLoaded', () => {
             p_mes: cityMesFilter.value === '' ? null : cityMesFilter.value,
             p_page: currentCityPage,
             p_limit: cityPageSize,
-            p_inactive_page: currentCityInactivePage,
-            p_inactive_limit: cityInactivePageSize
         };
 
         const { data, error } = await supabase.rpc('get_city_view_data', filters);
@@ -3106,7 +3100,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if(error) { console.error(error); return; }
 
         totalActiveClients = data.total_active_count || 0;
-        totalInactiveClients = data.total_inactive_count || 0;
 
         // Helper to map array rows to object based on cols
         const mapRows = (dataObj) => {
@@ -3122,7 +3115,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const activeClients = Array.isArray(data.active_clients) ? data.active_clients : mapRows(data.active_clients);
-        const inactiveClients = Array.isArray(data.inactive_clients) ? data.inactive_clients : mapRows(data.inactive_clients);
 
         const renderTable = (bodyId, items) => {
             const body = document.getElementById(bodyId);
@@ -3144,10 +3136,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         renderTable('city-active-detail-table-body', activeClients);
-        renderTable('city-inactive-detail-table-body', inactiveClients);
 
         renderCityPaginationControls();
-        renderCityInactivePaginationControls();
     }
 
 
@@ -3664,25 +3654,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('city-next-btn')?.addEventListener('click', () => { if(currentCityPage < totalPages-1) { currentCityPage++; loadCityView(); }});
     }
 
-    function renderCityInactivePaginationControls() {
-        const container = document.getElementById('city-inactive-pagination-container');
-        const totalPages = Math.ceil(totalInactiveClients / cityInactivePageSize);
-        const startItem = (currentCityInactivePage * cityInactivePageSize) + 1;
-        const endItem = Math.min((currentCityInactivePage + 1) * cityInactivePageSize, totalInactiveClients);
-
-        container.innerHTML = `
-            <div class="flex justify-between items-center mt-4 px-4 text-sm text-slate-400">
-                <div>Mostrando ${totalInactiveClients > 0 ? startItem : 0} a ${endItem} de ${totalInactiveClients}</div>
-                <div class="flex gap-2">
-                    <button id="city-inactive-prev-btn" class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50" ${currentCityInactivePage === 0 ? 'disabled' : ''}>Anterior</button>
-                    <span>${currentCityInactivePage + 1} / ${totalPages || 1}</span>
-                    <button id="city-inactive-next-btn" class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50" ${currentCityInactivePage >= totalPages - 1 ? 'disabled' : ''}>Próxima</button>
-                </div>
-            </div>
-        `;
-        document.getElementById('city-inactive-prev-btn')?.addEventListener('click', () => { if(currentCityInactivePage > 0) { currentCityInactivePage--; loadCityView(); }});
-        document.getElementById('city-inactive-next-btn')?.addEventListener('click', () => { if(currentCityInactivePage < totalPages-1) { currentCityInactivePage++; loadCityView(); }});
-    }
 
     // --- Calendar Logic ---
     function renderCalendar() {
