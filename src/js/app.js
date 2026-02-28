@@ -4288,8 +4288,15 @@ document.addEventListener('DOMContentLoaded', () => {
             // Normalize History (Quarter Sum -> Average Month)
             for(let i=0; i<6; i++) weeklyHistory[i] = weeklyHistory[i] / 3;
 
-            // Trim empty tail weeks?
-            // Keep it simple for now
+            // Trim empty tail weeks (dynamically show 4-6 weeks)
+            let numWeeksToKeep = 6;
+            while (numWeeksToKeep > 4 && weeklyCurrent[numWeeksToKeep - 1] === 0 && weeklyHistory[numWeeksToKeep - 1] === 0) {
+                numWeeksToKeep--;
+            }
+
+            const trimmedWeeklyCurrent = weeklyCurrent.slice(0, numWeeksToKeep);
+            const trimmedWeeklyHistory = weeklyHistory.slice(0, numWeeksToKeep);
+            const trimmedDailyDataByWeek = dailyDataByWeek.slice(0, numWeeksToKeep);
 
             // 3. Monthly Chart (History Months + Current)
             const monthlyData = (data.history_monthly || []).map(m => ({
@@ -4314,7 +4321,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const datasetsDaily = dayNames.map((name, i) => ({
                 label: name,
-                data: dailyDataByWeek.map(weekData => weekData[i]),
+                data: trimmedDailyDataByWeek.map(weekData => weekData[i]),
                 backgroundColor: dailyColors[i],
                 borderColor: dailyColors[i]
             }));
@@ -4328,11 +4335,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 kpis,
                 charts: {
-                    weeklyCurrent,
-                    weeklyHistory,
+                    weeklyCurrent: trimmedWeeklyCurrent,
+                    weeklyHistory: trimmedWeeklyHistory,
                     monthlyData,
                     dailyData: {
-                        labels: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4', 'Semana 5', 'Semana 6'],
+                        labels: new Array(numWeeksToKeep).fill(0).map((_, i) => `Semana ${i+1}`),
                         datasets: datasetsDaily
                     }
                 },
