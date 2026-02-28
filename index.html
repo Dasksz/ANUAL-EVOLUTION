@@ -138,6 +138,72 @@
             font-size: 0.875rem;
         }
 
+        /* Responsive Mobile Layout adjustments */
+        @media (max-width: 768px) {
+            .top-nav {
+                flex-wrap: wrap;
+                padding: 0.5rem 1rem;
+                gap: 0.75rem;
+            }
+            .top-nav-brand {
+                font-size: 1rem;
+            }
+            .top-nav-brand span {
+                font-size: 0.8rem;
+            }
+            .top-nav-links {
+                width: 100%;
+                overflow-x: auto;
+                gap: 1rem;
+                padding-bottom: 0.25rem;
+            }
+            .nav-link {
+                font-size: 0.8rem;
+                white-space: nowrap;
+            }
+            .kpi-card {
+                height: 100px !important;
+                padding: 0.5rem !important;
+            }
+            .kpi-card p.text-xl, .kpi-card p.text-3xl, .kpi-card p.text-4xl {
+                font-size: 1.1rem !important;
+                line-height: 1.2;
+            }
+            .kpi-card .text-xs {
+                font-size: 0.65rem !important;
+            }
+            .kpi-card .text-sm {
+                font-size: 0.75rem !important;
+            }
+            .kpi-card .text-\[10px\] {
+                font-size: 9px !important;
+            }
+            h1.text-3xl {
+                font-size: 1.25rem !important;
+            }
+            h2.text-2xl {
+                font-size: 1.1rem !important;
+            }
+            .bg-\[\#151419\]\/80 {
+                padding: 0.5rem !important;
+            }
+            #main-content-scroll {
+                padding: 0.5rem !important;
+            }
+            .text-sm {
+                font-size: 0.75rem !important;
+            }
+            label.text-\[11px\] {
+                font-size: 9px !important;
+            }
+            select, button, input {
+                font-size: 0.75rem !important;
+            }
+            .h-96 {
+                height: 16rem !important;
+            }
+        }
+
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
