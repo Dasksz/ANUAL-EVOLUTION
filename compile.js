@@ -3,9 +3,9 @@ const sass = require('sass');
 const scss = `
 $borderRadius: 10px;
 $spacer: 1rem;
-$primary: #C4151C;
+$primary: #ff9800;
 $text: #fff;
-$linkHeight: $spacer * 3.5;
+$linkHeight: 5rem;
 $timing: 250ms;
 $transition: $timing ease all;
 $linkWidth: 10rem;
@@ -48,7 +48,6 @@ $linkWidth: 10rem;
     color: $text;
     transition: $transition;
     text-decoration: none;
-    width: $linkWidth;
     text-transform: uppercase;
     transition: 500ms ease all;
     svg{
@@ -57,14 +56,30 @@ $linkWidth: 10rem;
     &:hover{
       svg{
         stroke: $primary;
+        filter: drop-shadow(0 0 8px rgba($primary, 0.8));
       }
     }
+
+    &.active {
+      color: $primary;
+      text-shadow: 0 0 8px rgba($primary, 0.8);
+      svg {
+        stroke: $primary;
+        filter: drop-shadow(0 0 8px rgba($primary, 0.8));
+      }
+    }
+
     .navbar:not(:hover) &:focus,
     &:hover{
       span{
         opacity: 1;
         transform: translate(0);
       }
+    }
+
+    span {
+      font-size: 0.85rem;
+      font-weight: 600;
     }
   }
   &__item{
@@ -80,7 +95,8 @@ $linkWidth: 10rem;
         background: $primary;
         $speedlineColor: rgba(#fff,0.2);
         $speedGap: 3rem;
-        $shadow : 0 -0.5rem $primary,0 -0.5rem $primary, 0 0 $speedGap 0.5rem $primary,2rem 0 0 $speedlineColor, -$speedGap 0 0 $speedlineColor;
+        /* Added neon glow to the base shadows */
+        $shadow : 0 -0.5rem $primary, 0 -0.5rem $primary, 0 0 $speedGap 0.5rem $primary, 0 0 15px $primary, 0 0 30px $primary, 2rem 0 0 $speedlineColor, -$speedGap 0 0 $speedlineColor;
         @for $i from 2 to 120{
           $shadow: $shadow + #{","}+ $i*$speedGap 0 0 $speedlineColor;
           $shadow: $shadow + #{","}+ $i*-$speedGap 0 0 $speedlineColor;
