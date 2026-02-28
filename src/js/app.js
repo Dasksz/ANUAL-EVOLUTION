@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const comparisonCategoriaFilterBtn = document.getElementById('comparison-categoria-filter-btn');
     const comparisonCategoriaFilterDropdown = document.getElementById('comparison-categoria-filter-dropdown');
     const clearComparisonFiltersBtn = document.getElementById('clear-comparison-filters-btn');
-    const comparisonFornecedorToggleContainer = document.getElementById('comparison-fornecedor-toggle-container');
+    const comparisonPastaFilter = document.getElementById('comparison-pasta-filter');
     const comparisonTendencyToggle = document.getElementById('comparison-tendency-toggle');
     const toggleWeeklyBtn = document.getElementById('toggle-weekly-btn');
     const toggleMonthlyBtn = document.getElementById('toggle-monthly-btn');
@@ -2231,7 +2231,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('city-mes-filter'),
             document.getElementById('comparison-ano-filter'),
             document.getElementById('comparison-mes-filter'),
-            document.getElementById('comparison-filial-filter')
+            document.getElementById('comparison-filial-filter'),
+            document.getElementById('comparison-pasta-filter')
         ];
         selectsToEnhance.forEach(el => {
             if (el) enhanceSelectToCustomDropdown(el);
@@ -4013,12 +4014,28 @@ document.addEventListener('DOMContentLoaded', () => {
         let comparisonFilterDebounceTimer;
         let lastComparisonFiltersStr = "";
         const handleComparisonFilterChange = () => {
+            let pFornecedorValue = selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null;
+            
+            // Apply "Pasta" filter logic on top of existing fornecedor if 'ambas' is not selected
+            // "Pasta" is conceptually a macro-fornecedor. 
+            if (comparisonPastaFilter && comparisonPastaFilter.value !== 'ambas') {
+                if (!pFornecedorValue) {
+                    pFornecedorValue = [comparisonPastaFilter.value];
+                } else {
+                    // Intersection of selection and pasta (though users typically won't select both in contradictory ways)
+                    // If pasta is selected, we enforce it by ensuring it's in the array. 
+                    if (!pFornecedorValue.includes(comparisonPastaFilter.value)) {
+                         pFornecedorValue.push(comparisonPastaFilter.value);
+                    }
+                }
+            }
+
             const filters = {
                 p_filial: (comparisonFilialFilter && comparisonFilialFilter.value !== 'ambas') ? [comparisonFilialFilter.value] : null,
                 p_cidade: selectedComparisonCities.length > 0 ? selectedComparisonCities : null,
                 p_supervisor: selectedComparisonSupervisors.length > 0 ? selectedComparisonSupervisors : null,
                 p_vendedor: selectedComparisonSellers.length > 0 ? selectedComparisonSellers : null,
-                p_fornecedor: selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null,
+                p_fornecedor: pFornecedorValue,
                 p_produto: selectedComparisonProducts.length > 0 ? selectedComparisonProducts : null,
                 p_tipovenda: selectedComparisonTiposVenda.length > 0 ? selectedComparisonTiposVenda : null,
                 p_rede: selectedComparisonRedes.length > 0 ? selectedComparisonRedes : null,
@@ -4040,6 +4057,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (comparisonMesFilter) comparisonMesFilter.addEventListener('change', handleComparisonFilterChange);
 
         if (comparisonFilialFilter) comparisonFilialFilter.addEventListener('change', handleComparisonFilterChange);
+        if (comparisonPastaFilter) comparisonPastaFilter.addEventListener('change', handleComparisonFilterChange);
 
 
         if (comparisonTendencyToggle) {
@@ -4102,6 +4120,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 selectedComparisonCategorias = [];
                 selectedComparisonCities = [];
                 if (comparisonFilialFilter) comparisonFilialFilter.value = 'ambas';
+                if (comparisonPastaFilter) comparisonPastaFilter.value = 'ambas';
 
                 initComparisonFilters().then(loadComparisonView);
             });
@@ -4250,12 +4269,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 await initComparisonFilters();
             }
 
+            let pFornecedorValue = selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null;
+            if (comparisonPastaFilter && comparisonPastaFilter.value !== 'ambas') {
+                if (!pFornecedorValue) {
+                    pFornecedorValue = [comparisonPastaFilter.value];
+                } else {
+                    if (!pFornecedorValue.includes(comparisonPastaFilter.value)) {
+                         pFornecedorValue.push(comparisonPastaFilter.value);
+                    }
+                }
+            }
+
             const filters = {
                 p_filial: (comparisonFilialFilter && comparisonFilialFilter.value !== 'ambas') ? [comparisonFilialFilter.value] : null,
                 p_cidade: selectedComparisonCities.length > 0 ? selectedComparisonCities : null,
                 p_supervisor: selectedComparisonSupervisors.length > 0 ? selectedComparisonSupervisors : null,
                 p_vendedor: selectedComparisonSellers.length > 0 ? selectedComparisonSellers : null,
-                p_fornecedor: selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null,
+                p_fornecedor: pFornecedorValue,
                 p_produto: selectedComparisonProducts.length > 0 ? selectedComparisonProducts : null,
                 p_tipovenda: selectedComparisonTiposVenda.length > 0 ? selectedComparisonTiposVenda : null,
                 p_rede: selectedComparisonRedes.length > 0 ? selectedComparisonRedes : null,
