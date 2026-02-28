@@ -27,6 +27,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="src/css/styles.css">
     <link rel="stylesheet" href="src/css/nav.css">
@@ -189,35 +190,44 @@
     </div>
 
     <!-- Main Content -->
-    <header id="top-navbar" class="top-nav hidden">
+    <div class="header hidden" id="top-navbar">
         <div class="top-nav-brand">
             <div class="w-8 h-8 relative mr-2">
                 <img src="logo.png" alt="PRIME Logo" class="w-full h-full object-contain">
             </div>
             PRIME <span>| Distribuição</span>
         </div>
-        <nav class="top-nav-links">
-            <a id="nav-dashboard" class="nav-link active">Visão Geral</a>
-            <a id="nav-comparativo-btn" class="nav-link">Comparativo</a>
-            <a id="nav-city-analysis" class="nav-link">Análise por Cidade</a>
-            <a id="nav-branch-btn" class="nav-link">Filiais</a>
-            <a id="nav-boxes-btn" class="nav-link">Caixas</a>
+        <nav class="navbar w-full flex-1">
+            <ul class="navbar__menu w-full justify-center">
+                <li class="navbar__item">
+                    <a id="nav-dashboard" class="navbar__link active cursor-pointer"><i data-feather="home"></i><span>Visão Geral</span></a>
+                </li>
+                <li class="navbar__item">
+                    <a id="nav-comparativo-btn" class="navbar__link cursor-pointer"><i data-feather="bar-chart-2"></i><span>Comparativo</span></a>
+                </li>
+                <li class="navbar__item">
+                    <a id="nav-city-analysis" class="navbar__link cursor-pointer"><i data-feather="map-pin"></i><span>Cidade</span></a>
+                </li>
+                <li class="navbar__item">
+                    <a id="nav-branch-btn" class="navbar__link cursor-pointer"><i data-feather="git-branch"></i><span>Filiais</span></a>
+                </li>
+                <li class="navbar__item">
+                    <a id="nav-boxes-btn" class="navbar__link cursor-pointer"><i data-feather="package"></i><span>Caixas</span></a>
+                </li>
+                <li class="navbar__item relative group">
+                    <a class="navbar__link cursor-pointer"><i data-feather="settings"></i><span>Config</span></a>
+                    <div class="absolute left-1/2 -translate-x-1/2 mt-2 w-48 bg-slate-800 rounded-lg shadow-lg hidden group-hover:block z-[5000]">
+                        <button id="nav-uploader" class="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 hidden"><i data-feather="upload-cloud" class="w-4 h-4"></i> Upload</button>
+                        <button id="optimize-db-btn-nav" class="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"><i data-feather="database" class="w-4 h-4"></i> Otimizar</button>
+                        <button id="logout-btn" class="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"><i data-feather="log-out" class="w-4 h-4"></i> Sair</button>
+                    </div>
+                </li>
+            </ul>
         </nav>
-        <div class="top-nav-actions">
-            <button id="nav-uploader" class="nav-icon-btn hidden" title="Upload de Arquivos">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-            </button>
-            <button id="optimize-db-btn-nav" class="nav-icon-btn" title="Otimizar Banco">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            </button>
-            <div class="user-avatar">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-            </div>
-            <button id="logout-btn" class="nav-icon-btn" title="Sair">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-            </button>
+        <div class="user-avatar ml-auto flex-shrink-0 cursor-pointer">
+            <i data-feather="user"></i>
         </div>
-    </header>
+    </div>
 
     <div id="app-layout" class="hidden flex h-screen overflow-hidden flex-col">
         <div class="flex-1 flex flex-col h-full overflow-hidden relative">
@@ -1271,6 +1281,9 @@
         </div>
     </div>
 
+    <script>
+        feather.replace()
+    </script>
     <script type="module" src="src/js/app.js?v=2"></script>
 </body>
 </html>

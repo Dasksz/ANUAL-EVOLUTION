@@ -31,11 +31,12 @@
   gap: 0.6rem;
   align-items: center;
   justify-content: center;
-    height: 5rem;
+  height: 3.5rem;
   width: 10rem;
   color: #fff;
   transition: 250ms ease all;
   text-decoration: none;
+  width: 10rem;
   text-transform: uppercase;
   transition: 500ms ease all;
 }
@@ -49,11 +50,6 @@
   opacity: 1;
   transform: translate(0);
 }
-
-  .navbar__link span {
-    font-size: 0.85rem;
-    font-weight: 600;
-  }
 .navbar__item:last-child:before {
   content: "";
   position: absolute;
@@ -263,74 +259,4 @@
 }
 .navbar__item:first-child:nth-last-child(11):last-child:hover:before, .navbar__item:first-child:nth-last-child(11) ~ li:last-child:hover:before {
   left: 90.9090909091%;
-}
-
-/* Integration fixes for new structure */
-.header {
-  z-index: 1000;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  background: rgba(19, 18, 23, 0.8) !important;
-}
-
-.top-nav-brand {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: white;
-}
-.top-nav-brand span {
-    color: #94a3b8;
-    font-weight: 400;
-    font-size: 1rem;
-}
-
-.user-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background-color: #334155;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 0.875rem;
-}
-
-.navbar__link {
-    cursor: pointer;
-}
-
-.navbar__link.active {
-    color: #C4151C; /* Keep primary color for active state */
-}
-
-.navbar__link.active svg {
-    stroke: #C4151C;
-}
-
-/* Fixes for Visão Geral span cutoff */
-.navbar__link span {
-    white-space: nowrap;
-}
-
-/* Adjust Dropdown text visibility */
-.navbar__item.relative.group .absolute {
-    z-index: 5000;
-}
-
-/* Fixes for hover animation span opacity */
-.navbar__link span {
-    opacity: 0;
-    transform: translateY(10px);
-    transition: 0.3s ease all;
-}
-
-.navbar:not(:hover) .navbar__link.active span,
-.navbar__link:hover span {
-    opacity: 1;
-    transform: translateY(0);
 }

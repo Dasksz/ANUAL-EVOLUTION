@@ -1,0 +1,39 @@
+<div class="header" id="top-navbar">
+  <div class="top-nav-brand header__logo">
+    <div class="w-8 h-8 relative mr-2">
+      <img src="logo.png" alt="PRIME Logo" class="w-full h-full object-contain">
+    </div>
+    PRIME <span>| Distribuição</span>
+  </div>
+  <nav class="navbar w-full">
+    <ul class="navbar__menu w-full justify-center">
+      <li class="navbar__item">
+        <a id="nav-dashboard" class="navbar__link active cursor-pointer"><i data-feather="home"></i><span>Visão Geral</span></a>
+      </li>
+      <li class="navbar__item">
+        <a id="nav-comparativo-btn" class="navbar__link cursor-pointer"><i data-feather="bar-chart-2"></i><span>Comparativo</span></a>
+      </li>
+      <li class="navbar__item">
+        <a id="nav-city-analysis" class="navbar__link cursor-pointer"><i data-feather="map-pin"></i><span>Cidade</span></a>
+      </li>
+      <li class="navbar__item">
+        <a id="nav-branch-btn" class="navbar__link cursor-pointer"><i data-feather="git-branch"></i><span>Filiais</span></a>
+      </li>
+      <li class="navbar__item">
+        <a id="nav-boxes-btn" class="navbar__link cursor-pointer"><i data-feather="package"></i><span>Caixas</span></a>
+      </li>
+      <li class="navbar__item relative group">
+        <a class="navbar__link cursor-pointer"><i data-feather="settings"></i><span>Config</span></a>
+        <!-- Dropdown -->
+        <div class="absolute left-1/2 -translate-x-1/2 mt-2 w-48 bg-slate-800 rounded-lg shadow-lg hidden group-hover:block z-50">
+           <button id="nav-uploader" class="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"><i data-feather="upload-cloud" class="w-4 h-4"></i> Upload</button>
+           <button id="optimize-db-btn-nav" class="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"><i data-feather="database" class="w-4 h-4"></i> Otimizar</button>
+           <button id="logout-btn" class="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"><i data-feather="log-out" class="w-4 h-4"></i> Sair</button>
+        </div>
+      </li>
+    </ul>
+  </nav>
+  <div class="user-avatar ml-auto flex-shrink-0 cursor-pointer">
+      <i data-feather="user"></i>
+  </div>
+</div>
