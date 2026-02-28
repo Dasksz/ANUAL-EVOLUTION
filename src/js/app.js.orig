@@ -260,10 +260,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const showScreen = (screenId) => {
         // Hide all auth/app screens first
         [loginView, telaLoading, telaPendente, appLayout].forEach(el => el?.classList.add('hidden'));
-        
+
         // Ensure topNavbar is hidden by default on auth screens
         if (topNavbar) topNavbar.classList.add('hidden');
-        
+
         if (screenId) {
             const screen = document.getElementById(screenId);
             screen?.classList.remove('hidden');
@@ -588,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         checkProfileLock = true;
-        
+
         try {
             const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Tempo limite de conexão excedido. Verifique sua internet.')), 10000));
             const profileQuery = supabase.from('profiles').select('status, role').eq('id', user.id).single();
@@ -623,7 +623,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 showScreen('tela-pendente');
                 if (status === 'bloqueado') {
-                        const statusMsg = document.getElementById('status-text-pendente'); 
+                        const statusMsg = document.getElementById('status-text-pendente');
                         if(statusMsg) statusMsg.textContent = "Acesso Bloqueado";
                 }
                 startStatusListener(user.id);
@@ -768,13 +768,13 @@ document.addEventListener('DOMContentLoaded', () => {
         optimizeDbBtnNav.addEventListener('click', async () => {
             if (window.userRole !== 'adm') return;
             if (!confirm('Recriar índices do banco de dados?')) return;
-            
+
             try {
                 const { data, error } = await supabase.rpc('optimize_database');
                 if (error) throw error;
                 alert(data || 'Otimização concluída!');
-            } catch(e) { 
-                alert('Erro: ' + e.message); 
+            } catch(e) {
+                alert('Erro: ' + e.message);
             }
         });
     }
@@ -818,7 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Note: loadFilters will re-render the dropdowns with checked status based on these empty arrays,
         // effectively clearing the checkboxes visually.
-        
+
         await loadFilters(getCurrentFilters());
         loadMainDashboardData();
     });
@@ -900,7 +900,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .from('config_city_branches')
             .select('cidade')
             .or('filial.is.null,filial.eq.""');
-        
+
         if (!error && data && data.length > 0) {
             missingBranchesNotification.classList.remove('hidden');
         } else {
@@ -923,7 +923,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cityBranchMap = await fetchCityBranchMap();
 
         statusText.textContent = 'Processando...';
-        
+
         const worker = new Worker('src/js/worker.js?v=2');
         // Pass files AND the city map
         worker.postMessage({ ...files, cityBranchMap });
@@ -946,7 +946,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     await enviarDadosParaSupabase(data);
-                    
+
                     // Re-check missing branches after upload
                     await checkMissingBranches();
 
@@ -999,7 +999,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const { error: insertErr } = await supabase.from(table).insert(batch);
                     error = insertErr;
                 }
-                
+
                 if (error) throw new Error(`Erro ${table}: ${error.message}`);
             });
         };
@@ -1047,7 +1047,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // --- Incremental Sync Logic (Chunked for Sales, Row-Hash for Clients) ---
-        
+
         // Sync Logic for Sales (Metadata + Chunking + Batched HTTP Requests)
         const syncSalesChunks = async (tableName, localChunks, progressStart, progressEnd) => {
             updateStatus(`Verificando metadados de ${tableName}...`, progressStart);
@@ -1075,7 +1075,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (serverHash !== localChunk.hash) {
                     console.log(`[${tableName}] Syncing chunk ${key} (Size: ${localChunk.rows.length})...`);
                     updateStatus(`Sincronizando ${tableName} (${key})...`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
-                    
+
                     // --- GRANULAR UPLOAD STRATEGY ---
                     // 1. Wipe Data for Month
                     const { error: wipeErr } = await supabase.rpc('begin_sync_chunk', {
@@ -1087,7 +1087,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 2. Batch Append (e.g. 2000 rows per request to avoid Gateway Timeouts)
                     const ROWS_PER_REQUEST = 2000;
                     const totalRows = localChunk.rows.length;
-                    
+
                     for (let i = 0; i < totalRows; i += ROWS_PER_REQUEST) {
                         const batch = localChunk.rows.slice(i, i + ROWS_PER_REQUEST);
                         const progress = Math.round(((i + batch.length) / totalRows) * 100);
@@ -1121,11 +1121,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Legacy Row-Hash Sync (Kept for Clients)
         const syncTable = async (tableName, clientRows, progressStart, progressEnd) => {
             updateStatus(`Sincronizando ${tableName}...`, progressStart);
-            
+
             // 1. Get Server Hashes
             const { data: serverHashes, error } = await supabase.rpc('get_table_hashes', { p_table_name: tableName });
             if (error) throw new Error(`Erro ao buscar hashes de ${tableName}: ${error.message}`);
-            
+
             const serverHashSet = new Set(serverHashes.map(h => h.row_hash));
             const clientHashMap = new Map();
             clientRows.forEach(r => {
@@ -1193,13 +1193,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Sales Tables (Use Chunk Sync)
             if (data.historyChunks) await syncSalesChunks('data_history', data.historyChunks, 10, 40);
             if (data.detailedChunks) await syncSalesChunks('data_detailed', data.detailedChunks, 40, 70);
-            
+
             // Clients Table (Use Row Sync)
             if (data.clients) await syncTable('data_clients', data.clients, 70, 80);
 
             // CHUNKED CACHE REFRESH LOGIC
             updateStatus('Iniciando processamento do resumo...', 80);
-            
+
             // 1. Explicitly clear Summary Table
             await clearTable('data_summary');
 
@@ -1216,10 +1216,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         const yearStep = 15 / years.length;
                         const monthStep = yearStep / 12;
                         const progress = 80 + Math.round((i * yearStep) + (m * monthStep));
-                        
+
                         updateStatus(`Processando ${m}/${year}...`, progress);
                         const { error: chunkErr } = await supabase.rpc('refresh_summary_month', { p_year: year, p_month: m });
-                        
+
                         if (chunkErr) throw new Error(`Erro processando ${m}/${year}: ${chunkErr.message}`);
                     }
                 }
@@ -1268,7 +1268,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Filters for dropdowns should NOT include the product itself to avoid signature mismatch
             // and usually we don't want selecting a product to filter the other dropdowns backwards in this context.
             const { p_produto, ...dropdownFilters } = viewFilters;
-            
+
             await loadBoxesFilters(dropdownFilters);
             await loadBoxesView();
         }, 500);
@@ -1279,7 +1279,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Usually dependent filters (Supplier -> Product) mean selection in Supplier narrows Product.
         // But selection in Product shouldn't necessarily narrow Supplier in a way that hides the current selection?
         // For now, pass all filters as is standard.
-        
+
         const { data, error } = await supabase.rpc('get_dashboard_filters', currentFilters);
         if (error) {
             console.error('Error refreshing boxes filters:', error);
@@ -1310,7 +1310,7 @@ document.addEventListener('DOMContentLoaded', () => {
         boxesTrendToggleBtn.addEventListener('click', () => {
             boxesTrendActive = !boxesTrendActive;
             const span = document.getElementById('boxes-trend-text');
-            
+
             if (boxesTrendActive) {
                 boxesTrendToggleBtn.classList.remove('text-orange-500', 'hover:text-orange-400');
                 boxesTrendToggleBtn.classList.add('text-purple-500', 'hover:text-purple-400');
@@ -1320,12 +1320,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 boxesTrendToggleBtn.classList.add('text-orange-500', 'hover:text-orange-400');
                 if (span) span.textContent = 'Calcular Tendência';
             }
-            
+
             // Re-render only (data already has trend info if RPC updated)
-            // But we need to make sure we have the data. 
+            // But we need to make sure we have the data.
             // Ideally we re-fetch if we suspect cache is stale, but usually RPC returns trend info always if available.
             // Let's just re-render first.
-            loadBoxesView(); 
+            loadBoxesView();
         });
     }
 
@@ -1381,7 +1381,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (format === 'excel') {
             // Create workbook
             const wb = XLSX.utils.book_new();
-            
+
             // Prepare Filter Info rows
             const filterInfo = [
                 ["Relatório de Produtos por Caixas"],
@@ -1394,7 +1394,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Create Worksheet
             const ws = XLSX.utils.aoa_to_sheet(filterInfo);
-            
+
             // Append Data starting at row after filters
             XLSX.utils.sheet_add_json(ws, reportData, { origin: -1 });
 
@@ -1410,14 +1410,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             doc.setFontSize(16);
             doc.text("Relatório de Produtos por Caixas", 14, 15);
-            
+
             doc.setFontSize(10);
             doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 22);
 
             let yPos = 30;
             doc.text("Filtros Aplicados:", 14, yPos);
             yPos += 5;
-            
+
             doc.setFontSize(9);
             Object.entries(filters).forEach(([k, v]) => {
                 doc.text(`${k}: ${v}`, 14, yPos);
@@ -1455,7 +1455,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 anyClosed = true;
             }
         });
-        
+
         // Close export dropdown if clicked outside
         if (boxesExportDropdown && !boxesExportDropdown.classList.contains('hidden') && !boxesExportDropdown.contains(e.target) && !boxesExportBtn.contains(e.target)) {
             boxesExportDropdown.classList.add('hidden');
@@ -1532,7 +1532,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupCityMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, filterData.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
         setupCityMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, filterData.tipos_venda || [], boxesSelectedTiposVenda);
         setupCityMultiSelect(boxesCategoriaFilterBtn, boxesCategoriaFilterDropdown, boxesCategoriaFilterList, filterData.categorias || [], boxesSelectedCategorias, boxesCategoriaFilterSearch);
-        
+
         // Products - filterData.produtos
         setupCityMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, filterData.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
     }
@@ -1570,7 +1570,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!data) {
             const { data: rpcData, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
-            
+
             if (error) {
                 console.error(error);
                 hideDashboardLoading();
@@ -1591,13 +1591,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Trend Data Extraction
         const trendInfo = data.trend_info || { allowed: false, factor: 1, current_month_index: -1 };
         const applyTrend = boxesTrendActive && trendInfo.allowed;
-        
+
         // Safe access helpers
         const safeVal = (v) => v || 0;
         const fmtBRL = (v) => safeVal(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         const fmtKg = (v) => (safeVal(v) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
         const fmtCaixas = (v) => Math.round(safeVal(v)).toLocaleString('pt-BR');
-        
+
         const calcVar = (curr, prev) => {
             if (prev > 0) return ((curr / prev) - 1) * 100;
             return curr > 0 ? 100 : 0;
@@ -1618,7 +1618,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let curr = safeVal(data.kpi_current[key]);
             const prev = safeVal(data.kpi_previous[key]);
             const tri = safeVal(data.kpi_tri_avg[key]);
-            
+
             let mainDisplayVal = curr;
             let triComparisonVal = curr; // Default: Compare current realized vs Tri Avg
 
@@ -1627,39 +1627,39 @@ document.addEventListener('DOMContentLoaded', () => {
                     // YEAR VIEW + TREND
                     // Main Value: Should be Annual Projection (YTD Realized - Current Realized + Current Trended) / Months * 12
                     // Formula simplified: (YTD_Realized_Excluding_Current + (Current_Realized * Factor)) / Month_Index * 12
-                    
+
                     const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
                     const currMonthData = (data.chart_data || []).find(d => d.year === filterYear && d.month_index === trendInfo.current_month_index);
-                    
+
                     let currMonthRealized = 0;
                     if (currMonthData) {
                         if (key === 'fat') currMonthRealized = currMonthData.faturamento;
                         else if (key === 'peso') currMonthRealized = currMonthData.peso;
                         else if (key === 'caixas') currMonthRealized = currMonthData.caixas;
                     }
-                    
+
                     // Tri Indicator: Trended Current Month vs Tri Avg
                     triComparisonVal = currMonthRealized * trendInfo.factor;
-                    
+
                     // Main Display: Annual Projection
                     // 1. Calculate YTD Realized Excluding Current Month
                     // curr is the total YTD from RPC
                     const ytdExclCurrent = curr - currMonthRealized;
-                    
+
                     // 2. Add Trended Current Month
                     const ytdWithTrend = ytdExclCurrent + triComparisonVal;
-                    
+
                     // 3. Project for Full Year (12 months)
                     // If we are in Jan (index 0), divide by 1 * 12
                     // If we are in Dec (index 11), divide by 12 * 12 (basically identity)
                     const monthsPassed = trendInfo.current_month_index + 1;
-                    
+
                     if (monthsPassed > 0) {
                         mainDisplayVal = (ytdWithTrend / monthsPassed) * 12;
                     } else {
                         mainDisplayVal = ytdWithTrend; // Fallback
                     }
-                    
+
                 } else {
                     // MONTH VIEW + TREND
                     // Main Value: Trended Monthly Value.
@@ -1677,7 +1677,7 @@ document.addEventListener('DOMContentLoaded', () => {
                      // Find max month in data or current month index
                      // If trend is not allowed (e.g. past year), use the last month available in data?
                      // Or just use the average of the year vs tri? Usually it's Month vs Tri.
-                     
+
                      // Let's assume for Year View, Tri indicator is always "Last Active Month" vs "Previous 3 Months Avg".
                      // If we are in 2025 (current), it's Current Month.
                      // If we are in 2024 (past), it's Dec 2024 vs Oct-Nov-Dec 2024 avg? Or Jan 2025 vs Q4 2024?
@@ -1690,9 +1690,9 @@ document.addEventListener('DOMContentLoaded', () => {
                              else if (key === 'caixas') triComparisonVal = currMonthData.caixas;
                          }
                      } else {
-                         // If past year, maybe just leave it as average vs average or hide? 
+                         // If past year, maybe just leave it as average vs average or hide?
                          // Logic: "always the most recent month".
-                         // For now, let's keep triComparisonVal = curr (which is Total Year) ONLY if we can't isolate month, 
+                         // For now, let's keep triComparisonVal = curr (which is Total Year) ONLY if we can't isolate month,
                          // but standard logic suggests we shouldn't compare Year Total vs Monthly Average.
                          // Let's stick to: if chart data exists, pick last month.
                          const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
@@ -1713,7 +1713,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const elPrevVal = document.getElementById(`boxes-kpi-${prefix}-prev`);
             const elPrevVar = document.getElementById(`boxes-kpi-${prefix}-prev-var`);
             if(elPrevVal) elPrevVal.textContent = formatFn(prev);
-            
+
             // Year vs Year variation (using Main Display Val which might be Trended Month or Realized Year)
             // If Year View: Realized Year vs Previous Year.
             // If Month View + Trend: Trended Month vs Previous Month (same period prev year).
@@ -1723,7 +1723,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const elTriVal = document.getElementById(`boxes-kpi-${prefix}-tri`);
             const elTriVar = document.getElementById(`boxes-kpi-${prefix}-tri-var`);
             if(elTriVal) elTriVal.textContent = formatFn(tri);
-            
+
             // Tri Variation: Always Monthly (Recent/Trended) vs Tri Avg
             if(elTriVar) elTriVar.innerHTML = fmtVar(calcVar(triComparisonVal, tri));
         };
@@ -1735,12 +1735,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Chart (2 datasets: Current vs Previous + Trend if active)
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         const labels = [...monthNames];
-        const currentYear = new Date().getFullYear(); 
-        
+        const currentYear = new Date().getFullYear();
+
         const boxesCurrent = new Array(12).fill(0);
         const boxesPrev = new Array(12).fill(0);
         const chartData = data.chart_data || [];
-        
+
         const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : currentYear;
         const prevYear = filterYear - 1;
 
@@ -1774,7 +1774,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (applyTrend) {
             // Add "Tendência" Bar
             labels.push('Tendência');
-            
+
             // Calculate Trended Value for the current month
             // We need the realized value of the current month to project
             const currMonthData = chartData.find(d => d.year === filterYear && d.month_index === trendInfo.current_month_index);
@@ -1785,13 +1785,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // BUT simpler: extend current year dataset? No, distinct color.
             // Let's add a new dataset "Tendência" with 13 points (12 null + 1 val)
             // And pad others with 0 or null
-            
+
             // Pad existing
             datasets.forEach(ds => ds.data.push(null));
-            
+
             const trendData = new Array(13).fill(null);
             trendData[12] = trendCaixas;
-            
+
             datasets.push({
                 label: `Tendência ${monthNames[trendInfo.current_month_index]}`,
                 data: trendData,
@@ -1802,7 +1802,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        createChart('boxesChart', 'bar', labels, datasets, (v) => Math.round(v).toLocaleString('pt-BR')); 
+        createChart('boxesChart', 'bar', labels, datasets, (v) => Math.round(v).toLocaleString('pt-BR'));
 
         // Table
         const products = data.products_table || [];
@@ -1859,7 +1859,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // If overlay exists but is in a different container, move it
         if (overlay && overlay.parentElement !== container) {
             overlay.remove();
-            overlay = null; 
+            overlay = null;
         }
 
         if (!overlay && container) {
@@ -1889,7 +1889,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const filters = getCurrentFilters();
         await loadFilters(filters);
         await loadMainDashboardData();
-        
+
         // Trigger background prefetch after main load
         setTimeout(() => {
             queueCommonFilters();
@@ -1902,14 +1902,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) { console.warn('Erro ao verificar versão:', error); return; }
 
             const localVersion = localStorage.getItem('dashboard_data_version');
-            
+
             if (serverVersion && serverVersion !== localVersion) {
                 console.log('Nova versão de dados detectada. Limpando cache...', serverVersion);
-                
+
                 // Clear IndexedDB
                 const db = await initDB();
                 await db.clear(STORE_NAME);
-                
+
                 // Update Local Version
                 localStorage.setItem('dashboard_data_version', serverVersion);
             }
@@ -1937,7 +1937,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Cache logic for Filters
         const CACHE_TTL = 1000 * 60 * 5; // 5 minutes for filters
         const cacheKey = generateCacheKey('dashboard_filters', currentFilters);
-        
+
         try {
             const cachedEntry = await getFromCache(cacheKey);
             if (cachedEntry && cachedEntry.timestamp) {
@@ -1945,7 +1945,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (age < CACHE_TTL) {
                     console.log('Serving filters from cache (fresh)');
                     applyFiltersData(cachedEntry.data);
-                    return; 
+                    return;
                 }
             }
         } catch (e) { console.warn('Cache error:', e); }
@@ -1977,7 +1977,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dropdown.classList.remove('hidden');
         }
     };
-        
+
         let debounceTimer;
         const renderItems = (filterText = '') => {
             container.innerHTML = '';
@@ -1989,9 +1989,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     return String(val).toLowerCase().includes(lower);
                 });
             }
-            
+
             const displayItems = filteredItems.slice(0, MAX_ITEMS);
-            
+
             displayItems.forEach(item => {
                 const value = isObject ? item.cod : item;
                 const label = isObject ? item.name : item;
@@ -2034,12 +2034,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         renderItems();
         updateBtnLabel();
-        if (searchInput) { 
+        if (searchInput) {
             searchInput.oninput = (e) => {
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => renderItems(e.target.value), 300);
-            }; 
-            searchInput.onclick = (e) => e.stopPropagation(); 
+            };
+            searchInput.onclick = (e) => e.stopPropagation();
         }
     }
 
@@ -2176,10 +2176,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateSingleSelect = (element, items) => {
             const currentVal = element.value;
             element.innerHTML = '';
-        
+
             // Always add 'Todos' option (value='todos' for year, '' for others)
             const allOpt = document.createElement('option');
-            allOpt.value = (element.id === 'ano-filter') ? 'todos' : ''; 
+            allOpt.value = (element.id === 'ano-filter') ? 'todos' : '';
             allOpt.textContent = 'Todos';
             element.appendChild(allOpt);
 
@@ -2201,14 +2201,14 @@ document.addEventListener('DOMContentLoaded', () => {
              // But if we want default 'Todos', we should let it fall through to first option?
              // If the user wants specific year by default on load, logic handles it.
              // If user wants 'Todos' (e.g. clear filters), it matches.
-             
+
              // If currentVal was invalid (e.g. old year not in list), default to Todos (index 0) or First Year?
              // Usually defaulting to 'Todos' (index 0) is safer now that we added it.
              if (!element.value) element.value = 'todos';
             }
         };
         updateSingleSelect(anoFilter, data.anos);
-        if (mesFilter.options.length <= 1) { 
+        if (mesFilter.options.length <= 1) {
             mesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; mesFilter.appendChild(opt); });
@@ -2267,7 +2267,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentFiltersStr = JSON.stringify(filters);
         if (currentFiltersStr === lastMainDashboardFiltersStr) return; // No changes made
         lastMainDashboardFiltersStr = currentFiltersStr;
-        
+
         clearTimeout(filterDebounceTimer);
         filterDebounceTimer = setTimeout(async () => {
             showDashboardLoading();
@@ -2305,7 +2305,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. Network Request
         if (isBackground) console.log(`[Background] Fetching data from API...`);
         const { data, error } = await supabase.rpc('get_main_dashboard_data', filters);
-        
+
         if (error) {
             console.error('API Error:', error);
             return { data: null, error };
@@ -2321,7 +2321,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadMainDashboardData(forceRefresh = false) {
         const filters = getCurrentFilters();
         const cacheKey = generateCacheKey('dashboard_data', filters);
-        
+
         // 1. Stale-While-Revalidate: Try Cache & Render Immediately
         if (!forceRefresh) {
             try {
@@ -2360,7 +2360,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ]);
 
         const { data, error } = dashboardResult;
-        
+
         if (data && !error) {
             console.log('SWR: Updated with fresh data.');
             lastDashboardData = data;
@@ -2369,7 +2369,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Prefetch Next
             prefetchViews(filters);
         }
-        
+
         hideDashboardLoading();
     }
 
@@ -2426,7 +2426,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .order('dtped', { ascending: false })
                 .limit(1)
                 .maybeSingle();
-            
+
             if (data && data.dtped) {
                 // dtped is timestamp with time zone, e.g., "2026-01-20T14:00:00+00:00"
                 // We want just the date part in YYYY-MM-DD for comparison
@@ -2449,7 +2449,7 @@ document.addEventListener('DOMContentLoaded', () => {
             p_mes: currentFilters.p_mes,
             p_filial: [], p_cidade: [], p_supervisor: [], p_vendedor: [], p_fornecedor: [], p_tipovenda: []
         };
-        
+
         // Helper to check and add
         const checkAndAdd = async (label, filters) => {
              const key = generateCacheKey('dashboard_data', filters);
@@ -2461,7 +2461,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const tasks = [];
-        
+
         // 1. Filiais
         availableFiltersState.filiais.forEach(v => tasks.push(checkAndAdd(`Filial: ${v}`, { ...baseFilters, p_filial: [v] })));
 
@@ -2482,7 +2482,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 6. Tipos Venda
         availableFiltersState.tipos_venda.forEach(v => tasks.push(checkAndAdd(`Tipo: ${v}`, { ...baseFilters, p_tipovenda: [v] })));
-        
+
         // 7. Redes
         availableFiltersState.redes.forEach(v => tasks.push(checkAndAdd(`Rede: ${v}`, { ...baseFilters, p_rede: [v] })));
 
@@ -2514,17 +2514,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         isPrefetching = true;
         const task = prefetchQueue.shift();
-        
+
         console.log(`[Background] Processando filtro para: ${task.label} (${prefetchQueue.length} restantes)`);
-        
+
         // We use fetchDashboardData which handles the "Check Cache -> Fetch -> Save Cache" loop
         // We pass isBackground=true to suppress standard logs and enable specific ones
         await fetchDashboardData(task.filters, true);
-        
+
         isPrefetching = false;
-        
+
         // Schedule next task with a delay to yield to main thread (UI responsiveness)
-        setTimeout(processQueue, 500); 
+        setTimeout(processQueue, 500);
     }
 
     function renderDashboard(data) {
@@ -2547,13 +2547,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // KPI Calculation Variables
         let currFat, currKg, prevFat, prevKg, triAvgFat, triAvgPeso;
         let kpiTitleFat, kpiTitleKg;
-        
+
         // --- KPI LOGIC (Scenario Check) ---
         if (anoFilter.value !== 'todos' && mesFilter.value === '') {
             // SCENARIO A: Year Selected, Month All -> Show Year vs Previous Year (Accumulated)
-            
+
             const sumData = (dataset, useTrend) => {
-                let sumFat = 0; 
+                let sumFat = 0;
                 let sumKg = 0;
                 // Sum available months (0 to 11)
                 dataset.forEach(d => {
@@ -2587,13 +2587,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             prevFat = prevSums.faturamento;
             prevKg = prevSums.peso;
-            
+
             kpiTitleFat = `Tend. FAT ${data.current_year} vs Ano Ant.`;
             kpiTitleKg = `Tend. TON ${data.current_year} vs Ano Ant.`;
 
         } else {
             // SCENARIO B: Default (Month vs Month or Filtered Month)
-            
+
             if (mesFilter.value !== '') {
                 const selectedMonthIndex = parseInt(mesFilter.value);
                 currentData = currentData.filter(d => d.month_index === selectedMonthIndex);
@@ -2746,7 +2746,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
             calcEvo
         });
-        
+
         updateKpiCard({
             prefix: 'kg',
             trendVal: currKg,
@@ -2772,7 +2772,7 @@ document.addEventListener('DOMContentLoaded', () => {
         triAvgPeso = triCount > 0 ? triSumPeso / triCount : 0;
 
         let currMonthFatForTri, currMonthKgForTri;
-        
+
         if (anoFilter.value !== 'todos' && mesFilter.value === '') {
              // In Year View, we still want the Tri card to make sense (Current Month vs Tri).
              // Let's re-fetch the specific current month data for the Tri calculation.
@@ -2807,7 +2807,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const mName = monthNames[targetIndex]?.toUpperCase() || "";
-        
+
         // Update Titles
         document.getElementById('kpi-title-evo-ano-fat').textContent = kpiTitleFat;
         document.getElementById('kpi-title-evo-ano-kg').textContent = kpiTitleKg;
@@ -2816,7 +2816,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- CHART PREP (Responsive to Mode) ---
         const mainChartTitle = document.getElementById('main-chart-title');
-        
+
         // Determine Bonification Mode
         const isBonifMode = isBonificationMode(getCurrentFilters().p_tipovenda);
 
@@ -2825,7 +2825,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isBonifMode && currentChartMode === 'faturamento') return d.bonificacao;
             return currentChartMode === 'faturamento' ? d.faturamento : d.peso;
         };
-        
+
         // Formatters
         const currencyFormatter = (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''));
         const weightFormatter = (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
@@ -2837,12 +2837,12 @@ document.addEventListener('DOMContentLoaded', () => {
             mainChartTitle.textContent = "TONELAGEM MENSAL";
         }
 
-        const mapTo12 = (arr) => { 
-            const res = new Array(12).fill(0); 
-            arr.forEach(d => res[d.month_index] = getDataValue(d)); 
-            return res; 
+        const mapTo12 = (arr) => {
+            const res = new Array(12).fill(0);
+            arr.forEach(d => res[d.month_index] = getDataValue(d));
+            return res;
         };
-        
+
         const datasets = [];
 
         datasets.push({ label: `Ano ${data.previous_year}`, data: mapTo12(previousData), isPrevious: true });
@@ -2853,13 +2853,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const trendArray = new Array(13).fill(null); // Increased to 13 to separate trend
             // Pad previous datasets to 13
             datasets.forEach(ds => ds.data.push(null));
-            
+
             trendArray[12] = getDataValue(data.trend_data); // Use 13th slot
-            
-            datasets.push({ 
-                label: `Tendência ${monthNames[data.trend_data.month_index]}`, 
+
+            datasets.push({
+                label: `Tendência ${monthNames[data.trend_data.month_index]}`,
                 data: trendArray,
-                isTrend: true 
+                isTrend: true
             });
         }
 
@@ -2879,7 +2879,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateKpiCard({ prefix, trendVal, prevVal, fmt, calcEvo }) {
         const evo = calcEvo(trendVal, prevVal);
-        
+
         const elTrend = document.getElementById(`kpi-value-trend-${prefix}`);
         const elPrev = document.getElementById(`kpi-value-prev-${prefix}`);
         const elVar = document.getElementById(`kpi-var-${prefix}`);
@@ -2908,7 +2908,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (d.isPrevious) color = professionalPalette.previous;
             if (d.isCurrent) color = professionalPalette.current;
             if (d.isTrend) color = professionalPalette.trend;
-            
+
             return {
                 ...d,
                 label: d.label,
@@ -2946,14 +2946,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 },
                 scales: {
-                    y: { 
-                        ticks: { color: '#94a3b8' }, 
+                    y: {
+                        ticks: { color: '#94a3b8' },
                         grid: { color: 'rgba(255, 255, 255, 0.05)' },
                         afterFit: (axis) => { axis.width = 150; } // Force Y-axis width to match table first column
                     },
-                    x: { 
-                        ticks: { color: '#94a3b8' }, 
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' } 
+                    x: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
                     }
                 }
             },
@@ -2983,7 +2983,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <th class="px-2 py-2 text-left bg-transparent border-b border-white/50 relative">
                 <div class="flex items-center gap-2">
                     <span>Indicadores</span>
-                    <div id="summary-table-toggle-icon" class="hidden" style="display: none;"></div>
+                    <svg id="summary-table-toggle-icon" class="w-4 h-4 transition-transform duration-300 transform -rotate-90 hidden" style="display: none;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
             </th>`;
         monthInitials.forEach(m => headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 font-light text-xs text-gray-300 summary-col-header transition-opacity duration-300 opacity-0">${m}</th>`);
@@ -3056,10 +3056,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentFiltersStr = JSON.stringify(filters);
         if (currentFiltersStr === lastCityFiltersStr) return;
         lastCityFiltersStr = currentFiltersStr;
-        
+
         clearTimeout(cityFilterDebounceTimer);
         cityFilterDebounceTimer = setTimeout(() => {
-            currentCityPage = 0; 
+            currentCityPage = 0;
             loadCityView();
         }, 500);
     };
@@ -3105,7 +3105,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn('Container not found for filter', btn.id);
             return;
         }
-        
+
         const MAX_ITEMS = 100;
         let debounceTimer;
 
@@ -3131,7 +3131,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return String(val).toLowerCase().includes(lower);
                 });
             }
-            
+
             const displayItems = filteredItems.slice(0, MAX_ITEMS);
 
             displayItems.forEach(item => {
@@ -3166,7 +3166,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const span = btn.querySelector('span');
             if (!span) {
                 // Fallback if no span, to prevent crash
-                return; 
+                return;
             }
 
             if (selectedArray.length === 0) {
@@ -3181,12 +3181,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         renderItems();
         updateBtnLabel();
-        if (searchInput) { 
+        if (searchInput) {
             searchInput.oninput = (e) => {
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => renderItems(e.target.value), 300);
-            }; 
-            searchInput.onclick = (e) => e.stopPropagation(); 
+            };
+            searchInput.onclick = (e) => e.stopPropagation();
         }
     }
 
@@ -3219,7 +3219,7 @@ document.addEventListener('DOMContentLoaded', () => {
              if (currentVal && currentVal !== 'todos') cityAnoFilter.value = currentVal;
              else if (filterData.anos.length > 0) cityAnoFilter.value = filterData.anos[0];
          }
-         
+
          if (cityMesFilter && cityMesFilter.options.length <= 1) {
             cityMesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -3261,7 +3261,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const { data, error } = await supabase.rpc('get_city_view_data', filters);
-        
+
         hideDashboardLoading();
 
         if(error) { console.error(error); return; }
@@ -3337,7 +3337,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentFiltersStr = JSON.stringify(filters);
         if (currentFiltersStr === lastBranchFiltersStr) return;
         lastBranchFiltersStr = currentFiltersStr;
-        
+
         clearTimeout(branchFilterDebounceTimer);
         branchFilterDebounceTimer = setTimeout(loadBranchView, 500);
     };
@@ -3366,7 +3366,7 @@ document.addEventListener('DOMContentLoaded', () => {
             handleBranchFilterChange();
         }
     });
-    
+
     branchClearFiltersBtn?.addEventListener('click', () => {
          branchAnoFilter.value = 'todos';
          branchMesFilter.value = '';
@@ -3414,7 +3414,7 @@ document.addEventListener('DOMContentLoaded', () => {
              if (currentVal && currentVal !== 'todos') branchAnoFilter.value = currentVal;
              else if (filterData.anos.length > 0) branchAnoFilter.value = filterData.anos[0];
          }
-         
+
          // Months
          if (branchMesFilter.options.length <= 1) {
             branchMesFilter.innerHTML = '<option value="">Todos</option>';
@@ -3434,7 +3434,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
         setupBranchMultiSelect(branchRedeFilterBtn, branchRedeFilterDropdown, branchRedeFilterList, redes, branchSelectedRedes, branchRedeFilterSearch);
     }
-    
+
     // Specific setup for Branch Filter to enforce 2 selections
     function setupBranchFilialSelect(btn, dropdown, container, items, selectedArray) {
         // If nothing selected, default to first 2
@@ -3455,7 +3455,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dropdown.classList.remove('hidden');
         }
     };
-        
+
         const renderItems = () => {
             container.innerHTML = '';
             (items || []).forEach(item => {
@@ -3469,7 +3469,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const checkbox = div.querySelector('input');
                     // Toggle logic
                     if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
-                    
+
                     if (checkbox.checked) {
                         if (!selectedArray.includes(val)) {
                             selectedArray.push(val);
@@ -3480,7 +3480,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const idx = selectedArray.indexOf(val);
                         if (idx > -1) selectedArray.splice(idx, 1);
                     }
-                    
+
                     renderItems(); // Re-render to update checks visually (e.g. if one was auto-removed)
                     updateBtnLabel();
 // Removed immediate handleFilterChange call from here if any existed
@@ -3489,13 +3489,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (!items || items.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
         };
-        
+
         const updateBtnLabel = () => {
             const span = btn.querySelector('span');
             if (selectedArray.length === 0) span.textContent = 'Selecione 2';
             else span.textContent = `${selectedArray.length} selecionadas`;
         };
-        
+
         renderItems();
         updateBtnLabel();
     }
@@ -3526,7 +3526,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return String(val).toLowerCase().includes(lower);
                 });
             }
-            
+
             const displayItems = filteredItems.slice(0, MAX_ITEMS);
 
             displayItems.forEach(item => {
@@ -3571,12 +3571,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         renderItems();
         updateBtnLabel();
-        if (searchInput) { 
+        if (searchInput) {
             searchInput.oninput = (e) => {
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => renderItems(e.target.value), 300);
-            }; 
-            searchInput.onclick = (e) => e.stopPropagation(); 
+            };
+            searchInput.onclick = (e) => e.stopPropagation();
         }
     }
 
@@ -3585,7 +3585,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Populate Dropdowns if needed
         if (branchAnoFilter.options.length <= 1) {
-            await initBranchFilters(); 
+            await initBranchFilters();
         }
 
         // Prepare Filters for RPC
@@ -3626,7 +3626,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             console.error("Erro geral no fetch de filiais:", e);
         }
-        
+
         hideDashboardLoading();
         if (branchDataMap) {
             renderBranchDashboard(branchDataMap, selectedYear, selectedMonth);
@@ -3636,7 +3636,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderBranchDashboard(branchDataMap, selectedYear, selectedMonth) {
          const now = new Date();
          const branches = Object.keys(branchDataMap).sort();
-         const kpiBranches = {}; 
+         const kpiBranches = {};
          const chartBranches = {};
          const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
@@ -3657,7 +3657,7 @@ document.addEventListener('DOMContentLoaded', () => {
          branches.forEach(b => {
              const data = branchDataMap[b];
              let monthlyData = data.monthly_data_current || [];
-             
+
              // If month is selected, filter data
              if (selectedMonth !== null && selectedMonth !== undefined && selectedMonth !== '') {
                  const monthIdx = parseInt(selectedMonth);
@@ -3699,7 +3699,7 @@ document.addEventListener('DOMContentLoaded', () => {
                      kpiKg += (d.peso || 0);
                  });
              }
-             
+
              kpiBranches[b] = { faturamento: kpiFat, peso: kpiKg };
          });
 
@@ -3707,7 +3707,7 @@ document.addEventListener('DOMContentLoaded', () => {
          // Ensure we display consistent order as fetched/selected
          const b1 = branches[0] || 'N/A';
          const b2 = branches[1] || 'N/A';
-         
+
          const val1Fat = kpiBranches[b1]?.faturamento || 0;
          const val2Fat = kpiBranches[b2]?.faturamento || 0;
          const val1Kg = kpiBranches[b1]?.peso || 0;
@@ -3717,15 +3717,15 @@ document.addEventListener('DOMContentLoaded', () => {
          const elB2Name = document.getElementById('branch-name-2'); if(elB2Name) elB2Name.textContent = b2;
          const elVal1Fat = document.getElementById('branch-val-1-fat'); if(elVal1Fat) elVal1Fat.textContent = val1Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
          const elVal2Fat = document.getElementById('branch-val-2-fat'); if(elVal2Fat) elVal2Fat.textContent = val2Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-         
+
          // Variations Logic
          // Share of Total (Val / Total)
-         
+
          const calcShare = (val, total) => {
              if (total > 0) return (val / total) * 100;
              return 0;
          };
-         
+
          const totalFat = val1Fat + val2Fat;
          const share1Fat = calcShare(val1Fat, totalFat);
          const share2Fat = calcShare(val2Fat, totalFat);
@@ -3761,7 +3761,7 @@ document.addEventListener('DOMContentLoaded', () => {
              elVar2Kg.textContent = `${share2Kg.toFixed(1)}%`;
              elVar2Kg.className = `text-sm font-bold mt-1 ${share2Kg >= 50 ? 'text-emerald-400' : 'text-red-400'}`;
          }
-         
+
          // Update Title Context
          let kpiContext;
          if (!selectedYear || selectedYear === 'todos') {
@@ -3797,15 +3797,15 @@ document.addEventListener('DOMContentLoaded', () => {
                  borderWidth: 1
              });
          });
-         
+
          const chartYear = (!selectedYear || selectedYear === 'todos') ? now.getFullYear() : parseInt(selectedYear);
-         
+
          // Check if ANY branch has trend data available
          const hasTrendData = branches.some(b => {
              const bData = branchDataMap[b];
              return bData && bData.trend_allowed && bData.trend_data;
          });
-         
+
          if (hasTrendData) {
              branches.forEach((b, idx) => {
                  const bData = branchDataMap[b];
@@ -3815,27 +3815,27 @@ document.addEventListener('DOMContentLoaded', () => {
                  } else {
                      if (datasets[idx]) datasets[idx].data.push(0);
                  }
-                 
+
                  // Update colors to highlight trend
                  const baseColor = colors[idx % colors.length];
                  const trendColor = trendColors[idx % trendColors.length];
-                 
+
                  // Create array of colors: 12 months + 1 trend
                  const bgColors = new Array(12).fill(baseColor);
                  bgColors.push(trendColor);
-                 
+
                  datasets[idx].backgroundColor = bgColors;
                  datasets[idx].borderColor = bgColors;
              });
-             
+
              const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Tendência"];
-             const fmt = currentBranchChartMode === 'faturamento' 
+             const fmt = currentBranchChartMode === 'faturamento'
                 ? (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''))
                 : (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
              createChart('branch-chart', 'bar', labels, datasets, fmt);
          } else {
              const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-             const fmt = currentBranchChartMode === 'faturamento' 
+             const fmt = currentBranchChartMode === 'faturamento'
                 ? (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''))
                 : (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
              createChart('branch-chart', 'bar', labels, datasets, fmt);
@@ -3869,7 +3869,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         let year = now.getFullYear();
         let month = now.getMonth();
-        
+
         // Respect Filters if selected
         if (anoFilter && anoFilter.value !== 'todos') {
             year = parseInt(anoFilter.value);
@@ -3881,14 +3881,14 @@ document.addEventListener('DOMContentLoaded', () => {
                  }
             }
         }
-        
+
         if (mesFilter && mesFilter.value !== '') {
             month = parseInt(mesFilter.value);
         }
 
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
-        
+
         const daysInMonth = lastDay.getDate();
         const startingDay = firstDay.getDay(); // 0 = Sunday
 
@@ -3896,7 +3896,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let html = `<div class="mb-2 font-bold text-slate-300 text-center">${monthNames[month]} ${year}</div>`;
         html += `<div class="grid grid-cols-7 gap-1 text-center">`;
-        
+
         const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
         weekDays.forEach(day => html += `<div class="w-8 h-8 flex items-center justify-center text-xs font-bold text-slate-500 cursor-default">${day}</div>`);
 
@@ -3911,7 +3911,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isHoliday = holidays.includes(dateStr);
             const isToday = (day === now.getDate() && month === now.getMonth() && year === now.getFullYear());
             const isLastSalesDay = (dateStr === lastSalesDate);
-            
+
             let classes = 'calendar-day w-8 h-8 flex items-center justify-center rounded cursor-pointer text-xs transition-colors';
 
             if (isHoliday) {
@@ -3922,12 +3922,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isToday) classes += ' ring-1 ring-inset ring-cyan-500';
             if (isLastSalesDay) classes += ' border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 font-bold';
-            
+
             html += `<div class="${classes}" data-date="${dateStr}" title="${isLastSalesDay ? 'Última Venda' : ''}">${day}</div>`;
         }
-        
+
         html += `</div>`;
-        
+
         // Legend
         html += `
             <div class="mt-4 flex flex-col gap-2 text-xs text-slate-400">
@@ -3952,28 +3952,28 @@ document.addEventListener('DOMContentLoaded', () => {
         calendarModalContent.querySelectorAll('.calendar-day[data-date]').forEach(el => {
             el.addEventListener('click', async () => {
                 console.log("Calendar day clicked:", el.getAttribute('data-date'));
-                
+
                 // Allow click even if role is unknown for debugging, but ideally check permissions
                 if (window.userRole !== 'adm') {
                     console.warn("User role not adm:", window.userRole);
                     alert("Apenas administradores podem alterar feriados.");
                     return;
                 }
-                
+
                 const date = el.getAttribute('data-date');
                 const isSelected = el.classList.contains('selected');
                 const [y, m, d] = date.split('-');
                 const formattedDate = `${d}/${m}/${y}`;
-                
-                const confirmMsg = isSelected 
-                    ? `Você deseja remover o feriado de ${formattedDate}?` 
+
+                const confirmMsg = isSelected
+                    ? `Você deseja remover o feriado de ${formattedDate}?`
                     : `Você deseja selecionar ${formattedDate} como feriado?`;
 
                 if (!confirm(confirmMsg)) return;
 
                 // Optimistic UI Update
                 el.classList.toggle('selected');
-                
+
                 // Call RPC
                 const { data: result, error } = await supabase.rpc('toggle_holiday', { p_date: date });
                 if (error) {
@@ -3982,7 +3982,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert("Erro ao alterar feriado: " + error.message);
                 } else {
                     console.log("Holiday toggled successfully.");
-                    
+
                     // Update local holidays array
                     if (isSelected) {
                         holidays = holidays.filter(h => h !== date);
@@ -3997,7 +3997,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
- 
+
 
         let selectedComparisonSupervisors = [];
         let selectedComparisonSellers = [];
@@ -4015,15 +4015,15 @@ document.addEventListener('DOMContentLoaded', () => {
         let lastComparisonFiltersStr = "";
         const handleComparisonFilterChange = () => {
             let pFornecedorValue = selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null;
-            
+
             // Apply "Pasta" filter logic on top of existing fornecedor if 'ambas' is not selected
-            // "Pasta" is conceptually a macro-fornecedor. 
+            // "Pasta" is conceptually a macro-fornecedor.
             if (comparisonPastaFilter && comparisonPastaFilter.value !== 'ambas') {
                 if (!pFornecedorValue) {
                     pFornecedorValue = [comparisonPastaFilter.value];
                 } else {
                     // Intersection of selection and pasta (though users typically won't select both in contradictory ways)
-                    // If pasta is selected, we enforce it by ensuring it's in the array. 
+                    // If pasta is selected, we enforce it by ensuring it's in the array.
                     if (!pFornecedorValue.includes(comparisonPastaFilter.value)) {
                          pFornecedorValue.push(comparisonPastaFilter.value);
                     }
@@ -4046,7 +4046,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentFiltersStr = JSON.stringify(filters);
             if (currentFiltersStr === lastComparisonFiltersStr) return;
             lastComparisonFiltersStr = currentFiltersStr;
-            
+
             clearTimeout(comparisonFilterDebounceTimer);
             comparisonFilterDebounceTimer = setTimeout(() => {
                 loadComparisonView();
@@ -4223,19 +4223,19 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 // Try to find specific list containers, fallback to dropdown if not found
                 const getList = (id) => document.getElementById(id);
-                
+
                 // Supervisors
                 const supList = getList('comparison-supervisor-filter-list') || comparisonSupervisorFilterDropdown;
                 setupCityMultiSelect(comparisonSupervisorFilterBtn, comparisonSupervisorFilterDropdown, supList, filterData.supervisors, selectedComparisonSupervisors);
-                
+
                 // Vendedores
                 const vendList = getList('comparison-vendedor-filter-list') || comparisonVendedorFilterDropdown;
                 setupCityMultiSelect(comparisonVendedorFilterBtn, comparisonVendedorFilterDropdown, vendList, filterData.vendedores, selectedComparisonSellers);
-                
+
                 // Suppliers
                 const suppList = getList('comparison-supplier-filter-list') || comparisonSupplierFilterDropdown;
                 setupCityMultiSelect(comparisonSupplierFilterBtn, comparisonSupplierFilterDropdown, suppList, filterData.fornecedores, selectedComparisonSuppliers, null, true);
-                
+
                 // Tipos Venda
                 const tipoList = getList('comparison-tipo-venda-filter-list') || comparisonTipoVendaFilterDropdown;
                 setupCityMultiSelect(comparisonTipoVendaFilterBtn, comparisonTipoVendaFilterDropdown, tipoList, filterData.tipos_venda, selectedComparisonTiposVenda);
@@ -4352,10 +4352,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 { title: 'Faturamento Total', current: curF, history: data.history_kpi.f / 3, format: 'currency' },
                 { title: 'Peso Total (Ton)', current: curP/1000, history: (data.history_kpi.p/3)/1000, format: 'decimal' },
                 { title: 'Clientes Atendidos', current: curC, history: data.history_kpi.c / 3, format: 'integer' },
-                { title: 'Ticket Médio', 
-                  current: curC > 0 ? curF / curC : 0, 
-                  history: data.history_kpi.c > 0 ? (data.history_kpi.f/3) / (data.history_kpi.c/3) : 0, 
-                  format: 'currency' 
+                { title: 'Ticket Médio',
+                  current: curC > 0 ? curF / curC : 0,
+                  history: data.history_kpi.c > 0 ? (data.history_kpi.f/3) / (data.history_kpi.c/3) : 0,
+                  format: 'currency'
                 },
                 { title: 'Mix por PDV (Pepsico)', current: Number(data.current_kpi.mix_pepsico.toFixed(2)), history: Number((data.history_kpi.sum_mix_pepsico / 3).toFixed(2)), format: 'decimal_2' },
                 { title: 'Mix Salty', current: Math.round(data.current_kpi.pos_salty * trendFactor), history: Math.round(data.history_kpi.sum_pos_salty / 3), format: 'integer' },
@@ -4365,11 +4365,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Weekly Chart Logic
             const currentDaily = data.current_daily || [];
             const historyDaily = data.history_daily || [];
-            
+
             const getWeekIdx = (dateStr) => {
                 const d = new Date(dateStr);
                 const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
-                const offset = firstDay.getDay(); 
+                const offset = firstDay.getDay();
                 const dayOfMonth = d.getDate();
                 return Math.floor((dayOfMonth + offset - 1) / 7);
             };
@@ -4388,11 +4388,11 @@ document.addEventListener('DOMContentLoaded', () => {
             currentDaily.forEach(item => {
                 if (item.d > maxDateStr) maxDateStr = item.d;
                 currentActualTotal += item.f;
-                
+
                 const idx = getWeekIdx(item.d + 'T12:00:00');
                 if (idx >= 0 && idx < 6) {
                     weeklyCurrent[idx] += item.f;
-                    
+
                     // Fill Daily Actuals
                     const d = new Date(item.d + 'T12:00:00');
                     const dayIdx = d.getDay();
@@ -4412,7 +4412,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const day = d.getDay();
                     const dateStr = d.toISOString().split('T')[0];
                     // Access global holidays if available
-                    const hols = (typeof holidays !== 'undefined') ? holidays : []; 
+                    const hols = (typeof holidays !== 'undefined') ? holidays : [];
                     return day !== 0 && day !== 6 && !hols.includes(dateStr);
                 };
 
@@ -4430,7 +4430,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                const historyWeights = historySums.map((week, wIdx) => 
+                const historyWeights = historySums.map((week, wIdx) =>
                     week.map((sum, dIdx) => {
                         const count = historyCounts[wIdx][dIdx];
                         return count > 0 ? sum / count : 0;
@@ -4446,9 +4446,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const dailyRunRate = passedWorkingDays > 0 ? currentActualTotal / passedWorkingDays : 0;
-                
+
                 // Identify Future Working Days
-                const futureDays = []; 
+                const futureDays = [];
                 let iter = new Date(lastSalesDate);
                 iter.setDate(iter.getDate() + 1); // Start from next day
 
@@ -4478,9 +4478,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         allocation = totalProjectedPot * (weight / totalWeightDenominator);
                     } else {
                         // Fallback to equal distribution if no history for these specific slots
-                        allocation = dailyRunRate; 
+                        allocation = dailyRunRate;
                     }
-                    
+
                     weeklyCurrent[day.weekIdx] += allocation;
                     dailyDataByWeek[day.weekIdx][day.dayIdx] += allocation;
                 });
@@ -4516,7 +4516,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fat: m.f,
                 clients: m.c
             }));
-            
+
             monthlyData.push({ label: 'Atual', fat: curF, clients: curC });
 
             // 4. Daily Chart Datasets
