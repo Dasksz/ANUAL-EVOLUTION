@@ -2983,7 +2983,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <th class="px-2 py-2 text-left bg-transparent border-b border-white/50 relative">
                 <div class="flex items-center gap-2">
                     <span>Indicadores</span>
-                    <svg id="summary-table-toggle-icon" class="w-4 h-4 transition-transform duration-300 transform -rotate-90 hidden" style="display: none;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
             </th>`;
         monthInitials.forEach(m => headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 font-light text-xs text-gray-300 summary-col-header transition-opacity duration-300 opacity-0">${m}</th>`);
