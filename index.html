@@ -140,7 +140,7 @@
 
     </style>
 </head>
-<body class="min-h-screen">
+<body class="h-screen overflow-hidden flex flex-col">
 
     <!-- Animated Background Lines -->
     <div class="lines z-[-1]">
@@ -189,7 +189,7 @@
     </div>
 
     <!-- Main Content -->
-    <header id="top-navbar" class="top-nav hidden">
+    <header id="top-navbar" class="top-nav hidden flex-none">
         <div class="top-nav-brand">
             <div class="w-8 h-8 relative mr-2">
                 <img src="logo.png" alt="PRIME Logo" class="w-full h-full object-contain">
@@ -219,11 +219,11 @@
         </div>
     </header>
 
-    <div id="app-layout" class="hidden flex h-screen overflow-hidden flex-col">
+    <div id="app-layout" class="hidden flex-1 overflow-hidden flex-col relative">
         <div class="flex-1 flex flex-col h-full overflow-hidden relative">
             
             <!-- Content Scrollable Area -->
-            <main class="flex-1 overflow-y-auto bg-transparent p-4">
+            <main id="main-content-scroll" class="flex-1 overflow-y-auto bg-transparent p-4 custom-scrollbar">
 
                 <!-- Dashboard Container -->
                 <div id="dashboard-container" class="container mx-auto">
@@ -830,15 +830,17 @@
                                     </select>
                                 </div>
 
-                                <div class="flex-none"><button id="comparison-tendency-toggle" class="w-full bg-[#ff9800] hover:bg-orange-500 text-white font-bold py-2 px-4 rounded-lg h-[38px] transition-colors shadow-lg text-sm">Calcular Tendência</button></div>
+                                <div class="ml-auto flex justify-end items-end gap-3">
+                                    <div class="flex-none"><button id="comparison-tendency-toggle" class="w-full bg-[#ff9800] hover:bg-orange-500 text-white font-bold py-2 px-4 rounded-lg h-[38px] transition-colors shadow-lg text-sm">Calcular Tendência</button></div>
 
-                                <div class="flex-none flex items-end h-[38px]">
-                                    <button id="comparison-holiday-picker-btn" class="w-[38px] h-[38px] bg-white/5 border border-white/10 text-slate-300 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500" title="Feriados">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                    </button>
+                                    <div class="flex-none flex items-end h-[38px]">
+                                        <button id="comparison-holiday-picker-btn" class="w-[38px] h-[38px] bg-white/5 border border-white/10 text-slate-300 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500" title="Feriados">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                        </button>
+                                    </div>
+
+                                    <div class="flex items-end h-[38px]"><button id="clear-comparison-filters-btn" class="w-[38px] h-[38px] bg-[#ff9800] hover:bg-orange-500 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg shrink-0" title="Limpar Filtros"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-6 6m0-6l6 6"></path></svg></button></div>
                                 </div>
-                                
-                                <div class="flex items-end h-[38px]"><button id="clear-comparison-filters-btn" class="w-[38px] h-[38px] bg-[#ff9800] hover:bg-orange-500 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg shrink-0" title="Limpar Filtros"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-6 6m0-6l6 6"></path></svg></button></div>
                             </div>
                         </div>
 
