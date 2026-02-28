@@ -1795,8 +1795,8 @@ document.addEventListener('DOMContentLoaded', () => {
             datasets.push({
                 label: `Tendência ${monthNames[trendInfo.current_month_index]}`,
                 data: trendData,
-                backgroundColor: '#8b5cf6', // Violet
-                borderColor: '#8b5cf6',
+                backgroundColor: '#316a9a', // New Dark Blue
+                borderColor: '#316a9a',
                 borderWidth: 1,
                 isTrend: true
             });
@@ -2901,7 +2901,7 @@ document.addEventListener('DOMContentLoaded', () => {
         container.appendChild(newCanvas);
 
         const ctx = newCanvas.getContext('2d');
-        const professionalPalette = { 'current': '#06b6d4', 'previous': '#f97316', 'trend': '#8b5cf6' };
+        const professionalPalette = { 'current': '#b0e0e6', 'previous': '#eaf7f8', 'trend': '#316a9a' };
 
         const datasets = datasetsData.map((d, i) => {
             let color = '#94a3b8'; // default
@@ -3785,8 +3785,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
          // --- Chart Rendering ---
          const datasets = [];
-         const colors = ['#06b6d4', '#f97316', '#8b5cf6', '#10b981']; 
-         const trendColors = ['#c084fc', '#7e22ce']; // Lilac, Purple
+         const colors = ['#b0e0e6', '#eaf7f8', '#06b6d4', '#8b5cf6'];
+         const trendColors = ['#316a9a', '#ffaa4d'];
 
          branches.forEach((b, idx) => {
              datasets.push({
@@ -4524,10 +4524,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const dailyColors = [
                 '#94a3b8', // Domingo (Slate)
                 '#60a5fa', // Segunda (Blue)
-                '#34d399', // Terca (Emerald)
-                '#facc15', // Quarta (Yellow)
-                '#fb923c', // Quinta (Orange)
-                '#f87171', // Sexta (Red)
+                '#b0e0e6', // Terca (Powder Blue - new palette)
+                '#eaf7f8', // Quarta (Light Blue - new palette)
+                '#ffaa4d', // Quinta (Orange - alternative)
+                '#316a9a', // Sexta (Dark Blue - new palette)
                 '#a78bfa'  // Sabado (Purple)
             ];
 
@@ -4768,9 +4768,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
+            const dailyColors = [
+                '#94a3b8', // Domingo (Slate)
+                '#60a5fa', // Segunda (Blue)
+                '#b0e0e6', // Terca (Powder Blue - new palette)
+                '#eaf7f8', // Quarta (Light Blue - new palette)
+                '#ffaa4d', // Quinta (Orange - alternative)
+                '#316a9a', // Sexta (Dark Blue - new palette)
+                '#a78bfa'  // Sabado (Purple)
+            ];
+
             const datasetsDaily = dayNames.map((name, i) => ({
                 label: name,
-                data: dailyDataByWeek.map(weekData => weekData[i])
+                data: dailyDataByWeek.map(weekData => weekData[i]),
+                backgroundColor: dailyColors[i],
+                borderColor: dailyColors[i]
             }));
 
             metrics.charts.dailyData = {
@@ -4828,8 +4840,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 createChart('weeklyComparisonChart', 'line',
                     chartsData.weeklyCurrent.map((_, i) => `Semana ${i+1}`),
                     [
-                        { label: 'Mês Atual', data: chartsData.weeklyCurrent, borderColor: '#14b8a6', backgroundColor: '#14b8a6', tension: 0.4, isCurrent: true },
-                        { label: 'Média Histórica', data: chartsData.weeklyHistory, borderColor: '#f97316', backgroundColor: '#f97316', tension: 0.4, isPrevious: true }
+                        { label: 'Mês Atual', data: chartsData.weeklyCurrent, borderColor: '#b0e0e6', backgroundColor: '#b0e0e6', tension: 0.4, isCurrent: true },
+                        { label: 'Média Histórica', data: chartsData.weeklyHistory, borderColor: '#eaf7f8', backgroundColor: '#eaf7f8', tension: 0.4, isPrevious: true }
                     ]
                 );
             } else {
@@ -4844,7 +4856,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 createChart('monthlyComparisonChart', 'bar', labels, [{
                     label: isFat ? 'Faturamento' : 'Clientes',
                     data: values,
-                    backgroundColor: '#06b6d4'
+                    backgroundColor: '#b0e0e6'
                 }]);
             }
 
