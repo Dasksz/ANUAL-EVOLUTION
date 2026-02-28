@@ -259,10 +259,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const showScreen = (screenId) => {
         // Hide all auth/app screens first
         [loginView, telaLoading, telaPendente, appLayout].forEach(el => el?.classList.add('hidden'));
-
+        
         // Ensure topNavbar is hidden by default on auth screens
         if (topNavbar) topNavbar.classList.add('hidden');
-
+        
         if (screenId) {
             const screen = document.getElementById(screenId);
             screen?.classList.remove('hidden');
@@ -767,13 +767,13 @@ document.addEventListener('DOMContentLoaded', () => {
         optimizeDbBtnNav.addEventListener('click', async () => {
             if (window.userRole !== 'adm') return;
             if (!confirm('Recriar índices do banco de dados?')) return;
-
+            
             try {
                 const { data, error } = await supabase.rpc('optimize_database');
                 if (error) throw error;
                 alert(data || 'Otimização concluída!');
-            } catch(e) {
-                alert('Erro: ' + e.message);
+            } catch(e) { 
+                alert('Erro: ' + e.message); 
             }
         });
     }
