@@ -3780,7 +3780,7 @@ document.addEventListener('DOMContentLoaded', () => {
          // --- Chart Rendering ---
          const datasets = [];
          const colors = ['#b0e0e6', '#eaf7f8', '#06b6d4', '#8b5cf6'];
-         const trendColors = ['#ffaa4d', '#ffaa4d'];
+         const trendColors = ['#ffaa4d', '#ffce99', '#ff8b3d', '#ffdfb3'];
 
          branches.forEach((b, idx) => {
              datasets.push({
