@@ -1968,7 +1968,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
             if (!el.classList.contains('hidden')) el.classList.add('hidden');
         });
         // Restore this one if it was hidden
@@ -2150,7 +2150,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isHidden = dropdown.classList.contains('hidden');
 
             // Close all dropdowns
-            document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+            document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
                 if (!el.classList.contains('hidden')) el.classList.add('hidden');
             });
 
@@ -3093,7 +3093,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
             if (!el.classList.contains('hidden')) el.classList.add('hidden');
         });
         // Restore this one if it was hidden
@@ -3416,7 +3416,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
             if (!el.classList.contains('hidden')) el.classList.add('hidden');
         });
         // Restore this one if it was hidden
@@ -3477,7 +3477,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
             if (!el.classList.contains('hidden')) el.classList.add('hidden');
         });
         // Restore this one if it was hidden
