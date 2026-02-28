@@ -4511,8 +4511,21 @@ document.addEventListener('DOMContentLoaded', () => {
             // Normalize History (Quarter Sum -> Average Month)
             for(let i=0; i<6; i++) weeklyHistory[i] = weeklyHistory[i] / 3;
 
-            // Trim empty tail weeks?
-            // Keep it simple for now
+            // Trim empty tail weeks dynamically
+            let lastActiveIndex = -1;
+            for (let i = 5; i >= 0; i--) {
+                if (weeklyCurrent[i] > 0 || weeklyHistory[i] > 0) {
+                    lastActiveIndex = i;
+                    break;
+                }
+            }
+            const numWeeksToKeep = Math.max(4, lastActiveIndex + 1);
+
+            const trimmedWeeklyCurrent = weeklyCurrent.slice(0, numWeeksToKeep);
+            const trimmedWeeklyHistory = weeklyHistory.slice(0, numWeeksToKeep);
+            const trimmedDailyDataByWeek = dailyDataByWeek.slice(0, numWeeksToKeep);
+
+            const weeklyLabels = Array.from({ length: numWeeksToKeep }, (_, i) => `Semana ${i + 1}`);
 
             // 3. Monthly Chart (History Months + Current)
             const monthlyData = (data.history_monthly || []).map(m => ({
@@ -4537,7 +4550,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const datasetsDaily = dayNames.map((name, i) => ({
                 label: name,
-                data: dailyDataByWeek.map(weekData => weekData[i]),
+                data: trimmedDailyDataByWeek.map(weekData => weekData[i]),
                 backgroundColor: dailyColors[i],
                 borderColor: dailyColors[i]
             }));
@@ -4551,11 +4564,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 kpis,
                 charts: {
-                    weeklyCurrent,
-                    weeklyHistory,
+                    weeklyCurrent: trimmedWeeklyCurrent,
+                    weeklyHistory: trimmedWeeklyHistory,
                     monthlyData,
                     dailyData: {
-                        labels: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4', 'Semana 5', 'Semana 6'],
+                        labels: weeklyLabels,
                         datasets: datasetsDaily
                     }
                 },
