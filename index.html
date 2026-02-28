@@ -67,8 +67,10 @@
         
         /* New Top Navigation Styles */
         .top-nav {
-            background-color: #131217;
-            border-bottom: 1px solid #151419;
+            background-color: rgba(19, 18, 23, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             padding: 0.75rem 2rem;
             display: flex;
             align-items: center;
@@ -221,7 +223,7 @@
         <div class="flex-1 flex flex-col h-full overflow-hidden relative">
             
             <!-- Content Scrollable Area -->
-            <main class="flex-1 overflow-y-auto bg-[#131217] p-4">
+            <main class="flex-1 overflow-y-auto bg-transparent p-4">
 
                 <!-- Dashboard Container -->
                 <div id="dashboard-container" class="container mx-auto">
