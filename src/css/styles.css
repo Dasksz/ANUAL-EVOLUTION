@@ -32,8 +32,14 @@
 
 /* Ensure equal distribution for data columns */
 #monthly-summary-table {
-    table-layout: fixed;
+    min-width: 1000px; /* Force minimum width to enable horizontal scroll on mobile */
     width: 100%;
+}
+
+#boxes-products-table,
+#city-active-detail-table,
+#supervisor-comparison-table {
+    min-width: 600px;
 }
 
 /* Micro Animation for Summary Table Collapse/Expand */
