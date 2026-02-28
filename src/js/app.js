@@ -1967,7 +1967,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setupMultiSelect(btn, dropdown, container, items, selectedArray, labelCallback, isObject = false, searchInput = null) {
         const MAX_ITEMS = 100;
-        btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
+        btn.onclick = (e) => {
+        e.stopPropagation();
+        const isHidden = dropdown.classList.contains('hidden');
+        // Close all dropdowns
+        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+            if (!el.classList.contains('hidden')) el.classList.add('hidden');
+        });
+        // Restore this one if it was hidden
+        if (isHidden) {
+            dropdown.classList.remove('hidden');
+        }
+    };
         
         let debounceTimer;
         const renderItems = (filterText = '') => {
@@ -1997,6 +2008,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const val = String(value);
                     if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
                     updateBtnLabel();
+// Removed immediate handleFilterChange call from here if any existed
                 };
                 container.appendChild(div);
             });
@@ -2113,8 +2125,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     let filterDebounceTimer;
+    let lastMainDashboardFiltersStr = "";
     const handleFilterChange = async () => {
         const filters = getCurrentFilters();
+        const currentFiltersStr = JSON.stringify(filters);
+        if (currentFiltersStr === lastMainDashboardFiltersStr) return; // No changes made
+        lastMainDashboardFiltersStr = currentFiltersStr;
+
         clearTimeout(filterDebounceTimer);
         filterDebounceTimer = setTimeout(async () => {
             showDashboardLoading();
@@ -2864,7 +2881,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let citySelectedCategorias = [];
 
     let cityFilterDebounceTimer;
+    let lastCityFiltersStr = "";
     const handleCityFilterChange = () => {
+        const filters = getCityCurrentFilters();
+        const currentFiltersStr = JSON.stringify(filters);
+        if (currentFiltersStr === lastCityFiltersStr) return;
+        lastCityFiltersStr = currentFiltersStr;
+
         clearTimeout(cityFilterDebounceTimer);
         cityFilterDebounceTimer = setTimeout(() => {
             currentCityPage = 0; 
@@ -2918,7 +2941,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const MAX_ITEMS = 100;
         let debounceTimer;
 
-        btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
+        btn.onclick = (e) => {
+        e.stopPropagation();
+        const isHidden = dropdown.classList.contains('hidden');
+        // Close all dropdowns
+        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+            if (!el.classList.contains('hidden')) el.classList.add('hidden');
+        });
+        // Restore this one if it was hidden
+        if (isHidden) {
+            dropdown.classList.remove('hidden');
+        }
+    };
         const renderItems = (filterText = '') => {
             container.innerHTML = '';
             let filteredItems = items || [];
@@ -2946,6 +2980,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const val = String(value);
                     if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
                     updateBtnLabel();
+// Removed immediate handleFilterChange call from here if any existed
                 };
                 container.appendChild(div);
             });
@@ -3123,7 +3158,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Filter Change Handler
     let branchFilterDebounceTimer;
+    let lastBranchFiltersStr = "";
     const handleBranchFilterChange = () => {
+        const filters = getBranchCurrentFilters();
+        const currentFiltersStr = JSON.stringify(filters);
+        if (currentFiltersStr === lastBranchFiltersStr) return;
+        lastBranchFiltersStr = currentFiltersStr;
+
         clearTimeout(branchFilterDebounceTimer);
         branchFilterDebounceTimer = setTimeout(loadBranchView, 500);
     };
@@ -3229,7 +3270,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if(items.length > 1) selectedArray.push(String(items[1]));
         }
 
-        btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
+        btn.onclick = (e) => {
+        e.stopPropagation();
+        const isHidden = dropdown.classList.contains('hidden');
+        // Close all dropdowns
+        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+            if (!el.classList.contains('hidden')) el.classList.add('hidden');
+        });
+        // Restore this one if it was hidden
+        if (isHidden) {
+            dropdown.classList.remove('hidden');
+        }
+    };
         
         const renderItems = () => {
             container.innerHTML = '';
@@ -3258,6 +3310,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     renderItems(); // Re-render to update checks visually (e.g. if one was auto-removed)
                     updateBtnLabel();
+// Removed immediate handleFilterChange call from here if any existed
                 };
                 container.appendChild(div);
             });
@@ -3278,7 +3331,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const MAX_ITEMS = 100;
         let debounceTimer;
 
-        btn.onclick = (e) => { e.stopPropagation(); dropdown.classList.toggle('hidden'); };
+        btn.onclick = (e) => {
+        e.stopPropagation();
+        const isHidden = dropdown.classList.contains('hidden');
+        // Close all dropdowns
+        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+            if (!el.classList.contains('hidden')) el.classList.add('hidden');
+        });
+        // Restore this one if it was hidden
+        if (isHidden) {
+            dropdown.classList.remove('hidden');
+        }
+    };
         const renderItems = (filterText = '') => {
             container.innerHTML = '';
             let filteredItems = items || [];
@@ -3306,6 +3370,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const val = String(value);
                     if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
                     updateBtnLabel();
+// Removed immediate handleFilterChange call from here if any existed
                 };
                 container.appendChild(div);
             });
@@ -3796,7 +3861,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let comparisonMonthlyMetric = 'faturamento';
 
         let comparisonFilterDebounceTimer;
+        let lastComparisonFiltersStr = "";
         const handleComparisonFilterChange = () => {
+            const filters = getComparisonCurrentFilters();
+            const currentFiltersStr = JSON.stringify(filters);
+            if (currentFiltersStr === lastComparisonFiltersStr) return;
+            lastComparisonFiltersStr = currentFiltersStr;
+
             clearTimeout(comparisonFilterDebounceTimer);
             comparisonFilterDebounceTimer = setTimeout(() => {
                 loadComparisonView();
