@@ -263,100 +263,101 @@
                         </header>
 
                         <!-- Filters Grid -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4 items-end">
-                            <div><label class="text-xs text-slate-400">Ano</label><select id="ano-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="todos">Todos</option></select></div>
-                            <div><label class="text-xs text-slate-400">Mês</label><select id="mes-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="">Todos</option></select></div>
+                        <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-4 rounded-xl mb-6 shadow-lg">
+                            <div class="flex flex-wrap items-end gap-3 mb-2">
+
+                            <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ano</label><select id="ano-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="todos">Todos</option></select></div>
+                            <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Mês</label><select id="mes-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="">Todos</option></select></div>
                             
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Filial</label>
-                                <button id="filial-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Filial</label>
+                                <button id="filial-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="filial-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="filial-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Cidade</label>
-                                <button id="cidade-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Cidade</label>
+                                <button id="cidade-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="cidade-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="cidade-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                <div id="cidade-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="cidade-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="cidade-filter-list"></div>
                                 </div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Supervisor</label>
-                                <button id="supervisor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Supervisor</label>
+                                <button id="supervisor-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="supervisor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="supervisor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Vendedor</label>
-                                <button id="vendedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Vendedor</label>
+                                <button id="vendedor-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="vendedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                <div id="vendedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="vendedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="vendedor-filter-list"></div>
                                 </div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Fornecedor</label>
-                                <button id="fornecedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Fornecedor</label>
+                                <button id="fornecedor-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="fornecedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                <div id="fornecedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="fornecedor-filter-list"></div>
                                 </div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Categoria</label>
-                                <button id="categoria-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Categoria</label>
+                                <button id="categoria-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="categoria-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="categoria-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                <div id="categoria-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="categoria-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="categoria-filter-list"></div>
                                 </div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Rede</label>
-                                <button id="rede-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Rede</label>
+                                <button id="rede-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="rede-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                     <input type="text" id="rede-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                <div id="rede-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                     <input type="text" id="rede-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                      <div id="rede-filter-list"></div>
                                 </div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Tipo Venda</label>
-                                <button id="tipovenda-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Tipo Venda</label>
+                                <button id="tipovenda-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="tipovenda-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="tipovenda-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
-                        </div>
 
-                        <div class="flex gap-4 mb-4">
-                            <button id="clear-filters-btn" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full md:w-auto">Limpar Filtros</button>
+                                <div class="flex items-end h-[38px]"><button id="clear-filters-btn" class="w-[38px] h-[38px] bg-[#ff9800] hover:bg-orange-500 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg shrink-0" title="Limpar Filtros"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-6 6m0-6l6 6"></path></svg></button></div>
+                            </div>
                         </div>
                     </div>
 
@@ -563,99 +564,100 @@
                         </header>
 
                         <!-- Filters Grid -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4 items-end">
+                        <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-4 rounded-xl mb-6 shadow-lg">
+                            <div class="flex flex-wrap items-end gap-3 mb-2">
+
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Filial</label>
-                                <button id="branch-filial-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Filial</label>
+                                <button id="branch-filial-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-filial-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="branch-filial-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
-                            <div><label class="text-xs text-slate-400">Ano</label><select id="branch-ano-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="todos">Todos</option></select></div>
-                            <div><label class="text-xs text-slate-400">Mês</label><select id="branch-mes-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="">Todos</option></select></div>
+                            <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ano</label><select id="branch-ano-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="todos">Todos</option></select></div>
+                            <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Mês</label><select id="branch-mes-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="">Todos</option></select></div>
                             
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Cidade</label>
-                                <button id="branch-cidade-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Cidade</label>
+                                <button id="branch-cidade-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-cidade-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="branch-cidade-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                <div id="branch-cidade-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="branch-cidade-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="branch-cidade-filter-list"></div>
                                 </div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Supervisor</label>
-                                <button id="branch-supervisor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Supervisor</label>
+                                <button id="branch-supervisor-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-supervisor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="branch-supervisor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Vendedor</label>
-                                <button id="branch-vendedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Vendedor</label>
+                                <button id="branch-vendedor-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="branch-vendedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                <div id="branch-vendedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="branch-vendedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="branch-vendedor-filter-list"></div>
                                 </div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Fornecedor</label>
-                                <button id="branch-fornecedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Fornecedor</label>
+                                <button id="branch-fornecedor-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-fornecedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="branch-fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                <div id="branch-fornecedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="branch-fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="branch-fornecedor-filter-list"></div>
                                 </div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Categoria</label>
-                                <button id="branch-categoria-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Categoria</label>
+                                <button id="branch-categoria-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-categoria-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="branch-categoria-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                <div id="branch-categoria-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="branch-categoria-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="branch-categoria-filter-list"></div>
                                 </div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Rede</label>
-                                <button id="branch-rede-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Rede</label>
+                                <button id="branch-rede-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-rede-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                     <input type="text" id="branch-rede-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                <div id="branch-rede-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                     <input type="text" id="branch-rede-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                      <div id="branch-rede-filter-list"></div>
                                 </div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Tipo Venda</label>
-                                <button id="branch-tipovenda-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Tipo Venda</label>
+                                <button id="branch-tipovenda-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-tipovenda-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="branch-tipovenda-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
-                        </div>
 
-                        <div class="flex gap-4 mb-4">
-                            <button id="branch-clear-filters-btn" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full md:w-auto">Limpar Filtros</button>
+                                <div class="flex items-end h-[38px]"><button id="branch-clear-filters-btn" class="w-[38px] h-[38px] bg-[#ff9800] hover:bg-orange-500 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg shrink-0" title="Limpar Filtros"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-6 6m0-6l6 6"></path></svg></button></div>
+                            </div>
                         </div>
 
                          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
@@ -750,111 +752,113 @@
                         </header>
 
                         <!-- Filtros (Comparativo) -->
-                        <div class="mb-6 p-4 bg-[#151419] rounded-lg shadow-sm border border-white/10">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div><label class="text-xs text-slate-400">Ano</label><select id="comparison-ano-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="todos">Todos</option></select></div>
-                                <div><label class="text-xs text-slate-400">Mês</label><select id="comparison-mes-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="">Todos</option></select></div>
+                        <div class="bg-[#151419]/80 backdrop-blur-md p-4 rounded-xl shadow-lg border border-white/10 mb-6">
+
+                            <div class="flex flex-wrap items-end gap-3 mb-4">
+                                <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ano</label><select id="comparison-ano-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="todos">Todos</option></select></div>
+                                <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Mês</label><select id="comparison-mes-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="">Todos</option></select></div>
                             </div>
                             <div id="comparison-rede-filter-wrapper" class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
-                                <div class="relative w-full sm:w-1/2">
-                                    <label class="block mb-2 text-xs font-medium text-slate-400">Rede</label>
-                                    <div id="comparison-rede-group-container" class="inline-flex rounded-md shadow-sm w-full" role="group">
-                                        <button type="button" data-group="" class="group-btn active py-2 px-4 text-sm font-medium text-slate-300 bg-slate-700 border border-slate-600 rounded-l-lg hover:bg-slate-600 flex-1">Todos</button>
+                                <div class="relative flex-1 min-w-[200px]">
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Rede</label>
+                                    <div id="comparison-rede-group-container" class="inline-flex rounded-lg shadow-sm w-full bg-white/5 p-1 border border-white/10" role="group">
+                                        <button type="button" data-group="" class="group-btn active flex-1 py-1.5 px-3 text-xs font-bold rounded-l-lg bg-orange-500 text-white transition-all">Todos</button>
                                         <div class="relative flex-1">
-                                            <button type="button" data-group="com_rede" id="comparison-com-rede-btn" class="group-btn py-2 px-4 text-sm font-medium text-slate-300 bg-slate-700 border-t border-b border-slate-600 hover:bg-slate-600 flex items-center justify-center gap-2 w-full">
+                                            <button type="button" data-group="com_rede" id="comparison-com-rede-btn" class="group-btn flex-1 py-1.5 px-3 text-xs font-medium text-slate-400 hover:text-white bg-white/5 border-t border-b border-white/10 transition-all flex items-center justify-center gap-1 w-full">
                                                 <span id="comparison-com-rede-btn-text">Com Rede</span>
                                                 <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                             </button>
-                                            <div id="comparison-rede-filter-dropdown" class="hidden absolute z-20 w-full mt-1 top-full left-0 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar text-left text-white p-2"></div>
+                                            <div id="comparison-rede-filter-dropdown" class="hidden absolute z-30 w-full mt-2 top-full left-0 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-left text-slate-300 p-2"></div>
                                         </div>
-                                        <button type="button" data-group="sem_rede" class="group-btn py-2 px-4 text-sm font-medium text-slate-300 bg-slate-700 border border-slate-600 rounded-r-lg hover:bg-slate-600 flex-1">Sem Rede</button>
+                                        <button type="button" data-group="sem_rede" class="group-btn flex-1 py-1.5 px-3 text-xs font-medium text-slate-400 hover:text-white bg-white/5 border border-white/10 rounded-r-lg transition-all">Sem Rede</button>
                                     </div>
                                 </div>
-                                <div class="w-full sm:w-1/2">
-                                    <label class="block mb-2 text-xs font-medium text-slate-400">Pasta</label>
-                                    <div id="comparison-fornecedor-toggle-container" class="w-full rounded-lg p-1 flex justify-center gap-2">
-                                        <button data-fornecedor="ELMA" class="fornecedor-btn bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-2 px-4 rounded-lg flex-1">ELMA</button>
-                                        <button data-fornecedor="FOODS" class="fornecedor-btn bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-2 px-4 rounded-lg flex-1">FOODS</button>
+                                <div class="flex-1 min-w-[200px]">
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Pasta</label>
+                                    <div id="comparison-fornecedor-toggle-container" class="w-full bg-white/5 border border-white/10 rounded-lg p-1 flex justify-center gap-2">
+                                        <button data-fornecedor="ELMA" class="fornecedor-btn flex-1 py-1.5 px-3 text-xs font-bold text-slate-400 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-all">ELMA</button>
+                                        <button data-fornecedor="FOODS" class="fornecedor-btn flex-1 py-1.5 px-3 text-xs font-bold text-slate-400 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-all">FOODS</button>
                                     </div>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                            <div class="flex flex-wrap items-end gap-3 mb-4">
                                 <div class="relative">
-                                    <label for="comparison-supervisor-filter-btn" class="block mb-2 text-xs font-medium text-slate-400">Supervisor</label>
-                                    <button id="comparison-supervisor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <label for="comparison-supervisor-filter-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Supervisor</label>
+                                    <button id="comparison-supervisor-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span id="comparison-supervisor-filter-text" class="truncate">Todos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="comparison-supervisor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar text-white p-2"></div>
+                                    <div id="comparison-supervisor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-slate-300 p-2"></div>
                                 </div>
                                 <div class="relative">
-                                    <label for="comparison-vendedor-filter-btn" class="block mb-2 text-xs font-medium text-slate-400">Vendedor</label>
-                                    <button id="comparison-vendedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <label for="comparison-vendedor-filter-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Vendedor</label>
+                                    <button id="comparison-vendedor-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span id="comparison-vendedor-filter-text" class="truncate">Todos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="comparison-vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar text-white p-2"></div>
+                                    <div id="comparison-vendedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-slate-300 p-2"></div>
                                 </div>
                                 <div class="relative">
-                                    <label for="comparison-supplier-filter-btn" class="block mb-2 text-xs font-medium text-slate-400">Fornecedor</label>
-                                    <button id="comparison-supplier-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <label for="comparison-supplier-filter-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Fornecedor</label>
+                                    <button id="comparison-supplier-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span id="comparison-supplier-filter-text" class="truncate">Todos Fornecedores</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="comparison-supplier-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar text-white p-2"></div>
+                                    <div id="comparison-supplier-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-slate-300 p-2"></div>
                                 </div>
                                 <div class="relative">
-                                    <label for="comparison-city-filter-btn" class="block mb-2 text-xs font-medium text-slate-400">Cidade</label>
-                                    <button id="comparison-city-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <label for="comparison-city-filter-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Cidade</label>
+                                    <button id="comparison-city-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span class="truncate">Todas</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="comparison-city-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                        <input type="text" id="comparison-city-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="comparison-city-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="comparison-city-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                         <div id="comparison-city-filter-list"></div>
                                     </div>
                                 </div>
                                 <div class="relative">
-                                    <label for="comparison-categoria-filter-btn" class="block mb-2 text-xs font-medium text-slate-400">Categoria</label>
-                                    <button id="comparison-categoria-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <label for="comparison-categoria-filter-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Categoria</label>
+                                    <button id="comparison-categoria-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span class="truncate">Todas</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="comparison-categoria-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                        <input type="text" id="comparison-categoria-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="comparison-categoria-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="comparison-categoria-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                         <div id="comparison-categoria-filter-list"></div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-1 mt-4">
+                            <div class="flex flex-wrap items-end gap-3 mt-4">
                                 <div class="relative">
-                                    <label for="comparison-product-filter-btn" class="block mb-2 text-xs font-medium text-slate-400">Filtrar por Produto</label>
-                                    <button id="comparison-product-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <label for="comparison-product-filter-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Filtrar por Produto</label>
+                                    <button id="comparison-product-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span id="comparison-product-filter-text" class="truncate">Todos os Produtos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="comparison-product-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg p-2">
-                                        <div class="p-2 border-b border-white/10"><input type="text" id="comparison-product-search-input" placeholder="Buscar produto..." class="bg-slate-600 text-xs rounded-lg block w-full p-2 border border-slate-500 placeholder-slate-400 text-white focus:outline-none focus:ring-2 focus:ring-teal-500"></div>
+                                    <div id="comparison-product-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl p-2">
+                                        <div class="p-2 border-b border-white/10"><input type="text" id="comparison-product-search-input" placeholder="Buscar produto..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500"></div>
                                         <div id="comparison-product-list" class="max-h-60 overflow-y-auto custom-scrollbar text-white"></div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end border-t border-white/10 pt-4 mt-4">
-                                <div><label for="comparison-filial-filter" class="block mb-2 text-xs font-medium text-slate-400">Filial</label><select id="comparison-filial-filter" class="bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 focus:outline-none focus:ring-2 focus:ring-teal-500 block w-full"><option value="ambas" selected>Ambas</option><option value="05">Filial 05</option><option value="08">Filial 08</option></select></div>
+                            <div class="flex flex-wrap items-end gap-3 border-t border-white/10 pt-4 mt-4">
+                                <div class="flex-1 min-w-[140px] relative"><label for="comparison-filial-filter" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Filial</label><select id="comparison-filial-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="ambas" selected>Ambas</option><option value="05">Filial 05</option><option value="08">Filial 08</option></select></div>
                                 <div class="relative">
-                                    <label for="comparison-tipo-venda-filter-btn" class="block mb-2 text-xs font-medium text-slate-400">Tipo Venda</label>
-                                    <button id="comparison-tipo-venda-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <label for="comparison-tipo-venda-filter-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Tipo Venda</label>
+                                    <button id="comparison-tipo-venda-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span id="comparison-tipo-venda-filter-text" class="truncate">Todos os Tipos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="comparison-tipo-venda-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar text-white p-2"></div>
+                                    <div id="comparison-tipo-venda-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-slate-300 p-2"></div>
                                 </div>
-                                <button id="comparison-tendency-toggle" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-lg h-[38px]">Calcular Tendência</button>
+                                <button id="comparison-tendency-toggle" class="flex-none bg-[#ff9800] hover:bg-orange-500 text-white font-bold py-2 px-4 rounded-lg h-[38px] transition-colors shadow-lg">Calcular Tendência</button>
                                 <div>
-                                    <label for="comparison-holiday-picker-btn" class="block mb-2 text-xs font-medium text-slate-400">Feriados do Mês</label>
-                                    <button id="comparison-holiday-picker-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left focus:outline-none focus:ring-2 focus:ring-teal-500">Selecionar Feriados</button>
+                                    <label for="comparison-holiday-picker-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Feriados do Mês</label>
+                                    <button id="comparison-holiday-picker-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">Selecionar Feriados</button>
                                 </div>
-                                <button id="clear-comparison-filters-btn" class="w-full bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg h-[38px]">Limpar Filtros</button>
+
+                            <div class="flex items-end h-[38px]"><button id="clear-comparison-filters-btn" class="w-[38px] h-[38px] bg-[#ff9800] hover:bg-orange-500 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg shrink-0" title="Limpar Filtros"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-6 6m0-6l6 6"></path></svg></button></div>
                             </div>
                         </div>
                         <!-- KPIs (Comparativo) -->
@@ -921,98 +925,99 @@
                         </header>
 
                         <!-- Filters -->
-                        <div class="mb-6 p-4 bg-[#151419] rounded-lg shadow-sm border border-white/10">
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                                <div><label class="text-xs text-slate-400">Ano</label><select id="boxes-ano-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="todos">Todos</option></select></div>
-                                <div><label class="text-xs text-slate-400">Mês</label><select id="boxes-mes-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="">Todos</option></select></div>
+                        <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-4 rounded-xl mb-6 shadow-lg">
+                            <div class="flex flex-wrap items-end gap-3 mb-3">
+
+                                <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ano</label><select id="boxes-ano-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="todos">Todos</option></select></div>
+                                <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Mês</label><select id="boxes-mes-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="">Todos</option></select></div>
 
                                 <div class="relative">
-                                    <label class="text-xs text-slate-400 block mb-1">Filial</label>
-                                    <button id="boxes-filial-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Filial</label>
+                                    <button id="boxes-filial-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span class="truncate">Todas</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-filial-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                    <div id="boxes-filial-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                                 </div>
 
                                 <div class="relative">
-                                    <label class="text-xs text-slate-400 block mb-1">Produto</label>
-                                    <button id="boxes-produto-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Produto</label>
+                                    <button id="boxes-produto-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span class="truncate">Todos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-produto-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                        <input type="text" id="boxes-produto-filter-search" placeholder="Buscar produto..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="boxes-produto-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="boxes-produto-filter-search" placeholder="Buscar produto..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                         <div id="boxes-produto-filter-list"></div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- More Filters Expander -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                            </div>
+                            <div class="flex flex-wrap items-end gap-3 mb-2">
+
                                 <div class="relative">
-                                    <label class="text-xs text-slate-400 block mb-1">Supervisor</label>
-                                    <button id="boxes-supervisor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Supervisor</label>
+                                    <button id="boxes-supervisor-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span class="truncate">Todos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-supervisor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                    <div id="boxes-supervisor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                                 </div>
                                 <div class="relative">
-                                    <label class="text-xs text-slate-400 block mb-1">Vendedor</label>
-                                    <button id="boxes-vendedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Vendedor</label>
+                                    <button id="boxes-vendedor-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span class="truncate">Todos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                        <input type="text" id="boxes-vendedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="boxes-vendedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="boxes-vendedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                         <div id="boxes-vendedor-filter-list"></div>
                                     </div>
                                 </div>
                                 <div class="relative">
-                                    <label class="text-xs text-slate-400 block mb-1">Categoria</label>
-                                    <button id="boxes-categoria-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Categoria</label>
+                                    <button id="boxes-categoria-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span class="truncate">Todas</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-categoria-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                        <input type="text" id="boxes-categoria-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="boxes-categoria-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="boxes-categoria-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                         <div id="boxes-categoria-filter-list"></div>
                                     </div>
                                 </div>
                                 <div class="relative">
-                                    <label class="text-xs text-slate-400 block mb-1">Fornecedor</label>
-                                    <button id="boxes-fornecedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Fornecedor</label>
+                                    <button id="boxes-fornecedor-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span class="truncate">Todos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-fornecedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                        <input type="text" id="boxes-fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="boxes-fornecedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="boxes-fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                         <div id="boxes-fornecedor-filter-list"></div>
                                     </div>
                                 </div>
                                 <div class="relative">
-                                    <label class="text-xs text-slate-400 block mb-1">Cidade</label>
-                                    <button id="boxes-cidade-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Cidade</label>
+                                    <button id="boxes-cidade-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span class="truncate">Todas</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-cidade-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                        <input type="text" id="boxes-cidade-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                    <div id="boxes-cidade-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="boxes-cidade-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                         <div id="boxes-cidade-filter-list"></div>
                                     </div>
                                 </div>
                                 <div class="relative">
-                                    <label class="text-xs text-slate-400 block mb-1">Tipo Venda</label>
-                                    <button id="boxes-tipovenda-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Tipo Venda</label>
+                                    <button id="boxes-tipovenda-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span class="truncate">Todos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-tipovenda-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                    <div id="boxes-tipovenda-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                                 </div>
-                            </div>
 
-                            <button id="boxes-clear-filters-btn" class="w-full bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg h-[38px] transition-colors">Limpar Filtros</button>
+                                <div class="flex items-end h-[38px]"><button id="boxes-clear-filters-btn" class="w-[38px] h-[38px] bg-[#ff9800] hover:bg-orange-500 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg shrink-0" title="Limpar Filtros"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-6 6m0-6l6 6"></path></svg></button></div>
+                            </div>
                         </div>
 
                         <!-- Trend Button -->
@@ -1129,100 +1134,101 @@
                         </div>
 
                         <!-- Filters Grid -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4 items-end">
-                            <div><label class="text-xs text-slate-400">Ano</label><select id="city-ano-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="todos">Todos</option></select></div>
-                            <div><label class="text-xs text-slate-400">Mês</label><select id="city-mes-filter" class="w-full bg-slate-700 border border-slate-600 rounded p-1 text-sm text-white h-9"><option value="">Todos</option></select></div>
+                        <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-4 rounded-xl mb-6 shadow-lg">
+                            <div class="flex flex-wrap items-end gap-3 mb-2">
+
+                            <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ano</label><select id="city-ano-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="todos">Todos</option></select></div>
+                            <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Mês</label><select id="city-mes-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="">Todos</option></select></div>
                             
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Filial</label>
-                                <button id="city-filial-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Filial</label>
+                                <button id="city-filial-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-filial-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="city-filial-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Cidade</label>
-                                <button id="city-cidade-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Cidade</label>
+                                <button id="city-cidade-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-cidade-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="city-cidade-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                <div id="city-cidade-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="city-cidade-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="city-cidade-filter-list"></div>
                                 </div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Supervisor</label>
-                                <button id="city-supervisor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Supervisor</label>
+                                <button id="city-supervisor-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-supervisor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="city-supervisor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Vendedor</label>
-                                <button id="city-vendedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Vendedor</label>
+                                <button id="city-vendedor-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-vendedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="city-vendedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                <div id="city-vendedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="city-vendedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="city-vendedor-filter-list"></div>
                                 </div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Fornecedor</label>
-                                <button id="city-fornecedor-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Fornecedor</label>
+                                <button id="city-fornecedor-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-fornecedor-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="city-fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                <div id="city-fornecedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="city-fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="city-fornecedor-filter-list"></div>
                                 </div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Categoria</label>
-                                <button id="city-categoria-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Categoria</label>
+                                <button id="city-categoria-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-categoria-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="city-categoria-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                <div id="city-categoria-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="city-categoria-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="city-categoria-filter-list"></div>
                                 </div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Rede</label>
-                                <button id="city-rede-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Rede</label>
+                                <button id="city-rede-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-rede-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                     <input type="text" id="city-rede-filter-search" placeholder="Buscar..." class="w-full bg-slate-700 text-white text-xs p-1 mb-2 rounded border border-slate-600 focus:outline-none">
+                                <div id="city-rede-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                     <input type="text" id="city-rede-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                      <div id="city-rede-filter-list"></div>
                                 </div>
                             </div>
 
                             <div class="relative">
-                                <label class="text-xs text-slate-400 block mb-1">Tipo Venda</label>
-                                <button id="city-tipovenda-filter-btn" class="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded p-2 text-left flex justify-between items-center h-9 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Tipo Venda</label>
+                                <button id="city-tipovenda-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-tipovenda-filter-dropdown" class="hidden absolute z-20 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="city-tipovenda-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
-                        </div>
 
-                        <div class="flex gap-4 mb-4">
-                            <button id="city-clear-filters-btn" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full md:w-auto">Limpar Filtros</button>
+                                <div class="flex items-end h-[38px]"><button id="city-clear-filters-btn" class="w-[38px] h-[38px] bg-[#ff9800] hover:bg-orange-500 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg shrink-0" title="Limpar Filtros"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-6 6m0-6l6 6"></path></svg></button></div>
+                            </div>
                         </div>
 
                          <div class="bg-[#151419] p-4 rounded-lg mt-6 border border-white/10">
