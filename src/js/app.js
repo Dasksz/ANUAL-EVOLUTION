@@ -1587,7 +1587,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBoxesDashboard(data);
     }
 
-    function renderBoxesDashboard(data) {
+    window.renderBoxesDashboard = function renderBoxesDashboard(data) {
         // Trend Data Extraction
         const trendInfo = data.trend_info || { allowed: false, factor: 1, current_month_index: -1 };
         const applyTrend = boxesTrendActive && trendInfo.allowed;
@@ -1755,16 +1755,12 @@ document.addEventListener('DOMContentLoaded', () => {
             {
                 label: `Ano ${prevYear}`,
                 data: boxesPrev,
-                backgroundColor: '#f97316', // Orange
-                borderColor: '#f97316',
                 borderWidth: 1,
                 isPrevious: true
             },
             {
                 label: `Ano ${filterYear}`,
                 data: boxesCurrent,
-                backgroundColor: '#10b981', // Emerald
-                borderColor: '#10b981',
                 borderWidth: 1,
                 isCurrent: true
             }
@@ -1795,8 +1791,6 @@ document.addEventListener('DOMContentLoaded', () => {
             datasets.push({
                 label: `Tendência ${monthNames[trendInfo.current_month_index]}`,
                 data: trendData,
-                backgroundColor: '#ffaa4d', // New Dark Blue
-                borderColor: '#ffaa4d',
                 borderWidth: 1,
                 isTrend: true
             });
@@ -2892,7 +2886,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function createChart(canvasId, type, labels, datasetsData, formatterVal) {
+    window.createChart = function createChart(canvasId, type, labels, datasetsData, formatterVal) {
         const container = document.getElementById(canvasId + 'Container');
         if (!container) return;
         container.innerHTML = '';
