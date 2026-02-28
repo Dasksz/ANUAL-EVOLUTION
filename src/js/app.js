@@ -11,21 +11,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logout-btn');
     const logoutBtnPendente = document.getElementById('logout-btn-pendente');
 
-    // Sidebar
-    const sideMenu = document.getElementById('side-menu');
-    const openSidebarBtn = document.getElementById('open-sidebar-btn'); // Main Header Hamburger
-    const openSidebarBoxesBtn = document.getElementById('open-sidebar-boxes-btn'); // Boxes Header Hamburger
-    const openSidebarBranchBtn = document.getElementById('open-sidebar-branch-btn'); // Branch Header Hamburger
-    const openSidebarCityBtn = document.getElementById('open-sidebar-city-btn'); // City Header Hamburger
-    // No close button explicit in new design, clicking outside handles it
-    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
-    
+    // New Top Navbar Elements
+    const topNavbar = document.getElementById('top-navbar');
     const navDashboardBtn = document.getElementById('nav-dashboard');
     const navCityAnalysisBtn = document.getElementById('nav-city-analysis');
-    const navBoxesBtn = document.getElementById('nav-boxes-btn'); // New Boxes Nav
+    const navBoxesBtn = document.getElementById('nav-boxes-btn');
     const navBranchBtn = document.getElementById('nav-branch-btn');
     const navUploaderBtn = document.getElementById('nav-uploader');
-    const navComparativoBtn = document.getElementById('nav-comparativo-btn'); // New
+    const navComparativoBtn = document.getElementById('nav-comparativo-btn');
+    const optimizeDbBtnNav = document.getElementById('optimize-db-btn-nav');
 
     // Views
     const dashboardContainer = document.getElementById('dashboard-container');
@@ -265,9 +259,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const showScreen = (screenId) => {
         // Hide all auth/app screens first
         [loginView, telaLoading, telaPendente, appLayout].forEach(el => el?.classList.add('hidden'));
+
+        // Ensure topNavbar is hidden by default on auth screens
+        if (topNavbar) topNavbar.classList.add('hidden');
+
         if (screenId) {
             const screen = document.getElementById(screenId);
             screen?.classList.remove('hidden');
+            // Ensure Top Nav is visible if authenticated and in app
+            if (screenId === 'app-layout' && topNavbar) {
+                topNavbar.classList.remove('hidden');
+            }
         }
     };
 
@@ -433,6 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleInitialRouting() {
         const params = new URLSearchParams(window.location.search);
         const view = params.get('view');
+        checkRoleForUI();
 
         if (view) {
             applyFiltersToView(view, params);
@@ -687,28 +690,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     checkSession();
 
-    // --- Navigation & Sidebar Logic ---
-
-    function openSidebar() {
-        sideMenu.classList.remove('-translate-x-full');
-        sidebarBackdrop.classList.remove('hidden');
+    // --- Navigation Logic (Updated for Top Nav) ---
+    function setActiveNavLink(link) {
+        if (!link) return;
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
     }
 
-    function closeSidebar() {
-        sideMenu.classList.add('-translate-x-full');
-        sidebarBackdrop.classList.add('hidden');
-    }
-
-    openSidebarBtn.addEventListener('click', openSidebar);
-    if (openSidebarBoxesBtn) openSidebarBoxesBtn.addEventListener('click', openSidebar);
-    if (openSidebarBranchBtn) openSidebarBranchBtn.addEventListener('click', openSidebar);
-    if (openSidebarCityBtn) openSidebarCityBtn.addEventListener('click', openSidebar);
-    const openSidebarComparisonBtn = document.getElementById('open-sidebar-comparison-btn');
-    if (openSidebarComparisonBtn) openSidebarComparisonBtn.addEventListener('click', openSidebar);
-
-    sidebarBackdrop.addEventListener('click', closeSidebar);
-
-    // Nav Links (Close sidebar on click)
     const resetViews = () => {
         dashboardContainer.classList.remove('hidden');
         uploaderModal.classList.add('hidden');
@@ -717,25 +705,21 @@ document.addEventListener('DOMContentLoaded', () => {
         boxesView.classList.add('hidden');
         branchView.classList.add('hidden');
         comparisonView.classList.add('hidden');
-        // Reset active state styles (simple)
-        [navDashboardBtn, navCityAnalysisBtn, navBoxesBtn, navBranchBtn, navUploaderBtn, navComparativoBtn].forEach(btn => btn?.classList.remove('bg-slate-700', 'text-white'));
     };
 
     navDashboardBtn.addEventListener('click', (e) => {
         if (navigateWithCtrl(e, 'dashboard')) return;
         resetViews();
         mainDashboardView.classList.remove('hidden');
-        navDashboardBtn.classList.add('bg-slate-700', 'text-white');
-        closeSidebar();
+        setActiveNavLink(navDashboardBtn);
     });
 
     navCityAnalysisBtn.addEventListener('click', (e) => {
         if (navigateWithCtrl(e, 'city')) return;
         resetViews();
         cityView.classList.remove('hidden');
-        navCityAnalysisBtn.classList.add('bg-slate-700', 'text-white');
+        setActiveNavLink(navCityAnalysisBtn);
         loadCityView();
-        closeSidebar();
     });
 
     if (navBoxesBtn) {
@@ -743,9 +727,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (navigateWithCtrl(e, 'boxes')) return;
             resetViews();
             boxesView.classList.remove('hidden');
-            navBoxesBtn.classList.add('bg-slate-700', 'text-white');
+            setActiveNavLink(navBoxesBtn);
             loadBoxesView();
-            closeSidebar();
         });
     }
 
@@ -754,9 +737,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (navigateWithCtrl(e, 'comparison')) return;
             resetViews();
             comparisonView.classList.remove('hidden');
-            navComparativoBtn.classList.add('bg-slate-700', 'text-white');
+            setActiveNavLink(navComparativoBtn);
             loadComparisonView();
-            closeSidebar();
         });
     }
 
@@ -765,27 +747,47 @@ document.addEventListener('DOMContentLoaded', () => {
             if (navigateWithCtrl(e, 'branch')) return;
             resetViews();
             branchView.classList.remove('hidden');
-            navBranchBtn.classList.add('bg-slate-700', 'text-white');
+            setActiveNavLink(navBranchBtn);
             loadBranchView();
-            closeSidebar();
         });
     }
 
-    navUploaderBtn.addEventListener('click', () => {
-        if (window.userRole !== 'adm') {
-            alert('Acesso negado: Apenas administradores podem acessar o uploader.');
-            return;
-        }
-        uploaderModal.classList.remove('hidden');
-        closeSidebar();
-    });
+    if (navUploaderBtn) {
+        navUploaderBtn.addEventListener('click', () => {
+            if (window.userRole !== 'adm') {
+                alert('Acesso negado: Apenas administradores podem acessar o uploader.');
+                return;
+            }
+            uploaderModal.classList.remove('hidden');
+            checkMissingBranches();
+        });
+    }
+
+    if (optimizeDbBtnNav) {
+        optimizeDbBtnNav.addEventListener('click', async () => {
+            if (window.userRole !== 'adm') return;
+            if (!confirm('Recriar índices do banco de dados?')) return;
+
+            try {
+                const { data, error } = await supabase.rpc('optimize_database');
+                if (error) throw error;
+                alert(data || 'Otimização concluída!');
+            } catch(e) {
+                alert('Erro: ' + e.message);
+            }
+        });
+    }
 
     closeUploaderBtn.addEventListener('click', () => {
         uploaderModal.classList.add('hidden');
     });
 
-    // Set initial active state
-    navDashboardBtn.classList.add('bg-slate-700', 'text-white');
+    // Role Check for Uploader Visibility
+    function checkRoleForUI() {
+        if (window.userRole === 'adm') {
+            if(navUploaderBtn) navUploaderBtn.classList.remove('hidden');
+        }
+    }
 
 
     // --- Dashboard Internal Navigation ---
@@ -905,15 +907,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    if(navUploaderBtn) navUploaderBtn.addEventListener('click', async () => {
-        if (window.userRole !== 'adm') {
-            alert('Acesso negado: Apenas administradores podem acessar o uploader.');
-            return;
-        }
-        uploaderModal.classList.remove('hidden');
-        closeSidebar();
-        checkMissingBranches();
-    });
+    // O evento click de navUploaderBtn já foi declarado mais acima com a estrutura do nav.
+    // Vamos apenas assegurar de mesclar a chamada de checkMissingBranches() que havia aqui.
 
     if(generateBtn) generateBtn.addEventListener('click', async () => {
         if (!files.salesPrevYearFile || !files.salesCurrYearFile || !files.salesCurrMonthFile || !files.clientsFile || !files.productsFile) return;
