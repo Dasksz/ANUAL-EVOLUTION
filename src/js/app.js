@@ -2056,7 +2056,119 @@ document.addEventListener('DOMContentLoaded', () => {
         availableFiltersState.redes = data.redes || [];
         availableFiltersState.categorias = data.categorias || [];
 
-        const updateSingleSelect = (element, items) => {
+        function enhanceSelectToCustomDropdown(selectElement) {
+        if (!selectElement) return;
+
+        // Return if already enhanced
+        if (selectElement.hasAttribute('data-enhanced')) return;
+        selectElement.setAttribute('data-enhanced', 'true');
+
+        // Hide original select
+        selectElement.style.display = 'none';
+
+        // Create Button
+        const btn = document.createElement('button');
+        // Copy select classes, remove appearance-none, add button classes
+        const classes = selectElement.className.replace('appearance-none', '').split(' ').filter(c => c.trim() !== '');
+        btn.className = [...new Set([...classes, 'text-left', 'flex', 'justify-between', 'items-center'])].join(' ');
+        btn.type = 'button';
+
+        const span = document.createElement('span');
+        span.className = 'truncate';
+
+        // Find initial selected option
+        const initialSelectedOption = selectElement.options[selectElement.selectedIndex];
+        span.textContent = initialSelectedOption ? initialSelectedOption.text : '';
+
+        const icon = document.createElement('div');
+        icon.innerHTML = '<svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>';
+
+        btn.appendChild(span);
+        btn.appendChild(icon.firstChild);
+
+        // Create Dropdown Container
+        const dropdown = document.createElement('div');
+        dropdown.className = 'hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2';
+
+        // Insert after select
+        selectElement.parentNode.insertBefore(btn, selectElement.nextSibling);
+        selectElement.parentNode.insertBefore(dropdown, btn.nextSibling);
+
+        const renderOptions = () => {
+            dropdown.innerHTML = '';
+            Array.from(selectElement.options).forEach(opt => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
+                const isSelected = selectElement.value === opt.value;
+                itemDiv.innerHTML = `<input type="checkbox" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2 pointer-events-none" readonly><label class="ml-2 text-sm cursor-pointer flex-1 ${isSelected ? 'text-orange-500 font-bold' : 'text-slate-200'}">${opt.text}</label>`;
+
+                itemDiv.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectElement.value = opt.value;
+                    span.textContent = opt.text;
+                    dropdown.classList.add('hidden');
+
+                    // Trigger change event for listeners attached to the original select
+                    selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+                    // Find all items and uncheck them
+                    Array.from(dropdown.children).forEach(child => {
+                        const cb = child.querySelector('input');
+                        if (cb) cb.checked = false;
+                        const lbl = child.querySelector('label');
+                        if (lbl) {
+                            lbl.classList.remove('text-orange-500', 'font-bold');
+                            lbl.classList.add('text-slate-200');
+                        }
+                    });
+                    // Check the clicked one
+                    const clickedCb = itemDiv.querySelector('input');
+                    if (clickedCb) clickedCb.checked = true;
+                    const clickedLbl = itemDiv.querySelector('label');
+                    if (clickedLbl) {
+                        clickedLbl.classList.remove('text-slate-200');
+                        clickedLbl.classList.add('text-orange-500', 'font-bold');
+                    }
+                    // Instead of a full re-render which closes the dropdown, just update DOM classes
+                    // renderOptions(); // Removed to avoid re-render stutter if needed, though hidden class logic works
+                });
+                dropdown.appendChild(itemDiv);
+            });
+
+            // Update span text just in case value changed
+            const selectedOpt = selectElement.options[selectElement.selectedIndex];
+            if (selectedOpt) span.textContent = selectedOpt.text;
+        };
+
+        renderOptions();
+
+        // Observe changes to the select options
+        const observer = new MutationObserver((mutations) => {
+            renderOptions();
+        });
+        observer.observe(selectElement, { childList: true });
+
+        // Handle button click
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isHidden = dropdown.classList.contains('hidden');
+
+            // Close all dropdowns
+            document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+                if (!el.classList.contains('hidden')) el.classList.add('hidden');
+            });
+
+            if (isHidden) {
+                dropdown.classList.remove('hidden');
+            }
+        });
+
+        // Update when original select changes its value externally
+        selectElement.addEventListener('change', (e) => {
+            if (e.isTrusted) renderOptions();
+        });
+    }
+
+    const updateSingleSelect = (element, items) => {
             const currentVal = element.value;
             element.innerHTML = '';
         
@@ -2102,6 +2214,24 @@ document.addEventListener('DOMContentLoaded', () => {
         setupMultiSelect(vendedorFilterBtn, vendedorFilterDropdown, vendedorFilterList, data.vendedores, selectedVendedores, () => {}, false, vendedorFilterSearch);
         setupMultiSelect(fornecedorFilterBtn, fornecedorFilterDropdown, fornecedorFilterList, data.fornecedores, selectedFornecedores, () => {}, true, fornecedorFilterSearch);
         setupMultiSelect(tipovendaFilterBtn, tipovendaFilterDropdown, tipovendaFilterDropdown, data.tipos_venda, selectedTiposVenda, () => {});
+        // Enhance select filters to match multi-select appearance
+        const selectsToEnhance = [
+            document.getElementById('ano-filter'),
+            document.getElementById('mes-filter'),
+            document.getElementById('branch-ano-filter'),
+            document.getElementById('branch-mes-filter'),
+            document.getElementById('boxes-ano-filter'),
+            document.getElementById('boxes-mes-filter'),
+            document.getElementById('city-ano-filter'),
+            document.getElementById('city-mes-filter'),
+            document.getElementById('comparison-ano-filter'),
+            document.getElementById('comparison-mes-filter'),
+            document.getElementById('comparison-filial-filter')
+        ];
+        selectsToEnhance.forEach(el => {
+            if (el) enhanceSelectToCustomDropdown(el);
+        });
+
         setupMultiSelect(categoriaFilterBtn, categoriaFilterDropdown, categoriaFilterList, data.categorias, selectedCategorias, () => {}, false, categoriaFilterSearch);
 
         // Rede Logic with "Com Rede" and "Sem Rede"
