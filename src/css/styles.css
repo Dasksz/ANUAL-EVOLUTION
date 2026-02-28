@@ -36,6 +36,44 @@
     width: 100%;
 }
 
+/* Micro Animation for Summary Table Collapse/Expand */
+#monthly-summary-table tbody tr {
+    transition: all 0.3s ease-in-out;
+}
+
+#monthly-summary-table.collapsed-table tbody tr td {
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: 0;
+    opacity: 0;
+    border-bottom-width: 0;
+}
+
+#monthly-summary-table.collapsed-table tbody tr {
+    visibility: hidden;
+}
+
+#monthly-summary-table th.summary-col-header {
+    opacity: 1;
+    transition: opacity 0.3s ease-in-out;
+}
+
+#monthly-summary-table.collapsed-table th.summary-col-header {
+    opacity: 0;
+}
+
+#summary-table-toggle-icon {
+    transition: transform 0.3s ease-in-out;
+}
+
+#monthly-summary-table.collapsed-table #summary-table-toggle-icon {
+    transform: rotate(-90deg); /* Right arrow */
+}
+
+#monthly-summary-table:not(.collapsed-table) #summary-table-toggle-icon {
+    transform: rotate(0deg); /* Down arrow */
+}
+
 /* Loading Overlay for Dashboard */
 .dashboard-loading-overlay {
     position: absolute;

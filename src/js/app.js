@@ -2955,18 +2955,40 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    window.toggleSummaryTable = function() {
+        const table = document.getElementById('monthly-summary-table');
+        if (table) {
+            table.classList.toggle('collapsed-table');
+        }
+    };
+
     function updateTable(currData, prevData, currYear, prevYear, trendData) {
         const tableBody = document.getElementById('monthly-summary-table-body');
         const tableHead = document.querySelector('#monthly-summary-table thead tr');
         tableBody.innerHTML = '';
 
-        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        let headerHTML = '<th class="px-2 py-2 text-left">INDICADOR</th>';
-        monthNames.forEach(m => headerHTML += `<th class="px-2 py-2 text-center">${m}</th>`);
+        const table = document.getElementById('monthly-summary-table');
+        if (table && !table.classList.contains('collapsed-table')) {
+            table.classList.add('collapsed-table');
+        }
+
+        const monthInitials = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+        let headerHTML = `
+            <th class="px-2 py-2 text-left bg-transparent border-b border-white/50 relative">
+                <div class="flex items-center gap-2">
+                    <span>Indicadores</span>
+                    <svg id="summary-table-toggle-icon" class="w-4 h-4 transition-transform duration-300 transform -rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+            </th>`;
+        monthInitials.forEach(m => headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 font-light text-xs text-gray-300 summary-col-header transition-opacity duration-300 opacity-0">${m}</th>`);
         if (trendData) {
-            headerHTML += `<th class="px-2 py-2 text-center bg-purple-900/30 text-purple-200">Tendência</th>`;
+            headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 text-purple-300 font-light text-xs summary-col-header transition-opacity duration-300 opacity-0">Tendência</th>`;
         }
         tableHead.innerHTML = headerHTML;
+
+        // Add cursor-pointer and onclick to the entire row, rather than just the first header cell
+        tableHead.className = "cursor-pointer hover:text-gray-300 transition-colors";
+        tableHead.onclick = window.toggleSummaryTable;
 
         const indicators = [
             { name: 'POSITIVAÇÃO', key: 'positivacao', fmt: v => v.toLocaleString('pt-BR') },
