@@ -193,9 +193,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const comparisonProductFilterDropdown = document.getElementById('comparison-product-filter-dropdown');
     const comparisonTipoVendaFilterBtn = document.getElementById('comparison-tipo-venda-filter-btn');
     const comparisonTipoVendaFilterDropdown = document.getElementById('comparison-tipo-venda-filter-dropdown');
+    const comparisonRedeFilterBtn = document.getElementById('comparison-rede-filter-btn');
     const comparisonRedeFilterDropdown = document.getElementById('comparison-rede-filter-dropdown');
-    const comparisonComRedeBtn = document.getElementById('comparison-com-rede-btn');
-    const comparisonRedeGroupContainer = document.getElementById('comparison-rede-group-container');
+    const comparisonRedeFilterList = document.getElementById('comparison-rede-filter-list');
+    const comparisonRedeFilterSearch = document.getElementById('comparison-rede-filter-search');
     const comparisonFilialFilter = document.getElementById('comparison-filial-filter');
     const comparisonCityFilterBtn = document.getElementById('comparison-city-filter-btn');
     const comparisonCityFilterDropdown = document.getElementById('comparison-city-filter-dropdown');
@@ -4018,21 +4019,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        if (comparisonRedeGroupContainer) {
-            comparisonRedeGroupContainer.addEventListener('click', (e) => {
-                if (e.target.closest('button')) {
-                    const button = e.target.closest('button');
-                    comparisonRedeGroupFilter = button.dataset.group;
-                    comparisonRedeGroupContainer.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-                    button.classList.add('active');
-                    if (comparisonRedeGroupFilter !== 'com_rede') {
-                        comparisonRedeFilterDropdown.classList.add('hidden');
-                        selectedComparisonRedes = [];
-                    }
-                    handleComparisonFilterChange();
-                }
-            });
-        }
 
         if (comparisonTendencyToggle) {
             comparisonTendencyToggle.addEventListener('click', () => {
@@ -4099,8 +4085,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Reset UI active states
                 comparisonFornecedorToggleContainer.querySelectorAll('.fornecedor-btn').forEach(b => b.classList.remove('active'));
-                comparisonRedeGroupContainer.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-                comparisonRedeGroupContainer.querySelector('button[data-group=""]').classList.add('active');
 
                 initComparisonFilters().then(loadComparisonView);
             });
@@ -4108,7 +4092,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.addEventListener('click', (e) => {
             const dropdowns = [comparisonSupervisorFilterDropdown, comparisonVendedorFilterDropdown, comparisonSupplierFilterDropdown, comparisonProductFilterDropdown, comparisonTipoVendaFilterDropdown, comparisonRedeFilterDropdown, comparisonCityFilterDropdown, comparisonCategoriaFilterDropdown];
-            const btns = [comparisonSupervisorFilterBtn, comparisonVendedorFilterBtn, comparisonSupplierFilterBtn, comparisonProductFilterBtn, comparisonTipoVendaFilterBtn, comparisonComRedeBtn, comparisonCityFilterBtn, comparisonCategoriaFilterBtn];
+            const btns = [comparisonSupervisorFilterBtn, comparisonVendedorFilterBtn, comparisonSupplierFilterBtn, comparisonProductFilterBtn, comparisonTipoVendaFilterBtn, comparisonRedeFilterBtn, comparisonCityFilterBtn, comparisonCategoriaFilterBtn];
             let anyClosed = false;
 
             dropdowns.forEach((dd, idx) => {
@@ -4119,14 +4103,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (anyClosed) {
-                // If closing Rede Filter and items are selected, update group state visually
-                if (selectedComparisonRedes.length > 0 && comparisonRedeGroupFilter !== 'com_rede') {
-                    comparisonRedeGroupFilter = 'com_rede';
-                    if (comparisonRedeGroupContainer) {
-                        comparisonRedeGroupContainer.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-                        if (comparisonComRedeBtn) comparisonComRedeBtn.classList.add('active');
-                    }
-                }
                 handleComparisonFilterChange();
             }
         });
@@ -4244,7 +4220,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Redes
                 const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
                 const redeList = getList('comparison-rede-filter-list') || comparisonRedeFilterDropdown;
-                setupCityMultiSelect(comparisonComRedeBtn, comparisonRedeFilterDropdown, redeList, redes, selectedComparisonRedes);
+                setupCityMultiSelect(comparisonRedeFilterBtn, comparisonRedeFilterDropdown, redeList, redes, selectedComparisonRedes, document.getElementById('comparison-rede-filter-search'));
             } catch (e) {
                 console.error('Error setting up comparison filters:', e);
             }
