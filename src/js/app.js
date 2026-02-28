@@ -21,6 +21,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const navComparativoBtn = document.getElementById('nav-comparativo-btn');
     const optimizeDbBtnNav = document.getElementById('optimize-db-btn-nav');
 
+    const navConfigBtn = document.getElementById('nav-config-btn');
+    const navConfigDropdown = document.getElementById('nav-config-dropdown');
+    const navProfileBtn = document.getElementById('nav-profile-btn');
+    const navProfileDropdown = document.getElementById('nav-profile-dropdown');
+    
+    // User Display Elements
+    const userDisplayName = document.getElementById('user-display-name');
+    const userDisplayEmail = document.getElementById('user-display-email');
+
     // Views
     const dashboardContainer = document.getElementById('dashboard-container');
     const uploaderModal = document.getElementById('uploader-modal');
@@ -693,7 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Navigation Logic (Updated for Top Nav) ---
     function setActiveNavLink(link) {
         if (!link) return;
-        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        document.querySelectorAll('.navbar__link').forEach(l => l.classList.remove('active'));
         link.classList.add('active');
     }
 
@@ -706,6 +715,29 @@ document.addEventListener('DOMContentLoaded', () => {
         branchView.classList.add('hidden');
         comparisonView.classList.add('hidden');
     };
+
+    // --- Dropdown Toggles ---
+    document.addEventListener('click', (e) => {
+        // Toggle Config Dropdown
+        if (navConfigBtn.contains(e.target)) {
+            navConfigDropdown.classList.toggle('hidden');
+            navProfileDropdown.classList.add('hidden'); // Close others
+        } else if (!navConfigDropdown.contains(e.target)) {
+            navConfigDropdown.classList.add('hidden');
+        }
+
+        // Toggle Profile Dropdown
+        if (navProfileBtn.contains(e.target)) {
+            navProfileDropdown.classList.toggle('hidden');
+            navConfigDropdown.classList.add('hidden'); // Close others
+        } else if (!navProfileDropdown.contains(e.target)) {
+            navProfileDropdown.classList.add('hidden');
+        }
+    });
+
+    navConfigBtn.addEventListener('click', () => {
+        setActiveNavLink(navConfigBtn);
+    });
 
     navDashboardBtn.addEventListener('click', (e) => {
         if (navigateWithCtrl(e, 'dashboard')) return;
@@ -787,6 +819,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.userRole === 'adm') {
             if(navUploaderBtn) navUploaderBtn.classList.remove('hidden');
         }
+        
+        // Update User Dropdown Name / Email from session if available
+        supabase.auth.getSession().then(({ data: { session } }) => {
+             if (session && session.user) {
+                 if (userDisplayName) userDisplayName.textContent = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Usuário';
+                 if (userDisplayEmail) userDisplayEmail.textContent = session.user.email;
+             }
+        });
     }
 
 
@@ -2762,7 +2802,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 data: d.data,
                 backgroundColor: d.backgroundColor || color,
                 borderColor: d.borderColor || color,
-                borderWidth: d.borderWidth !== undefined ? d.borderWidth : (type === 'line' ? 2 : 0),
+                borderWidth: 0,
                 borderSkipped: 'bottom',
                 borderRadius: {
                     topLeft: 6,
@@ -4288,15 +4328,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Normalize History (Quarter Sum -> Average Month)
             for(let i=0; i<6; i++) weeklyHistory[i] = weeklyHistory[i] / 3;
 
-            // Trim empty tail weeks (dynamically show 4-6 weeks)
-            let numWeeksToKeep = 6;
-            while (numWeeksToKeep > 4 && weeklyCurrent[numWeeksToKeep - 1] === 0 && weeklyHistory[numWeeksToKeep - 1] === 0) {
-                numWeeksToKeep--;
-            }
-
-            const trimmedWeeklyCurrent = weeklyCurrent.slice(0, numWeeksToKeep);
-            const trimmedWeeklyHistory = weeklyHistory.slice(0, numWeeksToKeep);
-            const trimmedDailyDataByWeek = dailyDataByWeek.slice(0, numWeeksToKeep);
+            // Trim empty tail weeks?
+            // Keep it simple for now
 
             // 3. Monthly Chart (History Months + Current)
             const monthlyData = (data.history_monthly || []).map(m => ({
@@ -4321,7 +4354,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const datasetsDaily = dayNames.map((name, i) => ({
                 label: name,
-                data: trimmedDailyDataByWeek.map(weekData => weekData[i]),
+                data: dailyDataByWeek.map(weekData => weekData[i]),
                 backgroundColor: dailyColors[i],
                 borderColor: dailyColors[i]
             }));
@@ -4335,11 +4368,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 kpis,
                 charts: {
-                    weeklyCurrent: trimmedWeeklyCurrent,
-                    weeklyHistory: trimmedWeeklyHistory,
+                    weeklyCurrent,
+                    weeklyHistory,
                     monthlyData,
                     dailyData: {
-                        labels: new Array(numWeeksToKeep).fill(0).map((_, i) => `Semana ${i+1}`),
+                        labels: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4', 'Semana 5', 'Semana 6'],
                         datasets: datasetsDaily
                     }
                 },
@@ -4616,8 +4649,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 createChart('weeklyComparisonChart', 'line',
                     chartsData.weeklyCurrent.map((_, i) => `Semana ${i+1}`),
                     [
-                        { label: 'Mês Atual', data: chartsData.weeklyCurrent, borderColor: '#14b8a6', backgroundColor: '#14b8a6', tension: 0.4, isCurrent: true },
-                        { label: 'Média Histórica', data: chartsData.weeklyHistory, borderColor: '#f97316', backgroundColor: '#f97316', tension: 0.4, isPrevious: true }
+                        { label: 'Mês Atual', data: chartsData.weeklyCurrent, borderColor: '#14b8a6', backgroundColor: '#14b8a6', tension: 0.1, isCurrent: true },
+                        { label: 'Média Histórica', data: chartsData.weeklyHistory, borderColor: '#f97316', backgroundColor: '#f97316', tension: 0.1, isPrevious: true }
                     ]
                 );
             } else {
