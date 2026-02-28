@@ -140,3 +140,65 @@
 .fornecedor-btn:hover:not(.active) {
     opacity: 0.8;
 }
+
+/* Animated Background Lines */
+.lines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  margin: auto;
+  width: 90vw;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.line {
+  position: absolute;
+  width: 1px;
+  height: 100vh;
+  top: 0;
+  left: 50%;
+  background: rgba(255, 255, 255, 0.05); /* Very subtle base line */
+  overflow: hidden;
+}
+
+.line::after {
+  content: '';
+  display: block;
+  position: absolute;
+  height: 15vh;
+  width: 100%;
+  top: -50%;
+  left: 0;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.4) 75%, rgba(255, 255, 255, 0.4) 100%); /* Adjusted for dark theme */
+  animation: drop 7s 0s infinite;
+  animation-fill-mode: forwards;
+  animation-timing-function: cubic-bezier(0.4, 0.26, 0, 0.97);
+}
+
+.line:nth-child(1) {
+  margin-left: -25%;
+}
+
+.line:nth-child(1)::after {
+  animation-delay: 2s;
+}
+
+.line:nth-child(3) {
+  margin-left: 25%;
+}
+
+.line:nth-child(3)::after {
+  animation-delay: 2.5s;
+}
+
+@keyframes drop {
+  0% {
+    top: -50%;
+  }
+  100% {
+    top: 110%;
+  }
+}
