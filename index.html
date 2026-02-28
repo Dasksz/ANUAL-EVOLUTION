@@ -27,7 +27,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://unpkg.com/feather-icons"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="src/css/styles.css">
     <link rel="stylesheet" href="src/css/nav.css">
@@ -190,55 +189,35 @@
     </div>
 
     <!-- Main Content -->
-    <div class="header hidden" id="top-navbar">
+    <header id="top-navbar" class="top-nav hidden">
         <div class="top-nav-brand">
             <div class="w-8 h-8 relative mr-2">
                 <img src="logo.png" alt="PRIME Logo" class="w-full h-full object-contain">
             </div>
             PRIME <span>| Distribuição</span>
         </div>
-        <nav class="navbar w-full flex-1">
-            <ul class="navbar__menu w-full justify-center">
-                <li class="navbar__item">
-                    <a id="nav-dashboard" class="navbar__link active cursor-pointer"><i data-feather="home"></i><span>Visão Geral</span></a>
-                </li>
-                <li class="navbar__item">
-                    <a id="nav-comparativo-btn" class="navbar__link cursor-pointer"><i data-feather="bar-chart-2"></i><span>Comparativo</span></a>
-                </li>
-                <li class="navbar__item">
-                    <a id="nav-city-analysis" class="navbar__link cursor-pointer"><i data-feather="map-pin"></i><span>Cidade</span></a>
-                </li>
-                <li class="navbar__item">
-                    <a id="nav-branch-btn" class="navbar__link cursor-pointer"><i data-feather="git-branch"></i><span>Filiais</span></a>
-                </li>
-                <li class="navbar__item">
-                    <a id="nav-boxes-btn" class="navbar__link cursor-pointer"><i data-feather="package"></i><span>Caixas</span></a>
-                </li>
-                <li class="navbar__item relative">
-                    <button id="nav-config-btn" class="navbar__link cursor-pointer w-full focus:outline-none"><i data-feather="settings"></i><span>Config</span></button>
-                    <!-- Config Dropdown -->
-                    <div id="nav-config-dropdown" class="absolute top-[80px] left-1/2 -translate-x-1/2 w-48 bg-slate-800 border border-slate-600 rounded-lg shadow-xl hidden z-[99999]">
-                        <button id="nav-uploader" class="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 rounded-t-lg transition-colors"><i data-feather="upload-cloud" class="w-4 h-4"></i> Upload</button>
-                        <button id="optimize-db-btn-nav" class="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 rounded-b-lg transition-colors"><i data-feather="database" class="w-4 h-4"></i> Otimizar banco</button>
-                    </div>
-                </li>
-            </ul>
+        <nav class="top-nav-links">
+            <a id="nav-dashboard" class="nav-link active">Visão Geral</a>
+            <a id="nav-comparativo-btn" class="nav-link">Comparativo</a>
+            <a id="nav-city-analysis" class="nav-link">Análise por Cidade</a>
+            <a id="nav-branch-btn" class="nav-link">Filiais</a>
+            <a id="nav-boxes-btn" class="nav-link">Caixas</a>
         </nav>
-        
-        <!-- User Profile Dropdown Area -->
-        <div class="relative ml-auto flex-shrink-0">
-            <button id="nav-profile-btn" class="user-avatar cursor-pointer hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500">
-                <i data-feather="user"></i>
+        <div class="top-nav-actions">
+            <button id="nav-uploader" class="nav-icon-btn hidden" title="Upload de Arquivos">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
             </button>
-            <div id="nav-profile-dropdown" class="absolute top-[50px] right-0 mt-3 w-48 bg-slate-800 border border-slate-600 rounded-lg shadow-xl hidden z-[99999]">
-                <div class="px-4 py-3 border-b border-slate-700">
-                    <p class="text-sm text-white font-medium truncate" id="user-display-name">Usuário</p>
-                    <p class="text-xs text-slate-400 truncate" id="user-display-email">admin@sistema</p>
-                </div>
-                <button id="logout-btn" class="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-slate-700 hover:text-red-300 flex items-center gap-2 rounded-b-lg transition-colors"><i data-feather="log-out" class="w-4 h-4"></i> Sair</button>
+            <button id="optimize-db-btn-nav" class="nav-icon-btn" title="Otimizar Banco">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </button>
+            <div class="user-avatar">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
             </div>
+            <button id="logout-btn" class="nav-icon-btn" title="Sair">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            </button>
         </div>
-    </div>
+    </header>
 
     <div id="app-layout" class="hidden flex h-screen overflow-hidden flex-col">
         <div class="flex-1 flex flex-col h-full overflow-hidden relative">
@@ -265,7 +244,7 @@
                         <!-- Filters Grid -->
                         <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-4 rounded-xl mb-6 shadow-lg">
                             <div class="flex flex-wrap items-end gap-3 mb-2">
-
+                                
                             <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ano</label><select id="ano-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="todos">Todos</option></select></div>
                             <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Mês</label><select id="mes-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="">Todos</option></select></div>
                             
@@ -275,7 +254,7 @@
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="filial-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="filial-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
 
                             <div class="relative">
@@ -284,8 +263,8 @@
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="cidade-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="cidade-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                <div id="cidade-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="cidade-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="cidade-filter-list"></div>
                                 </div>
                             </div>
@@ -296,7 +275,7 @@
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="supervisor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="supervisor-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
 
                             <div class="relative">
@@ -305,8 +284,8 @@
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="vendedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="vendedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                <div id="vendedor-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="vendedor-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="vendedor-filter-list"></div>
                                 </div>
                             </div>
@@ -317,8 +296,8 @@
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="fornecedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                <div id="fornecedor-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="fornecedor-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="fornecedor-filter-list"></div>
                                 </div>
                             </div>
@@ -329,8 +308,8 @@
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="categoria-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="categoria-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                <div id="categoria-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="categoria-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="categoria-filter-list"></div>
                                 </div>
                             </div>
@@ -341,8 +320,8 @@
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="rede-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                     <input type="text" id="rede-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                <div id="rede-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                     <input type="text" id="rede-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                      <div id="rede-filter-list"></div>
                                 </div>
                             </div>
@@ -353,9 +332,9 @@
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="tipovenda-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="tipovenda-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
-
+                        
                                 <div class="flex items-end h-[38px]"><button id="clear-filters-btn" class="w-[38px] h-[38px] bg-[#ff9800] hover:bg-orange-500 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg shrink-0" title="Limpar Filtros"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-6 6m0-6l6 6"></path></svg></button></div>
                             </div>
                         </div>
@@ -566,14 +545,14 @@
                         <!-- Filters Grid -->
                         <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-4 rounded-xl mb-6 shadow-lg">
                             <div class="flex flex-wrap items-end gap-3 mb-2">
-
+                                
                             <div class="relative">
                                 <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Filial</label>
                                 <button id="branch-filial-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-filial-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="branch-filial-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
                             <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ano</label><select id="branch-ano-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="todos">Todos</option></select></div>
                             <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Mês</label><select id="branch-mes-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="">Todos</option></select></div>
@@ -584,8 +563,8 @@
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-cidade-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="branch-cidade-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                <div id="branch-cidade-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="branch-cidade-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="branch-cidade-filter-list"></div>
                                 </div>
                             </div>
@@ -596,7 +575,7 @@
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-supervisor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="branch-supervisor-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
 
                             <div class="relative">
@@ -605,8 +584,8 @@
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-vendedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="branch-vendedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                <div id="branch-vendedor-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="branch-vendedor-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="branch-vendedor-filter-list"></div>
                                 </div>
                             </div>
@@ -617,8 +596,8 @@
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-fornecedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="branch-fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                <div id="branch-fornecedor-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="branch-fornecedor-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="branch-fornecedor-filter-list"></div>
                                 </div>
                             </div>
@@ -629,8 +608,8 @@
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-categoria-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="branch-categoria-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                <div id="branch-categoria-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="branch-categoria-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="branch-categoria-filter-list"></div>
                                 </div>
                             </div>
@@ -641,8 +620,8 @@
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-rede-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                     <input type="text" id="branch-rede-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                <div id="branch-rede-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                     <input type="text" id="branch-rede-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                      <div id="branch-rede-filter-list"></div>
                                 </div>
                             </div>
@@ -653,9 +632,9 @@
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="branch-tipovenda-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="branch-tipovenda-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
-
+                        
                                 <div class="flex items-end h-[38px]"><button id="branch-clear-filters-btn" class="w-[38px] h-[38px] bg-[#ff9800] hover:bg-orange-500 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg shrink-0" title="Limpar Filtros"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-6 6m0-6l6 6"></path></svg></button></div>
                             </div>
                         </div>
@@ -753,7 +732,7 @@
 
                         <!-- Filtros (Comparativo) -->
                         <div class="bg-[#151419]/80 backdrop-blur-md p-4 rounded-xl shadow-lg border border-white/10 mb-6">
-
+                            
                             <div class="flex flex-wrap items-end gap-3 mb-4">
                                 <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ano</label><select id="comparison-ano-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="todos">Todos</option></select></div>
                                 <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Mês</label><select id="comparison-mes-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="">Todos</option></select></div>
@@ -768,7 +747,7 @@
                                                 <span id="comparison-com-rede-btn-text">Com Rede</span>
                                                 <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                             </button>
-                                            <div id="comparison-rede-filter-dropdown" class="hidden absolute z-30 w-full mt-2 top-full left-0 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-left text-slate-300 p-2"></div>
+                                            <div id="comparison-rede-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 top-full left-0 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-left text-slate-300 p-2"></div>
                                         </div>
                                         <button type="button" data-group="sem_rede" class="group-btn flex-1 py-1.5 px-3 text-xs font-medium text-slate-400 hover:text-white bg-white/5 border border-white/10 rounded-r-lg transition-all">Sem Rede</button>
                                     </div>
@@ -788,7 +767,7 @@
                                         <span id="comparison-supervisor-filter-text" class="truncate">Todos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="comparison-supervisor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-slate-300 p-2"></div>
+                                    <div id="comparison-supervisor-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-slate-300 p-2"></div>
                                 </div>
                                 <div class="relative">
                                     <label for="comparison-vendedor-filter-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Vendedor</label>
@@ -796,7 +775,7 @@
                                         <span id="comparison-vendedor-filter-text" class="truncate">Todos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="comparison-vendedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-slate-300 p-2"></div>
+                                    <div id="comparison-vendedor-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-slate-300 p-2"></div>
                                 </div>
                                 <div class="relative">
                                     <label for="comparison-supplier-filter-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Fornecedor</label>
@@ -804,7 +783,7 @@
                                         <span id="comparison-supplier-filter-text" class="truncate">Todos Fornecedores</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="comparison-supplier-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-slate-300 p-2"></div>
+                                    <div id="comparison-supplier-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-slate-300 p-2"></div>
                                 </div>
                                 <div class="relative">
                                     <label for="comparison-city-filter-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Cidade</label>
@@ -812,8 +791,8 @@
                                         <span class="truncate">Todas</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="comparison-city-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                        <input type="text" id="comparison-city-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                    <div id="comparison-city-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="comparison-city-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                         <div id="comparison-city-filter-list"></div>
                                     </div>
                                 </div>
@@ -823,8 +802,8 @@
                                         <span class="truncate">Todas</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="comparison-categoria-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                        <input type="text" id="comparison-categoria-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                    <div id="comparison-categoria-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="comparison-categoria-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                         <div id="comparison-categoria-filter-list"></div>
                                     </div>
                                 </div>
@@ -836,8 +815,8 @@
                                         <span id="comparison-product-filter-text" class="truncate">Todos os Produtos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="comparison-product-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl p-2">
-                                        <div class="p-2 border-b border-white/10"><input type="text" id="comparison-product-search-input" placeholder="Buscar produto..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500"></div>
+                                    <div id="comparison-product-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl p-2">
+                                        <div class="p-2 border-b border-white/10"><input type="text" id="comparison-product-search-input" placeholder="Buscar produto..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500"></div>
                                         <div id="comparison-product-list" class="max-h-60 overflow-y-auto custom-scrollbar text-white"></div>
                                     </div>
                                 </div>
@@ -850,14 +829,14 @@
                                         <span id="comparison-tipo-venda-filter-text" class="truncate">Todos os Tipos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="comparison-tipo-venda-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-slate-300 p-2"></div>
+                                    <div id="comparison-tipo-venda-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar text-slate-300 p-2"></div>
                                 </div>
                                 <button id="comparison-tendency-toggle" class="flex-none bg-[#ff9800] hover:bg-orange-500 text-white font-bold py-2 px-4 rounded-lg h-[38px] transition-colors shadow-lg">Calcular Tendência</button>
                                 <div>
                                     <label for="comparison-holiday-picker-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Feriados do Mês</label>
                                     <button id="comparison-holiday-picker-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">Selecionar Feriados</button>
                                 </div>
-
+                                
                             <div class="flex items-end h-[38px]"><button id="clear-comparison-filters-btn" class="w-[38px] h-[38px] bg-[#ff9800] hover:bg-orange-500 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg shrink-0" title="Limpar Filtros"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-6 6m0-6l6 6"></path></svg></button></div>
                             </div>
                         </div>
@@ -927,7 +906,7 @@
                         <!-- Filters -->
                         <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-4 rounded-xl mb-6 shadow-lg">
                             <div class="flex flex-wrap items-end gap-3 mb-3">
-
+                                
                                 <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ano</label><select id="boxes-ano-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="todos">Todos</option></select></div>
                                 <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Mês</label><select id="boxes-mes-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="">Todos</option></select></div>
 
@@ -937,7 +916,7 @@
                                         <span class="truncate">Todas</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-filial-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                    <div id="boxes-filial-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                                 </div>
 
                                 <div class="relative">
@@ -946,22 +925,22 @@
                                         <span class="truncate">Todos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-produto-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                        <input type="text" id="boxes-produto-filter-search" placeholder="Buscar produto..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                    <div id="boxes-produto-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="boxes-produto-filter-search" placeholder="Buscar produto..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                         <div id="boxes-produto-filter-list"></div>
                                     </div>
                                 </div>
-
+                            
                             </div>
                             <div class="flex flex-wrap items-end gap-3 mb-2">
-
+                                
                                 <div class="relative">
                                     <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Supervisor</label>
                                     <button id="boxes-supervisor-filter-btn" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">
                                         <span class="truncate">Todos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-supervisor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                    <div id="boxes-supervisor-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                                 </div>
                                 <div class="relative">
                                     <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Vendedor</label>
@@ -969,8 +948,8 @@
                                         <span class="truncate">Todos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-vendedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                        <input type="text" id="boxes-vendedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                    <div id="boxes-vendedor-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="boxes-vendedor-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                         <div id="boxes-vendedor-filter-list"></div>
                                     </div>
                                 </div>
@@ -980,8 +959,8 @@
                                         <span class="truncate">Todas</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-categoria-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                        <input type="text" id="boxes-categoria-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                    <div id="boxes-categoria-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="boxes-categoria-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                         <div id="boxes-categoria-filter-list"></div>
                                     </div>
                                 </div>
@@ -991,8 +970,8 @@
                                         <span class="truncate">Todos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-fornecedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                        <input type="text" id="boxes-fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                    <div id="boxes-fornecedor-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="boxes-fornecedor-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                         <div id="boxes-fornecedor-filter-list"></div>
                                     </div>
                                 </div>
@@ -1002,8 +981,8 @@
                                         <span class="truncate">Todas</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-cidade-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                        <input type="text" id="boxes-cidade-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                    <div id="boxes-cidade-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                        <input type="text" id="boxes-cidade-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                         <div id="boxes-cidade-filter-list"></div>
                                     </div>
                                 </div>
@@ -1013,9 +992,9 @@
                                         <span class="truncate">Todos</span>
                                         <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
-                                    <div id="boxes-tipovenda-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                    <div id="boxes-tipovenda-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                                 </div>
-
+                            
                                 <div class="flex items-end h-[38px]"><button id="boxes-clear-filters-btn" class="w-[38px] h-[38px] bg-[#ff9800] hover:bg-orange-500 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg shrink-0" title="Limpar Filtros"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-6 6m0-6l6 6"></path></svg></button></div>
                             </div>
                         </div>
@@ -1136,7 +1115,7 @@
                         <!-- Filters Grid -->
                         <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-4 rounded-xl mb-6 shadow-lg">
                             <div class="flex flex-wrap items-end gap-3 mb-2">
-
+                                
                             <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ano</label><select id="city-ano-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="todos">Todos</option></select></div>
                             <div class="flex-1 min-w-[140px] relative"><label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Mês</label><select id="city-mes-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"><option value="">Todos</option></select></div>
                             
@@ -1146,7 +1125,7 @@
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-filial-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="city-filial-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
 
                             <div class="relative">
@@ -1155,8 +1134,8 @@
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-cidade-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="city-cidade-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                <div id="city-cidade-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="city-cidade-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="city-cidade-filter-list"></div>
                                 </div>
                             </div>
@@ -1167,7 +1146,7 @@
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-supervisor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="city-supervisor-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
 
                             <div class="relative">
@@ -1176,8 +1155,8 @@
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-vendedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="city-vendedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                <div id="city-vendedor-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="city-vendedor-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="city-vendedor-filter-list"></div>
                                 </div>
                             </div>
@@ -1188,8 +1167,8 @@
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-fornecedor-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="city-fornecedor-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                <div id="city-fornecedor-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="city-fornecedor-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="city-fornecedor-filter-list"></div>
                                 </div>
                             </div>
@@ -1200,8 +1179,8 @@
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-categoria-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                    <input type="text" id="city-categoria-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                <div id="city-categoria-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                    <input type="text" id="city-categoria-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                     <div id="city-categoria-filter-list"></div>
                                 </div>
                             </div>
@@ -1212,8 +1191,8 @@
                                     <span class="truncate">Todas</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-rede-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
-                                     <input type="text" id="city-rede-filter-search" placeholder="Buscar..." class="w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
+                                <div id="city-rede-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2">
+                                     <input type="text" id="city-rede-filter-search" placeholder="Buscar..." class="w-[200px] sm:w-full bg-white/5 text-slate-300 text-xs p-2 mb-2 rounded border border-white/10 focus:outline-none focus:border-orange-500 placeholder-slate-500">
                                      <div id="city-rede-filter-list"></div>
                                 </div>
                             </div>
@@ -1224,9 +1203,9 @@
                                     <span class="truncate">Todos</span>
                                     <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
                                 </button>
-                                <div id="city-tipovenda-filter-dropdown" class="hidden absolute z-30 w-full mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+                                <div id="city-tipovenda-filter-dropdown" class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                             </div>
-
+                        
                                 <div class="flex items-end h-[38px]"><button id="city-clear-filters-btn" class="w-[38px] h-[38px] bg-[#ff9800] hover:bg-orange-500 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg shrink-0" title="Limpar Filtros"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-6 6m0-6l6 6"></path></svg></button></div>
                             </div>
                         </div>
@@ -1238,7 +1217,13 @@
                             </div>
                             <div id="city-pagination-container"></div>
                          </div>
-
+                         <div class="bg-[#151419] p-4 rounded-lg mt-6 border border-white/10">
+                            <h3 class="text-lg font-semibold text-white mb-4 px-4">Clientes S/ Vendas (Selecionado)</h3>
+                            <div class="overflow-x-auto" style="max-height: 40vh;">
+                                <table class="min-w-full text-sm text-left text-slate-300"><thead class="text-xs text-slate-300 uppercase sticky-header"><tr><th class="px-4 py-3">Código</th><th class="px-4 py-3">Nome Fantasia</th><th class="px-4 py-3">Cidade</th><th class="px-4 py-3">Bairro</th><th class="px-4 py-3 text-center">Última Compra</th><th class="px-4 py-3">RCA 1</th></tr></thead><tbody id="city-inactive-detail-table-body" class="divide-y divide-slate-700"></tbody></table>
+                            </div>
+                            <div id="city-inactive-pagination-container"></div>
+                         </div>
                     </div>
                 </div>
             </main>
@@ -1292,9 +1277,6 @@
         </div>
     </div>
 
-    <script>
-        feather.replace()
-    </script>
     <script type="module" src="src/js/app.js?v=2"></script>
 </body>
 </html>
