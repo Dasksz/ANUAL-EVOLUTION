@@ -214,18 +214,29 @@
                 <li class="navbar__item">
                     <a id="nav-boxes-btn" class="navbar__link cursor-pointer"><i data-feather="package"></i><span>Caixas</span></a>
                 </li>
-                <li class="navbar__item relative group">
-                    <a class="navbar__link cursor-pointer"><i data-feather="settings"></i><span>Config</span></a>
-                    <div class="absolute left-1/2 -translate-x-1/2 mt-2 w-48 bg-slate-800 rounded-lg shadow-lg hidden group-hover:block z-[5000]">
-                        <button id="nav-uploader" class="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 hidden"><i data-feather="upload-cloud" class="w-4 h-4"></i> Upload</button>
-                        <button id="optimize-db-btn-nav" class="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"><i data-feather="database" class="w-4 h-4"></i> Otimizar</button>
-                        <button id="logout-btn" class="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"><i data-feather="log-out" class="w-4 h-4"></i> Sair</button>
+                <li class="navbar__item relative">
+                    <button id="nav-config-btn" class="navbar__link cursor-pointer w-full focus:outline-none"><i data-feather="settings"></i><span>Config</span></button>
+                    <!-- Config Dropdown -->
+                    <div id="nav-config-dropdown" class="absolute top-[80px] left-1/2 -translate-x-1/2 w-48 bg-slate-800 border border-slate-600 rounded-lg shadow-xl hidden z-[99999]">
+                        <button id="nav-uploader" class="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 rounded-t-lg transition-colors"><i data-feather="upload-cloud" class="w-4 h-4"></i> Upload</button>
+                        <button id="optimize-db-btn-nav" class="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2 rounded-b-lg transition-colors"><i data-feather="database" class="w-4 h-4"></i> Otimizar banco</button>
                     </div>
                 </li>
             </ul>
         </nav>
-        <div class="user-avatar ml-auto flex-shrink-0 cursor-pointer">
-            <i data-feather="user"></i>
+        
+        <!-- User Profile Dropdown Area -->
+        <div class="relative ml-auto flex-shrink-0">
+            <button id="nav-profile-btn" class="user-avatar cursor-pointer hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500">
+                <i data-feather="user"></i>
+            </button>
+            <div id="nav-profile-dropdown" class="absolute top-[50px] right-0 mt-3 w-48 bg-slate-800 border border-slate-600 rounded-lg shadow-xl hidden z-[99999]">
+                <div class="px-4 py-3 border-b border-slate-700">
+                    <p class="text-sm text-white font-medium truncate" id="user-display-name">Usuário</p>
+                    <p class="text-xs text-slate-400 truncate" id="user-display-email">admin@sistema</p>
+                </div>
+                <button id="logout-btn" class="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-slate-700 hover:text-red-300 flex items-center gap-2 rounded-b-lg transition-colors"><i data-feather="log-out" class="w-4 h-4"></i> Sair</button>
+            </div>
         </div>
     </div>
 
