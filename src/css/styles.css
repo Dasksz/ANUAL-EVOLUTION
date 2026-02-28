@@ -130,15 +130,14 @@
 }
 
 .fornecedor-btn {
-    opacity: 0.5;
-    transition: opacity 0.2s;
+    transition: all 0.2s;
 }
 .fornecedor-btn.active {
-    opacity: 1;
     background-color: #0d9488; /* teal-600 */
+    color: white !important;
 }
 .fornecedor-btn:hover:not(.active) {
-    opacity: 0.8;
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Animated Background Lines */
