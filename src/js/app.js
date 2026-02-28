@@ -1831,9 +1831,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentCityPage = 0;
     const cityPageSize = 50;
     let totalActiveClients = 0;
-    let currentCityInactivePage = 0;
-    const cityInactivePageSize = 50;
-    let totalInactiveClients = 0;
 
     let selectedFiliais = [];
     let selectedCidades = [];
@@ -1972,7 +1969,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
             if (!el.classList.contains('hidden')) el.classList.add('hidden');
         });
         // Restore this one if it was hidden
@@ -2057,7 +2054,119 @@ document.addEventListener('DOMContentLoaded', () => {
         availableFiltersState.redes = data.redes || [];
         availableFiltersState.categorias = data.categorias || [];
 
-        const updateSingleSelect = (element, items) => {
+        function enhanceSelectToCustomDropdown(selectElement) {
+        if (!selectElement) return;
+
+        // Return if already enhanced
+        if (selectElement.hasAttribute('data-enhanced')) return;
+        selectElement.setAttribute('data-enhanced', 'true');
+
+        // Hide original select
+        selectElement.style.display = 'none';
+
+        // Create Button
+        const btn = document.createElement('button');
+        // Copy select classes, remove appearance-none, add button classes
+        const classes = selectElement.className.replace('appearance-none', '').split(' ').filter(c => c.trim() !== '');
+        btn.className = [...new Set([...classes, 'text-left', 'flex', 'justify-between', 'items-center'])].join(' ');
+        btn.type = 'button';
+
+        const span = document.createElement('span');
+        span.className = 'truncate';
+
+        // Find initial selected option
+        const initialSelectedOption = selectElement.options[selectElement.selectedIndex];
+        span.textContent = initialSelectedOption ? initialSelectedOption.text : '';
+
+        const icon = document.createElement('div');
+        icon.innerHTML = '<svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>';
+
+        btn.appendChild(span);
+        btn.appendChild(icon.firstChild);
+
+        // Create Dropdown Container
+        const dropdown = document.createElement('div');
+        dropdown.className = 'hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2';
+
+        // Insert after select
+        selectElement.parentNode.insertBefore(btn, selectElement.nextSibling);
+        selectElement.parentNode.insertBefore(dropdown, btn.nextSibling);
+
+        const renderOptions = () => {
+            dropdown.innerHTML = '';
+            Array.from(selectElement.options).forEach(opt => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
+                const isSelected = selectElement.value === opt.value;
+                itemDiv.innerHTML = `<input type="checkbox" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2 pointer-events-none" readonly><label class="ml-2 text-sm cursor-pointer flex-1 ${isSelected ? 'text-orange-500 font-bold' : 'text-slate-200'}">${opt.text}</label>`;
+
+                itemDiv.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectElement.value = opt.value;
+                    span.textContent = opt.text;
+                    dropdown.classList.add('hidden');
+
+                    // Trigger change event for listeners attached to the original select
+                    selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+                    // Find all items and uncheck them
+                    Array.from(dropdown.children).forEach(child => {
+                        const cb = child.querySelector('input');
+                        if (cb) cb.checked = false;
+                        const lbl = child.querySelector('label');
+                        if (lbl) {
+                            lbl.classList.remove('text-orange-500', 'font-bold');
+                            lbl.classList.add('text-slate-200');
+                        }
+                    });
+                    // Check the clicked one
+                    const clickedCb = itemDiv.querySelector('input');
+                    if (clickedCb) clickedCb.checked = true;
+                    const clickedLbl = itemDiv.querySelector('label');
+                    if (clickedLbl) {
+                        clickedLbl.classList.remove('text-slate-200');
+                        clickedLbl.classList.add('text-orange-500', 'font-bold');
+                    }
+                    // Instead of a full re-render which closes the dropdown, just update DOM classes
+                    // renderOptions(); // Removed to avoid re-render stutter if needed, though hidden class logic works
+                });
+                dropdown.appendChild(itemDiv);
+            });
+
+            // Update span text just in case value changed
+            const selectedOpt = selectElement.options[selectElement.selectedIndex];
+            if (selectedOpt) span.textContent = selectedOpt.text;
+        };
+
+        renderOptions();
+
+        // Observe changes to the select options
+        const observer = new MutationObserver((mutations) => {
+            renderOptions();
+        });
+        observer.observe(selectElement, { childList: true });
+
+        // Handle button click
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isHidden = dropdown.classList.contains('hidden');
+
+            // Close all dropdowns
+            document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
+                if (!el.classList.contains('hidden')) el.classList.add('hidden');
+            });
+
+            if (isHidden) {
+                dropdown.classList.remove('hidden');
+            }
+        });
+
+        // Update when original select changes its value externally
+        selectElement.addEventListener('change', (e) => {
+            if (e.isTrusted) renderOptions();
+        });
+    }
+
+    const updateSingleSelect = (element, items) => {
             const currentVal = element.value;
             element.innerHTML = '';
         
@@ -2103,6 +2212,24 @@ document.addEventListener('DOMContentLoaded', () => {
         setupMultiSelect(vendedorFilterBtn, vendedorFilterDropdown, vendedorFilterList, data.vendedores, selectedVendedores, () => {}, false, vendedorFilterSearch);
         setupMultiSelect(fornecedorFilterBtn, fornecedorFilterDropdown, fornecedorFilterList, data.fornecedores, selectedFornecedores, () => {}, true, fornecedorFilterSearch);
         setupMultiSelect(tipovendaFilterBtn, tipovendaFilterDropdown, tipovendaFilterDropdown, data.tipos_venda, selectedTiposVenda, () => {});
+        // Enhance select filters to match multi-select appearance
+        const selectsToEnhance = [
+            document.getElementById('ano-filter'),
+            document.getElementById('mes-filter'),
+            document.getElementById('branch-ano-filter'),
+            document.getElementById('branch-mes-filter'),
+            document.getElementById('boxes-ano-filter'),
+            document.getElementById('boxes-mes-filter'),
+            document.getElementById('city-ano-filter'),
+            document.getElementById('city-mes-filter'),
+            document.getElementById('comparison-ano-filter'),
+            document.getElementById('comparison-mes-filter'),
+            document.getElementById('comparison-filial-filter')
+        ];
+        selectsToEnhance.forEach(el => {
+            if (el) enhanceSelectToCustomDropdown(el);
+        });
+
         setupMultiSelect(categoriaFilterBtn, categoriaFilterDropdown, categoriaFilterList, data.categorias, selectedCategorias, () => {}, false, categoriaFilterSearch);
 
         // Rede Logic with "Com Rede" and "Sem Rede"
@@ -2138,7 +2265,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showDashboardLoading();
             try { await loadFilters(filters); } catch (err) { console.error("Failed to load filters:", err); }
             try { await loadMainDashboardData(); } catch (err) { console.error("Failed to load dashboard data:", err); }
-            if (!cityView.classList.contains('hidden')) { currentCityPage = 0; currentCityInactivePage = 0; await loadCityView(); }
+            if (!cityView.classList.contains('hidden')) { currentCityPage = 0; await loadCityView(); }
         }, 500);
     };
     anoFilter.onchange = handleFilterChange;
@@ -2260,7 +2387,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 2. City Data (First Page Only)
-            const cityFilters = { ...filters, p_page: 0, p_limit: 50, p_inactive_page: 0, p_inactive_limit: 50 };
+            const cityFilters = { ...filters, p_page: 0, p_limit: 50 };
             const cityKey = generateCacheKey('city_view_data', cityFilters);
             const cachedCity = await getFromCache(cityKey);
 
@@ -2826,18 +2953,40 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    window.toggleSummaryTable = function() {
+        const table = document.getElementById('monthly-summary-table');
+        if (table) {
+            table.classList.toggle('collapsed-table');
+        }
+    };
+
     function updateTable(currData, prevData, currYear, prevYear, trendData) {
         const tableBody = document.getElementById('monthly-summary-table-body');
         const tableHead = document.querySelector('#monthly-summary-table thead tr');
         tableBody.innerHTML = '';
 
-        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        let headerHTML = '<th class="px-2 py-2 text-left">INDICADOR</th>';
-        monthNames.forEach(m => headerHTML += `<th class="px-2 py-2 text-center">${m}</th>`);
+        const table = document.getElementById('monthly-summary-table');
+        if (table && !table.classList.contains('collapsed-table')) {
+            table.classList.add('collapsed-table');
+        }
+
+        const monthInitials = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+        let headerHTML = `
+            <th class="px-2 py-2 text-left bg-transparent border-b border-white/50 relative">
+                <div class="flex items-center gap-2">
+                    <span>Indicadores</span>
+                    <svg id="summary-table-toggle-icon" class="w-4 h-4 transition-transform duration-300 transform -rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+            </th>`;
+        monthInitials.forEach(m => headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 font-light text-xs text-gray-300 summary-col-header transition-opacity duration-300 opacity-0">${m}</th>`);
         if (trendData) {
-            headerHTML += `<th class="px-2 py-2 text-center bg-purple-900/30 text-purple-200">Tendência</th>`;
+            headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 text-purple-300 font-light text-xs summary-col-header transition-opacity duration-300 opacity-0">Tendência</th>`;
         }
         tableHead.innerHTML = headerHTML;
+
+        // Add cursor-pointer and onclick to the entire row, rather than just the first header cell
+        tableHead.className = "cursor-pointer hover:text-gray-300 transition-colors";
+        tableHead.onclick = window.toggleSummaryTable;
 
         const indicators = [
             { name: 'POSITIVAÇÃO', key: 'positivacao', fmt: v => v.toLocaleString('pt-BR') },
@@ -2892,7 +3041,6 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(cityFilterDebounceTimer);
         cityFilterDebounceTimer = setTimeout(() => {
             currentCityPage = 0; 
-            currentCityInactivePage = 0;
             loadCityView();
         }, 500);
     };
@@ -2946,7 +3094,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
             if (!el.classList.contains('hidden')) el.classList.add('hidden');
         });
         // Restore this one if it was hidden
@@ -3090,9 +3238,7 @@ document.addEventListener('DOMContentLoaded', () => {
             p_ano: cityAnoFilter.value === 'todos' ? null : cityAnoFilter.value,
             p_mes: cityMesFilter.value === '' ? null : cityMesFilter.value,
             p_page: currentCityPage,
-            p_limit: cityPageSize,
-            p_inactive_page: currentCityInactivePage,
-            p_inactive_limit: cityInactivePageSize
+            p_limit: cityPageSize
         };
 
         const { data, error } = await supabase.rpc('get_city_view_data', filters);
@@ -3102,7 +3248,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if(error) { console.error(error); return; }
 
         totalActiveClients = data.total_active_count || 0;
-        totalInactiveClients = data.total_inactive_count || 0;
 
         // Helper to map array rows to object based on cols
         const mapRows = (dataObj) => {
@@ -3118,7 +3263,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const activeClients = Array.isArray(data.active_clients) ? data.active_clients : mapRows(data.active_clients);
-        const inactiveClients = Array.isArray(data.inactive_clients) ? data.inactive_clients : mapRows(data.inactive_clients);
 
         const renderTable = (bodyId, items) => {
             const body = document.getElementById(bodyId);
@@ -3140,10 +3284,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         renderTable('city-active-detail-table-body', activeClients);
-        renderTable('city-inactive-detail-table-body', inactiveClients);
 
         renderCityPaginationControls();
-        renderCityInactivePaginationControls();
     }
 
 
@@ -3275,7 +3417,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
             if (!el.classList.contains('hidden')) el.classList.add('hidden');
         });
         // Restore this one if it was hidden
@@ -3336,7 +3478,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        document.querySelectorAll('.absolute.z-\\[50\\]').forEach(el => {
+        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
             if (!el.classList.contains('hidden')) el.classList.add('hidden');
         });
         // Restore this one if it was hidden
@@ -3688,26 +3830,6 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         document.getElementById('city-prev-btn')?.addEventListener('click', () => { if(currentCityPage > 0) { currentCityPage--; loadCityView(); }});
         document.getElementById('city-next-btn')?.addEventListener('click', () => { if(currentCityPage < totalPages-1) { currentCityPage++; loadCityView(); }});
-    }
-
-    function renderCityInactivePaginationControls() {
-        const container = document.getElementById('city-inactive-pagination-container');
-        const totalPages = Math.ceil(totalInactiveClients / cityInactivePageSize);
-        const startItem = (currentCityInactivePage * cityInactivePageSize) + 1;
-        const endItem = Math.min((currentCityInactivePage + 1) * cityInactivePageSize, totalInactiveClients);
-
-        container.innerHTML = `
-            <div class="flex justify-between items-center mt-4 px-4 text-sm text-slate-400">
-                <div>Mostrando ${totalInactiveClients > 0 ? startItem : 0} a ${endItem} de ${totalInactiveClients}</div>
-                <div class="flex gap-2">
-                    <button id="city-inactive-prev-btn" class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50" ${currentCityInactivePage === 0 ? 'disabled' : ''}>Anterior</button>
-                    <span>${currentCityInactivePage + 1} / ${totalPages || 1}</span>
-                    <button id="city-inactive-next-btn" class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50" ${currentCityInactivePage >= totalPages - 1 ? 'disabled' : ''}>Próxima</button>
-                </div>
-            </div>
-        `;
-        document.getElementById('city-inactive-prev-btn')?.addEventListener('click', () => { if(currentCityInactivePage > 0) { currentCityInactivePage--; loadCityView(); }});
-        document.getElementById('city-inactive-next-btn')?.addEventListener('click', () => { if(currentCityInactivePage < totalPages-1) { currentCityInactivePage++; loadCityView(); }});
     }
 
     // --- Calendar Logic ---
@@ -4335,8 +4457,21 @@ document.addEventListener('DOMContentLoaded', () => {
             // Normalize History (Quarter Sum -> Average Month)
             for(let i=0; i<6; i++) weeklyHistory[i] = weeklyHistory[i] / 3;
 
-            // Trim empty tail weeks?
-            // Keep it simple for now
+            // Trim empty tail weeks dynamically
+            let lastActiveIndex = -1;
+            for (let i = 5; i >= 0; i--) {
+                if (weeklyCurrent[i] > 0 || weeklyHistory[i] > 0) {
+                    lastActiveIndex = i;
+                    break;
+                }
+            }
+            const numWeeksToKeep = Math.max(4, lastActiveIndex + 1);
+
+            const trimmedWeeklyCurrent = weeklyCurrent.slice(0, numWeeksToKeep);
+            const trimmedWeeklyHistory = weeklyHistory.slice(0, numWeeksToKeep);
+            const trimmedDailyDataByWeek = dailyDataByWeek.slice(0, numWeeksToKeep);
+
+            const weeklyLabels = Array.from({ length: numWeeksToKeep }, (_, i) => `Semana ${i + 1}`);
 
             // 3. Monthly Chart (History Months + Current)
             const monthlyData = (data.history_monthly || []).map(m => ({
@@ -4361,7 +4496,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const datasetsDaily = dayNames.map((name, i) => ({
                 label: name,
-                data: dailyDataByWeek.map(weekData => weekData[i]),
+                data: trimmedDailyDataByWeek.map(weekData => weekData[i]),
                 backgroundColor: dailyColors[i],
                 borderColor: dailyColors[i]
             }));
@@ -4375,11 +4510,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 kpis,
                 charts: {
-                    weeklyCurrent,
-                    weeklyHistory,
+                    weeklyCurrent: trimmedWeeklyCurrent,
+                    weeklyHistory: trimmedWeeklyHistory,
                     monthlyData,
                     dailyData: {
-                        labels: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4', 'Semana 5', 'Semana 6'],
+                        labels: weeklyLabels,
                         datasets: datasetsDaily
                     }
                 },
