@@ -318,10 +318,6 @@
     white-space: nowrap;
 }
 
-/* Adjust Dropdown text visibility */
-.navbar__item.relative.group .absolute {
-    z-index: 5000;
-}
 
 /* Fixes for hover animation span opacity */
 .navbar__link span {
@@ -351,4 +347,23 @@
 
 .navbar__link.active svg {
     filter: drop-shadow(0 0 8px rgba(255, 152, 0, 0.8)) !important;
+}
+
+/* Force visible items with highest z-index if inside relative parent */
+#nav-config-dropdown, #nav-profile-dropdown {
+    position: absolute;
+    z-index: 99999 !important;
+}
+
+
+/* Force visible items with highest z-index if inside relative parent */
+#nav-config-dropdown, #nav-profile-dropdown {
+    position: absolute;
+    z-index: 99999 !important;
+    display: flex;
+    flex-direction: column;
+}
+
+#nav-config-dropdown.hidden, #nav-profile-dropdown.hidden {
+    display: none !important;
 }
