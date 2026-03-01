@@ -20,6 +20,10 @@
 }
 
 /* Table Alignment */
+#monthly-summary-table th {
+    background-color: transparent !important;
+}
+
 #monthly-summary-table th:first-child,
 #monthly-summary-table td:first-child {
     width: 150px; /* Fixed width for indicator column */
@@ -27,7 +31,12 @@
     position: sticky;
     left: 0;
     z-index: 20;
-    background-color: inherit; /* Inherit row bg */
+    background-color: #131217 !important; /* Force app background color to prevent scroll overlap */
+}
+
+/* Inherit row bg for first cell in body */
+#monthly-summary-table tbody tr td:first-child {
+    background-color: inherit !important;
 }
 
 /* Ensure equal distribution for data columns */
