@@ -2982,7 +2982,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </th>`;
         monthInitials.forEach(m => headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 font-light text-xs text-gray-300 summary-col-header transition-opacity duration-300 opacity-0">${m}</th>`);
         if (trendData) {
-            headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 text-purple-300 font-light text-xs summary-col-header transition-opacity duration-300 opacity-0">Tendência</th>`;
+            headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 text-orange-300 font-light text-xs summary-col-header transition-opacity duration-300 opacity-0">Tendência</th>`;
         }
         tableHead.innerHTML = headerHTML;
 
@@ -3015,7 +3015,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  let tVal = trendData[ind.key];
                  if (tVal === undefined) tVal = null;
                  if (tVal === null && !ind.allowNull) tVal = 0;
-                 rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-purple-300 bg-purple-900/20">${ind.fmt(tVal)}</td>`;
+                 rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-orange-300 bg-orange-900/20">${ind.fmt(tVal)}</td>`;
             }
             rowHTML += '</tr>';
             tableBody.innerHTML += rowHTML;
