@@ -9,14 +9,14 @@
     width: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: #151419; 
+    background: #151419;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #475569; 
+    background: #475569;
     border-radius: 3px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #64748b; 
+    background: #64748b;
 }
 
 /* Table Alignment */
@@ -82,11 +82,11 @@
 
 /* Loading Overlay for Dashboard */
 .dashboard-loading-overlay {
-    position: fixed;
+    position: absolute;
     inset: 0;
     background-color: rgba(19, 18, 23, 0.6);
     backdrop-filter: blur(4px);
-    z-index: 9999;
+    z-index: 50;
     display: flex;
     align-items: center;
     justify-content: center;
