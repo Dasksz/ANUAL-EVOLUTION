@@ -245,3 +245,14 @@
     top: 110%;
   }
 }
+
+/* Force hide any sorting icons (up/down arrows) that might be injected by datatables or browser defaults */
+#monthly-summary-table th::before,
+#monthly-summary-table th::after {
+    display: none !important;
+    content: none !important;
+}
+
+#monthly-summary-table th {
+    background-image: none !important;
+}
