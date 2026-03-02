@@ -74,9 +74,9 @@ BEGIN
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || ''']) ';
-        v_where_base_prev := v_where_base_prev || ' AND nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || ''']) ';
-        v_where_chart := v_where_chart || ' AND nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || ''']) ';
+        v_where_base := v_where_base || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
@@ -118,7 +118,7 @@ BEGIN
         SELECT
             COALESCE(filial, ''SEM FILIAL'') as filial,
             COALESCE(cidade, ''SEM CIDADE'') as cidade,
-            COALESCE(nome, ''SEM VENDEDOR'') as vendedor,
+            COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
             codcli,
             numped,
             tipovenda,
@@ -126,15 +126,17 @@ BEGIN
             peso,
             codprod
         FROM public.data_detailed
+        LEFT JOIN public.dim_vendedores dv ON public.data_detailed.codusur = dv.codigo
         ' || v_where_base || '
     ),
     previous_data AS (
         SELECT
             COALESCE(filial, ''SEM FILIAL'') as filial,
             COALESCE(cidade, ''SEM CIDADE'') as cidade,
-            COALESCE(nome, ''SEM VENDEDOR'') as vendedor,
+            COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
             SUM(vlvenda) as faturamento_prev
         FROM public.data_detailed
+        LEFT JOIN public.dim_vendedores dv ON public.data_detailed.codusur = dv.codigo
         ' || v_where_base_prev || '
         GROUP BY 1, 2, 3
     ),
@@ -3467,8 +3469,8 @@ BEGIN
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || ''']) ';
-        v_where_base_prev := v_where_base_prev || ' AND nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || ''']) ';
+        v_where_base := v_where_base || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
@@ -3505,7 +3507,7 @@ BEGIN
         SELECT
             COALESCE(filial, ''SEM FILIAL'') as filial,
             COALESCE(cidade, ''SEM CIDADE'') as cidade,
-            COALESCE(nome, ''SEM VENDEDOR'') as vendedor,
+            COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
             codcli,
             numped,
             tipovenda,
@@ -3513,15 +3515,17 @@ BEGIN
             peso,
             codprod
         FROM public.data_detailed
+        LEFT JOIN public.dim_vendedores dv ON public.data_detailed.codusur = dv.codigo
         ' || v_where_base || '
     ),
     previous_data AS (
         SELECT
             COALESCE(filial, ''SEM FILIAL'') as filial,
             COALESCE(cidade, ''SEM CIDADE'') as cidade,
-            COALESCE(nome, ''SEM VENDEDOR'') as vendedor,
+            COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
             SUM(vlvenda) as faturamento_prev
         FROM public.data_detailed
+        LEFT JOIN public.dim_vendedores dv ON public.data_detailed.codusur = dv.codigo
         ' || v_where_base_prev || '
         GROUP BY 1, 2, 3
     ),
