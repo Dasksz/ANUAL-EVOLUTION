@@ -3,6 +3,7 @@ import supabase from './supabase.js?v=2';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("App Version: 2.0 (Cache Refresh Split)");
+    let isMainDashboardInitialized = false;
     // --- GLOBAL NAVIGATION HISTORY ---
     let currentActiveView = 'dashboard';
     let viewHistory = [];
@@ -990,6 +991,9 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'dashboard':
                 mainDashboardView.classList.remove('hidden');
                 setActiveNavLink(navDashboardBtn);
+                if (!isMainDashboardInitialized) {
+                    initDashboard();
+                }
                 break;
             case 'city':
                 cityView.classList.remove('hidden');
@@ -1020,6 +1024,9 @@ document.addEventListener('DOMContentLoaded', () => {
             default:
                 mainDashboardView.classList.remove('hidden');
                 setActiveNavLink(navDashboardBtn);
+                if (!isMainDashboardInitialized) {
+                    initDashboard();
+                }
                 break;
         }
     }
@@ -2258,6 +2265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             queueCommonFilters();
         }, 3000);
+        isMainDashboardInitialized = true;
     }
 
     async function checkDataVersion() {
