@@ -123,7 +123,7 @@ BEGIN
             pedido,
             tipovenda,
             vlvenda,
-            peso,
+            totpesoliq as peso,
             produto
         FROM public.data_detailed
         LEFT JOIN public.dim_vendedores dv ON public.data_detailed.codusur = dv.codigo
@@ -3174,8 +3174,11 @@ BEGIN
     DO UPDATE SET chunk_hash = EXCLUDED.chunk_hash, updated_at = now();
 END;
 $$;
-DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text[], text[]);
 DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[]);
 
 CREATE OR REPLACE FUNCTION get_innovations_data(
     p_filial text[] default null,
@@ -3331,6 +3334,8 @@ BEGIN
 END;
 $BODY$;
 DROP FUNCTION IF EXISTS get_loja_perfeita_data(text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_loja_perfeita_data(text[], text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_loja_perfeita_data(text[], text[], text[], text[], text[], text[], text[]);
 DROP FUNCTION IF EXISTS get_loja_perfeita_data(text[], text[], text[], text[], text[], text[], text[], text[]);
 
 CREATE OR REPLACE FUNCTION get_loja_perfeita_data(
@@ -3525,7 +3530,7 @@ BEGIN
             pedido,
             tipovenda,
             vlvenda,
-            peso,
+            totpesoliq as peso,
             produto
         FROM public.data_detailed
         LEFT JOIN public.dim_vendedores dv ON public.data_detailed.codusur = dv.codigo
