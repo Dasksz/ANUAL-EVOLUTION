@@ -41,6 +41,61 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logout-btn');
     const logoutBtnPendente = document.getElementById('logout-btn-pendente');
 
+    // Auth Views
+    const loginFormSignin = document.getElementById('view-login');
+    const loginFormSignup = document.getElementById('view-signup');
+    const loginFormForgot = document.getElementById('view-forgot');
+
+    // Navigation links within Auth
+    const linkSignup = document.getElementById('link-signup');
+    const linkForgot = document.getElementById('link-forgot');
+    const linkLoginFromSignup = document.getElementById('link-login-from-signup');
+    const linkLoginFromForgot = document.getElementById('link-login-from-forgot');
+
+    // Forms
+    const formSignin = document.getElementById('loginForm');
+    const formSignup = document.getElementById('signupForm');
+    const formForgot = document.getElementById('forgotForm');
+
+    // Load saved email if any
+    const savedEmail = localStorage.getItem('prime_saved_email');
+    if (savedEmail) {
+        const emailInput = document.getElementById('email');
+        const rememberMe = document.getElementById('remember-me');
+        if (emailInput) emailInput.value = savedEmail;
+        if (rememberMe) rememberMe.checked = true;
+    }
+
+    // Input toggles
+    const btnTogglePasswordSignin = document.getElementById('togglePassword');
+    const inputPasswordSignin = document.getElementById('password');
+    const eyeIcon = document.getElementById('eyeIcon');
+
+    // View Switching Logic
+    const switchAuthView = (viewToShow) => {
+        [loginFormSignin, loginFormSignup, loginFormForgot].forEach(el => {
+            if (el) {
+                el.classList.add('hidden');
+                el.classList.remove('opacity-100', 'scale-100');
+                el.classList.add('opacity-0', 'scale-95');
+            }
+        });
+
+        if (viewToShow) {
+            viewToShow.classList.remove('hidden');
+            // Small delay to allow display block to apply before animating opacity
+            setTimeout(() => {
+                viewToShow.classList.remove('opacity-0', 'scale-95');
+                viewToShow.classList.add('opacity-100', 'scale-100');
+            }, 10);
+        }
+    };
+
+    if (linkSignup) linkSignup.addEventListener('click', (e) => { e.preventDefault(); switchAuthView(loginFormSignup); });
+    if (linkForgot) linkForgot.addEventListener('click', (e) => { e.preventDefault(); switchAuthView(loginFormForgot); });
+    if (linkLoginFromSignup) linkLoginFromSignup.addEventListener('click', (e) => { e.preventDefault(); switchAuthView(loginFormSignin); });
+    if (linkLoginFromForgot) linkLoginFromForgot.addEventListener('click', (e) => { e.preventDefault(); switchAuthView(loginFormSignin); });
+
     // New Top Navbar Elements
     const topNavbar = document.getElementById('top-navbar');
     const navDashboardBtn = document.getElementById('nav-dashboard');
@@ -301,6 +356,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (screenId) {
             const screen = document.getElementById(screenId);
             screen?.classList.remove('hidden');
+
+            // If showing the login view container, explicitly set it back to the signin view
+            if (screenId === 'login-view') {
+                switchAuthView(loginFormSignin);
+            }
+
             // Ensure Top Nav is visible if authenticated and in app
             if (screenId === 'app-layout' && topNavbar) {
                 topNavbar.classList.remove('hidden');
@@ -704,17 +765,149 @@ document.addEventListener('DOMContentLoaded', () => {
             .subscribe();
     }
 
-    googleLoginBtn.addEventListener('click', async () => {
-        loginError.classList.add('hidden');
-        const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: { redirectTo: window.location.origin + window.location.pathname }
+    if (googleLoginBtn) {
+        googleLoginBtn.addEventListener('click', async () => {
+            loginError.classList.add('hidden');
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: { redirectTo: window.location.origin + window.location.pathname }
+            });
+            if (error) {
+                loginError.textContent = 'Erro ao iniciar login: ' + error.message;
+                loginError.classList.remove('hidden');
+            }
         });
-        if (error) {
-            loginError.textContent = 'Erro ao iniciar login: ' + error.message;
-            loginError.classList.remove('hidden');
-        }
-    });
+    }
+
+    if (btnTogglePasswordSignin && inputPasswordSignin) {
+        btnTogglePasswordSignin.addEventListener('click', () => {
+            const type = inputPasswordSignin.getAttribute('type') === 'password' ? 'text' : 'password';
+            inputPasswordSignin.setAttribute('type', type);
+            if (eyeIcon) {
+                if (type === 'text') {
+                    eyeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>`;
+                } else {
+                    eyeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />`;
+                }
+            }
+        });
+    }
+
+    if (formSignin) {
+        formSignin.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const rememberMe = document.getElementById('remember-me');
+
+            if (rememberMe && rememberMe.checked) {
+                localStorage.setItem('prime_saved_email', email);
+            } else {
+                localStorage.removeItem('prime_saved_email');
+            }
+
+            const btn = formSignin.querySelector('button[type="submit"]');
+            const btnText = btn.querySelector('.btn-text');
+            const svgLoader = btn.querySelector('.loader') || document.createElement('svg');
+            const oldText = btnText ? btnText.textContent : btn.textContent;
+
+            if(btnText) btnText.textContent = 'Entrando...';
+            btn.disabled = true;
+
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (error) {
+                if(btnText) btnText.textContent = oldText;
+                btn.disabled = false;
+                loginError.textContent = 'Erro ao iniciar login: ' + error.message;
+                loginError.classList.remove('hidden');
+            }
+        });
+    }
+
+    if (formSignup) {
+        formSignup.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('signup-name').value;
+            const email = document.getElementById('signup-email').value;
+            const phone = document.getElementById('signup-phone').value;
+            const password = document.getElementById('signup-password').value;
+
+            if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+                alert('A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, uma minúscula e um caractere especial.');
+                return;
+            }
+
+            const btn = formSignup.querySelector('button[type="submit"]');
+            const oldText = btn.textContent;
+            btn.disabled = true; btn.textContent = 'Cadastrando...';
+
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: name,
+                        phone: phone,
+                    }
+                }
+            });
+
+            if (error) {
+                alert('Erro ao realizar cadastro: ' + error.message);
+                btn.disabled = false; btn.textContent = oldText;
+                return;
+            }
+
+            if (data && data.user) {
+                alert('Cadastro realizado! Sua conta aguarda aprovação manual.');
+                setTimeout(() => window.location.reload(), 2000);
+            }
+        });
+    }
+
+    if (formForgot) {
+        formForgot.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('forgot-email').value;
+
+            const btn = formForgot.querySelector('button[type="submit"]');
+            const oldText = btn.textContent;
+            btn.disabled = true; btn.textContent = 'Enviando...';
+
+            try {
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('status')
+                    .eq('email', email)
+                    .maybeSingle();
+
+                if (profileError || !profile || profile.status !== 'aprovado') {
+                    alert('E-mail não encontrado ou cadastro pendente de aprovação.');
+                    btn.disabled = false; btn.textContent = oldText;
+                    return;
+                }
+
+                const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin,
+                });
+
+                if (error) {
+                    alert('Erro ao enviar e-mail: ' + error.message);
+                } else {
+                    alert('Verifique seu e-mail para o link de redefinição de senha.');
+                    switchAuthView(loginFormSignin);
+                }
+            } catch (err) {
+                alert('Ocorreu um erro ao processar sua solicitação.');
+            } finally {
+                btn.disabled = false; btn.textContent = oldText;
+            }
+        });
+    }
 
     const handleLogout = async () => {
         if(statusListener) {

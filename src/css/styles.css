@@ -103,6 +103,12 @@
     border-radius: 0.5rem;
 }
 
+.spinner-orange {
+    border-top-color: #f97316; /* Tailwind orange-500 */
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
 .dashboard-loading-spinner {
     width: 48px;
     height: 48px;
