@@ -5310,17 +5310,28 @@ async function updateInnovationsMonthView() {
     showDashboardLoading();
 
     const filters = {
-        p_cidade: getSelectedValues('innovations-month-city-filter') || [],
-        p_filial: getSelectedValues('innovations-month-filial-filter') || [],
-        p_supervisor: getSelectedValues('innovations-month-supervisor-filter-wrapper') || [],
-        p_vendedor: getSelectedValues('innovations-month-vendedor-filter-wrapper') || [],
-        p_rede: getSelectedValues('innovations-month-rede-filter-wrapper') || [],
-        p_tipovenda: getSelectedValues('innovations-month-tipo-venda-filter-wrapper') || [],
-        p_categoria_inovacao: document.getElementById('innovations-month-category-filter') ? document.getElementById('innovations-month-category-filter').value : null
+        p_cidade: getSelectedValues('innovations-month-city-filter'),
+        p_filial: getSelectedValues('innovations-month-filial-filter'),
+        p_supervisor: getSelectedValues('innovations-month-supervisor-filter-wrapper'),
+        p_vendedor: getSelectedValues('innovations-month-vendedor-filter-wrapper'),
+        p_rede: getSelectedValues('innovations-month-rede-filter-wrapper'),
+        p_tipovenda: getSelectedValues('innovations-month-tipo-venda-filter-wrapper'),
+        p_categoria_inovacao: document.getElementById('innovations-month-category-filter') && document.getElementById('innovations-month-category-filter').value ? document.getElementById('innovations-month-category-filter').value : null
+    };
+
+    // Replace empty arrays with null to avoid PostgREST overloading resolution issues
+    const rpcFilters = {
+        p_filial: filters.p_filial.length ? filters.p_filial : null,
+        p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
+        p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
+        p_vendedor: filters.p_vendedor.length ? filters.p_vendedor : null,
+        p_rede: filters.p_rede.length ? filters.p_rede : null,
+        p_tipovenda: filters.p_tipovenda.length ? filters.p_tipovenda : null,
+        p_categoria_inovacao: filters.p_categoria_inovacao
     };
 
     try {
-        const { data, error } = await supabase.rpc('get_innovations_data', filters);
+        const { data, error } = await supabase.rpc('get_innovations_data', rpcFilters);
 
         if (error) {
             console.error('Error fetching innovations:', error);
@@ -5591,15 +5602,23 @@ async function updateLojaPerfeitaView() {
     showDashboardLoading();
 
     const filters = {
-        p_cidade: getSelectedValues('lp-codcli-filter') || [], // Adaptando campo busca cidade/cliente se houver
+        p_cidade: getSelectedValues('lp-codcli-filter'), // Adaptando campo busca cidade/cliente se houver
         p_filial: [],
-        p_supervisor: getSelectedValues('lp-supervisor-filter-wrapper') || [],
-        p_vendedor: getSelectedValues('lp-vendedor-filter-wrapper') || [],
-        p_rede: getSelectedValues('lp-rede-filter-wrapper') || []
+        p_supervisor: getSelectedValues('lp-supervisor-filter-wrapper'),
+        p_vendedor: getSelectedValues('lp-vendedor-filter-wrapper'),
+        p_rede: getSelectedValues('lp-rede-filter-wrapper')
+    };
+
+    const rpcFilters = {
+        p_filial: null,
+        p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
+        p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
+        p_vendedor: filters.p_vendedor.length ? filters.p_vendedor : null,
+        p_rede: filters.p_rede.length ? filters.p_rede : null
     };
 
     try {
-        const { data, error } = await supabase.rpc('get_loja_perfeita_data', filters);
+        const { data, error } = await supabase.rpc('get_loja_perfeita_data', rpcFilters);
 
         if (error) {
             console.error('Error fetching Loja Perfeita data:', error);
