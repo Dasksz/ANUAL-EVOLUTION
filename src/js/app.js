@@ -5312,9 +5312,6 @@ async function updateInnovationsMonthView() {
     const filters = {
         p_cidade: getSelectedValues('innovations-month-city-filter') || [],
         p_filial: getSelectedValues('innovations-month-filial-filter') || [],
-        p_coord: getSelectedValues('innovations-month-coord-filter-wrapper') || [],
-        p_cocoord: getSelectedValues('innovations-month-cocoord-filter-wrapper') || [],
-        p_promotor: getSelectedValues('innovations-month-promotor-filter-wrapper') || [],
         p_supervisor: getSelectedValues('innovations-month-supervisor-filter-wrapper') || [],
         p_vendedor: getSelectedValues('innovations-month-vendedor-filter-wrapper') || [],
         p_rede: getSelectedValues('innovations-month-rede-filter-wrapper') || [],
@@ -5558,6 +5555,26 @@ const setupInnovationsFilters = async () => {
     createFilter('innovations-month-rede-filter-wrapper', filterData.redes || []);
     createFilter('innovations-month-filial-filter', filterData.filiais || []);
 
+    // Load Inovações Categories
+    try {
+        const { data: inovacData } = await supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true });
+        if (inovacData) {
+            const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
+            const inovSelect = document.getElementById('innovations-month-category-filter');
+            if (inovSelect && inovSelect.options.length <= 1) {
+                uniqueInovacoes.forEach(opt => {
+                    const optionEl = document.createElement('option');
+                    optionEl.value = opt;
+                    optionEl.textContent = opt;
+                    inovSelect.appendChild(optionEl);
+                });
+                inovSelect.addEventListener('change', updateInnovationsMonthView);
+            }
+        }
+    } catch (e) {
+        console.error("Error loading inovacoes categories", e);
+    }
+
     createFilter('lp-supervisor-filter-wrapper', filterData.supervisors || []);
     createFilter('lp-vendedor-filter-wrapper', filterData.vendedores || []);
     createFilter('lp-rede-filter-wrapper', filterData.redes || []);
@@ -5576,9 +5593,6 @@ async function updateLojaPerfeitaView() {
     const filters = {
         p_cidade: getSelectedValues('lp-codcli-filter') || [], // Adaptando campo busca cidade/cliente se houver
         p_filial: [],
-        p_coord: getSelectedValues('lp-coord-filter-wrapper') || [],
-        p_cocoord: getSelectedValues('lp-cocoord-filter-wrapper') || [],
-        p_promotor: getSelectedValues('lp-promotor-filter-wrapper') || [],
         p_supervisor: getSelectedValues('lp-supervisor-filter-wrapper') || [],
         p_vendedor: getSelectedValues('lp-vendedor-filter-wrapper') || [],
         p_rede: getSelectedValues('lp-rede-filter-wrapper') || []
@@ -5669,8 +5683,21 @@ async function loadFrequencyTable(filters) {
 
     tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-slate-400 text-xs">Carregando Frequência...</td></tr>';
 
+    const reqFilters = {
+        p_filial: filters.p_filial,
+        p_cidade: filters.p_cidade,
+        p_supervisor: filters.p_supervisor,
+        p_vendedor: filters.p_vendedor,
+        p_fornecedor: filters.p_fornecedor,
+        p_ano: filters.p_ano,
+        p_mes: filters.p_mes,
+        p_tipovenda: filters.p_tipovenda,
+        p_rede: filters.p_rede,
+        p_categoria: filters.p_categoria
+    };
+
     try {
-        const { data, error } = await supabase.rpc('get_frequency_table_data', filters);
+        const { data, error } = await supabase.rpc('get_frequency_table_data', reqFilters);
 
         if (error) throw error;
 

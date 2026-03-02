@@ -3179,9 +3179,6 @@ CREATE OR REPLACE FUNCTION get_innovations_data(
     p_cidade text[] default null,
     p_supervisor text[] default null,
     p_vendedor text[] default null,
-    p_coord text[] default null,
-    p_cocoord text[] default null,
-    p_promotor text[] default null,
     p_rede text[] default null,
     p_tipovenda text[] default null,
     p_categoria_inovacao text default null
@@ -3203,6 +3200,7 @@ DECLARE
     v_month_curr text;
     v_month_prev1 text;
     v_month_prev2 text;
+    v_where_inov text := ' 1=1 ';
 BEGIN
     -- 1. Determine Current Month based on latest sale
     SELECT MAX(dtped) INTO v_last_sale_date FROM data_detailed;
@@ -3231,6 +3229,10 @@ BEGIN
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+        -- Aqui usamos a tabela relacao_rota_involves, assumindo que a tabela data_clients ainda tem a coluna rca1 que corresponde ao codigo original do vendedor
+        -- Mas a instrução dizia "Para os os demais filtros, utilizaremos as logicas das outras paginas... A única diferença é que a pagina "inovações" já vem "pré-definida" para ler somente os produtos que vem nessa tabela"
+        -- Se a lógica for igual as demais páginas, `c.rca1` ou `codusur`?
+        -- Vamos utilizar a lógica original do inovações `c.rca1 = ANY(...)` como estava. O usuário especificou relacao_rota apenas para o Loja Perfeita onde vem o `pesquisador`.
         v_where_base := v_where_base || ' AND c.rca1 = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || ''']) ';
     END IF;
 
@@ -3245,6 +3247,11 @@ BEGIN
         ELSE
             v_where_base := v_where_base || ' AND c.rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
         END IF;
+    END IF;
+
+    -- Categoria Inovação Filter
+    IF p_categoria_inovacao IS NOT NULL AND p_categoria_inovacao != '' THEN
+        v_where_inov := ' i.inovacoes = ' || quote_literal(p_categoria_inovacao) || ' ';
     END IF;
 
     -- 3. Dynamic Query Execution
@@ -3278,6 +3285,7 @@ BEGIN
         JOIN data_innovations i ON d.produto = i.codigo
         JOIN dim_produtos p ON p.codigo = i.codigo
         JOIN active_clients ac ON ac.codcli = d.codcli
+        WHERE ' || v_where_inov || '
         GROUP BY 1, 2, 3, 4
     ),
     aggregated AS (
@@ -3322,9 +3330,6 @@ $BODY$;
 CREATE OR REPLACE FUNCTION get_loja_perfeita_data(
     p_filial text[] default null,
     p_cidade text[] default null,
-    p_coord text[] default null,
-    p_cocoord text[] default null,
-    p_promotor text[] default null,
     p_supervisor text[] default null,
     p_vendedor text[] default null,
     p_rede text[] default null
@@ -3345,7 +3350,7 @@ BEGIN
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || ' AND c.rca1 = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || ''']) ';
+        v_where := v_where || ' AND n.pesquisador IN (SELECT involves_code FROM public.relacao_rota_involves WHERE seller_code = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
     END IF;
 
     -- Redes
