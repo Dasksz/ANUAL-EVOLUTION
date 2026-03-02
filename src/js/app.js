@@ -3,6 +3,36 @@ import supabase from './supabase.js?v=2';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("App Version: 2.0 (Cache Refresh Split)");
+    // --- GLOBAL NAVIGATION HISTORY ---
+    let currentActiveView = 'dashboard';
+    let viewHistory = [];
+
+    function setupGlobalEsc() {
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                // Priority 1: Check Open Modals
+                const openModal = document.querySelector('.fixed.inset-0:not(.hidden)');
+                if (openModal) {
+                    // Try to click the close button if it exists
+                    const closeBtn = openModal.querySelector('button[id$="close-btn"], button[id^="close-"]');
+                    if (closeBtn) {
+                        closeBtn.click();
+                    } else {
+                        openModal.classList.add('hidden');
+                    }
+                    return;
+                }
+
+                // Priority 2: View Navigation
+                if (viewHistory.length > 0) {
+                    const prevView = viewHistory.pop();
+                    renderView(prevView, { skipHistory: true });
+                }
+            }
+        });
+    }
+    setupGlobalEsc();
+
     // --- Auth & Navigation Elements ---
     const loginView = document.getElementById('login-view');
     const appLayout = document.getElementById('app-layout');
@@ -435,30 +465,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleInitialRouting() {
         const params = new URLSearchParams(window.location.search);
-        const view = params.get('view');
+        let view = params.get('view');
+
+        // Priority to URL Hash if query param isn't explicitly setting it
+        if (!view && window.location.hash) {
+            view = window.location.hash.substring(1);
+        }
+
         checkRoleForUI();
 
         if (view) {
             applyFiltersToView(view, params);
-            showScreen('app-layout');
+        }
 
-            if (view === 'city') {
-                navCityAnalysisBtn.click();
-            } else if (view === 'boxes') {
-                navBoxesBtn.click();
-            } else if (view === 'branch') {
-                navBranchBtn.click();
-            } else if (view === 'comparison') {
-                navComparativoBtn.click();
-            } else {
-                navDashboardBtn.click();
-                initDashboard();
-            }
-        } else {
-            showScreen('app-layout');
+        showScreen('app-layout');
+
+        // Provide a default if the view wasn't set or is invalid
+        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison'];
+        if (!view || !validViews.includes(view)) {
+            view = 'dashboard';
+        }
+
+        renderView(view);
+
+        if (view === 'dashboard') {
             initDashboard();
         }
     }
+
+    window.addEventListener('hashchange', () => {
+        const view = window.location.hash.substring(1) || 'dashboard';
+        renderView(view, { skipHistory: true });
+    });
 
     function navigateWithCtrl(e, targetViewId) {
         if (e.ctrlKey || e.metaKey) {
@@ -708,48 +746,90 @@ document.addEventListener('DOMContentLoaded', () => {
         comparisonView.classList.add('hidden');
     };
 
+    async function renderView(view, options = {}) {
+        // Push to history if not navigating back
+        if (!options.skipHistory && currentActiveView && currentActiveView !== view) {
+            viewHistory.push(currentActiveView);
+        }
+        currentActiveView = view;
+
+        // Sync Hash to ensure navigation consistency
+        try {
+            if (window.location.hash !== '#' + view) {
+                history.pushState(null, null, '#' + view);
+            }
+        } catch (e) {
+            console.warn("History pushState failed", e);
+        }
+
+        resetViews();
+
+        switch (view) {
+            case 'dashboard':
+                mainDashboardView.classList.remove('hidden');
+                setActiveNavLink(navDashboardBtn);
+                break;
+            case 'city':
+                cityView.classList.remove('hidden');
+                setActiveNavLink(navCityAnalysisBtn);
+                loadCityView();
+                break;
+            case 'boxes':
+                if (boxesView && navBoxesBtn) {
+                    boxesView.classList.remove('hidden');
+                    setActiveNavLink(navBoxesBtn);
+                    loadBoxesView();
+                }
+                break;
+            case 'comparison':
+                if (comparisonView && navComparativoBtn) {
+                    comparisonView.classList.remove('hidden');
+                    setActiveNavLink(navComparativoBtn);
+                    loadComparisonView();
+                }
+                break;
+            case 'branch':
+                if (branchView && navBranchBtn) {
+                    branchView.classList.remove('hidden');
+                    setActiveNavLink(navBranchBtn);
+                    loadBranchView();
+                }
+                break;
+            default:
+                mainDashboardView.classList.remove('hidden');
+                setActiveNavLink(navDashboardBtn);
+                break;
+        }
+    }
+
     navDashboardBtn.addEventListener('click', (e) => {
         if (navigateWithCtrl(e, 'dashboard')) return;
-        resetViews();
-        mainDashboardView.classList.remove('hidden');
-        setActiveNavLink(navDashboardBtn);
+        renderView('dashboard');
     });
 
     navCityAnalysisBtn.addEventListener('click', (e) => {
         if (navigateWithCtrl(e, 'city')) return;
-        resetViews();
-        cityView.classList.remove('hidden');
-        setActiveNavLink(navCityAnalysisBtn);
-        loadCityView();
+        renderView('city');
     });
 
     if (navBoxesBtn) {
         navBoxesBtn.addEventListener('click', (e) => {
             if (navigateWithCtrl(e, 'boxes')) return;
-            resetViews();
-            boxesView.classList.remove('hidden');
-            setActiveNavLink(navBoxesBtn);
-            loadBoxesView();
+            renderView('boxes');
         });
     }
 
     if (navComparativoBtn) {
         navComparativoBtn.addEventListener('click', (e) => {
             if (navigateWithCtrl(e, 'comparison')) return;
-            resetViews();
-            comparisonView.classList.remove('hidden');
-            setActiveNavLink(navComparativoBtn);
-            loadComparisonView();
+            renderView('comparison');
         });
     }
 
     if (navBranchBtn) {
         navBranchBtn.addEventListener('click', (e) => {
             if (navigateWithCtrl(e, 'branch')) return;
-            resetViews();
-            branchView.classList.remove('hidden');
-            setActiveNavLink(navBranchBtn);
-            loadBranchView();
+            renderView('branch');
         });
     }
 
