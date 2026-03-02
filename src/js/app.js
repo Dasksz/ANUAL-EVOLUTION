@@ -863,11 +863,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const innovationsFileInput = document.getElementById('innovations-file-input');
+    const notaInvolvesMultipleInput = document.getElementById('nota-involves-multiple-input');
+
     if(salesPrevYearInput) salesPrevYearInput.addEventListener('change', (e) => { files.salesPrevYearFile = e.target.files[0]; checkFiles(); });
     if(salesCurrYearInput) salesCurrYearInput.addEventListener('change', (e) => { files.salesCurrYearFile = e.target.files[0]; checkFiles(); });
     if(salesCurrMonthInput) salesCurrMonthInput.addEventListener('change', (e) => { files.salesCurrMonthFile = e.target.files[0]; checkFiles(); });
     if(clientsFileInput) clientsFileInput.addEventListener('change', (e) => { files.clientsFile = e.target.files[0]; checkFiles(); });
     if(productsFileInput) productsFileInput.addEventListener('change', (e) => { files.productsFile = e.target.files[0]; checkFiles(); });
+    if(innovationsFileInput) innovationsFileInput.addEventListener('change', (e) => { files.innovationsFile = e.target.files[0]; checkFiles(); });
+
+    if(notaInvolvesMultipleInput) notaInvolvesMultipleInput.addEventListener('change', (e) => {
+        files.notaInvolvesFile1 = e.target.files.length > 0 ? e.target.files[0] : null;
+        files.notaInvolvesFile2 = e.target.files.length > 1 ? e.target.files[1] : null;
+        checkFiles();
+    });
 
     if(optimizeDbBtn) optimizeDbBtn.addEventListener('click', async () => {
         if (window.userRole !== 'adm') {
@@ -1212,7 +1222,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.detailedChunks) await syncSalesChunks('data_detailed', data.detailedChunks, 40, 70);
             
             // Clients Table (Use Row Sync)
-            if (data.clients) await syncTable('data_clients', data.clients, 70, 80);
+            if (data.clients) await syncTable('data_clients', data.clients, 70, 75);
+
+            // New Tables
+            if (data.innovations && data.innovations.length > 0) {
+                updateStatus('Atualizando Inovações...', 76);
+                await clearTable('data_innovations');
+                await uploadBatch('data_innovations', data.innovations);
+            }
+            if (data.notaPerfeita && data.notaPerfeita.length > 0) {
+                updateStatus('Atualizando Nota Involves...', 78);
+                await clearTable('data_nota_perfeita');
+                await uploadBatch('data_nota_perfeita', data.notaPerfeita);
+            }
 
             // CHUNKED CACHE REFRESH LOGIC
             updateStatus('Iniciando processamento do resumo...', 80);

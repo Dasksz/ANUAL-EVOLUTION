@@ -186,18 +186,153 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
     });
 };
 
+        function processLojaPerfeita(filesData, clientCnpjMap) {
+            const combined = filesData.flat();
+            const grouped = new Map(); // Key: CodCli_Pesquisador
+            const uniqueClientsFound = new Set();
+
+            // Month names in Portuguese
+            const monthsPT = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+            // Helper to format date to "Month of Year"
+            const formatMonthYear = (val) => {
+                if (!val) return '';
+                let dateObj = null;
+
+                // Check if Excel Serial Date
+                if (typeof val === 'number') {
+                    if (val < 1000000) {
+                        dateObj = new Date(Math.round((val - 25569) * 86400 * 1000));
+                    } else {
+                        dateObj = new Date(val);
+                    }
+                } else {
+                    const parsed = Date.parse(val);
+                    if (!isNaN(parsed)) dateObj = new Date(parsed);
+                }
+
+                if (dateObj && !isNaN(dateObj.getTime())) {
+                    const m = dateObj.getUTCMonth();
+                    const y = dateObj.getUTCFullYear();
+                    return `${monthsPT[m]} de ${y}`;
+                }
+
+                return String(val).trim();
+            };
+
+            const getVal = (row, keyPart) => {
+                if (!row) return undefined;
+                if (row[keyPart] !== undefined) return row[keyPart];
+                const keys = Object.keys(row);
+                const keyUpper = keyPart.toUpperCase();
+                let match = keys.find(k => k.trim().toUpperCase() === keyUpper);
+                if (match) return row[match];
+
+                match = keys.find(k => k.toUpperCase().includes(keyUpper));
+                if (match) return row[match];
+
+                return undefined;
+            };
+
+            combined.forEach(row => {
+                const cnpjRaw = getVal(row, 'CNPJ') || getVal(row, 'CPF');
+                if (!cnpjRaw) return;
+
+                let cnpjStr = String(cnpjRaw);
+                if (typeof cnpjRaw === 'number' && cnpjStr.includes('e')) {
+                    try {
+                       cnpjStr = cnpjRaw.toLocaleString('fullwide', { useGrouping: false });
+                    } catch(e) {}
+                }
+
+                const cnpjClean = cnpjStr.replace(/[^0-9]/g, '');
+
+                let codCli = clientCnpjMap.get(cnpjClean);
+                let finalCnpj = cnpjClean;
+
+                if (!codCli && cnpjClean.length <= 14) {
+                    const padded14 = cnpjClean.padStart(14, '0');
+                    const match14 = clientCnpjMap.get(padded14);
+                    if (match14) {
+                        codCli = match14;
+                        finalCnpj = padded14;
+                    }
+                }
+
+                if (!codCli && cnpjClean.length <= 11) {
+                    const padded11 = cnpjClean.padStart(11, '0');
+                    const match11 = clientCnpjMap.get(padded11);
+                    if (match11) {
+                        codCli = match11;
+                        finalCnpj = padded11;
+                    }
+                }
+
+                if (!codCli) return;
+
+                uniqueClientsFound.add(codCli);
+
+                const pesquisador = String(getVal(row, 'Pesquisador') || '').trim().toUpperCase();
+                const key = `${codCli}_${pesquisador}`;
+
+                const notaRaw = getVal(row, 'Nota Média') || getVal(row, 'Nota Media');
+                const nota = typeof notaRaw === 'number' ? notaRaw : parseFloat(String(notaRaw || '0').replace(',', '.'));
+
+                if (isNaN(nota)) return;
+
+                const current = grouped.get(key);
+                const mesAnoRaw = getVal(row, 'Mês') || getVal(row, 'Mes');
+                const mesAno = formatMonthYear(mesAnoRaw);
+                const semana = getVal(row, 'Semana');
+                const canal = getVal(row, 'Canal');
+                const subcanal = getVal(row, 'Subcanal');
+                const audits = parseInt(getVal(row, 'Auditorias Distintas') || 0);
+                const perfectAudits = parseInt(getVal(row, 'Auditorias Distintas Perfeitas') || 0);
+
+                if (!current) {
+                    grouped.set(key, {
+                        codigo_cliente: codCli,
+                        mes_ano: mesAno,
+                        semana: semana,
+                        pesquisador: pesquisador,
+                        cnpj_origem: finalCnpj,
+                        canal: canal,
+                        subcanal: subcanal,
+                        nota_media: nota,
+                        auditorias: audits,
+                        auditorias_perfeitas: perfectAudits
+                    });
+                } else {
+                    if (nota > current.nota_media) {
+                        current.nota_media = nota;
+                        current.mes_ano = mesAno;
+                        current.semana = semana;
+                        current.canal = canal;
+                        current.subcanal = subcanal;
+                    }
+                    current.auditorias += audits;
+                    current.auditorias_perfeitas += perfectAudits;
+                }
+            });
+
+            return { data: Array.from(grouped.values()), uniqueCount: uniqueClientsFound.size };
+        }
+
 self.onmessage = async (event) => {
     // Removed credential requirements since worker no longer interacts with Supabase
-    const { salesPrevYearFile, salesCurrYearFile, salesCurrMonthFile, clientsFile, productsFile, cityBranchMap } = event.data;
+    const { salesPrevYearFile, salesCurrYearFile, salesCurrMonthFile, clientsFile, productsFile, innovationsFile, notaInvolvesFile1, notaInvolvesFile2, cityBranchMap } = event.data;
 
     try {
         self.postMessage({ type: 'progress', status: 'Lendo arquivos...', percentage: 5 });
-        let [salesPrevYearDataRaw, salesCurrYearHistDataRaw, salesCurrMonthDataRaw, clientsDataRaw, productsDataRaw] = await Promise.all([
+        let [salesPrevYearDataRaw, salesCurrYearHistDataRaw, salesCurrMonthDataRaw, clientsDataRaw, productsDataRaw, innovationsDataRaw, nota1DataRaw, nota2DataRaw] = await Promise.all([
             readFile(salesPrevYearFile),
             readFile(salesCurrYearFile),
             readFile(salesCurrMonthFile),
             readFile(clientsFile),
-            readFile(productsFile)
+            readFile(productsFile),
+            readFile(innovationsFile),
+            readFile(notaInvolvesFile1),
+            readFile(notaInvolvesFile2)
         ]);
 
         self.postMessage({ type: 'progress', status: 'Filtrando vendas Pepsico e linhas inválidas...', percentage: 15 });
@@ -711,6 +846,32 @@ self.onmessage = async (event) => {
         // Only return newProducts if productsFile was provided to avoid overwriting table with partial data from sales
         const finalProducts = productsFile ? Array.from(dimProducts.entries()).map(([codigo, val]) => ({ codigo, descricao: val.descricao, codfor: val.codfor })) : null;
 
+        // Process Innovations
+        let finalInnovations = null;
+        if (innovationsDataRaw && innovationsDataRaw.length > 0) {
+            finalInnovations = innovationsDataRaw.map(item => ({
+                codigo: String(item['Codigo'] || item['codigo'] || '').trim(),
+                inovacoes: String(item['Inovacoes'] || item['inovacoes'] || '').trim()
+            })).filter(item => item.codigo);
+        }
+
+        // Process Nota Perfeita
+        let finalNotaPerfeita = null;
+        if ((nota1DataRaw && nota1DataRaw.length > 0) || (nota2DataRaw && nota2DataRaw.length > 0)) {
+             // Create clientCNPJMap for Loja Perfeita helper
+             const clientCnpjMap = new Map();
+             for (const client of clientsDataRaw) {
+                 const codCli = String(client['Código'] || '').trim();
+                 const cnpjRaw = client['CNPJ/CPF'] || client['Cpf/Cnpj'];
+                 if (codCli && cnpjRaw) {
+                     let cnpjStr = String(cnpjRaw).replace(/[^0-9]/g, '');
+                     if (cnpjStr) clientCnpjMap.set(cnpjStr, codCli);
+                 }
+             }
+             const notaResult = processLojaPerfeita([nota1DataRaw, nota2DataRaw], clientCnpjMap);
+             finalNotaPerfeita = notaResult.data;
+        }
+
         // Collect all data to return
         const resultPayload = {
             historyChunks: finalHistoryChunks,
@@ -720,7 +881,9 @@ self.onmessage = async (event) => {
             newSupervisors: mapToObjArray(dimSupervisors),
             newVendors: mapToObjArray(dimVendors),
             newProviders: mapToObjArray(dimProviders),
-            newProducts: finalProducts
+            newProducts: finalProducts,
+            innovations: finalInnovations,
+            notaPerfeita: finalNotaPerfeita
         };
 
         self.postMessage({ type: 'result', data: resultPayload });
