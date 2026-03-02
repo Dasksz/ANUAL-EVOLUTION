@@ -223,17 +223,15 @@
         <nav class="top-nav-links">
             <a id="nav-dashboard" class="nav-link active">Visão Geral</a>
             <a id="nav-comparativo-btn" class="nav-link">Comparativo</a>
-            <a id="nav-city-analysis" class="nav-link">Análise por Cidade</a>
+            <a id="nav-city-analysis" class="nav-link">Share</a>
             <a id="nav-branch-btn" class="nav-link">Filiais</a>
             <a id="nav-boxes-btn" class="nav-link">Cobertura</a>
-            <a id="nav-innovations-btn" class="nav-link">Inovações</a>
-            <a id="nav-loja-perfeita-btn" class="nav-link">Loja Perfeita</a>
         </nav>
         <div class="top-nav-actions">
             <button id="nav-uploader" class="nav-icon-btn hidden" title="Upload de Arquivos">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
             </button>
-            <button id="optimize-db-btn-nav" class="nav-icon-btn" title="Otimizar Banco">
+            <button id="optimize-db-btn-nav" class="nav-icon-btn hidden" title="Otimizar Banco">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
             </button>
             <div class="user-avatar">
@@ -1129,10 +1127,14 @@
 
                     <!-- City View Content -->
                     <div id="city-view" class="hidden">
-                        <div class="flex items-center gap-3 mb-6">
-                            
-                            <h2 class="text-2xl font-bold text-white">Análise de Vendas por Cidade</h2>
-                        </div>
+                        <header class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div class="flex items-center gap-3">
+                                <div>
+                                    <h1 class="text-3xl font-bold text-white">ANÁLISE POR CLIENTE</h1>
+                                    <p class="text-slate-400 text-sm">Participação</p>
+                                </div>
+                            </div>
+                        </header>
 
                         <!-- Filters Grid -->
                         <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-4 rounded-xl mb-6 shadow-lg relative z-[100]">
@@ -1257,23 +1259,6 @@
                             </div>
                          </div>
                     </div>
-                </div>
-
-                <!-- INNOVATIONS VIEW PLACEHOLDER -->
-                <div id="innovations-month-view" class="hidden container mx-auto p-4 max-w-7xl animate-fade-in-up">
-                    <header class="mb-8 border-b border-white/10 pb-4 flex justify-between items-end">
-                        <h1 class="text-3xl font-bold text-white">Inovações</h1>
-                    </header>
-                </div>
-                
-                <!-- LOJA PERFEITA VIEW PLACEHOLDER -->
-                <div id="loja-perfeita-view" class="hidden container mx-auto p-4 max-w-7xl animate-fade-in-up">
-                    <header class="mb-8 border-b border-white/10 pb-4 flex justify-between items-end">
-                        <div>
-                            <h1 class="text-3xl font-bold text-white mb-1">Loja Perfeita</h1>
-                            <p class="text-slate-400">Auditoria e Notas de Execução</p>
-                        </div>
-                    </header>
                 </div>
             </main>
         </div>
