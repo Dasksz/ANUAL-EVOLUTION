@@ -3031,13 +3031,13 @@ BEGIN
     -- 3. Dynamic Query Execution
     v_sql := '
     WITH active_clients AS (
-        SELECT DISTINCT d.codigo_cliente
+        SELECT DISTINCT d.codcli
         FROM (
-            SELECT codigo_cliente FROM data_detailed WHERE to_char(dtped, ''YYYY-MM'') = ''' || v_month_curr || '''
+            SELECT codcli FROM data_detailed WHERE to_char(dtped, ''YYYY-MM'') = ''' || v_month_curr || '''
             UNION ALL
-            SELECT codigo_cliente FROM data_history WHERE to_char(dtped, ''YYYY-MM'') IN (''' || v_month_prev1 || ''', ''' || v_month_prev2 || ''')
+            SELECT codcli FROM data_history WHERE to_char(dtped, ''YYYY-MM'') IN (''' || v_month_prev1 || ''', ''' || v_month_prev2 || ''')
         ) d
-        JOIN data_clients c ON c.codigo_cliente = d.codigo_cliente
+        JOIN data_clients c ON c.codigo_cliente = d.codcli
         ' || v_where_base || '
     ),
     innovation_sales AS (
@@ -3050,15 +3050,15 @@ BEGIN
                 WHEN to_char(d.dtped, ''YYYY-MM'') = ''' || v_month_prev1 || ''' THEN ''prev1''
                 WHEN to_char(d.dtped, ''YYYY-MM'') = ''' || v_month_prev2 || ''' THEN ''prev2''
             END AS period,
-            COUNT(DISTINCT d.codigo_cliente) AS positivados
+            COUNT(DISTINCT d.codcli) AS positivados
         FROM (
-            SELECT codigo_cliente, codigo_produto, dtped FROM data_detailed WHERE to_char(dtped, ''YYYY-MM'') = ''' || v_month_curr || '''
+            SELECT codcli, produto, dtped FROM data_detailed WHERE to_char(dtped, ''YYYY-MM'') = ''' || v_month_curr || '''
             UNION ALL
-            SELECT codigo_cliente, codigo_produto, dtped FROM data_history WHERE to_char(dtped, ''YYYY-MM'') IN (''' || v_month_prev1 || ''', ''' || v_month_prev2 || ''')
+            SELECT codcli, produto, dtped FROM data_history WHERE to_char(dtped, ''YYYY-MM'') IN (''' || v_month_prev1 || ''', ''' || v_month_prev2 || ''')
         ) d
-        JOIN data_innovations i ON d.codigo_produto = i.codigo
+        JOIN data_innovations i ON d.produto = i.codigo
         JOIN dim_produtos p ON p.codigo = i.codigo
-        JOIN active_clients ac ON ac.codigo_cliente = d.codigo_cliente
+        JOIN active_clients ac ON ac.codcli = d.codcli
         GROUP BY 1, 2, 3, 4
     ),
     aggregated AS (
