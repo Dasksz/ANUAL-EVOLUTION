@@ -2948,7 +2948,7 @@ document.addEventListener('DOMContentLoaded', () => {
         container.appendChild(newCanvas);
 
         const ctx = newCanvas.getContext('2d');
-        const professionalPalette = { 'current': '#b0e0e6', 'previous': '#eaf7f8', 'trend': '#ffaa4d' };
+        const professionalPalette = { 'current': '#379fae', 'previous': '#eaf7f8', 'trend': '#ffaa4d' };
 
         const datasets = datasetsData.map((d, i) => {
             let color = '#94a3b8'; // default
@@ -3866,7 +3866,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
          // --- Chart Rendering ---
          const datasets = [];
-         const colors = ['#b0e0e6', '#eaf7f8', '#06b6d4', '#8b5cf6'];
+         const colors = ['#379fae', '#eaf7f8', '#06b6d4', '#8b5cf6'];
          const trendColors = ['#ffaa4d', '#ffce99', '#ff8b3d', '#ffdfb3'];
 
          branches.forEach((b, idx) => {
@@ -4605,7 +4605,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dailyColors = [
                 '#94a3b8', // Domingo (Slate)
                 '#60a5fa', // Segunda (Blue)
-                '#b0e0e6', // Terca (Powder Blue - new palette)
+                '#379fae', // Terca (Powder Blue - new palette)
                 '#eaf7f8', // Quarta (Light Blue - new palette)
                 '#ffaa4d', // Quinta (Orange - alternative)
                 '#316a9a', // Sexta (Dark Blue - new palette)
@@ -4852,7 +4852,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dailyColors = [
                 '#94a3b8', // Domingo (Slate)
                 '#60a5fa', // Segunda (Blue)
-                '#b0e0e6', // Terca (Powder Blue - new palette)
+                '#379fae', // Terca (Powder Blue - new palette)
                 '#eaf7f8', // Quarta (Light Blue - new palette)
                 '#ffaa4d', // Quinta (Orange - alternative)
                 '#316a9a', // Sexta (Dark Blue - new palette)
@@ -4921,7 +4921,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 createChart('weeklyComparisonChart', 'line',
                     chartsData.weeklyCurrent.map((_, i) => `Semana ${i+1}`),
                     [
-                        { label: 'Mês Atual', data: chartsData.weeklyCurrent, borderColor: '#b0e0e6', backgroundColor: '#b0e0e6', tension: 0.4, isCurrent: true },
+                        { label: 'Mês Atual', data: chartsData.weeklyCurrent, borderColor: '#379fae', backgroundColor: '#379fae', tension: 0.4, isCurrent: true },
                         { label: 'Média Histórica', data: chartsData.weeklyHistory, borderColor: '#eaf7f8', backgroundColor: '#eaf7f8', tension: 0.4, isPrevious: true }
                     ]
                 );
@@ -4937,7 +4937,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 createChart('monthlyComparisonChart', 'bar', labels, [{
                     label: isFat ? 'Faturamento' : 'Clientes',
                     data: values,
-                    backgroundColor: '#b0e0e6'
+                    backgroundColor: '#379fae'
                 }]);
             }
 
