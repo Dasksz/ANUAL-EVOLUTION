@@ -872,7 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(clientsFileInput) clientsFileInput.addEventListener('change', (e) => { files.clientsFile = e.target.files[0]; checkFiles(); });
     if(productsFileInput) productsFileInput.addEventListener('change', (e) => { files.productsFile = e.target.files[0]; checkFiles(); });
     if(innovationsFileInput) innovationsFileInput.addEventListener('change', (e) => { files.innovationsFile = e.target.files[0]; checkFiles(); });
-
+    
     if(notaInvolvesMultipleInput) notaInvolvesMultipleInput.addEventListener('change', (e) => {
         files.notaInvolvesFile1 = e.target.files.length > 0 ? e.target.files[0] : null;
         files.notaInvolvesFile2 = e.target.files.length > 1 ? e.target.files[1] : null;
@@ -1027,7 +1027,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     error = insertErr;
                 }
                 
-                if (error) throw new Error(`Erro ${table}: ${error.message}`);
+                if (error) {
+                    if (error.code === '42P01') {
+                        throw new Error(`Tabela '${table}' não encontrada. Por favor, execute o script SQL de atualização (full_system_v1.sql) no painel do Supabase antes de enviar os arquivos.`);
+                    }
+                    throw new Error(`Erro ${table}: ${error.message}`);
+                }
             });
         };
         const performDimensionUpsert = async (table, batch) => {
