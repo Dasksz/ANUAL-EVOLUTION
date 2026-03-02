@@ -1272,11 +1272,19 @@
             <p class="text-slate-400 mb-6 text-center text-sm">Carregue os arquivos para atualizar o Supabase.</p>
 
             <div class="space-y-4 mb-6">
-                <div><label class="file-input-label">1. Vendas Ano Anterior (Completo)</label><input type="file" id="sales-prev-year-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/></div>
-                <div><label class="file-input-label">2. Vendas Ano Atual (Histórico)</label><input type="file" id="sales-curr-year-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/></div>
-                <div><label class="file-input-label">3. Vendas Mês Atual (Atualização)</label><input type="file" id="sales-curr-month-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/></div>
-                <div><label class="file-input-label">4. Cadastro de Clientes</label><input type="file" id="clients-file-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/></div>
-                <div><label class="file-input-label">5. Cadastro de Produtos</label><input type="file" id="products-file-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/></div>
+                <div><label class="file-input-label">1. Vendas Mês Atual (Obrigatório)</label><input type="file" id="sales-curr-month-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/></div>
+                <div><label class="file-input-label">2. Cadastro de Clientes (Obrigatório)</label><input type="file" id="clients-file-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/></div>
+
+                <button id="toggle-optional-files-btn" class="flex items-center text-sm font-bold text-slate-400 hover:text-white transition-colors focus:outline-none gap-2 w-full mt-4 pb-2 border-b border-white/10">
+                    <svg id="optional-files-icon" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    Planilhas Opcionais (Histórico e Produtos)
+                </button>
+
+                <div id="optional-files-container" class="hidden space-y-4 pt-4 pb-4">
+                    <div><label class="file-input-label">3. Vendas Ano Anterior (Opcional)</label><input type="file" id="sales-prev-year-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/></div>
+                    <div><label class="file-input-label">4. Vendas Ano Atual - Histórico (Opcional)</label><input type="file" id="sales-curr-year-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/></div>
+                    <div><label class="file-input-label">5. Cadastro de Produtos (Opcional)</label><input type="file" id="products-file-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600" accept=".csv, .xls, .xlsx"/></div>
+                </div>
             </div>
 
             <button id="generate-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg disabled:bg-slate-600 mb-4" disabled>Atualizar Base</button>

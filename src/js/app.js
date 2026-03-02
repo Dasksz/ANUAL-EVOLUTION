@@ -842,9 +842,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Uploader Logic ---
     let files = {};
     const checkFiles = () => {
-        const hasFiles = files.salesPrevYearFile && files.salesCurrYearFile && files.salesCurrMonthFile && files.clientsFile && files.productsFile;
+        const hasFiles = files.salesCurrMonthFile && files.clientsFile;
         generateBtn.disabled = !hasFiles;
     };
+
+    const toggleOptionalFilesBtn = document.getElementById('toggle-optional-files-btn');
+    const optionalFilesContainer = document.getElementById('optional-files-container');
+    const optionalFilesIcon = document.getElementById('optional-files-icon');
+
+    if (toggleOptionalFilesBtn) {
+        toggleOptionalFilesBtn.addEventListener('click', () => {
+            const isHidden = optionalFilesContainer.classList.contains('hidden');
+            if (isHidden) {
+                optionalFilesContainer.classList.remove('hidden');
+                optionalFilesIcon.classList.add('rotate-90');
+            } else {
+                optionalFilesContainer.classList.add('hidden');
+                optionalFilesIcon.classList.remove('rotate-90');
+            }
+        });
+    }
 
     if(salesPrevYearInput) salesPrevYearInput.addEventListener('change', (e) => { files.salesPrevYearFile = e.target.files[0]; checkFiles(); });
     if(salesCurrYearInput) salesCurrYearInput.addEventListener('change', (e) => { files.salesCurrYearFile = e.target.files[0]; checkFiles(); });
@@ -912,7 +929,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Vamos apenas assegurar de mesclar a chamada de checkMissingBranches() que havia aqui.
 
     if(generateBtn) generateBtn.addEventListener('click', async () => {
-        if (!files.salesPrevYearFile || !files.salesCurrYearFile || !files.salesCurrMonthFile || !files.clientsFile || !files.productsFile) return;
+        if (!files.salesCurrMonthFile || !files.clientsFile) return;
 
         generateBtn.disabled = true;
         statusContainer.classList.remove('hidden');
