@@ -146,6 +146,8 @@ create table if not exists public.profiles (
   email text,
   status text default 'pendente', -- pendente, aprovado, bloqueado
   role text default 'user',
+  name text,
+  phone text,
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );
@@ -371,6 +373,39 @@ BEGIN
         EXECUTE format('DROP POLICY IF EXISTS "Admin Delete" ON public.%I;', t);
     END LOOP;
 END $$;
+
+-- trigger on user creation
+create or replace function public.handle_new_user () RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+set
+  search_path = public as $$
+DECLARE
+  v_name text;
+  v_phone text;
+BEGIN
+  -- Extract metadata
+  v_name := new.raw_user_meta_data ->> 'full_name';
+  v_phone := new.raw_user_meta_data ->> 'phone';
+
+  -- Insert into profiles
+  insert into public.profiles (id, email, status, role, name, phone)
+  values (
+    new.id,
+    new.email,
+    'pendente',
+    'user',
+    v_name,
+    v_phone
+  );
+
+  return new;
+end;
+$$;
+
+drop trigger IF exists on_auth_user_created on auth.users;
+
+create trigger on_auth_user_created
+after INSERT on auth.users for EACH row
+execute PROCEDURE public.handle_new_user ();
 
 -- Define Secure Policies
 
