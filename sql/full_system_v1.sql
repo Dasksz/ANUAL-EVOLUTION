@@ -2090,8 +2090,10 @@ DECLARE
     v_sql text;
     v_active_clients json;
     v_inactive_clients json;
+    v_city_ranking json;
     v_total_active_count int;
     v_total_inactive_count int;
+    v_where_trend text := ' WHERE 1=1 ';
 
     -- Rede Logic Vars
     v_has_com_rede boolean;
@@ -2109,39 +2111,39 @@ BEGIN
          SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
     ELSE v_current_year := p_ano::int; END IF;
 
-    -- Target month filter logic for summary
-    v_where := v_where || format(' AND ano = %L ', v_current_year);
-    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
-        v_target_month := p_mes::int + 1;
-        v_where := v_where || format(' AND mes = %L ', v_target_month);
-    END IF;
-
-    -- Dynamic Filters
+    -- Dynamic Filters (Common for current and trend)
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where := v_where || format(' AND filial = ANY(%L) ', p_filial);
+        v_where_trend := v_where_trend || format(' AND filial = ANY(%L) ', p_filial);
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where := v_where || format(' AND cidade = ANY(%L) ', p_cidade);
+        v_where_trend := v_where_trend || format(' AND cidade = ANY(%L) ', p_cidade);
         v_where_clients := v_where_clients || format(' AND cidade = ANY(%L) ', p_cidade);
     END IF;
     -- UPDATE: Codes
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where := v_where || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
+        v_where_trend := v_where_trend || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
         v_where := v_where || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
+        v_where_trend := v_where_trend || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_where := v_where || format(' AND codfor = ANY(%L) ', p_fornecedor);
+        v_where_trend := v_where_trend || format(' AND codfor = ANY(%L) ', p_fornecedor);
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where := v_where || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+        v_where_trend := v_where_trend || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
     END IF;
     
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where := v_where || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where_trend := v_where_trend || format(' AND categoria_produto = ANY(%L) ', p_categoria);
     END IF;
 
     -- REDE Logic
@@ -2166,9 +2168,73 @@ BEGIN
 
        IF v_rede_condition != '' THEN
            v_where := v_where || ' AND (' || v_rede_condition || ') ';
+           v_where_trend := v_where_trend || ' AND (' || v_rede_condition || ') ';
            v_where_clients := v_where_clients || ' AND (' || v_rede_condition || ') ';
        END IF;
     END IF;
+
+    -- Target month filter logic for summary
+    v_where := v_where || format(' AND ano = %L ', v_current_year);
+    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
+        v_target_month := p_mes::int + 1;
+        v_where := v_where || format(' AND mes = %L ', v_target_month);
+    ELSE
+        -- Default to the most recent month if 'todos' or null
+        SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year;
+        IF p_mes != 'todos' THEN
+            v_where := v_where || format(' AND mes = %L ', v_target_month);
+        END IF;
+    END IF;
+
+    -- Trend calculation logic (last 3 months from target month)
+    v_where_trend := v_where_trend || format(' AND ((ano = %L AND mes < %L AND mes >= %L) OR (ano = %L AND mes >= %L)) ',
+        v_current_year, v_target_month, GREATEST(1, v_target_month - 3),
+        v_current_year - 1, LEAST(12, 12 + (v_target_month - 3))
+    );
+
+    -- CITY RANKING QUERY
+    v_sql := '
+    WITH current_month_totals AS (
+        SELECT COALESCE(cidade, ''NÃO INFORMADO'') as cidade_nome, SUM(vlvenda) as total_fat
+        FROM public.data_summary
+        ' || v_where || '
+        GROUP BY COALESCE(cidade, ''NÃO INFORMADO'')
+        HAVING SUM(vlvenda) > 0
+    ),
+    company_total AS (
+        SELECT SUM(total_fat) as total_empresa FROM current_month_totals
+    ),
+    trend_totals AS (
+        SELECT COALESCE(cidade, ''NÃO INFORMADO'') as cidade_nome, SUM(vlvenda) / 3.0 as avg_fat_trim
+        FROM public.data_summary
+        ' || v_where_trend || '
+        GROUP BY COALESCE(cidade, ''NÃO INFORMADO'')
+    ),
+    ranking_data AS (
+        SELECT
+            c.cidade_nome,
+            c.total_fat,
+            ct.total_empresa,
+            (c.total_fat / NULLIF(ct.total_empresa, 0)) * 100 as share_perc,
+            t.avg_fat_trim,
+            CASE
+                WHEN COALESCE(t.avg_fat_trim, 0) > 0 THEN ((c.total_fat - t.avg_fat_trim) / t.avg_fat_trim) * 100
+                ELSE 0
+            END as var_perc
+        FROM current_month_totals c
+        CROSS JOIN company_total ct
+        LEFT JOIN trend_totals t ON c.cidade_nome = t.cidade_nome
+        ORDER BY c.total_fat DESC
+    )
+    SELECT
+        json_build_object(
+            ''cols'', json_build_array(''Cidade'', ''% Share'', ''Variação'', ''Faturamento''),
+            ''rows'', COALESCE(json_agg(json_build_array(r.cidade_nome, r.share_perc, r.var_perc, r.total_fat)), ''[]''::json)
+        )
+    FROM ranking_data r;
+    ';
+
+    EXECUTE v_sql INTO v_city_ranking;
 
     -- ACTIVE CLIENTS QUERY
     v_sql := '
@@ -2230,7 +2296,8 @@ BEGIN
         'active_clients', v_active_clients,
         'total_active_count', COALESCE(v_total_active_count, 0),
         'inactive_clients', v_inactive_clients,
-        'total_inactive_count', COALESCE(v_total_inactive_count, 0)
+        'total_inactive_count', COALESCE(v_total_inactive_count, 0),
+        'city_ranking', COALESCE(v_city_ranking, '{"cols":[], "rows":[]}'::json)
     );
 END;
 $$;

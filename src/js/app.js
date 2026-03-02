@@ -3320,6 +3320,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const activeClients = Array.isArray(data.active_clients) ? data.active_clients : mapRows(data.active_clients);
+        const cityRanking = data.city_ranking ? (Array.isArray(data.city_ranking) ? data.city_ranking : mapRows(data.city_ranking)) : [];
 
         const renderTable = (bodyId, items) => {
             const body = document.getElementById(bodyId);
@@ -3340,7 +3341,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        const renderRankingTable = (bodyId, items) => {
+            const body = document.getElementById(bodyId);
+            if (items && items.length > 0) {
+                body.innerHTML = items.map(c => {
+                    const varClass = c['Variação'] > 0 ? 'text-emerald-400' : (c['Variação'] < 0 ? 'text-red-400' : 'text-slate-400');
+                    const varArrow = c['Variação'] > 0 ? '▲' : (c['Variação'] < 0 ? '▼' : '-');
+                    return `
+                    <tr class="table-row">
+                        <td class="p-2 font-semibold">${c['Cidade']}</td>
+                        <td class="p-2 text-right text-cyan-400 font-bold">${parseFloat(c['% Share']).toFixed(2)}%</td>
+                        <td class="p-2 text-right font-bold ${varClass}">${varArrow} ${Math.abs(c['Variação']).toFixed(2)}%</td>
+                    </tr>
+                `}).join('');
+            } else {
+                body.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>';
+            }
+        };
+
         renderTable('city-active-detail-table-body', activeClients);
+        renderRankingTable('city-ranking-table-body', cityRanking);
 
         renderCityPaginationControls();
     }
