@@ -278,3 +278,12 @@ th {
     text-align: left !important;
     white-space: nowrap !important;
 }
+
+/* Specific alignment for the monthly summary table headers */
+#monthly-summary-table th {
+    text-align: center !important;
+}
+
+#monthly-summary-table th:first-child {
+    text-align: left !important;
+}
