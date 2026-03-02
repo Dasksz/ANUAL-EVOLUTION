@@ -1840,7 +1840,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        createChart('boxesChart', 'bar', labels, datasets, (v) => Math.round(v).toLocaleString('pt-BR')); 
+        createChart('boxesChart', 'bar', labels, datasets, (v) => formatChartLabel(v));
 
         // Table
         const products = data.products_table || [];
@@ -2865,8 +2865,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         // Formatters
-        const currencyFormatter = (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''));
-        const weightFormatter = (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
+        const currencyFormatter = (v) => formatChartLabel(v);
+        const weightFormatter = (v) => formatChartLabel(v, ' Ton');
         const currentFormatter = currentChartMode === 'faturamento' ? currencyFormatter : weightFormatter;
 
         if (currentChartMode === 'faturamento') {
@@ -2930,6 +2930,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function formatChartLabel(v, suffix = '') {
+        if (!v) return '';
+        if (v >= 1000000) {
+            return (v / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' M' + suffix;
+        } else if (v >= 1000) {
+            return (v / 1000).toFixed(0) + 'K' + suffix;
+        }
+        return v.toFixed(0) + suffix;
+    }
     window.createChart = function createChart(canvasId, type, labels, datasetsData, formatterVal) {
         const container = document.getElementById(canvasId + 'Container');
         if (!container) return;
@@ -2973,14 +2982,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { labels: { color: '#cbd5e1' } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toLocaleString('pt-BR');
+                                }
+                                return label;
+                            }
+                        }
+                    },
                     datalabels: {
                         display: true,
                         anchor: 'end',
                         align: 'top',
                         offset: 4,
                         color: '#cbd5e1',
-                        font: { size: 9, weight: 'bold' },
-                        formatter: formatterVal || ((v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : '')))
+                        font: { size: 11, weight: 'bold' },
+                        formatter: formatterVal || ((v) => formatChartLabel(v))
                     }
                 },
                 scales: {
@@ -3888,14 +3911,14 @@ document.addEventListener('DOMContentLoaded', () => {
              
              const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Tendência"];
              const fmt = currentBranchChartMode === 'faturamento' 
-                ? (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''))
-                : (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
+                ? (v) => formatChartLabel(v)
+                : (v) => formatChartLabel(v, ' Ton');
              createChart('branch-chart', 'bar', labels, datasets, fmt);
          } else {
              const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
              const fmt = currentBranchChartMode === 'faturamento' 
-                ? (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''))
-                : (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
+                ? (v) => formatChartLabel(v)
+                : (v) => formatChartLabel(v, ' Ton');
              createChart('branch-chart', 'bar', labels, datasets, fmt);
          }
     }
