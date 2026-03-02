@@ -1476,21 +1476,281 @@
                     </div>
                 </div>
 
-                <!-- INNOVATIONS VIEW PLACEHOLDER -->
-                <div id="innovations-month-view" class="hidden container mx-auto p-4 max-w-7xl animate-fade-in-up">
-                    <header class="mb-8 border-b border-white/10 pb-4 flex justify-between items-end">
-                        <h1 class="text-3xl font-bold text-white">Inovações</h1>
-                    </header>
+<!-- INNOVATIONS VIEW PLACEHOLDER -->
+<div id="innovations-month-view" class="hidden container mx-auto p-4 max-w-7xl animate-fade-in-up">
+    <header class="mb-8 border-b border-white/10 pb-4 flex justify-between items-end">
+        <h1 class="text-3xl font-bold text-white">Inovações</h1>
+    </header>
+
+    <!-- Filters Section (Simulating the image design) -->
+    <div class="glass-card p-5 rounded-xl mb-6 border border-slate-700/50 shadow-xl relative z-[100] bg-[#1a1c23]">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end" id="innovations-month-filters-container">
+
+            <div class="relative w-full">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Supervisor</label>
+                <div id="innovations-month-supervisor-filter-wrapper"></div>
+            </div>
+
+            <div class="relative w-full">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Vendedor</label>
+                <div id="innovations-month-vendedor-filter-wrapper"></div>
+            </div>
+
+            <div class="relative w-full">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Cidade</label>
+                <div id="innovations-month-city-filter"></div>
+            </div>
+
+            <div class="relative w-full">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Tipo Venda</label>
+                <div id="innovations-month-tipo-venda-filter-wrapper"></div>
+            </div>
+
+            <div class="relative w-full">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Rede</label>
+                <div id="innovations-month-rede-filter-wrapper"></div>
+            </div>
+
+            <div class="relative w-full">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Categoria</label>
+                <select id="innovations-month-category-filter" class="w-full bg-[#1e293b] text-white text-sm rounded border border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 p-2 outline-none appearance-none cursor-pointer h-[38px]">
+                    <option value="">Todas as Categorias</option>
+                </select>
+            </div>
+
+            <div class="relative w-full">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Filial</label>
+                <div id="innovations-month-filial-filter"></div>
+            </div>
+
+            <!-- Hidden filters for logical compatibility -->
+            <div class="hidden">
+                <div id="innovations-month-coord-filter-wrapper"></div>
+                <div id="innovations-month-cocoord-filter-wrapper"></div>
+                <div id="innovations-month-promotor-filter-wrapper"></div>
+            </div>
+
+            <div class="w-full flex justify-end">
+                <button onclick="clearAllFilters('innovations')" class="bg-slate-700/80 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded transition-colors text-sm h-[38px]">
+                    Limpar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs Section (Simulating the image design) -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <!-- Active Clients (Blue) -->
+        <div class="glass-card p-5 rounded-xl border border-blue-900/30 shadow-lg relative bg-gradient-to-br from-[#1a1c23] to-[#151928]">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Clientes Ativos</p>
+                    <h3 class="text-3xl font-bold text-white tracking-tight" id="innovations-month-active-clients-kpi">--</h3>
+                    <p class="text-[11px] text-slate-500 mt-1">Base de Cálculo</p>
                 </div>
+                <div class="p-2 bg-blue-500/10 rounded-lg">
+                    <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Coverage (Yellow) -->
+        <div class="glass-card p-5 rounded-xl border border-orange-900/50 shadow-lg relative bg-gradient-to-br from-[#1a1c23] to-[#1a140a]">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Categ. Maior Cobertura</p>
+                    <h3 class="text-xl font-bold text-white tracking-tight uppercase" id="innovations-month-top-coverage-title">--</h3>
+                    <div class="mt-2 flex items-center gap-2 text-[11px]">
+                        <span class="text-slate-400" id="innovations-month-top-coverage-count-kpi">-- PDVs</span>
+                        <span class="text-slate-600">|</span>
+                        <span class="text-slate-400" id="innovations-month-top-coverage-kpi">--</span>
+                        <span id="innovations-month-top-coverage-value-kpi" class="hidden"></span>
+                    </div>
+                </div>
+                <div class="p-2 bg-orange-500/10 rounded-lg">
+                    <svg class="w-5 h-5 text-orange-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Percentual (Green) -->
+        <div class="glass-card p-5 rounded-xl border border-green-900/30 shadow-lg relative bg-gradient-to-br from-[#1a1c23] to-[#0f1b15]">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Percentual</p>
+                    <h3 class="text-3xl font-bold text-white tracking-tight" id="innovations-month-selection-coverage-value-kpi">--</h3>
+                    <p class="text-[11px] text-slate-500 mt-1">Geral</p> <!-- Or use another text here if logic allows -->
+                </div>
+                <div class="p-2 bg-green-500/10 rounded-lg">
+                    <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Base (Purple) -->
+        <div class="glass-card p-5 rounded-xl border border-purple-900/30 shadow-lg relative bg-gradient-to-br from-[#1a1c23] to-[#171020]">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Base</p>
+                    <h3 class="text-xl font-bold text-white tracking-tight mt-1" id="innovations-month-selection-coverage-count-kpi">-- de --</h3>
+                    <p class="text-[11px] text-slate-500 mt-2">Clientes da seleção</p>
+                </div>
+                <div class="p-2 bg-purple-500/10 rounded-lg">
+                    <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Layout -->
+    <div class="glass-card p-5 rounded-xl flex flex-col mb-6 bg-[#1a1c23] border border-slate-700/50" style="height: 450px;">
+        <div class="relative flex-1 w-full h-full">
+            <canvas id="innovations-month-chartContainer"></canvas>
+        </div>
+    </div>
+
+    <!-- Table Container -->
+    <div class="glass-card rounded-xl overflow-hidden flex flex-col bg-[#1a1c23] border border-slate-700/50">
+        <div class="overflow-x-auto w-full custom-scrollbar">
+            <table class="w-full text-sm text-left whitespace-nowrap" id="innovations-products-table" style="min-width: 800px;">
+                <thead class="text-[11px] text-slate-400 uppercase bg-[#1e222d] border-b border-slate-700/50 font-bold">
+                    <tr>
+                        <th scope="col" class="px-4 py-4 w-[25%]">Categoria</th>
+                        <th scope="col" class="px-4 py-4 w-[25%]">Produto</th>
+                        <th scope="col" class="px-4 py-4 text-center">Estoque</th>
+                        <th scope="col" class="px-4 py-4 text-center">Pos. Ant.</th>
+                        <th scope="col" class="px-4 py-4 text-center">Pos. Atual</th>
+                        <th scope="col" class="px-4 py-4 text-center">Var.</th>
+                    </tr>
+                </thead>
+                <tbody id="innovations-month-table-body" class="divide-y divide-slate-800">
+                    <!-- Filled via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
                 
-                <!-- LOJA PERFEITA VIEW PLACEHOLDER -->
-                <div id="loja-perfeita-view" class="hidden container mx-auto p-4 max-w-7xl animate-fade-in-up">
-                    <header class="mb-8 border-b border-white/10 pb-4 flex justify-between items-end">
-                        <div>
-                            <h1 class="text-3xl font-bold text-white mb-1">Loja Perfeita</h1>
-                            <p class="text-slate-400">Auditoria e Notas de Execução</p>
-                        </div>
-                    </header>
+<!-- LOJA PERFEITA VIEW PLACEHOLDER -->
+<div id="loja-perfeita-view" class="hidden container mx-auto p-4 max-w-7xl animate-fade-in-up">
+    <header class="mb-8 border-b border-slate-700/50 pb-4 flex justify-between items-end">
+        <div>
+            <h1 class="text-3xl font-bold text-white mb-1">Loja Perfeita</h1>
+            <p class="text-slate-400">Auditoria e Notas de Execução</p>
+        </div>
+    </header>
+
+    <!-- Filters Section (Simulating the image design) -->
+    <div class="glass-card p-5 rounded-xl mb-6 border border-slate-700/50 shadow-xl relative z-[100] bg-[#1a1c23]">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end" id="lp-filters-container">
+
+            <div class="relative w-full">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Supervisor</label>
+                <div id="lp-supervisor-filter-wrapper"></div>
+            </div>
+
+            <div class="relative w-full">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Vendedor</label>
+                <div id="lp-vendedor-filter-wrapper"></div>
+            </div>
+
+            <div class="relative w-full">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Rede</label>
+                <div id="lp-rede-filter-wrapper"></div>
+            </div>
+
+            <div class="relative w-full">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Cliente / Cidade</label>
+                <div id="lp-codcli-filter"></div>
+            </div>
+
+            <div class="relative w-full">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Pesquisador (Promotor)</label>
+                <div id="lp-promotor-filter-wrapper"></div>
+            </div>
+
+            <!-- Hidden logic filters -->
+            <div class="hidden">
+                <div id="lp-coord-filter-wrapper"></div>
+                <div id="lp-cocoord-filter-wrapper"></div>
+            </div>
+
+            <div class="md:col-span-5 flex justify-end">
+                <button onclick="clearAllFilters('lp')" class="bg-slate-700/80 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded transition-colors text-sm h-[38px]">
+                    Limpar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs Section (Simulating the image design) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Nota Media (Yellow) -->
+        <div class="glass-card p-6 rounded-xl border border-orange-900/30 shadow-lg relative bg-gradient-to-br from-[#1a1c23] to-[#1a140a]">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Nota Média</p>
+                    <h3 class="text-4xl font-bold text-white tracking-tight" id="lp-kpi-avg-score">--</h3>
+                    <p class="text-[11px] text-slate-500 mt-2">Pontuação Geral</p>
+                </div>
+                <div class="p-3 bg-orange-500/10 rounded-xl">
+                    <svg class="w-6 h-6 text-orange-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Auditorias (Blue) -->
+        <div class="glass-card p-6 rounded-xl border border-blue-900/30 shadow-lg relative bg-gradient-to-br from-[#1a1c23] to-[#151928]">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Total Auditorias</p>
+                    <h3 class="text-4xl font-bold text-white tracking-tight" id="lp-kpi-total-audits">--</h3>
+                    <p class="text-[11px] text-slate-500 mt-2">Pesquisas Realizadas</p>
+                </div>
+                <div class="p-3 bg-blue-500/10 rounded-xl">
+                    <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lojas Perfeitas (Green) -->
+        <div class="glass-card p-6 rounded-xl border border-green-900/30 shadow-lg relative bg-gradient-to-br from-[#1a1c23] to-[#0f1b15]">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Lojas Perfeitas</p>
+                    <h3 class="text-4xl font-bold text-white tracking-tight" id="lp-kpi-perfect-stores">--</h3>
+                    <p class="text-[11px] text-slate-500 mt-2" id="lp-kpi-perfect-stores-sub">-- Auditorias</p>
+                </div>
+                <div class="p-3 bg-green-500/10 rounded-xl">
+                    <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Title -->
+    <h3 class="text-lg font-bold text-white mb-4">Detalhamento por Cliente</h3>
+
+    <!-- Table Container -->
+    <div class="glass-card rounded-xl overflow-hidden flex flex-col bg-[#1a1c23] border border-slate-700/50">
+        <div class="overflow-x-auto w-full custom-scrollbar">
+            <table class="w-full text-sm text-left whitespace-nowrap" id="lp-details-table" style="min-width: 800px;">
+                <thead class="text-[11px] text-slate-400 uppercase bg-[#1e222d] border-b border-slate-700/50 font-bold">
+                    <tr>
+                        <th scope="col" class="px-6 py-4">Cód.</th>
+                        <th scope="col" class="px-6 py-4">Cliente</th>
+                        <th scope="col" class="px-6 py-4">Pesquisador</th>
+                        <th scope="col" class="px-6 py-4">Cidade</th>
+                        <th scope="col" class="px-6 py-4 text-center">Nota</th>
+                    </tr>
+                </thead>
+                <tbody id="lp-table-body" class="divide-y divide-slate-800">
+                    <!-- Filled via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
                 </div>
             </main>
         </div>
