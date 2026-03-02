@@ -1027,7 +1027,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     error = insertErr;
                 }
                 
-                if (error) throw new Error(`Erro ${table}: ${error.message}`);
+                if (error) {
+                    if (error.code === '42P01') {
+                        throw new Error(`Tabela '${table}' não encontrada. Por favor, execute o script SQL de atualização (full_system_v1.sql) no painel do Supabase antes de enviar os arquivos.`);
+                    }
+                    throw new Error(`Erro ${table}: ${error.message}`);
+                }
             });
         };
         const performDimensionUpsert = async (table, batch) => {
