@@ -338,6 +338,9 @@ ALTER TABLE public.data_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.data_clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.data_summary ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.data_innovations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.data_nota_perfeita ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.relacao_rota_involves ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cache_filters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.data_holidays ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.config_city_branches ENABLE ROW LEVEL SECURITY;
@@ -415,10 +418,11 @@ DROP POLICY IF EXISTS "Admin Delete" ON public.data_holidays;
 CREATE POLICY "Admin Delete" ON public.data_holidays FOR DELETE USING (public.is_admin());
 
 -- Data Tables (Detailed, History, Clients, Summary, Cache)
+-- Data Tables (Detailed, History, Clients, Summary, Cache, Innovations, Nota Perfeita, Relação Involves)
 DO $$
 DECLARE t text;
 BEGIN
-    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_detailed', 'data_history', 'data_clients', 'data_summary', 'cache_filters')
+    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_detailed', 'data_history', 'data_clients', 'data_summary', 'cache_filters', 'data_innovations', 'data_nota_perfeita', 'relacao_rota_involves')
     LOOP
         -- Read: Approved Users
         EXECUTE format('DROP POLICY IF EXISTS "Unified Read Access" ON public.%I', t);
@@ -2571,6 +2575,44 @@ $$;
 -- ==============================================================================
 -- INCREMENTAL UPLOAD SUPPORT (METADATA CHUNKING FOR SALES, ROW HASH FOR CLIENTS)
 -- ==============================================================================
+
+-- Inovações
+create table if not exists public.data_innovations (
+  id uuid default uuid_generate_v4 () primary key,
+  codigo text,
+  inovacoes text
+);
+
+-- Tabela Nota Perfeita (Loja Perfeita)
+create table if not exists public.data_nota_perfeita (
+  id uuid default uuid_generate_v4 () primary key,
+  codigo_cliente text,
+  mes_ano text,
+  semana text,
+  pesquisador text,
+  cnpj_origem text,
+  canal text,
+  subcanal text,
+  nota_media numeric,
+  auditorias integer,
+  auditorias_perfeitas integer,
+  updated_at timestamp with time zone default now()
+);
+
+-- Index for fast client lookup in Loja Perfeita
+create index if not exists idx_nota_perfeita_codcli on public.data_nota_perfeita (codigo_cliente);
+
+-- Tabela de Relação Rota Involves
+create table if not exists public.relacao_rota_involves (
+  id uuid default uuid_generate_v4 () primary key,
+  seller_code text, -- Código do Vendedor
+  involves_code text, -- Código na tabela de notas
+  created_at timestamp with time zone default now()
+);
+
+-- Index for fast lookup
+create index if not exists idx_relacao_rota_involves_seller on public.relacao_rota_involves (seller_code);
+create index if not exists idx_relacao_rota_involves_involves on public.relacao_rota_involves (involves_code);
 
 -- 1. Metadata Table for Chunk-Based Sync
 CREATE TABLE IF NOT EXISTS public.data_metadata (
