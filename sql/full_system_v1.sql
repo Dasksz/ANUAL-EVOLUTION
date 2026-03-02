@@ -39,7 +39,7 @@ BEGIN
 
     v_previous_year := v_current_year - 1;
 
-    IF p_mes IS NOT NULL AND p_mes != '' THEN
+    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_target_month := p_mes::int;
         v_where_base := v_where_base || ' AND EXTRACT(YEAR FROM dtped) = ' || v_current_year || ' AND EXTRACT(MONTH FROM dtped) = ' || v_target_month;
         v_where_base_prev := v_where_base_prev || ' AND EXTRACT(YEAR FROM dtped) = ' || v_previous_year || ' AND EXTRACT(MONTH FROM dtped) = ' || v_target_month;
@@ -3244,14 +3244,14 @@ BEGIN
 
     -- Redes
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-        IF 'com_rede' = ANY(p_rede) AND 'sem_rede' = ANY(p_rede) THEN
+        IF 'com_ramo' = ANY(p_rede) AND 'sem_ramo' = ANY(p_rede) THEN
             -- Do nothing, include all
-        ELSIF 'com_rede' = ANY(p_rede) THEN
-            v_where_base := v_where_base || ' AND c.rede IS NOT NULL AND c.rede != '''' ';
-        ELSIF 'sem_rede' = ANY(p_rede) THEN
-            v_where_base := v_where_base || ' AND (c.rede IS NULL OR c.rede = '''') ';
+        ELSIF 'com_ramo' = ANY(p_rede) THEN
+            v_where_base := v_where_base || ' AND c.ramo IS NOT NULL AND c.ramo != '''' ';
+        ELSIF 'sem_ramo' = ANY(p_rede) THEN
+            v_where_base := v_where_base || ' AND (c.ramo IS NULL OR c.ramo = '''') ';
         ELSE
-            v_where_base := v_where_base || ' AND c.rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+            v_where_base := v_where_base || ' AND c.ramo = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
         END IF;
     END IF;
 
@@ -3366,14 +3366,14 @@ BEGIN
 
     -- Redes
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-        IF 'com_rede' = ANY(p_rede) AND 'sem_rede' = ANY(p_rede) THEN
+        IF 'com_ramo' = ANY(p_rede) AND 'sem_ramo' = ANY(p_rede) THEN
             -- Do nothing, include all
-        ELSIF 'com_rede' = ANY(p_rede) THEN
-            v_where := v_where || ' AND c.rede IS NOT NULL AND c.rede != '''' ';
-        ELSIF 'sem_rede' = ANY(p_rede) THEN
-            v_where := v_where || ' AND (c.rede IS NULL OR c.rede = '''') ';
+        ELSIF 'com_ramo' = ANY(p_rede) THEN
+            v_where := v_where || ' AND c.ramo IS NOT NULL AND c.ramo != '''' ';
+        ELSIF 'sem_ramo' = ANY(p_rede) THEN
+            v_where := v_where || ' AND (c.ramo IS NULL OR c.ramo = '''') ';
         ELSE
-            v_where := v_where || ' AND c.rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+            v_where := v_where || ' AND c.ramo = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
         END IF;
     END IF;
 
@@ -3530,7 +3530,7 @@ BEGIN
             pedido,
             tipovenda,
             vlvenda,
-            totpesoliq as peso,
+            peso,
             produto
         FROM public.data_detailed
         LEFT JOIN public.dim_vendedores dv ON public.data_detailed.codusur = dv.codigo
