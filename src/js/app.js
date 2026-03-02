@@ -787,6 +787,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function checkRoleForUI() {
         if (window.userRole === 'adm') {
             if(navUploaderBtn) navUploaderBtn.classList.remove('hidden');
+            if(optimizeDbBtnNav) optimizeDbBtnNav.classList.remove('hidden');
+        } else {
+            if(navUploaderBtn) navUploaderBtn.classList.add('hidden');
+            if(optimizeDbBtnNav) optimizeDbBtnNav.classList.add('hidden');
         }
     }
 
