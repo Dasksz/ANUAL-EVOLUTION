@@ -2910,3 +2910,228 @@ BEGIN
     DO UPDATE SET chunk_hash = EXCLUDED.chunk_hash, updated_at = now();
 END;
 $$;
+CREATE OR REPLACE FUNCTION get_innovations_data(
+    p_filial text[] default null,
+    p_cidade text[] default null,
+    p_supervisor text[] default null,
+    p_vendedor text[] default null,
+    p_coord text[] default null,
+    p_cocoord text[] default null,
+    p_promotor text[] default null,
+    p_rede text[] default null,
+    p_tipovenda text[] default null,
+    p_categoria_inovacao text default null
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $BODY$
+DECLARE
+    v_result json;
+    v_where_base text := ' WHERE 1=1 ';
+    v_sql text;
+
+    v_current_year int;
+    v_current_month int;
+    v_last_sale_date date;
+
+    v_month_curr text;
+    v_month_prev1 text;
+    v_month_prev2 text;
+BEGIN
+    -- 1. Determine Current Month based on latest sale
+    SELECT MAX(dtped) INTO v_last_sale_date FROM data_detailed;
+
+    IF v_last_sale_date IS NULL THEN
+        RETURN json_build_object('active_clients', 0, 'categories', '[]'::json, 'products', '[]'::json);
+    END IF;
+
+    v_current_year := EXTRACT(YEAR FROM v_last_sale_date);
+    v_current_month := EXTRACT(MONTH FROM v_last_sale_date);
+
+    -- Format YYYY-MM
+    v_month_curr := to_char(v_last_sale_date, 'YYYY-MM');
+    v_month_prev1 := to_char(v_last_sale_date - interval '1 month', 'YYYY-MM');
+    v_month_prev2 := to_char(v_last_sale_date - interval '2 months', 'YYYY-MM');
+
+    -- 2. Build Where Clauses for Clients
+    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+        IF NOT ('ambas' = ANY(p_filial)) THEN
+            v_where_base := v_where_base || ' AND c.filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
+        END IF;
+    END IF;
+
+    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
+        v_where_base := v_where_base || ' AND c.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+    END IF;
+
+    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+        v_where_base := v_where_base || ' AND c.rca1 = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || ''']) ';
+    END IF;
+
+    -- Redes
+    IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
+        IF 'com_rede' = ANY(p_rede) AND 'sem_rede' = ANY(p_rede) THEN
+            -- Do nothing, include all
+        ELSIF 'com_rede' = ANY(p_rede) THEN
+            v_where_base := v_where_base || ' AND c.rede IS NOT NULL AND c.rede != '''' ';
+        ELSIF 'sem_rede' = ANY(p_rede) THEN
+            v_where_base := v_where_base || ' AND (c.rede IS NULL OR c.rede = '''') ';
+        ELSE
+            v_where_base := v_where_base || ' AND c.rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+        END IF;
+    END IF;
+
+    -- 3. Dynamic Query Execution
+    v_sql := '
+    WITH active_clients AS (
+        SELECT DISTINCT d.codigo_cliente
+        FROM (
+            SELECT codigo_cliente FROM data_detailed WHERE to_char(dtped, ''YYYY-MM'') = ''' || v_month_curr || '''
+            UNION ALL
+            SELECT codigo_cliente FROM data_history WHERE to_char(dtped, ''YYYY-MM'') IN (''' || v_month_prev1 || ''', ''' || v_month_prev2 || ''')
+        ) d
+        JOIN data_clients c ON c.codigo_cliente = d.codigo_cliente
+        ' || v_where_base || '
+    ),
+    innovation_sales AS (
+        SELECT
+            i.inovacoes AS category_name,
+            i.codigo AS product_code,
+            p.descricao AS product_name,
+            CASE
+                WHEN to_char(d.dtped, ''YYYY-MM'') = ''' || v_month_curr || ''' THEN ''current''
+                WHEN to_char(d.dtped, ''YYYY-MM'') = ''' || v_month_prev1 || ''' THEN ''prev1''
+                WHEN to_char(d.dtped, ''YYYY-MM'') = ''' || v_month_prev2 || ''' THEN ''prev2''
+            END AS period,
+            COUNT(DISTINCT d.codigo_cliente) AS positivados
+        FROM (
+            SELECT codigo_cliente, codigo_produto, dtped FROM data_detailed WHERE to_char(dtped, ''YYYY-MM'') = ''' || v_month_curr || '''
+            UNION ALL
+            SELECT codigo_cliente, codigo_produto, dtped FROM data_history WHERE to_char(dtped, ''YYYY-MM'') IN (''' || v_month_prev1 || ''', ''' || v_month_prev2 || ''')
+        ) d
+        JOIN data_innovations i ON d.codigo_produto = i.codigo
+        JOIN dim_produtos p ON p.codigo = i.codigo
+        JOIN active_clients ac ON ac.codigo_cliente = d.codigo_cliente
+        GROUP BY 1, 2, 3, 4
+    ),
+    aggregated AS (
+        SELECT
+            category_name,
+            product_code,
+            product_name,
+            COALESCE(MAX(CASE WHEN period = ''current'' THEN positivados END), 0) AS pos_current,
+            COALESCE(MAX(CASE WHEN period = ''prev1'' THEN positivados END), 0) AS pos_prev1,
+            COALESCE(MAX(CASE WHEN period = ''prev2'' THEN positivados END), 0) AS pos_prev2
+        FROM innovation_sales
+        GROUP BY 1, 2, 3
+    )
+    SELECT json_build_object(
+        ''active_clients'', (SELECT COUNT(*) FROM active_clients),
+        ''categories'', (
+            SELECT COALESCE(json_agg(
+                json_build_object(
+                    ''name'', category_name,
+                    ''pos_current'', SUM(pos_current),
+                    ''pos_prev1'', SUM(pos_prev1),
+                    ''pos_prev2'', SUM(pos_prev2),
+                    ''products_count'', COUNT(product_code)
+                )
+            ), ''[]''::json)
+            FROM aggregated
+            GROUP BY category_name
+        ),
+        ''products'', (
+            SELECT COALESCE(json_agg(row_to_json(aggregated)), ''[]''::json) FROM aggregated
+        )
+    );
+    ';
+
+    EXECUTE v_sql INTO v_result;
+
+    RETURN v_result;
+END;
+$BODY$;
+CREATE OR REPLACE FUNCTION get_loja_perfeita_data(
+    p_filial text[] default null,
+    p_cidade text[] default null,
+    p_coord text[] default null,
+    p_cocoord text[] default null,
+    p_promotor text[] default null,
+    p_supervisor text[] default null,
+    p_vendedor text[] default null,
+    p_rede text[] default null
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $BODY$
+DECLARE
+    v_result json;
+    v_where text := ' WHERE 1=1 ';
+    v_sql text;
+BEGIN
+    -- Client Filters based on active dataset
+    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
+        v_where := v_where || ' AND c.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+    END IF;
+
+    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+        v_where := v_where || ' AND c.rca1 = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || ''']) ';
+    END IF;
+
+    -- Redes
+    IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
+        IF 'com_rede' = ANY(p_rede) AND 'sem_rede' = ANY(p_rede) THEN
+            -- Do nothing, include all
+        ELSIF 'com_rede' = ANY(p_rede) THEN
+            v_where := v_where || ' AND c.rede IS NOT NULL AND c.rede != '''' ';
+        ELSIF 'sem_rede' = ANY(p_rede) THEN
+            v_where := v_where || ' AND (c.rede IS NULL OR c.rede = '''') ';
+        ELSE
+            v_where := v_where || ' AND c.rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+        END IF;
+    END IF;
+
+    v_sql := '
+    WITH filtered_nota AS (
+        SELECT
+            n.codigo_cliente,
+            n.pesquisador,
+            n.nota_media,
+            n.auditorias,
+            n.auditorias_perfeitas
+        FROM data_nota_perfeita n
+        JOIN data_clients c ON c.codigo_cliente = n.codigo_cliente
+        ' || v_where || '
+    ),
+    kpis AS (
+        SELECT
+            COALESCE(AVG(nota_media), 0) AS avg_score,
+            COALESCE(SUM(auditorias), 0) AS total_audits,
+            COALESCE(SUM(auditorias_perfeitas), 0) AS perfect_stores
+        FROM filtered_nota
+    ),
+    client_details AS (
+        SELECT
+            c.codigo_cliente AS codcli,
+            c.razaosocial AS client_name,
+            c.cidade AS city,
+            fn.pesquisador AS researcher,
+            fn.nota_media AS score
+        FROM filtered_nota fn
+        JOIN data_clients c ON c.codigo_cliente = fn.codigo_cliente
+    )
+    SELECT json_build_object(
+        ''kpis'', (SELECT row_to_json(kpis) FROM kpis),
+        ''clients'', (SELECT COALESCE(json_agg(row_to_json(client_details)), ''[]''::json) FROM client_details)
+    );
+    ';
+
+    EXECUTE v_sql INTO v_result;
+
+    RETURN v_result;
+END;
+$BODY$;
