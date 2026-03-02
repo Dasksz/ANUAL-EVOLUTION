@@ -49,6 +49,7 @@
 #city-active-detail-table,
 #supervisor-comparison-table {
     min-width: 600px;
+    width: 100%;
 }
 
 /* Micro Animation for Summary Table Collapse/Expand */
