@@ -435,11 +435,13 @@ document.addEventListener('DOMContentLoaded', () => {
             state.mes = comparisonMesFilter.value;
             state.filiais = (comparisonFilialFilter && comparisonFilialFilter.value !== 'ambas') ? [comparisonFilialFilter.value] : [];
             state.cidades = selectedComparisonCities;
-            state.supervisores = selectedComparisonSupervisores;
+            state.supervisores = selectedComparisonSupervisors;
             state.vendedores = selectedComparisonSellers;
             state.fornecedores = selectedComparisonSuppliers;
+            state.produtos = selectedComparisonProducts;
             state.tiposvenda = selectedComparisonTiposVenda;
             state.redes = selectedComparisonRedes;
+            state.categorias = selectedComparisonCategorias;
         }
 
         const serialize = (key, val) => {
@@ -520,11 +522,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
              selectedComparisonCities = getList('cidades');
 
-             selectedComparisonSupervisores = getList('supervisores');
+             selectedComparisonSupervisors = getList('supervisores');
              selectedComparisonSellers = getList('vendedores');
              selectedComparisonSuppliers = getList('fornecedores');
+             selectedComparisonProducts = getList('produtos');
              selectedComparisonTiposVenda = getList('tiposvenda');
              selectedComparisonRedes = getList('redes');
+             selectedComparisonCategorias = getList('categorias');
         }
     }
 
