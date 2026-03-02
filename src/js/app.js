@@ -18,12 +18,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const navBoxesBtn = document.getElementById('nav-boxes-btn');
     const navBranchBtn = document.getElementById('nav-branch-btn');
     const navUploaderBtn = document.getElementById('nav-uploader');
+    const navInnovationsBtn = document.getElementById('nav-innovations-btn');
+    const navLojaPerfeitaBtn = document.getElementById('nav-loja-perfeita-btn');
     const navComparativoBtn = document.getElementById('nav-comparativo-btn');
     const optimizeDbBtnNav = document.getElementById('optimize-db-btn-nav');
 
     // Views
     const dashboardContainer = document.getElementById('dashboard-container');
     const uploaderModal = document.getElementById('uploader-modal');
+    const innovationsMonthView = document.getElementById('innovations-month-view');
+    const lojaPerfeitaView = document.getElementById('loja-perfeita-view');
     const closeUploaderBtn = document.getElementById('close-uploader-btn');
 
     // Dashboard Internal Views
@@ -706,6 +710,8 @@ document.addEventListener('DOMContentLoaded', () => {
         boxesView.classList.add('hidden');
         branchView.classList.add('hidden');
         comparisonView.classList.add('hidden');
+        if (innovationsMonthView) innovationsMonthView.classList.add('hidden');
+        if (lojaPerfeitaView) lojaPerfeitaView.classList.add('hidden');
     };
 
     navDashboardBtn.addEventListener('click', (e) => {
@@ -750,6 +756,26 @@ document.addEventListener('DOMContentLoaded', () => {
             branchView.classList.remove('hidden');
             setActiveNavLink(navBranchBtn);
             loadBranchView();
+        });
+    }
+
+    if (navInnovationsBtn) {
+        navInnovationsBtn.addEventListener('click', (e) => {
+            if (navigateWithCtrl(e, 'innovations')) return;
+            resetViews();
+            if (innovationsMonthView) innovationsMonthView.classList.remove('hidden');
+            setActiveNavLink(navInnovationsBtn);
+            renderInnovationsMonthView();
+        });
+    }
+
+    if (navLojaPerfeitaBtn) {
+        navLojaPerfeitaBtn.addEventListener('click', (e) => {
+            if (navigateWithCtrl(e, 'loja-perfeita')) return;
+            resetViews();
+            if (lojaPerfeitaView) lojaPerfeitaView.classList.remove('hidden');
+            setActiveNavLink(navLojaPerfeitaBtn);
+            renderLojaPerfeitaView();
         });
     }
 
@@ -4944,3 +4970,279 @@ document.addEventListener('DOMContentLoaded', () => {
             }).join('');
         }
 });
+// --- INOVACOES VIEW LOGIC ---
+let innovationsChart = null;
+let currentInnovationsFilters = {};
+
+async function updateInnovationsMonthView() {
+    showDashboardLoading();
+
+    const filters = {
+        p_cidade: getSelectedValues('innovations-month-city-filter') || [],
+        p_filial: getSelectedValues('innovations-month-filial-filter') || [],
+        p_coord: getSelectedValues('innovations-month-coord-filter-wrapper') || [],
+        p_cocoord: getSelectedValues('innovations-month-cocoord-filter-wrapper') || [],
+        p_promotor: getSelectedValues('innovations-month-promotor-filter-wrapper') || [],
+        p_supervisor: getSelectedValues('innovations-month-supervisor-filter-wrapper') || [],
+        p_vendedor: getSelectedValues('innovations-month-vendedor-filter-wrapper') || [],
+        p_rede: getSelectedValues('innovations-month-rede-filter-wrapper') || [],
+        p_tipovenda: getSelectedValues('innovations-month-tipo-venda-filter-wrapper') || [],
+        p_categoria_inovacao: document.getElementById('innovations-month-category-filter') ? document.getElementById('innovations-month-category-filter').value : null
+    };
+
+    try {
+        const { data, error } = await supabase.rpc('get_innovations_data', filters);
+
+        if (error) {
+            console.error('Error fetching innovations:', error);
+            hideDashboardLoading();
+            return;
+        }
+
+        renderInnovationsKPIs(data);
+        renderInnovationsChart(data);
+        renderInnovationsTable(data);
+
+    } catch (err) {
+        console.error('Exception fetching innovations:', err);
+    } finally {
+        hideDashboardLoading();
+    }
+}
+
+function renderInnovationsKPIs(data) {
+    if (!data) return;
+    const activeClients = data.active_clients || 0;
+
+    // Total Clients
+    const activeClientsEl = document.getElementById('innovations-month-active-clients-kpi');
+    if (activeClientsEl) activeClientsEl.textContent = formatNumber(activeClients);
+
+    // Calculate Best Coverage
+    let bestCategory = null;
+    let maxCoverage = -1;
+    let maxCoverageCount = 0;
+
+    const categories = data.categories || [];
+    let totalSelectionPos = 0;
+
+    categories.forEach(cat => {
+        let cov = activeClients > 0 ? (cat.pos_current / activeClients) * 100 : 0;
+        if (cov > maxCoverage) {
+            maxCoverage = cov;
+            bestCategory = cat.name;
+            maxCoverageCount = cat.pos_current;
+        }
+        totalSelectionPos += cat.pos_current;
+    });
+
+    const topCovTitle = document.getElementById('innovations-month-top-coverage-title');
+    const topCovKpi = document.getElementById('innovations-month-top-coverage-kpi');
+    const topCovCount = document.getElementById('innovations-month-top-coverage-count-kpi');
+    const topCovValue = document.getElementById('innovations-month-top-coverage-value-kpi');
+
+    if (topCovTitle) topCovTitle.textContent = bestCategory || 'N/A';
+    if (topCovKpi) topCovKpi.textContent = maxCoverage >= 0 ? maxCoverage.toFixed(2) + '%' : '--';
+    if (topCovCount) topCovCount.textContent = maxCoverageCount + ' PDVs';
+    if (topCovValue) topCovValue.textContent = ''; // Valor não calculado pela RPC atual
+
+    // Selection Percent
+    const selCovValue = document.getElementById('innovations-month-selection-coverage-value-kpi');
+    let selPercent = activeClients > 0 ? (totalSelectionPos / (activeClients * (categories.length > 0 ? categories.length : 1))) * 100 : 0;
+    if (selCovValue) selCovValue.textContent = selPercent.toFixed(2) + '%';
+
+    // Selection Count
+    const selCovCount = document.getElementById('innovations-month-selection-coverage-count-kpi');
+    if (selCovCount) selCovCount.textContent = totalSelectionPos + ' de ' + (activeClients * categories.length);
+}
+
+function renderInnovationsChart(data) {
+    const ctx = document.getElementById('innovations-month-chartContainer');
+    if (!ctx || !data || !data.categories) return;
+
+    if (innovationsChart) {
+        innovationsChart.destroy();
+    }
+
+    const categories = data.categories.sort((a,b) => b.pos_current - a.pos_current);
+
+    const labels = categories.map(c => c.name);
+
+    // Calcular %
+    const active = data.active_clients || 1;
+    const currentData = categories.map(c => ((c.pos_current / active) * 100).toFixed(1));
+    const prev1Data = categories.map(c => ((c.pos_prev1 / active) * 100).toFixed(1));
+    const prev2Data = categories.map(c => ((c.pos_prev2 / active) * 100).toFixed(1));
+
+    innovationsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Mês Atual',
+                    data: currentData,
+                    backgroundColor: '#06b6d4', // cyan-500
+                    borderRadius: 4
+                },
+                {
+                    label: 'Mês Anterior',
+                    data: prev1Data,
+                    backgroundColor: '#eab308', // yellow-500
+                    borderRadius: 4
+                },
+                {
+                    label: 'Mês Retrasado',
+                    data: prev2Data,
+                    backgroundColor: '#3b82f6', // blue-500
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { color: '#cbd5e1' } }
+            },
+            scales: {
+                y: { grid: { color: '#334155' }, ticks: { color: '#cbd5e1', callback: (val) => val + '%' } },
+                x: { grid: { display: false }, ticks: { color: '#cbd5e1' } }
+            }
+        }
+    });
+}
+
+function renderInnovationsTable(data) {
+    const tbody = document.getElementById('innovations-month-table-body');
+    if (!tbody || !data || !data.products) return;
+
+    let html = '';
+    const active = data.active_clients || 1;
+
+    data.products.forEach(p => {
+        let posAtual = ((p.pos_current / active) * 100).toFixed(2);
+        let posAnt = ((p.pos_prev1 / active) * 100).toFixed(2);
+        let varPercent = p.pos_prev1 > 0 ? (((p.pos_current - p.pos_prev1) / p.pos_prev1) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
+
+        let varColor = varPercent >= 0 ? 'text-green-400' : 'text-red-400';
+
+        html += `
+            <tr class="hover:bg-slate-800/50 transition-colors">
+                <td class="px-2 py-3 md:px-4 hidden md:table-cell text-orange-400 font-medium">${p.category_name}</td>
+                <td class="px-2 py-3 md:px-4 font-bold text-white">${p.product_code} - ${p.product_name}</td>
+                <td class="px-2 py-3 md:px-4 text-center hidden md:table-cell text-slate-300">--</td>
+                <td class="px-2 py-3 md:px-4 text-center text-slate-400">${posAnt}%</td>
+                <td class="px-2 py-3 md:px-4 text-center font-bold text-white">${posAtual}%</td>
+                <td class="px-2 py-3 md:px-4 text-center ${varColor} font-bold">${varPercent}%</td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+}
+
+// Helper para pegar valor de inputs (pode precisar ajuste dependendo de como voce estruturou os selects)
+function getSelectedValues(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    if (el.tagName === 'SELECT') {
+        return Array.from(el.selectedOptions).map(o => o.value);
+    }
+    if (el.tagName === 'INPUT' && el.type === 'hidden') {
+         return el.value ? [el.value] : [];
+    }
+    // Adicione logica pra dropdown custom se existir
+    return [];
+}
+// --- LOJA PERFEITA VIEW LOGIC ---
+
+async function updateLojaPerfeitaView() {
+    showDashboardLoading();
+
+    const filters = {
+        p_cidade: getSelectedValues('lp-codcli-filter') || [], // Adaptando campo busca cidade/cliente se houver
+        p_filial: [],
+        p_coord: getSelectedValues('lp-coord-filter-wrapper') || [],
+        p_cocoord: getSelectedValues('lp-cocoord-filter-wrapper') || [],
+        p_promotor: getSelectedValues('lp-promotor-filter-wrapper') || [],
+        p_supervisor: getSelectedValues('lp-supervisor-filter-wrapper') || [],
+        p_vendedor: getSelectedValues('lp-vendedor-filter-wrapper') || [],
+        p_rede: getSelectedValues('lp-rede-filter-wrapper') || []
+    };
+
+    try {
+        const { data, error } = await supabase.rpc('get_loja_perfeita_data', filters);
+
+        if (error) {
+            console.error('Error fetching Loja Perfeita data:', error);
+            hideDashboardLoading();
+            return;
+        }
+
+        renderLpKPIs(data.kpis);
+        renderLpTable(data.clients);
+
+    } catch (err) {
+        console.error('Exception fetching Loja Perfeita data:', err);
+    } finally {
+        hideDashboardLoading();
+    }
+}
+
+function renderLpKPIs(kpis) {
+    if (!kpis) return;
+
+    const avgScoreEl = document.getElementById('lp-kpi-avg-score');
+    const totalAuditsEl = document.getElementById('lp-kpi-total-audits');
+    const perfStoresEl = document.getElementById('lp-kpi-perfect-stores');
+    const avgScoreCircle = document.getElementById('lp-avg-score-circle'); // Pode precisar do chart
+
+    if (avgScoreEl) avgScoreEl.textContent = formatNumber(kpis.avg_score, 1);
+    if (totalAuditsEl) totalAuditsEl.textContent = formatNumber(kpis.total_audits);
+
+    if (perfStoresEl) {
+        let pct = kpis.total_audits > 0 ? (kpis.perfect_stores / kpis.total_audits) * 100 : 0;
+        perfStoresEl.textContent = pct.toFixed(1) + '%';
+        const sub = document.getElementById('lp-kpi-perfect-stores-sub');
+        if (sub) sub.textContent = formatNumber(kpis.perfect_stores) + ' Auditorias';
+    }
+}
+
+function renderLpTable(clients) {
+    const tbody = document.getElementById('lp-table-body');
+    if (!tbody || !clients) return;
+
+    let html = '';
+
+    clients.forEach(c => {
+        let colorClass = c.score >= 80 ? 'text-green-400' : c.score >= 50 ? 'text-yellow-400' : 'text-red-400';
+
+        html += `
+            <tr class="hover:bg-slate-800/50 transition-colors">
+                <td class="px-4 py-3 hidden md:table-cell text-slate-400">${c.codcli}</td>
+                <td class="px-4 py-3 font-medium text-white">${c.client_name}</td>
+                <td class="px-4 py-3 hidden md:table-cell text-slate-300">
+                    <span class="font-bold text-white block">${c.researcher}</span>
+                </td>
+                <td class="px-4 py-3 hidden md:table-cell text-slate-300">${c.city || '--'}</td>
+                <td class="px-4 py-3 text-center font-bold ${colorClass}">${formatNumber(c.score, 1)}</td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+}
+
+function formatNumber(num, decimals = 2) {
+    if (num == null) return '--';
+    return Number(num).toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function renderInnovationsMonthView() {
+    updateInnovationsMonthView();
+}
+
+function renderLojaPerfeitaView() {
+    updateLojaPerfeitaView();
+}
