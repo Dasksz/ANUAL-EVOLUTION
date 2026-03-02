@@ -548,7 +548,13 @@ AS $$
 BEGIN
   IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
   IF table_name NOT IN ('data_detailed', 'data_history', 'data_clients', 'data_summary', 'cache_filters', 'data_innovations', 'data_nota_perfeita', 'relacao_rota_involves') THEN RAISE EXCEPTION 'Tabela inválida.'; END IF;
-  EXECUTE format('TRUNCATE TABLE public.%I;', table_name);
+
+  IF EXISTS (
+      SELECT FROM information_schema.tables 
+      WHERE table_schema = 'public' AND table_name = truncate_table.table_name
+  ) THEN
+      EXECUTE format('TRUNCATE TABLE public.%I;', table_name);
+  END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION public.truncate_table(text) TO authenticated;
