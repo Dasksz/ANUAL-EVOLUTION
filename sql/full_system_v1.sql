@@ -152,6 +152,16 @@ create table if not exists public.profiles (
   updated_at timestamp with time zone default now()
 );
 
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'name') THEN
+        ALTER TABLE public.profiles ADD COLUMN name text;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'phone') THEN
+        ALTER TABLE public.profiles ADD COLUMN phone text;
+    END IF;
+END $$;
+
 -- Config City Branches (Mapping)
 CREATE TABLE IF NOT EXISTS public.config_city_branches (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
