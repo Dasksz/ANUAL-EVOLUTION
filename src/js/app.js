@@ -4996,7 +4996,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         </tr>`;
             }).join('');
         }
-});
 // --- INOVACOES VIEW LOGIC ---
 let innovationsChart = null;
 let currentInnovationsFilters = {};
@@ -5273,3 +5272,4 @@ function renderInnovationsMonthView() {
 function renderLojaPerfeitaView() {
     updateLojaPerfeitaView();
 }
+});
