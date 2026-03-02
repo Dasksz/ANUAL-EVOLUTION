@@ -370,7 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.mes = comparisonMesFilter.value;
             state.filiais = (comparisonFilialFilter && comparisonFilialFilter.value !== 'ambas') ? [comparisonFilialFilter.value] : [];
             state.cidades = selectedComparisonCities;
-            state.supervisores = selectedComparisonSupervisores;
+            state.supervisores = selectedComparisonSupervisors;
             state.vendedores = selectedComparisonSellers;
             state.fornecedores = selectedComparisonSuppliers;
             state.tiposvenda = selectedComparisonTiposVenda;
@@ -455,7 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
              selectedComparisonCities = getList('cidades');
 
-             selectedComparisonSupervisores = getList('supervisores');
+             selectedComparisonSupervisors = getList('supervisores');
              selectedComparisonSellers = getList('vendedores');
              selectedComparisonSuppliers = getList('fornecedores');
              selectedComparisonTiposVenda = getList('tiposvenda');
