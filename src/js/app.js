@@ -1894,12 +1894,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (currentVal && currentVal !== 'todos') boxesAnoFilter.value = currentVal;
             else if (filterData.anos.length > 0) boxesAnoFilter.value = filterData.anos[0];
+            enhanceSelectToCustomDropdown(boxesAnoFilter);
         }
 
         if (boxesMesFilter && boxesMesFilter.options.length <= 1) {
             boxesMesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; boxesMesFilter.appendChild(opt); });
+            enhanceSelectToCustomDropdown(boxesMesFilter);
         }
 
         setupCityMultiSelect(boxesFilialFilterBtn, boxesFilialFilterDropdown, boxesFilialFilterDropdown, filterData.filiais, boxesSelectedFiliais);
@@ -2415,18 +2417,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function applyFiltersData(data) {
-        // Capture available options for prefetcher
-        availableFiltersState.filiais = data.filiais || [];
-        availableFiltersState.supervisors = data.supervisors || [];
-        availableFiltersState.cidades = data.cidades || [];
-        availableFiltersState.vendedores = data.vendedores || [];
-        availableFiltersState.fornecedores = data.fornecedores || []; // Array of objects
-        availableFiltersState.tipos_venda = data.tipos_venda || [];
-        availableFiltersState.redes = data.redes || [];
-        availableFiltersState.categorias = data.categorias || [];
-
-        function enhanceSelectToCustomDropdown(selectElement) {
+    function enhanceSelectToCustomDropdown(selectElement) {
         if (!selectElement) return;
 
         // Return if already enhanced
@@ -2498,8 +2489,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         clickedLbl.classList.remove('text-slate-200');
                         clickedLbl.classList.add('text-orange-500', 'font-bold');
                     }
-                    // Instead of a full re-render which closes the dropdown, just update DOM classes
-                    // renderOptions(); // Removed to avoid re-render stutter if needed, though hidden class logic works
                 });
                 dropdown.appendChild(itemDiv);
             });
@@ -2544,6 +2533,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.isTrusted) renderOptions();
         });
     }
+
+    function applyFiltersData(data) {
+        // Capture available options for prefetcher
+        availableFiltersState.filiais = data.filiais || [];
+        availableFiltersState.supervisors = data.supervisors || [];
+        availableFiltersState.cidades = data.cidades || [];
+        availableFiltersState.vendedores = data.vendedores || [];
+        availableFiltersState.fornecedores = data.fornecedores || []; // Array of objects
+        availableFiltersState.tipos_venda = data.tipos_venda || [];
+        availableFiltersState.redes = data.redes || [];
+        availableFiltersState.categorias = data.categorias || [];
+
 
     const updateSingleSelect = (element, items) => {
             const currentVal = element.value;
@@ -3615,12 +3616,14 @@ document.addEventListener('DOMContentLoaded', () => {
              });
              if (currentVal && currentVal !== 'todos') cityAnoFilter.value = currentVal;
              else if (filterData.anos.length > 0) cityAnoFilter.value = filterData.anos[0];
+             enhanceSelectToCustomDropdown(cityAnoFilter);
          }
          
          if (cityMesFilter && cityMesFilter.options.length <= 1) {
             cityMesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; cityMesFilter.appendChild(opt); });
+            enhanceSelectToCustomDropdown(cityMesFilter);
         }
 
         setupCityMultiSelect(cityFilialFilterBtn, cityFilialFilterDropdown, cityFilialFilterDropdown, filterData.filiais, citySelectedFiliais);
@@ -3830,6 +3833,7 @@ document.addEventListener('DOMContentLoaded', () => {
              // Preserve selection or default to current year
              if (currentVal && currentVal !== 'todos') branchAnoFilter.value = currentVal;
              else if (filterData.anos.length > 0) branchAnoFilter.value = filterData.anos[0];
+             enhanceSelectToCustomDropdown(branchAnoFilter);
          }
          
          // Months
@@ -3837,6 +3841,7 @@ document.addEventListener('DOMContentLoaded', () => {
             branchMesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; branchMesFilter.appendChild(opt); });
+            enhanceSelectToCustomDropdown(branchMesFilter);
         }
 
         // Multi Selects
@@ -4629,13 +4634,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (currentVal && currentVal !== 'todos') comparisonAnoFilter.value = currentVal;
                 else if (filterData.anos.length > 0) comparisonAnoFilter.value = filterData.anos[0];
+                enhanceSelectToCustomDropdown(comparisonAnoFilter);
             }
 
             if (comparisonMesFilter && comparisonMesFilter.options.length <= 1) {
                 comparisonMesFilter.innerHTML = '<option value="">Todos</option>';
                 const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
                 meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; comparisonMesFilter.appendChild(opt); });
+                enhanceSelectToCustomDropdown(comparisonMesFilter);
             }
+
+            if (comparisonFilialFilter) enhanceSelectToCustomDropdown(comparisonFilialFilter);
+            if (comparisonPastaFilter) enhanceSelectToCustomDropdown(comparisonPastaFilter);
 
             try {
                 // Try to find specific list containers, fallback to dropdown if not found
