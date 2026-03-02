@@ -705,16 +705,22 @@ self.onmessage = async (event) => {
         // Helper to convert Map to Array of Objects
         const mapToObjArray = (map) => Array.from(map.entries()).map(([codigo, nome]) => ({ codigo, nome }));
 
+        // If history files were omitted, do not send historyChunks to prevent sync/wiping behavior
+        const finalHistoryChunks = (salesPrevYearFile || salesCurrYearFile) ? historyChunks : null;
+
+        // Only return newProducts if productsFile was provided to avoid overwriting table with partial data from sales
+        const finalProducts = productsFile ? Array.from(dimProducts.entries()).map(([codigo, val]) => ({ codigo, descricao: val.descricao, codfor: val.codfor })) : null;
+
         // Collect all data to return
         const resultPayload = {
-            historyChunks: historyChunks,
+            historyChunks: finalHistoryChunks,
             detailedChunks: detailedChunks,
             clients: clientsToInsert,
             newCities: Array.from(newCitiesSet),
             newSupervisors: mapToObjArray(dimSupervisors),
             newVendors: mapToObjArray(dimVendors),
             newProviders: mapToObjArray(dimProviders),
-            newProducts: Array.from(dimProducts.entries()).map(([codigo, val]) => ({ codigo, descricao: val.descricao, codfor: val.codfor }))
+            newProducts: finalProducts
         };
 
         self.postMessage({ type: 'result', data: resultPayload });
