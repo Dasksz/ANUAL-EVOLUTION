@@ -545,15 +545,17 @@ CREATE OR REPLACE FUNCTION public.truncate_table(table_name text)
 RETURNS void
 SET search_path = public
 AS $$
+DECLARE
+  v_table_name text := table_name;
 BEGIN
   IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
-  IF table_name NOT IN ('data_detailed', 'data_history', 'data_clients', 'data_summary', 'cache_filters', 'data_innovations', 'data_nota_perfeita', 'relacao_rota_involves') THEN RAISE EXCEPTION 'Tabela inválida.'; END IF;
+  IF v_table_name NOT IN ('data_detailed', 'data_history', 'data_clients', 'data_summary', 'cache_filters', 'data_innovations', 'data_nota_perfeita', 'relacao_rota_involves') THEN RAISE EXCEPTION 'Tabela inválida.'; END IF;
 
   IF EXISTS (
-      SELECT FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_name = truncate_table.table_name
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public' AND information_schema.tables.table_name = v_table_name
   ) THEN
-      EXECUTE format('TRUNCATE TABLE public.%I;', table_name);
+      EXECUTE format('TRUNCATE TABLE public.%I;', v_table_name);
   END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
