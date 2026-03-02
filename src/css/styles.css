@@ -265,3 +265,9 @@
 #monthly-summary-table th {
     background-image: none !important;
 }
+
+/* Force all table headers to be left-aligned and stay on a single line */
+th {
+    text-align: left !important;
+    white-space: nowrap !important;
+}
