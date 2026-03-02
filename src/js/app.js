@@ -5412,22 +5412,22 @@ function renderInnovationsChart(data) {
             labels: labels,
             datasets: [
                 {
-                    label: 'Mês Atual',
-                    data: currentData,
-                    backgroundColor: '#06b6d4', // cyan-500
-                    borderRadius: 4
+                    label: 'Mês Retrasado',
+                    data: prev2Data,
+                    backgroundColor: '#3b82f6', // blue-500
+                    borderRadius: 2
                 },
                 {
                     label: 'Mês Anterior',
                     data: prev1Data,
                     backgroundColor: '#eab308', // yellow-500
-                    borderRadius: 4
+                    borderRadius: 2
                 },
                 {
-                    label: 'Mês Retrasado',
-                    data: prev2Data,
-                    backgroundColor: '#3b82f6', // blue-500
-                    borderRadius: 4
+                    label: 'Mês Atual',
+                    data: currentData,
+                    backgroundColor: '#06b6d4', // cyan-500
+                    borderRadius: 2
                 }
             ]
         },
@@ -5435,11 +5435,11 @@ function renderInnovationsChart(data) {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'top', labels: { color: '#cbd5e1' } }
+                legend: { position: 'top', labels: { color: '#cbd5e1', usePointStyle: true, boxWidth: 10 } }
             },
             scales: {
-                y: { grid: { color: '#334155' }, ticks: { color: '#cbd5e1', callback: (val) => val + '%' } },
-                x: { grid: { display: false }, ticks: { color: '#cbd5e1' } }
+                y: { grid: { color: '#334155', drawBorder: false }, ticks: { color: '#cbd5e1', callback: (val) => val + '%' } },
+                x: { grid: { display: false }, ticks: { color: '#cbd5e1', font: { size: 10 } } }
             }
         }
     });
@@ -5460,13 +5460,16 @@ function renderInnovationsTable(data) {
         let varColor = varPercent >= 0 ? 'text-green-400' : 'text-red-400';
 
         html += `
-            <tr class="hover:bg-slate-800/50 transition-colors">
-                <td class="px-2 py-3 md:px-4 hidden md:table-cell text-orange-400 font-medium">${p.category_name}</td>
-                <td class="px-2 py-3 md:px-4 font-bold text-white">${p.product_code} - ${p.product_name}</td>
-                <td class="px-2 py-3 md:px-4 text-center hidden md:table-cell text-slate-300">--</td>
-                <td class="px-2 py-3 md:px-4 text-center text-slate-400">${posAnt}%</td>
-                <td class="px-2 py-3 md:px-4 text-center font-bold text-white">${posAtual}%</td>
-                <td class="px-2 py-3 md:px-4 text-center ${varColor} font-bold">${varPercent}%</td>
+            <tr class="hover:bg-slate-700/30 transition-colors">
+                <td class="px-4 py-4 text-slate-300 font-medium whitespace-normal flex items-center gap-2">
+                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    ${p.category_name}
+                </td>
+                <td class="px-4 py-4 text-slate-400 text-xs italic">${p.product_code} - ${p.product_name}</td>
+                <td class="px-4 py-4 text-center font-bold text-white">--</td>
+                <td class="px-4 py-4 text-center text-slate-400">${posAnt}%</td>
+                <td class="px-4 py-4 text-center font-bold text-white">${posAtual}%</td>
+                <td class="px-4 py-4 text-center ${varColor} font-bold">${varPercent}%</td>
             </tr>
         `;
     });
@@ -5477,16 +5480,94 @@ function renderInnovationsTable(data) {
 // Helper para pegar valor de inputs (pode precisar ajuste dependendo de como voce estruturou os selects)
 function getSelectedValues(id) {
     const el = document.getElementById(id);
-    if (!el) return null;
+    if (!el) return [];
     if (el.tagName === 'SELECT') {
         return Array.from(el.selectedOptions).map(o => o.value);
     }
     if (el.tagName === 'INPUT' && el.type === 'hidden') {
          return el.value ? [el.value] : [];
     }
-    // Adicione logica pra dropdown custom se existir
+
+    // Suporte para o dropdown customizado
+    const tagsContainer = el.querySelector('.flex.flex-wrap.gap-1.items-center');
+    if (tagsContainer) {
+        const values = [];
+        tagsContainer.querySelectorAll('.px-2.py-0\\.5').forEach(tag => {
+            const text = tag.textContent.trim().replace('×', '').trim();
+            if (text && text !== 'Todos') values.push(text);
+        });
+        return values.length > 0 ? values : [];
+    }
+
+    // Tentativa generica caso seja input text
+    if (el.tagName === 'INPUT' && el.type === 'text') {
+        return el.value ? [el.value] : [];
+    }
+
+    // Se é um wrapper, verifica se tem um select dentro
+    const selectInside = el.querySelector('select');
+    if (selectInside) {
+        return Array.from(selectInside.selectedOptions).map(o => o.value);
+    }
+
     return [];
 }
+
+// Global Filter Setup for new pages
+const setupInnovationsFilters = async () => {
+    const filters = {
+        p_ano: 'todos',
+        p_mes: null,
+        p_filial: [],
+        p_cidade: [],
+        p_supervisor: [],
+        p_vendedor: [],
+        p_fornecedor: [],
+        p_tipovenda: [],
+        p_rede: [],
+        p_categoria: []
+    };
+    const { data: filterData } = await supabase.rpc('get_dashboard_filters', filters);
+    if (!filterData) return;
+
+    // A lógica de inicializar dropdowns não existia para essas abas, então criamos um setup básico:
+    const createFilter = (id, options) => {
+        const container = document.getElementById(id);
+        if (!container) return;
+
+        // Simples select se não for usar o custom dropdown ainda
+        let select = document.createElement('select');
+        select.className = "w-full bg-[#1e293b] text-white text-sm rounded border border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 p-2 outline-none appearance-none cursor-pointer h-[38px]";
+        select.innerHTML = '<option value="">Todos</option>';
+        options.forEach(opt => {
+            select.innerHTML += `<option value="${opt}">${opt}</option>`;
+        });
+        container.innerHTML = '';
+        container.appendChild(select);
+
+        select.addEventListener('change', () => {
+             if (id.startsWith('innovations')) updateInnovationsMonthView();
+             if (id.startsWith('lp')) updateLojaPerfeitaView();
+        });
+    };
+
+    createFilter('innovations-month-supervisor-filter-wrapper', filterData.supervisors || []);
+    createFilter('innovations-month-vendedor-filter-wrapper', filterData.vendedores || []);
+    createFilter('innovations-month-city-filter', filterData.cidades || []);
+    createFilter('innovations-month-tipo-venda-filter-wrapper', filterData.tipos_venda || []);
+    createFilter('innovations-month-rede-filter-wrapper', filterData.redes || []);
+    createFilter('innovations-month-filial-filter', filterData.filiais || []);
+
+    createFilter('lp-supervisor-filter-wrapper', filterData.supervisors || []);
+    createFilter('lp-vendedor-filter-wrapper', filterData.vendedores || []);
+    createFilter('lp-rede-filter-wrapper', filterData.redes || []);
+    createFilter('lp-codcli-filter', filterData.cidades || []); // Usando cidades provisoriamente
+};
+
+// Listen for view load
+document.addEventListener('DOMContentLoaded', () => {
+    // Add setup on tab click or initially if those tabs are visible
+});
 // --- LOJA PERFEITA VIEW LOGIC ---
 
 async function updateLojaPerfeitaView() {
@@ -5551,14 +5632,14 @@ function renderLpTable(clients) {
         let colorClass = c.score >= 80 ? 'text-green-400' : c.score >= 50 ? 'text-yellow-400' : 'text-red-400';
 
         html += `
-            <tr class="hover:bg-slate-800/50 transition-colors">
-                <td class="px-4 py-3 hidden md:table-cell text-slate-400">${c.codcli}</td>
-                <td class="px-4 py-3 font-medium text-white">${c.client_name}</td>
-                <td class="px-4 py-3 hidden md:table-cell text-slate-300">
+            <tr class="hover:bg-slate-700/30 transition-colors">
+                <td class="px-6 py-4 text-slate-400 text-xs">${c.codcli}</td>
+                <td class="px-6 py-4 font-bold text-slate-200">${c.client_name}</td>
+                <td class="px-6 py-4">
                     <span class="font-bold text-white block">${c.researcher}</span>
                 </td>
-                <td class="px-4 py-3 hidden md:table-cell text-slate-300">${c.city || '--'}</td>
-                <td class="px-4 py-3 text-center font-bold ${colorClass}">${formatNumber(c.score, 1)}</td>
+                <td class="px-6 py-4 text-slate-400">${c.city || '--'}</td>
+                <td class="px-6 py-4 text-center font-bold ${colorClass} text-base">${formatNumber(c.score, 1)}</td>
             </tr>
         `;
     });
@@ -5572,10 +5653,12 @@ function formatNumber(num, decimals = 2) {
 }
 
 function renderInnovationsMonthView() {
+    setupInnovationsFilters(); // Inicia os filtros antes de carregar
     updateInnovationsMonthView();
 }
 
 function renderLojaPerfeitaView() {
+    setupInnovationsFilters();
     updateLojaPerfeitaView();
 }
 });

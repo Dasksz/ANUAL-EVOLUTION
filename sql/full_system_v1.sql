@@ -3292,17 +3292,19 @@ BEGIN
     SELECT json_build_object(
         ''active_clients'', (SELECT COUNT(*) FROM active_clients),
         ''categories'', (
-            SELECT COALESCE(json_agg(
-                json_build_object(
-                    ''name'', category_name,
-                    ''pos_current'', SUM(pos_current),
-                    ''pos_prev1'', SUM(pos_prev1),
-                    ''pos_prev2'', SUM(pos_prev2),
-                    ''products_count'', COUNT(product_code)
-                )
-            ), ''[]''::json)
-            FROM aggregated
-            GROUP BY category_name
+            SELECT COALESCE(json_agg(cat_agg), ''[]''::json)
+            FROM (
+                SELECT
+                    json_build_object(
+                        ''name'', category_name,
+                        ''pos_current'', SUM(pos_current),
+                        ''pos_prev1'', SUM(pos_prev1),
+                        ''pos_prev2'', SUM(pos_prev2),
+                        ''products_count'', COUNT(product_code)
+                    ) as cat_agg
+                FROM aggregated
+                GROUP BY category_name
+            ) sub
         ),
         ''products'', (
             SELECT COALESCE(json_agg(row_to_json(aggregated)), ''[]''::json) FROM aggregated
