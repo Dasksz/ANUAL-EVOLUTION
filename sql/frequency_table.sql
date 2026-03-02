@@ -95,15 +95,15 @@ BEGIN
     END IF;
 
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND codprod = ANY(ARRAY[''' || array_to_string(p_produto, ''',''') || ''']) ';
-        v_where_base_prev := v_where_base_prev || ' AND codprod = ANY(ARRAY[''' || array_to_string(p_produto, ''',''') || ''']) ';
-        v_where_chart := v_where_chart || ' AND codprod = ANY(ARRAY[''' || array_to_string(p_produto, ''',''') || ''']) ';
+        v_where_base := v_where_base || ' AND produto = ANY(ARRAY[''' || array_to_string(p_produto, ''',''') || ''']) ';
+        v_where_base_prev := v_where_base_prev || ' AND produto = ANY(ARRAY[''' || array_to_string(p_produto, ''',''') || ''']) ';
+        v_where_chart := v_where_chart || ' AND produto = ANY(ARRAY[''' || array_to_string(p_produto, ''',''') || ''']) ';
     END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND codprod IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
-        v_where_base_prev := v_where_base_prev || ' AND codprod IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
-        v_where_chart := v_where_chart || ' AND codprod IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
+        v_where_base := v_where_base || ' AND produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
@@ -120,11 +120,11 @@ BEGIN
             COALESCE(cidade, ''SEM CIDADE'') as cidade,
             COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
             codcli,
-            numped,
+            pedido,
             tipovenda,
             vlvenda,
             peso,
-            codprod
+            produto
         FROM public.data_detailed
         LEFT JOIN public.dim_vendedores dv ON public.data_detailed.codusur = dv.codigo
         ' || v_where_base || '
@@ -161,7 +161,7 @@ BEGIN
         GROUP BY filial, cidade, vendedor
     ),
     mix_per_client AS (
-        SELECT filial, cidade, vendedor, codcli, COUNT(DISTINCT codprod) as skus
+        SELECT filial, cidade, vendedor, codcli, COUNT(DISTINCT produto) as skus
         FROM current_data
         GROUP BY filial, cidade, vendedor, codcli
     ),
@@ -171,7 +171,7 @@ BEGIN
         GROUP BY filial, cidade, vendedor
     ),
     freq_pedidos AS (
-        SELECT filial, cidade, vendedor, COUNT(DISTINCT numped) as total_pedidos
+        SELECT filial, cidade, vendedor, COUNT(DISTINCT pedido) as total_pedidos
         FROM current_data
         WHERE tipovenda NOT IN (5, 11)
         GROUP BY filial, cidade, vendedor
@@ -198,7 +198,7 @@ BEGIN
         SELECT
             EXTRACT(YEAR FROM dtped) as ano,
             EXTRACT(MONTH FROM dtped) as mes,
-            COUNT(DISTINCT numped) as total_pedidos,
+            COUNT(DISTINCT pedido) as total_pedidos,
             COUNT(DISTINCT codcli) as total_clientes
         FROM public.data_detailed
         ' || v_where_chart || '
