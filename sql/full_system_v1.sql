@@ -3233,6 +3233,7 @@ DECLARE
     v_month_prev1 text;
     v_month_prev2 text;
     v_where_inov text := ' 1=1 ';
+    v_filial_cities text[];
 BEGIN
     -- 1. Determine Current Month based on latest sale
     SELECT MAX(dtped) INTO v_last_sale_date FROM data_detailed;
@@ -3252,7 +3253,15 @@ BEGIN
     -- 2. Build Where Clauses for Clients
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_filial)) THEN
-            v_where_base := v_where_base || ' AND c.filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
+            SELECT array_agg(DISTINCT cidade) INTO v_filial_cities
+            FROM public.config_city_branches
+            WHERE filial = ANY(p_filial);
+
+            IF v_filial_cities IS NOT NULL THEN
+                v_where_base := v_where_base || ' AND c.cidade = ANY(ARRAY[''' || array_to_string(v_filial_cities, ''',''') || ''']) ';
+            ELSE
+                v_where_base := v_where_base || ' AND 1=0 ';
+            END IF;
         END IF;
     END IF;
 
