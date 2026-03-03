@@ -3,13 +3,44 @@ self.importScripts('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full
 function parseDate(dateString) {
     if (!dateString) return null;
     if (dateString instanceof Date) return !isNaN(dateString.getTime()) ? dateString : null;
-    if (typeof dateString === 'number') return new Date(Math.round((dateString - 25569) * 86400 * 1000));
+
+    // Excel Serial Date (1900 format)
+    if (typeof dateString === 'number') {
+        // Adjust for Excel leap year bug (1900 is not a leap year but Excel thinks it is)
+        let days = dateString;
+        if (days > 60) days -= 1;
+        return new Date(Math.round((days - 25568) * 86400 * 1000));
+    }
+
     if (typeof dateString !== 'string') return null;
 
-    const parts = dateString.split('/');
+    // Check DD/MM/YYYY or DD-MM-YYYY
+    const str = dateString.trim().substring(0, 10); // Extract date part only, ignore time if any
+    const parts = str.split(/[\/\-]/);
+
     if (parts.length === 3) {
-        const [day, month, year] = parts;
-        if (day.length === 2 && month.length === 2 && year.length === 4) return new Date(`${year}-${month}-${day}T00:00:00`);
+        let day, month, year;
+
+        // Assume DD/MM/YYYY if the first part is clearly a day (or standard BR format)
+        // If year is first (YYYY-MM-DD), the first part will have length 4
+        if (parts[0].length === 4) {
+            year = parts[0];
+            month = parts[1];
+            day = parts[2];
+        } else {
+            day = parts[0];
+            month = parts[1];
+            year = parts[2];
+            // Fix 2-digit years if they ever appear (e.g., 26 -> 2026)
+            if (year.length === 2) year = '20' + year;
+        }
+
+        // Validate parts
+        if (day && month && year && !isNaN(day) && !isNaN(month) && !isNaN(year)) {
+            // Using Date.UTC to prevent timezone shift issues
+            const d = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10)));
+            return isNaN(d.getTime()) ? null : d;
+        }
     }
 
     const isoDate = new Date(dateString);
@@ -143,10 +174,17 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
         const dtSaida = rawRow['DTSAIDA'];
         let parsedDtPed = parseDate(dtPed);
         const parsedDtSaida = parseDate(dtSaida);
-        if (parsedDtPed && parsedDtSaida && (parsedDtPed.getFullYear() < parsedDtSaida.getFullYear() || (parsedDtPed.getFullYear() === parsedDtSaida.getFullYear() && parsedDtPed.getMonth() < parsedDtSaida.getMonth()))) {
+
+        // Correctly handle UTC methods since parseDate returns UTC-aligned Date objects now
+        if (parsedDtPed && parsedDtSaida && (parsedDtPed.getUTCFullYear() < parsedDtSaida.getUTCFullYear() || (parsedDtPed.getUTCFullYear() === parsedDtSaida.getUTCFullYear() && parsedDtPed.getUTCMonth() < parsedDtSaida.getUTCMonth()))) {
             dtPed = dtSaida;
             parsedDtPed = parsedDtSaida;
         }
+
+        // Ensure final output string is YYYY-MM-DD
+        const formattedDtPed = parsedDtPed ? parsedDtPed.toISOString().split('T')[0] : null;
+        const formattedDtSaida = parsedDtSaida ? parsedDtSaida.toISOString().split('T')[0] : null;
+
         const productCode = String(rawRow['PRODUTO'] || '').trim();
         const qtdeMaster = productMasterMap.get(productCode) || 1;
         const qtVenda = parseInt(String(rawRow['QTVENDA'] || '0').trim(), 10);
@@ -174,8 +212,8 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
             vlbonific: parseBrazilianNumber(rawRow['VLBONIFIC']),
             vldevolucao: parseBrazilianNumber(rawRow['VLDEVOLUCAO']),
             totpesoliq: parseBrazilianNumber(rawRow['TOTPESOLIQ']),
-            dtped: parsedDtPed ? parsedDtPed.toISOString() : null,
-            dtsaida: parsedDtSaida ? parsedDtSaida.toISOString() : null,
+            dtped: formattedDtPed,
+            dtsaida: formattedDtSaida,
             posicao: String(rawRow['POSICAO'] || ''),
             filial: filialValue,
             codsupervisor: String(rawRow['CODSUPERVISOR'] || '').trim(),
