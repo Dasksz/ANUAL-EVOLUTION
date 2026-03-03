@@ -1,0 +1,100 @@
+CREATE OR REPLACE FUNCTION get_innovations_data(
+    p_filial text[] default null,
+    p_cidade text[] default null,
+    p_supervisor text[] default null,
+    p_vendedor text[] default null,
+    p_rede text[] default null,
+    p_tipovenda text[] default null,
+    p_categoria_inovacao text default null,
+    p_ano text default null,
+    p_mes text default null
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $BODY$
+DECLARE
+    v_result json;
+    v_where_base text := ' WHERE 1=1 ';
+    v_sql text;
+
+    v_last_sale_date date;
+
+    v_target_date date;
+
+    -- New date boundary variables
+    v_curr_start date;
+    v_curr_end date;
+    v_prev_start date;
+    v_prev_end date;
+    v_12m_start date;
+    v_12m_end date;
+
+    v_where_inov text := ' 1=1 ';
+    v_filial_cities text[];
+BEGIN
+    -- 1. Determine the target date based on filters and latest sale
+    SELECT MAX(dtped) INTO v_last_sale_date FROM data_detailed;
+
+    IF v_last_sale_date IS NULL THEN
+        RETURN json_build_object('active_clients', 0, 'categories', '[]'::json, 'products', '[]'::json);
+    END IF;
+
+    -- Se tem ano filtrado
+    IF p_ano IS NOT NULL AND p_ano != 'todos' THEN
+        IF p_mes IS NOT NULL AND p_mes != '' THEN
+            -- Se tem ano e mês
+            v_target_date := to_date(p_ano || '-' || p_mes || '-01', 'YYYY-MM-DD');
+            -- Se for o mês atual ou futuro comparado à ultima venda, ajusta pra não passar do máximo disponível
+            IF v_target_date > v_last_sale_date THEN
+               -- Aqui deixamos como está, vai mostrar 0 se for no futuro, ou o usuário sabe o que tá fazendo
+               NULL;
+            END IF;
+        ELSE
+            -- Se tem só ano, pega o mês mais recente daquele ano
+            -- ex: Se v_last_sale_date é 2026-03-03, e p_ano é 2026 -> v_target_date = 2026-03-03
+            -- Se p_ano é 2025 -> v_target_date = 2025-12-31
+            IF p_ano = to_char(v_last_sale_date, 'YYYY') THEN
+                v_target_date := v_last_sale_date;
+            ELSE
+                v_target_date := to_date(p_ano || '-12-31', 'YYYY-MM-DD');
+            END IF;
+        END IF;
+    ELSE
+        -- Sem filtro de ano, usa o latest
+        v_target_date := v_last_sale_date;
+    END IF;
+
+    -- Calculate exact date boundaries for indexing
+    v_curr_start := date_trunc('month', v_target_date)::date;
+    v_curr_end := (v_curr_start + interval '1 month')::date;
+
+    v_prev_start := (v_curr_start - interval '1 year')::date;
+    v_prev_end := (v_curr_end - interval '1 year')::date;
+
+    v_12m_start := (v_curr_start - interval '12 months')::date;
+    v_12m_end := v_curr_start; -- The 12 months before current month
+
+    -- 2. Build Where Clauses for Clients
+    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+        IF NOT ('ambas' = ANY(p_filial)) THEN
+            SELECT array_agg(DISTINCT cidade) INTO v_filial_cities
+            FROM public.config_city_branches
+            WHERE filial = ANY(p_filial);
+
+            IF v_filial_cities IS NOT NULL THEN
+                v_where_base := v_where_base || ' AND c.cidade = ANY(ARRAY[''' || array_to_string(v_filial_cities, ''',''') || ''']) ';
+            ELSE
+                v_where_base := v_where_base || ' AND 1=0 ';
+            END IF;
+        END IF;
+    END IF;
+
+    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
+        v_where_base := v_where_base || ' AND c.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+    END IF;
+
+    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+        v_where_base := v_where_base || ' AND c.rca1 = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || ''']) ';
+    END IF;
