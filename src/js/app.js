@@ -1667,7 +1667,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             updateStatus('Atualizando filtros...', 98);
-            await supabase.rpc('refresh_cache_filters');
+            const { error: filterErr } = await supabase.rpc('refresh_cache_filters');
+            if (filterErr) throw new Error(`Erro ao atualizar filtros: ${filterErr.message}`);
 
         } catch (error) {
             console.error(error);
