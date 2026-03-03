@@ -168,6 +168,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const navLojaPerfeitaBtn = document.getElementById('nav-loja-perfeita-btn');
     const navComparativoBtn = document.getElementById('nav-comparativo-btn');
     const optimizeDbBtnNav = document.getElementById('optimize-db-btn-nav');
+    const profileMenuBtn = document.getElementById('profile-menu-btn');
+    const profileDropdown = document.getElementById('profile-dropdown');
+    const profileDropdownName = document.getElementById('profile-dropdown-name');
+    const profileDropdownRole = document.getElementById('profile-dropdown-role');
+
+    // Profile Dropdown Logic
+    if (profileMenuBtn && profileDropdown) {
+        profileMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            profileDropdown.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!profileDropdown.contains(e.target) && !profileMenuBtn.contains(e.target)) {
+                profileDropdown.classList.add('hidden');
+            }
+        });
+    }
 
     // Views
     const dashboardContainer = document.getElementById('dashboard-container');
@@ -735,6 +753,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function updateProfileMenu(name, role) {
+        if (profileDropdownName) profileDropdownName.textContent = name || 'Usuário';
+        if (profileDropdownRole) profileDropdownRole.textContent = role || 'Sem Função';
+    }
+
     async function checkProfileStatus(user) {
         if (isAppReady) return;
 
@@ -743,9 +766,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (cachedAuth) {
             try {
-                const { status, role } = JSON.parse(cachedAuth);
+                const { status, role, name } = JSON.parse(cachedAuth);
                 if (status === 'aprovado') {
                     window.userRole = role;
+                    updateProfileMenu(name, role);
                     isAppReady = true;
                     handleInitialRouting();
                     return;
@@ -759,7 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Tempo limite de conexão excedido. Verifique sua internet.')), 10000));
-            const profileQuery = supabase.from('profiles').select('status, role').eq('id', user.id).single();
+            const profileQuery = supabase.from('profiles').select('status, role, name').eq('id', user.id).single();
 
             const { data: profile, error } = await Promise.race([profileQuery, timeout]);
 
@@ -778,9 +802,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const status = profile?.status || 'pendente';
             if (profile?.role) window.userRole = profile.role;
+            updateProfileMenu(profile?.name, profile?.role);
 
             if (status === 'aprovado') {
-                localStorage.setItem(cacheKey, JSON.stringify({ status: 'aprovado', role: profile?.role }));
+                localStorage.setItem(cacheKey, JSON.stringify({ status: 'aprovado', role: profile?.role, name: profile?.name }));
                 const currentScreen = document.getElementById('app-layout');
                 if (currentScreen.classList.contains('hidden')) {
                     isAppReady = true;
@@ -1172,10 +1197,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function checkRoleForUI() {
         if (window.userRole === 'adm') {
             if(navUploaderBtn) navUploaderBtn.classList.remove('hidden');
+            if(navUploaderBtn) navUploaderBtn.classList.add('flex');
             if(optimizeDbBtnNav) optimizeDbBtnNav.classList.remove('hidden');
+            if(optimizeDbBtnNav) optimizeDbBtnNav.classList.add('flex');
         } else {
             if(navUploaderBtn) navUploaderBtn.classList.add('hidden');
+            if(navUploaderBtn) navUploaderBtn.classList.remove('flex');
             if(optimizeDbBtnNav) optimizeDbBtnNav.classList.add('hidden');
+            if(optimizeDbBtnNav) optimizeDbBtnNav.classList.remove('flex');
         }
     }
 
