@@ -179,7 +179,6 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
             posicao: String(rawRow['POSICAO'] || ''),
             filial: filialValue,
             codsupervisor: String(rawRow['CODSUPERVISOR'] || '').trim(),
-            estoqueunit: parseBrazilianNumber(rawRow['ESTOQUEUNIT']),
             tipovenda: String(rawRow['TIPOVENDA'] || '').trim()
         };
     });
@@ -818,7 +817,6 @@ self.onmessage = async (event) => {
                 // 2b. History-specific Optimization
                 if (isHistory) {
                     delete newSale.pedido;
-                    delete newSale.estoqueunit;
                     delete newSale.posicao;
                 }
 

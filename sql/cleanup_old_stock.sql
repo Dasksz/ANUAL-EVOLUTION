@@ -14,4 +14,13 @@ BEGIN
     ) THEN
         ALTER TABLE public.data_detailed DROP COLUMN estoqueunit;
     END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'data_history'
+        AND column_name = 'estoqueunit'
+    ) THEN
+        ALTER TABLE public.data_history DROP COLUMN estoqueunit;
+    END IF;
 END $$;
