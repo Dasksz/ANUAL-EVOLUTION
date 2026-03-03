@@ -734,6 +734,33 @@ self.onmessage = async (event) => {
         const processedCurrYearHist = processSalesData(reattributedCurrYearHist, clientMap, productMasterMap);
         const processedCurrMonth = processSalesData(reattributedCurrMonth, clientMap, productMasterMap);
 
+        // --- Collect Stock from Current Month ---
+        self.postMessage({ type: 'progress', status: 'Extraindo estoque...', percentage: 75 });
+        const productStockMap = new Map(); // "codigo-filial" -> { codigo, filial, estoque }
+        salesCurrMonthDataRaw.forEach(row => {
+            const productCode = String(row['PRODUTO'] || '').trim();
+            if (!productCode) return;
+
+            let filialValue = String(row['FILIAL'] || '').trim();
+            if (filialValue === '5') filialValue = '05';
+            if (filialValue === '8') filialValue = '08';
+            if (!filialValue) return;
+
+            const stockStr = row['ESTOQUEUNIT'];
+            if (stockStr !== undefined && stockStr !== null && stockStr !== '') {
+                const stockVal = parseBrazilianNumber(stockStr);
+                const key = `${productCode}-${filialValue}`;
+                if (!productStockMap.has(key)) {
+                    productStockMap.set(key, {
+                        codigo: productCode,
+                        filial: filialValue,
+                        estoque: stockVal
+                    });
+                }
+            }
+        });
+        const finalProductStock = Array.from(productStockMap.values());
+
         // --- Collect Dimensions (Supervisors, Vendors, Providers) ---
         self.postMessage({ type: 'progress', status: 'Extraindo dimensões (Supervisores, Vendedores)...', percentage: 80 });
         
@@ -881,6 +908,7 @@ self.onmessage = async (event) => {
             newVendors: mapToObjArray(dimVendors),
             newProviders: mapToObjArray(dimProviders),
             newProducts: finalProducts,
+            productStock: finalProductStock,
             innovations: finalInnovations,
             notaPerfeita: finalNotaPerfeita
         };
