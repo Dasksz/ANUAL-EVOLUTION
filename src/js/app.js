@@ -4650,7 +4650,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (comparisonPastaFilter) enhanceSelectToCustomDropdown(comparisonPastaFilter);
 
             try {
-                // Try to find specific list containers, fallback to dropdown if not found
+        // Helper
                 const getList = (id) => document.getElementById(id);
                 
                 // Supervisors
@@ -5325,15 +5325,15 @@ async function updateInnovationsMonthView() {
     const mesSelect = document.getElementById('innovations-mes-filter');
 
     const filters = {
-        p_ano: anoSelect ? anoSelect.value : null,
-        p_mes: mesSelect ? mesSelect.value : null,
-        p_cidade: getSelectedValues('innovations-month-city-filter'),
-        p_filial: getSelectedValues('innovations-month-filial-filter'),
-        p_supervisor: getSelectedValues('innovations-month-supervisor-filter-wrapper'),
-        p_vendedor: getSelectedValues('innovations-month-vendedor-filter-wrapper'),
-        p_rede: getSelectedValues('innovations-month-rede-filter-wrapper'),
-        p_tipovenda: getSelectedValues('innovations-month-tipo-venda-filter-wrapper'),
-        p_categoria_inovacao: document.getElementById('innovations-month-category-filter') && document.getElementById('innovations-month-category-filter').value ? document.getElementById('innovations-month-category-filter').value : null
+        p_ano: anoSelect ? (anoSelect.value === 'todos' ? null : anoSelect.value) : null,
+        p_mes: mesSelect ? (mesSelect.value === '' ? null : mesSelect.value) : null,
+        p_cidade: innovationsSelectedCidades,
+        p_filial: innovationsSelectedFiliais,
+        p_supervisor: innovationsSelectedSupervisors,
+        p_vendedor: innovationsSelectedVendedores,
+        p_rede: innovationsSelectedRedes,
+        p_tipovenda: innovationsSelectedTiposVenda,
+        p_categoria_inovacao: innovationsSelectedCategorias
     };
 
     // Replace empty arrays with null to avoid PostgREST overloading resolution issues
@@ -5346,7 +5346,7 @@ async function updateInnovationsMonthView() {
         p_vendedor: filters.p_vendedor.length ? filters.p_vendedor : null,
         p_rede: filters.p_rede.length ? filters.p_rede : null,
         p_tipovenda: filters.p_tipovenda.length ? filters.p_tipovenda : null,
-        p_categoria_inovacao: filters.p_categoria_inovacao
+        p_categoria_inovacao: filters.p_categoria_inovacao && filters.p_categoria_inovacao.length ? filters.p_categoria_inovacao[0] : null // Categoria Inovacao was a text param
     };
 
     try {
@@ -5472,38 +5472,99 @@ function renderInnovationsChart(data) {
     });
 }
 
-function renderInnovationsTable(data) {
+// Make global to be accessible by inline onclick handler
+window.toggleInnovationRow = function(categoryNameStr) {
+    const safeId = categoryNameStr.replace(/[^a-zA-Z0-9]/g, '_');
+    const childRows = document.querySelectorAll(`.innovations-child-${safeId}`);
+    const icon = document.getElementById(`icon-innovations-${safeId}`);
+    
+    if (childRows.length === 0) return;
+    
+    const isHidden = childRows[0].classList.contains('hidden');
+    
+    childRows.forEach(row => {
+        if (isHidden) {
+            row.classList.remove('hidden');
+        } else {
+            row.classList.add('hidden');
+        }
+    });
+    
+    if (icon) {
+        if (isHidden) {
+            // Expand (Minus icon)
+            icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>';
+        } else {
+            // Collapse (Plus icon)
+            icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>';
+        }
+    }
+};
+
+window.renderInnovationsTable = function(data) {
     const tbody = document.getElementById('innovations-month-table-body');
-    if (!tbody || !data || !data.products) return;
+    if (!tbody || !data || !data.categories) return;
 
     let html = '';
     const active = data.active_clients || 1;
 
-    data.products.forEach(p => {
-        let posAtual = ((p.pos_current / active) * 100).toFixed(2);
-        let posPrevYear = ((p.pos_prev_year / active) * 100).toFixed(2);
-        let posAvg12m = ((p.pos_avg_12m / active) * 100).toFixed(2);
+    data.categories.forEach((cat, idx) => {
+        let catPosAtual = ((cat.pos_current / active) * 100).toFixed(2);
+        let catPosPrevYear = ((cat.pos_prev_year / active) * 100).toFixed(2);
+        let catPosAvg12m = ((cat.pos_avg_12m / active) * 100).toFixed(2);
+        let catEstoque = Math.round(cat.estoque_current || 0);
         
-        // Variação vs Mês Ano Anterior
-        let varPercent = p.pos_prev_year > 0 ? (((p.pos_current - p.pos_prev_year) / p.pos_prev_year) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
-
+        let varPercent = cat.pos_prev_year > 0 ? (((cat.pos_current - cat.pos_prev_year) / cat.pos_prev_year) * 100).toFixed(1) : (cat.pos_current > 0 ? 100 : 0);
         let varColor = varPercent >= 0 ? 'text-green-400' : 'text-red-400';
+        
+        const safeId = cat.name.replace(/[^a-zA-Z0-9]/g, '_');
 
+        // Category Row (Parent)
         html += `
-            <tr class="hover:bg-slate-700/30 transition-colors">
-                <td class="px-4 py-4 text-slate-300 font-medium whitespace-normal flex items-center gap-2">
-                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                    ${p.category_name}
+            <tr class="hover:bg-slate-700/30 transition-colors cursor-pointer bg-slate-800/30" onclick="toggleInnovationRow('${cat.name}')">
+                <td class="px-4 py-4 text-white font-bold whitespace-normal flex items-center gap-2">
+                    <svg id="icon-innovations-${safeId}" class="w-4 h-4 text-orange-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    ${cat.name}
                 </td>
-                <td class="px-4 py-4 text-slate-400 text-xs italic">${p.product_code} - ${p.product_name}</td>
-                <td class="px-4 py-4 text-center font-bold text-white">--</td>
-                <td class="px-4 py-4 text-center text-slate-400">${posAvg12m}%</td>
-                <td class="px-4 py-4 text-center text-slate-400">${posPrevYear}%</td>
-                <td class="px-4 py-4 text-center font-bold text-white">${posAtual}%</td>
+                <td class="px-4 py-4 text-slate-400 text-xs italic"></td>
+                <td class="px-4 py-4 text-center font-bold text-white">${catEstoque} cx</td>
+                <td class="px-4 py-4 text-center text-slate-400">${catPosAvg12m}%</td>
+                <td class="px-4 py-4 text-center text-slate-400">${catPosPrevYear}%</td>
+                <td class="px-4 py-4 text-center font-bold text-white">${catPosAtual}%</td>
                 <td class="px-4 py-4 text-center ${varColor} font-bold">${varPercent}%</td>
             </tr>
         `;
+
+        // Product Rows (Children)
+        const productsInCat = data.products.filter(p => p.category_name === cat.name);
+        productsInCat.forEach(p => {
+            let posAtual = ((p.pos_current / active) * 100).toFixed(2);
+            let posPrevYear = ((p.pos_prev_year / active) * 100).toFixed(2);
+            let posAvg12m = ((p.pos_avg_12m / active) * 100).toFixed(2);
+            let pEstoque = Math.round(p.estoque_current || 0);
+            
+            let pVarPercent = p.pos_prev_year > 0 ? (((p.pos_current - p.pos_prev_year) / p.pos_prev_year) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
+            let pVarColor = pVarPercent >= 0 ? 'text-green-400' : 'text-red-400';
+
+            html += `
+                <tr class="hover:bg-slate-700/30 transition-colors hidden innovations-child-${safeId}">
+                    <td class="px-4 py-4 pl-10 text-slate-400 text-xs flex items-center gap-2">
+                        <svg class="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </td>
+                    <td class="px-4 py-4 text-slate-300 text-xs">${p.product_code} - ${p.product_name}</td>
+                    <td class="px-4 py-4 text-center font-medium text-slate-300">${pEstoque} cx</td>
+                    <td class="px-4 py-4 text-center text-slate-500">${posAvg12m}%</td>
+                    <td class="px-4 py-4 text-center text-slate-500">${posPrevYear}%</td>
+                    <td class="px-4 py-4 text-center font-medium text-slate-300">${posAtual}%</td>
+                    <td class="px-4 py-4 text-center ${pVarColor} text-xs font-bold">${pVarPercent}%</td>
+                </tr>
+            `;
+        });
     });
+
+    if (data.categories.length === 0) {
+        html = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum dado encontrado para os filtros selecionados.</td></tr>';
+    }
 
     tbody.innerHTML = html;
 }
@@ -5545,8 +5606,71 @@ function getSelectedValues(id) {
 }
 
 // Global Filter Setup for new pages
+let innovationsSelectedSupervisors = [];
+let innovationsSelectedVendedores = [];
+let innovationsSelectedCidades = [];
+let innovationsSelectedTiposVenda = [];
+let innovationsSelectedRedes = [];
+let innovationsSelectedFiliais = [];
+let innovationsSelectedCategorias = [];
+
+// DOM Elements
+const innovationsSupervisorFilterBtn = document.getElementById('innovations-supervisor-filter-btn');
+const innovationsSupervisorFilterDropdown = document.getElementById('innovations-supervisor-filter-dropdown');
+const innovationsVendedorFilterBtn = document.getElementById('innovations-vendedor-filter-btn');
+const innovationsVendedorFilterDropdown = document.getElementById('innovations-vendedor-filter-dropdown');
+const innovationsVendedorFilterList = document.getElementById('innovations-vendedor-filter-list');
+const innovationsVendedorFilterSearch = document.getElementById('innovations-vendedor-filter-search');
+const innovationsCidadeFilterBtn = document.getElementById('innovations-cidade-filter-btn');
+const innovationsCidadeFilterDropdown = document.getElementById('innovations-cidade-filter-dropdown');
+const innovationsCidadeFilterList = document.getElementById('innovations-cidade-filter-list');
+const innovationsCidadeFilterSearch = document.getElementById('innovations-cidade-filter-search');
+const innovationsTipovendaFilterBtn = document.getElementById('innovations-tipovenda-filter-btn');
+const innovationsTipovendaFilterDropdown = document.getElementById('innovations-tipovenda-filter-dropdown');
+const innovationsRedeFilterBtn = document.getElementById('innovations-rede-filter-btn');
+const innovationsRedeFilterDropdown = document.getElementById('innovations-rede-filter-dropdown');
+const innovationsRedeFilterList = document.getElementById('innovations-rede-filter-list');
+const innovationsRedeFilterSearch = document.getElementById('innovations-rede-filter-search');
+const innovationsFilialFilterBtn = document.getElementById('innovations-filial-filter-btn');
+const innovationsFilialFilterDropdown = document.getElementById('innovations-filial-filter-dropdown');
+const innovationsCategoriaFilterBtn = document.getElementById('innovations-categoria-filter-btn');
+const innovationsCategoriaFilterDropdown = document.getElementById('innovations-categoria-filter-dropdown');
+
+// Filter change handler
+const handleInnovationsFilterChange = () => {
+    updateInnovationsMonthView();
+};
+
+document.addEventListener('click', (e) => {
+    const dropdowns = [
+        innovationsSupervisorFilterDropdown, innovationsVendedorFilterDropdown,
+        innovationsCidadeFilterDropdown, innovationsTipovendaFilterDropdown,
+        innovationsRedeFilterDropdown, innovationsFilialFilterDropdown,
+        innovationsCategoriaFilterDropdown
+    ];
+    const btns = [
+        innovationsSupervisorFilterBtn, innovationsVendedorFilterBtn,
+        innovationsCidadeFilterBtn, innovationsTipovendaFilterBtn,
+        innovationsRedeFilterBtn, innovationsFilialFilterBtn,
+        innovationsCategoriaFilterBtn
+    ];
+    let anyClosed = false;
+
+    dropdowns.forEach((dd, idx) => {
+        if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
+            dd.classList.add('hidden');
+            anyClosed = true;
+        }
+    });
+
+    if (anyClosed && innovationsMonthView && !innovationsMonthView.classList.contains('hidden')) {
+        handleInnovationsFilterChange();
+    }
+});
+
+
 const setupInnovationsFilters = async () => {
-    if (isInnovationsInitialized && isLojaPerfeitaInitialized) return;
+    if (isInnovationsInitialized) return;
 
     const filters = {
         p_ano: 'todos',
@@ -5563,91 +5687,56 @@ const setupInnovationsFilters = async () => {
     const { data: filterData } = await supabase.rpc('get_dashboard_filters', filters);
     if (!filterData) return;
 
-    // A lógica de inicializar dropdowns não existia para essas abas, então criamos um setup básico com custom dropdown
-    const createFilter = (id, options) => {
-        const container = document.getElementById(id);
-        if (!container) return;
-
-        let select = document.createElement('select');
-        select.multiple = true;
-        select.className = "hidden"; // Esconde o select original
-        
-        options.forEach(opt => {
-            select.innerHTML += `<option value="${opt}">${opt}</option>`;
+    // Load Ano and Mes
+    const anoSelect = document.getElementById('innovations-ano-filter');
+    const mesSelect = document.getElementById('innovations-mes-filter');
+    
+    if (anoSelect && filterData.anos) {
+        anoSelect.innerHTML = '<option value="todos">Todos</option>';
+        filterData.anos.forEach(ano => {
+            anoSelect.innerHTML += `<option value="${ano}">${ano}</option>`;
         });
-        container.innerHTML = '';
-        container.appendChild(select);
-
-        const applyCallback = () => {
-             if (id.startsWith('innovations')) updateInnovationsMonthView();
-             if (id.startsWith('lp')) updateLojaPerfeitaView();
-        };
-
-        // Usa o custom dropdown para manter consistência visual
-        enhanceSelectToCustomDropdown(select, 'Todos', applyCallback);
-    };
-
-    if (!isInnovationsInitialized) {
-        createFilter('innovations-month-supervisor-filter-wrapper', filterData.supervisors || []);
-        createFilter('innovations-month-vendedor-filter-wrapper', filterData.vendedores || []);
-        createFilter('innovations-month-city-filter', filterData.cidades || []);
-        createFilter('innovations-month-tipo-venda-filter-wrapper', filterData.tipos_venda || []);
-        createFilter('innovations-month-rede-filter-wrapper', filterData.redes || []);
-        createFilter('innovations-month-filial-filter', filterData.filiais || []);
-        
-        // Setup Ano and Mes standard filters using standard logic or generic enhance
-        const anoSelect = document.getElementById('innovations-ano-filter');
-        const mesSelect = document.getElementById('innovations-mes-filter');
-        
-        if (anoSelect && filterData.anos) {
-            filterData.anos.forEach(ano => {
-                anoSelect.innerHTML += `<option value="${ano}">${ano}</option>`;
-            });
-            enhanceSelectToCustomDropdown(anoSelect, 'Todos', updateInnovationsMonthView);
-        }
-        
-        if (mesSelect) {
-            // Se filterData.meses não for garantido com objetos .numero, recriar a lógica padrão
-            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-            meses.forEach((m, i) => { 
-                const opt = document.createElement('option'); 
-                const val = String(i + 1).padStart(2, '0');
-                opt.value = val; 
-                opt.textContent = m; 
-                mesSelect.appendChild(opt); 
-            });
-            enhanceSelectToCustomDropdown(mesSelect, 'Todos', updateInnovationsMonthView);
-        }
-
-        // Load Inovações Categories
-        try {
-            const { data: inovacData } = await supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true });
-            if (inovacData) {
-                const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
-                const inovSelect = document.getElementById('innovations-month-category-filter');
-                if (inovSelect && inovSelect.options.length <= 1) {
-                    uniqueInovacoes.forEach(opt => {
-                        const optionEl = document.createElement('option');
-                        optionEl.value = opt;
-                        optionEl.textContent = opt;
-                        inovSelect.appendChild(optionEl);
-                    });
-                    enhanceSelectToCustomDropdown(inovSelect, 'Todas as Categorias', updateInnovationsMonthView);
-                }
-            }
-        } catch (e) {
-            console.error("Error loading inovacoes categories", e);
-        }
-        isInnovationsInitialized = true;
+        enhanceSelectToCustomDropdown(anoSelect);
+        anoSelect.addEventListener('change', handleInnovationsFilterChange);
+    }
+    
+    if (mesSelect) {
+        mesSelect.innerHTML = '<option value="">Todos</option>';
+        const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        meses.forEach((m, i) => { 
+            const opt = document.createElement('option'); 
+            const val = String(i + 1).padStart(2, '0');
+            opt.value = val; 
+            opt.textContent = m; 
+            mesSelect.appendChild(opt); 
+        });
+        enhanceSelectToCustomDropdown(mesSelect);
+        mesSelect.addEventListener('change', handleInnovationsFilterChange);
     }
 
-    if (!isLojaPerfeitaInitialized) {
-        createFilter('lp-supervisor-filter-wrapper', filterData.supervisors || []);
-        createFilter('lp-vendedor-filter-wrapper', filterData.vendedores || []);
-        createFilter('lp-rede-filter-wrapper', filterData.redes || []);
-        createFilter('lp-codcli-filter', filterData.cidades || []); // Usando cidades provisoriamente
-        isLojaPerfeitaInitialized = true;
+    // Load Multi-Selects using standard CityMultiSelect pattern
+    setupCityMultiSelect(innovationsSupervisorFilterBtn, innovationsSupervisorFilterDropdown, innovationsSupervisorFilterDropdown, filterData.supervisors, innovationsSelectedSupervisors);
+    setupCityMultiSelect(innovationsVendedorFilterBtn, innovationsVendedorFilterDropdown, innovationsVendedorFilterList, filterData.vendedores, innovationsSelectedVendedores, innovationsVendedorFilterSearch);
+    setupCityMultiSelect(innovationsCidadeFilterBtn, innovationsCidadeFilterDropdown, innovationsCidadeFilterList, filterData.cidades, innovationsSelectedCidades, innovationsCidadeFilterSearch);
+    setupCityMultiSelect(innovationsTipovendaFilterBtn, innovationsTipovendaFilterDropdown, innovationsTipovendaFilterDropdown, filterData.tipos_venda, innovationsSelectedTiposVenda);
+    
+    const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
+    setupCityMultiSelect(innovationsRedeFilterBtn, innovationsRedeFilterDropdown, innovationsRedeFilterList, redes, innovationsSelectedRedes, innovationsRedeFilterSearch);
+    
+    setupCityMultiSelect(innovationsFilialFilterBtn, innovationsFilialFilterDropdown, innovationsFilialFilterDropdown, filterData.filiais, innovationsSelectedFiliais);
+
+    // Load Inovações Categories
+    try {
+        const { data: inovacData } = await supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true });
+        if (inovacData) {
+            const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
+            setupCityMultiSelect(innovationsCategoriaFilterBtn, innovationsCategoriaFilterDropdown, innovationsCategoriaFilterDropdown, uniqueInovacoes, innovationsSelectedCategorias);
+        }
+    } catch (e) {
+        console.error("Error loading inovacoes categories", e);
     }
+    
+    isInnovationsInitialized = true;
 };
 
 // Listen for view load
@@ -5764,24 +5853,15 @@ window.clearAllFilters = function(prefix) {
         if (anoSelect) anoSelect.value = 'todos';
         if (mesSelect) mesSelect.value = '';
         
-        const catSelect = document.getElementById('innovations-month-category-filter');
-        if (catSelect) catSelect.value = '';
+        innovationsSelectedSupervisors = [];
+        innovationsSelectedVendedores = [];
+        innovationsSelectedCidades = [];
+        innovationsSelectedTiposVenda = [];
+        innovationsSelectedRedes = [];
+        innovationsSelectedFiliais = [];
+        innovationsSelectedCategorias = [];
         
-        const wrappers = ['innovations-month-supervisor-filter-wrapper', 'innovations-month-vendedor-filter-wrapper', 'innovations-month-city-filter', 'innovations-month-tipo-venda-filter-wrapper', 'innovations-month-rede-filter-wrapper', 'innovations-month-filial-filter'];
-        wrappers.forEach(id => {
-            const container = document.getElementById(id);
-            if (container) {
-                const select = container.querySelector('select');
-                if (select) {
-                    Array.from(select.options).forEach(opt => opt.selected = false);
-                    const tagContainer = container.querySelector('.flex.flex-wrap.gap-1.items-center');
-                    if (tagContainer) tagContainer.innerHTML = '';
-                    const mainBtn = container.querySelector('button.w-full.bg-\\[\\#1e293b\\]');
-                    if (mainBtn) mainBtn.innerHTML = '<span class="truncate w-[90%] text-left">Todos</span><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
-                }
-            }
-        });
-        updateInnovationsMonthView();
+        setupInnovationsFilters().then(updateInnovationsMonthView);
     } else if (prefix === 'lp') {
         const wrappers = ['lp-supervisor-filter-wrapper', 'lp-vendedor-filter-wrapper', 'lp-rede-filter-wrapper', 'lp-codcli-filter'];
         wrappers.forEach(id => {
