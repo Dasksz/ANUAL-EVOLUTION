@@ -745,9 +745,11 @@ self.onmessage = async (event) => {
             if (filialValue === '8') filialValue = '08';
             if (!filialValue) return;
 
-            const stockStr = row['ESTOQUEUNIT'];
+            const stockStr = row['ESTOQUECX'];
             if (stockStr !== undefined && stockStr !== null && stockStr !== '') {
-                const stockVal = parseBrazilianNumber(stockStr);
+                let stockVal = parseBrazilianNumber(stockStr);
+                stockVal = Math.round(stockVal * 1000) / 1000;
+                
                 const key = `${productCode}-${filialValue}`;
                 if (!productStockMap.has(key)) {
                     productStockMap.set(key, {
