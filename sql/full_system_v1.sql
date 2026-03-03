@@ -55,14 +55,14 @@ BEGIN
 
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_target_month := p_mes::int;
-        v_where_base := v_where_base || ' AND EXTRACT(YEAR FROM dtped) = ' || v_current_year || ' AND EXTRACT(MONTH FROM dtped) = ' || v_target_month;
-        v_where_base_prev := v_where_base_prev || ' AND EXTRACT(YEAR FROM dtped) = ' || v_previous_year || ' AND EXTRACT(MONTH FROM dtped) = ' || v_target_month;
+        v_where_base := v_where_base || ' AND dtped >= make_date(' || v_current_year || ', ' || v_target_month || ', 1) AND dtped < make_date(' || v_current_year || ', ' || v_target_month || ', 1) + interval ''1 month'' ';
+        v_where_base_prev := v_where_base_prev || ' AND dtped >= make_date(' || v_previous_year || ', ' || v_target_month || ', 1) AND dtped < make_date(' || v_previous_year || ', ' || v_target_month || ', 1) + interval ''1 month'' ';
     ELSE
-        v_where_base := v_where_base || ' AND EXTRACT(YEAR FROM dtped) = ' || v_current_year;
-        v_where_base_prev := v_where_base_prev || ' AND EXTRACT(YEAR FROM dtped) = ' || v_previous_year;
+        v_where_base := v_where_base || ' AND dtped >= make_date(' || v_current_year || ', 1, 1) AND dtped < make_date(' || v_current_year + 1 || ', 1, 1) ';
+        v_where_base_prev := v_where_base_prev || ' AND dtped >= make_date(' || v_previous_year || ', 1, 1) AND dtped < make_date(' || v_previous_year + 1 || ', 1, 1) ';
     END IF;
 
-    v_where_chart := v_where_chart || ' AND EXTRACT(YEAR FROM dtped) IN (' || v_current_year || ', ' || v_previous_year || ') ';
+    v_where_chart := v_where_chart || ' AND dtped >= make_date(' || v_previous_year || ', 1, 1) AND dtped < make_date(' || v_current_year + 1 || ', 1, 1) ';
 
     -- 2. Build Where Clauses
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
@@ -127,37 +127,36 @@ BEGIN
 
     -- Dynamic Query
     v_sql := '
-    WITH all_sales AS (
-        SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor
-        FROM public.data_detailed
-        UNION ALL
-        SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor
-        FROM public.data_history
-    ),
-    current_data AS (
+    WITH current_data AS (
         SELECT
-            COALESCE(filial, ''SEM FILIAL'') as filial,
-            COALESCE(cidade, ''SEM CIDADE'') as cidade,
+            COALESCE(all_sales.filial, ''SEM FILIAL'') as filial,
+            COALESCE(all_sales.cidade, ''SEM CIDADE'') as cidade,
             COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
-            codcli,
-            pedido,
-            tipovenda,
-            vlvenda,
-            totpesoliq as peso,
-            produto
-        FROM all_sales
+            all_sales.codcli,
+            all_sales.pedido,
+            all_sales.tipovenda,
+            all_sales.vlvenda,
+            all_sales.totpesoliq as peso,
+            all_sales.produto
+        FROM (
+            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor FROM public.data_detailed ' || v_where_base || '
+            UNION ALL
+            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor FROM public.data_history ' || v_where_base || '
+        ) all_sales
         LEFT JOIN public.dim_vendedores dv ON all_sales.codusur = dv.codigo
-        ' || v_where_base || '
     ),
     previous_data AS (
         SELECT
-            COALESCE(filial, ''SEM FILIAL'') as filial,
-            COALESCE(cidade, ''SEM CIDADE'') as cidade,
+            COALESCE(all_sales.filial, ''SEM FILIAL'') as filial,
+            COALESCE(all_sales.cidade, ''SEM CIDADE'') as cidade,
             COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
-            SUM(vlvenda) as faturamento_prev
-        FROM all_sales
+            SUM(all_sales.vlvenda) as faturamento_prev
+        FROM (
+            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor FROM public.data_detailed ' || v_where_base_prev || '
+            UNION ALL
+            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor FROM public.data_history ' || v_where_base_prev || '
+        ) all_sales
         LEFT JOIN public.dim_vendedores dv ON all_sales.codusur = dv.codigo
-        ' || v_where_base_prev || '
         GROUP BY 1, 2, 3
     ),
     client_base AS (
