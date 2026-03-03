@@ -2042,12 +2042,12 @@ BEGIN
             ),
             -- Products Table (Updated to JOIN dim_produtos)
             prod_base AS (
-                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped
+                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
                 UNION ALL
-                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped
+                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
@@ -2085,12 +2085,12 @@ BEGIN
         -- SLOW PATH (Full Raw Data with dim_produtos join)
         EXECUTE format('
             WITH base_data AS (
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= make_date(%L, 1, 1)
                 UNION ALL
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= make_date(%L, 1, 1)

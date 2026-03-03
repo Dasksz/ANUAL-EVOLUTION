@@ -1,0 +1,3 @@
+-- Correção da Função get_boxes_dashboard_data (Apenas copie todo o script "sql/full_system_v1.sql" ou cole esta função separadamente)
+-- Esta query não precisa estar em um arquivo de migração extra se o usuário apenas executar o full_system_v1.sql no Supabase.
+-- Mas, para garantir, indicarei que basta rodar o full_system_v1.sql inteiro para atualizar as funções.
