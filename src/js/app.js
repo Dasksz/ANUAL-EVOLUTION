@@ -5753,11 +5753,20 @@ const setupInnovationsFilters = async () => {
     const anoSelect = document.getElementById('innovations-ano-filter');
     const mesSelect = document.getElementById('innovations-mes-filter');
     
+    const now = new Date();
+    const currentYear = String(now.getFullYear());
+    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+
     if (anoSelect && filterData.anos) {
         anoSelect.innerHTML = '<option value="todos">Todos</option>';
         filterData.anos.forEach(ano => {
             anoSelect.innerHTML += `<option value="${ano}">${ano}</option>`;
         });
+
+        // Initial filter values
+        let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
+        anoSelect.value = hasYear ? currentYear : 'todos';
+
         enhanceSelectToCustomDropdown(anoSelect);
         anoSelect.addEventListener('change', handleInnovationsFilterChange);
     }
@@ -5772,6 +5781,10 @@ const setupInnovationsFilters = async () => {
             opt.textContent = m; 
             mesSelect.appendChild(opt); 
         });
+
+        // Initial filter value
+        mesSelect.value = currentMonth;
+
         enhanceSelectToCustomDropdown(mesSelect);
         mesSelect.addEventListener('change', handleInnovationsFilterChange);
     }
@@ -5912,8 +5925,24 @@ window.clearAllFilters = function(prefix) {
     if (prefix === 'innovations') {
         const anoSelect = document.getElementById('innovations-ano-filter');
         const mesSelect = document.getElementById('innovations-mes-filter');
-        if (anoSelect) anoSelect.value = 'todos';
-        if (mesSelect) mesSelect.value = '';
+
+        const now = new Date();
+        const currentYear = String(now.getFullYear());
+        const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+
+        if (anoSelect) {
+            // Check if currentYear is in options, if not default to 'todos'
+            let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
+            anoSelect.value = hasYear ? currentYear : 'todos';
+            const btn = document.getElementById('btn-innovations-ano-filter');
+            if (btn) btn.innerHTML = `<span class="truncate w-[90%] text-left">${anoSelect.value === 'todos' ? 'Todos' : currentYear}</span><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
+        }
+        if (mesSelect) {
+            mesSelect.value = currentMonth;
+            const btn = document.getElementById('btn-innovations-mes-filter');
+            const mesName = mesSelect.options[mesSelect.selectedIndex]?.text || 'Todos';
+            if (btn) btn.innerHTML = `<span class="truncate w-[90%] text-left">${mesName}</span><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
+        }
         
         innovationsSelectedSupervisors = [];
         innovationsSelectedVendedores = [];
@@ -5923,7 +5952,42 @@ window.clearAllFilters = function(prefix) {
         innovationsSelectedFiliais = [];
         innovationsSelectedCategorias = [];
         
-        setupInnovationsFilters().then(updateInnovationsMonthView);
+        // Uncheck all custom select items visually
+        const wrappers = [
+            'innovations-supervisor-filter-dropdown', 'innovations-vendedor-filter-dropdown',
+            'innovations-cidade-filter-dropdown', 'innovations-tipovenda-filter-dropdown',
+            'innovations-rede-filter-dropdown', 'innovations-filial-filter-dropdown',
+            'innovations-categoria-filter-dropdown'
+        ];
+        wrappers.forEach(id => {
+            const dropdown = document.getElementById(id);
+            if (dropdown) {
+                dropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            }
+        });
+
+        // Reset button labels
+        const btns = [
+            'innovations-supervisor-filter-btn', 'innovations-vendedor-filter-btn',
+            'innovations-cidade-filter-btn', 'innovations-tipovenda-filter-btn',
+            'innovations-rede-filter-btn', 'innovations-filial-filter-btn',
+            'innovations-categoria-filter-btn'
+        ];
+        btns.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                const span = btn.querySelector('span');
+                if (span) {
+                    if (id.includes('vendedor') || id.includes('fornecedor') || id.includes('supervisor') || id.includes('tipovenda')) {
+                        span.textContent = 'Todos';
+                    } else {
+                        span.textContent = 'Todas';
+                    }
+                }
+            }
+        });
+
+        updateInnovationsMonthView();
     } else if (prefix === 'lp') {
         const wrappers = ['lp-supervisor-filter-wrapper', 'lp-vendedor-filter-wrapper', 'lp-rede-filter-wrapper', 'lp-codcli-filter'];
         wrappers.forEach(id => {
