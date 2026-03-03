@@ -266,7 +266,6 @@ create table if not exists public.data_detailed (
   dtped timestamp with time zone,
   dtsaida timestamp with time zone,
   posicao text,
-  estoqueunit numeric,
   tipovenda text,
   filial text,
   created_at timestamp with time zone default now()
@@ -294,7 +293,6 @@ create table if not exists public.data_history (
   dtped timestamp with time zone,
   dtsaida timestamp with time zone,
   posicao text,
-  estoqueunit numeric,
   tipovenda text,
   filial text,
   created_at timestamp with time zone default now()
@@ -426,7 +424,8 @@ CREATE TABLE IF NOT EXISTS public.dim_produtos (
     codfor text,
     mix_marca text,    -- NEW: Optimized Mix Logic
     mix_categoria text, -- NEW: Optimized Mix Logic
-    categoria_produto text -- NEW: Brand/Category Filter
+    categoria_produto text, -- NEW: Brand/Category Filter
+    estoque_filial jsonb DEFAULT '{}'::jsonb -- NEW: Dynamic Branch Stock
 );
 ALTER TABLE public.dim_produtos ENABLE ROW LEVEL SECURITY;
 
@@ -444,7 +443,40 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'categoria_produto') THEN
         ALTER TABLE public.dim_produtos ADD COLUMN categoria_produto text;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'estoque_filial') THEN
+        ALTER TABLE public.dim_produtos ADD COLUMN estoque_filial jsonb DEFAULT '{}'::jsonb;
+    END IF;
 END $$;
+
+-- Update Products Stock Helper
+CREATE OR REPLACE FUNCTION public.update_products_stock(p_stock_data jsonb)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    -- p_stock_data expects: [{"codigo": "123", "filial": "05", "estoque": 100}, ...]
+    WITH raw_stock AS (
+        SELECT 
+            (rec->>'codigo')::text as codigo, 
+            (rec->>'filial')::text as filial,
+            (rec->>'estoque')::numeric as estoque
+        FROM jsonb_array_elements(p_stock_data) rec
+    ),
+    agg_stock AS (
+        SELECT 
+            codigo, 
+            jsonb_object_agg(filial, estoque) as j
+        FROM raw_stock
+        WHERE codigo IS NOT NULL AND filial IS NOT NULL AND estoque IS NOT NULL
+        GROUP BY codigo
+    )
+    UPDATE public.dim_produtos p
+    SET estoque_filial = COALESCE(p.estoque_filial, '{}'::jsonb) || agg_stock.j
+    FROM agg_stock
+    WHERE p.codigo = agg_stock.codigo;
+END;
+$$;
 
 -- Unified View
 DROP VIEW IF EXISTS public.all_sales CASCADE;
@@ -3074,12 +3106,12 @@ BEGIN
         INSERT INTO public.%I (
             pedido, codusur, codsupervisor, produto, codfor, codcli, cidade, 
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq, 
-            dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
+            dtped, dtsaida, posicao, tipovenda, filial
         )
         SELECT 
             pedido, codusur, codsupervisor, produto, codfor, codcli, cidade, 
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq, 
-            dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
+            dtped, dtsaida, posicao, tipovenda, filial
         FROM jsonb_populate_recordset(null::public.%I, $1)
     ', p_table_name, p_table_name) USING p_rows;
 
@@ -3154,12 +3186,12 @@ BEGIN
         INSERT INTO public.%I (
             pedido, codusur, codsupervisor, produto, codfor, codcli, cidade,
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq,
-            dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
+            dtped, dtsaida, posicao, tipovenda, filial
         )
         SELECT
             pedido, codusur, codsupervisor, produto, codfor, codcli, cidade,
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq,
-            dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
+            dtped, dtsaida, posicao, tipovenda, filial
         FROM jsonb_populate_recordset(null::public.%I, $1)
     ', p_table_name, p_table_name) USING p_rows;
 END;
@@ -3328,14 +3360,13 @@ BEGIN
             p.descricao AS product_name,
             to_char(d.dtped, ''YYYY-MM'') AS period_month,
             d.codcli,
-            COALESCE(d.estoqueunit, 0) as estoque,
             (d.dtped >= ''' || v_curr_start || ''') AS is_current,
             (d.dtped >= ''' || v_prev_start || ''' AND d.dtped < ''' || v_prev_end || ''') AS is_prev_year,
             (d.dtped >= ''' || v_12m_start || ''' AND d.dtped < ''' || v_12m_end || ''') AS is_avg_12m
         FROM (
-            SELECT codcli, produto, dtped, estoqueunit FROM data_detailed WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
+            SELECT codcli, produto, dtped FROM data_detailed WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
             UNION ALL
-            SELECT codcli, produto, dtped, estoqueunit FROM data_history WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
+            SELECT codcli, produto, dtped FROM data_history WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
         ) d
         JOIN data_innovations i ON d.produto = i.codigo
         JOIN dim_produtos p ON p.codigo = i.codigo
@@ -3348,8 +3379,7 @@ BEGIN
             product_code, 
             product_name,
             COUNT(DISTINCT CASE WHEN is_current THEN codcli END) AS pos_current,
-            COUNT(DISTINCT CASE WHEN is_prev_year THEN codcli END) AS pos_prev_year,
-            SUM(CASE WHEN is_current THEN estoque ELSE 0 END) AS estoque_current
+            COUNT(DISTINCT CASE WHEN is_prev_year THEN codcli END) AS pos_prev_year
         FROM innovation_sales
         GROUP BY 1, 2, 3
     ),
@@ -3380,7 +3410,13 @@ BEGIN
             COALESCE(ab.pos_current, 0) AS pos_current,
             COALESCE(ab.pos_prev_year, 0) AS pos_prev_year,
             COALESCE(p12.pos_avg, 0) AS pos_avg_12m,
-            COALESCE(ab.estoque_current, 0) AS estoque_current
+            -- ESTOQUE IS NOW DYNAMICALLY EXTRACTED FROM dim_produtos.estoque_filial
+            COALESCE((
+                SELECT SUM(value::numeric) 
+                FROM jsonb_each_text((SELECT estoque_filial FROM dim_produtos WHERE codigo = COALESCE(ab.product_code, p12.product_code))) 
+                WHERE (p_filial IS NULL OR array_length(p_filial, 1) = 0 OR ''ambas'' = ANY(p_filial)) 
+                   OR key = ANY(p_filial)
+            ), 0) AS estoque_current
         FROM aggregated_base ab
         FULL OUTER JOIN pos_12m_avg p12 ON ab.product_code = p12.product_code
     )
@@ -3413,5 +3449,3 @@ BEGIN
     RETURN v_result;
 END;
 $BODY$;
-
-
