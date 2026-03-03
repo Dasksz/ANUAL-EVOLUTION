@@ -267,7 +267,6 @@ create table if not exists public.data_detailed (
   dtsaida timestamp with time zone,
   posicao text,
   estoqueunit numeric,
-  qtvenda_embalagem_master numeric,
   tipovenda text,
   filial text,
   created_at timestamp with time zone default now()
@@ -296,7 +295,6 @@ create table if not exists public.data_history (
   dtsaida timestamp with time zone,
   posicao text,
   estoqueunit numeric,
-  qtvenda_embalagem_master numeric,
   tipovenda text,
   filial text,
   created_at timestamp with time zone default now()
@@ -3076,12 +3074,12 @@ BEGIN
         INSERT INTO public.%I (
             pedido, codusur, codsupervisor, produto, codfor, codcli, cidade, 
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq, 
-            dtped, dtsaida, posicao, estoqueunit, qtvenda_embalagem_master, tipovenda, filial
+            dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
         )
         SELECT 
             pedido, codusur, codsupervisor, produto, codfor, codcli, cidade, 
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq, 
-            dtped, dtsaida, posicao, estoqueunit, qtvenda_embalagem_master, tipovenda, filial
+            dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
         FROM jsonb_populate_recordset(null::public.%I, $1)
     ', p_table_name, p_table_name) USING p_rows;
 
@@ -3156,12 +3154,12 @@ BEGIN
         INSERT INTO public.%I (
             pedido, codusur, codsupervisor, produto, codfor, codcli, cidade,
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq,
-            dtped, dtsaida, posicao, estoqueunit, qtvenda_embalagem_master, tipovenda, filial
+            dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
         )
         SELECT
             pedido, codusur, codsupervisor, produto, codfor, codcli, cidade,
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq,
-            dtped, dtsaida, posicao, estoqueunit, qtvenda_embalagem_master, tipovenda, filial
+            dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
         FROM jsonb_populate_recordset(null::public.%I, $1)
     ', p_table_name, p_table_name) USING p_rows;
 END;
