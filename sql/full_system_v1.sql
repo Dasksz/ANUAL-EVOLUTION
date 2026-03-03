@@ -3097,10 +3097,14 @@ BEGIN
     v_end_date := v_start_date + interval '1 month';
 
     EXECUTE format('
-        DELETE FROM public.%I
+        DELETE FROM public.data_detailed
         WHERE dtped >= $1 AND dtped < $2
-    ', p_table_name)
-    USING v_start_date, v_end_date;
+    ') USING v_start_date, v_end_date;
+
+    EXECUTE format('
+        DELETE FROM public.data_history
+        WHERE dtped >= $1 AND dtped < $2
+    ') USING v_start_date, v_end_date;
 
     EXECUTE format('
         INSERT INTO public.%I (
@@ -3151,16 +3155,21 @@ BEGIN
     v_start_date := TO_DATE(p_chunk_key || '-01', 'YYYY-MM-DD');
     v_end_date := v_start_date + interval '1 month';
 
-    -- Wipe existing data for this chunk
+    -- Wipe existing data for this chunk in BOTH tables to prevent duplicates
+    -- if a month is moved from the current month file to the history file.
     EXECUTE format('
-        DELETE FROM public.%I
+        DELETE FROM public.data_detailed
         WHERE dtped >= $1 AND dtped < $2
-    ', p_table_name)
-    USING v_start_date, v_end_date;
+    ') USING v_start_date, v_end_date;
 
-    -- Invalidate Metadata (Force re-sync if process crashes before Commit)
+    EXECUTE format('
+        DELETE FROM public.data_history
+        WHERE dtped >= $1 AND dtped < $2
+    ') USING v_start_date, v_end_date;
+
+    -- Invalidate Metadata for both tables for this chunk (Force re-sync if process crashes before Commit)
     DELETE FROM public.data_metadata
-    WHERE table_name = p_table_name AND chunk_key = p_chunk_key;
+    WHERE chunk_key = p_chunk_key AND table_name IN ('data_detailed', 'data_history');
 END;
 $$;
 
