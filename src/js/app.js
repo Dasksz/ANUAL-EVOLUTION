@@ -4,6 +4,8 @@ import supabase from './supabase.js?v=2';
 document.addEventListener('DOMContentLoaded', () => {
     console.log("App Version: 2.0 (Cache Refresh Split)");
     let isMainDashboardInitialized = false;
+    let isInnovationsInitialized = false;
+    let isLojaPerfeitaInitialized = false;
     // --- GLOBAL NAVIGATION HISTORY ---
     let currentActiveView = 'dashboard';
     let viewHistory = [];
@@ -5319,7 +5321,12 @@ let currentInnovationsFilters = {};
 async function updateInnovationsMonthView() {
     showDashboardLoading();
 
+    const anoSelect = document.getElementById('innovations-ano-filter');
+    const mesSelect = document.getElementById('innovations-mes-filter');
+
     const filters = {
+        p_ano: anoSelect ? anoSelect.value : null,
+        p_mes: mesSelect ? mesSelect.value : null,
         p_cidade: getSelectedValues('innovations-month-city-filter'),
         p_filial: getSelectedValues('innovations-month-filial-filter'),
         p_supervisor: getSelectedValues('innovations-month-supervisor-filter-wrapper'),
@@ -5331,6 +5338,8 @@ async function updateInnovationsMonthView() {
 
     // Replace empty arrays with null to avoid PostgREST overloading resolution issues
     const rpcFilters = {
+        p_ano: filters.p_ano,
+        p_mes: filters.p_mes,
         p_filial: filters.p_filial.length ? filters.p_filial : null,
         p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
         p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
@@ -5421,8 +5430,8 @@ function renderInnovationsChart(data) {
     // Calcular %
     const active = data.active_clients || 1;
     const currentData = categories.map(c => ((c.pos_current / active) * 100).toFixed(1));
-    const prev1Data = categories.map(c => ((c.pos_prev1 / active) * 100).toFixed(1));
-    const prev2Data = categories.map(c => ((c.pos_prev2 / active) * 100).toFixed(1));
+    const prevYearData = categories.map(c => ((c.pos_prev_year / active) * 100).toFixed(1));
+    const avg12mData = categories.map(c => ((c.pos_avg_12m / active) * 100).toFixed(1));
 
     innovationsChart = new Chart(ctx, {
         type: 'bar',
@@ -5430,14 +5439,14 @@ function renderInnovationsChart(data) {
             labels: labels,
             datasets: [
                 {
-                    label: 'Mês Retrasado',
-                    data: prev2Data,
+                    label: 'Média 12 Meses',
+                    data: avg12mData,
                     backgroundColor: '#3b82f6', // blue-500
                     borderRadius: 2
                 },
                 {
-                    label: 'Mês Anterior',
-                    data: prev1Data,
+                    label: 'Mês Ano Anterior',
+                    data: prevYearData,
                     backgroundColor: '#eab308', // yellow-500
                     borderRadius: 2
                 },
@@ -5472,8 +5481,11 @@ function renderInnovationsTable(data) {
 
     data.products.forEach(p => {
         let posAtual = ((p.pos_current / active) * 100).toFixed(2);
-        let posAnt = ((p.pos_prev1 / active) * 100).toFixed(2);
-        let varPercent = p.pos_prev1 > 0 ? (((p.pos_current - p.pos_prev1) / p.pos_prev1) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
+        let posPrevYear = ((p.pos_prev_year / active) * 100).toFixed(2);
+        let posAvg12m = ((p.pos_avg_12m / active) * 100).toFixed(2);
+
+        // Variação vs Mês Ano Anterior
+        let varPercent = p.pos_prev_year > 0 ? (((p.pos_current - p.pos_prev_year) / p.pos_prev_year) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
 
         let varColor = varPercent >= 0 ? 'text-green-400' : 'text-red-400';
 
@@ -5485,7 +5497,8 @@ function renderInnovationsTable(data) {
                 </td>
                 <td class="px-4 py-4 text-slate-400 text-xs italic">${p.product_code} - ${p.product_name}</td>
                 <td class="px-4 py-4 text-center font-bold text-white">--</td>
-                <td class="px-4 py-4 text-center text-slate-400">${posAnt}%</td>
+                <td class="px-4 py-4 text-center text-slate-400">${posAvg12m}%</td>
+                <td class="px-4 py-4 text-center text-slate-400">${posPrevYear}%</td>
                 <td class="px-4 py-4 text-center font-bold text-white">${posAtual}%</td>
                 <td class="px-4 py-4 text-center ${varColor} font-bold">${varPercent}%</td>
             </tr>
@@ -5533,6 +5546,8 @@ function getSelectedValues(id) {
 
 // Global Filter Setup for new pages
 const setupInnovationsFilters = async () => {
+    if (isInnovationsInitialized && isLojaPerfeitaInitialized) return;
+
     const filters = {
         p_ano: 'todos',
         p_mes: null,
@@ -5548,58 +5563,85 @@ const setupInnovationsFilters = async () => {
     const { data: filterData } = await supabase.rpc('get_dashboard_filters', filters);
     if (!filterData) return;
 
-    // A lógica de inicializar dropdowns não existia para essas abas, então criamos um setup básico:
+    // A lógica de inicializar dropdowns não existia para essas abas, então criamos um setup básico com custom dropdown
     const createFilter = (id, options) => {
         const container = document.getElementById(id);
         if (!container) return;
 
-        // Simples select se não for usar o custom dropdown ainda
         let select = document.createElement('select');
-        select.className = "w-full bg-[#1e293b] text-white text-sm rounded border border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 p-2 outline-none appearance-none cursor-pointer h-[38px]";
-        select.innerHTML = '<option value="">Todos</option>';
+        select.multiple = true;
+        select.className = "hidden"; // Esconde o select original
+
         options.forEach(opt => {
             select.innerHTML += `<option value="${opt}">${opt}</option>`;
         });
         container.innerHTML = '';
         container.appendChild(select);
 
-        select.addEventListener('change', () => {
+        const applyCallback = () => {
              if (id.startsWith('innovations')) updateInnovationsMonthView();
              if (id.startsWith('lp')) updateLojaPerfeitaView();
-        });
+        };
+
+        // Usa o custom dropdown para manter consistência visual
+        enhanceSelectToCustomDropdown(select, 'Todos', applyCallback);
     };
 
-    createFilter('innovations-month-supervisor-filter-wrapper', filterData.supervisors || []);
-    createFilter('innovations-month-vendedor-filter-wrapper', filterData.vendedores || []);
-    createFilter('innovations-month-city-filter', filterData.cidades || []);
-    createFilter('innovations-month-tipo-venda-filter-wrapper', filterData.tipos_venda || []);
-    createFilter('innovations-month-rede-filter-wrapper', filterData.redes || []);
-    createFilter('innovations-month-filial-filter', filterData.filiais || []);
+    if (!isInnovationsInitialized) {
+        createFilter('innovations-month-supervisor-filter-wrapper', filterData.supervisors || []);
+        createFilter('innovations-month-vendedor-filter-wrapper', filterData.vendedores || []);
+        createFilter('innovations-month-city-filter', filterData.cidades || []);
+        createFilter('innovations-month-tipo-venda-filter-wrapper', filterData.tipos_venda || []);
+        createFilter('innovations-month-rede-filter-wrapper', filterData.redes || []);
+        createFilter('innovations-month-filial-filter', filterData.filiais || []);
 
-    // Load Inovações Categories
-    try {
-        const { data: inovacData } = await supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true });
-        if (inovacData) {
-            const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
-            const inovSelect = document.getElementById('innovations-month-category-filter');
-            if (inovSelect && inovSelect.options.length <= 1) {
-                uniqueInovacoes.forEach(opt => {
-                    const optionEl = document.createElement('option');
-                    optionEl.value = opt;
-                    optionEl.textContent = opt;
-                    inovSelect.appendChild(optionEl);
-                });
-                inovSelect.addEventListener('change', updateInnovationsMonthView);
-            }
+        // Setup Ano and Mes standard filters using standard logic or generic enhance
+        const anoSelect = document.getElementById('innovations-ano-filter');
+        const mesSelect = document.getElementById('innovations-mes-filter');
+
+        if (anoSelect && filterData.anos) {
+            filterData.anos.forEach(ano => {
+                anoSelect.innerHTML += `<option value="${ano}">${ano}</option>`;
+            });
+            anoSelect.addEventListener('change', updateInnovationsMonthView);
         }
-    } catch (e) {
-        console.error("Error loading inovacoes categories", e);
+
+        if (mesSelect && filterData.meses) {
+            filterData.meses.forEach(mes => {
+                mesSelect.innerHTML += `<option value="${mes.numero}">${mes.nome}</option>`;
+            });
+            mesSelect.addEventListener('change', updateInnovationsMonthView);
+        }
+
+        // Load Inovações Categories
+        try {
+            const { data: inovacData } = await supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true });
+            if (inovacData) {
+                const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
+                const inovSelect = document.getElementById('innovations-month-category-filter');
+                if (inovSelect && inovSelect.options.length <= 1) {
+                    uniqueInovacoes.forEach(opt => {
+                        const optionEl = document.createElement('option');
+                        optionEl.value = opt;
+                        optionEl.textContent = opt;
+                        inovSelect.appendChild(optionEl);
+                    });
+                    inovSelect.addEventListener('change', updateInnovationsMonthView);
+                }
+            }
+        } catch (e) {
+            console.error("Error loading inovacoes categories", e);
+        }
+        isInnovationsInitialized = true;
     }
 
-    createFilter('lp-supervisor-filter-wrapper', filterData.supervisors || []);
-    createFilter('lp-vendedor-filter-wrapper', filterData.vendedores || []);
-    createFilter('lp-rede-filter-wrapper', filterData.redes || []);
-    createFilter('lp-codcli-filter', filterData.cidades || []); // Usando cidades provisoriamente
+    if (!isLojaPerfeitaInitialized) {
+        createFilter('lp-supervisor-filter-wrapper', filterData.supervisors || []);
+        createFilter('lp-vendedor-filter-wrapper', filterData.vendedores || []);
+        createFilter('lp-rede-filter-wrapper', filterData.redes || []);
+        createFilter('lp-codcli-filter', filterData.cidades || []); // Usando cidades provisoriamente
+        isLojaPerfeitaInitialized = true;
+    }
 };
 
 // Listen for view load
@@ -5695,15 +5737,64 @@ function formatNumber(num, decimals = 2) {
     return Number(num).toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
-function renderInnovationsMonthView() {
-    setupInnovationsFilters(); // Inicia os filtros antes de carregar
+async function renderInnovationsMonthView() {
+    if (!isInnovationsInitialized) {
+        await setupInnovationsFilters();
+    }
     updateInnovationsMonthView();
 }
 
-function renderLojaPerfeitaView() {
-    setupInnovationsFilters();
+async function renderLojaPerfeitaView() {
+    if (!isLojaPerfeitaInitialized) {
+        await setupInnovationsFilters();
+    }
     updateLojaPerfeitaView();
 }
+
+window.clearAllFilters = function(prefix) {
+    if (prefix === 'innovations') {
+        const anoSelect = document.getElementById('innovations-ano-filter');
+        const mesSelect = document.getElementById('innovations-mes-filter');
+        if (anoSelect) anoSelect.value = 'todos';
+        if (mesSelect) mesSelect.value = '';
+
+        const catSelect = document.getElementById('innovations-month-category-filter');
+        if (catSelect) catSelect.value = '';
+
+        const wrappers = ['innovations-month-supervisor-filter-wrapper', 'innovations-month-vendedor-filter-wrapper', 'innovations-month-city-filter', 'innovations-month-tipo-venda-filter-wrapper', 'innovations-month-rede-filter-wrapper', 'innovations-month-filial-filter'];
+        wrappers.forEach(id => {
+            const container = document.getElementById(id);
+            if (container) {
+                const select = container.querySelector('select');
+                if (select) {
+                    Array.from(select.options).forEach(opt => opt.selected = false);
+                    const tagContainer = container.querySelector('.flex.flex-wrap.gap-1.items-center');
+                    if (tagContainer) tagContainer.innerHTML = '';
+                    const mainBtn = container.querySelector('button.w-full.bg-\\[\\#1e293b\\]');
+                    if (mainBtn) mainBtn.innerHTML = '<span class="truncate w-[90%] text-left">Todos</span><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
+                }
+            }
+        });
+        updateInnovationsMonthView();
+    } else if (prefix === 'lp') {
+        const wrappers = ['lp-supervisor-filter-wrapper', 'lp-vendedor-filter-wrapper', 'lp-rede-filter-wrapper', 'lp-codcli-filter'];
+        wrappers.forEach(id => {
+            const container = document.getElementById(id);
+            if (container) {
+                const select = container.querySelector('select');
+                if (select) {
+                    Array.from(select.options).forEach(opt => opt.selected = false);
+                    const tagContainer = container.querySelector('.flex.flex-wrap.gap-1.items-center');
+                    if (tagContainer) tagContainer.innerHTML = '';
+                    const mainBtn = container.querySelector('button.w-full.bg-\\[\\#1e293b\\]');
+                    if (mainBtn) mainBtn.innerHTML = '<span class="truncate w-[90%] text-left">Todos</span><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
+                }
+            }
+        });
+        updateLojaPerfeitaView();
+    }
+};
+
 });
 async function loadFrequencyTable(filters) {
     const tableBody = document.getElementById('frequency-table-body');
