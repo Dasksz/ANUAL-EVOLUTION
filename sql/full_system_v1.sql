@@ -1121,34 +1121,52 @@ BEGIN
     -- ANALYZE public.data_summary;
 
     TRUNCATE TABLE public.cache_filters;
+    
+    -- Optimize by getting distinct codes first, then joining dimensions
     INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes, rede, categoria_produto)
-    SELECT DISTINCT 
-        t.filial, 
-        t.cidade, 
+    WITH distinct_codes AS (
+        SELECT 
+            filial, 
+            cidade, 
+            codsupervisor, 
+            codusur, 
+            codfor, 
+            tipovenda, 
+            ano, 
+            mes, 
+            ramo, 
+            categoria_produto
+        FROM public.data_summary
+        GROUP BY 
+            filial, cidade, codsupervisor, codusur, codfor, tipovenda, ano, mes, ramo, categoria_produto
+    )
+    SELECT 
+        dc.filial, 
+        dc.cidade, 
         ds.nome as superv, 
         dv.nome as nome, 
-        t.codfor,
+        dc.codfor,
         CASE 
-            WHEN t.codfor = '707' THEN 'EXTRUSADOS'
-            WHEN t.codfor = '708' THEN 'Ñ EXTRUSADOS'
-            WHEN t.codfor = '752' THEN 'TORCIDA'
-            WHEN t.codfor = '1119_TODDYNHO' THEN 'TODDYNHO'
-            WHEN t.codfor = '1119_TODDY' THEN 'TODDY'
-            WHEN t.codfor = '1119_QUAKER' THEN 'QUAKER'
-            WHEN t.codfor = '1119_KEROCOCO' THEN 'KEROCOCO'
-            WHEN t.codfor = '1119_OUTROS' THEN 'FOODS (Outros)'
-            WHEN t.codfor = '1119' THEN 'FOODS (Outros)'
+            WHEN dc.codfor = '707' THEN 'EXTRUSADOS'
+            WHEN dc.codfor = '708' THEN 'Ñ EXTRUSADOS'
+            WHEN dc.codfor = '752' THEN 'TORCIDA'
+            WHEN dc.codfor = '1119_TODDYNHO' THEN 'TODDYNHO'
+            WHEN dc.codfor = '1119_TODDY' THEN 'TODDY'
+            WHEN dc.codfor = '1119_QUAKER' THEN 'QUAKER'
+            WHEN dc.codfor = '1119_KEROCOCO' THEN 'KEROCOCO'
+            WHEN dc.codfor = '1119_OUTROS' THEN 'FOODS (Outros)'
+            WHEN dc.codfor = '1119' THEN 'FOODS (Outros)'
             ELSE df.nome 
         END as fornecedor, 
-        t.tipovenda, 
-        t.ano, 
-        t.mes,
-        t.ramo as rede,
-        t.categoria_produto
-    FROM public.data_summary t
-    LEFT JOIN public.dim_supervisores ds ON t.codsupervisor = ds.codigo
-    LEFT JOIN public.dim_vendedores dv ON t.codusur = dv.codigo
-    LEFT JOIN public.dim_fornecedores df ON t.codfor = df.codigo;
+        dc.tipovenda, 
+        dc.ano, 
+        dc.mes,
+        dc.ramo as rede,
+        dc.categoria_produto
+    FROM distinct_codes dc
+    LEFT JOIN public.dim_supervisores ds ON dc.codsupervisor = ds.codigo
+    LEFT JOIN public.dim_vendedores dv ON dc.codusur = dv.codigo
+    LEFT JOIN public.dim_fornecedores df ON dc.codfor = df.codigo;
 END;
 $$;
 
@@ -3100,7 +3118,7 @@ BEGIN
         DELETE FROM public.data_detailed
         WHERE dtped >= $1 AND dtped < $2
     ') USING v_start_date, v_end_date;
-
+    
     EXECUTE format('
         DELETE FROM public.data_history
         WHERE dtped >= $1 AND dtped < $2
@@ -3161,7 +3179,7 @@ BEGIN
         DELETE FROM public.data_detailed
         WHERE dtped >= $1 AND dtped < $2
     ') USING v_start_date, v_end_date;
-
+    
     EXECUTE format('
         DELETE FROM public.data_history
         WHERE dtped >= $1 AND dtped < $2
