@@ -3320,15 +3320,15 @@ BEGIN
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND c.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where_base := v_where_base || format(' AND d.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND c.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        v_where_base := v_where_base || format(' AND d.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND c.tipo_venda = ANY(%L::text[]) ', p_tipovenda);
+        v_where_base := v_where_base || format(' AND d.tipovenda = ANY(%L::text[]) ', p_tipovenda);
     END IF;
 
     -- Redes
@@ -3354,9 +3354,9 @@ BEGIN
     WITH active_clients AS (
         SELECT DISTINCT d.codcli
         FROM (
-            SELECT codcli FROM data_detailed WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
+            SELECT codcli, codsupervisor, codusur, tipovenda FROM data_detailed WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
             UNION ALL
-            SELECT codcli FROM data_history WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
+            SELECT codcli, codsupervisor, codusur, tipovenda FROM data_history WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
         ) d
         JOIN data_clients c ON c.codigo_cliente = d.codcli
         ' || v_where_base || '
