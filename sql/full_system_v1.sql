@@ -67,7 +67,6 @@ BEGIN
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_filial)) THEN
             v_where_base := v_where_base || ' AND filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
-            v_where_clients := v_where_clients || ' AND filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
             v_where_base_prev := v_where_base_prev || ' AND filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
             v_where_chart := v_where_chart || ' AND filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
         END IF;
@@ -155,7 +154,7 @@ BEGIN
     ),
     client_base AS (
         SELECT
-            COALESCE(filial, ''SEM FILIAL'') as filial,
+            ''SEM FILIAL''::text as filial,
             COALESCE(cidade, ''SEM CIDADE'') as cidade,
             COUNT(DISTINCT codigo_cliente) as base_total
         FROM public.data_clients
@@ -3194,7 +3193,16 @@ DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], tex
 DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text[]);
 DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text);
 DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text);
 DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text);
+DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text);
+DROP FUNCTION IF EXISTS get_innovations_data(text[], text[]);
+DROP FUNCTION IF EXISTS get_innovations_data(text[], text);
+DROP FUNCTION IF EXISTS get_innovations_data(text[]);
+DROP FUNCTION IF EXISTS get_innovations_data(text);
+DROP FUNCTION IF EXISTS get_innovations_data();
 
 CREATE OR REPLACE FUNCTION get_innovations_data(
     p_filial text[] default null,
