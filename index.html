@@ -1484,7 +1484,25 @@
 
     <!-- Filters Section (Simulating the image design) -->
     <div class="glass-card p-5 rounded-xl mb-6 border border-slate-700/50 shadow-xl relative z-[100] bg-[#1a1c23]">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end" id="innovations-month-filters-container">
+        <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 items-end" id="innovations-month-filters-container">
+
+            <div class="relative w-full">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Ano</label>
+                <div class="relative w-full">
+                    <select id="innovations-ano-filter" class="w-full bg-[#1e293b] text-white text-sm rounded border border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 p-2 outline-none appearance-none cursor-pointer h-[38px] transition-all">
+                        <option value="todos">Todos</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="relative w-full">
+                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Mês</label>
+                <div class="relative w-full">
+                    <select id="innovations-mes-filter" class="w-full bg-[#1e293b] text-white text-sm rounded border border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 p-2 outline-none appearance-none cursor-pointer h-[38px] transition-all">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+            </div>
 
             <div class="relative w-full">
                 <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Supervisor</label>
@@ -1611,8 +1629,9 @@
                         <th scope="col" class="px-4 py-4 w-[25%]">Categoria</th>
                         <th scope="col" class="px-4 py-4 w-[25%]">Produto</th>
                         <th scope="col" class="px-4 py-4 text-center">Estoque</th>
-                        <th scope="col" class="px-4 py-4 text-center">Pos. Ant.</th>
-                        <th scope="col" class="px-4 py-4 text-center">Pos. Atual</th>
+                        <th scope="col" class="px-4 py-4 text-center">Média 12 Meses</th>
+                        <th scope="col" class="px-4 py-4 text-center">Mês Ano Anterior</th>
+                        <th scope="col" class="px-4 py-4 text-center">Mês Atual (Filtrado)</th>
                         <th scope="col" class="px-4 py-4 text-center">Var.</th>
                     </tr>
                 </thead>
