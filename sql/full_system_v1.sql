@@ -3214,7 +3214,7 @@ DECLARE
     v_sql text;
 
     v_last_sale_date date;
-
+    
     v_target_date date;
     v_month_curr text; -- Formatted YYYY-MM
     v_month_prev_year text; -- Formatted YYYY-MM
@@ -3230,7 +3230,7 @@ BEGIN
     IF v_last_sale_date IS NULL THEN
         RETURN json_build_object('active_clients', 0, 'categories', '[]'::json, 'products', '[]'::json);
     END IF;
-
+    
     -- Se tem ano filtrado
     IF p_ano IS NOT NULL AND p_ano != 'todos' THEN
         IF p_mes IS NOT NULL AND p_mes != '' THEN
@@ -3259,7 +3259,7 @@ BEGIN
     -- Format YYYY-MM for exact match filtering
     v_month_curr := to_char(v_target_date, 'YYYY-MM');
     v_month_prev_year := to_char(v_target_date - interval '1 year', 'YYYY-MM');
-
+    
     -- 12 month average calculation period (last 12 months excluding the current one)
     v_month_12m_end := to_char(v_target_date - interval '1 month', 'YYYY-MM');
     v_month_12m_start := to_char(v_target_date - interval '12 months', 'YYYY-MM');
@@ -3330,11 +3330,12 @@ BEGIN
                 WHEN to_char(d.dtped, ''YYYY-MM'') BETWEEN ''' || v_month_12m_start || ''' AND ''' || v_month_12m_end || ''' THEN ''avg_12m''
             END AS period,
             to_char(d.dtped, ''YYYY-MM'') AS period_month,
-            d.codcli
+            d.codcli,
+            COALESCE(d.estoqueunit, 0) as estoque
         FROM (
-            SELECT codcli, produto, dtped FROM data_detailed WHERE to_char(dtped, ''YYYY-MM'') = ''' || v_month_curr || '''
+            SELECT codcli, produto, dtped, estoqueunit FROM data_detailed WHERE to_char(dtped, ''YYYY-MM'') = ''' || v_month_curr || '''
             UNION ALL
-            SELECT codcli, produto, dtped FROM data_history WHERE to_char(dtped, ''YYYY-MM'') = ''' || v_month_curr || '''
+            SELECT codcli, produto, dtped, estoqueunit FROM data_history WHERE to_char(dtped, ''YYYY-MM'') = ''' || v_month_curr || '''
                                                                  OR to_char(dtped, ''YYYY-MM'') = ''' || v_month_prev_year || '''
                                                                  OR (to_char(dtped, ''YYYY-MM'') BETWEEN ''' || v_month_12m_start || ''' AND ''' || v_month_12m_end || ''')
         ) d
@@ -3344,20 +3345,21 @@ BEGIN
         WHERE ' || v_where_inov || '
     ),
     pos_by_period AS (
-        SELECT
-            category_name,
-            product_code,
+        SELECT 
+            category_name, 
+            product_code, 
             product_name,
             period,
-            COUNT(DISTINCT codcli) AS pos_count
+            COUNT(DISTINCT codcli) AS pos_count,
+            SUM(CASE WHEN period = ''current'' THEN estoque ELSE 0 END) AS estoque_current
         FROM innovation_sales
         WHERE period IN (''current'', ''prev_year'')
         GROUP BY 1, 2, 3, 4
     ),
     pos_12m AS (
-        SELECT
-            category_name,
-            product_code,
+        SELECT 
+            category_name, 
+            product_code, 
             product_name,
             COUNT(DISTINCT codcli) / 12.0 AS pos_count -- Average over 12 months
         FROM innovation_sales
@@ -3365,9 +3367,9 @@ BEGIN
         GROUP BY 1, 2, 3, period_month
     ),
     pos_12m_avg AS (
-        SELECT
-            category_name,
-            product_code,
+        SELECT 
+            category_name, 
+            product_code, 
             product_name,
             SUM(pos_count) AS pos_avg -- Sum of (monthly pos / 12)
         FROM pos_12m
@@ -3380,7 +3382,8 @@ BEGIN
             COALESCE(pbp.product_name, p12.product_name) AS product_name,
             COALESCE(MAX(CASE WHEN pbp.period = ''current'' THEN pbp.pos_count END), 0) AS pos_current,
             COALESCE(MAX(CASE WHEN pbp.period = ''prev_year'' THEN pbp.pos_count END), 0) AS pos_prev_year,
-            COALESCE(MAX(p12.pos_avg), 0) AS pos_avg_12m
+            COALESCE(MAX(p12.pos_avg), 0) AS pos_avg_12m,
+            COALESCE(MAX(pbp.estoque_current), 0) AS estoque_current
         FROM pos_by_period pbp
         FULL OUTER JOIN pos_12m_avg p12 ON pbp.product_code = p12.product_code
         GROUP BY 1, 2, 3
@@ -3396,6 +3399,7 @@ BEGIN
                         ''pos_current'', SUM(pos_current),
                         ''pos_prev_year'', SUM(pos_prev_year),
                         ''pos_avg_12m'', SUM(pos_avg_12m),
+                        ''estoque_current'', SUM(estoque_current),
                         ''products_count'', COUNT(product_code)
                     ) as cat_agg
                 FROM aggregated
