@@ -3414,8 +3414,8 @@ BEGIN
             COALESCE((
                 SELECT SUM(value::numeric)
                 FROM jsonb_each_text((SELECT estoque_filial FROM dim_produtos WHERE codigo = COALESCE(ab.product_code, p12.product_code)))
-                WHERE (p_filial IS NULL OR array_length(p_filial, 1) = 0 OR ''ambas'' = ANY(p_filial))
-                   OR key = ANY(p_filial)
+                WHERE ($1 IS NULL OR array_length($1, 1) = 0 OR ''ambas'' = ANY($1))
+                   OR key = ANY($1)
             ), 0) AS estoque_current
         FROM aggregated_base ab
         FULL OUTER JOIN pos_12m_avg p12 ON ab.product_code = p12.product_code
@@ -3444,7 +3444,7 @@ BEGIN
     );
     ';
 
-    EXECUTE v_sql INTO v_result;
+    EXECUTE v_sql INTO v_result USING p_filial;
 
     RETURN v_result;
 END;

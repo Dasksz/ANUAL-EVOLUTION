@@ -1,60 +1,6 @@
 
 import supabase from './supabase.js?v=2';
 
-// --- Toast Notification System ---
-window.showToast = function(type, message, title = '') {
-    const container = document.getElementById('toast-container');
-    if (!container) {
-        console.error('Toast container not found!');
-        console.log(`[${type}] ${message}`);
-        return;
-    }
-
-    const variants = {
-        success: {
-            class: 'toast-success',
-            icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
-            defaultTitle: 'Sucesso'
-        },
-        error: {
-            class: 'toast-error',
-            icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
-            defaultTitle: 'Erro'
-        },
-        info: {
-            class: 'toast-info',
-            icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
-            defaultTitle: 'Informação'
-        },
-        warning: {
-            class: 'toast-warning',
-            icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`,
-            defaultTitle: 'Atenção'
-        }
-    };
-
-    const variant = variants[type] || variants.info;
-    const finalTitle = title || variant.defaultTitle;
-
-    const toast = document.createElement('div');
-    toast.className = `toast ${variant.class}`;
-    toast.innerHTML = `
-        <div class="toast-icon">${variant.icon}</div>
-        <div class="flex-1 min-w-0">
-            <h4 class="toast-title">${finalTitle}</h4>
-            <p class="toast-message">${message}</p>
-        </div>
-        <button class="toast-close-btn" onclick="
-            this.parentElement.classList.add('hiding');
-            this.parentElement.addEventListener('animationend', () => this.parentElement.remove());
-        ">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </button>
-    `;
-
-    container.appendChild(toast);
-};
-
 document.addEventListener('DOMContentLoaded', () => {
     console.log("App Version: 2.0 (Cache Refresh Split)");
     let isMainDashboardInitialized = false;
@@ -800,7 +746,7 @@ document.addEventListener('DOMContentLoaded', () => {
             checkProfileLock = false;
             if (!isAppReady) {
                 if (err.message !== 'Tempo limite de conexão excedido. Verifique sua internet.') {
-                    window.showToast('error', "Erro de conexão: " + (err.message || 'Erro desconhecido'));
+                    alert("Erro de conexão: " + (err.message || 'Erro desconhecido'));
                     showScreen('login-view');
                 }
             }
@@ -916,7 +862,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const password = document.getElementById('signup-password').value;
 
             if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-                window.showToast('error', 'A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, uma minúscula e um caractere especial.');
+                alert('A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, uma minúscula e um caractere especial.');
                 return;
             }
 
@@ -937,13 +883,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (error) {
-                window.showToast('error', 'Erro ao realizar cadastro: ' + error.message);
+                alert('Erro ao realizar cadastro: ' + error.message);
                 btn.disabled = false; btn.textContent = oldText;
                 return;
             }
 
             if (data && data.user) {
-                window.showToast('success', 'Cadastro realizado! Sua conta aguarda aprovação manual.');
+                alert('Cadastro realizado! Sua conta aguarda aprovação manual.');
                 setTimeout(() => window.location.reload(), 2000);
             }
         });
@@ -966,7 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     .maybeSingle();
 
                 if (profileError || !profile || profile.status !== 'aprovado') {
-                    window.showToast('error', 'E-mail não encontrado ou cadastro pendente de aprovação.');
+                    alert('E-mail não encontrado ou cadastro pendente de aprovação.');
                     btn.disabled = false; btn.textContent = oldText;
                     return;
                 }
@@ -976,13 +922,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (error) {
-                    window.showToast('error', 'Erro ao enviar e-mail: ' + error.message);
+                    alert('Erro ao enviar e-mail: ' + error.message);
                 } else {
-                    window.showToast('success', 'Verifique seu e-mail para o link de redefinição de senha.');
+                    alert('Verifique seu e-mail para o link de redefinição de senha.');
                     switchAuthView(loginFormSignin);
                 }
             } catch (err) {
-                window.showToast('error', 'Ocorreu um erro ao processar sua solicitação.');
+                alert('Ocorreu um erro ao processar sua solicitação.');
             } finally {
                 btn.disabled = false; btn.textContent = oldText;
             }
@@ -1141,7 +1087,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navUploaderBtn) {
         navUploaderBtn.addEventListener('click', () => {
             if (window.userRole !== 'adm') {
-                window.showToast('error', 'Acesso negado: Apenas administradores podem acessar o uploader.');
+                alert('Acesso negado: Apenas administradores podem acessar o uploader.');
                 return;
             }
             uploaderModal.classList.remove('hidden');
@@ -1157,9 +1103,9 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const { data, error } = await supabase.rpc('optimize_database');
                 if (error) throw error;
-                window.showToast('success', data || 'Otimização concluída!');
+                alert(data || 'Otimização concluída!');
             } catch(e) { 
-                window.showToast('error', 'Erro: ' + e.message);
+                alert('Erro: ' + e.message);
             }
         });
     }
@@ -1270,7 +1216,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if(optimizeDbBtn) optimizeDbBtn.addEventListener('click', async () => {
         if (window.userRole !== 'adm') {
-            window.showToast('error', 'Apenas administradores podem executar esta ação.');
+            alert('Apenas administradores podem executar esta ação.');
             return;
         }
         if (!confirm('Recriar índices do banco de dados?')) return;
@@ -1286,10 +1232,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
             statusText.textContent = data || 'Concluído!';
             progressBar.style.width = '100%';
-            window.showToast('success', data);
+            alert(data);
         } catch (e) {
             statusText.textContent = 'Erro: ' + e.message;
-            window.showToast('error', 'Erro: ' + e.message);
+            alert('Erro: ' + e.message);
         } finally {
             optimizeDbBtn.disabled = false;
             optimizeDbBtn.textContent = 'Otimizar Banco de Dados (Reduzir Espaço)';
@@ -1372,7 +1318,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         uploaderModal.classList.add('hidden');
                         statusContainer.classList.add('hidden');
                         generateBtn.disabled = false;
-                        window.showToast('success', 'Dados atualizados com sucesso!', 'Sucesso');
                         initDashboard();
                     }, 1500);
                 } catch (e) {
@@ -1430,7 +1375,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  const { error } = await supabase.from(table).upsert(batch, { onConflict: 'codigo' });
                  if (error) {
                      if (error.message && (error.message.includes('Could not find the table') || error.message.includes('relation') || error.code === '42P01')) {
-                         window.showToast('error', "Erro de Configuração: As tabelas novas (dimensões) não foram encontradas. \n\nPor favor, execute o script 'sql/optimization_plan.sql' no Editor SQL do Supabase para criar as tabelas necessárias e tente novamente.");
+                         alert("Erro de Configuração: As tabelas novas (dimensões) não foram encontradas. \n\nPor favor, execute o script 'sql/optimization_plan.sql' no Editor SQL do Supabase para criar as tabelas necessárias e tente novamente.");
                      }
                      throw new Error(`Erro upsert ${table}: ${error.message}`);
                  }
@@ -1796,7 +1741,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function exportBoxesTable(format) {
         if (!currentBoxesTableData || currentBoxesTableData.length === 0) {
-            window.showToast('error', 'Sem dados para exportar.');
+            alert('Sem dados para exportar.');
             return;
         }
 
@@ -2018,7 +1963,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error(error);
                 hideDashboardLoading();
                 if (error.message.includes('function get_boxes_dashboard_data') && error.message.includes('does not exist')) {
-                    window.showToast('error', "Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
+                    alert("Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
                 }
                 return;
             }
@@ -4442,7 +4387,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Allow click even if role is unknown for debugging, but ideally check permissions
                 if (window.userRole !== 'adm') {
                     console.warn("User role not adm:", window.userRole);
-                    window.showToast('error', "Apenas administradores podem alterar feriados.");
+                    alert("Apenas administradores podem alterar feriados.");
                     return;
                 }
                 
@@ -4465,7 +4410,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (error) {
                     console.error("Error toggling holiday:", error);
                     el.classList.toggle('selected'); // Revert
-                    window.showToast('error', "Erro ao alterar feriado: " + error.message);
+                    alert("Erro ao alterar feriado: " + error.message);
                 } else {
                     console.log("Holiday toggled successfully.");
                     
@@ -4804,7 +4749,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error("RPC Error:", error);
                     hideDashboardLoading();
                     if (error.message.includes('function get_comparison_view_data') && error.message.includes('does not exist')) {
-                        window.showToast('error', "A função 'get_comparison_view_data' não foi encontrada no banco de dados. \n\nPor favor, execute o script 'sql/comparison_view_rpc.sql' no Supabase SQL Editor para corrigir isso.");
+                        alert("A função 'get_comparison_view_data' não foi encontrada no banco de dados. \n\nPor favor, execute o script 'sql/comparison_view_rpc.sql' no Supabase SQL Editor para corrigir isso.");
                     }
                     return;
                 }
