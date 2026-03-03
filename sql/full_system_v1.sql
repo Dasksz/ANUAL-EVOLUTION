@@ -45,7 +45,8 @@ DECLARE
 BEGIN
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = 'todos' THEN
-        v_current_year := EXTRACT(YEAR FROM CURRENT_DATE);
+        SELECT EXTRACT(YEAR FROM MAX(dtped)) INTO v_current_year FROM public.data_detailed;
+        v_current_year := COALESCE(v_current_year, EXTRACT(YEAR FROM CURRENT_DATE));
     ELSE
         v_current_year := p_ano::int;
     END IF;
@@ -93,9 +94,9 @@ BEGIN
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_fornecedor)) THEN
-            v_where_base := v_where_base || ' AND fornecedor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
-            v_where_base_prev := v_where_base_prev || ' AND fornecedor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
-            v_where_chart := v_where_chart || ' AND fornecedor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
+            v_where_base := v_where_base || ' AND codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
+            v_where_base_prev := v_where_base_prev || ' AND codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
+            v_where_chart := v_where_chart || ' AND codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
         END IF;
     END IF;
 
@@ -126,7 +127,14 @@ BEGIN
 
     -- Dynamic Query
     v_sql := '
-    WITH current_data AS (
+    WITH all_sales AS (
+        SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor
+        FROM public.data_detailed
+        UNION ALL
+        SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor
+        FROM public.data_history
+    ),
+    current_data AS (
         SELECT
             COALESCE(filial, ''SEM FILIAL'') as filial,
             COALESCE(cidade, ''SEM CIDADE'') as cidade,
@@ -137,8 +145,8 @@ BEGIN
             vlvenda,
             totpesoliq as peso,
             produto
-        FROM public.data_detailed
-        LEFT JOIN public.dim_vendedores dv ON public.data_detailed.codusur = dv.codigo
+        FROM all_sales
+        LEFT JOIN public.dim_vendedores dv ON all_sales.codusur = dv.codigo
         ' || v_where_base || '
     ),
     previous_data AS (
@@ -147,8 +155,8 @@ BEGIN
             COALESCE(cidade, ''SEM CIDADE'') as cidade,
             COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
             SUM(vlvenda) as faturamento_prev
-        FROM public.data_detailed
-        LEFT JOIN public.dim_vendedores dv ON public.data_detailed.codusur = dv.codigo
+        FROM all_sales
+        LEFT JOIN public.dim_vendedores dv ON all_sales.codusur = dv.codigo
         ' || v_where_base_prev || '
         GROUP BY 1, 2, 3
     ),
