@@ -45,8 +45,7 @@ DECLARE
 BEGIN
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = 'todos' THEN
-        SELECT EXTRACT(YEAR FROM MAX(dtped)) INTO v_current_year FROM public.data_detailed;
-        v_current_year := COALESCE(v_current_year, EXTRACT(YEAR FROM CURRENT_DATE));
+        v_current_year := EXTRACT(YEAR FROM CURRENT_DATE);
     ELSE
         v_current_year := p_ano::int;
     END IF;
@@ -81,9 +80,9 @@ BEGIN
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND superv = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || ''']) ';
-        v_where_base_prev := v_where_base_prev || ' AND superv = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || ''']) ';
-        v_where_chart := v_where_chart || ' AND superv = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || ''']) ';
+        v_where_base := v_where_base || ' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
@@ -213,9 +212,12 @@ BEGIN
             EXTRACT(MONTH FROM dtped) as mes,
             COUNT(DISTINCT pedido) as total_pedidos,
             COUNT(DISTINCT codcli) as total_clientes
-        FROM public.data_detailed
-        ' || v_where_chart || '
-          AND tipovenda NOT IN (''5'', ''11'')
+        FROM (
+            SELECT dtped, pedido, codcli, filial, cidade, codsupervisor, codusur, codfor, tipovenda, produto FROM public.data_detailed ' || v_where_chart || '
+            UNION ALL
+            SELECT dtped, pedido, codcli, filial, cidade, codsupervisor, codusur, codfor, tipovenda, produto FROM public.data_history ' || v_where_chart || '
+        ) all_data
+        WHERE tipovenda NOT IN (''5'', ''11'')
         GROUP BY 1, 2
     )
     SELECT json_build_object(
