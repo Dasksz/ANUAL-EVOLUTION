@@ -1611,6 +1611,13 @@ document.addEventListener('DOMContentLoaded', () => {
                  updateStatus('Atualizando Fornecedores...', 3);
                  await performDimensionUpsert('dim_fornecedores', data.newProviders);
             }
+            if (data.productStock && data.productStock.length > 0) {
+                 updateStatus('Atualizando Estoque de Produtos...', 4);
+                 await retryOperation(async () => {
+                     const { error } = await supabase.rpc('update_products_stock', { p_stock_data: data.productStock });
+                     if (error) throw new Error('Erro ao atualizar estoque_filial: ' + error.message);
+                 });
+            }
 
             // Sales Tables (Use Chunk Sync)
             if (data.historyChunks) await syncSalesChunks('data_history', data.historyChunks, 10, 40);

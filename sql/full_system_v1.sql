@@ -457,15 +457,15 @@ AS $$
 BEGIN
     -- p_stock_data expects: [{"codigo": "123", "filial": "05", "estoque": 100}, ...]
     WITH raw_stock AS (
-        SELECT 
-            (rec->>'codigo')::text as codigo, 
+        SELECT
+            (rec->>'codigo')::text as codigo,
             (rec->>'filial')::text as filial,
             (rec->>'estoque')::numeric as estoque
         FROM jsonb_array_elements(p_stock_data) rec
     ),
     agg_stock AS (
-        SELECT 
-            codigo, 
+        SELECT
+            codigo,
             jsonb_object_agg(filial, estoque) as j
         FROM raw_stock
         WHERE codigo IS NOT NULL AND filial IS NOT NULL AND estoque IS NOT NULL
@@ -3246,7 +3246,7 @@ DECLARE
     v_last_sale_date date;
     
     v_target_date date;
-    
+
     -- New date boundary variables
     v_curr_start date;
     v_curr_end date;
@@ -3296,7 +3296,7 @@ BEGIN
     
     v_prev_start := (v_curr_start - interval '1 year')::date;
     v_prev_end := (v_curr_end - interval '1 year')::date;
-    
+
     v_12m_start := (v_curr_start - interval '12 months')::date;
     v_12m_end := v_curr_start; -- The 12 months before current month
 
@@ -3412,9 +3412,9 @@ BEGIN
             COALESCE(p12.pos_avg, 0) AS pos_avg_12m,
             -- ESTOQUE IS NOW DYNAMICALLY EXTRACTED FROM dim_produtos.estoque_filial
             COALESCE((
-                SELECT SUM(value::numeric) 
-                FROM jsonb_each_text((SELECT estoque_filial FROM dim_produtos WHERE codigo = COALESCE(ab.product_code, p12.product_code))) 
-                WHERE (p_filial IS NULL OR array_length(p_filial, 1) = 0 OR ''ambas'' = ANY(p_filial)) 
+                SELECT SUM(value::numeric)
+                FROM jsonb_each_text((SELECT estoque_filial FROM dim_produtos WHERE codigo = COALESCE(ab.product_code, p12.product_code)))
+                WHERE (p_filial IS NULL OR array_length(p_filial, 1) = 0 OR ''ambas'' = ANY(p_filial))
                    OR key = ANY(p_filial)
             ), 0) AS estoque_current
         FROM aggregated_base ab
