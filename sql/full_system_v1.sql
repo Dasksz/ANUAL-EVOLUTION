@@ -3399,9 +3399,15 @@ BEGIN
             (d.dtped >= ''' || v_prev_start || ''' AND d.dtped < ''' || v_prev_end || ''') AS is_prev_year,
             (d.dtped >= ''' || v_12m_start || ''' AND d.dtped < ''' || v_12m_end || ''') AS is_avg_12m
         FROM (
-            SELECT codcli, produto, dtped FROM data_detailed WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
+            SELECT codcli, produto, dtped
+            FROM data_detailed
+            WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
+              AND produto IN (SELECT codigo FROM data_innovations)
             UNION ALL
-            SELECT codcli, produto, dtped FROM data_history WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
+            SELECT codcli, produto, dtped
+            FROM data_history
+            WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
+              AND produto IN (SELECT codigo FROM data_innovations)
         ) d
         JOIN data_innovations i ON d.produto = i.codigo
         JOIN dim_produtos p ON p.codigo = i.codigo
