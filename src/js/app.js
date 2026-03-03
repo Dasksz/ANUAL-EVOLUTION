@@ -5483,7 +5483,7 @@ function renderInnovationsTable(data) {
         let posAtual = ((p.pos_current / active) * 100).toFixed(2);
         let posPrevYear = ((p.pos_prev_year / active) * 100).toFixed(2);
         let posAvg12m = ((p.pos_avg_12m / active) * 100).toFixed(2);
-
+        
         // Variação vs Mês Ano Anterior
         let varPercent = p.pos_prev_year > 0 ? (((p.pos_current - p.pos_prev_year) / p.pos_prev_year) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
 
@@ -5571,7 +5571,7 @@ const setupInnovationsFilters = async () => {
         let select = document.createElement('select');
         select.multiple = true;
         select.className = "hidden"; // Esconde o select original
-
+        
         options.forEach(opt => {
             select.innerHTML += `<option value="${opt}">${opt}</option>`;
         });
@@ -5594,23 +5594,29 @@ const setupInnovationsFilters = async () => {
         createFilter('innovations-month-tipo-venda-filter-wrapper', filterData.tipos_venda || []);
         createFilter('innovations-month-rede-filter-wrapper', filterData.redes || []);
         createFilter('innovations-month-filial-filter', filterData.filiais || []);
-
+        
         // Setup Ano and Mes standard filters using standard logic or generic enhance
         const anoSelect = document.getElementById('innovations-ano-filter');
         const mesSelect = document.getElementById('innovations-mes-filter');
-
+        
         if (anoSelect && filterData.anos) {
             filterData.anos.forEach(ano => {
                 anoSelect.innerHTML += `<option value="${ano}">${ano}</option>`;
             });
-            anoSelect.addEventListener('change', updateInnovationsMonthView);
+            enhanceSelectToCustomDropdown(anoSelect, 'Todos', updateInnovationsMonthView);
         }
-
-        if (mesSelect && filterData.meses) {
-            filterData.meses.forEach(mes => {
-                mesSelect.innerHTML += `<option value="${mes.numero}">${mes.nome}</option>`;
+        
+        if (mesSelect) {
+            // Se filterData.meses não for garantido com objetos .numero, recriar a lógica padrão
+            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            meses.forEach((m, i) => { 
+                const opt = document.createElement('option'); 
+                const val = String(i + 1).padStart(2, '0');
+                opt.value = val; 
+                opt.textContent = m; 
+                mesSelect.appendChild(opt); 
             });
-            mesSelect.addEventListener('change', updateInnovationsMonthView);
+            enhanceSelectToCustomDropdown(mesSelect, 'Todos', updateInnovationsMonthView);
         }
 
         // Load Inovações Categories
@@ -5626,7 +5632,7 @@ const setupInnovationsFilters = async () => {
                         optionEl.textContent = opt;
                         inovSelect.appendChild(optionEl);
                     });
-                    inovSelect.addEventListener('change', updateInnovationsMonthView);
+                    enhanceSelectToCustomDropdown(inovSelect, 'Todas as Categorias', updateInnovationsMonthView);
                 }
             }
         } catch (e) {
@@ -5757,10 +5763,10 @@ window.clearAllFilters = function(prefix) {
         const mesSelect = document.getElementById('innovations-mes-filter');
         if (anoSelect) anoSelect.value = 'todos';
         if (mesSelect) mesSelect.value = '';
-
+        
         const catSelect = document.getElementById('innovations-month-category-filter');
         if (catSelect) catSelect.value = '';
-
+        
         const wrappers = ['innovations-month-supervisor-filter-wrapper', 'innovations-month-vendedor-filter-wrapper', 'innovations-month-city-filter', 'innovations-month-tipo-venda-filter-wrapper', 'innovations-month-rede-filter-wrapper', 'innovations-month-filial-filter'];
         wrappers.forEach(id => {
             const container = document.getElementById(id);
