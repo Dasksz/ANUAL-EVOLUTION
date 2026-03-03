@@ -1010,7 +1010,7 @@ BEGIN
         categoria_produto
     FROM client_agg;
     
-    ANALYZE public.data_summary;
+    -- ANALYZE public.data_summary;
 END;
 $$;
 
@@ -1118,7 +1118,7 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
     
     -- Ensure stats are up to date before complex joins
-    ANALYZE public.data_summary;
+    -- ANALYZE public.data_summary;
 
     TRUNCATE TABLE public.cache_filters;
     INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes, rede, categoria_produto)
