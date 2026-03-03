@@ -180,7 +180,6 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
             filial: filialValue,
             codsupervisor: String(rawRow['CODSUPERVISOR'] || '').trim(),
             estoqueunit: parseBrazilianNumber(rawRow['ESTOQUEUNIT']),
-            qtvenda_embalagem_master: isNaN(qtdeMaster) || qtdeMaster === 0 ? 0 : qtVenda / qtdeMaster,
             tipovenda: String(rawRow['TIPOVENDA'] || '').trim()
         };
     });
@@ -476,7 +475,7 @@ self.onmessage = async (event) => {
             productMasterMap.set(productCode, qtdeMaster);
 
             const desc = String(prod['Descrição'] || '').trim();
-            dimProducts.set(productCode, { descricao: desc, codfor: codFor });
+            dimProducts.set(productCode, { descricao: desc, codfor: codFor, qtde_embalagem_master: qtdeMaster });
         });
 
         // --- Logic for Inactive Clients (City -> Filial -> Supervisor) ---
@@ -844,7 +843,7 @@ self.onmessage = async (event) => {
         const finalHistoryChunks = (salesPrevYearFile || salesCurrYearFile) ? historyChunks : null;
 
         // Only return newProducts if productsFile was provided to avoid overwriting table with partial data from sales
-        const finalProducts = productsFile ? Array.from(dimProducts.entries()).map(([codigo, val]) => ({ codigo, descricao: val.descricao, codfor: val.codfor })) : null;
+        const finalProducts = productsFile ? Array.from(dimProducts.entries()).map(([codigo, val]) => ({ codigo, descricao: val.descricao, codfor: val.codfor, qtde_embalagem_master: val.qtde_embalagem_master })) : null;
 
         // Process Innovations
         let finalInnovations = null;

@@ -911,11 +911,11 @@ BEGIN
         ramo, caixas, categoria_produto
     )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
         FROM public.data_detailed
         WHERE EXTRACT(YEAR FROM dtped)::int = p_year
         UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
         FROM public.data_history
         WHERE EXTRACT(YEAR FROM dtped)::int = p_year
     ),
@@ -940,7 +940,7 @@ BEGIN
             END as codfor, 
             s.tipovenda, 
             s.codcli,
-            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
+            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
             c.ramo,
             dp.categoria_produto -- Added
         FROM raw_data s
@@ -954,7 +954,7 @@ BEGIN
             SUM(totpesoliq) as prod_peso,
             SUM(vlbonific) as prod_bonific,
             SUM(COALESCE(vldevolucao, 0)) as prod_devol,
-            SUM(COALESCE(qtvenda_embalagem_master, 0)) as prod_caixas
+            SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as prod_caixas
         FROM augmented_data
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
     ),
@@ -1004,11 +1004,11 @@ BEGIN
         ramo, caixas, categoria_produto
     )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
         FROM public.data_detailed
         WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
         UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
         FROM public.data_history
         WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
     ),
@@ -1033,7 +1033,7 @@ BEGIN
             END as codfor, 
             s.tipovenda, 
             s.codcli,
-            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
+            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
             c.ramo,
             dp.categoria_produto -- Added
         FROM raw_data s
@@ -1047,7 +1047,7 @@ BEGIN
             SUM(totpesoliq) as prod_peso,
             SUM(vlbonific) as prod_bonific,
             SUM(COALESCE(vldevolucao, 0)) as prod_devol,
-            SUM(COALESCE(qtvenda_embalagem_master, 0)) as prod_caixas
+            SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as prod_caixas
         FROM augmented_data
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
     ),
@@ -2044,12 +2044,12 @@ BEGIN
             ),
             -- Products Table (Updated to JOIN dim_produtos)
             prod_base AS (
-                SELECT s.vlvenda, s.totpesoliq, s.qtvenda_embalagem_master, s.produto, dp.descricao, s.dtped
+                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
                 UNION ALL
-                SELECT s.vlvenda, s.totpesoliq, s.qtvenda_embalagem_master, s.produto, dp.descricao, s.dtped
+                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
@@ -2058,7 +2058,7 @@ BEGIN
                 SELECT
                     produto,
                     MAX(descricao) as descricao,
-                    SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas,
+                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     SUM(vlvenda) as faturamento,
                     SUM(totpesoliq) as peso,
                     MAX(dtped) as ultima_venda
@@ -2087,12 +2087,12 @@ BEGIN
         -- SLOW PATH (Full Raw Data with dim_produtos join)
         EXECUTE format('
             WITH base_data AS (
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda_embalagem_master, s.produto, dp.descricao
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= make_date(%L, 1, 1)
                 UNION ALL
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda_embalagem_master, s.produto, dp.descricao
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= make_date(%L, 1, 1)
@@ -2103,7 +2103,7 @@ BEGIN
                     EXTRACT(YEAR FROM dtped)::int as yr,
                     SUM(vlvenda) as fat,
                     SUM(totpesoliq) as peso,
-                    SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas
+                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas
                 FROM base_data
                 WHERE EXTRACT(YEAR FROM dtped) IN (%L, %L)
                 GROUP BY 1, 2
@@ -2112,7 +2112,7 @@ BEGIN
                 SELECT 
                     SUM(vlvenda) as fat,
                     SUM(totpesoliq) as peso,
-                    SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas
+                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas
                 FROM base_data
                 WHERE EXTRACT(YEAR FROM dtped) = %L %s
             ),
@@ -2120,7 +2120,7 @@ BEGIN
                 SELECT 
                     SUM(vlvenda) as fat,
                     SUM(totpesoliq) as peso,
-                    SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas
+                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas
                 FROM base_data
                 WHERE EXTRACT(YEAR FROM dtped) = %L %s
             ),
@@ -2128,7 +2128,7 @@ BEGIN
                 SELECT 
                     SUM(vlvenda) / 3 as fat,
                     SUM(totpesoliq) / 3 as peso,
-                    SUM(COALESCE(qtvenda_embalagem_master, 0)) / 3 as caixas
+                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) / 3 as caixas
                 FROM base_data
                 WHERE dtped >= %L AND dtped <= %L
             ),
@@ -2136,7 +2136,7 @@ BEGIN
                 SELECT
                     produto,
                     MAX(descricao) as descricao,
-                    SUM(COALESCE(qtvenda_embalagem_master, 0)) as caixas,
+                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     SUM(vlvenda) as faturamento,
                     SUM(totpesoliq) as peso,
                     MAX(dtped) as ultima_venda
