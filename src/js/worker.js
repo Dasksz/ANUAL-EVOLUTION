@@ -417,7 +417,7 @@ self.onmessage = async (event) => {
 
             // Use city from sales map
             const salesCity = salesCityMap.get(codCli);
-            const finalCity = salesCity || 'N/A';
+            const finalCity = salesCity || String(client['Nome da Cidade'] || 'N/A');
 
             const clientData = {
                 codigo_cliente: codCli,
