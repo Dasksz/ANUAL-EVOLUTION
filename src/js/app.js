@@ -5382,7 +5382,7 @@ let innovationsChart = null;
 let currentInnovationsFilters = {};
 
 async function updateInnovationsMonthView() {
-    showDashboardLoading();
+    showDashboardLoading('innovations-month-view');
 
     const anoSelect = document.getElementById('innovations-ano-filter');
     const mesSelect = document.getElementById('innovations-mes-filter');
@@ -5412,21 +5412,41 @@ async function updateInnovationsMonthView() {
         p_categoria_inovacao: filters.p_categoria_inovacao && filters.p_categoria_inovacao.length ? filters.p_categoria_inovacao[0] : null // Categoria Inovacao was a text param
     };
 
-    try {
-        const { data, error } = await supabase.rpc('get_innovations_data', rpcFilters);
+    const cacheKey = generateCacheKey('innovations_view_data', rpcFilters);
+    let data = null;
 
-        if (error) {
-            console.error('Error fetching innovations:', error);
+    try {
+        const cachedEntry = await getFromCache(cacheKey);
+        if (cachedEntry && cachedEntry.data) {
+            console.log('Serving Innovations View from Cache');
+            data = cachedEntry.data;
+        }
+    } catch (e) { console.warn('Cache error:', e); }
+
+    if (!data) {
+        try {
+            const { data: rpcData, error } = await supabase.rpc('get_innovations_data', rpcFilters);
+
+            if (error) {
+                console.error('Error fetching innovations:', error);
+                hideDashboardLoading();
+                return;
+            }
+            data = rpcData;
+            saveToCache(cacheKey, data);
+        } catch (err) {
+            console.error('Exception fetching innovations:', err);
             hideDashboardLoading();
             return;
         }
+    }
 
+    try {
         renderInnovationsKPIs(data);
         renderInnovationsChart(data);
         renderInnovationsTable(data);
-
     } catch (err) {
-        console.error('Exception fetching innovations:', err);
+        console.error('Error rendering innovations:', err);
     } finally {
         hideDashboardLoading();
     }
@@ -5735,6 +5755,8 @@ document.addEventListener('click', (e) => {
 const setupInnovationsFilters = async () => {
     if (isInnovationsInitialized) return;
 
+    showDashboardLoading('innovations-month-view');
+
     const filters = {
         p_ano: 'todos',
         p_mes: null,
@@ -5747,8 +5769,28 @@ const setupInnovationsFilters = async () => {
         p_rede: [],
         p_categoria: []
     };
-    const { data: filterData } = await supabase.rpc('get_dashboard_filters', filters);
-    if (!filterData) return;
+
+    const cacheKey = generateCacheKey('dashboard_filters', filters);
+    let filterData = null;
+
+    try {
+        const cachedEntry = await getFromCache(cacheKey);
+        if (cachedEntry && cachedEntry.data) {
+            console.log('Serving Innovations Filters from Cache');
+            filterData = cachedEntry.data;
+        }
+    } catch (e) { console.warn('Cache error:', e); }
+
+    if (!filterData) {
+        const { data } = await supabase.rpc('get_dashboard_filters', filters);
+        filterData = data;
+        if (filterData) saveToCache(cacheKey, filterData);
+    }
+
+    if (!filterData) {
+        hideDashboardLoading();
+        return;
+    }
 
     // Load Ano and Mes
     const anoSelect = document.getElementById('innovations-ano-filter');
@@ -5812,6 +5854,7 @@ const setupInnovationsFilters = async () => {
         console.error("Error loading inovacoes categories", e);
     }
     
+    hideDashboardLoading();
     isInnovationsInitialized = true;
 };
 
