@@ -11,6 +11,7 @@ DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[]);
 DROP FUNCTION IF EXISTS get_frequency_table_data(text[]);
 DROP FUNCTION IF EXISTS get_frequency_table_data();
 
+
 CREATE OR REPLACE FUNCTION get_frequency_table_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -185,7 +186,7 @@ BEGIN
     freq_pedidos AS (
         SELECT filial, cidade, vendedor, COUNT(DISTINCT pedido) as total_pedidos
         FROM current_data
-        WHERE tipovenda NOT IN (5, 11)
+        WHERE tipovenda NOT IN ('5', '11')
         GROUP BY filial, cidade, vendedor
     ),
     final_tree AS (
@@ -214,7 +215,7 @@ BEGIN
             COUNT(DISTINCT codcli) as total_clientes
         FROM public.data_detailed
         ' || v_where_chart || '
-          AND tipovenda NOT IN (5, 11)
+          AND tipovenda NOT IN ('5', '11')
         GROUP BY 1, 2
     )
     SELECT json_build_object(
@@ -3203,6 +3204,7 @@ DROP FUNCTION IF EXISTS get_innovations_data(text[], text);
 DROP FUNCTION IF EXISTS get_innovations_data(text[]);
 DROP FUNCTION IF EXISTS get_innovations_data(text);
 DROP FUNCTION IF EXISTS get_innovations_data();
+
 
 CREATE OR REPLACE FUNCTION get_innovations_data(
     p_filial text[] default null,
