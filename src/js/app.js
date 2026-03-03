@@ -5603,14 +5603,20 @@ const setupInnovationsFilters = async () => {
             filterData.anos.forEach(ano => {
                 anoSelect.innerHTML += `<option value="${ano}">${ano}</option>`;
             });
-            anoSelect.addEventListener('change', updateInnovationsMonthView);
+            enhanceSelectToCustomDropdown(anoSelect, 'Todos', updateInnovationsMonthView);
         }
 
-        if (mesSelect && filterData.meses) {
-            filterData.meses.forEach(mes => {
-                mesSelect.innerHTML += `<option value="${mes.numero}">${mes.nome}</option>`;
+        if (mesSelect) {
+            // Se filterData.meses não for garantido com objetos .numero, recriar a lógica padrão
+            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            meses.forEach((m, i) => {
+                const opt = document.createElement('option');
+                const val = String(i + 1).padStart(2, '0');
+                opt.value = val;
+                opt.textContent = m;
+                mesSelect.appendChild(opt);
             });
-            mesSelect.addEventListener('change', updateInnovationsMonthView);
+            enhanceSelectToCustomDropdown(mesSelect, 'Todos', updateInnovationsMonthView);
         }
 
         // Load Inovações Categories
@@ -5626,7 +5632,7 @@ const setupInnovationsFilters = async () => {
                         optionEl.textContent = opt;
                         inovSelect.appendChild(optionEl);
                     });
-                    inovSelect.addEventListener('change', updateInnovationsMonthView);
+                    enhanceSelectToCustomDropdown(inovSelect, 'Todas as Categorias', updateInnovationsMonthView);
                 }
             }
         } catch (e) {

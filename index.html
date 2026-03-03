@@ -1483,67 +1483,67 @@
     </header>
 
     <!-- Filters Section (Simulating the image design) -->
-    <div class="glass-card p-5 rounded-xl mb-6 border border-slate-700/50 shadow-xl relative z-[100] bg-[#1a1c23]">
-        <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 items-end" id="innovations-month-filters-container">
+    <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-4 rounded-xl mb-6 shadow-lg relative z-[100]">
+        <div class="flex flex-wrap items-end gap-3 mb-2" id="innovations-month-filters-container">
 
-            <div class="relative w-full">
-                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Ano</label>
+            <div class="flex-1 min-w-[140px] relative">
+                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ano</label>
                 <div class="relative w-full">
-                    <select id="innovations-ano-filter" class="w-full bg-[#1e293b] text-white text-sm rounded border border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 p-2 outline-none appearance-none cursor-pointer h-[38px] transition-all">
+                    <select id="innovations-ano-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none">
                         <option value="todos">Todos</option>
                     </select>
                 </div>
             </div>
 
-            <div class="relative w-full">
-                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Mês</label>
+            <div class="flex-1 min-w-[140px] relative">
+                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Mês</label>
                 <div class="relative w-full">
-                    <select id="innovations-mes-filter" class="w-full bg-[#1e293b] text-white text-sm rounded border border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 p-2 outline-none appearance-none cursor-pointer h-[38px] transition-all">
+                    <select id="innovations-mes-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none">
                         <option value="">Todos</option>
                     </select>
                 </div>
             </div>
 
-            <div class="relative w-full">
-                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Supervisor</label>
+            <div class="flex-1 min-w-[140px] relative">
+                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Supervisor</label>
                 <div id="innovations-month-supervisor-filter-wrapper"></div>
             </div>
 
-            <div class="relative w-full">
-                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Vendedor</label>
+            <div class="flex-1 min-w-[140px] relative">
+                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Vendedor</label>
                 <div id="innovations-month-vendedor-filter-wrapper"></div>
             </div>
 
-            <div class="relative w-full">
-                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Cidade</label>
+            <div class="flex-1 min-w-[140px] relative">
+                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Cidade</label>
                 <div id="innovations-month-city-filter"></div>
             </div>
 
-            <div class="relative w-full">
-                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Tipo Venda</label>
+            <div class="flex-1 min-w-[140px] relative">
+                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Tipo Venda</label>
                 <div id="innovations-month-tipo-venda-filter-wrapper"></div>
             </div>
 
-            <div class="relative w-full">
-                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Rede</label>
+            <div class="flex-1 min-w-[140px] relative">
+                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Rede</label>
                 <div id="innovations-month-rede-filter-wrapper"></div>
             </div>
 
-            <div class="relative w-full">
-                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Categoria</label>
-                <select id="innovations-month-category-filter" class="w-full bg-[#1e293b] text-white text-sm rounded border border-slate-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 p-2 outline-none appearance-none cursor-pointer h-[38px]">
+            <div class="flex-1 min-w-[140px] relative">
+                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Categoria</label>
+                <select id="innovations-month-category-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none">
                     <option value="">Todas as Categorias</option>
                 </select>
             </div>
 
-            <div class="relative w-full">
-                <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Filial</label>
+            <div class="flex-1 min-w-[140px] relative">
+                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Filial</label>
                 <div id="innovations-month-filial-filter"></div>
             </div>
 
-            <div class="w-full flex justify-end">
-                <button onclick="clearAllFilters('innovations')" class="bg-slate-700/80 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded transition-colors text-sm h-[38px]">
-                    Limpar
+            <div class="ml-auto flex justify-end items-end gap-3">
+                <button onclick="clearAllFilters('innovations')" class="bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-lg transition-colors flex items-center justify-center h-[38px] w-[38px]" title="Limpar Filtros">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path><line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line></svg>
                 </button>
             </div>
         </div>
