@@ -1,15 +1,16 @@
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data();
+DO $drop_all_funcs$
+DECLARE
+    r record;
+BEGIN
+    FOR r IN
+        SELECT oid::regprocedure AS func_sig
+        FROM pg_proc
+        WHERE proname IN ('get_frequency_table_data', 'get_innovations_data')
+          AND pronamespace = 'public'::regnamespace
+    LOOP
+        EXECUTE 'DROP FUNCTION IF EXISTS ' || r.func_sig || ' CASCADE';
+    END LOOP;
+END $drop_all_funcs$;
 
 CREATE OR REPLACE FUNCTION get_frequency_table_data(
     p_filial text[] default null,
@@ -185,7 +186,7 @@ BEGIN
     freq_pedidos AS (
         SELECT filial, cidade, vendedor, COUNT(DISTINCT pedido) as total_pedidos
         FROM current_data
-        WHERE tipovenda NOT IN (5, 11)
+        WHERE tipovenda NOT IN ('5', '11')
         GROUP BY filial, cidade, vendedor
     ),
     final_tree AS (
@@ -214,7 +215,7 @@ BEGIN
             COUNT(DISTINCT codcli) as total_clientes
         FROM public.data_detailed
         ' || v_where_chart || '
-          AND tipovenda NOT IN (5, 11)
+          AND tipovenda NOT IN ('5', '11')
         GROUP BY 1, 2
     )
     SELECT json_build_object(
@@ -3186,23 +3187,6 @@ BEGIN
     DO UPDATE SET chunk_hash = EXCLUDED.chunk_hash, updated_at = now();
 END;
 $$;
-DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text[], text[], text);
-DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text[], text);
-DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text);
-DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text);
-DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text);
-DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text);
-DROP FUNCTION IF EXISTS get_innovations_data(text[], text[]);
-DROP FUNCTION IF EXISTS get_innovations_data(text[], text);
-DROP FUNCTION IF EXISTS get_innovations_data(text[]);
-DROP FUNCTION IF EXISTS get_innovations_data(text);
-DROP FUNCTION IF EXISTS get_innovations_data();
 
 CREATE OR REPLACE FUNCTION get_innovations_data(
     p_filial text[] default null,
