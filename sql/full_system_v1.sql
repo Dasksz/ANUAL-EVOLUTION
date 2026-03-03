@@ -3214,10 +3214,14 @@ DECLARE
     v_last_sale_date date;
     
     v_target_date date;
-    v_month_curr text; -- Formatted YYYY-MM
-    v_month_prev_year text; -- Formatted YYYY-MM
-    v_month_12m_start text; -- Formatted YYYY-MM
-    v_month_12m_end text; -- Formatted YYYY-MM
+    
+    -- New date boundary variables
+    v_curr_start date;
+    v_curr_end date;
+    v_prev_start date;
+    v_prev_end date;
+    v_12m_start date;
+    v_12m_end date;
 
     v_where_inov text := ' 1=1 ';
     v_filial_cities text[];
@@ -3254,13 +3258,15 @@ BEGIN
         v_target_date := v_last_sale_date;
     END IF;
 
-    -- Format YYYY-MM for exact match filtering
-    v_month_curr := to_char(v_target_date, 'YYYY-MM');
-    v_month_prev_year := to_char(v_target_date - interval '1 year', 'YYYY-MM');
+    -- Calculate exact date boundaries for indexing
+    v_curr_start := date_trunc('month', v_target_date)::date;
+    v_curr_end := (v_curr_start + interval '1 month')::date;
     
-    -- 12 month average calculation period (last 12 months excluding the current one)
-    v_month_12m_end := to_char(v_target_date - interval '1 month', 'YYYY-MM');
-    v_month_12m_start := to_char(v_target_date - interval '12 months', 'YYYY-MM');
+    v_prev_start := (v_curr_start - interval '1 year')::date;
+    v_prev_end := (v_curr_end - interval '1 year')::date;
+    
+    v_12m_start := (v_curr_start - interval '12 months')::date;
+    v_12m_end := v_curr_start; -- The 12 months before current month
 
     -- 2. Build Where Clauses for Clients
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
@@ -3308,11 +3314,9 @@ BEGIN
     WITH active_clients AS (
         SELECT DISTINCT d.codcli
         FROM (
-            SELECT codcli FROM data_detailed WHERE to_char(dtped, ''YYYY-MM'') = ''' || v_month_curr || '''
+            SELECT codcli FROM data_detailed WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
             UNION ALL
-            SELECT codcli FROM data_history WHERE to_char(dtped, ''YYYY-MM'') = ''' || v_month_curr || '''
-                                               OR to_char(dtped, ''YYYY-MM'') = ''' || v_month_prev_year || '''
-                                               OR (to_char(dtped, ''YYYY-MM'') BETWEEN ''' || v_month_12m_start || ''' AND ''' || v_month_12m_end || ''')
+            SELECT codcli FROM data_history WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
         ) d
         JOIN data_clients c ON c.codigo_cliente = d.codcli
         ' || v_where_base || '
@@ -3322,46 +3326,41 @@ BEGIN
             i.inovacoes AS category_name,
             i.codigo AS product_code,
             p.descricao AS product_name,
-            CASE
-                WHEN to_char(d.dtped, ''YYYY-MM'') = ''' || v_month_curr || ''' THEN ''current''
-                WHEN to_char(d.dtped, ''YYYY-MM'') = ''' || v_month_prev_year || ''' THEN ''prev_year''
-                WHEN to_char(d.dtped, ''YYYY-MM'') BETWEEN ''' || v_month_12m_start || ''' AND ''' || v_month_12m_end || ''' THEN ''avg_12m''
-            END AS period,
             to_char(d.dtped, ''YYYY-MM'') AS period_month,
             d.codcli,
-            COALESCE(d.estoqueunit, 0) as estoque
+            COALESCE(d.estoqueunit, 0) as estoque,
+            (d.dtped >= ''' || v_curr_start || ''') AS is_current,
+            (d.dtped >= ''' || v_prev_start || ''' AND d.dtped < ''' || v_prev_end || ''') AS is_prev_year,
+            (d.dtped >= ''' || v_12m_start || ''' AND d.dtped < ''' || v_12m_end || ''') AS is_avg_12m
         FROM (
-            SELECT codcli, produto, dtped, estoqueunit FROM data_detailed WHERE to_char(dtped, ''YYYY-MM'') = ''' || v_month_curr || '''
+            SELECT codcli, produto, dtped, estoqueunit FROM data_detailed WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
             UNION ALL
-            SELECT codcli, produto, dtped, estoqueunit FROM data_history WHERE to_char(dtped, ''YYYY-MM'') = ''' || v_month_curr || '''
-                                                                 OR to_char(dtped, ''YYYY-MM'') = ''' || v_month_prev_year || '''
-                                                                 OR (to_char(dtped, ''YYYY-MM'') BETWEEN ''' || v_month_12m_start || ''' AND ''' || v_month_12m_end || ''')
+            SELECT codcli, produto, dtped, estoqueunit FROM data_history WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
         ) d
         JOIN data_innovations i ON d.produto = i.codigo
         JOIN dim_produtos p ON p.codigo = i.codigo
         JOIN active_clients ac ON ac.codcli = d.codcli
         WHERE ' || v_where_inov || '
     ),
-    pos_by_period AS (
+    aggregated_base AS (
         SELECT 
             category_name, 
             product_code, 
             product_name,
-            period,
-            COUNT(DISTINCT codcli) AS pos_count,
-            SUM(CASE WHEN period = ''current'' THEN estoque ELSE 0 END) AS estoque_current
+            COUNT(DISTINCT CASE WHEN is_current THEN codcli END) AS pos_current,
+            COUNT(DISTINCT CASE WHEN is_prev_year THEN codcli END) AS pos_prev_year,
+            SUM(CASE WHEN is_current THEN estoque ELSE 0 END) AS estoque_current
         FROM innovation_sales
-        WHERE period IN (''current'', ''prev_year'')
-        GROUP BY 1, 2, 3, 4
+        GROUP BY 1, 2, 3
     ),
     pos_12m AS (
         SELECT 
             category_name, 
             product_code, 
             product_name,
-            COUNT(DISTINCT codcli) / 12.0 AS pos_count -- Average over 12 months
+            COUNT(DISTINCT codcli) / 12.0 AS pos_count
         FROM innovation_sales
-        WHERE period = ''avg_12m''
+        WHERE is_avg_12m
         GROUP BY 1, 2, 3, period_month
     ),
     pos_12m_avg AS (
@@ -3369,22 +3368,21 @@ BEGIN
             category_name, 
             product_code, 
             product_name,
-            SUM(pos_count) AS pos_avg -- Sum of (monthly pos / 12)
+            SUM(pos_count) AS pos_avg
         FROM pos_12m
         GROUP BY 1, 2, 3
     ),
     aggregated AS (
         SELECT
-            COALESCE(pbp.category_name, p12.category_name) AS category_name,
-            COALESCE(pbp.product_code, p12.product_code) AS product_code,
-            COALESCE(pbp.product_name, p12.product_name) AS product_name,
-            COALESCE(MAX(CASE WHEN pbp.period = ''current'' THEN pbp.pos_count END), 0) AS pos_current,
-            COALESCE(MAX(CASE WHEN pbp.period = ''prev_year'' THEN pbp.pos_count END), 0) AS pos_prev_year,
-            COALESCE(MAX(p12.pos_avg), 0) AS pos_avg_12m,
-            COALESCE(MAX(pbp.estoque_current), 0) AS estoque_current
-        FROM pos_by_period pbp
-        FULL OUTER JOIN pos_12m_avg p12 ON pbp.product_code = p12.product_code
-        GROUP BY 1, 2, 3
+            COALESCE(ab.category_name, p12.category_name) AS category_name,
+            COALESCE(ab.product_code, p12.product_code) AS product_code,
+            COALESCE(ab.product_name, p12.product_name) AS product_name,
+            COALESCE(ab.pos_current, 0) AS pos_current,
+            COALESCE(ab.pos_prev_year, 0) AS pos_prev_year,
+            COALESCE(p12.pos_avg, 0) AS pos_avg_12m,
+            COALESCE(ab.estoque_current, 0) AS estoque_current
+        FROM aggregated_base ab
+        FULL OUTER JOIN pos_12m_avg p12 ON ab.product_code = p12.product_code
     )
     SELECT json_build_object(
         ''active_clients'', (SELECT COUNT(*) FROM active_clients),
@@ -3415,3 +3413,5 @@ BEGIN
     RETURN v_result;
 END;
 $BODY$;
+
+
