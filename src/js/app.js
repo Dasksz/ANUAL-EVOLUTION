@@ -5520,11 +5520,11 @@ function renderInnovationsKPIs(data) {
 
     if (topCovTitle) topCovTitle.textContent = bestCategory || 'N/A';
     if (topCovLabel) topCovLabel.textContent = 'Média por Cliente';
-
+    
     // Changing the count label to the calculated average
     if (topCovKpi) topCovKpi.textContent = bestAvgPerClient > 0 ? bestAvgPerClient.toFixed(2) : '0.00';
     if (topCovCount) topCovCount.textContent = 'Média Produtos';
-
+    
     if (topCovValue) topCovValue.textContent = '';
 
     // Selection Percent
@@ -5597,31 +5597,40 @@ function renderInnovationsChart(data) {
         type: 'bar',
         data: {
             labels: labels,
-            datasets: [
+                        datasets: [
                 {
                     label: labelM3,
                     data: prevM3Data,
-                    backgroundColor: '#3b82f6', // blue-500
-                    borderRadius: 2
+                    backgroundColor: '#eaf7f8', // light-blue
+                    borderColor: '#eaf7f8',
+                    borderSkipped: 'bottom',
+                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
                 },
                 {
                     label: labelM2,
                     data: prevM2Data,
-                    backgroundColor: '#8b5cf6', // purple-500
-                    borderRadius: 2
+                    backgroundColor: '#379fae', // powder-blue
+                    borderColor: '#379fae',
+                    borderSkipped: 'bottom',
+                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
                 },
                 {
                     label: labelM1,
                     data: prevM1Data,
-                    backgroundColor: '#64748b', // slate-500
-                    borderRadius: 2
+                    backgroundColor: '#316a9a', // dark-blue
+                    borderColor: '#316a9a',
+                    borderSkipped: 'bottom',
+                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
                 },
                 {
                     label: labelCurrent + ' (Mês Atual)',
                     data: currentData,
-                    backgroundColor: '#10b981', // emerald-500
-                    borderRadius: 2
+                    backgroundColor: '#ffaa4d', // neon-orange
+                    borderColor: '#ffaa4d',
+                    borderSkipped: 'bottom',
+                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
                 }
+            ]
             ]
         },
         options: {
