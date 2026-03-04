@@ -5633,7 +5633,7 @@ function renderInnovationsChart(data) {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    position: 'bottom',
+                    position: 'top',
                     labels: {
                         color: '#94a3b8',
                         font: { size: 10 }
