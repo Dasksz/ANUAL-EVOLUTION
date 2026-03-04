@@ -3475,7 +3475,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </th>`;
         monthInitials.forEach(m => headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 font-light text-xs text-gray-300 summary-col-header transition-opacity duration-300 opacity-0">${m}</th>`);
         if (trendData) {
-            headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 text-[#eaff00] drop-shadow-[0_0_2px_rgba(234,255,0,0.5)] font-bold text-xs summary-col-header transition-opacity duration-300 opacity-0">Tendência</th>`;
+            headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 text-[#ffaa4d] drop-shadow-[0_0_2px_rgba(255,170,77,0.5)] font-bold text-xs summary-col-header transition-opacity duration-300 opacity-0">Tendência</th>`;
         }
         tableHead.innerHTML = headerHTML;
 
