@@ -55,14 +55,14 @@ BEGIN
 
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_target_month := p_mes::int;
-        v_where_base := v_where_base || ' AND dtped >= make_date(' || v_current_year || ', ' || v_target_month || ', 1) AND dtped < make_date(' || v_current_year || ', ' || v_target_month || ', 1) + interval ''1 month'' ';
-        v_where_base_prev := v_where_base_prev || ' AND dtped >= make_date(' || v_previous_year || ', ' || v_target_month || ', 1) AND dtped < make_date(' || v_previous_year || ', ' || v_target_month || ', 1) + interval ''1 month'' ';
+        v_where_base := v_where_base || ' AND ano = ' || v_current_year || ' AND mes = ' || v_target_month || ' ';
+        v_where_base_prev := v_where_base_prev || ' AND ano = ' || v_previous_year || ' AND mes = ' || v_target_month || ' ';
     ELSE
-        v_where_base := v_where_base || ' AND dtped >= make_date(' || v_current_year || ', 1, 1) AND dtped < make_date(' || v_current_year + 1 || ', 1, 1) ';
-        v_where_base_prev := v_where_base_prev || ' AND dtped >= make_date(' || v_previous_year || ', 1, 1) AND dtped < make_date(' || v_previous_year + 1 || ', 1, 1) ';
+        v_where_base := v_where_base || ' AND ano = ' || v_current_year || ' ';
+        v_where_base_prev := v_where_base_prev || ' AND ano = ' || v_previous_year || ' ';
     END IF;
 
-    v_where_chart := v_where_chart || ' AND dtped >= make_date(' || v_previous_year || ', 1, 1) AND dtped < make_date(' || v_current_year + 1 || ', 1, 1) ';
+    v_where_chart := v_where_chart || ' AND ano IN (' || v_previous_year || ', ' || v_current_year || ') ';
 
     -- 2. Build Where Clauses
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
@@ -101,22 +101,22 @@ BEGIN
     END IF;
 
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND codcli IN (SELECT codigo_cliente FROM public.data_clients WHERE rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || '''])) ';
+        v_where_base := v_where_base || ' AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
         v_where_clients := v_where_clients || ' AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
-        v_where_base_prev := v_where_base_prev || ' AND codcli IN (SELECT codigo_cliente FROM public.data_clients WHERE rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || '''])) ';
-        v_where_chart := v_where_chart || ' AND codcli IN (SELECT codigo_cliente FROM public.data_clients WHERE rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+        v_where_chart := v_where_chart || ' AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
     END IF;
 
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND produto = ANY(ARRAY[''' || array_to_string(p_produto, ''',''') || ''']) ';
-        v_where_base_prev := v_where_base_prev || ' AND produto = ANY(ARRAY[''' || array_to_string(p_produto, ''',''') || ''']) ';
-        v_where_chart := v_where_chart || ' AND produto = ANY(ARRAY[''' || array_to_string(p_produto, ''',''') || ''']) ';
+        v_where_base := v_where_base || ' AND produtos ?| ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
+        v_where_base_prev := v_where_base_prev || ' AND produtos ?| ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
+        v_where_chart := v_where_chart || ' AND produtos ?| ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
     END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
-        v_where_base_prev := v_where_base_prev || ' AND produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
-        v_where_chart := v_where_chart || ' AND produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
+        v_where_base := v_where_base || ' AND categorias ?| ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
+        v_where_base_prev := v_where_base_prev || ' AND categorias ?| ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
+        v_where_chart := v_where_chart || ' AND categorias ?| ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
@@ -136,14 +136,12 @@ BEGIN
             all_sales.pedido,
             all_sales.tipovenda,
             all_sales.vlvenda,
-            all_sales.totpesoliq as peso,
-            all_sales.produto
-        FROM (
-            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor FROM public.data_detailed ' || v_where_base || '
-            UNION ALL
-            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor FROM public.data_history ' || v_where_base || '
-        ) all_sales
+            all_sales.peso,
+            all_sales.produtos,
+            all_sales.categorias
+        FROM public.dat_summary_frequency all_sales
         LEFT JOIN public.dim_vendedores dv ON all_sales.codusur = dv.codigo
+        ' || v_where_base || '
     ),
     previous_data AS (
         SELECT
@@ -151,12 +149,9 @@ BEGIN
             COALESCE(all_sales.cidade, ''SEM CIDADE'') as cidade,
             COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
             SUM(all_sales.vlvenda) as faturamento_prev
-        FROM (
-            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor FROM public.data_detailed ' || v_where_base_prev || '
-            UNION ALL
-            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor FROM public.data_history ' || v_where_base_prev || '
-        ) all_sales
+        FROM public.dat_summary_frequency all_sales
         LEFT JOIN public.dim_vendedores dv ON all_sales.codusur = dv.codigo
+        ' || v_where_base_prev || '
         GROUP BY 1, 2, 3
     ),
     client_base AS (
@@ -180,7 +175,12 @@ BEGIN
         GROUP BY filial, cidade, vendedor
     ),
     mix_per_client AS (
-        SELECT filial, cidade, vendedor, codcli, COUNT(DISTINCT produto) as skus
+        SELECT
+            filial,
+            cidade,
+            vendedor,
+            codcli,
+            (SELECT COUNT(DISTINCT el) FROM (SELECT jsonb_array_elements_text(produtos) as el FROM current_data cd2 WHERE cd2.filial = current_data.filial AND cd2.cidade = current_data.cidade AND cd2.vendedor = current_data.vendedor AND cd2.codcli = current_data.codcli) sub) as skus
         FROM current_data
         GROUP BY filial, cidade, vendedor, codcli
     ),
@@ -215,16 +215,12 @@ BEGIN
     ),
     chart_data AS (
         SELECT
-            EXTRACT(YEAR FROM dtped) as ano,
-            EXTRACT(MONTH FROM dtped) as mes,
+            ano,
+            mes,
             COUNT(DISTINCT pedido) as total_pedidos,
             COUNT(DISTINCT codcli) as total_clientes
-        FROM (
-            SELECT dtped, pedido, codcli, filial, cidade, codsupervisor, codusur, codfor, tipovenda, produto FROM public.data_detailed ' || v_where_chart || '
-            UNION ALL
-            SELECT dtped, pedido, codcli, filial, cidade, codsupervisor, codusur, codfor, tipovenda, produto FROM public.data_history ' || v_where_chart || '
-        ) all_data
-        WHERE tipovenda NOT IN (''5'', ''11'')
+        FROM public.dat_summary_frequency
+        ' || v_where_chart || ' AND tipovenda NOT IN (''5'', ''11'')
         GROUP BY 1, 2
     )
     SELECT json_build_object(
@@ -519,6 +515,48 @@ create table if not exists public.data_summary (
     created_at timestamp with time zone default now()
 );
 
+
+
+
+
+
+
+
+
+
+
+
+-- ==============================================================================
+-- Frequency Summary Table (Optimized for Fast Counts per Order)
+-- ==============================================================================
+create table if not exists public.dat_summary_frequency (
+    id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+    ano int,
+    mes int,
+    filial text,
+    cidade text,
+    codsupervisor text,
+    codusur text,
+    codfor text,
+    codcli text,
+    tipovenda text,
+    pedido text,
+    vlvenda numeric,
+    peso numeric,
+    produtos jsonb,
+    categorias jsonb,
+    rede text,
+    created_at timestamp with time zone default now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes ON public.dat_summary_frequency(ano, mes);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_filial_cidade ON public.dat_summary_frequency(filial, cidade);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_vendedor_supervisor ON public.dat_summary_frequency(codusur, codsupervisor);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_pedido_cli ON public.dat_summary_frequency(pedido, codcli);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_produtos_gin ON public.dat_summary_frequency USING GIN (produtos);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_categorias_gin ON public.dat_summary_frequency USING GIN (categorias);
+
+
 -- Cache Table (For Filter Dropdowns)
 DROP TABLE IF EXISTS public.cache_filters CASCADE;
 create table if not exists public.cache_filters (
@@ -536,6 +574,20 @@ create table if not exists public.cache_filters (
     categoria_produto text, -- NEW: Brand/Category Filter
     created_at timestamp with time zone default now()
 );
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 -- ==============================================================================
 -- 2. OPTIMIZED INDEXES (Targeted Partial Indexes)
@@ -950,11 +1002,11 @@ BEGIN
         ramo, caixas, categoria_produto
     )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
         FROM public.data_detailed
         WHERE EXTRACT(YEAR FROM dtped)::int = p_year
         UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
         FROM public.data_history
         WHERE EXTRACT(YEAR FROM dtped)::int = p_year
     ),
@@ -979,7 +1031,7 @@ BEGIN
             END as codfor, 
             s.tipovenda, 
             s.codcli,
-            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
+            s.pedido, s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
             c.ramo,
             dp.categoria_produto -- Added
         FROM raw_data s
@@ -1019,6 +1071,22 @@ BEGIN
         categoria_produto
     FROM client_agg;
     
+    -- Refresh Frequency Summary for the year
+    DELETE FROM public.dat_summary_frequency WHERE ano = p_year;
+
+    INSERT INTO public.dat_summary_frequency (
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede
+    )
+    SELECT
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido,
+        SUM(vlvenda) as vlvenda,
+        SUM(totpesoliq) as peso,
+        jsonb_agg(DISTINCT produto) as produtos,
+        jsonb_agg(DISTINCT categoria_produto) as categorias,
+        MAX(ramo) as rede
+    FROM augmented_data
+    GROUP BY ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido;
+
     -- ANALYZE public.data_summary;
 END;
 $$;
@@ -1043,11 +1111,11 @@ BEGIN
         ramo, caixas, categoria_produto
     )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
         FROM public.data_detailed
         WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
         UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
         FROM public.data_history
         WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
     ),
@@ -1072,7 +1140,7 @@ BEGIN
             END as codfor, 
             s.tipovenda, 
             s.codcli,
-            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
+            s.pedido, s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
             c.ramo,
             dp.categoria_produto -- Added
         FROM raw_data s
@@ -1112,6 +1180,22 @@ BEGIN
         categoria_produto
     FROM client_agg;
     
+    -- Refresh Frequency Summary for the month
+    DELETE FROM public.dat_summary_frequency WHERE ano = p_year AND mes = p_month;
+
+    INSERT INTO public.dat_summary_frequency (
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede
+    )
+    SELECT
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido,
+        SUM(vlvenda) as vlvenda,
+        SUM(totpesoliq) as peso,
+        jsonb_agg(DISTINCT produto) as produtos,
+        jsonb_agg(DISTINCT categoria_produto) as categorias,
+        MAX(ramo) as rede
+    FROM augmented_data
+    GROUP BY ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido;
+
     -- No internal ANALYZE to keep chunks fast
 END;
 $$;
