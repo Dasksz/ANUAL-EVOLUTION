@@ -5487,7 +5487,7 @@ function renderInnovationsKPIs(data) {
 
     // Total Clients (Base Total)
     const activeClientsEl = document.getElementById('innovations-month-active-clients-kpi');
-    if (activeClientsEl) activeClientsEl.textContent = formatNumber(baseClients > 0 ? baseClients : activeClients);
+    if (activeClientsEl) activeClientsEl.textContent = formatNumber(baseClients > 0 ? baseClients : activeClients, 0);
 
     // Calculate Best Coverage
     let bestCategory = null;
