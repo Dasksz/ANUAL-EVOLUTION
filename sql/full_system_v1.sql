@@ -141,9 +141,9 @@ BEGIN
             all_sales.totpesoliq as peso,
             all_sales.produto
         FROM (
-            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, bonificacao, totpesoliq, produto, dtped, codfor FROM public.data_detailed ' || v_where_base || '
+            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, vlbonific as bonificacao, totpesoliq, produto, dtped, codfor FROM public.data_detailed ' || v_where_base || '
             UNION ALL
-            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, bonificacao, totpesoliq, produto, dtped, codfor FROM public.data_history ' || v_where_base || '
+            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, vlbonific as bonificacao, totpesoliq, produto, dtped, codfor FROM public.data_history ' || v_where_base || '
         ) all_sales
         LEFT JOIN public.dim_vendedores dv ON all_sales.codusur = dv.codigo
     ),
