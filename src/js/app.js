@@ -5627,7 +5627,6 @@ function renderInnovationsChart(data) {
                     borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
                 }
             ]
-            ]
         },
         options: {
             responsive: true,
@@ -5705,7 +5704,7 @@ window.toggleInnovationRow = function(categoryNameStr) {
     }
 };
 
-function renderInnovationsTable(data) {
+window.renderInnovationsTable = function(data) {
     const tbody = document.getElementById('innovations-month-table-body');
     if (!tbody || !data || !data.categories) return;
 
