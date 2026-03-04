@@ -137,12 +137,13 @@ BEGIN
             all_sales.pedido,
             all_sales.tipovenda,
             all_sales.vlvenda,
+            all_sales.bonificacao,
             all_sales.totpesoliq as peso,
             all_sales.produto
         FROM (
-            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor FROM public.data_detailed ' || v_where_base || '
+            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, bonificacao, totpesoliq, produto, dtped, codfor FROM public.data_detailed ' || v_where_base || '
             UNION ALL
-            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor FROM public.data_history ' || v_where_base || '
+            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, bonificacao, totpesoliq, produto, dtped, codfor FROM public.data_history ' || v_where_base || '
         ) all_sales
         LEFT JOIN public.dim_vendedores dv ON all_sales.codusur = dv.codigo
     ),
@@ -169,16 +170,42 @@ BEGIN
         ' || v_where_clients || '
         GROUP BY 1, 2
     ),
+    global_valid_clients AS (
+        SELECT codcli
+        FROM current_data c
+        WHERE (
+            ' || CASE
+                WHEN p_tipovenda IS NOT NULL AND COALESCE(array_length(p_tipovenda, 1), 0) > 0
+                THEN 'c.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || '''])'
+                ELSE 'c.tipovenda NOT IN (''5'', ''11'')'
+            END || '
+        )
+        GROUP BY codcli
+        HAVING (
+            ' || CASE
+                WHEN p_tipovenda IS NOT NULL AND COALESCE(array_length(p_tipovenda, 1), 0) > 0 AND p_tipovenda <@ ARRAY['5','11']
+                THEN 'SUM(bonificacao) > 0'
+                ELSE 'SUM(vlvenda) >= 1'
+            END || '
+        )
+    ),
+    valid_clients_count AS (
+        SELECT filial, cidade, vendedor, COUNT(DISTINCT codcli) as positivacao
+        FROM current_data
+        WHERE codcli IN (SELECT codcli FROM global_valid_clients)
+        GROUP BY filial, cidade, vendedor
+    ),
     aggregated_curr AS (
         SELECT
-            filial,
-            cidade,
-            vendedor,
-            SUM(peso) as tons,
-            SUM(vlvenda) as faturamento,
-            COUNT(DISTINCT codcli) as positivacao
+            c.filial,
+            c.cidade,
+            c.vendedor,
+            SUM(c.peso) as tons,
+            SUM(c.vlvenda) as faturamento,
+            COALESCE(vc.positivacao, 0) as positivacao
         FROM current_data c
-        GROUP BY filial, cidade, vendedor
+        LEFT JOIN valid_clients_count vc ON vc.filial = c.filial AND vc.cidade = c.cidade AND vc.vendedor = c.vendedor
+        GROUP BY c.filial, c.cidade, c.vendedor, vc.positivacao
     ),
     mix_per_client AS (
         SELECT filial, cidade, vendedor, codcli, COUNT(DISTINCT produto) as skus
