@@ -3305,6 +3305,7 @@ AS $BODY$
 DECLARE
     v_result json;
     v_where_base text := ' WHERE 1=1 ';
+    v_where_client_base text := ' WHERE 1=1 ';
     v_sql text;
 
     v_last_sale_date date;
