@@ -3426,24 +3426,31 @@ BEGIN
         SELECT COUNT(*) as val FROM public.data_clients ' || v_where_client_base || '
     ),
     attended_clients AS (
-        SELECT COUNT(DISTINCT d.codcli) as val
+        SELECT COUNT(*) as val
         FROM (
-            SELECT codcli, codsupervisor, codusur, tipovenda FROM data_detailed WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
-            UNION ALL
-            SELECT codcli, codsupervisor, codusur, tipovenda FROM data_history WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
-        ) d
-        JOIN data_clients c ON c.codigo_cliente = d.codcli
-        ' || v_where_base || '
+            SELECT d.codcli
+            FROM (
+                SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_detailed WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
+                UNION ALL
+                SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_history WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
+            ) d
+            JOIN data_clients c ON c.codigo_cliente = d.codcli
+            ' || v_where_base || '
+            GROUP BY d.codcli
+            HAVING SUM(d.vlvenda) >= 1
+        ) as sub
     ),
     active_clients AS (
-        SELECT DISTINCT d.codcli
+        SELECT d.codcli
         FROM (
-            SELECT codcli, codsupervisor, codusur, tipovenda FROM data_detailed WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
+            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_detailed WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
             UNION ALL
-            SELECT codcli, codsupervisor, codusur, tipovenda FROM data_history WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
+            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_history WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
         ) d
         JOIN data_clients c ON c.codigo_cliente = d.codcli
         ' || v_where_base || '
+        GROUP BY d.codcli
+        HAVING SUM(d.vlvenda) >= 1
     ),
     innovation_sales AS (
         SELECT
@@ -3452,16 +3459,16 @@ BEGIN
             p.descricao AS product_name,
             to_char(d.dtped, ''YYYY-MM'') AS period_month,
             d.codcli,
-            (d.dtped >= ''' || v_curr_start || ''') AS is_current,
-            (d.dtped >= ''' || v_prev_start || ''' AND d.dtped < ''' || v_prev_end || ''') AS is_prev_year,
-            (d.dtped >= ''' || v_12m_start || ''' AND d.dtped < ''' || v_12m_end || ''') AS is_avg_12m
+            MAX((d.dtped >= ''' || v_curr_start || ''')::int)::boolean AS is_current,
+            MAX((d.dtped >= ''' || v_prev_start || ''' AND d.dtped < ''' || v_prev_end || ''')::int)::boolean AS is_prev_year,
+            MAX((d.dtped >= ''' || v_12m_start || ''' AND d.dtped < ''' || v_12m_end || ''')::int)::boolean AS is_avg_12m
         FROM (
-            SELECT codcli, produto, dtped
+            SELECT codcli, produto, dtped, vlvenda
             FROM data_detailed
             WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
               AND produto IN (SELECT codigo FROM data_innovations)
             UNION ALL
-            SELECT codcli, produto, dtped
+            SELECT codcli, produto, dtped, vlvenda
             FROM data_history
             WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
               AND produto IN (SELECT codigo FROM data_innovations)
@@ -3470,6 +3477,8 @@ BEGIN
         JOIN dim_produtos p ON p.codigo = i.codigo
         JOIN active_clients ac ON ac.codcli = d.codcli
         WHERE ' || v_where_inov || '
+        GROUP BY 1, 2, 3, 4, 5
+        HAVING SUM(d.vlvenda) >= 1
     ),
     aggregated_base AS (
         SELECT 
