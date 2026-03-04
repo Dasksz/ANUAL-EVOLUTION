@@ -101,10 +101,10 @@ BEGIN
     END IF;
 
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND codcli IN (SELECT codigo_cliente FROM public.data_clients WHERE rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || '''])) ';
+        v_where_base := v_where_base || ' AND EXISTS (SELECT 1 FROM public.data_clients WHERE codigo_cliente = codcli AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || '''])) ';
         v_where_clients := v_where_clients || ' AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
-        v_where_base_prev := v_where_base_prev || ' AND codcli IN (SELECT codigo_cliente FROM public.data_clients WHERE rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || '''])) ';
-        v_where_chart := v_where_chart || ' AND codcli IN (SELECT codigo_cliente FROM public.data_clients WHERE rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND EXISTS (SELECT 1 FROM public.data_clients WHERE codigo_cliente = codcli AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND EXISTS (SELECT 1 FROM public.data_clients WHERE codigo_cliente = codcli AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || '''])) ';
     END IF;
 
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
@@ -114,9 +114,9 @@ BEGIN
     END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
-        v_where_base_prev := v_where_base_prev || ' AND produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
-        v_where_chart := v_where_chart || ' AND produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
+        v_where_base := v_where_base || ' AND EXISTS (SELECT 1 FROM public.dim_produtos WHERE codigo = produto AND categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND EXISTS (SELECT 1 FROM public.dim_produtos WHERE codigo = produto AND categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND EXISTS (SELECT 1 FROM public.dim_produtos WHERE codigo = produto AND categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
@@ -220,11 +220,10 @@ BEGIN
             COUNT(DISTINCT pedido) as total_pedidos,
             COUNT(DISTINCT codcli) as total_clientes
         FROM (
-            SELECT dtped, pedido, codcli, filial, cidade, codsupervisor, codusur, codfor, tipovenda, produto FROM public.data_detailed ' || v_where_chart || '
+            SELECT dtped, pedido, codcli FROM public.data_detailed ' || v_where_chart || ' AND tipovenda NOT IN (''5'', ''11'')
             UNION ALL
-            SELECT dtped, pedido, codcli, filial, cidade, codsupervisor, codusur, codfor, tipovenda, produto FROM public.data_history ' || v_where_chart || '
+            SELECT dtped, pedido, codcli FROM public.data_history ' || v_where_chart || ' AND tipovenda NOT IN (''5'', ''11'')
         ) all_data
-        WHERE tipovenda NOT IN (''5'', ''11'')
         GROUP BY 1, 2
     )
     SELECT json_build_object(
@@ -1600,7 +1599,7 @@ BEGIN
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_mix_constraint := ' 1=1 ';
     ELSE
-        v_mix_constraint := ' fs.codfor IN (''707'', ''708'') ';
+        v_mix_constraint := ' codfor IN (''707'', ''708'') ';
     END IF;
 
     -- KPI Base Filter (Table: data_clients)
