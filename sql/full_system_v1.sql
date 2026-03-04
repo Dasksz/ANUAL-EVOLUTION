@@ -66,7 +66,6 @@ BEGIN
     END IF;
 
     v_where_chart := v_where_chart || ' AND dtped >= make_date(' || v_previous_year || ', 1, 1) AND dtped < make_date(' || v_current_year + 1 || ', 1, 1) ';
-    v_where_chart_freq := v_where_chart || ' AND tipovenda NOT IN (''5'', ''11'') ';
 
     -- 2. Build Where Clauses
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
@@ -133,37 +132,36 @@ BEGIN
     v_where_base_freq := v_where_base || ' AND tipovenda NOT IN (''5'', ''11'') ';
     v_where_chart_freq := v_where_chart || ' AND tipovenda NOT IN (''5'', ''11'') ';
 
-    -- Dynamic Query
+    -- Dynamic Query - OPTIMIZED WITH SMALL INDEPENDENT CTES
     v_sql := '
-    WITH current_data AS (
+    WITH aggregated_curr AS (
         SELECT
-            COALESCE(all_sales.filial, ''SEM FILIAL'') as filial,
-            COALESCE(all_sales.cidade, ''SEM CIDADE'') as cidade,
+            COALESCE(c.filial, ''SEM FILIAL'') as filial,
+            COALESCE(c.cidade, ''SEM CIDADE'') as cidade,
             COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
-            all_sales.codcli,
-            all_sales.pedido,
-            all_sales.vlvenda,
-            all_sales.totpesoliq as peso,
-            all_sales.produto
+            SUM(c.totpesoliq) as tons,
+            SUM(c.vlvenda) as faturamento,
+            COUNT(DISTINCT c.codcli) as positivacao
         FROM (
-            SELECT filial, cidade, codusur, codcli, pedido, vlvenda, totpesoliq, produto FROM public.data_detailed ' || v_where_base || '
+            SELECT filial, cidade, codusur, codcli, totpesoliq, vlvenda FROM public.data_detailed ' || v_where_base || '
             UNION ALL
-            SELECT filial, cidade, codusur, codcli, pedido, vlvenda, totpesoliq, produto FROM public.data_history ' || v_where_base || '
-        ) all_sales
-        LEFT JOIN public.dim_vendedores dv ON all_sales.codusur = dv.codigo
+            SELECT filial, cidade, codusur, codcli, totpesoliq, vlvenda FROM public.data_history ' || v_where_base || '
+        ) c
+        LEFT JOIN public.dim_vendedores dv ON c.codusur = dv.codigo
+        GROUP BY 1, 2, 3
     ),
     previous_data AS (
         SELECT
-            COALESCE(all_sales.filial, ''SEM FILIAL'') as filial,
-            COALESCE(all_sales.cidade, ''SEM CIDADE'') as cidade,
+            COALESCE(p.filial, ''SEM FILIAL'') as filial,
+            COALESCE(p.cidade, ''SEM CIDADE'') as cidade,
             COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
-            SUM(all_sales.vlvenda) as faturamento_prev
+            SUM(p.vlvenda) as faturamento_prev
         FROM (
             SELECT filial, cidade, codusur, vlvenda FROM public.data_detailed ' || v_where_base_prev || '
             UNION ALL
             SELECT filial, cidade, codusur, vlvenda FROM public.data_history ' || v_where_base_prev || '
-        ) all_sales
-        LEFT JOIN public.dim_vendedores dv ON all_sales.codusur = dv.codigo
+        ) p
+        LEFT JOIN public.dim_vendedores dv ON p.codusur = dv.codigo
         GROUP BY 1, 2, 3
     ),
     client_base AS (
@@ -175,26 +173,24 @@ BEGIN
         ' || v_where_clients || '
         GROUP BY 1, 2
     ),
-    aggregated_curr AS (
-        SELECT
-            filial,
-            cidade,
-            vendedor,
-            SUM(peso) as tons,
-            SUM(vlvenda) as faturamento,
-            COUNT(DISTINCT codcli) as positivacao
-        FROM current_data c
-        GROUP BY filial, cidade, vendedor
-    ),
     mix_per_client AS (
-        SELECT filial, cidade, vendedor, codcli, COUNT(DISTINCT produto) as skus
-        FROM current_data
-        GROUP BY filial, cidade, vendedor, codcli
+        SELECT filial, cidade, codusur, codcli, COUNT(DISTINCT produto) as skus
+        FROM (
+            SELECT filial, cidade, codusur, codcli, produto FROM public.data_detailed ' || v_where_base || '
+            UNION ALL
+            SELECT filial, cidade, codusur, codcli, produto FROM public.data_history ' || v_where_base || '
+        ) mix_data
+        GROUP BY filial, cidade, codusur, codcli
     ),
     mix_agg AS (
-        SELECT filial, cidade, vendedor, SUM(skus) as sum_skus
-        FROM mix_per_client
-        GROUP BY filial, cidade, vendedor
+        SELECT
+            COALESCE(m.filial, ''SEM FILIAL'') as filial,
+            COALESCE(m.cidade, ''SEM CIDADE'') as cidade,
+            COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
+            SUM(m.skus) as sum_skus
+        FROM mix_per_client m
+        LEFT JOIN public.dim_vendedores dv ON m.codusur = dv.codigo
+        GROUP BY 1, 2, 3
     ),
     freq_pedidos AS (
         SELECT
@@ -253,6 +249,8 @@ BEGIN
     RETURN v_result;
 END;
 $$;
+
+
 
 -- ==============================================================================
 -- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT (V2 - Storage Optimized)
