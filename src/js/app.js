@@ -5597,30 +5597,34 @@ function renderInnovationsChart(data) {
         type: 'bar',
         data: {
             labels: labels,
-            datasets: [
+                                                datasets: [
                 {
                     label: labelM3,
                     data: prevM3Data,
-                    backgroundColor: '#3b82f6', // blue-500
-                    borderRadius: 2
+                    backgroundColor: '#eaf7f8',
+                    borderSkipped: 'bottom',
+                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
                 },
                 {
                     label: labelM2,
                     data: prevM2Data,
-                    backgroundColor: '#8b5cf6', // purple-500
-                    borderRadius: 2
+                    backgroundColor: '#379fae',
+                    borderSkipped: 'bottom',
+                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
                 },
                 {
                     label: labelM1,
                     data: prevM1Data,
-                    backgroundColor: '#64748b', // slate-500
-                    borderRadius: 2
+                    backgroundColor: '#316a9a',
+                    borderSkipped: 'bottom',
+                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
                 },
                 {
                     label: labelCurrent + ' (Mês Atual)',
                     data: currentData,
-                    backgroundColor: '#10b981', // emerald-500
-                    borderRadius: 2
+                    backgroundColor: '#ffaa4d',
+                    borderSkipped: 'bottom',
+                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
                 }
             ]
         },
@@ -5700,7 +5704,7 @@ window.toggleInnovationRow = function(categoryNameStr) {
     }
 };
 
-function renderInnovationsTable(data) {
+window.renderInnovationsTable = function(data) {
     const tbody = document.getElementById('innovations-month-table-body');
     if (!tbody || !data || !data.categories) return;
 
