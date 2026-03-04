@@ -3362,8 +3362,9 @@ BEGIN
     v_prev_start := (v_curr_start - interval '1 year')::date;
     v_prev_end := (v_curr_end - interval '1 year')::date;
     
-    v_12m_start := (v_curr_start - interval '12 months')::date;
-    v_12m_end := v_curr_start; -- The 12 months before current month
+    -- Change 12m to 3m bounds
+    v_12m_start := (v_curr_start - interval '3 months')::date;
+    v_12m_end := v_curr_start; -- The 3 months before current month
 
     -- 2. Build Where Clauses for Clients
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
@@ -3461,7 +3462,10 @@ BEGIN
             d.codcli,
             MAX((d.dtped >= ''' || v_curr_start || ''')::int)::boolean AS is_current,
             MAX((d.dtped >= ''' || v_prev_start || ''' AND d.dtped < ''' || v_prev_end || ''')::int)::boolean AS is_prev_year,
-            MAX((d.dtped >= ''' || v_12m_start || ''' AND d.dtped < ''' || v_12m_end || ''')::int)::boolean AS is_avg_12m
+            MAX((d.dtped >= ''' || v_12m_start || ''' AND d.dtped < ''' || v_12m_end || ''')::int)::boolean AS is_avg_12m,
+            MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''1 month'') AND d.dtped < ''' || v_curr_start || ''')::int)::boolean AS is_prev_m1,
+            MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''2 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''1 month''))::int)::boolean AS is_prev_m2,
+            MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''3 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''2 months''))::int)::boolean AS is_prev_m3
         FROM (
             SELECT codcli, produto, dtped, vlvenda
             FROM data_detailed
@@ -3486,7 +3490,10 @@ BEGIN
             product_code, 
             product_name,
             COUNT(DISTINCT CASE WHEN is_current THEN codcli END) AS pos_current,
-            COUNT(DISTINCT CASE WHEN is_prev_year THEN codcli END) AS pos_prev_year
+            COUNT(DISTINCT CASE WHEN is_prev_year THEN codcli END) AS pos_prev_year,
+            COUNT(DISTINCT CASE WHEN is_prev_m1 THEN codcli END) AS pos_prev_m1,
+            COUNT(DISTINCT CASE WHEN is_prev_m2 THEN codcli END) AS pos_prev_m2,
+            COUNT(DISTINCT CASE WHEN is_prev_m3 THEN codcli END) AS pos_prev_m3
         FROM innovation_sales
         GROUP BY 1, 2, 3
     ),
@@ -3495,7 +3502,7 @@ BEGIN
             category_name, 
             product_code, 
             product_name,
-            COUNT(DISTINCT codcli) / 12.0 AS pos_count
+            COUNT(DISTINCT codcli) / 3.0 AS pos_count
         FROM innovation_sales
         WHERE is_avg_12m
         GROUP BY 1, 2, 3, period_month
@@ -3516,6 +3523,9 @@ BEGIN
             COALESCE(ab.product_name, p12.product_name) AS product_name,
             COALESCE(ab.pos_current, 0) AS pos_current,
             COALESCE(ab.pos_prev_year, 0) AS pos_prev_year,
+            COALESCE(ab.pos_prev_m1, 0) AS pos_prev_m1,
+            COALESCE(ab.pos_prev_m2, 0) AS pos_prev_m2,
+            COALESCE(ab.pos_prev_m3, 0) AS pos_prev_m3,
             COALESCE(p12.pos_avg, 0) AS pos_avg_12m,
             -- ESTOQUE IS NOW DYNAMICALLY EXTRACTED FROM dim_produtos.estoque_filial
             COALESCE((
@@ -3540,9 +3550,13 @@ BEGIN
                         ''name'', category_name,
                         ''pos_current'', SUM(pos_current),
                         ''pos_prev_year'', SUM(pos_prev_year),
+                        ''pos_prev_m1'', SUM(pos_prev_m1),
+                        ''pos_prev_m2'', SUM(pos_prev_m2),
+                        ''pos_prev_m3'', SUM(pos_prev_m3),
                         ''pos_avg_12m'', SUM(pos_avg_12m),
                         ''estoque_current'', SUM(estoque_current),
-                        ''products_count'', COUNT(product_code)
+                        ''products_count'', COUNT(product_code),
+                        ''distinct_clients_current'', (SELECT COUNT(DISTINCT codcli) FROM innovation_sales WHERE is_current AND category_name = aggregated.category_name)
                     ) as cat_agg
                 FROM aggregated
                 GROUP BY category_name

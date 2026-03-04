@@ -5489,21 +5489,25 @@ function renderInnovationsKPIs(data) {
     const activeClientsEl = document.getElementById('innovations-month-active-clients-kpi');
     if (activeClientsEl) activeClientsEl.textContent = formatNumber(baseClients > 0 ? baseClients : activeClients, 0);
 
-    // Calculate Best Coverage
+    // Calculate Best Coverage & Avg Per Client
     let bestCategory = null;
     let maxCoverage = -1;
     let maxCoverageCount = 0;
+    let bestAvgPerClient = 0;
 
     const categories = data.categories || [];
     let totalSelectionPos = 0;
 
     categories.forEach(cat => {
-        // activeClients here corresponds to kpi_clients_attended for new logic
         let cov = activeClients > 0 ? (cat.pos_current / activeClients) * 100 : 0;
         if (cov > maxCoverage) {
             maxCoverage = cov;
             bestCategory = cat.name;
             maxCoverageCount = cat.pos_current;
+            // distinct_clients_current comes from the new SQL aggregation
+            let distClients = cat.distinct_clients_current || 1;
+            bestAvgPerClient = (cat.pos_current / distClients);
+            if(cat.pos_current === 0) bestAvgPerClient = 0;
         }
         totalSelectionPos += cat.pos_current;
     });
@@ -5512,11 +5516,16 @@ function renderInnovationsKPIs(data) {
     const topCovKpi = document.getElementById('innovations-month-top-coverage-kpi');
     const topCovCount = document.getElementById('innovations-month-top-coverage-count-kpi');
     const topCovValue = document.getElementById('innovations-month-top-coverage-value-kpi');
+    const topCovLabel = document.getElementById('innovations-month-top-coverage-label');
 
     if (topCovTitle) topCovTitle.textContent = bestCategory || 'N/A';
-    if (topCovKpi) topCovKpi.textContent = maxCoverage >= 0 ? maxCoverage.toFixed(2) + '%' : '--';
-    if (topCovCount) topCovCount.textContent = maxCoverageCount + ' PDVs';
-    if (topCovValue) topCovValue.textContent = ''; // Valor não calculado pela RPC atual
+    if (topCovLabel) topCovLabel.textContent = 'Média por Cliente';
+
+    // Changing the count label to the calculated average
+    if (topCovKpi) topCovKpi.textContent = bestAvgPerClient > 0 ? bestAvgPerClient.toFixed(2) : '0.00';
+    if (topCovCount) topCovCount.textContent = 'Média Produtos';
+
+    if (topCovValue) topCovValue.textContent = '';
 
     // Selection Percent
     const selCovValue = document.getElementById('innovations-month-selection-coverage-value-kpi');
@@ -5558,8 +5567,31 @@ function renderInnovationsChart(data) {
     const active = data.active_clients || 1; // Reverted back to the consistent 12-month active base for all historical charts
 
     const currentData = categories.map(c => ((c.pos_current / active) * 100).toFixed(1));
-    const prevYearData = categories.map(c => ((c.pos_prev_year / active) * 100).toFixed(1));
-    const avg12mData = categories.map(c => ((c.pos_avg_12m / active) * 100).toFixed(1));
+    const prevM1Data = categories.map(c => ((c.pos_prev_m1 / active) * 100).toFixed(1));
+    const prevM2Data = categories.map(c => ((c.pos_prev_m2 / active) * 100).toFixed(1));
+    const prevM3Data = categories.map(c => ((c.pos_prev_m3 / active) * 100).toFixed(1));
+
+    // Get month labels based on the selected target date in the filters
+    const yearFilter = document.getElementById('innovations-ano-filter')?.value;
+    const monthFilter = document.getElementById('innovations-mes-filter')?.value;
+
+    let targetDate = new Date();
+    if(yearFilter && yearFilter !== 'todos' && monthFilter) {
+        targetDate = new Date(yearFilter, monthFilter - 1, 1);
+    }
+
+    const monthNames = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+
+    const getMonthName = (date, subtractMonths) => {
+        let d = new Date(date);
+        d.setMonth(d.getMonth() - subtractMonths);
+        return monthNames[d.getMonth()];
+    };
+
+    const labelCurrent = getMonthName(targetDate, 0);
+    const labelM1 = getMonthName(targetDate, 1);
+    const labelM2 = getMonthName(targetDate, 2);
+    const labelM3 = getMonthName(targetDate, 3);
 
     innovationsChart = new Chart(ctx, {
         type: 'bar',
@@ -5567,21 +5599,27 @@ function renderInnovationsChart(data) {
             labels: labels,
             datasets: [
                 {
-                    label: 'Média 12 Meses',
-                    data: avg12mData,
+                    label: labelM3,
+                    data: prevM3Data,
                     backgroundColor: '#3b82f6', // blue-500
                     borderRadius: 2
                 },
                 {
-                    label: 'Mês Ano Anterior',
-                    data: prevYearData,
-                    backgroundColor: '#eab308', // yellow-500
+                    label: labelM2,
+                    data: prevM2Data,
+                    backgroundColor: '#8b5cf6', // purple-500
                     borderRadius: 2
                 },
                 {
-                    label: 'Mês Atual',
+                    label: labelM1,
+                    data: prevM1Data,
+                    backgroundColor: '#64748b', // slate-500
+                    borderRadius: 2
+                },
+                {
+                    label: labelCurrent + ' (Mês Atual)',
                     data: currentData,
-                    backgroundColor: '#06b6d4', // cyan-500
+                    backgroundColor: '#10b981', // emerald-500
                     borderRadius: 2
                 }
             ]
@@ -5590,11 +5628,44 @@ function renderInnovationsChart(data) {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'top', labels: { color: '#cbd5e1', usePointStyle: true, boxWidth: 10 } }
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#94a3b8',
+                        font: { size: 10 }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y + '%';
+                        }
+                    }
+                },
+                datalabels: {
+                    display: function(context) {
+                        return context.dataset.data[context.dataIndex] > 0;
+                    },
+                    color: '#fff',
+                    font: { weight: 'bold', size: 10 },
+                    anchor: 'end',
+                    align: 'top',
+                    offset: 2,
+                    formatter: function(value) {
+                        return value + '%';
+                    }
+                }
             },
             scales: {
-                y: { grid: { color: '#334155', drawBorder: false }, ticks: { color: '#cbd5e1', callback: (val) => val + '%' } },
-                x: { grid: { display: false }, ticks: { color: '#cbd5e1', font: { size: 10 } } }
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                    ticks: { color: '#94a3b8', font: { size: 10 }, callback: function(value) { return value + '%'; } }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8', font: { size: 10, weight: 'bold' } }
+                }
             }
         }
     });
@@ -5629,7 +5700,7 @@ window.toggleInnovationRow = function(categoryNameStr) {
     }
 };
 
-window.renderInnovationsTable = function(data) {
+function renderInnovationsTable(data) {
     const tbody = document.getElementById('innovations-month-table-body');
     if (!tbody || !data || !data.categories) return;
 
