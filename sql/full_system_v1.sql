@@ -556,6 +556,13 @@ CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_pedido_cli ON public.dat_summary
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_produtos_gin ON public.dat_summary_frequency USING GIN (produtos);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_categorias_gin ON public.dat_summary_frequency USING GIN (categorias);
 
+-- Secure the frequency summary table
+ALTER TABLE public.dat_summary_frequency ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated read access" ON public.dat_summary_frequency FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Allow admin write access" ON public.dat_summary_frequency FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+
+
 
 -- Cache Table (For Filter Dropdowns)
 DROP TABLE IF EXISTS public.cache_filters CASCADE;
