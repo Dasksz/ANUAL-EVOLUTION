@@ -141,9 +141,9 @@ BEGIN
             all_sales.totpesoliq as peso,
             all_sales.produto
         FROM (
-            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, bonificacao, totpesoliq, produto, dtped, codfor FROM public.data_detailed ' || v_where_base || '
+            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, vlbonific as bonificacao, totpesoliq, produto, dtped, codfor FROM public.data_detailed ' || v_where_base || '
             UNION ALL
-            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, bonificacao, totpesoliq, produto, dtped, codfor FROM public.data_history ' || v_where_base || '
+            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, vlbonific as bonificacao, totpesoliq, produto, dtped, codfor FROM public.data_history ' || v_where_base || '
         ) all_sales
         LEFT JOIN public.dim_vendedores dv ON all_sales.codusur = dv.codigo
     ),
@@ -1228,54 +1228,129 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    v_where text := ' WHERE 1=1 ';
-    v_where_cat text := ' WHERE 1=1 '; -- NEW: Where clause specifically for Category List (excludes category filter)
-    v_where_prod text := ' WHERE 1=1 '; -- NEW: Where clause for products
+    v_where_filial text := ' WHERE 1=1 ';
+    v_where_cidade text := ' WHERE 1=1 ';
+    v_where_supervisor text := ' WHERE 1=1 ';
+    v_where_vendedor text := ' WHERE 1=1 ';
+    v_where_fornecedor text := ' WHERE 1=1 ';
+    v_where_tipovenda text := ' WHERE 1=1 ';
+    v_where_rede text := ' WHERE 1=1 ';
+    v_where_cat text := ' WHERE 1=1 ';
+    v_where_prod text := ' WHERE 1=1 ';
     v_result json;
 BEGIN
-    -- Construct Where Clause
+    -- Base logic: each where clause gets all filters EXCEPT its own.
+
+    -- Ano and Mes affect all.
     IF p_ano IS NOT NULL AND p_ano != 'todos' THEN
-        v_where := v_where || format(' AND ano = %L ', p_ano::int);
+        v_where_filial := v_where_filial || format(' AND ano = %L ', p_ano::int);
+        v_where_cidade := v_where_cidade || format(' AND ano = %L ', p_ano::int);
+        v_where_supervisor := v_where_supervisor || format(' AND ano = %L ', p_ano::int);
+        v_where_vendedor := v_where_vendedor || format(' AND ano = %L ', p_ano::int);
+        v_where_fornecedor := v_where_fornecedor || format(' AND ano = %L ', p_ano::int);
+        v_where_tipovenda := v_where_tipovenda || format(' AND ano = %L ', p_ano::int);
+        v_where_rede := v_where_rede || format(' AND ano = %L ', p_ano::int);
         v_where_cat := v_where_cat || format(' AND ano = %L ', p_ano::int);
     END IF;
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
-        v_where := v_where || format(' AND mes = %L ', p_mes::int + 1);
+        v_where_filial := v_where_filial || format(' AND mes = %L ', p_mes::int + 1);
+        v_where_cidade := v_where_cidade || format(' AND mes = %L ', p_mes::int + 1);
+        v_where_supervisor := v_where_supervisor || format(' AND mes = %L ', p_mes::int + 1);
+        v_where_vendedor := v_where_vendedor || format(' AND mes = %L ', p_mes::int + 1);
+        v_where_fornecedor := v_where_fornecedor || format(' AND mes = %L ', p_mes::int + 1);
+        v_where_tipovenda := v_where_tipovenda || format(' AND mes = %L ', p_mes::int + 1);
+        v_where_rede := v_where_rede || format(' AND mes = %L ', p_mes::int + 1);
         v_where_cat := v_where_cat || format(' AND mes = %L ', p_mes::int + 1);
     END IF;
+
+    -- Filial
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where := v_where || format(' AND filial = ANY(%L) ', p_filial);
+        v_where_cidade := v_where_cidade || format(' AND filial = ANY(%L) ', p_filial);
+        v_where_supervisor := v_where_supervisor || format(' AND filial = ANY(%L) ', p_filial);
+        v_where_vendedor := v_where_vendedor || format(' AND filial = ANY(%L) ', p_filial);
+        v_where_fornecedor := v_where_fornecedor || format(' AND filial = ANY(%L) ', p_filial);
+        v_where_tipovenda := v_where_tipovenda || format(' AND filial = ANY(%L) ', p_filial);
+        v_where_rede := v_where_rede || format(' AND filial = ANY(%L) ', p_filial);
         v_where_cat := v_where_cat || format(' AND filial = ANY(%L) ', p_filial);
     END IF;
+
+    -- Cidade
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where := v_where || format(' AND cidade = ANY(%L) ', p_cidade);
+        v_where_filial := v_where_filial || format(' AND cidade = ANY(%L) ', p_cidade);
+        v_where_supervisor := v_where_supervisor || format(' AND cidade = ANY(%L) ', p_cidade);
+        v_where_vendedor := v_where_vendedor || format(' AND cidade = ANY(%L) ', p_cidade);
+        v_where_fornecedor := v_where_fornecedor || format(' AND cidade = ANY(%L) ', p_cidade);
+        v_where_tipovenda := v_where_tipovenda || format(' AND cidade = ANY(%L) ', p_cidade);
+        v_where_rede := v_where_rede || format(' AND cidade = ANY(%L) ', p_cidade);
         v_where_cat := v_where_cat || format(' AND cidade = ANY(%L) ', p_cidade);
     END IF;
+
+    -- Supervisor
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where := v_where || format(' AND superv = ANY(%L) ', p_supervisor);
+        v_where_filial := v_where_filial || format(' AND superv = ANY(%L) ', p_supervisor);
+        v_where_cidade := v_where_cidade || format(' AND superv = ANY(%L) ', p_supervisor);
+        v_where_vendedor := v_where_vendedor || format(' AND superv = ANY(%L) ', p_supervisor);
+        v_where_fornecedor := v_where_fornecedor || format(' AND superv = ANY(%L) ', p_supervisor);
+        v_where_tipovenda := v_where_tipovenda || format(' AND superv = ANY(%L) ', p_supervisor);
+        v_where_rede := v_where_rede || format(' AND superv = ANY(%L) ', p_supervisor);
         v_where_cat := v_where_cat || format(' AND superv = ANY(%L) ', p_supervisor);
     END IF;
+
+    -- Vendedor
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND nome = ANY(%L) ', p_vendedor);
+        v_where_filial := v_where_filial || format(' AND nome = ANY(%L) ', p_vendedor);
+        v_where_cidade := v_where_cidade || format(' AND nome = ANY(%L) ', p_vendedor);
+        v_where_supervisor := v_where_supervisor || format(' AND nome = ANY(%L) ', p_vendedor);
+        v_where_fornecedor := v_where_fornecedor || format(' AND nome = ANY(%L) ', p_vendedor);
+        v_where_tipovenda := v_where_tipovenda || format(' AND nome = ANY(%L) ', p_vendedor);
+        v_where_rede := v_where_rede || format(' AND nome = ANY(%L) ', p_vendedor);
         v_where_cat := v_where_cat || format(' AND nome = ANY(%L) ', p_vendedor);
     END IF;
+
+    -- Fornecedor
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where := v_where || format(' AND codfor = ANY(%L) ', p_fornecedor);
+        v_where_filial := v_where_filial || format(' AND codfor = ANY(%L) ', p_fornecedor);
+        v_where_cidade := v_where_cidade || format(' AND codfor = ANY(%L) ', p_fornecedor);
+        v_where_supervisor := v_where_supervisor || format(' AND codfor = ANY(%L) ', p_fornecedor);
+        v_where_vendedor := v_where_vendedor || format(' AND codfor = ANY(%L) ', p_fornecedor);
+        v_where_tipovenda := v_where_tipovenda || format(' AND codfor = ANY(%L) ', p_fornecedor);
+        v_where_rede := v_where_rede || format(' AND codfor = ANY(%L) ', p_fornecedor);
         v_where_cat := v_where_cat || format(' AND codfor = ANY(%L) ', p_fornecedor);
         v_where_prod := v_where_prod || format(' AND codfor = ANY(%L) ', p_fornecedor);
     END IF;
+
+    -- Tipovenda
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where := v_where || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+        v_where_filial := v_where_filial || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+        v_where_cidade := v_where_cidade || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+        v_where_supervisor := v_where_supervisor || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+        v_where_vendedor := v_where_vendedor || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+        v_where_fornecedor := v_where_fornecedor || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+        v_where_rede := v_where_rede || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
         v_where_cat := v_where_cat || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
     END IF;
+
+    -- Rede
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-        -- Basic filtering for dropdowns
-        v_where := v_where || format(' AND rede = ANY(%L) ', p_rede);
+        v_where_filial := v_where_filial || format(' AND rede = ANY(%L) ', p_rede);
+        v_where_cidade := v_where_cidade || format(' AND rede = ANY(%L) ', p_rede);
+        v_where_supervisor := v_where_supervisor || format(' AND rede = ANY(%L) ', p_rede);
+        v_where_vendedor := v_where_vendedor || format(' AND rede = ANY(%L) ', p_rede);
+        v_where_fornecedor := v_where_fornecedor || format(' AND rede = ANY(%L) ', p_rede);
+        v_where_tipovenda := v_where_tipovenda || format(' AND rede = ANY(%L) ', p_rede);
         v_where_cat := v_where_cat || format(' AND rede = ANY(%L) ', p_rede);
     END IF;
-    
-    -- Category Filter (Applied to main v_where, BUT NOT v_where_cat)
+
+    -- Categoria
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where_filial := v_where_filial || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where_cidade := v_where_cidade || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where_supervisor := v_where_supervisor || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where_vendedor := v_where_vendedor || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where_fornecedor := v_where_fornecedor || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where_tipovenda := v_where_tipovenda || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where_rede := v_where_rede || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+
         v_where_prod := v_where_prod || format(' AND categoria_produto = ANY(%L) ', p_categoria);
     END IF;
 
@@ -1283,16 +1358,16 @@ BEGIN
     EXECUTE '
     SELECT json_build_object(
         ''anos'', (SELECT array_agg(DISTINCT ano ORDER BY ano DESC) FROM public.cache_filters),
-        ''filiais'', (SELECT array_agg(DISTINCT filial ORDER BY filial) FROM public.cache_filters ' || v_where || '),
-        ''cidades'', (SELECT array_agg(DISTINCT cidade ORDER BY cidade) FROM public.cache_filters ' || v_where || '),
-        ''supervisors'', (SELECT array_agg(DISTINCT superv ORDER BY superv) FROM public.cache_filters ' || v_where || '),
-        ''vendedores'', (SELECT array_agg(DISTINCT nome ORDER BY nome) FROM public.cache_filters ' || v_where || '),
+        ''filiais'', (SELECT array_agg(DISTINCT filial ORDER BY filial) FROM public.cache_filters ' || v_where_filial || '),
+        ''cidades'', (SELECT array_agg(DISTINCT cidade ORDER BY cidade) FROM public.cache_filters ' || v_where_cidade || '),
+        ''supervisors'', (SELECT array_agg(DISTINCT superv ORDER BY superv) FROM public.cache_filters ' || v_where_supervisor || '),
+        ''vendedores'', (SELECT array_agg(DISTINCT nome ORDER BY nome) FROM public.cache_filters ' || v_where_vendedor || '),
         ''fornecedores'', (
             SELECT json_agg(DISTINCT jsonb_build_object(''cod'', codfor, ''name'', fornecedor)) 
-            FROM public.cache_filters ' || v_where || '
+            FROM public.cache_filters ' || v_where_fornecedor || '
         ),
-        ''tipos_venda'', (SELECT array_agg(DISTINCT tipovenda ORDER BY tipovenda) FROM public.cache_filters ' || v_where || '),
-        ''redes'', (SELECT array_agg(DISTINCT rede ORDER BY rede) FROM public.cache_filters ' || v_where || ' AND rede IS NOT NULL),
+        ''tipos_venda'', (SELECT array_agg(DISTINCT tipovenda ORDER BY tipovenda) FROM public.cache_filters ' || v_where_tipovenda || '),
+        ''redes'', (SELECT array_agg(DISTINCT rede ORDER BY rede) FROM public.cache_filters ' || v_where_rede || ' AND rede IS NOT NULL),
         ''categorias'', (SELECT array_agg(DISTINCT categoria_produto ORDER BY categoria_produto) FROM public.cache_filters ' || v_where_cat || ' AND categoria_produto IS NOT NULL),
         ''produtos'', (
             SELECT json_agg(jsonb_build_object(''cod'', codigo, ''name'', descricao))
