@@ -1046,7 +1046,7 @@ BEGIN
         SUM(s.totpesoliq) as peso,
         jsonb_agg(DISTINCT s.produto) as produtos,
         jsonb_agg(DISTINCT dp.categoria_produto) as categorias,
-        c.rede
+        c.ramo as rede
     FROM (
         SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto FROM public.data_detailed WHERE EXTRACT(YEAR FROM dtped)::int = p_year
         UNION ALL
@@ -1065,7 +1065,7 @@ BEGIN
         s.codcli,
         s.tipovenda,
         s.pedido,
-        c.rede;
+        c.ramo as rede;
     -- ANALYZE public.data_summary;
 END;
 $$;
@@ -1180,7 +1180,7 @@ BEGIN
         SUM(s.totpesoliq) as peso,
         jsonb_agg(DISTINCT s.produto) as produtos,
         jsonb_agg(DISTINCT dp.categoria_produto) as categorias,
-        c.rede
+        c.ramo as rede
     FROM (
         SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto FROM public.data_detailed WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
         UNION ALL
@@ -1199,7 +1199,7 @@ BEGIN
         s.codcli,
         s.tipovenda,
         s.pedido,
-        c.rede;
+        c.ramo as rede;
     -- No internal ANALYZE to keep chunks fast
 END;
 $$;
