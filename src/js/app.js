@@ -5335,7 +5335,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             container.innerHTML = kpis.map(kpi => {
                 const variation = kpi.history > 0 ? ((kpi.current - kpi.history) / kpi.history) * 100 : 0;
-                const colorClass = variation >= 0 ? 'text-green-400' : 'text-red-400';
+                const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
 
                 // Determine glow color
                 let glowClass = 'kpi-glow-blue';
@@ -5397,7 +5397,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!tbody) return;
             tbody.innerHTML = Object.entries(data).map(([sup, vals]) => {
                 const variation = vals.history > 0 ? ((vals.current - vals.history) / vals.history) * 100 : 0;
-                const colorClass = variation >= 0 ? 'text-green-400' : 'text-red-400';
+                const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
                 return `<tr class="hover:bg-slate-700">
                             <td class="px-4 py-2">${sup}</td>
                             <td class="px-4 py-2 text-right">${vals.history.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td>
