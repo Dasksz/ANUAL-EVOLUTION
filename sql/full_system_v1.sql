@@ -1599,7 +1599,7 @@ BEGIN
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_mix_constraint := ' 1=1 ';
     ELSE
-        v_mix_constraint := ' codfor IN (''707'', ''708'') ';
+        v_mix_constraint := ' fs.codfor IN (''707'', ''708'') ';
     END IF;
 
     -- KPI Base Filter (Table: data_clients)
