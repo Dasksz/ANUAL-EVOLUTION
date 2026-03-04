@@ -40,6 +40,9 @@ DECLARE
     v_where_base_prev text := ' WHERE 1=1 ';
     v_where_chart text := ' WHERE 1=1 ';
 
+    v_where_base_freq text;
+    v_where_chart_freq text;
+
     v_sql text;
     v_result json;
 BEGIN
@@ -63,6 +66,7 @@ BEGIN
     END IF;
 
     v_where_chart := v_where_chart || ' AND dtped >= make_date(' || v_previous_year || ', 1, 1) AND dtped < make_date(' || v_current_year + 1 || ', 1, 1) ';
+    v_where_chart_freq := v_where_chart || ' AND tipovenda NOT IN (''5'', ''11'') ';
 
     -- 2. Build Where Clauses
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
@@ -81,15 +85,15 @@ BEGIN
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
-        v_where_base_prev := v_where_base_prev || ' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
-        v_where_chart := v_where_chart || ' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+        v_where_base := v_where_base || ' AND EXISTS (SELECT 1 FROM public.dim_supervisores WHERE codigo = codsupervisor AND nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND EXISTS (SELECT 1 FROM public.dim_supervisores WHERE codigo = codsupervisor AND nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND EXISTS (SELECT 1 FROM public.dim_supervisores WHERE codigo = codsupervisor AND nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
-        v_where_base_prev := v_where_base_prev || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
-        v_where_chart := v_where_chart || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+        v_where_base := v_where_base || ' AND EXISTS (SELECT 1 FROM public.dim_vendedores WHERE codigo = codusur AND nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND EXISTS (SELECT 1 FROM public.dim_vendedores WHERE codigo = codusur AND nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND EXISTS (SELECT 1 FROM public.dim_vendedores WHERE codigo = codusur AND nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
@@ -101,10 +105,10 @@ BEGIN
     END IF;
 
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND codcli IN (SELECT codigo_cliente FROM public.data_clients WHERE rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || '''])) ';
+        v_where_base := v_where_base || ' AND EXISTS (SELECT 1 FROM public.data_clients WHERE codigo_cliente = codcli AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || '''])) ';
         v_where_clients := v_where_clients || ' AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
-        v_where_base_prev := v_where_base_prev || ' AND codcli IN (SELECT codigo_cliente FROM public.data_clients WHERE rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || '''])) ';
-        v_where_chart := v_where_chart || ' AND codcli IN (SELECT codigo_cliente FROM public.data_clients WHERE rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND EXISTS (SELECT 1 FROM public.data_clients WHERE codigo_cliente = codcli AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND EXISTS (SELECT 1 FROM public.data_clients WHERE codigo_cliente = codcli AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || '''])) ';
     END IF;
 
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
@@ -114,9 +118,9 @@ BEGIN
     END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
-        v_where_base_prev := v_where_base_prev || ' AND produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
-        v_where_chart := v_where_chart || ' AND produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
+        v_where_base := v_where_base || ' AND EXISTS (SELECT 1 FROM public.dim_produtos WHERE codigo = produto AND categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND EXISTS (SELECT 1 FROM public.dim_produtos WHERE codigo = produto AND categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND EXISTS (SELECT 1 FROM public.dim_produtos WHERE codigo = produto AND categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || '''])) ';
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
@@ -124,6 +128,10 @@ BEGIN
         v_where_base_prev := v_where_base_prev || ' AND tipovenda = ANY(ARRAY[' || array_to_string(p_tipovenda, ',') || ']) ';
         v_where_chart := v_where_chart || ' AND tipovenda = ANY(ARRAY[' || array_to_string(p_tipovenda, ',') || ']) ';
     END IF;
+
+    -- We construct a dynamic WHERE with tipovenda NOT IN for optimized execution
+    v_where_base_freq := v_where_base || ' AND tipovenda NOT IN (''5'', ''11'') ';
+    v_where_chart_freq := v_where_chart || ' AND tipovenda NOT IN (''5'', ''11'') ';
 
     -- Dynamic Query
     v_sql := '
@@ -134,14 +142,13 @@ BEGIN
             COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
             all_sales.codcli,
             all_sales.pedido,
-            all_sales.tipovenda,
             all_sales.vlvenda,
             all_sales.totpesoliq as peso,
             all_sales.produto
         FROM (
-            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor FROM public.data_detailed ' || v_where_base || '
+            SELECT filial, cidade, codusur, codcli, pedido, vlvenda, totpesoliq, produto FROM public.data_detailed ' || v_where_base || '
             UNION ALL
-            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor FROM public.data_history ' || v_where_base || '
+            SELECT filial, cidade, codusur, codcli, pedido, vlvenda, totpesoliq, produto FROM public.data_history ' || v_where_base || '
         ) all_sales
         LEFT JOIN public.dim_vendedores dv ON all_sales.codusur = dv.codigo
     ),
@@ -152,9 +159,9 @@ BEGIN
             COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
             SUM(all_sales.vlvenda) as faturamento_prev
         FROM (
-            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor FROM public.data_detailed ' || v_where_base_prev || '
+            SELECT filial, cidade, codusur, vlvenda FROM public.data_detailed ' || v_where_base_prev || '
             UNION ALL
-            SELECT filial, cidade, codusur, codsupervisor, codcli, pedido, tipovenda, vlvenda, totpesoliq, produto, dtped, codfor FROM public.data_history ' || v_where_base_prev || '
+            SELECT filial, cidade, codusur, vlvenda FROM public.data_history ' || v_where_base_prev || '
         ) all_sales
         LEFT JOIN public.dim_vendedores dv ON all_sales.codusur = dv.codigo
         GROUP BY 1, 2, 3
@@ -190,10 +197,18 @@ BEGIN
         GROUP BY filial, cidade, vendedor
     ),
     freq_pedidos AS (
-        SELECT filial, cidade, vendedor, COUNT(DISTINCT pedido) as total_pedidos
-        FROM current_data
-        WHERE tipovenda NOT IN (''5'', ''11'')
-        GROUP BY filial, cidade, vendedor
+        SELECT
+            COALESCE(f_sales.filial, ''SEM FILIAL'') as filial,
+            COALESCE(f_sales.cidade, ''SEM CIDADE'') as cidade,
+            COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
+            COUNT(DISTINCT f_sales.pedido) as total_pedidos
+        FROM (
+            SELECT filial, cidade, codusur, pedido FROM public.data_detailed ' || v_where_base_freq || '
+            UNION ALL
+            SELECT filial, cidade, codusur, pedido FROM public.data_history ' || v_where_base_freq || '
+        ) f_sales
+        LEFT JOIN public.dim_vendedores dv ON f_sales.codusur = dv.codigo
+        GROUP BY 1, 2, 3
     ),
     final_tree AS (
         SELECT
@@ -220,11 +235,10 @@ BEGIN
             COUNT(DISTINCT pedido) as total_pedidos,
             COUNT(DISTINCT codcli) as total_clientes
         FROM (
-            SELECT dtped, pedido, codcli, filial, cidade, codsupervisor, codusur, codfor, tipovenda, produto FROM public.data_detailed ' || v_where_chart || '
+            SELECT dtped, pedido, codcli FROM public.data_detailed ' || v_where_chart_freq || '
             UNION ALL
-            SELECT dtped, pedido, codcli, filial, cidade, codsupervisor, codusur, codfor, tipovenda, produto FROM public.data_history ' || v_where_chart || '
+            SELECT dtped, pedido, codcli FROM public.data_history ' || v_where_chart_freq || '
         ) all_data
-        WHERE tipovenda NOT IN (''5'', ''11'')
         GROUP BY 1, 2
     )
     SELECT json_build_object(
