@@ -3465,11 +3465,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const tableHead = document.querySelector('#monthly-summary-table thead tr');
         tableBody.innerHTML = '';
 
-        const table = document.getElementById('monthly-summary-table');
-        if (table && !table.classList.contains('collapsed-table')) {
-            table.classList.add('collapsed-table');
-        }
-
         const monthInitials = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
         let headerHTML = `
             <th class="px-2 py-2 text-left bg-transparent border-b border-white/50 relative">
@@ -3480,7 +3475,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </th>`;
         monthInitials.forEach(m => headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 font-light text-xs text-gray-300 summary-col-header transition-opacity duration-300 opacity-0">${m}</th>`);
         if (trendData) {
-            headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 text-orange-300 font-light text-xs summary-col-header transition-opacity duration-300 opacity-0">Tendência</th>`;
+            headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 text-[#eaff00] drop-shadow-[0_0_2px_rgba(234,255,0,0.5)] font-bold text-xs summary-col-header transition-opacity duration-300 opacity-0">Tendência</th>`;
         }
         tableHead.innerHTML = headerHTML;
 
@@ -3513,7 +3508,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  let tVal = trendData[ind.key];
                  if (tVal === undefined) tVal = null;
                  if (tVal === null && !ind.allowNull) tVal = 0;
-                 rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-orange-300 bg-orange-900/20">${ind.fmt(tVal)}</td>`;
+                 rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-white">${ind.fmt(tVal)}</td>`;
             }
             rowHTML += '</tr>';
             tableBody.innerHTML += rowHTML;
