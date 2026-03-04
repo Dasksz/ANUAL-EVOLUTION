@@ -36,6 +36,7 @@ DECLARE
     v_target_month int;
 
     v_where_base text := ' WHERE 1=1 ';
+    v_where_client_base text := ' WHERE 1=1 ';
     v_where_clients text := ' WHERE 1=1 ';
     v_where_base_prev text := ' WHERE 1=1 ';
     v_where_chart text := ' WHERE 1=1 ';
@@ -3345,14 +3346,17 @@ BEGIN
 
             IF v_filial_cities IS NOT NULL THEN
                 v_where_base := v_where_base || ' AND c.cidade = ANY(ARRAY[''' || array_to_string(v_filial_cities, ''',''') || ''']) ';
+                v_where_client_base := v_where_client_base || ' AND cidade = ANY(ARRAY[''' || array_to_string(v_filial_cities, ''',''') || ''']) ';
             ELSE
                 v_where_base := v_where_base || ' AND 1=0 ';
+                v_where_client_base := v_where_client_base || ' AND 1=0 ';
             END IF;
         END IF;
     END IF;
 
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where_base := v_where_base || ' AND c.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+        v_where_client_base := v_where_client_base || ' AND cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
@@ -3373,10 +3377,13 @@ BEGIN
             -- Do nothing, include all
         ELSIF 'com_ramo' = ANY(p_rede) THEN
             v_where_base := v_where_base || ' AND c.ramo IS NOT NULL AND c.ramo != '''' ';
+            v_where_client_base := v_where_client_base || ' AND ramo IS NOT NULL AND ramo != '''' ';
         ELSIF 'sem_ramo' = ANY(p_rede) THEN
             v_where_base := v_where_base || ' AND (c.ramo IS NULL OR c.ramo = '''') ';
+            v_where_client_base := v_where_client_base || ' AND (ramo IS NULL OR ramo = '''') ';
         ELSE
             v_where_base := v_where_base || ' AND c.ramo = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+            v_where_client_base := v_where_client_base || ' AND ramo = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
         END IF;
     END IF;
 
@@ -3387,7 +3394,20 @@ BEGIN
 
     -- 3. Dynamic Query Execution
     v_sql := '
-    WITH active_clients AS (
+    WITH base_clients AS (
+        SELECT COUNT(*) as val FROM public.data_clients ' || v_where_client_base || '
+    ),
+    attended_clients AS (
+        SELECT COUNT(DISTINCT d.codcli) as val
+        FROM (
+            SELECT codcli, codsupervisor, codusur, tipovenda FROM data_detailed WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
+            UNION ALL
+            SELECT codcli, codsupervisor, codusur, tipovenda FROM data_history WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
+        ) d
+        JOIN data_clients c ON c.codigo_cliente = d.codcli
+        ' || v_where_base || '
+    ),
+    active_clients AS (
         SELECT DISTINCT d.codcli
         FROM (
             SELECT codcli, codsupervisor, codusur, tipovenda FROM data_detailed WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
@@ -3472,6 +3492,9 @@ BEGIN
     )
     SELECT json_build_object(
         ''active_clients'', (SELECT COUNT(*) FROM active_clients),
+        ''kpi_clients_base'', (SELECT val FROM base_clients),
+        ''kpi_clients_attended'', (SELECT val FROM attended_clients),
+        ''kpi_innovations_attended'', (SELECT COUNT(DISTINCT codcli) FROM innovation_sales WHERE is_current),
         ''categories'', (
             SELECT COALESCE(json_agg(cat_agg), ''[]''::json)
             FROM (

@@ -5478,11 +5478,16 @@ async function updateInnovationsMonthView() {
 
 function renderInnovationsKPIs(data) {
     if (!data) return;
-    const activeClients = data.active_clients || 0;
 
-    // Total Clients
+    // We use data.kpi_clients_attended for new penetration math if available, fallback to active_clients
+    const activeClients = data.kpi_clients_attended || data.active_clients || 0;
+
+    // The base is kpi_clients_base (total clients in the database applying filters)
+    const baseClients = data.kpi_clients_base || 0;
+
+    // Total Clients (Base Total)
     const activeClientsEl = document.getElementById('innovations-month-active-clients-kpi');
-    if (activeClientsEl) activeClientsEl.textContent = formatNumber(activeClients);
+    if (activeClientsEl) activeClientsEl.textContent = formatNumber(baseClients > 0 ? baseClients : activeClients);
 
     // Calculate Best Coverage
     let bestCategory = null;
@@ -5493,6 +5498,7 @@ function renderInnovationsKPIs(data) {
     let totalSelectionPos = 0;
 
     categories.forEach(cat => {
+        // activeClients here corresponds to kpi_clients_attended for new logic
         let cov = activeClients > 0 ? (cat.pos_current / activeClients) * 100 : 0;
         if (cov > maxCoverage) {
             maxCoverage = cov;
@@ -5514,12 +5520,26 @@ function renderInnovationsKPIs(data) {
 
     // Selection Percent
     const selCovValue = document.getElementById('innovations-month-selection-coverage-value-kpi');
-    let selPercent = activeClients > 0 ? (totalSelectionPos / (activeClients * (categories.length > 0 ? categories.length : 1))) * 100 : 0;
+    let selPercent = 0;
+
+    // Check if we have the new direct counts
+    if (data.kpi_innovations_attended !== undefined && data.kpi_clients_attended !== undefined) {
+        selPercent = data.kpi_clients_attended > 0 ? (data.kpi_innovations_attended / data.kpi_clients_attended) * 100 : 0;
+    } else {
+        // Fallback logic
+        selPercent = activeClients > 0 ? (totalSelectionPos / (activeClients * (categories.length > 0 ? categories.length : 1))) * 100 : 0;
+    }
     if (selCovValue) selCovValue.textContent = selPercent.toFixed(2) + '%';
 
     // Selection Count
     const selCovCount = document.getElementById('innovations-month-selection-coverage-count-kpi');
-    if (selCovCount) selCovCount.textContent = totalSelectionPos + ' de ' + (activeClients * categories.length);
+    if (selCovCount) {
+        if (data.kpi_innovations_attended !== undefined && data.kpi_clients_attended !== undefined) {
+            selCovCount.textContent = `${data.kpi_innovations_attended} de ${data.kpi_clients_attended}`;
+        } else {
+            selCovCount.textContent = totalSelectionPos + ' de ' + (activeClients * categories.length);
+        }
+    }
 }
 
 function renderInnovationsChart(data) {
@@ -5535,7 +5555,8 @@ function renderInnovationsChart(data) {
     const labels = categories.map(c => c.name);
 
     // Calcular %
-    const active = data.active_clients || 1;
+    const active = data.active_clients || 1; // Reverted back to the consistent 12-month active base for all historical charts
+
     const currentData = categories.map(c => ((c.pos_current / active) * 100).toFixed(1));
     const prevYearData = categories.map(c => ((c.pos_prev_year / active) * 100).toFixed(1));
     const avg12mData = categories.map(c => ((c.pos_avg_12m / active) * 100).toFixed(1));
@@ -5613,7 +5634,7 @@ window.renderInnovationsTable = function(data) {
     if (!tbody || !data || !data.categories) return;
 
     let html = '';
-    const active = data.active_clients || 1;
+    const active = data.active_clients || 1; // Reverted to the consistent 12-month active base
 
     data.categories.forEach((cat, idx) => {
         let catPosAtual = ((cat.pos_current / active) * 100).toFixed(2);
