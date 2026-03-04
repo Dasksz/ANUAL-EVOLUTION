@@ -558,7 +558,9 @@ CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_categorias_gin ON public.dat_sum
 
 -- Secure the frequency summary table
 ALTER TABLE public.dat_summary_frequency ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated read access" ON public.dat_summary_frequency;
 CREATE POLICY "Allow authenticated read access" ON public.dat_summary_frequency FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Allow admin write access" ON public.dat_summary_frequency;
 CREATE POLICY "Allow admin write access" ON public.dat_summary_frequency FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 
@@ -1084,6 +1086,42 @@ BEGIN
     INSERT INTO public.dat_summary_frequency (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede
     )
+    WITH raw_data AS (
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        FROM public.data_detailed
+        WHERE EXTRACT(YEAR FROM dtped)::int = p_year
+        UNION ALL
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        FROM public.data_history
+        WHERE EXTRACT(YEAR FROM dtped)::int = p_year
+    ),
+    augmented_data AS (
+        SELECT
+            EXTRACT(YEAR FROM s.dtped)::int as ano,
+            EXTRACT(MONTH FROM s.dtped)::int as mes,
+            CASE
+                WHEN s.codcli = '11625' AND EXTRACT(YEAR FROM s.dtped) = 2025 AND EXTRACT(MONTH FROM s.dtped) = 12 THEN '05'
+                ELSE s.filial
+            END as filial,
+            COALESCE(s.cidade, c.cidade) as cidade,
+            s.codsupervisor,
+            s.codusur,
+            CASE
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDY %' THEN '1119_TODDY'
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
+                WHEN s.codfor = '1119' THEN '1119_OUTROS'
+                ELSE s.codfor
+            END as codfor,
+            s.tipovenda,
+            s.codcli,
+            s.pedido, s.vlvenda, s.totpesoliq, s.produto, dp.categoria_produto,
+            c.ramo
+        FROM raw_data s
+        LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
+        LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+    )
     SELECT
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido,
         SUM(vlvenda) as vlvenda,
@@ -1192,6 +1230,42 @@ BEGIN
 
     INSERT INTO public.dat_summary_frequency (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede
+    )
+    WITH raw_data AS (
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        FROM public.data_detailed
+        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
+        UNION ALL
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        FROM public.data_history
+        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
+    ),
+    augmented_data AS (
+        SELECT
+            EXTRACT(YEAR FROM s.dtped)::int as ano,
+            EXTRACT(MONTH FROM s.dtped)::int as mes,
+            CASE
+                WHEN s.codcli = '11625' AND EXTRACT(YEAR FROM s.dtped) = 2025 AND EXTRACT(MONTH FROM s.dtped) = 12 THEN '05'
+                ELSE s.filial
+            END as filial,
+            COALESCE(s.cidade, c.cidade) as cidade,
+            s.codsupervisor,
+            s.codusur,
+            CASE
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDY %' THEN '1119_TODDY'
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
+                WHEN s.codfor = '1119' THEN '1119_OUTROS'
+                ELSE s.codfor
+            END as codfor,
+            s.tipovenda,
+            s.codcli,
+            s.pedido, s.vlvenda, s.totpesoliq, s.produto, dp.categoria_produto,
+            c.ramo
+        FROM raw_data s
+        LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
+        LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
     )
     SELECT
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido,
