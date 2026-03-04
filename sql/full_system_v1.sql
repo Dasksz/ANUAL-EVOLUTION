@@ -1145,19 +1145,31 @@ END;
 $$;
 
 -- 3. Refresh Filters Cache (Optimized: Uses data_summary)
-CREATE OR REPLACE FUNCTION refresh_cache_filters()
+DROP FUNCTION IF EXISTS refresh_cache_filters();
+DROP FUNCTION IF EXISTS refresh_cache_filters(int, int);
+
+CREATE OR REPLACE FUNCTION refresh_cache_filters(p_ano int default null, p_mes int default null)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+    r RECORD;
 BEGIN
     SET LOCAL statement_timeout = '600s';
     
-    -- Ensure stats are up to date before complex joins
-    -- ANALYZE public.data_summary;
+    IF p_ano IS NULL OR p_mes IS NULL THEN
+        -- Rebuild entire cache chunk by chunk to avoid timeout
+        TRUNCATE TABLE public.cache_filters;
+        FOR r IN SELECT DISTINCT ano, mes FROM public.data_summary LOOP
+            PERFORM refresh_cache_filters(r.ano, r.mes);
+        END LOOP;
+        RETURN;
+    END IF;
 
-    TRUNCATE TABLE public.cache_filters;
+    -- Target specific month to keep transaction small
+    DELETE FROM public.cache_filters WHERE ano = p_ano AND mes = p_mes;
     
     -- Optimize by getting distinct codes first, then joining dimensions
     INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes, rede, categoria_produto)
@@ -1174,6 +1186,7 @@ BEGIN
             ramo, 
             categoria_produto
         FROM public.data_summary
+        WHERE ano = p_ano AND mes = p_mes
         GROUP BY 
             filial, cidade, codsupervisor, codusur, codfor, tipovenda, ano, mes, ramo, categoria_produto
     )
@@ -1408,7 +1421,7 @@ BEGIN
     END LOOP;
 
     -- 3. Refresh Filters
-    PERFORM refresh_cache_filters();
+    PERFORM refresh_cache_filters(null, null);
 END;
 $$;
 
