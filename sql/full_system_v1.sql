@@ -3444,9 +3444,9 @@ BEGIN
     active_clients AS (
         SELECT d.codcli
         FROM (
-            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_detailed WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
+            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_detailed WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
             UNION ALL
-            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_history WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
+            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_history WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
         ) d
         JOIN data_clients c ON c.codigo_cliente = d.codcli
         ' || v_where_base || '
@@ -3469,12 +3469,12 @@ BEGIN
         FROM (
             SELECT codcli, produto, dtped, vlvenda
             FROM data_detailed
-            WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
+            WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
               AND produto IN (SELECT codigo FROM data_innovations)
             UNION ALL
             SELECT codcli, produto, dtped, vlvenda
             FROM data_history
-            WHERE dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || '''
+            WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
               AND produto IN (SELECT codigo FROM data_innovations)
         ) d
         JOIN data_innovations i ON d.produto = i.codigo
