@@ -1691,13 +1691,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         const { error: chunkErr } = await supabase.rpc('refresh_summary_month', { p_year: year, p_month: m });
                         
                         if (chunkErr) throw new Error(`Erro processando ${m}/${year}: ${chunkErr.message}`);
+
+                        updateStatus(`Atualizando filtros ${m}/${year}...`, progress + Math.round(monthStep / 2));
+                        const { error: filterErr } = await supabase.rpc('refresh_cache_filters', { p_ano: year, p_mes: m });
+                        if (filterErr) throw new Error(`Erro atualizando filtros para ${m}/${year}: ${filterErr.message}`);
                     }
                 }
             }
 
-            updateStatus('Atualizando filtros...', 98);
-            const { error: filterErr } = await supabase.rpc('refresh_cache_filters');
-            if (filterErr) throw new Error(`Erro ao atualizar filtros: ${filterErr.message}`);
 
         } catch (error) {
             console.error(error);
