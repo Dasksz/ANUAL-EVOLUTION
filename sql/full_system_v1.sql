@@ -133,6 +133,7 @@ BEGIN
             COALESCE(s.filial, ''SEM FILIAL'') as filial,
             COALESCE(s.cidade, ''SEM CIDADE'') as cidade,
             COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
+            s.mes,
             s.codcli,
             s.pedido,
             s.tipovenda,
@@ -161,13 +162,16 @@ BEGIN
         SELECT
             GROUPING(COALESCE(cb.filial, ''SEM FILIAL'')) as grp_filial,
             GROUPING(COALESCE(cidade, ''SEM CIDADE'')) as grp_cidade,
+            GROUPING(COALESCE(dv.nome, ''SEM VENDEDOR'')) as grp_vendedor,
             COALESCE(COALESCE(cb.filial, ''SEM FILIAL''), ''TOTAL_GERAL'') as filial,
             COALESCE(COALESCE(cidade, ''SEM CIDADE''), ''TOTAL_CIDADE'') as cidade,
+            COALESCE(COALESCE(dv.nome, ''SEM VENDEDOR''), ''TOTAL_VENDEDOR'') as vendedor,
             COUNT(DISTINCT dc.codigo_cliente) as base_total
         FROM public.data_clients dc
         LEFT JOIN public.config_city_branches cb USING (cidade)
+        LEFT JOIN public.dim_vendedores dv ON dc.rca1 = dv.codigo
         ' || v_where_clients || '
-        GROUP BY ROLLUP(COALESCE(cb.filial, ''SEM FILIAL''), COALESCE(cidade, ''SEM CIDADE''))
+        GROUP BY ROLLUP(COALESCE(cb.filial, ''SEM FILIAL''), COALESCE(cidade, ''SEM CIDADE''), COALESCE(dv.nome, ''SEM VENDEDOR''))
     ),
     client_totals AS (
         SELECT filial, cidade, vendedor, codcli,
@@ -196,7 +200,8 @@ BEGIN
             SUM(c.peso) as tons,
             SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
             COUNT(DISTINCT vc.codcli) as positivacao,
-            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END) as total_pedidos
+            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END) as total_pedidos,
+            COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
         LEFT JOIN valid_clients vc ON c.filial = vc.filial AND c.cidade = vc.cidade AND c.vendedor = vc.vendedor AND c.codcli = vc.codcli AND c.tipovenda NOT IN (''5'', ''11'')
         GROUP BY ROLLUP(c.filial, c.cidade, c.vendedor)
@@ -225,8 +230,8 @@ BEGIN
             ac.faturamento,
             COALESCE(pd.faturamento_prev, 0) as faturamento_prev,
             ac.positivacao,
-            COALESCE(ask.sum_skus, 0) as sum_skus,
-            ac.total_pedidos,
+            (COALESCE(ask.sum_skus, 0)::numeric / GREATEST(ac.q_meses, 1)) as sum_skus,
+            (ac.total_pedidos::numeric / GREATEST(ac.q_meses, 1)) as total_pedidos,
             COALESCE(cb.base_total, 0) as base_total
         FROM aggregated_curr ac
         LEFT JOIN previous_data pd ON ac.grp_filial = pd.grp_filial 
@@ -243,9 +248,10 @@ BEGIN
                                   AND ac.vendedor = ask.vendedor
         LEFT JOIN client_base cb ON ac.grp_filial = cb.grp_filial
                                 AND ac.grp_cidade = cb.grp_cidade
-                                AND ac.grp_vendedor = 1
+                                AND ac.grp_vendedor = cb.grp_vendedor
                                 AND ac.filial = cb.filial
                                 AND ac.cidade = cb.cidade
+                                AND ac.vendedor = cb.vendedor
     ),
     chart_data AS (
         SELECT

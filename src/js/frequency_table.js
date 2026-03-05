@@ -58,14 +58,20 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         if (filial === 'TOTAL_GERAL' || filial === 'PRIME' || (filial === 'SEM FILIAL' && cidade === 'TOTAL_CIDADE' && vendedor === 'TOTAL_VENDEDOR') || row.grp_filial == 1) {
             // Grand Total (PRIME)
             hierarchy.totals = { ...rowData, base_total: data.global_base_total || rowData.base_total || 0 };
-        } else if (cidade === 'TOTAL_CIDADE' || row.grp_cidade == 1) {
+            return;
+        }
+
+        if (cidade === 'TOTAL_CIDADE' || row.grp_cidade == 1) {
             // Filial Total
             if (!hierarchy.children[filial]) {
                 hierarchy.children[filial] = { name: filial, children: {}, totals: rowData };
             } else {
                 hierarchy.children[filial].totals = rowData;
             }
-        } else if (vendedor === 'TOTAL_VENDEDOR' || row.grp_vendedor == 1) {
+            return;
+        }
+
+        if (vendedor === 'TOTAL_VENDEDOR' || row.grp_vendedor == 1) {
             // Cidade Total
             if (!hierarchy.children[filial]) {
                 hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
@@ -75,12 +81,14 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
             } else {
                 hierarchy.children[filial].children[cidade].totals = rowData;
             }
-        } else {
-            // Vendedor (Leaf)
-            // Extra sanity check: skip insertion if any grouping name somehow sneaked through
-            if (filial === 'TOTAL_GERAL' || cidade === 'TOTAL_CIDADE' || vendedor === 'TOTAL_VENDEDOR') {
-                return;
-            }
+            return;
+        }
+
+        // Vendedor (Leaf)
+        // Extra sanity check: skip insertion if any grouping name somehow sneaked through
+        if (filial === 'TOTAL_GERAL' || cidade === 'TOTAL_CIDADE' || vendedor === 'TOTAL_VENDEDOR') {
+            return;
+        }
 
             if (!hierarchy.children[filial]) {
                 hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
