@@ -2645,6 +2645,9 @@ DECLARE
     v_has_sem_rede boolean;
     v_specific_redes text[];
     v_rede_condition text := '';
+
+    -- Trend Divisor
+    v_trend_divisor numeric := 3.0;
 BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
 
@@ -2723,19 +2726,19 @@ BEGIN
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_target_month := p_mes::int + 1;
         v_where := v_where || format(' AND mes = %L ', v_target_month);
-    ELSE
-        -- Default to the most recent month if 'todos' or null
-        SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year;
-        IF p_mes != 'todos' THEN
-            v_where := v_where || format(' AND mes = %L ', v_target_month);
-        END IF;
-    END IF;
 
-    -- Trend calculation logic (last 3 months from target month)
-    v_where_trend := v_where_trend || format(' AND ((ano = %L AND mes < %L AND mes >= %L) OR (ano = %L AND mes >= %L)) ',
-        v_current_year, v_target_month, GREATEST(1, v_target_month - 3),
-        v_current_year - 1, LEAST(12, 12 + (v_target_month - 3))
-    );
+        -- Trend calculation logic (last 3 months from target month)
+        v_where_trend := v_where_trend || format(' AND ((ano = %L AND mes < %L AND mes >= %L) OR (ano = %L AND mes >= %L)) ',
+            v_current_year, v_target_month, GREATEST(1, v_target_month - 3),
+            v_current_year - 1, LEAST(12, 12 + (v_target_month - 3))
+        );
+        v_trend_divisor := 3.0;
+    ELSE
+        -- Default to the entire year for 'todos' or null
+        -- 'Todos' is selected: trend is the entire previous year
+        v_where_trend := v_where_trend || format(' AND ano = %L ', v_current_year - 1);
+        v_trend_divisor := 1.0;
+    END IF;
 
     -- CITY RANKING QUERY
     v_sql := '
@@ -2750,7 +2753,7 @@ BEGIN
         SELECT SUM(total_fat) as total_empresa FROM current_month_totals
     ),
     trend_totals AS (
-        SELECT COALESCE(cidade, ''NÃO INFORMADO'') as cidade_nome, SUM(vlvenda) / 3.0 as avg_fat_trim
+        SELECT COALESCE(cidade, ''NÃO INFORMADO'') as cidade_nome, SUM(vlvenda) / ' || v_trend_divisor || ' as avg_fat_trim
         FROM public.data_summary
         ' || v_where_trend || '
         GROUP BY COALESCE(cidade, ''NÃO INFORMADO'')
@@ -2846,6 +2849,7 @@ BEGIN
     );
 END;
 $$;
+
 
 -- H. Comparison View (Restored & Updated)
 CREATE OR REPLACE FUNCTION get_comparison_view_data(
