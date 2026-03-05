@@ -3019,8 +3019,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let kpiTitleFat, kpiTitleKg;
         
         // --- KPI LOGIC (Scenario Check) ---
-        if (anoFilter.value !== 'todos' && mesFilter.value === '') {
-            // SCENARIO A: Year Selected, Month All -> Show Year vs Previous Year (Accumulated)
+        if (mesFilter.value === '') {
+            // SCENARIO A: Month All -> Show Year vs Previous Year (Accumulated)
             
             const sumData = (dataset, useTrend) => {
                 let sumFat = 0; 
@@ -3243,7 +3243,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let currMonthFatForTri, currMonthKgForTri;
         
-        if (anoFilter.value !== 'todos' && mesFilter.value === '') {
+        if (mesFilter.value === '') {
              // In Year View, we still want the Tri card to make sense (Current Month vs Tri).
              // Let's re-fetch the specific current month data for the Tri calculation.
              const cMonthData = data.monthly_data_current.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
@@ -5841,57 +5841,9 @@ const innovationsCategoriaFilterBtn = document.getElementById('innovations-categ
 const innovationsCategoriaFilterDropdown = document.getElementById('innovations-categoria-filter-dropdown');
 
 // Filter change handler
-let innovationsFilterDebounceTimer;
-let lastInnovationsFiltersStr = "";
-
 const handleInnovationsFilterChange = () => {
-    const anoSelect = document.getElementById('innovations-ano-filter');
-    const mesSelect = document.getElementById('innovations-mes-filter');
-
-    const filters = {
-        p_ano: anoSelect ? (anoSelect.value === 'todos' ? null : anoSelect.value) : null,
-        p_mes: mesSelect ? (mesSelect.value === '' ? null : mesSelect.value) : null,
-        p_filial: innovationsSelectedFiliais.length > 0 ? innovationsSelectedFiliais : null,
-        p_cidade: innovationsSelectedCidades.length > 0 ? innovationsSelectedCidades : null,
-        p_supervisor: innovationsSelectedSupervisors.length > 0 ? innovationsSelectedSupervisors : null,
-        p_vendedor: innovationsSelectedVendedores.length > 0 ? innovationsSelectedVendedores : null,
-        p_fornecedor: null, // Inovações doesn't have a specific fornecedor filter yet, but rpc expects it in base structure
-        p_tipovenda: innovationsSelectedTiposVenda.length > 0 ? innovationsSelectedTiposVenda : null,
-        p_rede: innovationsSelectedRedes.length > 0 ? innovationsSelectedRedes : null,
-        p_categoria: null // we use p_categoria_inovacao for this page, but standard get_dashboard_filters expects p_categoria
-    };
-
-    const currentFiltersStr = JSON.stringify(filters) + JSON.stringify(innovationsSelectedCategorias);
-    if (currentFiltersStr === lastInnovationsFiltersStr) return;
-    lastInnovationsFiltersStr = currentFiltersStr;
-
-    clearTimeout(innovationsFilterDebounceTimer);
-    innovationsFilterDebounceTimer = setTimeout(async () => {
-        await loadInnovationsFilters(filters);
-        updateInnovationsMonthView();
-    }, 500);
+    updateInnovationsMonthView();
 };
-
-async function loadInnovationsFilters(currentFilters) {
-    const { data, error } = await supabase.rpc('get_dashboard_filters', currentFilters);
-    if (error) {
-        console.error('Error refreshing innovations filters:', error);
-        return;
-    }
-
-    if (data) {
-        // Re-render standard dropdowns with new options
-        setupCityMultiSelect(innovationsSupervisorFilterBtn, innovationsSupervisorFilterDropdown, innovationsSupervisorFilterDropdown, data.supervisors, innovationsSelectedSupervisors);
-        setupCityMultiSelect(innovationsVendedorFilterBtn, innovationsVendedorFilterDropdown, innovationsVendedorFilterList, data.vendedores, innovationsSelectedVendedores, innovationsVendedorFilterSearch);
-        setupCityMultiSelect(innovationsCidadeFilterBtn, innovationsCidadeFilterDropdown, innovationsCidadeFilterList, data.cidades, innovationsSelectedCidades, innovationsCidadeFilterSearch);
-        setupCityMultiSelect(innovationsTipovendaFilterBtn, innovationsTipovendaFilterDropdown, innovationsTipovendaFilterDropdown, data.tipos_venda || [], innovationsSelectedTiposVenda);
-
-        const redes = ['C/ REDE', 'S/ REDE', ...(data.redes || [])];
-        setupCityMultiSelect(innovationsRedeFilterBtn, innovationsRedeFilterDropdown, innovationsRedeFilterList, redes, innovationsSelectedRedes, innovationsRedeFilterSearch);
-
-        setupCityMultiSelect(innovationsFilialFilterBtn, innovationsFilialFilterDropdown, innovationsFilialFilterDropdown, data.filiais, innovationsSelectedFiliais);
-    }
-}
 
 document.addEventListener('click', (e) => {
     const dropdowns = [
@@ -5972,10 +5924,7 @@ const setupInnovationsFilters = async () => {
     if (anoSelect && filterData.anos) {
         anoSelect.innerHTML = '<option value="todos">Todos</option>';
         filterData.anos.forEach(ano => {
-            const opt = document.createElement('option');
-            opt.value = ano;
-            opt.textContent = ano;
-            anoSelect.appendChild(opt);
+            anoSelect.innerHTML += `<option value="${ano}">${ano}</option>`;
         });
 
         // Initial filter values
@@ -5983,9 +5932,10 @@ const setupInnovationsFilters = async () => {
         anoSelect.value = hasYear ? currentYear : 'todos';
 
         enhanceSelectToCustomDropdown(anoSelect);
+        anoSelect.addEventListener('change', handleInnovationsFilterChange);
     }
     
-    if (mesSelect && mesSelect.options.length <= 1) {
+    if (mesSelect) {
         mesSelect.innerHTML = '<option value="">Todos</option>';
         const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
         meses.forEach((m, i) => { 
@@ -6000,17 +5950,14 @@ const setupInnovationsFilters = async () => {
         mesSelect.value = currentMonth;
 
         enhanceSelectToCustomDropdown(mesSelect);
+        mesSelect.addEventListener('change', handleInnovationsFilterChange);
     }
-
-    // Add change listeners directly to single selects instead of document body
-    if (anoSelect) anoSelect.addEventListener('change', handleInnovationsFilterChange);
-    if (mesSelect) mesSelect.addEventListener('change', handleInnovationsFilterChange);
 
     // Load Multi-Selects using standard CityMultiSelect pattern
     setupCityMultiSelect(innovationsSupervisorFilterBtn, innovationsSupervisorFilterDropdown, innovationsSupervisorFilterDropdown, filterData.supervisors, innovationsSelectedSupervisors);
     setupCityMultiSelect(innovationsVendedorFilterBtn, innovationsVendedorFilterDropdown, innovationsVendedorFilterList, filterData.vendedores, innovationsSelectedVendedores, innovationsVendedorFilterSearch);
     setupCityMultiSelect(innovationsCidadeFilterBtn, innovationsCidadeFilterDropdown, innovationsCidadeFilterList, filterData.cidades, innovationsSelectedCidades, innovationsCidadeFilterSearch);
-    setupCityMultiSelect(innovationsTipovendaFilterBtn, innovationsTipovendaFilterDropdown, innovationsTipovendaFilterDropdown, filterData.tipos_venda || [], innovationsSelectedTiposVenda);
+    setupCityMultiSelect(innovationsTipovendaFilterBtn, innovationsTipovendaFilterDropdown, innovationsTipovendaFilterDropdown, filterData.tipos_venda, innovationsSelectedTiposVenda);
     
     const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
     setupCityMultiSelect(innovationsRedeFilterBtn, innovationsRedeFilterDropdown, innovationsRedeFilterList, redes, innovationsSelectedRedes, innovationsRedeFilterSearch);
@@ -6205,20 +6152,7 @@ window.clearAllFilters = function(prefix) {
             }
         });
 
-        // Reload fresh filters options then view
-        const currentAnoSelect = document.getElementById('innovations-ano-filter');
-        const currentMesSelect = document.getElementById('innovations-mes-filter');
-
-        const emptyFilters = {
-            p_ano: currentAnoSelect ? (currentAnoSelect.value === 'todos' ? null : currentAnoSelect.value) : null,
-            p_mes: currentMesSelect ? (currentMesSelect.value === '' ? null : currentMesSelect.value) : null,
-            p_filial: null, p_cidade: null, p_supervisor: null, p_vendedor: null,
-            p_fornecedor: null, p_tipovenda: null, p_rede: null, p_categoria: null
-        };
-
-        loadInnovationsFilters(emptyFilters).then(() => {
-            updateInnovationsMonthView();
-        });
+        updateInnovationsMonthView();
     } else if (prefix === 'lp') {
         const wrappers = ['lp-supervisor-filter-wrapper', 'lp-vendedor-filter-wrapper', 'lp-rede-filter-wrapper', 'lp-codcli-filter'];
         wrappers.forEach(id => {
