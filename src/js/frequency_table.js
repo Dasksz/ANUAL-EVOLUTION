@@ -53,17 +53,18 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
 
         const rowData = { tons, faturamento, faturamento_prev, positivacao, sum_skus, total_pedidos, base_total, clientsWithSales };
 
-        if (row.grp_filial == 1) {
+        // Identify node level by explicit ROLLUP output names
+        if (filial === 'TOTAL_GERAL') {
             // Grand Total (PRIME)
             hierarchy.totals = { ...rowData, base_total: data.global_base_total || 0 };
-        } else if (row.grp_cidade == 1) {
+        } else if (cidade === 'TOTAL_CIDADE') {
             // Filial Total
             if (!hierarchy.children[filial]) {
                 hierarchy.children[filial] = { name: filial, children: {}, totals: rowData };
             } else {
                 hierarchy.children[filial].totals = rowData;
             }
-        } else if (row.grp_vendedor == 1) {
+        } else if (vendedor === 'TOTAL_VENDEDOR') {
             // Cidade Total
             if (!hierarchy.children[filial]) {
                 hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
