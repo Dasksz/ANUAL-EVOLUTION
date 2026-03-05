@@ -5481,14 +5481,14 @@ function renderInnovationsKPIs(data) {
     if (!data) return;
 
     // We use data.kpi_clients_attended for new penetration math if available, fallback to active_clients
-    const activeClients = data.kpi_clients_attended || data.active_clients || 0;
+    const activeClients = data.active_clients || 0;
 
     // The base is kpi_clients_base (total clients in the database applying filters)
     const baseClients = data.kpi_clients_base || 0;
 
     // Total Clients (Base Total)
     const activeClientsEl = document.getElementById('innovations-month-active-clients-kpi');
-    if (activeClientsEl) activeClientsEl.textContent = formatNumber(baseClients > 0 ? baseClients : activeClients, 0);
+    if (activeClientsEl) activeClientsEl.textContent = formatNumber(activeClients, 0);
 
     // Calculate Best Coverage & Avg Per Client
     let bestCategory = null;
@@ -6310,8 +6310,8 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         let percPosit = 0;
         if (isRoot) {
             // For root, total base comes from the top SQL if possible. But here we sum the city bases.
-            let rootBase = 0;
-            treeData.forEach(r => rootBase += (r.base_total || 0));
+            let rootBase = data.global_base_total || 0;
+
             // Use total clients attended from dashboard data as Posit if we want to be exact with Main Dashboard, but here we use table data
              let distinctPosit = dataNode.positivacao;
              percPosit = rootBase > 0 ? (distinctPosit / rootBase) * 100 : 0;

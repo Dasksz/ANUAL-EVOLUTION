@@ -205,7 +205,8 @@ BEGIN
         ''tree_data'', (SELECT COALESCE(json_agg(row_to_json(final_tree)), ''[]''::json) FROM final_tree),
         ''chart_data'', (SELECT COALESCE(json_agg(row_to_json(chart_data)), ''[]''::json) FROM chart_data),
         ''current_year'', ' || v_current_year || ',
-        ''previous_year'', ' || v_previous_year || '
+        ''previous_year'', ' || v_previous_year || ',
+        ''global_base_total'', (SELECT COUNT(DISTINCT codigo_cliente) FROM public.data_clients ' || v_where_clients || ')
     );
     ';
 
