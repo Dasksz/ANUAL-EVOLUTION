@@ -164,6 +164,17 @@ BEGIN
         ' || v_where_clients || '
         GROUP BY 1
     ),
+    client_totals AS (
+        SELECT filial, cidade, vendedor, codcli,
+               SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN vlvenda ELSE 0 END) as total_vlvenda
+        FROM current_data
+        GROUP BY filial, cidade, vendedor, codcli
+    ),
+    valid_clients AS (
+        SELECT filial, cidade, vendedor, codcli
+        FROM client_totals
+        WHERE total_vlvenda >= 1
+    ),
     aggregated_curr AS (
         SELECT
             GROUPING(c.filial) as grp_filial,
@@ -174,10 +185,11 @@ BEGIN
             c.vendedor,
             SUM(c.peso) as tons,
             SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
-            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1 THEN c.codcli END) as positivacao,
+            COUNT(DISTINCT vc.codcli) as positivacao,
             COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END) as total_pedidos,
             SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.qt_skus ELSE 0 END) as sum_skus
         FROM current_data c
+        LEFT JOIN valid_clients vc ON c.filial = vc.filial AND c.cidade = vc.cidade AND c.vendedor = vc.vendedor AND c.codcli = vc.codcli AND c.tipovenda NOT IN (''5'', ''11'')
         GROUP BY ROLLUP(c.filial, c.cidade, c.vendedor)
     ),
     final_tree AS (
@@ -196,11 +208,11 @@ BEGIN
             ac.total_pedidos,
             COALESCE(cb.base_total, 0) as base_total
         FROM aggregated_curr ac
-        LEFT JOIN previous_data pd ON ac.grp_filial = pd.grp_filial
-                                  AND ac.grp_cidade = pd.grp_cidade
-                                  AND ac.grp_vendedor = pd.grp_vendedor
-                                  AND COALESCE(ac.filial, '''') = COALESCE(pd.filial, '''')
-                                  AND COALESCE(ac.cidade, '''') = COALESCE(pd.cidade, '''')
+        LEFT JOIN previous_data pd ON ac.grp_filial = pd.grp_filial 
+                                  AND ac.grp_cidade = pd.grp_cidade 
+                                  AND ac.grp_vendedor = pd.grp_vendedor 
+                                  AND COALESCE(ac.filial, '''') = COALESCE(pd.filial, '''') 
+                                  AND COALESCE(ac.cidade, '''') = COALESCE(pd.cidade, '''') 
                                   AND COALESCE(ac.vendedor, '''') = COALESCE(pd.vendedor, '''')
         LEFT JOIN client_base cb ON ac.cidade = cb.cidade AND ac.grp_vendedor = 1 AND ac.grp_cidade = 0 AND ac.grp_filial = 0
     ),
@@ -209,9 +221,17 @@ BEGIN
             ano,
             mes,
             COUNT(DISTINCT pedido) as total_pedidos,
-            COUNT(DISTINCT CASE WHEN vlvenda >= 1 THEN codcli END) as total_clientes
-        FROM public.data_summary_frequency s
-        ' || v_where_chart || ' AND tipovenda NOT IN (''5'', ''11'')
+            COUNT(DISTINCT CASE WHEN total_vlvenda >= 1 THEN codcli END) as total_clientes
+        FROM (
+            SELECT
+                s.ano,
+                s.mes,
+                s.pedido,
+                s.codcli,
+                SUM(s.vlvenda) OVER (PARTITION BY s.ano, s.mes, s.codcli) as total_vlvenda
+            FROM public.data_summary_frequency s
+            ' || v_where_chart || ' AND tipovenda NOT IN (''5'', ''11'')
+        ) sub_chart
         GROUP BY 1, 2
     )
     SELECT json_build_object(
