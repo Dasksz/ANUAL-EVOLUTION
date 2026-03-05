@@ -197,7 +197,7 @@ BEGIN
             ac.grp_filial,
             ac.grp_cidade,
             ac.grp_vendedor,
-            COALESCE(ac.filial, ''PRIME'') as filial,
+            ac.filial,
             COALESCE(ac.cidade, ''TOTAL_CIDADE'') as cidade,
             COALESCE(ac.vendedor, ''TOTAL_VENDEDOR'') as vendedor,
             ac.tons,

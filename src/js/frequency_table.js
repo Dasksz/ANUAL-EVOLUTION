@@ -30,7 +30,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         return;
     }
 
-    // Build hierarchy
+    // Build hierarchy using explicit ROLLUP grp_ flags from backend
     const hierarchy = {
         name: 'PRIME',
         children: {},
@@ -38,9 +38,9 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
     };
 
     treeData.forEach(row => {
-        const filial = row.filial;
-        const cidade = row.cidade;
-        const vendedor = row.vendedor;
+        const filial = row.filial || 'SEM FILIAL';
+        const cidade = row.cidade || 'SEM CIDADE';
+        const vendedor = row.vendedor || 'SEM VENDEDOR';
 
         const tons = row.tons || 0;
         const faturamento = row.faturamento || 0;
@@ -53,7 +53,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
 
         const rowData = { tons, faturamento, faturamento_prev, positivacao, sum_skus, total_pedidos, base_total, clientsWithSales };
 
-        if (row.grp_filial == 1 || row.filial === 'PRIME') {
+        if (row.grp_filial == 1) {
             // Grand Total (PRIME)
             hierarchy.totals = { ...rowData, base_total: data.global_base_total || 0 };
         } else if (row.grp_cidade == 1) {
@@ -86,15 +86,6 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
                 ...rowData
             };
         }
-    });
-
-    // Roll up base_total from cities to filials because SQL base_total is calculated at the city level
-    Object.values(hierarchy.children).forEach(filialNode => {
-        let filialBaseTotal = 0;
-        Object.values(filialNode.children).forEach(cidadeNode => {
-            filialBaseTotal += (cidadeNode.totals.base_total || 0);
-        });
-        if (filialNode.totals) filialNode.totals.base_total = filialBaseTotal;
     });
 
     let rowCounter = 0;
@@ -131,7 +122,10 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         if (dataNode.base_total > 0) {
             percPosit = ((dataNode.positivacao || 0) / dataNode.base_total) * 100;
         }
-        if(percPosit > 100) percPosit = 100;
+        if (percPosit > 100) percPosit = 100;
+
+        const positStr = dataNode.positivacao || 0;
+        const percPositStr = percPosit.toFixed(1) + '%';
 
         const rowHtml = `
             <tr class="hover:bg-white/5 transition-colors ${level > 0 ? 'hidden freq-child-row' : ''}" id="${id}" data-parent="${parentId}" data-level="${level}">
@@ -143,8 +137,8 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold ${varYagoColor}">${varYagoIcon} ${varYagoStr}</td>
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${skuPdv.toFixed(1)}</td>
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${freq.toFixed(1)}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${dataNode.positivacao || 0}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${percPosit.toFixed(1)}%</td>
+                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${positStr}</td>
+                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${percPositStr}</td>
             </tr>
         `;
         tableBody.insertAdjacentHTML('beforeend', rowHtml);
