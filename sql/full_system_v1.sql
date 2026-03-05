@@ -69,6 +69,7 @@ BEGIN
             v_where_base := v_where_base || ' AND filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
             v_where_base_prev := v_where_base_prev || ' AND filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
             v_where_chart := v_where_chart || ' AND filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
+            v_where_clients := v_where_clients || ' AND cidade IN (SELECT cidade FROM public.config_city_branches WHERE filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || '''])) ';
         END IF;
     END IF;
 
@@ -158,14 +159,15 @@ BEGIN
     ),
     client_base AS (
         SELECT
-            GROUPING(COALESCE(filial, ''SEM FILIAL'')) as grp_filial,
+            GROUPING(COALESCE(cb.filial, ''SEM FILIAL'')) as grp_filial,
             GROUPING(COALESCE(cidade, ''SEM CIDADE'')) as grp_cidade,
-            COALESCE(COALESCE(filial, ''SEM FILIAL''), ''TOTAL_GERAL'') as filial,
+            COALESCE(COALESCE(cb.filial, ''SEM FILIAL''), ''TOTAL_GERAL'') as filial,
             COALESCE(COALESCE(cidade, ''SEM CIDADE''), ''TOTAL_CIDADE'') as cidade,
-            COUNT(DISTINCT codigo_cliente) as base_total
-        FROM public.data_clients
+            COUNT(DISTINCT dc.codigo_cliente) as base_total
+        FROM public.data_clients dc
+        LEFT JOIN public.config_city_branches cb USING (cidade)
         ' || v_where_clients || '
-        GROUP BY ROLLUP(COALESCE(filial, ''SEM FILIAL''), COALESCE(cidade, ''SEM CIDADE''))
+        GROUP BY ROLLUP(COALESCE(cb.filial, ''SEM FILIAL''), COALESCE(cidade, ''SEM CIDADE''))
     ),
     client_totals AS (
         SELECT filial, cidade, vendedor, codcli,
