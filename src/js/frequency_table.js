@@ -53,17 +53,17 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
 
         const rowData = { tons, faturamento, faturamento_prev, positivacao, sum_skus, total_pedidos, base_total, clientsWithSales };
 
-        if (row.grp_filial === 1) {
+        if (row.grp_filial == 1 || row.filial === 'PRIME') {
             // Grand Total (PRIME)
             hierarchy.totals = { ...rowData, base_total: data.global_base_total || 0 };
-        } else if (row.grp_cidade === 1) {
+        } else if (row.grp_cidade == 1) {
             // Filial Total
             if (!hierarchy.children[filial]) {
                 hierarchy.children[filial] = { name: filial, children: {}, totals: rowData };
             } else {
                 hierarchy.children[filial].totals = rowData;
             }
-        } else if (row.grp_vendedor === 1) {
+        } else if (row.grp_vendedor == 1) {
             // Cidade Total
             if (!hierarchy.children[filial]) {
                 hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
@@ -109,7 +109,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
 
         const dataNode = isRoot ? node.totals : (hasChildren ? node.totals : node);
 
-        const tons = dataNode.tons / 1000;
+        const tons = (dataNode.tons || 0) / 1000;
 
         let varYago = 0;
         if (dataNode.faturamento_prev > 0) {
@@ -121,20 +121,39 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         const varYagoIcon = varYago > 0 ? '<svg class="w-4 h-4 text-green-500 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"></path></svg>' : (varYago < 0 ? '<svg class="w-4 h-4 text-red-500 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707 10.293a1 1 0 00-1.414 0l-3-3a1 1 0 101.414-1.414L9 14.586V11a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3z" clip-rule="evenodd"></path></svg>' : '');
 
         // SKU / PDV
-        const skuPdv = dataNode.positivacao > 0 ? (dataNode.sum_skus / dataNode.positivacao) : 0;
+        const skuPdv = dataNode.positivacao > 0 ? ((dataNode.sum_skus || 0) / dataNode.positivacao) : 0;
 
         // Frequencia
-        const freq = dataNode.positivacao > 0 ? (dataNode.total_pedidos / dataNode.positivacao) : 0;
+        const freq = dataNode.positivacao > 0 ? ((dataNode.total_pedidos || 0) / dataNode.positivacao) : 0;
 
         // % Posit
         let percPosit = 0;
         if (dataNode.base_total > 0) {
-            percPosit = (dataNode.positivacao / dataNode.base_total) * 100;
+            percPosit = ((dataNode.positivacao || 0) / dataNode.base_total) * 100;
+        }
+        if(percPosit > 100) percPosit = 100;
+
+        const rowHtml = `
+            <tr class="hover:bg-white/5 transition-colors ${level > 0 ? 'hidden freq-child-row' : ''}" id="${id}" data-parent="${parentId}" data-level="${level}">
+                <td class="px-2 py-2 border-b border-white/5 w-8 text-center cursor-pointer" onclick="toggleFreqNode('${id}')">
+                    ${hasChildren ? '<svg id="icon-' + id + '" class="w-4 h-4 text-slate-400 inline transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>' : ''}
+                </td>
+                <td class="px-2 py-2 border-b border-white/5 font-medium ${indentClass}">${node.name}</td>
+                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${tons.toFixed(1)}</td>
+                <td class="px-2 py-2 border-b border-white/5 text-right font-bold ${varYagoColor}">${varYagoIcon} ${varYagoStr}</td>
+                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${skuPdv.toFixed(1)}</td>
+                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${freq.toFixed(1)}</td>
+                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${dataNode.positivacao || 0}</td>
+                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${percPosit.toFixed(1)}%</td>
+            </tr>
+        `;
+        tableBody.insertAdjacentHTML('beforeend', rowHtml);
+
+        if (hasChildren) {
+            Object.values(node.children).forEach(child => createRow(child, level + 1, id));
         }
 
-        const positStr = dataNode.positivacao;
-        const percPositStr = percPosit.toFixed(1) + '%';
-        return { id, isRoot, hasChildren, indentClass, tons, varYagoStr, varYagoColor, varYagoIcon, skuPdv, freq, positStr, percPositStr };
+        return { tons, varYagoStr, varYagoColor, varYagoIcon, skuPdv, freq, positivacao: dataNode.positivacao || 0, percPosit };
     };
 
     const rootData = createRow(hierarchy, 0);
