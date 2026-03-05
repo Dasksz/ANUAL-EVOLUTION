@@ -1221,8 +1221,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     clearFiltersBtn.addEventListener('click', async () => {
         // Reset Single Selects
-        anoFilter.value = 'todos';
-        mesFilter.value = '';
+        if (anoFilter.options.length > 0) {
+            const maxYear = Math.max(...Array.from(anoFilter.options).map(o => Number(o.value)).filter(n => !isNaN(n)));
+            if (isFinite(maxYear)) anoFilter.value = String(maxYear);
+        }
+        mesFilter.value = new Date().getMonth();
 
         // Reset Multi Select Arrays
         selectedFiliais = [];
@@ -1733,7 +1736,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 p_produto: boxesSelectedProducts.length > 0 ? boxesSelectedProducts : null,
                 p_tipovenda: boxesSelectedTiposVenda.length > 0 ? boxesSelectedTiposVenda : null,
                 p_categoria: boxesSelectedCategorias.length > 0 ? boxesSelectedCategorias : null,
-                p_ano: boxesAnoFilter.value === 'todos' ? null : boxesAnoFilter.value,
+                p_ano: boxesAnoFilter.value,
                 p_mes: boxesMesFilter.value === '' ? null : boxesMesFilter.value
             };
 
@@ -1832,7 +1835,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const filters = {
-            Ano: boxesAnoFilter.value !== 'todos' ? boxesAnoFilter.value : 'Todos',
+            Ano: boxesAnoFilter.value ? boxesAnoFilter.value : 'Todos',
             Mes: boxesMesFilter.options[boxesMesFilter.selectedIndex]?.text || 'Todos',
             Filiais: boxesSelectedFiliais.length > 0 ? boxesSelectedFiliais.join(', ') : 'Todas',
             Supervisores: boxesSelectedSupervisores.length > 0 ? `${boxesSelectedSupervisores.length} selecionados` : 'Todos',
@@ -1940,8 +1943,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (boxesClearFiltersBtn) {
         boxesClearFiltersBtn.addEventListener('click', () => {
-            boxesAnoFilter.value = 'todos';
-            boxesMesFilter.value = '';
+            if (boxesAnoFilter.options.length > 0) {
+                const maxYear = Math.max(...Array.from(boxesAnoFilter.options).map(o => Number(o.value)).filter(n => !isNaN(n)));
+                if (isFinite(maxYear)) boxesAnoFilter.value = String(maxYear);
+            }
+            boxesMesFilter.value = new Date().getMonth();
             boxesSelectedFiliais = [];
             boxesSelectedProducts = [];
             boxesSelectedSupervisores = [];
@@ -1963,7 +1969,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initBoxesFilters() {
         const filters = {
-            p_ano: 'todos',
+            p_ano: null,
             p_mes: null,
             p_filial: [],
             p_cidade: [],
@@ -1980,22 +1986,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (filterData.anos && boxesAnoFilter) {
             const currentVal = boxesAnoFilter.value;
-            boxesAnoFilter.innerHTML = '<option value="todos">Todos</option>';
+            boxesAnoFilter.innerHTML = '';
             filterData.anos.forEach(a => {
                 const opt = document.createElement('option');
                 opt.value = a;
                 opt.textContent = a;
                 boxesAnoFilter.appendChild(opt);
             });
-            if (currentVal && currentVal !== 'todos') boxesAnoFilter.value = currentVal;
-            else if (filterData.anos.length > 0) boxesAnoFilter.value = filterData.anos[0];
+            if (currentVal && Array.from(boxesAnoFilter.options).some(o => o.value === currentVal)) {
+                boxesAnoFilter.value = currentVal;
+            } else if (filterData.anos.length > 0) {
+                const maxYear = Math.max(...filterData.anos.map(Number));
+                boxesAnoFilter.value = String(maxYear);
+            }
             enhanceSelectToCustomDropdown(boxesAnoFilter);
         }
 
         if (boxesMesFilter && boxesMesFilter.options.length <= 1) {
-            boxesMesFilter.innerHTML = '<option value="">Todos</option>';
+            boxesMesFilter.innerHTML = '';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; boxesMesFilter.appendChild(opt); });
+            if (boxesMesFilter.value === '') {
+                boxesMesFilter.value = new Date().getMonth();
+            }
             enhanceSelectToCustomDropdown(boxesMesFilter);
         }
 
@@ -2027,7 +2040,7 @@ document.addEventListener('DOMContentLoaded', () => {
             p_produto: boxesSelectedProducts.length > 0 ? boxesSelectedProducts : null,
             p_tipovenda: boxesSelectedTiposVenda.length > 0 ? boxesSelectedTiposVenda : null,
             p_categoria: boxesSelectedCategorias.length > 0 ? boxesSelectedCategorias : null,
-            p_ano: boxesAnoFilter.value === 'todos' ? null : boxesAnoFilter.value,
+            p_ano: boxesAnoFilter.value,
             p_mes: boxesMesFilter.value === '' ? null : boxesMesFilter.value
         };
 
@@ -2102,7 +2115,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Main Value: Should be Annual Projection (YTD Realized - Current Realized + Current Trended) / Months * 12
                     // Formula simplified: (YTD_Realized_Excluding_Current + (Current_Realized * Factor)) / Month_Index * 12
                     
-                    const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
+                    const filterYear = boxesAnoFilter.value ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
                     const currMonthData = (data.chart_data || []).find(d => d.year === filterYear && d.month_index === trendInfo.current_month_index);
                     
                     let currMonthRealized = 0;
@@ -2147,7 +2160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // The prompt says: "no indicador de trimestre... sempre será o mês mais recente contra o trimestre mais recente"
                 // So even without trend, if in Year View, Tri comparison is Month vs Month.
                 if (isYearView) {
-                     const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
+                     const filterYear = boxesAnoFilter.value ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
                      // Find max month in data or current month index
                      // If trend is not allowed (e.g. past year), use the last month available in data?
                      // Or just use the average of the year vs tri? Usually it's Month vs Tri.
@@ -2169,7 +2182,7 @@ document.addEventListener('DOMContentLoaded', () => {
                          // For now, let's keep triComparisonVal = curr (which is Total Year) ONLY if we can't isolate month, 
                          // but standard logic suggests we shouldn't compare Year Total vs Monthly Average.
                          // Let's stick to: if chart data exists, pick last month.
-                         const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
+                         const filterYear = boxesAnoFilter.value ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
                          const monthsData = (data.chart_data || []).filter(d => d.year === filterYear).sort((a,b) => b.month_index - a.month_index);
                          if (monthsData.length > 0) {
                              const lastM = monthsData[0];
@@ -2215,7 +2228,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const boxesPrev = new Array(12).fill(0);
         const chartData = data.chart_data || [];
         
-        const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : currentYear;
+        const filterYear = boxesAnoFilter.value ? parseInt(boxesAnoFilter.value) : currentYear;
         const prevYear = filterYear - 1;
 
         chartData.forEach(d => {
@@ -2645,12 +2658,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentVal = element.value;
             element.innerHTML = '';
         
-            // Always add 'Todos' option (value='todos' for year, '' for others)
-            const allOpt = document.createElement('option');
-            allOpt.value = (element.id === 'ano-filter') ? 'todos' : ''; 
-            allOpt.textContent = 'Todos';
-            element.appendChild(allOpt);
-
             if (items) {
                 items.forEach(item => {
                     const opt = document.createElement('option');
@@ -2662,24 +2669,22 @@ document.addEventListener('DOMContentLoaded', () => {
             // Logic to set default or preserve selection
             if (currentVal && Array.from(element.options).some(o => o.value === currentVal)) {
                 element.value = currentVal;
-        } else if (element.id === 'ano-filter' && items && items.length > 0 && currentVal !== 'todos') {
-             // Default to first year only if not explicitly 'todos' and 'todos' isn't valid (though we just added it)
-             // Actually, if currentVal was 'todos', it matches the first option we added.
-             // If currentVal was something else invalid, fallback to items[0].
-             // But if we want default 'Todos', we should let it fall through to first option?
-             // If the user wants specific year by default on load, logic handles it.
-             // If user wants 'Todos' (e.g. clear filters), it matches.
-             
-             // If currentVal was invalid (e.g. old year not in list), default to Todos (index 0) or First Year?
-             // Usually defaulting to 'Todos' (index 0) is safer now that we added it.
-             if (!element.value) element.value = 'todos';
+            } else if (items && items.length > 0) {
+                // Determine highest available year and set it as default
+                const maxYear = Math.max(...items.map(Number));
+                element.value = String(maxYear);
             }
         };
         updateSingleSelect(anoFilter, data.anos);
+
         if (mesFilter.options.length <= 1) { 
-            mesFilter.innerHTML = '<option value="">Todos</option>';
+            mesFilter.innerHTML = '';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; mesFilter.appendChild(opt); });
+            // default to current month if no value, or previous value
+            if (mesFilter.value === '') {
+                mesFilter.value = new Date().getMonth();
+            }
         }
         setupMultiSelect(filialFilterBtn, filialFilterDropdown, filialFilterDropdown, data.filiais, selectedFiliais, () => {});
         setupMultiSelect(cidadeFilterBtn, cidadeFilterDropdown, cidadeFilterList, data.cidades, selectedCidades, () => {}, false, cidadeFilterSearch);
@@ -3019,7 +3024,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let kpiTitleFat, kpiTitleKg;
         
         // --- KPI LOGIC (Scenario Check) ---
-        if (anoFilter.value !== 'todos' && mesFilter.value === '') {
+        if (anoFilter.value && mesFilter.value === '') {
             // SCENARIO A: Year Selected, Month All -> Show Year vs Previous Year (Accumulated)
             
             const sumData = (dataset, useTrend) => {
@@ -3243,7 +3248,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let currMonthFatForTri, currMonthKgForTri;
         
-        if (anoFilter.value !== 'todos' && mesFilter.value === '') {
+        if (anoFilter.value && mesFilter.value === '') {
              // In Year View, we still want the Tri card to make sense (Current Month vs Tri).
              // Let's re-fetch the specific current month data for the Tri calculation.
              const cMonthData = data.monthly_data_current.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
@@ -3538,7 +3543,7 @@ document.addEventListener('DOMContentLoaded', () => {
             p_tipovenda: citySelectedTiposVenda.length > 0 ? citySelectedTiposVenda : null,
             p_rede: citySelectedRedes.length > 0 ? citySelectedRedes : null,
             p_categoria: citySelectedCategorias.length > 0 ? citySelectedCategorias : null,
-            p_ano: cityAnoFilter.value === 'todos' ? null : cityAnoFilter.value,
+            p_ano: cityAnoFilter.value,
             p_mes: cityMesFilter.value === '' ? null : cityMesFilter.value
         };
         const currentFiltersStr = JSON.stringify(filters);
@@ -3557,8 +3562,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (cityClearFiltersBtn) {
         cityClearFiltersBtn.addEventListener('click', () => {
-             cityAnoFilter.value = 'todos';
-             cityMesFilter.value = '';
+             if (cityAnoFilter.options.length > 0) {
+                 const maxYear = Math.max(...Array.from(cityAnoFilter.options).map(o => Number(o.value)).filter(n => !isNaN(n)));
+                 if (isFinite(maxYear)) cityAnoFilter.value = String(maxYear);
+             }
+             cityMesFilter.value = new Date().getMonth();
              citySelectedFiliais = [];
              citySelectedCidades = [];
              citySelectedSupervisores = [];
@@ -3680,7 +3688,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initCityFilters() {
         const filters = {
-            p_ano: 'todos',
+            p_ano: null,
             p_mes: null,
             p_filial: [],
             p_cidade: [],
@@ -3697,22 +3705,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
          if (filterData.anos && cityAnoFilter) {
              const currentVal = cityAnoFilter.value;
-             cityAnoFilter.innerHTML = '<option value="todos">Todos</option>';
+             cityAnoFilter.innerHTML = '';
              filterData.anos.forEach(a => {
                  const opt = document.createElement('option');
                  opt.value = a;
                  opt.textContent = a;
                  cityAnoFilter.appendChild(opt);
              });
-             if (currentVal && currentVal !== 'todos') cityAnoFilter.value = currentVal;
-             else if (filterData.anos.length > 0) cityAnoFilter.value = filterData.anos[0];
+             if (currentVal && Array.from(cityAnoFilter.options).some(o => o.value === currentVal)) {
+                 cityAnoFilter.value = currentVal;
+             } else if (filterData.anos.length > 0) {
+                 const maxYear = Math.max(...filterData.anos.map(Number));
+                 cityAnoFilter.value = String(maxYear);
+             }
              enhanceSelectToCustomDropdown(cityAnoFilter);
          }
          
          if (cityMesFilter && cityMesFilter.options.length <= 1) {
-            cityMesFilter.innerHTML = '<option value="">Todos</option>';
+            cityMesFilter.innerHTML = '';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; cityMesFilter.appendChild(opt); });
+            if (cityMesFilter.value === '') {
+                cityMesFilter.value = new Date().getMonth();
+            }
             enhanceSelectToCustomDropdown(cityMesFilter);
         }
 
@@ -3744,7 +3759,7 @@ document.addEventListener('DOMContentLoaded', () => {
             p_tipovenda: citySelectedTiposVenda.length > 0 ? citySelectedTiposVenda : null,
             p_rede: citySelectedRedes.length > 0 ? citySelectedRedes : null,
             p_categoria: citySelectedCategorias.length > 0 ? citySelectedCategorias : null,
-            p_ano: cityAnoFilter.value === 'todos' ? null : cityAnoFilter.value,
+            p_ano: cityAnoFilter.value,
             p_mes: cityMesFilter.value === '' ? null : cityMesFilter.value,
             p_page: currentCityPage,
             p_limit: cityPageSize
@@ -3833,7 +3848,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastBranchFiltersStr = "";
     const handleBranchFilterChange = () => {
         const filters = {
-            p_ano: branchAnoFilter.value === 'todos' ? null : branchAnoFilter.value,
+            p_ano: branchAnoFilter.value,
             p_mes: branchMesFilter.value === '' ? null : branchMesFilter.value,
             p_filial: branchSelectedFiliais.length > 0 ? branchSelectedFiliais : null,
             p_cidade: branchSelectedCidades.length > 0 ? branchSelectedCidades : null,
@@ -3878,8 +3893,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     branchClearFiltersBtn?.addEventListener('click', () => {
-         branchAnoFilter.value = 'todos';
-         branchMesFilter.value = '';
+         if (branchAnoFilter.options.length > 0) {
+             const maxYear = Math.max(...Array.from(branchAnoFilter.options).map(o => Number(o.value)).filter(n => !isNaN(n)));
+             if (isFinite(maxYear)) branchAnoFilter.value = String(maxYear);
+         }
+         branchMesFilter.value = new Date().getMonth();
          branchSelectedFiliais = []; // Reset but re-init will likely pick first 2
          branchSelectedCidades = [];
          branchSelectedSupervisores = [];
@@ -3895,7 +3913,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initBranchFilters() {
         const filters = {
-            p_ano: 'todos',
+            p_ano: null,
             p_mes: null,
             p_filial: [],
             p_cidade: [],
@@ -3913,7 +3931,7 @@ document.addEventListener('DOMContentLoaded', () => {
          // Years
          if (filterData.anos) {
              const currentVal = branchAnoFilter.value;
-             branchAnoFilter.innerHTML = '<option value="todos">Todos</option>';
+             branchAnoFilter.innerHTML = '';
              filterData.anos.forEach(a => {
                  const opt = document.createElement('option');
                  opt.value = a;
@@ -3921,16 +3939,23 @@ document.addEventListener('DOMContentLoaded', () => {
                  branchAnoFilter.appendChild(opt);
              });
              // Preserve selection or default to current year
-             if (currentVal && currentVal !== 'todos') branchAnoFilter.value = currentVal;
-             else if (filterData.anos.length > 0) branchAnoFilter.value = filterData.anos[0];
+             if (currentVal && Array.from(branchAnoFilter.options).some(o => o.value === currentVal)) {
+                 branchAnoFilter.value = currentVal;
+             } else if (filterData.anos.length > 0) {
+                 const maxYear = Math.max(...filterData.anos.map(Number));
+                 branchAnoFilter.value = String(maxYear);
+             }
              enhanceSelectToCustomDropdown(branchAnoFilter);
          }
          
          // Months
          if (branchMesFilter.options.length <= 1) {
-            branchMesFilter.innerHTML = '<option value="">Todos</option>';
+            branchMesFilter.innerHTML = '';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; branchMesFilter.appendChild(opt); });
+            if (branchMesFilter.value === '') {
+                branchMesFilter.value = new Date().getMonth();
+            }
             enhanceSelectToCustomDropdown(branchMesFilter);
         }
 
@@ -4101,7 +4126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Prepare Filters for RPC
-        const selectedYear = branchAnoFilter.value === 'todos' ? null : branchAnoFilter.value;
+        const selectedYear = branchAnoFilter.value;
         const selectedMonth = branchMesFilter.value === '' ? null : branchMesFilter.value;
 
         const filters = {
@@ -4383,7 +4408,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let month = now.getMonth();
         
         // Respect Filters if selected
-        if (anoFilter && anoFilter.value !== 'todos') {
+        if (anoFilter && anoFilter.value) {
             year = parseInt(anoFilter.value);
             // If year selected but month is "Todos", default to January for that year
             // Unless it's current year, then maybe current month?
@@ -4552,7 +4577,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 p_tipovenda: selectedComparisonTiposVenda.length > 0 ? selectedComparisonTiposVenda : null,
                 p_rede: selectedComparisonRedes.length > 0 ? selectedComparisonRedes : null,
                 p_categoria: selectedComparisonCategorias.length > 0 ? selectedComparisonCategorias : null,
-                p_ano: comparisonAnoFilter.value === 'todos' ? null : comparisonAnoFilter.value,
+                p_ano: comparisonAnoFilter.value,
                 p_mes: comparisonMesFilter.value === '' ? null : comparisonMesFilter.value
             };
             const currentFiltersStr = JSON.stringify(filters);
@@ -4621,8 +4646,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (clearComparisonFiltersBtn) {
             clearComparisonFiltersBtn.addEventListener('click', () => {
-                comparisonAnoFilter.value = 'todos';
-                comparisonMesFilter.value = '';
+                if (comparisonAnoFilter.options.length > 0) {
+                    const maxYear = Math.max(...Array.from(comparisonAnoFilter.options).map(o => Number(o.value)).filter(n => !isNaN(n)));
+                    if (isFinite(maxYear)) comparisonAnoFilter.value = String(maxYear);
+                }
+                comparisonMesFilter.value = new Date().getMonth();
                 selectedComparisonSupervisors = [];
                 selectedComparisonSellers = [];
                 selectedComparisonSuppliers = [];
@@ -4698,7 +4726,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         async function initComparisonFilters() {
             const filters = {
-                p_ano: 'todos',
+                p_ano: null,
                 p_mes: null,
                 p_filial: [],
                 p_cidade: [],
@@ -4715,22 +4743,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (filterData.anos && comparisonAnoFilter) {
                 const currentVal = comparisonAnoFilter.value;
-                comparisonAnoFilter.innerHTML = '<option value="todos">Todos</option>';
+                comparisonAnoFilter.innerHTML = '';
                 filterData.anos.forEach(a => {
                     const opt = document.createElement('option');
                     opt.value = a;
                     opt.textContent = a;
                     comparisonAnoFilter.appendChild(opt);
                 });
-                if (currentVal && currentVal !== 'todos') comparisonAnoFilter.value = currentVal;
-                else if (filterData.anos.length > 0) comparisonAnoFilter.value = filterData.anos[0];
+                if (currentVal && Array.from(comparisonAnoFilter.options).some(o => o.value === currentVal)) {
+                    comparisonAnoFilter.value = currentVal;
+                } else if (filterData.anos.length > 0) {
+                    const maxYear = Math.max(...filterData.anos.map(Number));
+                    comparisonAnoFilter.value = String(maxYear);
+                }
                 enhanceSelectToCustomDropdown(comparisonAnoFilter);
             }
 
             if (comparisonMesFilter && comparisonMesFilter.options.length <= 1) {
-                comparisonMesFilter.innerHTML = '<option value="">Todos</option>';
+                comparisonMesFilter.innerHTML = '';
                 const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
                 meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; comparisonMesFilter.appendChild(opt); });
+                if (comparisonMesFilter.value === '') {
+                    comparisonMesFilter.value = new Date().getMonth();
+                }
                 enhanceSelectToCustomDropdown(comparisonMesFilter);
             }
 
@@ -4807,7 +4842,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 p_tipovenda: selectedComparisonTiposVenda.length > 0 ? selectedComparisonTiposVenda : null,
                 p_rede: selectedComparisonRedes.length > 0 ? selectedComparisonRedes : null,
                 p_categoria: selectedComparisonCategorias.length > 0 ? selectedComparisonCategorias : null,
-                p_ano: comparisonAnoFilter.value === 'todos' ? null : comparisonAnoFilter.value,
+                p_ano: comparisonAnoFilter.value,
                 p_mes: comparisonMesFilter.value === '' ? null : comparisonMesFilter.value
             };
 
@@ -5128,7 +5163,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const selectedMonth = comparisonMesFilter.value;
                 const defaultRefDate = lastSalesDate ? new Date(lastSalesDate) : new Date();
 
-                if (selectedYear && selectedYear !== 'todos') {
+                if (selectedYear && selectedYear) {
                     const year = parseInt(selectedYear);
                     if (selectedMonth !== '') {
                         refDate = new Date(Date.UTC(year, parseInt(selectedMonth), 15));
@@ -5413,8 +5448,8 @@ async function updateInnovationsMonthView() {
     const mesSelect = document.getElementById('innovations-mes-filter');
 
     const filters = {
-        p_ano: anoSelect ? (anoSelect.value === 'todos' ? null : anoSelect.value) : null,
-        p_mes: mesSelect ? (mesSelect.value === '' ? null : mesSelect.value) : null,
+        p_ano: anoSelect ? anoSelect.value : null,
+        p_mes: mesSelect ? mesSelect.value : null,
         p_cidade: innovationsSelectedCidades,
         p_filial: innovationsSelectedFiliais,
         p_supervisor: innovationsSelectedSupervisors,
@@ -5577,7 +5612,7 @@ function renderInnovationsChart(data) {
     const monthFilter = document.getElementById('innovations-mes-filter')?.value;
 
     let targetDate = new Date();
-    if(yearFilter && yearFilter !== 'todos' && monthFilter) {
+    if(yearFilter && yearFilter && monthFilter) {
         targetDate = new Date(yearFilter, monthFilter - 1, 1);
     }
 
@@ -5879,7 +5914,7 @@ const setupInnovationsFilters = async () => {
     showDashboardLoading('innovations-month-view');
 
     const filters = {
-        p_ano: 'todos',
+        p_ano: null,
         p_mes: null,
         p_filial: [],
         p_cidade: [],
@@ -5922,21 +5957,26 @@ const setupInnovationsFilters = async () => {
     const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
 
     if (anoSelect && filterData.anos) {
-        anoSelect.innerHTML = '<option value="todos">Todos</option>';
+        anoSelect.innerHTML = '';
         filterData.anos.forEach(ano => {
             anoSelect.innerHTML += `<option value="${ano}">${ano}</option>`;
         });
 
         // Initial filter values
         let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
-        anoSelect.value = hasYear ? currentYear : 'todos';
+        if (hasYear) {
+            anoSelect.value = currentYear;
+        } else if (filterData.anos.length > 0) {
+            const maxYear = Math.max(...filterData.anos.map(Number));
+            anoSelect.value = String(maxYear);
+        }
 
         enhanceSelectToCustomDropdown(anoSelect);
         anoSelect.addEventListener('change', handleInnovationsFilterChange);
     }
     
     if (mesSelect) {
-        mesSelect.innerHTML = '<option value="">Todos</option>';
+        mesSelect.innerHTML = '';
         const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
         meses.forEach((m, i) => { 
             const opt = document.createElement('option'); 
@@ -6096,16 +6136,20 @@ window.clearAllFilters = function(prefix) {
         const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
 
         if (anoSelect) {
-            // Check if currentYear is in options, if not default to 'todos'
             let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
-            anoSelect.value = hasYear ? currentYear : 'todos';
+            if (hasYear) {
+                anoSelect.value = currentYear;
+            } else if (anoSelect.options.length > 0) {
+                const maxYear = Math.max(...Array.from(anoSelect.options).map(o => Number(o.value)).filter(n => !isNaN(n)));
+                if (isFinite(maxYear)) anoSelect.value = String(maxYear);
+            }
             const btn = document.getElementById('btn-innovations-ano-filter');
-            if (btn) btn.innerHTML = `<span class="truncate w-[90%] text-left">${anoSelect.value === 'todos' ? 'Todos' : currentYear}</span><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
+            if (btn) btn.innerHTML = `<span class="truncate w-[90%] text-left">${anoSelect.value}</span><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
         }
         if (mesSelect) {
             mesSelect.value = currentMonth;
             const btn = document.getElementById('btn-innovations-mes-filter');
-            const mesName = mesSelect.options[mesSelect.selectedIndex]?.text || 'Todos';
+            const mesName = mesSelect.options[mesSelect.selectedIndex]?.text || '';
             if (btn) btn.innerHTML = `<span class="truncate w-[90%] text-left">${mesName}</span><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
         }
         
