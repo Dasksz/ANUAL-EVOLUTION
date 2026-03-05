@@ -3019,8 +3019,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let kpiTitleFat, kpiTitleKg;
         
         // --- KPI LOGIC (Scenario Check) ---
-        if (anoFilter.value !== 'todos' && mesFilter.value === '') {
-            // SCENARIO A: Year Selected, Month All -> Show Year vs Previous Year (Accumulated)
+        if (mesFilter.value === '') {
+            // SCENARIO A: Month All -> Show Year vs Previous Year (Accumulated)
             
             const sumData = (dataset, useTrend) => {
                 let sumFat = 0; 
@@ -3243,7 +3243,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let currMonthFatForTri, currMonthKgForTri;
         
-        if (anoFilter.value !== 'todos' && mesFilter.value === '') {
+        if (mesFilter.value === '') {
              // In Year View, we still want the Tri card to make sense (Current Month vs Tri).
              // Let's re-fetch the specific current month data for the Tri calculation.
              const cMonthData = data.monthly_data_current.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
