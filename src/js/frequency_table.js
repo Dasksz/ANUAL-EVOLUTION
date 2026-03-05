@@ -128,59 +128,13 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
 
         // % Posit
         let percPosit = 0;
-        if (isRoot) {
-            // For root, total base comes from the top SQL if possible. But here we sum the city bases.
-            let rootBase = 0;
-            treeData.forEach(r => rootBase += (r.base_total || 0));
-            // Use total clients attended from dashboard data as Posit if we want to be exact with Main Dashboard, but here we use table data
-             let distinctPosit = dataNode.positivacao;
-             percPosit = rootBase > 0 ? (distinctPosit / rootBase) * 100 : 0;
-        } else {
-             // Let's use node.base_total if it was a leaf, or sum of leaves.
-             // But wait, base_total for leaves is 0 in SQL. Let's adjust logic.
-             // City has base_total.
-             let nodeBase = dataNode.base_total || 0;
-             if(level === 1) { // Filial
-                  nodeBase = 0;
-                  Object.values(node.children).forEach(city => {
-                      // Sum the first leaf's base_total
-                      const leaves = Object.values(city.children);
-                      if(leaves.length > 0) nodeBase += leaves[0].base_total;
-                  });
-             } else if (level === 2) { // City
-                  const leaves = Object.values(node.children);
-                  if(leaves.length > 0) nodeBase = leaves[0].base_total;
-             }
-
-             if (nodeBase > 0) {
-                 percPosit = (dataNode.positivacao / nodeBase) * 100;
-             }
+        if (dataNode.base_total > 0) {
+            percPosit = (dataNode.positivacao / dataNode.base_total) * 100;
         }
 
-        // Failsafe for % posit > 100
-        if(percPosit > 100) percPosit = 100;
-
-        const rowHtml = `
-            <tr class="hover:bg-white/5 transition-colors ${level > 0 ? 'hidden freq-child-row' : ''}" id="${id}" data-parent="${parentId}" data-level="${level}">
-                <td class="px-2 py-2 border-b border-white/5 w-8 text-center cursor-pointer" onclick="toggleFreqNode('${id}')">
-                    ${hasChildren ? '<svg id="icon-' + id + '" class="w-4 h-4 text-slate-400 inline transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>' : ''}
-                </td>
-                <td class="px-2 py-2 border-b border-white/5 font-medium ${indentClass}">${node.name}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${tons.toFixed(1)}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold ${varYagoColor}">${varYagoIcon} ${varYagoStr}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${skuPdv.toFixed(1)}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${freq.toFixed(1)}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${dataNode.positivacao}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${percPosit.toFixed(1)}%</td>
-            </tr>
-        `;
-        tableBody.insertAdjacentHTML('beforeend', rowHtml);
-
-        if (hasChildren) {
-            Object.values(node.children).forEach(child => createRow(child, level + 1, id));
-        }
-
-        return { tons, varYagoStr, varYagoColor, varYagoIcon, skuPdv, freq, positivacao: dataNode.positivacao, percPosit };
+        const positStr = dataNode.positivacao;
+        const percPositStr = percPosit.toFixed(1) + '%';
+        return { id, isRoot, hasChildren, indentClass, tons, varYagoStr, varYagoColor, varYagoIcon, skuPdv, freq, positStr, percPositStr };
     };
 
     const rootData = createRow(hierarchy, 0);
