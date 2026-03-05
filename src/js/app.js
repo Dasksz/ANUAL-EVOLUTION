@@ -3058,8 +3058,8 @@ document.addEventListener('DOMContentLoaded', () => {
             prevFat = prevSums.faturamento;
             prevKg = prevSums.peso;
             
-            kpiTitleFat = `Tend. FAT ${data.current_year} vs Ano Ant.`;
-            kpiTitleKg = `Tend. TON ${data.current_year} vs Ano Ant.`;
+            kpiTitleFat = `Tend. Anual FAT vs Ano Ant.`;
+            kpiTitleKg = `Tend. Anual TON vs Ano Ant.`;
 
         } else {
             // SCENARIO B: Default (Month vs Month or Filtered Month)
