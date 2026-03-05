@@ -180,9 +180,9 @@ BEGIN
             GROUPING(c.filial) as grp_filial,
             GROUPING(c.cidade) as grp_cidade,
             GROUPING(c.vendedor) as grp_vendedor,
-            c.filial,
-            c.cidade,
-            c.vendedor,
+            COALESCE(c.filial, ''TOTAL_GERAL'') as filial,
+            COALESCE(c.cidade, ''TOTAL_CIDADE'') as cidade,
+            COALESCE(c.vendedor, ''TOTAL_VENDEDOR'') as vendedor,
             SUM(c.peso) as tons,
             SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
             COUNT(DISTINCT vc.codcli) as positivacao,
@@ -197,7 +197,7 @@ BEGIN
             ac.grp_filial,
             ac.grp_cidade,
             ac.grp_vendedor,
-            COALESCE(ac.filial, ''PRIME'') as filial,
+            COALESCE(ac.filial, ''TOTAL_GERAL'') as filial,
             COALESCE(ac.cidade, ''TOTAL_CIDADE'') as cidade,
             COALESCE(ac.vendedor, ''TOTAL_VENDEDOR'') as vendedor,
             ac.tons,
@@ -211,9 +211,9 @@ BEGIN
         LEFT JOIN previous_data pd ON ac.grp_filial = pd.grp_filial 
                                   AND ac.grp_cidade = pd.grp_cidade 
                                   AND ac.grp_vendedor = pd.grp_vendedor 
-                                  AND COALESCE(ac.filial, '''') = COALESCE(pd.filial, '''') 
-                                  AND COALESCE(ac.cidade, '''') = COALESCE(pd.cidade, '''') 
-                                  AND COALESCE(ac.vendedor, '''') = COALESCE(pd.vendedor, '''')
+                                  AND ac.filial = pd.filial 
+                                  AND ac.cidade = pd.cidade 
+                                  AND ac.vendedor = pd.vendedor
         LEFT JOIN client_base cb ON ac.cidade = cb.cidade AND ac.grp_vendedor = 1 AND ac.grp_cidade = 0 AND ac.grp_filial = 0
     ),
     chart_data AS (
