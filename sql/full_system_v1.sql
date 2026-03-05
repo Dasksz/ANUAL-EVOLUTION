@@ -1065,7 +1065,7 @@ BEGIN
         s.codcli,
         s.tipovenda,
         s.pedido,
-        c.ramo as rede;
+        c.ramo;
     -- ANALYZE public.data_summary;
 END;
 $$;
@@ -1199,7 +1199,7 @@ BEGIN
         s.codcli,
         s.tipovenda,
         s.pedido,
-        c.ramo as rede;
+        c.ramo;
     -- No internal ANALYZE to keep chunks fast
 END;
 $$;
