@@ -1,95 +1,8 @@
 
 import supabase from './supabase.js?v=2';
 
-// --- Toast Notification System ---
-window.showToast = function(type, message, title = '') {
-    const container = document.getElementById('toast-container');
-    if (!container) {
-        console.error('Toast container not found!');
-        console.log(`[${type}] ${message}`);
-        return;
-    }
-
-    const variants = {
-        success: {
-            class: 'toast-success',
-            icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
-            defaultTitle: 'Sucesso'
-        },
-        error: {
-            class: 'toast-error',
-            icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
-            defaultTitle: 'Erro'
-        },
-        info: {
-            class: 'toast-info',
-            icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
-            defaultTitle: 'Informação'
-        },
-        warning: {
-            class: 'toast-warning',
-            icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`,
-            defaultTitle: 'Atenção'
-        }
-    };
-
-    const variant = variants[type] || variants.info;
-    const finalTitle = title || variant.defaultTitle;
-
-    const toast = document.createElement('div');
-    toast.className = `toast ${variant.class}`;
-    toast.innerHTML = `
-        <div class="toast-icon">${variant.icon}</div>
-        <div class="flex-1 min-w-0">
-            <h4 class="toast-title">${finalTitle}</h4>
-            <p class="toast-message">${message}</p>
-        </div>
-        <button class="toast-close-btn" onclick="
-            this.parentElement.classList.add('hiding');
-            this.parentElement.addEventListener('animationend', () => this.parentElement.remove());
-        ">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </button>
-    `;
-
-    container.appendChild(toast);
-};
-
 document.addEventListener('DOMContentLoaded', () => {
     console.log("App Version: 2.0 (Cache Refresh Split)");
-    let isMainDashboardInitialized = false;
-    let isInnovationsInitialized = false;
-    let isLojaPerfeitaInitialized = false;
-    // --- GLOBAL NAVIGATION HISTORY ---
-    let currentActiveView = 'dashboard';
-    let viewHistory = [];
-
-    function setupGlobalEsc() {
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                // Priority 1: Check Open Modals
-                const openModal = document.querySelector('.fixed.inset-0:not(.hidden)');
-                if (openModal) {
-                    // Try to click the close button if it exists
-                    const closeBtn = openModal.querySelector('button[id$="close-btn"], button[id^="close-"]');
-                    if (closeBtn) {
-                        closeBtn.click();
-                    } else {
-                        openModal.classList.add('hidden');
-                    }
-                    return;
-                }
-
-                // Priority 2: View Navigation
-                if (viewHistory.length > 0) {
-                    const prevView = viewHistory.pop();
-                    renderView(prevView, { skipHistory: true });
-                }
-            }
-        });
-    }
-    setupGlobalEsc();
-
     // --- Auth & Navigation Elements ---
     const loginView = document.getElementById('login-view');
     const appLayout = document.getElementById('app-layout');
@@ -98,65 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logout-btn');
     const logoutBtnPendente = document.getElementById('logout-btn-pendente');
 
-    // Auth Views
-    const loginFormSignin = document.getElementById('view-login');
-    const loginFormSignup = document.getElementById('view-signup');
-    const loginFormForgot = document.getElementById('view-forgot');
-
-    // Navigation links within Auth
-    const linkSignup = document.getElementById('link-signup');
-    const linkForgot = document.getElementById('link-forgot');
-    const linkLoginFromSignup = document.getElementById('link-login-from-signup');
-    const linkLoginFromForgot = document.getElementById('link-login-from-forgot');
-
-    // Forms
-    const formSignin = document.getElementById('loginForm');
-    const formSignup = document.getElementById('signupForm');
-    const formForgot = document.getElementById('forgotForm');
-
-    // Load saved email if any
-    const savedEmail = localStorage.getItem('prime_saved_email');
-    if (savedEmail) {
-        const emailInput = document.getElementById('email');
-        const rememberMe = document.getElementById('remember-me');
-        if (emailInput) emailInput.value = savedEmail;
-        if (rememberMe) rememberMe.checked = true;
-    }
-
-    // Input toggles
-    const btnTogglePasswordSignin = document.getElementById('togglePassword');
-    const inputPasswordSignin = document.getElementById('password');
-    const eyeIcon = document.getElementById('eyeIcon');
-
-    const btnTogglePasswordSignup = document.getElementById('togglePasswordSignup');
-    const inputPasswordSignup = document.getElementById('signup-password');
-    const eyeIconSignup = document.getElementById('eyeIconSignup');
-
-    // View Switching Logic
-    const switchAuthView = (viewToShow) => {
-        [loginFormSignin, loginFormSignup, loginFormForgot].forEach(el => {
-            if (el) {
-                el.classList.add('hidden');
-                el.classList.remove('opacity-100', 'scale-100');
-                el.classList.add('opacity-0', 'scale-95');
-            }
-        });
-
-        if (viewToShow) {
-            viewToShow.classList.remove('hidden');
-            // Small delay to allow display block to apply before animating opacity
-            setTimeout(() => {
-                viewToShow.classList.remove('opacity-0', 'scale-95');
-                viewToShow.classList.add('opacity-100', 'scale-100');
-            }, 10);
-        }
-    };
-
-    if (linkSignup) linkSignup.addEventListener('click', (e) => { e.preventDefault(); switchAuthView(loginFormSignup); });
-    if (linkForgot) linkForgot.addEventListener('click', (e) => { e.preventDefault(); switchAuthView(loginFormForgot); });
-    if (linkLoginFromSignup) linkLoginFromSignup.addEventListener('click', (e) => { e.preventDefault(); switchAuthView(loginFormSignin); });
-    if (linkLoginFromForgot) linkLoginFromForgot.addEventListener('click', (e) => { e.preventDefault(); switchAuthView(loginFormSignin); });
-
     // New Top Navbar Elements
     const topNavbar = document.getElementById('top-navbar');
     const navDashboardBtn = document.getElementById('nav-dashboard');
@@ -164,34 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const navBoxesBtn = document.getElementById('nav-boxes-btn');
     const navBranchBtn = document.getElementById('nav-branch-btn');
     const navUploaderBtn = document.getElementById('nav-uploader');
-    const navInnovationsBtn = document.getElementById('nav-innovations-btn');
-    const navLojaPerfeitaBtn = document.getElementById('nav-loja-perfeita-btn');
     const navComparativoBtn = document.getElementById('nav-comparativo-btn');
     const optimizeDbBtnNav = document.getElementById('optimize-db-btn-nav');
-    const profileMenuBtn = document.getElementById('profile-menu-btn');
-    const profileDropdown = document.getElementById('profile-dropdown');
-    const profileDropdownName = document.getElementById('profile-dropdown-name');
-    const profileDropdownRole = document.getElementById('profile-dropdown-role');
-
-    // Profile Dropdown Logic
-    if (profileMenuBtn && profileDropdown) {
-        profileMenuBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            profileDropdown.classList.toggle('hidden');
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!profileDropdown.contains(e.target) && !profileMenuBtn.contains(e.target)) {
-                profileDropdown.classList.add('hidden');
-            }
-        });
-    }
 
     // Views
     const dashboardContainer = document.getElementById('dashboard-container');
     const uploaderModal = document.getElementById('uploader-modal');
-    const innovationsMonthView = document.getElementById('innovations-month-view');
-    const lojaPerfeitaView = document.getElementById('loja-perfeita-view');
     const closeUploaderBtn = document.getElementById('close-uploader-btn');
 
     // Dashboard Internal Views
@@ -428,19 +260,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const showScreen = (screenId) => {
         // Hide all auth/app screens first
         [loginView, telaLoading, telaPendente, appLayout].forEach(el => el?.classList.add('hidden'));
-        
+
         // Ensure topNavbar is hidden by default on auth screens
         if (topNavbar) topNavbar.classList.add('hidden');
-        
+
         if (screenId) {
             const screen = document.getElementById(screenId);
             screen?.classList.remove('hidden');
-
-            // If showing the login view container, explicitly set it back to the signin view
-            if (screenId === 'login-view') {
-                switchAuthView(loginFormSignin);
-            }
-
             // Ensure Top Nav is visible if authenticated and in app
             if (screenId === 'app-layout' && topNavbar) {
                 topNavbar.classList.remove('hidden');
@@ -514,13 +340,11 @@ document.addEventListener('DOMContentLoaded', () => {
             state.mes = comparisonMesFilter.value;
             state.filiais = (comparisonFilialFilter && comparisonFilialFilter.value !== 'ambas') ? [comparisonFilialFilter.value] : [];
             state.cidades = selectedComparisonCities;
-            state.supervisores = selectedComparisonSupervisors;
+            state.supervisores = selectedComparisonSupervisores;
             state.vendedores = selectedComparisonSellers;
             state.fornecedores = selectedComparisonSuppliers;
-            state.produtos = selectedComparisonProducts;
             state.tiposvenda = selectedComparisonTiposVenda;
             state.redes = selectedComparisonRedes;
-            state.categorias = selectedComparisonCategorias;
         }
 
         const serialize = (key, val) => {
@@ -601,50 +425,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
              selectedComparisonCities = getList('cidades');
 
-             selectedComparisonSupervisors = getList('supervisores');
+             selectedComparisonSupervisores = getList('supervisores');
              selectedComparisonSellers = getList('vendedores');
              selectedComparisonSuppliers = getList('fornecedores');
-             selectedComparisonProducts = getList('produtos');
              selectedComparisonTiposVenda = getList('tiposvenda');
              selectedComparisonRedes = getList('redes');
-             selectedComparisonCategorias = getList('categorias');
         }
     }
 
     async function handleInitialRouting() {
         const params = new URLSearchParams(window.location.search);
-        let view = params.get('view');
-
-        // Priority to URL Hash if query param isn't explicitly setting it
-        if (!view && window.location.hash) {
-            view = window.location.hash.substring(1);
-        }
-
+        const view = params.get('view');
         checkRoleForUI();
 
         if (view) {
             applyFiltersToView(view, params);
-        }
+            showScreen('app-layout');
 
-        showScreen('app-layout');
-
-        // Provide a default if the view wasn't set or is invalid
-        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison'];
-        if (!view || !validViews.includes(view)) {
-            view = 'dashboard';
-        }
-
-        renderView(view);
-
-        if (view === 'dashboard') {
+            if (view === 'city') {
+                navCityAnalysisBtn.click();
+            } else if (view === 'boxes') {
+                navBoxesBtn.click();
+            } else if (view === 'branch') {
+                navBranchBtn.click();
+            } else if (view === 'comparison') {
+                navComparativoBtn.click();
+            } else {
+                navDashboardBtn.click();
+                initDashboard();
+            }
+        } else {
+            showScreen('app-layout');
             initDashboard();
         }
     }
-
-    window.addEventListener('hashchange', () => {
-        const view = window.location.hash.substring(1) || 'dashboard';
-        renderView(view, { skipHistory: true });
-    });
 
     function navigateWithCtrl(e, targetViewId) {
         if (e.ctrlKey || e.metaKey) {
@@ -753,11 +567,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function updateProfileMenu(name, role) {
-        if (profileDropdownName) profileDropdownName.textContent = name || 'Usuário';
-        if (profileDropdownRole) profileDropdownRole.textContent = role || 'Sem Função';
-    }
-
     async function checkProfileStatus(user) {
         if (isAppReady) return;
 
@@ -766,10 +575,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (cachedAuth) {
             try {
-                const { status, role, name } = JSON.parse(cachedAuth);
+                const { status, role } = JSON.parse(cachedAuth);
                 if (status === 'aprovado') {
                     window.userRole = role;
-                    updateProfileMenu(name, role);
                     isAppReady = true;
                     handleInitialRouting();
                     return;
@@ -780,10 +588,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         checkProfileLock = true;
-        
+
         try {
             const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Tempo limite de conexão excedido. Verifique sua internet.')), 10000));
-            const profileQuery = supabase.from('profiles').select('status, role, name').eq('id', user.id).single();
+            const profileQuery = supabase.from('profiles').select('status, role').eq('id', user.id).single();
 
             const { data: profile, error } = await Promise.race([profileQuery, timeout]);
 
@@ -802,10 +610,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const status = profile?.status || 'pendente';
             if (profile?.role) window.userRole = profile.role;
-            updateProfileMenu(profile?.name, profile?.role);
 
             if (status === 'aprovado') {
-                localStorage.setItem(cacheKey, JSON.stringify({ status: 'aprovado', role: profile?.role, name: profile?.name }));
+                localStorage.setItem(cacheKey, JSON.stringify({ status: 'aprovado', role: profile?.role }));
                 const currentScreen = document.getElementById('app-layout');
                 if (currentScreen.classList.contains('hidden')) {
                     isAppReady = true;
@@ -816,7 +623,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 showScreen('tela-pendente');
                 if (status === 'bloqueado') {
-                        const statusMsg = document.getElementById('status-text-pendente'); 
+                        const statusMsg = document.getElementById('status-text-pendente');
                         if(statusMsg) statusMsg.textContent = "Acesso Bloqueado";
                 }
                 startStatusListener(user.id);
@@ -825,7 +632,7 @@ document.addEventListener('DOMContentLoaded', () => {
             checkProfileLock = false;
             if (!isAppReady) {
                 if (err.message !== 'Tempo limite de conexão excedido. Verifique sua internet.') {
-                    window.showToast('error', "Erro de conexão: " + (err.message || 'Erro desconhecido'));
+                    alert("Erro de conexão: " + (err.message || 'Erro desconhecido'));
                     showScreen('login-view');
                 }
             }
@@ -855,164 +662,17 @@ document.addEventListener('DOMContentLoaded', () => {
             .subscribe();
     }
 
-    if (googleLoginBtn) {
-        googleLoginBtn.addEventListener('click', async () => {
-            loginError.classList.add('hidden');
-            const { data, error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: { redirectTo: window.location.origin + window.location.pathname }
-            });
-            if (error) {
-                loginError.textContent = 'Erro ao iniciar login: ' + error.message;
-                loginError.classList.remove('hidden');
-            }
+    googleLoginBtn.addEventListener('click', async () => {
+        loginError.classList.add('hidden');
+        const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: window.location.origin + window.location.pathname }
         });
-    }
-
-    if (btnTogglePasswordSignin && inputPasswordSignin) {
-        btnTogglePasswordSignin.addEventListener('click', () => {
-            const type = inputPasswordSignin.getAttribute('type') === 'password' ? 'text' : 'password';
-            inputPasswordSignin.setAttribute('type', type);
-            if (eyeIcon) {
-                if (type === 'text') {
-                    eyeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>`;
-                } else {
-                    eyeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />`;
-                }
-            }
-        });
-    }
-
-    if (btnTogglePasswordSignup && inputPasswordSignup) {
-        btnTogglePasswordSignup.addEventListener('click', () => {
-            const type = inputPasswordSignup.getAttribute('type') === 'password' ? 'text' : 'password';
-            inputPasswordSignup.setAttribute('type', type);
-            if (eyeIconSignup) {
-                if (type === 'text') {
-                    eyeIconSignup.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>`;
-                } else {
-                    eyeIconSignup.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />`;
-                }
-            }
-        });
-    }
-
-    if (formSignin) {
-        formSignin.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const rememberMe = document.getElementById('remember-me');
-
-            if (rememberMe && rememberMe.checked) {
-                localStorage.setItem('prime_saved_email', email);
-            } else {
-                localStorage.removeItem('prime_saved_email');
-            }
-
-            const btn = formSignin.querySelector('button[type="submit"]');
-            const btnText = btn.querySelector('.btn-text');
-            const svgLoader = btn.querySelector('.loader') || document.createElement('svg');
-            const oldText = btnText ? btnText.textContent : btn.textContent;
-
-            if(btnText) btnText.textContent = 'Entrando...';
-            btn.disabled = true;
-
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password
-            });
-
-            if (error) {
-                if(btnText) btnText.textContent = oldText;
-                btn.disabled = false;
-                loginError.textContent = 'Erro ao iniciar login: ' + error.message;
-                loginError.classList.remove('hidden');
-            }
-        });
-    }
-
-    if (formSignup) {
-        formSignup.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('signup-name').value;
-            const email = document.getElementById('signup-email').value;
-            const phone = document.getElementById('signup-phone').value;
-            const password = document.getElementById('signup-password').value;
-
-            if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-                window.showToast('error', 'A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, uma minúscula e um caractere especial.');
-                return;
-            }
-
-            const btn = formSignup.querySelector('button[type="submit"]');
-            const oldText = btn.textContent;
-            btn.disabled = true; btn.textContent = 'Cadastrando...';
-
-            const { data, error } = await supabase.auth.signUp({
-                email,
-                password,
-                options: {
-                    data: {
-                        full_name: name,
-                        phone: phone,
-                    },
-                    emailRedirectTo: window.location.origin + window.location.pathname
-                }
-            });
-
-            if (error) {
-                window.showToast('error', 'Erro ao realizar cadastro: ' + error.message);
-                btn.disabled = false; btn.textContent = oldText;
-                return;
-            }
-
-            if (data && data.user) {
-                window.showToast('success', 'Cadastro realizado! Sua conta aguarda aprovação manual.');
-                setTimeout(() => window.location.reload(), 2000);
-            }
-        });
-    }
-
-    if (formForgot) {
-        formForgot.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('forgot-email').value;
-
-            const btn = formForgot.querySelector('button[type="submit"]');
-            const oldText = btn.textContent;
-            btn.disabled = true; btn.textContent = 'Enviando...';
-
-            try {
-                const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('status')
-                    .eq('email', email)
-                    .maybeSingle();
-
-                if (profileError || !profile || profile.status !== 'aprovado') {
-                    window.showToast('error', 'E-mail não encontrado ou cadastro pendente de aprovação.');
-                    btn.disabled = false; btn.textContent = oldText;
-                    return;
-                }
-
-                const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: window.location.origin + window.location.pathname,
-                });
-
-                if (error) {
-                    window.showToast('error', 'Erro ao enviar e-mail: ' + error.message);
-                } else {
-                    window.showToast('success', 'Verifique seu e-mail para o link de redefinição de senha.');
-                    switchAuthView(loginFormSignin);
-                }
-            } catch (err) {
-                window.showToast('error', 'Ocorreu um erro ao processar sua solicitação.');
-            } finally {
-                btn.disabled = false; btn.textContent = oldText;
-            }
-        });
-    }
+        if (error) {
+            loginError.textContent = 'Erro ao iniciar login: ' + error.message;
+            loginError.classList.remove('hidden');
+        }
+    });
 
     const handleLogout = async () => {
         if(statusListener) {
@@ -1046,127 +706,57 @@ document.addEventListener('DOMContentLoaded', () => {
         boxesView.classList.add('hidden');
         branchView.classList.add('hidden');
         comparisonView.classList.add('hidden');
-        if (innovationsMonthView) innovationsMonthView.classList.add('hidden');
-        if (lojaPerfeitaView) lojaPerfeitaView.classList.add('hidden');
     };
-
-    async function renderView(view, options = {}) {
-        // Push to history if not navigating back
-        if (!options.skipHistory && currentActiveView && currentActiveView !== view) {
-            viewHistory.push(currentActiveView);
-        }
-        currentActiveView = view;
-
-        // Sync Hash to ensure navigation consistency
-        try {
-            if (window.location.hash !== '#' + view) {
-                history.pushState(null, null, '#' + view);
-            }
-        } catch (e) {
-            console.warn("History pushState failed", e);
-        }
-
-        resetViews();
-
-        switch (view) {
-            case 'dashboard':
-                mainDashboardView.classList.remove('hidden');
-                setActiveNavLink(navDashboardBtn);
-                if (!isMainDashboardInitialized) {
-                    initDashboard();
-                }
-                break;
-            case 'city':
-                cityView.classList.remove('hidden');
-                setActiveNavLink(navCityAnalysisBtn);
-                loadCityView();
-                break;
-            case 'boxes':
-                if (boxesView && navBoxesBtn) {
-                    boxesView.classList.remove('hidden');
-                    setActiveNavLink(navBoxesBtn);
-                    loadBoxesView();
-                }
-                break;
-            case 'comparison':
-                if (comparisonView && navComparativoBtn) {
-                    comparisonView.classList.remove('hidden');
-                    setActiveNavLink(navComparativoBtn);
-                    loadComparisonView();
-                }
-                break;
-            case 'branch':
-                if (branchView && navBranchBtn) {
-                    branchView.classList.remove('hidden');
-                    setActiveNavLink(navBranchBtn);
-                    loadBranchView();
-                }
-                break;
-            default:
-                mainDashboardView.classList.remove('hidden');
-                setActiveNavLink(navDashboardBtn);
-                if (!isMainDashboardInitialized) {
-                    initDashboard();
-                }
-                break;
-        }
-    }
 
     navDashboardBtn.addEventListener('click', (e) => {
         if (navigateWithCtrl(e, 'dashboard')) return;
-        renderView('dashboard');
+        resetViews();
+        mainDashboardView.classList.remove('hidden');
+        setActiveNavLink(navDashboardBtn);
     });
 
     navCityAnalysisBtn.addEventListener('click', (e) => {
         if (navigateWithCtrl(e, 'city')) return;
-        renderView('city');
+        resetViews();
+        cityView.classList.remove('hidden');
+        setActiveNavLink(navCityAnalysisBtn);
+        loadCityView();
     });
 
     if (navBoxesBtn) {
         navBoxesBtn.addEventListener('click', (e) => {
             if (navigateWithCtrl(e, 'boxes')) return;
-            renderView('boxes');
+            resetViews();
+            boxesView.classList.remove('hidden');
+            setActiveNavLink(navBoxesBtn);
+            loadBoxesView();
         });
     }
 
     if (navComparativoBtn) {
         navComparativoBtn.addEventListener('click', (e) => {
             if (navigateWithCtrl(e, 'comparison')) return;
-            renderView('comparison');
+            resetViews();
+            comparisonView.classList.remove('hidden');
+            setActiveNavLink(navComparativoBtn);
+            loadComparisonView();
         });
     }
 
     if (navBranchBtn) {
         navBranchBtn.addEventListener('click', (e) => {
             if (navigateWithCtrl(e, 'branch')) return;
-            renderView('branch');
-        });
-    }
-
-    if (navInnovationsBtn) {
-        navInnovationsBtn.addEventListener('click', (e) => {
-            if (navigateWithCtrl(e, 'innovations')) return;
             resetViews();
-            if (innovationsMonthView) innovationsMonthView.classList.remove('hidden');
-            setActiveNavLink(navInnovationsBtn);
-            renderInnovationsMonthView();
-        });
-    }
-
-    if (navLojaPerfeitaBtn) {
-        navLojaPerfeitaBtn.addEventListener('click', (e) => {
-            if (navigateWithCtrl(e, 'loja-perfeita')) return;
-            resetViews();
-            if (lojaPerfeitaView) lojaPerfeitaView.classList.remove('hidden');
-            setActiveNavLink(navLojaPerfeitaBtn);
-            renderLojaPerfeitaView();
+            branchView.classList.remove('hidden');
+            setActiveNavLink(navBranchBtn);
+            loadBranchView();
         });
     }
 
     if (navUploaderBtn) {
         navUploaderBtn.addEventListener('click', () => {
             if (window.userRole !== 'adm') {
-                window.showToast('error', 'Acesso negado: Apenas administradores podem acessar o uploader.');
+                alert('Acesso negado: Apenas administradores podem acessar o uploader.');
                 return;
             }
             uploaderModal.classList.remove('hidden');
@@ -1178,13 +768,13 @@ document.addEventListener('DOMContentLoaded', () => {
         optimizeDbBtnNav.addEventListener('click', async () => {
             if (window.userRole !== 'adm') return;
             if (!confirm('Recriar índices do banco de dados?')) return;
-            
+
             try {
                 const { data, error } = await supabase.rpc('optimize_database');
                 if (error) throw error;
-                window.showToast('success', data || 'Otimização concluída!');
-            } catch(e) { 
-                window.showToast('error', 'Erro: ' + e.message);
+                alert(data || 'Otimização concluída!');
+            } catch(e) {
+                alert('Erro: ' + e.message);
             }
         });
     }
@@ -1197,14 +787,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function checkRoleForUI() {
         if (window.userRole === 'adm') {
             if(navUploaderBtn) navUploaderBtn.classList.remove('hidden');
-            if(navUploaderBtn) navUploaderBtn.classList.add('flex');
-            if(optimizeDbBtnNav) optimizeDbBtnNav.classList.remove('hidden');
-            if(optimizeDbBtnNav) optimizeDbBtnNav.classList.add('flex');
-        } else {
-            if(navUploaderBtn) navUploaderBtn.classList.add('hidden');
-            if(navUploaderBtn) navUploaderBtn.classList.remove('flex');
-            if(optimizeDbBtnNav) optimizeDbBtnNav.classList.add('hidden');
-            if(optimizeDbBtnNav) optimizeDbBtnNav.classList.remove('flex');
         }
     }
 
@@ -1236,7 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Note: loadFilters will re-render the dropdowns with checked status based on these empty arrays,
         // effectively clearing the checkboxes visually.
-        
+
         await loadFilters(getCurrentFilters());
         loadMainDashboardData();
     });
@@ -1260,46 +842,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Uploader Logic ---
     let files = {};
     const checkFiles = () => {
-        const hasFiles = files.salesCurrMonthFile && files.clientsFile;
+        const hasFiles = files.salesPrevYearFile && files.salesCurrYearFile && files.salesCurrMonthFile && files.clientsFile && files.productsFile;
         generateBtn.disabled = !hasFiles;
     };
-
-    const toggleOptionalFilesBtn = document.getElementById('toggle-optional-files-btn');
-    const optionalFilesContainer = document.getElementById('optional-files-container');
-    const optionalFilesIcon = document.getElementById('optional-files-icon');
-
-    if (toggleOptionalFilesBtn) {
-        toggleOptionalFilesBtn.addEventListener('click', () => {
-            const isHidden = optionalFilesContainer.classList.contains('hidden');
-            if (isHidden) {
-                optionalFilesContainer.classList.remove('hidden');
-                optionalFilesIcon.classList.add('rotate-90');
-            } else {
-                optionalFilesContainer.classList.add('hidden');
-                optionalFilesIcon.classList.remove('rotate-90');
-            }
-        });
-    }
-
-    const innovationsFileInput = document.getElementById('innovations-file-input');
-    const notaInvolvesMultipleInput = document.getElementById('nota-involves-multiple-input');
 
     if(salesPrevYearInput) salesPrevYearInput.addEventListener('change', (e) => { files.salesPrevYearFile = e.target.files[0]; checkFiles(); });
     if(salesCurrYearInput) salesCurrYearInput.addEventListener('change', (e) => { files.salesCurrYearFile = e.target.files[0]; checkFiles(); });
     if(salesCurrMonthInput) salesCurrMonthInput.addEventListener('change', (e) => { files.salesCurrMonthFile = e.target.files[0]; checkFiles(); });
     if(clientsFileInput) clientsFileInput.addEventListener('change', (e) => { files.clientsFile = e.target.files[0]; checkFiles(); });
     if(productsFileInput) productsFileInput.addEventListener('change', (e) => { files.productsFile = e.target.files[0]; checkFiles(); });
-    if(innovationsFileInput) innovationsFileInput.addEventListener('change', (e) => { files.innovationsFile = e.target.files[0]; checkFiles(); });
-    
-    if(notaInvolvesMultipleInput) notaInvolvesMultipleInput.addEventListener('change', (e) => {
-        files.notaInvolvesFile1 = e.target.files.length > 0 ? e.target.files[0] : null;
-        files.notaInvolvesFile2 = e.target.files.length > 1 ? e.target.files[1] : null;
-        checkFiles();
-    });
 
     if(optimizeDbBtn) optimizeDbBtn.addEventListener('click', async () => {
         if (window.userRole !== 'adm') {
-            window.showToast('error', 'Apenas administradores podem executar esta ação.');
+            alert('Apenas administradores podem executar esta ação.');
             return;
         }
         if (!confirm('Recriar índices do banco de dados?')) return;
@@ -1315,10 +870,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
             statusText.textContent = data || 'Concluído!';
             progressBar.style.width = '100%';
-            window.showToast('success', data);
+            alert(data);
         } catch (e) {
             statusText.textContent = 'Erro: ' + e.message;
-            window.showToast('error', 'Erro: ' + e.message);
+            alert('Erro: ' + e.message);
         } finally {
             optimizeDbBtn.disabled = false;
             optimizeDbBtn.textContent = 'Otimizar Banco de Dados (Reduzir Espaço)';
@@ -1345,7 +900,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .from('config_city_branches')
             .select('cidade')
             .or('filial.is.null,filial.eq.""');
-        
+
         if (!error && data && data.length > 0) {
             missingBranchesNotification.classList.remove('hidden');
         } else {
@@ -1357,7 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Vamos apenas assegurar de mesclar a chamada de checkMissingBranches() que havia aqui.
 
     if(generateBtn) generateBtn.addEventListener('click', async () => {
-        if (!files.salesCurrMonthFile || !files.clientsFile) return;
+        if (!files.salesPrevYearFile || !files.salesCurrYearFile || !files.salesCurrMonthFile || !files.clientsFile || !files.productsFile) return;
 
         generateBtn.disabled = true;
         statusContainer.classList.remove('hidden');
@@ -1368,7 +923,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cityBranchMap = await fetchCityBranchMap();
 
         statusText.textContent = 'Processando...';
-        
+
         const worker = new Worker('src/js/worker.js?v=2');
         // Pass files AND the city map
         worker.postMessage({ ...files, cityBranchMap });
@@ -1391,7 +946,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     await enviarDadosParaSupabase(data);
-                    
+
                     // Re-check missing branches after upload
                     await checkMissingBranches();
 
@@ -1401,7 +956,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         uploaderModal.classList.add('hidden');
                         statusContainer.classList.add('hidden');
                         generateBtn.disabled = false;
-                        window.showToast('success', 'Dados atualizados com sucesso!', 'Sucesso');
                         initDashboard();
                     }, 1500);
                 } catch (e) {
@@ -1445,13 +999,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const { error: insertErr } = await supabase.from(table).insert(batch);
                     error = insertErr;
                 }
-                
-                if (error) {
-                    if (error.code === '42P01') {
-                        throw new Error(`Tabela '${table}' não encontrada. Por favor, execute o script SQL de atualização (full_system_v1.sql) no painel do Supabase antes de enviar os arquivos.`);
-                    }
-                    throw new Error(`Erro ${table}: ${error.message}`);
-                }
+
+                if (error) throw new Error(`Erro ${table}: ${error.message}`);
             });
         };
         const performDimensionUpsert = async (table, batch) => {
@@ -1459,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  const { error } = await supabase.from(table).upsert(batch, { onConflict: 'codigo' });
                  if (error) {
                      if (error.message && (error.message.includes('Could not find the table') || error.message.includes('relation') || error.code === '42P01')) {
-                         window.showToast('error', "Erro de Configuração: As tabelas novas (dimensões) não foram encontradas. \n\nPor favor, execute o script 'sql/optimization_plan.sql' no Editor SQL do Supabase para criar as tabelas necessárias e tente novamente.");
+                         alert("Erro de Configuração: As tabelas novas (dimensões) não foram encontradas. \n\nPor favor, execute o script 'sql/optimization_plan.sql' no Editor SQL do Supabase para criar as tabelas necessárias e tente novamente.");
                      }
                      throw new Error(`Erro upsert ${table}: ${error.message}`);
                  }
@@ -1498,7 +1047,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // --- Incremental Sync Logic (Chunked for Sales, Row-Hash for Clients) ---
-        
+
         // Sync Logic for Sales (Metadata + Chunking + Batched HTTP Requests)
         const syncSalesChunks = async (tableName, localChunks, progressStart, progressEnd) => {
             updateStatus(`Verificando metadados de ${tableName}...`, progressStart);
@@ -1526,7 +1075,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (serverHash !== localChunk.hash) {
                     console.log(`[${tableName}] Syncing chunk ${key} (Size: ${localChunk.rows.length})...`);
                     updateStatus(`Sincronizando ${tableName} (${key})...`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
-                    
+
                     // --- GRANULAR UPLOAD STRATEGY ---
                     // 1. Wipe Data for Month
                     const { error: wipeErr } = await supabase.rpc('begin_sync_chunk', {
@@ -1538,7 +1087,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 2. Batch Append (e.g. 2000 rows per request to avoid Gateway Timeouts)
                     const ROWS_PER_REQUEST = 2000;
                     const totalRows = localChunk.rows.length;
-                    
+
                     for (let i = 0; i < totalRows; i += ROWS_PER_REQUEST) {
                         const batch = localChunk.rows.slice(i, i + ROWS_PER_REQUEST);
                         const progress = Math.round(((i + batch.length) / totalRows) * 100);
@@ -1572,11 +1121,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Legacy Row-Hash Sync (Kept for Clients)
         const syncTable = async (tableName, clientRows, progressStart, progressEnd) => {
             updateStatus(`Sincronizando ${tableName}...`, progressStart);
-            
+
             // 1. Get Server Hashes
             const { data: serverHashes, error } = await supabase.rpc('get_table_hashes', { p_table_name: tableName });
             if (error) throw new Error(`Erro ao buscar hashes de ${tableName}: ${error.message}`);
-            
+
             const serverHashSet = new Set(serverHashes.map(h => h.row_hash));
             const clientHashMap = new Map();
             clientRows.forEach(r => {
@@ -1640,36 +1189,17 @@ document.addEventListener('DOMContentLoaded', () => {
                  updateStatus('Atualizando Fornecedores...', 3);
                  await performDimensionUpsert('dim_fornecedores', data.newProviders);
             }
-            if (data.productStock && data.productStock.length > 0) {
-                 updateStatus('Atualizando Estoque de Produtos...', 4);
-                 await retryOperation(async () => {
-                     const { error } = await supabase.rpc('update_products_stock', { p_stock_data: data.productStock });
-                     if (error) throw new Error('Erro ao atualizar estoque_filial: ' + error.message);
-                 });
-            }
 
             // Sales Tables (Use Chunk Sync)
             if (data.historyChunks) await syncSalesChunks('data_history', data.historyChunks, 10, 40);
             if (data.detailedChunks) await syncSalesChunks('data_detailed', data.detailedChunks, 40, 70);
-            
-            // Clients Table (Use Row Sync)
-            if (data.clients) await syncTable('data_clients', data.clients, 70, 75);
 
-            // New Tables
-            if (data.innovations && data.innovations.length > 0) {
-                updateStatus('Atualizando Inovações...', 76);
-                await clearTable('data_innovations');
-                await uploadBatch('data_innovations', data.innovations);
-            }
-            if (data.notaPerfeita && data.notaPerfeita.length > 0) {
-                updateStatus('Atualizando Nota Involves...', 78);
-                await clearTable('data_nota_perfeita');
-                await uploadBatch('data_nota_perfeita', data.notaPerfeita);
-            }
+            // Clients Table (Use Row Sync)
+            if (data.clients) await syncTable('data_clients', data.clients, 70, 80);
 
             // CHUNKED CACHE REFRESH LOGIC
             updateStatus('Iniciando processamento do resumo...', 80);
-            
+
             // 1. Explicitly clear Summary Table
             await clearTable('data_summary');
 
@@ -1686,19 +1216,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         const yearStep = 15 / years.length;
                         const monthStep = yearStep / 12;
                         const progress = 80 + Math.round((i * yearStep) + (m * monthStep));
-                        
+
                         updateStatus(`Processando ${m}/${year}...`, progress);
                         const { error: chunkErr } = await supabase.rpc('refresh_summary_month', { p_year: year, p_month: m });
-                        
-                        if (chunkErr) throw new Error(`Erro processando ${m}/${year}: ${chunkErr.message}`);
 
-                        updateStatus(`Atualizando filtros ${m}/${year}...`, progress + Math.round(monthStep / 2));
-                        const { error: filterErr } = await supabase.rpc('refresh_cache_filters', { p_ano: year, p_mes: m });
-                        if (filterErr) throw new Error(`Erro atualizando filtros para ${m}/${year}: ${filterErr.message}`);
+                        if (chunkErr) throw new Error(`Erro processando ${m}/${year}: ${chunkErr.message}`);
                     }
                 }
             }
 
+            updateStatus('Atualizando filtros...', 98);
+            await supabase.rpc('refresh_cache_filters');
 
         } catch (error) {
             console.error(error);
@@ -1740,7 +1268,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Filters for dropdowns should NOT include the product itself to avoid signature mismatch
             // and usually we don't want selecting a product to filter the other dropdowns backwards in this context.
             const { p_produto, ...dropdownFilters } = viewFilters;
-            
+
             await loadBoxesFilters(dropdownFilters);
             await loadBoxesView();
         }, 500);
@@ -1751,7 +1279,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Usually dependent filters (Supplier -> Product) mean selection in Supplier narrows Product.
         // But selection in Product shouldn't necessarily narrow Supplier in a way that hides the current selection?
         // For now, pass all filters as is standard.
-        
+
         const { data, error } = await supabase.rpc('get_dashboard_filters', currentFilters);
         if (error) {
             console.error('Error refreshing boxes filters:', error);
@@ -1782,7 +1310,7 @@ document.addEventListener('DOMContentLoaded', () => {
         boxesTrendToggleBtn.addEventListener('click', () => {
             boxesTrendActive = !boxesTrendActive;
             const span = document.getElementById('boxes-trend-text');
-            
+
             if (boxesTrendActive) {
                 boxesTrendToggleBtn.classList.remove('text-orange-500', 'hover:text-orange-400');
                 boxesTrendToggleBtn.classList.add('text-purple-500', 'hover:text-purple-400');
@@ -1792,12 +1320,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 boxesTrendToggleBtn.classList.add('text-orange-500', 'hover:text-orange-400');
                 if (span) span.textContent = 'Calcular Tendência';
             }
-            
+
             // Re-render only (data already has trend info if RPC updated)
-            // But we need to make sure we have the data. 
+            // But we need to make sure we have the data.
             // Ideally we re-fetch if we suspect cache is stale, but usually RPC returns trend info always if available.
             // Let's just re-render first.
-            loadBoxesView(); 
+            loadBoxesView();
         });
     }
 
@@ -1827,7 +1355,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function exportBoxesTable(format) {
         if (!currentBoxesTableData || currentBoxesTableData.length === 0) {
-            window.showToast('error', 'Sem dados para exportar.');
+            alert('Sem dados para exportar.');
             return;
         }
 
@@ -1853,7 +1381,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (format === 'excel') {
             // Create workbook
             const wb = XLSX.utils.book_new();
-            
+
             // Prepare Filter Info rows
             const filterInfo = [
                 ["Relatório de Produtos por Caixas"],
@@ -1866,7 +1394,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Create Worksheet
             const ws = XLSX.utils.aoa_to_sheet(filterInfo);
-            
+
             // Append Data starting at row after filters
             XLSX.utils.sheet_add_json(ws, reportData, { origin: -1 });
 
@@ -1882,14 +1410,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             doc.setFontSize(16);
             doc.text("Relatório de Produtos por Caixas", 14, 15);
-            
+
             doc.setFontSize(10);
             doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 22);
 
             let yPos = 30;
             doc.text("Filtros Aplicados:", 14, yPos);
             yPos += 5;
-            
+
             doc.setFontSize(9);
             Object.entries(filters).forEach(([k, v]) => {
                 doc.text(`${k}: ${v}`, 14, yPos);
@@ -1927,7 +1455,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 anyClosed = true;
             }
         });
-        
+
         // Close export dropdown if clicked outside
         if (boxesExportDropdown && !boxesExportDropdown.classList.contains('hidden') && !boxesExportDropdown.contains(e.target) && !boxesExportBtn.contains(e.target)) {
             boxesExportDropdown.classList.add('hidden');
@@ -1989,14 +1517,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (currentVal && currentVal !== 'todos') boxesAnoFilter.value = currentVal;
             else if (filterData.anos.length > 0) boxesAnoFilter.value = filterData.anos[0];
-            enhanceSelectToCustomDropdown(boxesAnoFilter);
         }
 
         if (boxesMesFilter && boxesMesFilter.options.length <= 1) {
             boxesMesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; boxesMesFilter.appendChild(opt); });
-            enhanceSelectToCustomDropdown(boxesMesFilter);
         }
 
         setupCityMultiSelect(boxesFilialFilterBtn, boxesFilialFilterDropdown, boxesFilialFilterDropdown, filterData.filiais, boxesSelectedFiliais);
@@ -2006,7 +1532,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupCityMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, filterData.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
         setupCityMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, filterData.tipos_venda || [], boxesSelectedTiposVenda);
         setupCityMultiSelect(boxesCategoriaFilterBtn, boxesCategoriaFilterDropdown, boxesCategoriaFilterList, filterData.categorias || [], boxesSelectedCategorias, boxesCategoriaFilterSearch);
-        
+
         // Products - filterData.produtos
         setupCityMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, filterData.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
     }
@@ -2044,12 +1570,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!data) {
             const { data: rpcData, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
-            
+
             if (error) {
                 console.error(error);
                 hideDashboardLoading();
                 if (error.message.includes('function get_boxes_dashboard_data') && error.message.includes('does not exist')) {
-                    window.showToast('error', "Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
+                    alert("Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
                 }
                 return;
             }
@@ -2061,17 +1587,17 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBoxesDashboard(data);
     }
 
-    window.renderBoxesDashboard = function renderBoxesDashboard(data) {
+    function renderBoxesDashboard(data) {
         // Trend Data Extraction
         const trendInfo = data.trend_info || { allowed: false, factor: 1, current_month_index: -1 };
         const applyTrend = boxesTrendActive && trendInfo.allowed;
-        
+
         // Safe access helpers
         const safeVal = (v) => v || 0;
         const fmtBRL = (v) => safeVal(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         const fmtKg = (v) => (safeVal(v) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
         const fmtCaixas = (v) => Math.round(safeVal(v)).toLocaleString('pt-BR');
-        
+
         const calcVar = (curr, prev) => {
             if (prev > 0) return ((curr / prev) - 1) * 100;
             return curr > 0 ? 100 : 0;
@@ -2092,7 +1618,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let curr = safeVal(data.kpi_current[key]);
             const prev = safeVal(data.kpi_previous[key]);
             const tri = safeVal(data.kpi_tri_avg[key]);
-            
+
             let mainDisplayVal = curr;
             let triComparisonVal = curr; // Default: Compare current realized vs Tri Avg
 
@@ -2101,39 +1627,39 @@ document.addEventListener('DOMContentLoaded', () => {
                     // YEAR VIEW + TREND
                     // Main Value: Should be Annual Projection (YTD Realized - Current Realized + Current Trended) / Months * 12
                     // Formula simplified: (YTD_Realized_Excluding_Current + (Current_Realized * Factor)) / Month_Index * 12
-                    
+
                     const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
                     const currMonthData = (data.chart_data || []).find(d => d.year === filterYear && d.month_index === trendInfo.current_month_index);
-                    
+
                     let currMonthRealized = 0;
                     if (currMonthData) {
                         if (key === 'fat') currMonthRealized = currMonthData.faturamento;
                         else if (key === 'peso') currMonthRealized = currMonthData.peso;
                         else if (key === 'caixas') currMonthRealized = currMonthData.caixas;
                     }
-                    
+
                     // Tri Indicator: Trended Current Month vs Tri Avg
                     triComparisonVal = currMonthRealized * trendInfo.factor;
-                    
+
                     // Main Display: Annual Projection
                     // 1. Calculate YTD Realized Excluding Current Month
                     // curr is the total YTD from RPC
                     const ytdExclCurrent = curr - currMonthRealized;
-                    
+
                     // 2. Add Trended Current Month
                     const ytdWithTrend = ytdExclCurrent + triComparisonVal;
-                    
+
                     // 3. Project for Full Year (12 months)
                     // If we are in Jan (index 0), divide by 1 * 12
                     // If we are in Dec (index 11), divide by 12 * 12 (basically identity)
                     const monthsPassed = trendInfo.current_month_index + 1;
-                    
+
                     if (monthsPassed > 0) {
                         mainDisplayVal = (ytdWithTrend / monthsPassed) * 12;
                     } else {
                         mainDisplayVal = ytdWithTrend; // Fallback
                     }
-                    
+
                 } else {
                     // MONTH VIEW + TREND
                     // Main Value: Trended Monthly Value.
@@ -2151,7 +1677,7 @@ document.addEventListener('DOMContentLoaded', () => {
                      // Find max month in data or current month index
                      // If trend is not allowed (e.g. past year), use the last month available in data?
                      // Or just use the average of the year vs tri? Usually it's Month vs Tri.
-                     
+
                      // Let's assume for Year View, Tri indicator is always "Last Active Month" vs "Previous 3 Months Avg".
                      // If we are in 2025 (current), it's Current Month.
                      // If we are in 2024 (past), it's Dec 2024 vs Oct-Nov-Dec 2024 avg? Or Jan 2025 vs Q4 2024?
@@ -2164,9 +1690,9 @@ document.addEventListener('DOMContentLoaded', () => {
                              else if (key === 'caixas') triComparisonVal = currMonthData.caixas;
                          }
                      } else {
-                         // If past year, maybe just leave it as average vs average or hide? 
+                         // If past year, maybe just leave it as average vs average or hide?
                          // Logic: "always the most recent month".
-                         // For now, let's keep triComparisonVal = curr (which is Total Year) ONLY if we can't isolate month, 
+                         // For now, let's keep triComparisonVal = curr (which is Total Year) ONLY if we can't isolate month,
                          // but standard logic suggests we shouldn't compare Year Total vs Monthly Average.
                          // Let's stick to: if chart data exists, pick last month.
                          const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
@@ -2187,7 +1713,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const elPrevVal = document.getElementById(`boxes-kpi-${prefix}-prev`);
             const elPrevVar = document.getElementById(`boxes-kpi-${prefix}-prev-var`);
             if(elPrevVal) elPrevVal.textContent = formatFn(prev);
-            
+
             // Year vs Year variation (using Main Display Val which might be Trended Month or Realized Year)
             // If Year View: Realized Year vs Previous Year.
             // If Month View + Trend: Trended Month vs Previous Month (same period prev year).
@@ -2197,7 +1723,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const elTriVal = document.getElementById(`boxes-kpi-${prefix}-tri`);
             const elTriVar = document.getElementById(`boxes-kpi-${prefix}-tri-var`);
             if(elTriVal) elTriVal.textContent = formatFn(tri);
-            
+
             // Tri Variation: Always Monthly (Recent/Trended) vs Tri Avg
             if(elTriVar) elTriVar.innerHTML = fmtVar(calcVar(triComparisonVal, tri));
         };
@@ -2209,12 +1735,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Chart (2 datasets: Current vs Previous + Trend if active)
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         const labels = [...monthNames];
-        const currentYear = new Date().getFullYear(); 
-        
+        const currentYear = new Date().getFullYear();
+
         const boxesCurrent = new Array(12).fill(0);
         const boxesPrev = new Array(12).fill(0);
         const chartData = data.chart_data || [];
-        
+
         const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : currentYear;
         const prevYear = filterYear - 1;
 
@@ -2229,12 +1755,16 @@ document.addEventListener('DOMContentLoaded', () => {
             {
                 label: `Ano ${prevYear}`,
                 data: boxesPrev,
+                backgroundColor: '#f97316', // Orange
+                borderColor: '#f97316',
                 borderWidth: 1,
                 isPrevious: true
             },
             {
                 label: `Ano ${filterYear}`,
                 data: boxesCurrent,
+                backgroundColor: '#10b981', // Emerald
+                borderColor: '#10b981',
                 borderWidth: 1,
                 isCurrent: true
             }
@@ -2244,7 +1774,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (applyTrend) {
             // Add "Tendência" Bar
             labels.push('Tendência');
-            
+
             // Calculate Trended Value for the current month
             // We need the realized value of the current month to project
             const currMonthData = chartData.find(d => d.year === filterYear && d.month_index === trendInfo.current_month_index);
@@ -2255,22 +1785,24 @@ document.addEventListener('DOMContentLoaded', () => {
             // BUT simpler: extend current year dataset? No, distinct color.
             // Let's add a new dataset "Tendência" with 13 points (12 null + 1 val)
             // And pad others with 0 or null
-            
+
             // Pad existing
             datasets.forEach(ds => ds.data.push(null));
-            
+
             const trendData = new Array(13).fill(null);
             trendData[12] = trendCaixas;
-            
+
             datasets.push({
                 label: `Tendência ${monthNames[trendInfo.current_month_index]}`,
                 data: trendData,
+                backgroundColor: '#ffaa4d', // New Dark Blue
+                borderColor: '#ffaa4d',
                 borderWidth: 1,
                 isTrend: true
             });
         }
 
-        createChart('boxesChart', 'bar', labels, datasets, (v) => formatChartLabel(v));
+        createChart('boxesChart', 'bar', labels, datasets, (v) => Math.round(v).toLocaleString('pt-BR'));
 
         // Table
         const products = data.products_table || [];
@@ -2327,7 +1859,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // If overlay exists but is in a different container, move it
         if (overlay && overlay.parentElement !== container) {
             overlay.remove();
-            overlay = null; 
+            overlay = null;
         }
 
         if (!overlay && container) {
@@ -2357,12 +1889,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const filters = getCurrentFilters();
         await loadFilters(filters);
         await loadMainDashboardData();
-        
+
         // Trigger background prefetch after main load
         setTimeout(() => {
             queueCommonFilters();
         }, 3000);
-        isMainDashboardInitialized = true;
     }
 
     async function checkDataVersion() {
@@ -2371,14 +1902,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) { console.warn('Erro ao verificar versão:', error); return; }
 
             const localVersion = localStorage.getItem('dashboard_data_version');
-            
+
             if (serverVersion && serverVersion !== localVersion) {
                 console.log('Nova versão de dados detectada. Limpando cache...', serverVersion);
-                
+
                 // Clear IndexedDB
                 const db = await initDB();
                 await db.clear(STORE_NAME);
-                
+
                 // Update Local Version
                 localStorage.setItem('dashboard_data_version', serverVersion);
             }
@@ -2406,7 +1937,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Cache logic for Filters
         const CACHE_TTL = 1000 * 60 * 5; // 5 minutes for filters
         const cacheKey = generateCacheKey('dashboard_filters', currentFilters);
-        
+
         try {
             const cachedEntry = await getFromCache(cacheKey);
             if (cachedEntry && cachedEntry.timestamp) {
@@ -2414,7 +1945,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (age < CACHE_TTL) {
                     console.log('Serving filters from cache (fresh)');
                     applyFiltersData(cachedEntry.data);
-                    return; 
+                    return;
                 }
             }
         } catch (e) { console.warn('Cache error:', e); }
@@ -2446,7 +1977,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dropdown.classList.remove('hidden');
         }
     };
-        
+
         let debounceTimer;
         const renderItems = (filterText = '') => {
             container.innerHTML = '';
@@ -2458,9 +1989,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     return String(val).toLowerCase().includes(lower);
                 });
             }
-            
+
             const displayItems = filteredItems.slice(0, MAX_ITEMS);
-            
+
             displayItems.forEach(item => {
                 const value = isObject ? item.cod : item;
                 const label = isObject ? item.name : item;
@@ -2503,16 +2034,27 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         renderItems();
         updateBtnLabel();
-        if (searchInput) { 
+        if (searchInput) {
             searchInput.oninput = (e) => {
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => renderItems(e.target.value), 300);
-            }; 
-            searchInput.onclick = (e) => e.stopPropagation(); 
+            };
+            searchInput.onclick = (e) => e.stopPropagation();
         }
     }
 
-    function enhanceSelectToCustomDropdown(selectElement) {
+    function applyFiltersData(data) {
+        // Capture available options for prefetcher
+        availableFiltersState.filiais = data.filiais || [];
+        availableFiltersState.supervisors = data.supervisors || [];
+        availableFiltersState.cidades = data.cidades || [];
+        availableFiltersState.vendedores = data.vendedores || [];
+        availableFiltersState.fornecedores = data.fornecedores || []; // Array of objects
+        availableFiltersState.tipos_venda = data.tipos_venda || [];
+        availableFiltersState.redes = data.redes || [];
+        availableFiltersState.categorias = data.categorias || [];
+
+        function enhanceSelectToCustomDropdown(selectElement) {
         if (!selectElement) return;
 
         // Return if already enhanced
@@ -2584,6 +2126,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         clickedLbl.classList.remove('text-slate-200');
                         clickedLbl.classList.add('text-orange-500', 'font-bold');
                     }
+                    // Instead of a full re-render which closes the dropdown, just update DOM classes
+                    // renderOptions(); // Removed to avoid re-render stutter if needed, though hidden class logic works
                 });
                 dropdown.appendChild(itemDiv);
             });
@@ -2629,25 +2173,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function applyFiltersData(data) {
-        // Capture available options for prefetcher
-        availableFiltersState.filiais = data.filiais || [];
-        availableFiltersState.supervisors = data.supervisors || [];
-        availableFiltersState.cidades = data.cidades || [];
-        availableFiltersState.vendedores = data.vendedores || [];
-        availableFiltersState.fornecedores = data.fornecedores || []; // Array of objects
-        availableFiltersState.tipos_venda = data.tipos_venda || [];
-        availableFiltersState.redes = data.redes || [];
-        availableFiltersState.categorias = data.categorias || [];
-
-
     const updateSingleSelect = (element, items) => {
             const currentVal = element.value;
             element.innerHTML = '';
-        
+
             // Always add 'Todos' option (value='todos' for year, '' for others)
             const allOpt = document.createElement('option');
-            allOpt.value = (element.id === 'ano-filter') ? 'todos' : ''; 
+            allOpt.value = (element.id === 'ano-filter') ? 'todos' : '';
             allOpt.textContent = 'Todos';
             element.appendChild(allOpt);
 
@@ -2669,14 +2201,14 @@ document.addEventListener('DOMContentLoaded', () => {
              // But if we want default 'Todos', we should let it fall through to first option?
              // If the user wants specific year by default on load, logic handles it.
              // If user wants 'Todos' (e.g. clear filters), it matches.
-             
+
              // If currentVal was invalid (e.g. old year not in list), default to Todos (index 0) or First Year?
              // Usually defaulting to 'Todos' (index 0) is safer now that we added it.
              if (!element.value) element.value = 'todos';
             }
         };
         updateSingleSelect(anoFilter, data.anos);
-        if (mesFilter.options.length <= 1) { 
+        if (mesFilter.options.length <= 1) {
             mesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; mesFilter.appendChild(opt); });
@@ -2735,7 +2267,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentFiltersStr = JSON.stringify(filters);
         if (currentFiltersStr === lastMainDashboardFiltersStr) return; // No changes made
         lastMainDashboardFiltersStr = currentFiltersStr;
-        
+
         clearTimeout(filterDebounceTimer);
         filterDebounceTimer = setTimeout(async () => {
             showDashboardLoading();
@@ -2773,7 +2305,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. Network Request
         if (isBackground) console.log(`[Background] Fetching data from API...`);
         const { data, error } = await supabase.rpc('get_main_dashboard_data', filters);
-        
+
         if (error) {
             console.error('API Error:', error);
             return { data: null, error };
@@ -2789,7 +2321,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadMainDashboardData(forceRefresh = false) {
         const filters = getCurrentFilters();
         const cacheKey = generateCacheKey('dashboard_data', filters);
-        
+
         // 1. Stale-While-Revalidate: Try Cache & Render Immediately
         if (!forceRefresh) {
             try {
@@ -2797,7 +2329,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (cachedEntry && cachedEntry.data) {
                     console.log('SWR: Rendering cached data immediately...');
                     renderDashboard(cachedEntry.data);
-                    loadFrequencyTable(filters);
                     lastDashboardData = cachedEntry.data;
 
                     const age = Date.now() - cachedEntry.timestamp;
@@ -2829,17 +2360,16 @@ document.addEventListener('DOMContentLoaded', () => {
         ]);
 
         const { data, error } = dashboardResult;
-        
+
         if (data && !error) {
             console.log('SWR: Updated with fresh data.');
             lastDashboardData = data;
             renderDashboard(data);
-            await loadFrequencyTable(filters);
 
             // Prefetch Next
             prefetchViews(filters);
         }
-        
+
         hideDashboardLoading();
     }
 
@@ -2896,7 +2426,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .order('dtped', { ascending: false })
                 .limit(1)
                 .maybeSingle();
-            
+
             if (data && data.dtped) {
                 // dtped is timestamp with time zone, e.g., "2026-01-20T14:00:00+00:00"
                 // We want just the date part in YYYY-MM-DD for comparison
@@ -2919,7 +2449,7 @@ document.addEventListener('DOMContentLoaded', () => {
             p_mes: currentFilters.p_mes,
             p_filial: [], p_cidade: [], p_supervisor: [], p_vendedor: [], p_fornecedor: [], p_tipovenda: []
         };
-        
+
         // Helper to check and add
         const checkAndAdd = async (label, filters) => {
              const key = generateCacheKey('dashboard_data', filters);
@@ -2931,7 +2461,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const tasks = [];
-        
+
         // 1. Filiais
         availableFiltersState.filiais.forEach(v => tasks.push(checkAndAdd(`Filial: ${v}`, { ...baseFilters, p_filial: [v] })));
 
@@ -2952,7 +2482,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 6. Tipos Venda
         availableFiltersState.tipos_venda.forEach(v => tasks.push(checkAndAdd(`Tipo: ${v}`, { ...baseFilters, p_tipovenda: [v] })));
-        
+
         // 7. Redes
         availableFiltersState.redes.forEach(v => tasks.push(checkAndAdd(`Rede: ${v}`, { ...baseFilters, p_rede: [v] })));
 
@@ -2984,17 +2514,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         isPrefetching = true;
         const task = prefetchQueue.shift();
-        
+
         console.log(`[Background] Processando filtro para: ${task.label} (${prefetchQueue.length} restantes)`);
-        
+
         // We use fetchDashboardData which handles the "Check Cache -> Fetch -> Save Cache" loop
         // We pass isBackground=true to suppress standard logs and enable specific ones
         await fetchDashboardData(task.filters, true);
-        
+
         isPrefetching = false;
-        
+
         // Schedule next task with a delay to yield to main thread (UI responsiveness)
-        setTimeout(processQueue, 500); 
+        setTimeout(processQueue, 500);
     }
 
     function renderDashboard(data) {
@@ -3017,13 +2547,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // KPI Calculation Variables
         let currFat, currKg, prevFat, prevKg, triAvgFat, triAvgPeso;
         let kpiTitleFat, kpiTitleKg;
-        
+
         // --- KPI LOGIC (Scenario Check) ---
         if (anoFilter.value !== 'todos' && mesFilter.value === '') {
             // SCENARIO A: Year Selected, Month All -> Show Year vs Previous Year (Accumulated)
-            
+
             const sumData = (dataset, useTrend) => {
-                let sumFat = 0; 
+                let sumFat = 0;
                 let sumKg = 0;
                 // Sum available months (0 to 11)
                 dataset.forEach(d => {
@@ -3057,13 +2587,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             prevFat = prevSums.faturamento;
             prevKg = prevSums.peso;
-            
+
             kpiTitleFat = `Tend. FAT ${data.current_year} vs Ano Ant.`;
             kpiTitleKg = `Tend. TON ${data.current_year} vs Ano Ant.`;
 
         } else {
             // SCENARIO B: Default (Month vs Month or Filtered Month)
-            
+
             if (mesFilter.value !== '') {
                 const selectedMonthIndex = parseInt(mesFilter.value);
                 currentData = currentData.filter(d => d.month_index === selectedMonthIndex);
@@ -3216,7 +2746,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
             calcEvo
         });
-        
+
         updateKpiCard({
             prefix: 'kg',
             trendVal: currKg,
@@ -3242,7 +2772,7 @@ document.addEventListener('DOMContentLoaded', () => {
         triAvgPeso = triCount > 0 ? triSumPeso / triCount : 0;
 
         let currMonthFatForTri, currMonthKgForTri;
-        
+
         if (anoFilter.value !== 'todos' && mesFilter.value === '') {
              // In Year View, we still want the Tri card to make sense (Current Month vs Tri).
              // Let's re-fetch the specific current month data for the Tri calculation.
@@ -3277,7 +2807,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const mName = monthNames[targetIndex]?.toUpperCase() || "";
-        
+
         // Update Titles
         document.getElementById('kpi-title-evo-ano-fat').textContent = kpiTitleFat;
         document.getElementById('kpi-title-evo-ano-kg').textContent = kpiTitleKg;
@@ -3286,7 +2816,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- CHART PREP (Responsive to Mode) ---
         const mainChartTitle = document.getElementById('main-chart-title');
-        
+
         // Determine Bonification Mode
         const isBonifMode = isBonificationMode(getCurrentFilters().p_tipovenda);
 
@@ -3295,10 +2825,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isBonifMode && currentChartMode === 'faturamento') return d.bonificacao;
             return currentChartMode === 'faturamento' ? d.faturamento : d.peso;
         };
-        
+
         // Formatters
-        const currencyFormatter = (v) => formatChartLabel(v);
-        const weightFormatter = (v) => formatChartLabel(v, ' Ton');
+        const currencyFormatter = (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''));
+        const weightFormatter = (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
         const currentFormatter = currentChartMode === 'faturamento' ? currencyFormatter : weightFormatter;
 
         if (currentChartMode === 'faturamento') {
@@ -3307,12 +2837,12 @@ document.addEventListener('DOMContentLoaded', () => {
             mainChartTitle.textContent = "TONELAGEM MENSAL";
         }
 
-        const mapTo12 = (arr) => { 
-            const res = new Array(12).fill(0); 
-            arr.forEach(d => res[d.month_index] = getDataValue(d)); 
-            return res; 
+        const mapTo12 = (arr) => {
+            const res = new Array(12).fill(0);
+            arr.forEach(d => res[d.month_index] = getDataValue(d));
+            return res;
         };
-        
+
         const datasets = [];
 
         datasets.push({ label: `Ano ${data.previous_year}`, data: mapTo12(previousData), isPrevious: true });
@@ -3323,13 +2853,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const trendArray = new Array(13).fill(null); // Increased to 13 to separate trend
             // Pad previous datasets to 13
             datasets.forEach(ds => ds.data.push(null));
-            
+
             trendArray[12] = getDataValue(data.trend_data); // Use 13th slot
-            
-            datasets.push({ 
-                label: `Tendência ${monthNames[data.trend_data.month_index]}`, 
+
+            datasets.push({
+                label: `Tendência ${monthNames[data.trend_data.month_index]}`,
                 data: trendArray,
-                isTrend: true 
+                isTrend: true
             });
         }
 
@@ -3349,7 +2879,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateKpiCard({ prefix, trendVal, prevVal, fmt, calcEvo }) {
         const evo = calcEvo(trendVal, prevVal);
-        
+
         const elTrend = document.getElementById(`kpi-value-trend-${prefix}`);
         const elPrev = document.getElementById(`kpi-value-prev-${prefix}`);
         const elVar = document.getElementById(`kpi-var-${prefix}`);
@@ -3362,16 +2892,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function formatChartLabel(v, suffix = '') {
-        if (!v) return '';
-        if (v >= 1000000) {
-            return (v / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' M' + suffix;
-        } else if (v >= 1000) {
-            return (v / 1000).toFixed(0) + 'K' + suffix;
-        }
-        return v.toFixed(0) + suffix;
-    }
-    window.createChart = function createChart(canvasId, type, labels, datasetsData, formatterVal) {
+    function createChart(canvasId, type, labels, datasetsData, formatterVal) {
         const container = document.getElementById(canvasId + 'Container');
         if (!container) return;
         container.innerHTML = '';
@@ -3380,14 +2901,14 @@ document.addEventListener('DOMContentLoaded', () => {
         container.appendChild(newCanvas);
 
         const ctx = newCanvas.getContext('2d');
-        const professionalPalette = { 'current': '#379fae', 'previous': '#eaf7f8', 'trend': '#ffaa4d' };
+        const professionalPalette = { 'current': '#b0e0e6', 'previous': '#eaf7f8', 'trend': '#ffaa4d' };
 
         const datasets = datasetsData.map((d, i) => {
             let color = '#94a3b8'; // default
             if (d.isPrevious) color = professionalPalette.previous;
             if (d.isCurrent) color = professionalPalette.current;
             if (d.isTrend) color = professionalPalette.trend;
-            
+
             return {
                 ...d,
                 label: d.label,
@@ -3414,39 +2935,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { labels: { color: '#cbd5e1' } },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed.y !== null) {
-                                    label += context.parsed.y.toLocaleString('pt-BR');
-                                }
-                                return label;
-                            }
-                        }
-                    },
                     datalabels: {
                         display: true,
                         anchor: 'end',
                         align: 'top',
                         offset: 4,
                         color: '#cbd5e1',
-                        font: { size: 11, weight: 'bold' },
-                        formatter: formatterVal || ((v) => formatChartLabel(v))
+                        font: { size: 9, weight: 'bold' },
+                        formatter: formatterVal || ((v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : '')))
                     }
                 },
                 scales: {
-                    y: { 
-                        ticks: { color: '#94a3b8' }, 
+                    y: {
+                        ticks: { color: '#94a3b8' },
                         grid: { color: 'rgba(255, 255, 255, 0.05)' },
                         afterFit: (axis) => { axis.width = 150; } // Force Y-axis width to match table first column
                     },
-                    x: { 
-                        ticks: { color: '#94a3b8' }, 
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' } 
+                    x: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
                     }
                 }
             },
@@ -3466,17 +2973,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const tableHead = document.querySelector('#monthly-summary-table thead tr');
         tableBody.innerHTML = '';
 
+        const table = document.getElementById('monthly-summary-table');
+        if (table && !table.classList.contains('collapsed-table')) {
+            table.classList.add('collapsed-table');
+        }
+
         const monthInitials = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
         let headerHTML = `
             <th class="px-2 py-2 text-left bg-transparent border-b border-white/50 relative">
                 <div class="flex items-center gap-2">
                     <span>Indicadores</span>
-                    <div id="summary-table-toggle-icon" class="hidden" style="display: none;"></div>
+                    <svg id="summary-table-toggle-icon" class="w-4 h-4 transition-transform duration-300 transform -rotate-90 hidden" style="display: none;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
             </th>`;
         monthInitials.forEach(m => headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 font-light text-xs text-gray-300 summary-col-header transition-opacity duration-300 opacity-0">${m}</th>`);
         if (trendData) {
-            headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 text-[#ffaa4d] drop-shadow-[0_0_2px_rgba(255,170,77,0.5)] font-bold text-xs summary-col-header transition-opacity duration-300 opacity-0">Tendência</th>`;
+            headerHTML += `<th class="px-2 py-2 text-center bg-transparent border-b border-white/50 text-purple-300 font-light text-xs summary-col-header transition-opacity duration-300 opacity-0">Tendência</th>`;
         }
         tableHead.innerHTML = headerHTML;
 
@@ -3509,7 +3021,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  let tVal = trendData[ind.key];
                  if (tVal === undefined) tVal = null;
                  if (tVal === null && !ind.allowNull) tVal = 0;
-                 rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-white">${ind.fmt(tVal)}</td>`;
+                 rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-purple-300 bg-purple-900/20">${ind.fmt(tVal)}</td>`;
             }
             rowHTML += '</tr>';
             tableBody.innerHTML += rowHTML;
@@ -3544,10 +3056,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentFiltersStr = JSON.stringify(filters);
         if (currentFiltersStr === lastCityFiltersStr) return;
         lastCityFiltersStr = currentFiltersStr;
-        
+
         clearTimeout(cityFilterDebounceTimer);
         cityFilterDebounceTimer = setTimeout(() => {
-            currentCityPage = 0; 
+            currentCityPage = 0;
             loadCityView();
         }, 500);
     };
@@ -3593,7 +3105,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn('Container not found for filter', btn.id);
             return;
         }
-        
+
         const MAX_ITEMS = 100;
         let debounceTimer;
 
@@ -3619,7 +3131,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return String(val).toLowerCase().includes(lower);
                 });
             }
-            
+
             const displayItems = filteredItems.slice(0, MAX_ITEMS);
 
             displayItems.forEach(item => {
@@ -3654,7 +3166,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const span = btn.querySelector('span');
             if (!span) {
                 // Fallback if no span, to prevent crash
-                return; 
+                return;
             }
 
             if (selectedArray.length === 0) {
@@ -3669,12 +3181,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         renderItems();
         updateBtnLabel();
-        if (searchInput) { 
+        if (searchInput) {
             searchInput.oninput = (e) => {
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => renderItems(e.target.value), 300);
-            }; 
-            searchInput.onclick = (e) => e.stopPropagation(); 
+            };
+            searchInput.onclick = (e) => e.stopPropagation();
         }
     }
 
@@ -3706,14 +3218,12 @@ document.addEventListener('DOMContentLoaded', () => {
              });
              if (currentVal && currentVal !== 'todos') cityAnoFilter.value = currentVal;
              else if (filterData.anos.length > 0) cityAnoFilter.value = filterData.anos[0];
-             enhanceSelectToCustomDropdown(cityAnoFilter);
          }
-         
+
          if (cityMesFilter && cityMesFilter.options.length <= 1) {
             cityMesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; cityMesFilter.appendChild(opt); });
-            enhanceSelectToCustomDropdown(cityMesFilter);
         }
 
         setupCityMultiSelect(cityFilialFilterBtn, cityFilialFilterDropdown, cityFilialFilterDropdown, filterData.filiais, citySelectedFiliais);
@@ -3751,7 +3261,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const { data, error } = await supabase.rpc('get_city_view_data', filters);
-        
+
         hideDashboardLoading();
 
         if(error) { console.error(error); return; }
@@ -3772,7 +3282,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const activeClients = Array.isArray(data.active_clients) ? data.active_clients : mapRows(data.active_clients);
-        const cityRanking = data.city_ranking ? (Array.isArray(data.city_ranking) ? data.city_ranking : mapRows(data.city_ranking)) : [];
 
         const renderTable = (bodyId, items) => {
             const body = document.getElementById(bodyId);
@@ -3793,26 +3302,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        const renderRankingTable = (bodyId, items) => {
-            const body = document.getElementById(bodyId);
-            if (items && items.length > 0) {
-                body.innerHTML = items.map(c => {
-                    const varClass = c['Variação'] > 0 ? 'text-emerald-400' : (c['Variação'] < 0 ? 'text-red-400' : 'text-slate-400');
-                    const varArrow = c['Variação'] > 0 ? '▲' : (c['Variação'] < 0 ? '▼' : '-');
-                    return `
-                    <tr class="table-row">
-                        <td class="p-2 font-semibold">${c['Cidade']}</td>
-                        <td class="p-2 text-right text-cyan-400 font-bold">${parseFloat(c['% Share']).toFixed(2)}%</td>
-                        <td class="p-2 text-right font-bold ${varClass}">${varArrow} ${Math.abs(c['Variação']).toFixed(2)}%</td>
-                    </tr>
-                `}).join('');
-            } else {
-                body.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>';
-            }
-        };
-
         renderTable('city-active-detail-table-body', activeClients);
-        renderRankingTable('city-ranking-table-body', cityRanking);
 
         renderCityPaginationControls();
     }
@@ -3847,7 +3337,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentFiltersStr = JSON.stringify(filters);
         if (currentFiltersStr === lastBranchFiltersStr) return;
         lastBranchFiltersStr = currentFiltersStr;
-        
+
         clearTimeout(branchFilterDebounceTimer);
         branchFilterDebounceTimer = setTimeout(loadBranchView, 500);
     };
@@ -3876,7 +3366,7 @@ document.addEventListener('DOMContentLoaded', () => {
             handleBranchFilterChange();
         }
     });
-    
+
     branchClearFiltersBtn?.addEventListener('click', () => {
          branchAnoFilter.value = 'todos';
          branchMesFilter.value = '';
@@ -3923,15 +3413,13 @@ document.addEventListener('DOMContentLoaded', () => {
              // Preserve selection or default to current year
              if (currentVal && currentVal !== 'todos') branchAnoFilter.value = currentVal;
              else if (filterData.anos.length > 0) branchAnoFilter.value = filterData.anos[0];
-             enhanceSelectToCustomDropdown(branchAnoFilter);
          }
-         
+
          // Months
          if (branchMesFilter.options.length <= 1) {
             branchMesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; branchMesFilter.appendChild(opt); });
-            enhanceSelectToCustomDropdown(branchMesFilter);
         }
 
         // Multi Selects
@@ -3946,7 +3434,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
         setupBranchMultiSelect(branchRedeFilterBtn, branchRedeFilterDropdown, branchRedeFilterList, redes, branchSelectedRedes, branchRedeFilterSearch);
     }
-    
+
     // Specific setup for Branch Filter to enforce 2 selections
     function setupBranchFilialSelect(btn, dropdown, container, items, selectedArray) {
         // If nothing selected, default to first 2
@@ -3967,7 +3455,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dropdown.classList.remove('hidden');
         }
     };
-        
+
         const renderItems = () => {
             container.innerHTML = '';
             (items || []).forEach(item => {
@@ -3981,7 +3469,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const checkbox = div.querySelector('input');
                     // Toggle logic
                     if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
-                    
+
                     if (checkbox.checked) {
                         if (!selectedArray.includes(val)) {
                             selectedArray.push(val);
@@ -3992,7 +3480,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const idx = selectedArray.indexOf(val);
                         if (idx > -1) selectedArray.splice(idx, 1);
                     }
-                    
+
                     renderItems(); // Re-render to update checks visually (e.g. if one was auto-removed)
                     updateBtnLabel();
 // Removed immediate handleFilterChange call from here if any existed
@@ -4001,13 +3489,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (!items || items.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
         };
-        
+
         const updateBtnLabel = () => {
             const span = btn.querySelector('span');
             if (selectedArray.length === 0) span.textContent = 'Selecione 2';
             else span.textContent = `${selectedArray.length} selecionadas`;
         };
-        
+
         renderItems();
         updateBtnLabel();
     }
@@ -4038,7 +3526,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return String(val).toLowerCase().includes(lower);
                 });
             }
-            
+
             const displayItems = filteredItems.slice(0, MAX_ITEMS);
 
             displayItems.forEach(item => {
@@ -4083,12 +3571,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         renderItems();
         updateBtnLabel();
-        if (searchInput) { 
+        if (searchInput) {
             searchInput.oninput = (e) => {
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => renderItems(e.target.value), 300);
-            }; 
-            searchInput.onclick = (e) => e.stopPropagation(); 
+            };
+            searchInput.onclick = (e) => e.stopPropagation();
         }
     }
 
@@ -4097,7 +3585,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Populate Dropdowns if needed
         if (branchAnoFilter.options.length <= 1) {
-            await initBranchFilters(); 
+            await initBranchFilters();
         }
 
         // Prepare Filters for RPC
@@ -4138,7 +3626,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             console.error("Erro geral no fetch de filiais:", e);
         }
-        
+
         hideDashboardLoading();
         if (branchDataMap) {
             renderBranchDashboard(branchDataMap, selectedYear, selectedMonth);
@@ -4148,7 +3636,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderBranchDashboard(branchDataMap, selectedYear, selectedMonth) {
          const now = new Date();
          const branches = Object.keys(branchDataMap).sort();
-         const kpiBranches = {}; 
+         const kpiBranches = {};
          const chartBranches = {};
          const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
@@ -4169,7 +3657,7 @@ document.addEventListener('DOMContentLoaded', () => {
          branches.forEach(b => {
              const data = branchDataMap[b];
              let monthlyData = data.monthly_data_current || [];
-             
+
              // If month is selected, filter data
              if (selectedMonth !== null && selectedMonth !== undefined && selectedMonth !== '') {
                  const monthIdx = parseInt(selectedMonth);
@@ -4211,7 +3699,7 @@ document.addEventListener('DOMContentLoaded', () => {
                      kpiKg += (d.peso || 0);
                  });
              }
-             
+
              kpiBranches[b] = { faturamento: kpiFat, peso: kpiKg };
          });
 
@@ -4219,7 +3707,7 @@ document.addEventListener('DOMContentLoaded', () => {
          // Ensure we display consistent order as fetched/selected
          const b1 = branches[0] || 'N/A';
          const b2 = branches[1] || 'N/A';
-         
+
          const val1Fat = kpiBranches[b1]?.faturamento || 0;
          const val2Fat = kpiBranches[b2]?.faturamento || 0;
          const val1Kg = kpiBranches[b1]?.peso || 0;
@@ -4229,15 +3717,15 @@ document.addEventListener('DOMContentLoaded', () => {
          const elB2Name = document.getElementById('branch-name-2'); if(elB2Name) elB2Name.textContent = b2;
          const elVal1Fat = document.getElementById('branch-val-1-fat'); if(elVal1Fat) elVal1Fat.textContent = val1Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
          const elVal2Fat = document.getElementById('branch-val-2-fat'); if(elVal2Fat) elVal2Fat.textContent = val2Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-         
+
          // Variations Logic
          // Share of Total (Val / Total)
-         
+
          const calcShare = (val, total) => {
              if (total > 0) return (val / total) * 100;
              return 0;
          };
-         
+
          const totalFat = val1Fat + val2Fat;
          const share1Fat = calcShare(val1Fat, totalFat);
          const share2Fat = calcShare(val2Fat, totalFat);
@@ -4273,7 +3761,7 @@ document.addEventListener('DOMContentLoaded', () => {
              elVar2Kg.textContent = `${share2Kg.toFixed(1)}%`;
              elVar2Kg.className = `text-sm font-bold mt-1 ${share2Kg >= 50 ? 'text-emerald-400' : 'text-red-400'}`;
          }
-         
+
          // Update Title Context
          let kpiContext;
          if (!selectedYear || selectedYear === 'todos') {
@@ -4297,8 +3785,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
          // --- Chart Rendering ---
          const datasets = [];
-         const colors = ['#379fae', '#eaf7f8', '#06b6d4', '#8b5cf6'];
-         const trendColors = ['#ffaa4d', '#ffce99', '#ff8b3d', '#ffdfb3'];
+         const colors = ['#b0e0e6', '#eaf7f8', '#06b6d4', '#8b5cf6'];
+         const trendColors = ['#ffaa4d', '#ffaa4d'];
 
          branches.forEach((b, idx) => {
              datasets.push({
@@ -4309,15 +3797,15 @@ document.addEventListener('DOMContentLoaded', () => {
                  borderWidth: 1
              });
          });
-         
+
          const chartYear = (!selectedYear || selectedYear === 'todos') ? now.getFullYear() : parseInt(selectedYear);
-         
+
          // Check if ANY branch has trend data available
          const hasTrendData = branches.some(b => {
              const bData = branchDataMap[b];
              return bData && bData.trend_allowed && bData.trend_data;
          });
-         
+
          if (hasTrendData) {
              branches.forEach((b, idx) => {
                  const bData = branchDataMap[b];
@@ -4327,29 +3815,29 @@ document.addEventListener('DOMContentLoaded', () => {
                  } else {
                      if (datasets[idx]) datasets[idx].data.push(0);
                  }
-                 
+
                  // Update colors to highlight trend
                  const baseColor = colors[idx % colors.length];
                  const trendColor = trendColors[idx % trendColors.length];
-                 
+
                  // Create array of colors: 12 months + 1 trend
                  const bgColors = new Array(12).fill(baseColor);
                  bgColors.push(trendColor);
-                 
+
                  datasets[idx].backgroundColor = bgColors;
                  datasets[idx].borderColor = bgColors;
              });
-             
+
              const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Tendência"];
-             const fmt = currentBranchChartMode === 'faturamento' 
-                ? (v) => formatChartLabel(v)
-                : (v) => formatChartLabel(v, ' Ton');
+             const fmt = currentBranchChartMode === 'faturamento'
+                ? (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''))
+                : (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
              createChart('branch-chart', 'bar', labels, datasets, fmt);
          } else {
              const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-             const fmt = currentBranchChartMode === 'faturamento' 
-                ? (v) => formatChartLabel(v)
-                : (v) => formatChartLabel(v, ' Ton');
+             const fmt = currentBranchChartMode === 'faturamento'
+                ? (v) => (v && v > 1000 ? (v/1000).toFixed(0) + 'k' : (v ? v.toFixed(0) : ''))
+                : (v) => (v && v > 1000 ? (v/1000).toFixed(0) + ' Ton' : (v ? v.toFixed(0) : ''));
              createChart('branch-chart', 'bar', labels, datasets, fmt);
          }
     }
@@ -4381,7 +3869,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         let year = now.getFullYear();
         let month = now.getMonth();
-        
+
         // Respect Filters if selected
         if (anoFilter && anoFilter.value !== 'todos') {
             year = parseInt(anoFilter.value);
@@ -4393,14 +3881,14 @@ document.addEventListener('DOMContentLoaded', () => {
                  }
             }
         }
-        
+
         if (mesFilter && mesFilter.value !== '') {
             month = parseInt(mesFilter.value);
         }
 
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
-        
+
         const daysInMonth = lastDay.getDate();
         const startingDay = firstDay.getDay(); // 0 = Sunday
 
@@ -4408,7 +3896,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let html = `<div class="mb-2 font-bold text-slate-300 text-center">${monthNames[month]} ${year}</div>`;
         html += `<div class="grid grid-cols-7 gap-1 text-center">`;
-        
+
         const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
         weekDays.forEach(day => html += `<div class="w-8 h-8 flex items-center justify-center text-xs font-bold text-slate-500 cursor-default">${day}</div>`);
 
@@ -4423,7 +3911,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isHoliday = holidays.includes(dateStr);
             const isToday = (day === now.getDate() && month === now.getMonth() && year === now.getFullYear());
             const isLastSalesDay = (dateStr === lastSalesDate);
-            
+
             let classes = 'calendar-day w-8 h-8 flex items-center justify-center rounded cursor-pointer text-xs transition-colors';
 
             if (isHoliday) {
@@ -4434,12 +3922,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isToday) classes += ' ring-1 ring-inset ring-cyan-500';
             if (isLastSalesDay) classes += ' border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 font-bold';
-            
+
             html += `<div class="${classes}" data-date="${dateStr}" title="${isLastSalesDay ? 'Última Venda' : ''}">${day}</div>`;
         }
-        
+
         html += `</div>`;
-        
+
         // Legend
         html += `
             <div class="mt-4 flex flex-col gap-2 text-xs text-slate-400">
@@ -4464,37 +3952,37 @@ document.addEventListener('DOMContentLoaded', () => {
         calendarModalContent.querySelectorAll('.calendar-day[data-date]').forEach(el => {
             el.addEventListener('click', async () => {
                 console.log("Calendar day clicked:", el.getAttribute('data-date'));
-                
+
                 // Allow click even if role is unknown for debugging, but ideally check permissions
                 if (window.userRole !== 'adm') {
                     console.warn("User role not adm:", window.userRole);
-                    window.showToast('error', "Apenas administradores podem alterar feriados.");
+                    alert("Apenas administradores podem alterar feriados.");
                     return;
                 }
-                
+
                 const date = el.getAttribute('data-date');
                 const isSelected = el.classList.contains('selected');
                 const [y, m, d] = date.split('-');
                 const formattedDate = `${d}/${m}/${y}`;
-                
-                const confirmMsg = isSelected 
-                    ? `Você deseja remover o feriado de ${formattedDate}?` 
+
+                const confirmMsg = isSelected
+                    ? `Você deseja remover o feriado de ${formattedDate}?`
                     : `Você deseja selecionar ${formattedDate} como feriado?`;
 
                 if (!confirm(confirmMsg)) return;
 
                 // Optimistic UI Update
                 el.classList.toggle('selected');
-                
+
                 // Call RPC
                 const { data: result, error } = await supabase.rpc('toggle_holiday', { p_date: date });
                 if (error) {
                     console.error("Error toggling holiday:", error);
                     el.classList.toggle('selected'); // Revert
-                    window.showToast('error', "Erro ao alterar feriado: " + error.message);
+                    alert("Erro ao alterar feriado: " + error.message);
                 } else {
                     console.log("Holiday toggled successfully.");
-                    
+
                     // Update local holidays array
                     if (isSelected) {
                         holidays = holidays.filter(h => h !== date);
@@ -4509,7 +3997,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
- 
+
 
         let selectedComparisonSupervisors = [];
         let selectedComparisonSellers = [];
@@ -4527,15 +4015,15 @@ document.addEventListener('DOMContentLoaded', () => {
         let lastComparisonFiltersStr = "";
         const handleComparisonFilterChange = () => {
             let pFornecedorValue = selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null;
-            
+
             // Apply "Pasta" filter logic on top of existing fornecedor if 'ambas' is not selected
-            // "Pasta" is conceptually a macro-fornecedor. 
+            // "Pasta" is conceptually a macro-fornecedor.
             if (comparisonPastaFilter && comparisonPastaFilter.value !== 'ambas') {
                 if (!pFornecedorValue) {
                     pFornecedorValue = [comparisonPastaFilter.value];
                 } else {
                     // Intersection of selection and pasta (though users typically won't select both in contradictory ways)
-                    // If pasta is selected, we enforce it by ensuring it's in the array. 
+                    // If pasta is selected, we enforce it by ensuring it's in the array.
                     if (!pFornecedorValue.includes(comparisonPastaFilter.value)) {
                          pFornecedorValue.push(comparisonPastaFilter.value);
                     }
@@ -4558,7 +4046,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentFiltersStr = JSON.stringify(filters);
             if (currentFiltersStr === lastComparisonFiltersStr) return;
             lastComparisonFiltersStr = currentFiltersStr;
-            
+
             clearTimeout(comparisonFilterDebounceTimer);
             comparisonFilterDebounceTimer = setTimeout(() => {
                 loadComparisonView();
@@ -4724,35 +4212,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (currentVal && currentVal !== 'todos') comparisonAnoFilter.value = currentVal;
                 else if (filterData.anos.length > 0) comparisonAnoFilter.value = filterData.anos[0];
-                enhanceSelectToCustomDropdown(comparisonAnoFilter);
             }
 
             if (comparisonMesFilter && comparisonMesFilter.options.length <= 1) {
                 comparisonMesFilter.innerHTML = '<option value="">Todos</option>';
                 const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
                 meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; comparisonMesFilter.appendChild(opt); });
-                enhanceSelectToCustomDropdown(comparisonMesFilter);
             }
 
-            if (comparisonFilialFilter) enhanceSelectToCustomDropdown(comparisonFilialFilter);
-            if (comparisonPastaFilter) enhanceSelectToCustomDropdown(comparisonPastaFilter);
-
             try {
-        // Helper
+                // Try to find specific list containers, fallback to dropdown if not found
                 const getList = (id) => document.getElementById(id);
-                
+
                 // Supervisors
                 const supList = getList('comparison-supervisor-filter-list') || comparisonSupervisorFilterDropdown;
                 setupCityMultiSelect(comparisonSupervisorFilterBtn, comparisonSupervisorFilterDropdown, supList, filterData.supervisors, selectedComparisonSupervisors);
-                
+
                 // Vendedores
                 const vendList = getList('comparison-vendedor-filter-list') || comparisonVendedorFilterDropdown;
                 setupCityMultiSelect(comparisonVendedorFilterBtn, comparisonVendedorFilterDropdown, vendList, filterData.vendedores, selectedComparisonSellers);
-                
+
                 // Suppliers
                 const suppList = getList('comparison-supplier-filter-list') || comparisonSupplierFilterDropdown;
                 setupCityMultiSelect(comparisonSupplierFilterBtn, comparisonSupplierFilterDropdown, suppList, filterData.fornecedores, selectedComparisonSuppliers, null, true);
-                
+
                 // Tipos Venda
                 const tipoList = getList('comparison-tipo-venda-filter-list') || comparisonTipoVendaFilterDropdown;
                 setupCityMultiSelect(comparisonTipoVendaFilterBtn, comparisonTipoVendaFilterDropdown, tipoList, filterData.tipos_venda, selectedComparisonTiposVenda);
@@ -4830,7 +4313,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error("RPC Error:", error);
                     hideDashboardLoading();
                     if (error.message.includes('function get_comparison_view_data') && error.message.includes('does not exist')) {
-                        window.showToast('error', "A função 'get_comparison_view_data' não foi encontrada no banco de dados. \n\nPor favor, execute o script 'sql/comparison_view_rpc.sql' no Supabase SQL Editor para corrigir isso.");
+                        alert("A função 'get_comparison_view_data' não foi encontrada no banco de dados. \n\nPor favor, execute o script 'sql/comparison_view_rpc.sql' no Supabase SQL Editor para corrigir isso.");
                     }
                     return;
                 }
@@ -4869,10 +4352,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 { title: 'Faturamento Total', current: curF, history: data.history_kpi.f / 3, format: 'currency' },
                 { title: 'Peso Total (Ton)', current: curP/1000, history: (data.history_kpi.p/3)/1000, format: 'decimal' },
                 { title: 'Clientes Atendidos', current: curC, history: data.history_kpi.c / 3, format: 'integer' },
-                { title: 'Ticket Médio', 
-                  current: curC > 0 ? curF / curC : 0, 
-                  history: data.history_kpi.c > 0 ? (data.history_kpi.f/3) / (data.history_kpi.c/3) : 0, 
-                  format: 'currency' 
+                { title: 'Ticket Médio',
+                  current: curC > 0 ? curF / curC : 0,
+                  history: data.history_kpi.c > 0 ? (data.history_kpi.f/3) / (data.history_kpi.c/3) : 0,
+                  format: 'currency'
                 },
                 { title: 'Mix por PDV (Pepsico)', current: Number(data.current_kpi.mix_pepsico.toFixed(2)), history: Number((data.history_kpi.sum_mix_pepsico / 3).toFixed(2)), format: 'decimal_2' },
                 { title: 'Mix Salty', current: Math.round(data.current_kpi.pos_salty * trendFactor), history: Math.round(data.history_kpi.sum_pos_salty / 3), format: 'integer' },
@@ -4882,11 +4365,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Weekly Chart Logic
             const currentDaily = data.current_daily || [];
             const historyDaily = data.history_daily || [];
-            
+
             const getWeekIdx = (dateStr) => {
                 const d = new Date(dateStr);
                 const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
-                const offset = firstDay.getDay(); 
+                const offset = firstDay.getDay();
                 const dayOfMonth = d.getDate();
                 return Math.floor((dayOfMonth + offset - 1) / 7);
             };
@@ -4905,11 +4388,11 @@ document.addEventListener('DOMContentLoaded', () => {
             currentDaily.forEach(item => {
                 if (item.d > maxDateStr) maxDateStr = item.d;
                 currentActualTotal += item.f;
-                
+
                 const idx = getWeekIdx(item.d + 'T12:00:00');
                 if (idx >= 0 && idx < 6) {
                     weeklyCurrent[idx] += item.f;
-                    
+
                     // Fill Daily Actuals
                     const d = new Date(item.d + 'T12:00:00');
                     const dayIdx = d.getDay();
@@ -4929,7 +4412,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const day = d.getDay();
                     const dateStr = d.toISOString().split('T')[0];
                     // Access global holidays if available
-                    const hols = (typeof holidays !== 'undefined') ? holidays : []; 
+                    const hols = (typeof holidays !== 'undefined') ? holidays : [];
                     return day !== 0 && day !== 6 && !hols.includes(dateStr);
                 };
 
@@ -4947,7 +4430,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                const historyWeights = historySums.map((week, wIdx) => 
+                const historyWeights = historySums.map((week, wIdx) =>
                     week.map((sum, dIdx) => {
                         const count = historyCounts[wIdx][dIdx];
                         return count > 0 ? sum / count : 0;
@@ -4963,9 +4446,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const dailyRunRate = passedWorkingDays > 0 ? currentActualTotal / passedWorkingDays : 0;
-                
+
                 // Identify Future Working Days
-                const futureDays = []; 
+                const futureDays = [];
                 let iter = new Date(lastSalesDate);
                 iter.setDate(iter.getDate() + 1); // Start from next day
 
@@ -4995,9 +4478,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         allocation = totalProjectedPot * (weight / totalWeightDenominator);
                     } else {
                         // Fallback to equal distribution if no history for these specific slots
-                        allocation = dailyRunRate; 
+                        allocation = dailyRunRate;
                     }
-                    
+
                     weeklyCurrent[day.weekIdx] += allocation;
                     dailyDataByWeek[day.weekIdx][day.dayIdx] += allocation;
                 });
@@ -5033,7 +4516,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fat: m.f,
                 clients: m.c
             }));
-            
+
             monthlyData.push({ label: 'Atual', fat: curF, clients: curC });
 
             // 4. Daily Chart Datasets
@@ -5041,7 +4524,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dailyColors = [
                 '#94a3b8', // Domingo (Slate)
                 '#60a5fa', // Segunda (Blue)
-                '#379fae', // Terca (Powder Blue - new palette)
+                '#b0e0e6', // Terca (Powder Blue - new palette)
                 '#eaf7f8', // Quarta (Light Blue - new palette)
                 '#ffaa4d', // Quinta (Orange - alternative)
                 '#316a9a', // Sexta (Dark Blue - new palette)
@@ -5288,7 +4771,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dailyColors = [
                 '#94a3b8', // Domingo (Slate)
                 '#60a5fa', // Segunda (Blue)
-                '#379fae', // Terca (Powder Blue - new palette)
+                '#b0e0e6', // Terca (Powder Blue - new palette)
                 '#eaf7f8', // Quarta (Light Blue - new palette)
                 '#ffaa4d', // Quinta (Orange - alternative)
                 '#316a9a', // Sexta (Dark Blue - new palette)
@@ -5331,7 +4814,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             container.innerHTML = kpis.map(kpi => {
                 const variation = kpi.history > 0 ? ((kpi.current - kpi.history) / kpi.history) * 100 : 0;
-                const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
+                const colorClass = variation >= 0 ? 'text-green-400' : 'text-red-400';
 
                 // Determine glow color
                 let glowClass = 'kpi-glow-blue';
@@ -5357,7 +4840,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 createChart('weeklyComparisonChart', 'line',
                     chartsData.weeklyCurrent.map((_, i) => `Semana ${i+1}`),
                     [
-                        { label: 'Mês Atual', data: chartsData.weeklyCurrent, borderColor: '#379fae', backgroundColor: '#379fae', tension: 0.4, isCurrent: true },
+                        { label: 'Mês Atual', data: chartsData.weeklyCurrent, borderColor: '#b0e0e6', backgroundColor: '#b0e0e6', tension: 0.4, isCurrent: true },
                         { label: 'Média Histórica', data: chartsData.weeklyHistory, borderColor: '#eaf7f8', backgroundColor: '#eaf7f8', tension: 0.4, isPrevious: true }
                     ]
                 );
@@ -5373,7 +4856,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 createChart('monthlyComparisonChart', 'bar', labels, [{
                     label: isFat ? 'Faturamento' : 'Clientes',
                     data: values,
-                    backgroundColor: '#379fae'
+                    backgroundColor: '#b0e0e6'
                 }]);
             }
 
@@ -5393,7 +4876,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!tbody) return;
             tbody.innerHTML = Object.entries(data).map(([sup, vals]) => {
                 const variation = vals.history > 0 ? ((vals.current - vals.history) / vals.history) * 100 : 0;
-                const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
+                const colorClass = variation >= 0 ? 'text-green-400' : 'text-red-400';
                 return `<tr class="hover:bg-slate-700">
                             <td class="px-4 py-2">${sup}</td>
                             <td class="px-4 py-2 text-right">${vals.history.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td>
@@ -5402,1126 +4885,4 @@ document.addEventListener('DOMContentLoaded', () => {
                         </tr>`;
             }).join('');
         }
-// --- INOVACOES VIEW LOGIC ---
-let innovationsChart = null;
-let currentInnovationsFilters = {};
-
-async function updateInnovationsMonthView() {
-    showDashboardLoading('innovations-month-view');
-
-    const anoSelect = document.getElementById('innovations-ano-filter');
-    const mesSelect = document.getElementById('innovations-mes-filter');
-
-    const filters = {
-        p_ano: anoSelect ? (anoSelect.value === 'todos' ? null : anoSelect.value) : null,
-        p_mes: mesSelect ? (mesSelect.value === '' ? null : mesSelect.value) : null,
-        p_cidade: innovationsSelectedCidades,
-        p_filial: innovationsSelectedFiliais,
-        p_supervisor: innovationsSelectedSupervisors,
-        p_vendedor: innovationsSelectedVendedores,
-        p_rede: innovationsSelectedRedes,
-        p_tipovenda: innovationsSelectedTiposVenda,
-        p_categoria_inovacao: innovationsSelectedCategorias
-    };
-
-    // Replace empty arrays with null to avoid PostgREST overloading resolution issues
-    const rpcFilters = {
-        p_ano: filters.p_ano,
-        p_mes: filters.p_mes,
-        p_filial: filters.p_filial.length ? filters.p_filial : null,
-        p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
-        p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
-        p_vendedor: filters.p_vendedor.length ? filters.p_vendedor : null,
-        p_rede: filters.p_rede.length ? filters.p_rede : null,
-        p_tipovenda: filters.p_tipovenda.length ? filters.p_tipovenda : null,
-        p_categoria_inovacao: filters.p_categoria_inovacao && filters.p_categoria_inovacao.length ? filters.p_categoria_inovacao[0] : null // Categoria Inovacao was a text param
-    };
-
-    const cacheKey = generateCacheKey('innovations_view_data', rpcFilters);
-    let data = null;
-
-    try {
-        const cachedEntry = await getFromCache(cacheKey);
-        if (cachedEntry && cachedEntry.data) {
-            console.log('Serving Innovations View from Cache');
-            data = cachedEntry.data;
-        }
-    } catch (e) { console.warn('Cache error:', e); }
-
-    if (!data) {
-        try {
-            const { data: rpcData, error } = await supabase.rpc('get_innovations_data', rpcFilters);
-
-            if (error) {
-                console.error('Error fetching innovations:', error);
-                hideDashboardLoading();
-                return;
-            }
-            data = rpcData;
-            saveToCache(cacheKey, data);
-        } catch (err) {
-            console.error('Exception fetching innovations:', err);
-            hideDashboardLoading();
-            return;
-        }
-    }
-
-    try {
-        renderInnovationsKPIs(data);
-        renderInnovationsChart(data);
-        renderInnovationsTable(data);
-    } catch (err) {
-        console.error('Error rendering innovations:', err);
-    } finally {
-        hideDashboardLoading();
-    }
-}
-
-function renderInnovationsKPIs(data) {
-    if (!data) return;
-
-    // We use data.kpi_clients_attended for new penetration math if available, fallback to active_clients
-    const activeClients = data.kpi_clients_attended || data.active_clients || 0;
-
-    // The base is kpi_clients_base (total clients in the database applying filters)
-    const baseClients = data.kpi_clients_base || 0;
-
-    // Total Clients (Base Total)
-    const activeClientsEl = document.getElementById('innovations-month-active-clients-kpi');
-    if (activeClientsEl) activeClientsEl.textContent = formatNumber(baseClients > 0 ? baseClients : activeClients, 0);
-
-    // Calculate Best Coverage & Avg Per Client
-    let bestCategory = null;
-    let maxCoverage = -1;
-    let maxCoverageCount = 0;
-    let bestAvgPerClient = 0;
-
-    const categories = data.categories || [];
-    let totalSelectionPos = 0;
-
-    categories.forEach(cat => {
-        let cov = activeClients > 0 ? (cat.pos_current / activeClients) * 100 : 0;
-        if (cov > maxCoverage) {
-            maxCoverage = cov;
-            bestCategory = cat.name;
-            maxCoverageCount = cat.pos_current;
-            // distinct_clients_current comes from the new SQL aggregation
-            let distClients = cat.distinct_clients_current || 1;
-            bestAvgPerClient = (cat.pos_current / distClients);
-            if(cat.pos_current === 0) bestAvgPerClient = 0;
-        }
-        totalSelectionPos += cat.pos_current;
-    });
-
-    const topCovTitle = document.getElementById('innovations-month-top-coverage-title');
-    const topCovKpi = document.getElementById('innovations-month-top-coverage-kpi');
-    const topCovCount = document.getElementById('innovations-month-top-coverage-count-kpi');
-    const topCovValue = document.getElementById('innovations-month-top-coverage-value-kpi');
-    const topCovLabel = document.getElementById('innovations-month-top-coverage-label');
-
-    if (topCovTitle) topCovTitle.textContent = bestCategory || 'N/A';
-    if (topCovLabel) topCovLabel.textContent = 'Média por Cliente';
-    
-    // Changing the count label to the calculated average
-    if (topCovKpi) topCovKpi.textContent = bestAvgPerClient > 0 ? bestAvgPerClient.toFixed(2) : '0.00';
-    if (topCovCount) topCovCount.textContent = 'Média Produtos';
-    
-    if (topCovValue) topCovValue.textContent = '';
-
-    // Selection Percent
-    const selCovValue = document.getElementById('innovations-month-selection-coverage-value-kpi');
-    let selPercent = 0;
-
-    // Check if we have the new direct counts
-    if (data.kpi_innovations_attended !== undefined && data.kpi_clients_attended !== undefined) {
-        selPercent = data.kpi_clients_attended > 0 ? (data.kpi_innovations_attended / data.kpi_clients_attended) * 100 : 0;
-    } else {
-        // Fallback logic
-        selPercent = activeClients > 0 ? (totalSelectionPos / (activeClients * (categories.length > 0 ? categories.length : 1))) * 100 : 0;
-    }
-    if (selCovValue) selCovValue.textContent = selPercent.toFixed(2) + '%';
-
-    // Selection Count
-    const selCovCount = document.getElementById('innovations-month-selection-coverage-count-kpi');
-    if (selCovCount) {
-        if (data.kpi_innovations_attended !== undefined && data.kpi_clients_attended !== undefined) {
-            selCovCount.textContent = `${data.kpi_innovations_attended} de ${data.kpi_clients_attended}`;
-        } else {
-            selCovCount.textContent = totalSelectionPos + ' de ' + (activeClients * categories.length);
-        }
-    }
-}
-
-function renderInnovationsChart(data) {
-    const ctx = document.getElementById('innovations-month-chartContainer');
-    if (!ctx || !data || !data.categories) return;
-
-    if (innovationsChart) {
-        innovationsChart.destroy();
-    }
-
-    const categories = data.categories.sort((a,b) => b.pos_current - a.pos_current);
-
-    const labels = categories.map(c => c.name);
-
-    // Calcular %
-    const active = data.active_clients || 1; // Reverted back to the consistent 12-month active base for all historical charts
-
-    const currentData = categories.map(c => ((c.pos_current / active) * 100).toFixed(1));
-    const prevM1Data = categories.map(c => ((c.pos_prev_m1 / active) * 100).toFixed(1));
-    const prevM2Data = categories.map(c => ((c.pos_prev_m2 / active) * 100).toFixed(1));
-    const prevM3Data = categories.map(c => ((c.pos_prev_m3 / active) * 100).toFixed(1));
-
-    // Get month labels based on the selected target date in the filters
-    const yearFilter = document.getElementById('innovations-ano-filter')?.value;
-    const monthFilter = document.getElementById('innovations-mes-filter')?.value;
-
-    let targetDate = new Date();
-    if(yearFilter && yearFilter !== 'todos' && monthFilter) {
-        targetDate = new Date(yearFilter, monthFilter - 1, 1);
-    }
-
-    const monthNames = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
-
-    const getMonthName = (date, subtractMonths) => {
-        let d = new Date(date);
-        d.setMonth(d.getMonth() - subtractMonths);
-        return monthNames[d.getMonth()];
-    };
-
-    const labelCurrent = getMonthName(targetDate, 0);
-    const labelM1 = getMonthName(targetDate, 1);
-    const labelM2 = getMonthName(targetDate, 2);
-    const labelM3 = getMonthName(targetDate, 3);
-
-    innovationsChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-                                                datasets: [
-                {
-                    label: labelM3,
-                    data: prevM3Data,
-                    backgroundColor: '#eaf7f8',
-                    borderSkipped: 'bottom',
-                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
-                },
-                {
-                    label: labelM2,
-                    data: prevM2Data,
-                    backgroundColor: '#379fae',
-                    borderSkipped: 'bottom',
-                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
-                },
-                {
-                    label: labelM1,
-                    data: prevM1Data,
-                    backgroundColor: '#316a9a',
-                    borderSkipped: 'bottom',
-                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
-                },
-                {
-                    label: labelCurrent + ' (Mês Atual)',
-                    data: currentData,
-                    backgroundColor: '#ffaa4d',
-                    borderSkipped: 'bottom',
-                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        color: '#94a3b8',
-                        font: { size: 10 }
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' + context.parsed.y + '%';
-                        }
-                    }
-                },
-                datalabels: {
-                    display: function(context) {
-                        return context.dataset.data[context.dataIndex] > 0;
-                    },
-                    color: '#fff',
-                    font: { weight: 'bold', size: 10 },
-                    anchor: 'end',
-                    align: 'top',
-                    offset: 2,
-                    formatter: function(value) {
-                        return value + '%';
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                    ticks: { color: '#94a3b8', font: { size: 10 }, callback: function(value) { return value + '%'; } }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#94a3b8', font: { size: 10, weight: 'bold' } }
-                }
-            }
-        }
-    });
-}
-
-// Make global to be accessible by inline onclick handler
-window.toggleInnovationRow = function(categoryNameStr) {
-    const safeId = categoryNameStr.replace(/[^a-zA-Z0-9]/g, '_');
-    const childRows = document.querySelectorAll(`.innovations-child-${safeId}`);
-    const icon = document.getElementById(`icon-innovations-${safeId}`);
-    
-    if (childRows.length === 0) return;
-    
-    const isHidden = childRows[0].classList.contains('hidden');
-    
-    childRows.forEach(row => {
-        if (isHidden) {
-            row.classList.remove('hidden');
-        } else {
-            row.classList.add('hidden');
-        }
-    });
-    
-    if (icon) {
-        if (isHidden) {
-            // Expand (Minus icon)
-            icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>';
-        } else {
-            // Collapse (Plus icon)
-            icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>';
-        }
-    }
-};
-
-window.renderInnovationsTable = function(data) {
-    const tbody = document.getElementById('innovations-month-table-body');
-    if (!tbody || !data || !data.categories) return;
-
-    let html = '';
-    const active = data.active_clients || 1; // Reverted to the consistent 12-month active base
-
-    data.categories.forEach((cat, idx) => {
-        let catPosAtual = ((cat.pos_current / active) * 100).toFixed(2);
-        let catPosPrevYear = ((cat.pos_prev_year / active) * 100).toFixed(2);
-        let catPosAvg12m = ((cat.pos_avg_12m / active) * 100).toFixed(2);
-        let catEstoque = Math.round(cat.estoque_current || 0);
-        
-        let varPercent = cat.pos_prev_year > 0 ? (((cat.pos_current - cat.pos_prev_year) / cat.pos_prev_year) * 100).toFixed(1) : (cat.pos_current > 0 ? 100 : 0);
-        let varColor = varPercent >= 0 ? 'text-green-400' : 'text-red-400';
-        
-        const safeId = cat.name.replace(/[^a-zA-Z0-9]/g, '_');
-
-        // Category Row (Parent)
-        html += `
-            <tr class="hover:bg-slate-700/30 transition-colors cursor-pointer bg-slate-800/30" onclick="toggleInnovationRow('${cat.name}')">
-                <td class="px-4 py-4 text-white font-bold whitespace-normal flex items-center gap-2">
-                    <svg id="icon-innovations-${safeId}" class="w-4 h-4 text-orange-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                    ${cat.name}
-                </td>
-                <td class="px-4 py-4 text-slate-400 text-xs italic"></td>
-                <td class="px-4 py-4 text-center font-bold text-white">${catEstoque} cx</td>
-                <td class="px-4 py-4 text-center text-slate-400">${catPosAvg12m}%</td>
-                <td class="px-4 py-4 text-center text-slate-400">${catPosPrevYear}%</td>
-                <td class="px-4 py-4 text-center font-bold text-white">${catPosAtual}%</td>
-                <td class="px-4 py-4 text-center ${varColor} font-bold">${varPercent}%</td>
-            </tr>
-        `;
-
-        // Product Rows (Children)
-        const productsInCat = data.products.filter(p => p.category_name === cat.name);
-        productsInCat.forEach(p => {
-            let posAtual = ((p.pos_current / active) * 100).toFixed(2);
-            let posPrevYear = ((p.pos_prev_year / active) * 100).toFixed(2);
-            let posAvg12m = ((p.pos_avg_12m / active) * 100).toFixed(2);
-            let pEstoque = Math.round(p.estoque_current || 0);
-            
-            let pVarPercent = p.pos_prev_year > 0 ? (((p.pos_current - p.pos_prev_year) / p.pos_prev_year) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
-            let pVarColor = pVarPercent >= 0 ? 'text-green-400' : 'text-red-400';
-
-            html += `
-                <tr class="hover:bg-slate-700/30 transition-colors hidden innovations-child-${safeId}">
-                    <td class="px-4 py-4 pl-10 text-slate-400 text-xs flex items-center gap-2">
-                        <svg class="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                    </td>
-                    <td class="px-4 py-4 text-slate-300 text-xs">${p.product_code} - ${p.product_name}</td>
-                    <td class="px-4 py-4 text-center font-medium text-slate-300">${pEstoque} cx</td>
-                    <td class="px-4 py-4 text-center text-slate-500">${posAvg12m}%</td>
-                    <td class="px-4 py-4 text-center text-slate-500">${posPrevYear}%</td>
-                    <td class="px-4 py-4 text-center font-medium text-slate-300">${posAtual}%</td>
-                    <td class="px-4 py-4 text-center ${pVarColor} text-xs font-bold">${pVarPercent}%</td>
-                </tr>
-            `;
-        });
-    });
-
-    if (data.categories.length === 0) {
-        html = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum dado encontrado para os filtros selecionados.</td></tr>';
-    }
-
-    tbody.innerHTML = html;
-}
-
-// Helper para pegar valor de inputs (pode precisar ajuste dependendo de como voce estruturou os selects)
-function getSelectedValues(id) {
-    const el = document.getElementById(id);
-    if (!el) return [];
-    if (el.tagName === 'SELECT') {
-        return Array.from(el.selectedOptions).map(o => o.value);
-    }
-    if (el.tagName === 'INPUT' && el.type === 'hidden') {
-         return el.value ? [el.value] : [];
-    }
-
-    // Suporte para o dropdown customizado
-    const tagsContainer = el.querySelector('.flex.flex-wrap.gap-1.items-center');
-    if (tagsContainer) {
-        const values = [];
-        tagsContainer.querySelectorAll('.px-2.py-0\\.5').forEach(tag => {
-            const text = tag.textContent.trim().replace('×', '').trim();
-            if (text && text !== 'Todos') values.push(text);
-        });
-        return values.length > 0 ? values : [];
-    }
-
-    // Tentativa generica caso seja input text
-    if (el.tagName === 'INPUT' && el.type === 'text') {
-        return el.value ? [el.value] : [];
-    }
-
-    // Se é um wrapper, verifica se tem um select dentro
-    const selectInside = el.querySelector('select');
-    if (selectInside) {
-        return Array.from(selectInside.selectedOptions).map(o => o.value);
-    }
-
-    return [];
-}
-
-// Global Filter Setup for new pages
-let innovationsSelectedSupervisors = [];
-let innovationsSelectedVendedores = [];
-let innovationsSelectedCidades = [];
-let innovationsSelectedTiposVenda = [];
-let innovationsSelectedRedes = [];
-let innovationsSelectedFiliais = [];
-let innovationsSelectedCategorias = [];
-
-// DOM Elements
-const innovationsSupervisorFilterBtn = document.getElementById('innovations-supervisor-filter-btn');
-const innovationsSupervisorFilterDropdown = document.getElementById('innovations-supervisor-filter-dropdown');
-const innovationsVendedorFilterBtn = document.getElementById('innovations-vendedor-filter-btn');
-const innovationsVendedorFilterDropdown = document.getElementById('innovations-vendedor-filter-dropdown');
-const innovationsVendedorFilterList = document.getElementById('innovations-vendedor-filter-list');
-const innovationsVendedorFilterSearch = document.getElementById('innovations-vendedor-filter-search');
-const innovationsCidadeFilterBtn = document.getElementById('innovations-cidade-filter-btn');
-const innovationsCidadeFilterDropdown = document.getElementById('innovations-cidade-filter-dropdown');
-const innovationsCidadeFilterList = document.getElementById('innovations-cidade-filter-list');
-const innovationsCidadeFilterSearch = document.getElementById('innovations-cidade-filter-search');
-const innovationsTipovendaFilterBtn = document.getElementById('innovations-tipovenda-filter-btn');
-const innovationsTipovendaFilterDropdown = document.getElementById('innovations-tipovenda-filter-dropdown');
-const innovationsRedeFilterBtn = document.getElementById('innovations-rede-filter-btn');
-const innovationsRedeFilterDropdown = document.getElementById('innovations-rede-filter-dropdown');
-const innovationsRedeFilterList = document.getElementById('innovations-rede-filter-list');
-const innovationsRedeFilterSearch = document.getElementById('innovations-rede-filter-search');
-const innovationsFilialFilterBtn = document.getElementById('innovations-filial-filter-btn');
-const innovationsFilialFilterDropdown = document.getElementById('innovations-filial-filter-dropdown');
-const innovationsCategoriaFilterBtn = document.getElementById('innovations-categoria-filter-btn');
-const innovationsCategoriaFilterDropdown = document.getElementById('innovations-categoria-filter-dropdown');
-
-// Filter change handler
-const handleInnovationsFilterChange = () => {
-    updateInnovationsMonthView();
-};
-
-document.addEventListener('click', (e) => {
-    const dropdowns = [
-        innovationsSupervisorFilterDropdown, innovationsVendedorFilterDropdown,
-        innovationsCidadeFilterDropdown, innovationsTipovendaFilterDropdown,
-        innovationsRedeFilterDropdown, innovationsFilialFilterDropdown,
-        innovationsCategoriaFilterDropdown
-    ];
-    const btns = [
-        innovationsSupervisorFilterBtn, innovationsVendedorFilterBtn,
-        innovationsCidadeFilterBtn, innovationsTipovendaFilterBtn,
-        innovationsRedeFilterBtn, innovationsFilialFilterBtn,
-        innovationsCategoriaFilterBtn
-    ];
-    let anyClosed = false;
-
-    dropdowns.forEach((dd, idx) => {
-        if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
-            dd.classList.add('hidden');
-            anyClosed = true;
-        }
-    });
-
-    if (anyClosed && innovationsMonthView && !innovationsMonthView.classList.contains('hidden')) {
-        handleInnovationsFilterChange();
-    }
 });
-
-
-const setupInnovationsFilters = async () => {
-    if (isInnovationsInitialized) return;
-
-    showDashboardLoading('innovations-month-view');
-
-    const filters = {
-        p_ano: 'todos',
-        p_mes: null,
-        p_filial: [],
-        p_cidade: [],
-        p_supervisor: [],
-        p_vendedor: [],
-        p_fornecedor: [],
-        p_tipovenda: [],
-        p_rede: [],
-        p_categoria: []
-    };
-
-    const cacheKey = generateCacheKey('dashboard_filters', filters);
-    let filterData = null;
-
-    try {
-        const cachedEntry = await getFromCache(cacheKey);
-        if (cachedEntry && cachedEntry.data) {
-            console.log('Serving Innovations Filters from Cache');
-            filterData = cachedEntry.data;
-        }
-    } catch (e) { console.warn('Cache error:', e); }
-
-    if (!filterData) {
-        const { data } = await supabase.rpc('get_dashboard_filters', filters);
-        filterData = data;
-        if (filterData) saveToCache(cacheKey, filterData);
-    }
-
-    if (!filterData) {
-        hideDashboardLoading();
-        return;
-    }
-
-    // Load Ano and Mes
-    const anoSelect = document.getElementById('innovations-ano-filter');
-    const mesSelect = document.getElementById('innovations-mes-filter');
-    
-    const now = new Date();
-    const currentYear = String(now.getFullYear());
-    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
-
-    if (anoSelect && filterData.anos) {
-        anoSelect.innerHTML = '<option value="todos">Todos</option>';
-        filterData.anos.forEach(ano => {
-            anoSelect.innerHTML += `<option value="${ano}">${ano}</option>`;
-        });
-
-        // Initial filter values
-        let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
-        anoSelect.value = hasYear ? currentYear : 'todos';
-
-        enhanceSelectToCustomDropdown(anoSelect);
-        anoSelect.addEventListener('change', handleInnovationsFilterChange);
-    }
-    
-    if (mesSelect) {
-        mesSelect.innerHTML = '<option value="">Todos</option>';
-        const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-        meses.forEach((m, i) => { 
-            const opt = document.createElement('option'); 
-            const val = String(i + 1).padStart(2, '0');
-            opt.value = val; 
-            opt.textContent = m; 
-            mesSelect.appendChild(opt); 
-        });
-
-        // Initial filter value
-        mesSelect.value = currentMonth;
-
-        enhanceSelectToCustomDropdown(mesSelect);
-        mesSelect.addEventListener('change', handleInnovationsFilterChange);
-    }
-
-    // Load Multi-Selects using standard CityMultiSelect pattern
-    setupCityMultiSelect(innovationsSupervisorFilterBtn, innovationsSupervisorFilterDropdown, innovationsSupervisorFilterDropdown, filterData.supervisors, innovationsSelectedSupervisors);
-    setupCityMultiSelect(innovationsVendedorFilterBtn, innovationsVendedorFilterDropdown, innovationsVendedorFilterList, filterData.vendedores, innovationsSelectedVendedores, innovationsVendedorFilterSearch);
-    setupCityMultiSelect(innovationsCidadeFilterBtn, innovationsCidadeFilterDropdown, innovationsCidadeFilterList, filterData.cidades, innovationsSelectedCidades, innovationsCidadeFilterSearch);
-    setupCityMultiSelect(innovationsTipovendaFilterBtn, innovationsTipovendaFilterDropdown, innovationsTipovendaFilterDropdown, filterData.tipos_venda, innovationsSelectedTiposVenda);
-    
-    const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-    setupCityMultiSelect(innovationsRedeFilterBtn, innovationsRedeFilterDropdown, innovationsRedeFilterList, redes, innovationsSelectedRedes, innovationsRedeFilterSearch);
-    
-    setupCityMultiSelect(innovationsFilialFilterBtn, innovationsFilialFilterDropdown, innovationsFilialFilterDropdown, filterData.filiais, innovationsSelectedFiliais);
-
-    // Load Inovações Categories
-    try {
-        const { data: inovacData } = await supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true });
-        if (inovacData) {
-            const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
-            setupCityMultiSelect(innovationsCategoriaFilterBtn, innovationsCategoriaFilterDropdown, innovationsCategoriaFilterDropdown, uniqueInovacoes, innovationsSelectedCategorias);
-        }
-    } catch (e) {
-        console.error("Error loading inovacoes categories", e);
-    }
-    
-    hideDashboardLoading();
-    isInnovationsInitialized = true;
-};
-
-// Listen for view load
-document.addEventListener('DOMContentLoaded', () => {
-    // Add setup on tab click or initially if those tabs are visible
-});
-// --- LOJA PERFEITA VIEW LOGIC ---
-
-async function updateLojaPerfeitaView() {
-    showDashboardLoading();
-
-    const filters = {
-        p_cidade: getSelectedValues('lp-codcli-filter'), // Adaptando campo busca cidade/cliente se houver
-        p_filial: [],
-        p_supervisor: getSelectedValues('lp-supervisor-filter-wrapper'),
-        p_vendedor: getSelectedValues('lp-vendedor-filter-wrapper'),
-        p_rede: getSelectedValues('lp-rede-filter-wrapper')
-    };
-
-    const rpcFilters = {
-        p_filial: null,
-        p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
-        p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
-        p_vendedor: filters.p_vendedor.length ? filters.p_vendedor : null,
-        p_rede: filters.p_rede.length ? filters.p_rede : null
-    };
-
-    try {
-        const { data, error } = await supabase.rpc('get_loja_perfeita_data', rpcFilters);
-
-        if (error) {
-            console.error('Error fetching Loja Perfeita data:', error);
-            hideDashboardLoading();
-            return;
-        }
-
-        renderLpKPIs(data.kpis);
-        renderLpTable(data.clients);
-
-    } catch (err) {
-        console.error('Exception fetching Loja Perfeita data:', err);
-    } finally {
-        hideDashboardLoading();
-    }
-}
-
-function renderLpKPIs(kpis) {
-    if (!kpis) return;
-
-    const avgScoreEl = document.getElementById('lp-kpi-avg-score');
-    const totalAuditsEl = document.getElementById('lp-kpi-total-audits');
-    const perfStoresEl = document.getElementById('lp-kpi-perfect-stores');
-    const avgScoreCircle = document.getElementById('lp-avg-score-circle'); // Pode precisar do chart
-
-    if (avgScoreEl) avgScoreEl.textContent = formatNumber(kpis.avg_score, 1);
-    if (totalAuditsEl) totalAuditsEl.textContent = formatNumber(kpis.total_audits);
-
-    if (perfStoresEl) {
-        let pct = kpis.total_audits > 0 ? (kpis.perfect_stores / kpis.total_audits) * 100 : 0;
-        perfStoresEl.textContent = pct.toFixed(1) + '%';
-        const sub = document.getElementById('lp-kpi-perfect-stores-sub');
-        if (sub) sub.textContent = formatNumber(kpis.perfect_stores) + ' Auditorias';
-    }
-}
-
-function renderLpTable(clients) {
-    const tbody = document.getElementById('lp-table-body');
-    if (!tbody || !clients) return;
-
-    let html = '';
-
-    clients.forEach(c => {
-        let colorClass = c.score >= 80 ? 'text-green-400' : c.score >= 50 ? 'text-yellow-400' : 'text-red-400';
-
-        html += `
-            <tr class="hover:bg-slate-700/30 transition-colors">
-                <td class="px-6 py-4 text-slate-400 text-xs">${c.codcli}</td>
-                <td class="px-6 py-4 font-bold text-slate-200">${c.client_name}</td>
-                <td class="px-6 py-4">
-                    <span class="font-bold text-white block">${c.researcher}</span>
-                </td>
-                <td class="px-6 py-4 text-slate-400">${c.city || '--'}</td>
-                <td class="px-6 py-4 text-center font-bold ${colorClass} text-base">${formatNumber(c.score, 1)}</td>
-            </tr>
-        `;
-    });
-
-    tbody.innerHTML = html;
-}
-
-function formatNumber(num, decimals = 2) {
-    if (num == null) return '--';
-    return Number(num).toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-}
-
-async function renderInnovationsMonthView() {
-    if (!isInnovationsInitialized) {
-        await setupInnovationsFilters();
-    }
-    updateInnovationsMonthView();
-}
-
-async function renderLojaPerfeitaView() {
-    if (!isLojaPerfeitaInitialized) {
-        await setupInnovationsFilters();
-    }
-    updateLojaPerfeitaView();
-}
-
-window.clearAllFilters = function(prefix) {
-    if (prefix === 'innovations') {
-        const anoSelect = document.getElementById('innovations-ano-filter');
-        const mesSelect = document.getElementById('innovations-mes-filter');
-
-        const now = new Date();
-        const currentYear = String(now.getFullYear());
-        const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
-
-        if (anoSelect) {
-            // Check if currentYear is in options, if not default to 'todos'
-            let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
-            anoSelect.value = hasYear ? currentYear : 'todos';
-            const btn = document.getElementById('btn-innovations-ano-filter');
-            if (btn) btn.innerHTML = `<span class="truncate w-[90%] text-left">${anoSelect.value === 'todos' ? 'Todos' : currentYear}</span><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
-        }
-        if (mesSelect) {
-            mesSelect.value = currentMonth;
-            const btn = document.getElementById('btn-innovations-mes-filter');
-            const mesName = mesSelect.options[mesSelect.selectedIndex]?.text || 'Todos';
-            if (btn) btn.innerHTML = `<span class="truncate w-[90%] text-left">${mesName}</span><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
-        }
-        
-        innovationsSelectedSupervisors = [];
-        innovationsSelectedVendedores = [];
-        innovationsSelectedCidades = [];
-        innovationsSelectedTiposVenda = [];
-        innovationsSelectedRedes = [];
-        innovationsSelectedFiliais = [];
-        innovationsSelectedCategorias = [];
-        
-        // Uncheck all custom select items visually
-        const wrappers = [
-            'innovations-supervisor-filter-dropdown', 'innovations-vendedor-filter-dropdown',
-            'innovations-cidade-filter-dropdown', 'innovations-tipovenda-filter-dropdown',
-            'innovations-rede-filter-dropdown', 'innovations-filial-filter-dropdown',
-            'innovations-categoria-filter-dropdown'
-        ];
-        wrappers.forEach(id => {
-            const dropdown = document.getElementById(id);
-            if (dropdown) {
-                dropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-            }
-        });
-
-        // Reset button labels
-        const btns = [
-            'innovations-supervisor-filter-btn', 'innovations-vendedor-filter-btn',
-            'innovations-cidade-filter-btn', 'innovations-tipovenda-filter-btn',
-            'innovations-rede-filter-btn', 'innovations-filial-filter-btn',
-            'innovations-categoria-filter-btn'
-        ];
-        btns.forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                const span = btn.querySelector('span');
-                if (span) {
-                    if (id.includes('vendedor') || id.includes('fornecedor') || id.includes('supervisor') || id.includes('tipovenda')) {
-                        span.textContent = 'Todos';
-                    } else {
-                        span.textContent = 'Todas';
-                    }
-                }
-            }
-        });
-
-        updateInnovationsMonthView();
-    } else if (prefix === 'lp') {
-        const wrappers = ['lp-supervisor-filter-wrapper', 'lp-vendedor-filter-wrapper', 'lp-rede-filter-wrapper', 'lp-codcli-filter'];
-        wrappers.forEach(id => {
-            const container = document.getElementById(id);
-            if (container) {
-                const select = container.querySelector('select');
-                if (select) {
-                    Array.from(select.options).forEach(opt => opt.selected = false);
-                    const tagContainer = container.querySelector('.flex.flex-wrap.gap-1.items-center');
-                    if (tagContainer) tagContainer.innerHTML = '';
-                    const mainBtn = container.querySelector('button.w-full.bg-\\[\\#1e293b\\]');
-                    if (mainBtn) mainBtn.innerHTML = '<span class="truncate w-[90%] text-left">Todos</span><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
-                }
-            }
-        });
-        updateLojaPerfeitaView();
-    }
-};
-
-});
-async function loadFrequencyTable(filters) {
-    const tableBody = document.getElementById('frequency-table-body');
-    const tableFooter = document.getElementById('frequency-table-footer');
-    if (!tableBody || !tableFooter) return;
-
-    tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-slate-400 text-xs">Carregando Frequência...</td></tr>';
-
-    const reqFilters = {
-        p_filial: filters.p_filial,
-        p_cidade: filters.p_cidade,
-        p_supervisor: filters.p_supervisor,
-        p_vendedor: filters.p_vendedor,
-        p_fornecedor: filters.p_fornecedor,
-        p_ano: filters.p_ano,
-        p_mes: filters.p_mes,
-        p_tipovenda: filters.p_tipovenda,
-        p_rede: filters.p_rede,
-        p_categoria: filters.p_categoria
-    };
-
-    try {
-        const { data, error } = await supabase.rpc('get_frequency_table_data', reqFilters);
-
-        if (error) throw error;
-
-        renderFrequencyTable(data, tableBody, tableFooter);
-        renderFrequencyChart(data);
-
-    } catch (err) {
-        console.error("Erro ao carregar tabela de frequência:", err);
-        tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500 text-xs">Erro ao carregar dados.</td></tr>';
-    }
-}
-
-function renderFrequencyTable(data, tableBody, tableFooter) {
-    tableBody.innerHTML = '';
-    tableFooter.innerHTML = '';
-
-    const treeData = data.tree_data || [];
-
-    if (treeData.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-slate-400 text-xs">Nenhum dado encontrado</td></tr>';
-        return;
-    }
-
-    // Build hierarchy
-    const hierarchy = {
-        name: 'PRIME',
-        children: {},
-        totals: { tons: 0, faturamento: 0, faturamento_prev: 0, positivacao: 0, sum_skus: 0, total_pedidos: 0, base_total: 0, clientsWithSales: 0 }
-    };
-
-    treeData.forEach(row => {
-        const filial = row.filial || 'SEM FILIAL';
-        const cidade = row.cidade || 'SEM CIDADE';
-        const vendedor = row.vendedor || 'SEM VENDEDOR';
-
-        if (!hierarchy.children[filial]) {
-            hierarchy.children[filial] = {
-                name: filial,
-                children: {},
-                totals: { tons: 0, faturamento: 0, faturamento_prev: 0, positivacao: 0, sum_skus: 0, total_pedidos: 0, base_total: 0, clientsWithSales: 0 }
-            };
-        }
-
-        if (!hierarchy.children[filial].children[cidade]) {
-            hierarchy.children[filial].children[cidade] = {
-                name: cidade,
-                children: {},
-                totals: { tons: 0, faturamento: 0, faturamento_prev: 0, positivacao: 0, sum_skus: 0, total_pedidos: 0, base_total: 0, clientsWithSales: 0 }
-            };
-        }
-
-        const leaf = {
-            name: vendedor,
-            tons: row.tons || 0,
-            faturamento: row.faturamento || 0,
-            faturamento_prev: row.faturamento_prev || 0,
-            positivacao: row.positivacao || 0,
-            sum_skus: row.sum_skus || 0,
-            total_pedidos: row.total_pedidos || 0,
-            base_total: row.base_total || 0,
-            clientsWithSales: (row.faturamento > 0) ? row.positivacao : 0
-        };
-
-        hierarchy.children[filial].children[cidade].children[vendedor] = leaf;
-
-        // Roll up totals
-        [hierarchy, hierarchy.children[filial], hierarchy.children[filial].children[cidade]].forEach(node => {
-            node.totals.tons += leaf.tons;
-            node.totals.faturamento += leaf.faturamento;
-            node.totals.faturamento_prev += leaf.faturamento_prev;
-            node.totals.positivacao += leaf.positivacao;
-            node.totals.sum_skus += leaf.sum_skus;
-            node.totals.total_pedidos += leaf.total_pedidos;
-            // Base total is an approximation at higher levels, but for now we sum it.
-            // A more accurate base total requires distinct counting at each level in SQL.
-            // We'll use the SQL supplied base_total for branches/cities, but here we sum them.
-        });
-    });
-
-    // Quick fix for base_total aggregation issues (distinct client counting is hard in JS without raw data):
-    // For simplicity, we just sum them. It might over-count if a client buys in multiple cities, but usually they don't.
-
-    let rowCounter = 0;
-
-    const createRow = (node, level, parentId = null) => {
-        rowCounter++;
-        const id = `node-${rowCounter}`;
-        const hasChildren = node.children && Object.keys(node.children).length > 0;
-
-        const isRoot = level === 0;
-        const indentClass = level === 0 ? '' : (level === 1 ? 'pl-6' : (level === 2 ? 'pl-10' : 'pl-14'));
-
-        const dataNode = isRoot ? node.totals : (hasChildren ? node.totals : node);
-
-        const tons = dataNode.tons / 1000;
-
-        let varYago = 0;
-        if (dataNode.faturamento_prev > 0) {
-            varYago = ((dataNode.faturamento / dataNode.faturamento_prev) - 1) * 100;
-        }
-
-        const varYagoStr = (varYago > 0 ? '+' : '') + varYago.toFixed(1) + '%';
-        const varYagoColor = varYago > 0 ? 'text-green-500' : (varYago < 0 ? 'text-red-500' : 'text-slate-400');
-        const varYagoIcon = varYago > 0 ? '<svg class="w-4 h-4 text-green-500 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"></path></svg>' : (varYago < 0 ? '<svg class="w-4 h-4 text-red-500 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707 10.293a1 1 0 00-1.414 0l-3-3a1 1 0 101.414-1.414L9 14.586V11a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3z" clip-rule="evenodd"></path></svg>' : '');
-
-        // SKU / PDV
-        const skuPdv = dataNode.positivacao > 0 ? (dataNode.sum_skus / dataNode.positivacao) : 0;
-
-        // Frequencia
-        const freq = dataNode.positivacao > 0 ? (dataNode.total_pedidos / dataNode.positivacao) : 0;
-
-        // % Posit
-        let percPosit = 0;
-        if (isRoot) {
-            // For root, total base comes from the top SQL if possible. But here we sum the city bases.
-            let rootBase = 0;
-            treeData.forEach(r => rootBase += (r.base_total || 0));
-            // Use total clients attended from dashboard data as Posit if we want to be exact with Main Dashboard, but here we use table data
-             let distinctPosit = dataNode.positivacao;
-             percPosit = rootBase > 0 ? (distinctPosit / rootBase) * 100 : 0;
-        } else {
-             // Let's use node.base_total if it was a leaf, or sum of leaves.
-             // But wait, base_total for leaves is 0 in SQL. Let's adjust logic.
-             // City has base_total.
-             let nodeBase = dataNode.base_total || 0;
-             if(level === 1) { // Filial
-                  nodeBase = 0;
-                  Object.values(node.children).forEach(city => {
-                      // Sum the first leaf's base_total
-                      const leaves = Object.values(city.children);
-                      if(leaves.length > 0) nodeBase += leaves[0].base_total;
-                  });
-             } else if (level === 2) { // City
-                  const leaves = Object.values(node.children);
-                  if(leaves.length > 0) nodeBase = leaves[0].base_total;
-             }
-
-             if (nodeBase > 0) {
-                 percPosit = (dataNode.positivacao / nodeBase) * 100;
-             }
-        }
-
-        // Failsafe for % posit > 100
-        if(percPosit > 100) percPosit = 100;
-
-        const rowHtml = `
-            <tr class="hover:bg-white/5 transition-colors ${level > 0 ? 'hidden freq-child-row' : ''}" id="${id}" data-parent="${parentId}" data-level="${level}">
-                <td class="px-2 py-2 border-b border-white/5 w-8 text-center cursor-pointer" onclick="toggleFreqNode('${id}')">
-                    ${hasChildren ? '<svg id="icon-' + id + '" class="w-4 h-4 text-slate-400 inline transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>' : ''}
-                </td>
-                <td class="px-2 py-2 border-b border-white/5 font-medium ${indentClass}">${node.name}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${tons.toFixed(1)}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold ${varYagoColor}">${varYagoIcon} ${varYagoStr}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${skuPdv.toFixed(1)}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${freq.toFixed(1)}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${dataNode.positivacao}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${percPosit.toFixed(1)}%</td>
-            </tr>
-        `;
-        tableBody.insertAdjacentHTML('beforeend', rowHtml);
-
-        if (hasChildren) {
-            Object.values(node.children).forEach(child => createRow(child, level + 1, id));
-        }
-
-        return { tons, varYagoStr, varYagoColor, varYagoIcon, skuPdv, freq, positivacao: dataNode.positivacao, percPosit };
-    };
-
-    const rootData = createRow(hierarchy, 0);
-
-    // Render footer (Totals - same as Root)
-    tableFooter.innerHTML = `
-        <tr>
-            <td class="px-2 py-3 border-t border-white/20 w-8"></td>
-            <td class="px-2 py-3 border-t border-white/20">Total</td>
-            <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.tons.toFixed(1)}</td>
-            <td class="px-2 py-3 border-t border-white/20 text-right ${rootData.varYagoColor}">${rootData.varYagoIcon} ${rootData.varYagoStr}</td>
-            <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.skuPdv.toFixed(1)}</td>
-            <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.freq.toFixed(1)}</td>
-            <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.positivacao}</td>
-            <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.percPosit.toFixed(1)}%</td>
-        </tr>
-    `;
-}
-
-// Attach toggle function to window so onclick works
-window.toggleFreqNode = function(id) {
-    const icon = document.getElementById(`icon-${id}`);
-    const isExpanded = icon.innerHTML.includes('M20 12H4'); // minus icon
-
-    // Toggle icon
-    if (isExpanded) {
-        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>';
-        hideChildren(id);
-    } else {
-        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>';
-        showDirectChildren(id);
-    }
-};
-
-function showDirectChildren(parentId) {
-    const rows = document.querySelectorAll(`tr[data-parent="${parentId}"]`);
-    rows.forEach(row => {
-        row.classList.remove('hidden');
-    });
-}
-
-function hideChildren(parentId) {
-    const rows = document.querySelectorAll(`tr[data-parent="${parentId}"]`);
-    rows.forEach(row => {
-        row.classList.add('hidden');
-        const childIcon = document.getElementById(`icon-${row.id}`);
-        if (childIcon && childIcon.innerHTML.includes('M20 12H4')) {
-            // Collapse recursive
-            childIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>';
-        }
-        hideChildren(row.id);
-    });
-}
-
-let frequencyChartInstance = null;
-function renderFrequencyChart(data) {
-    const ctx = document.getElementById('frequencyChartContainer');
-    if (!ctx) return;
-
-    // Clear existing
-    ctx.innerHTML = '<canvas id="freqCanvas"></canvas>';
-    const canvas = document.getElementById('freqCanvas');
-
-    if (frequencyChartInstance) {
-        frequencyChartInstance.destroy();
-    }
-
-    const chartData = data.chart_data || [];
-    const currentYear = data.current_year;
-    const previousYear = data.previous_year;
-
-    document.getElementById('freq-chart-legend-curr').textContent = currentYear;
-    document.getElementById('freq-chart-legend-prev').textContent = previousYear;
-
-    const monthInitials = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-
-    const currDataArray = new Array(12).fill(null);
-    const prevDataArray = new Array(12).fill(null);
-
-    chartData.forEach(row => {
-        const freq = row.total_clientes > 0 ? (row.total_pedidos / row.total_clientes) : null;
-        if (row.ano == currentYear) {
-            currDataArray[row.mes - 1] = freq ? parseFloat(freq.toFixed(2)) : null;
-        } else if (row.ano == previousYear) {
-            prevDataArray[row.mes - 1] = freq ? parseFloat(freq.toFixed(2)) : null;
-        }
-    });
-
-    frequencyChartInstance = new Chart(canvas, {
-        type: 'line',
-        data: {
-            labels: monthInitials,
-            datasets: [
-                {
-                    label: previousYear.toString(),
-                    data: prevDataArray,
-                    borderColor: '#CBD5E1', // slate-300
-                    backgroundColor: '#CBD5E1',
-                    borderDash: [5, 5],
-                    tension: 0.4,
-                    borderWidth: 2,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#CBD5E1',
-                    spanGaps: true
-                },
-                {
-                    label: currentYear.toString(),
-                    data: currDataArray,
-                    borderColor: '#1A73E8', // Blue
-                    backgroundColor: '#1A73E8',
-                    tension: 0.4,
-                    borderWidth: 3,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#1A73E8',
-                    spanGaps: true
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
-            plugins: {
-                legend: {
-                    display: false // Use custom HTML legend
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                    titleColor: '#fff',
-                    bodyColor: '#cbd5e1',
-                    borderColor: 'rgba(255,255,255,0.1)',
-                    borderWidth: 1,
-                    padding: 10,
-                    callbacks: {
-                        label: function(context) {
-                            let val = context.raw;
-                            if (val !== null) {
-                                return context.dataset.label + ': ' + val.toFixed(2);
-                            }
-                            return context.dataset.label + ': -';
-                        }
-                    }
-                },
-                datalabels: {
-                    display: false
-                }
-            },
-            scales: {
-                x: {
-                    grid: { display: false, drawBorder: false },
-                    ticks: { color: '#94a3b8', font: { size: 10 } }
-                },
-                y: {
-                    display: false, // hide Y axis
-                    min: 0,
-                    grace: '10%'
-                }
-            }
-        }
-    });
-}
