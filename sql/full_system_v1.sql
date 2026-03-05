@@ -144,6 +144,9 @@ BEGIN
     ),
     previous_data AS (
         SELECT
+            GROUPING(COALESCE(s.filial, ''SEM FILIAL'')) as grp_filial,
+            GROUPING(COALESCE(s.cidade, ''SEM CIDADE'')) as grp_cidade,
+            GROUPING(COALESCE(dv.nome, ''SEM VENDEDOR'')) as grp_vendedor,
             COALESCE(s.filial, ''SEM FILIAL'') as filial,
             COALESCE(s.cidade, ''SEM CIDADE'') as cidade,
             COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
@@ -151,19 +154,21 @@ BEGIN
         FROM public.data_summary_frequency s
         LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
         ' || v_where_base_prev || ' AND s.tipovenda NOT IN (''5'', ''11'')
-        GROUP BY 1, 2, 3
+        GROUP BY ROLLUP(COALESCE(s.filial, ''SEM FILIAL''), COALESCE(s.cidade, ''SEM CIDADE''), COALESCE(dv.nome, ''SEM VENDEDOR''))
     ),
     client_base AS (
         SELECT
-            ''SEM FILIAL''::text as filial,
             COALESCE(cidade, ''SEM CIDADE'') as cidade,
             COUNT(DISTINCT codigo_cliente) as base_total
         FROM public.data_clients
         ' || v_where_clients || '
-        GROUP BY 1, 2
+        GROUP BY 1
     ),
     aggregated_curr AS (
         SELECT
+            GROUPING(c.filial) as grp_filial,
+            GROUPING(c.cidade) as grp_cidade,
+            GROUPING(c.vendedor) as grp_vendedor,
             c.filial,
             c.cidade,
             c.vendedor,
@@ -173,13 +178,16 @@ BEGIN
             COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END) as total_pedidos,
             SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.qt_skus ELSE 0 END) as sum_skus
         FROM current_data c
-        GROUP BY c.filial, c.cidade, c.vendedor
+        GROUP BY ROLLUP(c.filial, c.cidade, c.vendedor)
     ),
     final_tree AS (
         SELECT
-            ac.filial,
-            ac.cidade,
-            ac.vendedor,
+            ac.grp_filial,
+            ac.grp_cidade,
+            ac.grp_vendedor,
+            COALESCE(ac.filial, ''PRIME'') as filial,
+            COALESCE(ac.cidade, ''TOTAL_CIDADE'') as cidade,
+            COALESCE(ac.vendedor, ''TOTAL_VENDEDOR'') as vendedor,
             ac.tons,
             ac.faturamento,
             COALESCE(pd.faturamento_prev, 0) as faturamento_prev,
@@ -188,8 +196,13 @@ BEGIN
             ac.total_pedidos,
             COALESCE(cb.base_total, 0) as base_total
         FROM aggregated_curr ac
-        LEFT JOIN previous_data pd ON ac.filial = pd.filial AND ac.cidade = pd.cidade AND ac.vendedor = pd.vendedor
-        LEFT JOIN client_base cb ON ac.filial = cb.filial AND ac.cidade = cb.cidade
+        LEFT JOIN previous_data pd ON ac.grp_filial = pd.grp_filial
+                                  AND ac.grp_cidade = pd.grp_cidade
+                                  AND ac.grp_vendedor = pd.grp_vendedor
+                                  AND COALESCE(ac.filial, '''') = COALESCE(pd.filial, '''')
+                                  AND COALESCE(ac.cidade, '''') = COALESCE(pd.cidade, '''')
+                                  AND COALESCE(ac.vendedor, '''') = COALESCE(pd.vendedor, '''')
+        LEFT JOIN client_base cb ON ac.cidade = cb.cidade AND ac.grp_vendedor = 1 AND ac.grp_cidade = 0 AND ac.grp_filial = 0
     ),
     chart_data AS (
         SELECT
