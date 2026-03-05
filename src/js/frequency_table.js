@@ -38,56 +38,64 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
     };
 
     treeData.forEach(row => {
-        const filial = row.filial || 'SEM FILIAL';
-        const cidade = row.cidade || 'SEM CIDADE';
-        const vendedor = row.vendedor || 'SEM VENDEDOR';
+        const filial = row.filial;
+        const cidade = row.cidade;
+        const vendedor = row.vendedor;
 
-        if (!hierarchy.children[filial]) {
-            hierarchy.children[filial] = {
-                name: filial,
-                children: {},
-                totals: { tons: 0, faturamento: 0, faturamento_prev: 0, positivacao: 0, sum_skus: 0, total_pedidos: 0, base_total: 0, clientsWithSales: 0 }
+        const tons = row.tons || 0;
+        const faturamento = row.faturamento || 0;
+        const faturamento_prev = row.faturamento_prev || 0;
+        const positivacao = row.positivacao || 0;
+        const sum_skus = row.sum_skus || 0;
+        const total_pedidos = row.total_pedidos || 0;
+        const base_total = row.base_total || 0;
+        const clientsWithSales = (faturamento > 0) ? positivacao : 0;
+
+        const rowData = { tons, faturamento, faturamento_prev, positivacao, sum_skus, total_pedidos, base_total, clientsWithSales };
+
+        if (row.grp_filial === 1) {
+            // Grand Total (PRIME)
+            hierarchy.totals = { ...rowData, base_total: data.global_base_total || 0 };
+        } else if (row.grp_cidade === 1) {
+            // Filial Total
+            if (!hierarchy.children[filial]) {
+                hierarchy.children[filial] = { name: filial, children: {}, totals: rowData };
+            } else {
+                hierarchy.children[filial].totals = rowData;
+            }
+        } else if (row.grp_vendedor === 1) {
+            // Cidade Total
+            if (!hierarchy.children[filial]) {
+                hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
+            }
+            if (!hierarchy.children[filial].children[cidade]) {
+                hierarchy.children[filial].children[cidade] = { name: cidade, children: {}, totals: rowData };
+            } else {
+                hierarchy.children[filial].children[cidade].totals = rowData;
+            }
+        } else {
+            // Vendedor (Leaf)
+            if (!hierarchy.children[filial]) {
+                hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
+            }
+            if (!hierarchy.children[filial].children[cidade]) {
+                hierarchy.children[filial].children[cidade] = { name: cidade, children: {}, totals: {} };
+            }
+            hierarchy.children[filial].children[cidade].children[vendedor] = {
+                name: vendedor,
+                ...rowData
             };
         }
-
-        if (!hierarchy.children[filial].children[cidade]) {
-            hierarchy.children[filial].children[cidade] = {
-                name: cidade,
-                children: {},
-                totals: { tons: 0, faturamento: 0, faturamento_prev: 0, positivacao: 0, sum_skus: 0, total_pedidos: 0, base_total: 0, clientsWithSales: 0 }
-            };
-        }
-
-        const leaf = {
-            name: vendedor,
-            tons: row.tons || 0,
-            faturamento: row.faturamento || 0,
-            faturamento_prev: row.faturamento_prev || 0,
-            positivacao: row.positivacao || 0,
-            sum_skus: row.sum_skus || 0,
-            total_pedidos: row.total_pedidos || 0,
-            base_total: row.base_total || 0,
-            clientsWithSales: (row.faturamento > 0) ? row.positivacao : 0
-        };
-
-        hierarchy.children[filial].children[cidade].children[vendedor] = leaf;
-
-        // Roll up totals
-        [hierarchy, hierarchy.children[filial], hierarchy.children[filial].children[cidade]].forEach(node => {
-            node.totals.tons += leaf.tons;
-            node.totals.faturamento += leaf.faturamento;
-            node.totals.faturamento_prev += leaf.faturamento_prev;
-            node.totals.positivacao += leaf.positivacao;
-            node.totals.sum_skus += leaf.sum_skus;
-            node.totals.total_pedidos += leaf.total_pedidos;
-            // Base total is an approximation at higher levels, but for now we sum it.
-            // A more accurate base total requires distinct counting at each level in SQL.
-            // We'll use the SQL supplied base_total for branches/cities, but here we sum them.
-        });
     });
 
-    // Quick fix for base_total aggregation issues (distinct client counting is hard in JS without raw data):
-    // For simplicity, we just sum them. It might over-count if a client buys in multiple cities, but usually they don't.
+    // Roll up base_total from cities to filials because SQL base_total is calculated at the city level
+    Object.values(hierarchy.children).forEach(filialNode => {
+        let filialBaseTotal = 0;
+        Object.values(filialNode.children).forEach(cidadeNode => {
+            filialBaseTotal += (cidadeNode.totals.base_total || 0);
+        });
+        if (filialNode.totals) filialNode.totals.base_total = filialBaseTotal;
+    });
 
     let rowCounter = 0;
 
