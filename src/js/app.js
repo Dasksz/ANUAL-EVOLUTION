@@ -5715,10 +5715,11 @@ window.renderInnovationsTable = function(data) {
     data.categories.forEach((cat, idx) => {
         let catPosAtual = ((cat.pos_current / active) * 100).toFixed(2);
         let catPosPrevYear = ((cat.pos_prev_year / active) * 100).toFixed(2);
+        let catPosPrevM1 = ((cat.pos_prev_m1 / active) * 100).toFixed(2);
         let catPosAvg12m = ((cat.pos_avg_12m / active) * 100).toFixed(2);
         let catEstoque = Math.round(cat.estoque_current || 0);
         
-        let varPercent = cat.pos_prev_year > 0 ? (((cat.pos_current - cat.pos_prev_year) / cat.pos_prev_year) * 100).toFixed(1) : (cat.pos_current > 0 ? 100 : 0);
+        let varPercent = cat.pos_prev_m1 > 0 ? (((cat.pos_current - cat.pos_prev_m1) / cat.pos_prev_m1) * 100).toFixed(1) : (cat.pos_current > 0 ? 100 : 0);
         let varColor = varPercent >= 0 ? 'text-green-400' : 'text-red-400';
         
         const safeId = cat.name.replace(/[^a-zA-Z0-9]/g, '_');
@@ -5734,6 +5735,7 @@ window.renderInnovationsTable = function(data) {
                 <td class="px-4 py-4 text-center font-bold text-white">${catEstoque} cx</td>
                 <td class="px-4 py-4 text-center text-slate-400">${catPosAvg12m}%</td>
                 <td class="px-4 py-4 text-center text-slate-400">${catPosPrevYear}%</td>
+                <td class="px-4 py-4 text-center text-slate-400">${catPosPrevM1}%</td>
                 <td class="px-4 py-4 text-center font-bold text-white">${catPosAtual}%</td>
                 <td class="px-4 py-4 text-center ${varColor} font-bold">${varPercent}%</td>
             </tr>
@@ -5744,10 +5746,11 @@ window.renderInnovationsTable = function(data) {
         productsInCat.forEach(p => {
             let posAtual = ((p.pos_current / active) * 100).toFixed(2);
             let posPrevYear = ((p.pos_prev_year / active) * 100).toFixed(2);
+            let posPrevM1 = ((p.pos_prev_m1 / active) * 100).toFixed(2);
             let posAvg12m = ((p.pos_avg_12m / active) * 100).toFixed(2);
             let pEstoque = Math.round(p.estoque_current || 0);
             
-            let pVarPercent = p.pos_prev_year > 0 ? (((p.pos_current - p.pos_prev_year) / p.pos_prev_year) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
+            let pVarPercent = p.pos_prev_m1 > 0 ? (((p.pos_current - p.pos_prev_m1) / p.pos_prev_m1) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
             let pVarColor = pVarPercent >= 0 ? 'text-green-400' : 'text-red-400';
 
             html += `
@@ -5759,6 +5762,7 @@ window.renderInnovationsTable = function(data) {
                     <td class="px-4 py-4 text-center font-medium text-slate-300">${pEstoque} cx</td>
                     <td class="px-4 py-4 text-center text-slate-500">${posAvg12m}%</td>
                     <td class="px-4 py-4 text-center text-slate-500">${posPrevYear}%</td>
+                    <td class="px-4 py-4 text-center text-slate-500">${posPrevM1}%</td>
                     <td class="px-4 py-4 text-center font-medium text-slate-300">${posAtual}%</td>
                     <td class="px-4 py-4 text-center ${pVarColor} text-xs font-bold">${pVarPercent}%</td>
                 </tr>
@@ -5767,7 +5771,7 @@ window.renderInnovationsTable = function(data) {
     });
 
     if (data.categories.length === 0) {
-        html = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum dado encontrado para os filtros selecionados.</td></tr>';
+        html = '<tr><td colspan="8" class="p-4 text-center text-slate-500">Nenhum dado encontrado para os filtros selecionados.</td></tr>';
     }
 
     tbody.innerHTML = html;
