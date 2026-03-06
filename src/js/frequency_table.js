@@ -53,63 +53,31 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
 
         const rowData = { tons, faturamento, faturamento_prev, positivacao, sum_skus, total_pedidos, base_total, clientsWithSales };
 
-        // Identify node level by explicit ROLLUP output names
-        // Prevent pseudo-totals from rendering as valid string names if grp_ flags are somehow missing
-        // Explicitly reject pseudo-totals entering the leaf logic
-        const isGrandTotal = (filial === 'TOTAL_GERAL' || filial === 'PRIME' || row.grp_filial == 1);
-        const isFilialTotal = (cidade === 'TOTAL_CIDADE' || row.grp_cidade == 1);
-        const isCidadeTotal = (vendedor === 'TOTAL_VENDEDOR' || row.grp_vendedor == 1);
-
-        if (isGrandTotal) {
-            // Grand Total (PRIME)
-            hierarchy.totals = { ...rowData, base_total: data.global_base_total || rowData.base_total || 0 };
-            return;
-        } 
-        
-        if (isFilialTotal) {
-            // Filial Total
-            if (filial === 'TOTAL_GERAL') return; // Paranoia check
-
-            if (!hierarchy.children[filial]) {
-                hierarchy.children[filial] = { name: filial, children: {}, totals: rowData };
-            } else {
-                hierarchy.children[filial].totals = rowData;
-            }
-            return;
-        } 
-        
-        if (isCidadeTotal) {
-            // Cidade Total
-            if (filial === 'TOTAL_GERAL') return; // Paranoia check
-
-            if (!hierarchy.children[filial]) {
-                hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
-            }
-            if (!hierarchy.children[filial].children[cidade]) {
-                hierarchy.children[filial].children[cidade] = { name: cidade, children: {}, totals: rowData };
-            } else {
-                hierarchy.children[filial].children[cidade].totals = rowData;
-            }
+        // Rely strictly on ROLLUP flags
+        if (row.grp_filial === 1) {
+            hierarchy.totals = { ...rowData, base_total: rowData.base_total || 0 };
             return;
         }
-        
-        // Vendedor (Leaf)
-        // Extra sanity check: skip insertion if any grouping name somehow sneaked through
-        if (filial === 'TOTAL_GERAL' || filial === 'PRIME' || cidade === 'TOTAL_CIDADE' || vendedor === 'TOTAL_VENDEDOR' || row.grp_filial == 1 || row.grp_cidade == 1 || row.grp_vendedor == 1) {
+        if (row.grp_cidade === 1) {
+            if (!hierarchy.children[filial]) hierarchy.children[filial] = { name: filial, children: {}, totals: rowData };
+            else hierarchy.children[filial].totals = rowData;
+            return;
+        }
+        if (row.grp_vendedor === 1) {
+            if (!hierarchy.children[filial]) hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
+            if (!hierarchy.children[filial].children[cidade]) hierarchy.children[filial].children[cidade] = { name: cidade, children: {}, totals: rowData };
+            else hierarchy.children[filial].children[cidade].totals = rowData;
             return;
         }
 
-            if (!hierarchy.children[filial]) {
-                hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
-            }
-            if (!hierarchy.children[filial].children[cidade]) {
-                hierarchy.children[filial].children[cidade] = { name: cidade, children: {}, totals: {} };
-            }
-            hierarchy.children[filial].children[cidade].children[vendedor] = {
-                name: vendedor,
-                ...rowData
-            };
-        }
+        // Leaf Node (grp_vendedor === 0)
+        if (!hierarchy.children[filial]) hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
+        if (!hierarchy.children[filial].children[cidade]) hierarchy.children[filial].children[cidade] = { name: cidade, children: {}, totals: {} };
+        
+        hierarchy.children[filial].children[cidade].children[vendedor] = {
+            name: vendedor,
+            ...rowData
+        };
     });
 
     let rowCounter = 0;
