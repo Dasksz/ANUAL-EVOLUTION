@@ -54,126 +54,145 @@ BEGIN
 
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_target_month := p_mes::int;
-        v_where_base := v_where_base || ' AND ano = ' || v_current_year || ' AND mes = ' || v_target_month || ' ';
-        v_where_base_prev := v_where_base_prev || ' AND ano = ' || v_previous_year || ' AND mes = ' || v_target_month || ' ';
+        v_where_base := v_where_base || ' AND s.ano = ' || v_current_year || ' AND s.mes = ' || v_target_month || ' ';
+        v_where_base_prev := v_where_base_prev || ' AND s.ano = ' || v_previous_year || ' AND s.mes = ' || v_target_month || ' ';
     ELSE
-        v_where_base := v_where_base || ' AND ano = ' || v_current_year || ' ';
-        v_where_base_prev := v_where_base_prev || ' AND ano = ' || v_previous_year || ' ';
+        v_where_base := v_where_base || ' AND s.ano = ' || v_current_year || ' ';
+        v_where_base_prev := v_where_base_prev || ' AND s.ano = ' || v_previous_year || ' ';
     END IF;
 
     v_where_chart := v_where_chart || ' AND ano IN (' || v_previous_year || ', ' || v_current_year || ') ';
 
     -- 2. Build Where Clauses
+    -- Since we INNER JOIN data_summary_frequency (s) with base_clients (bc) which ALREADY enforces current territory,
+    -- we only apply regional filters (filial, cidade, vendedor) to v_where_clients and chart queries!
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_filial)) THEN
-            v_where_base := v_where_base || ' AND filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
-            v_where_base_prev := v_where_base_prev || ' AND filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
             v_where_chart := v_where_chart || ' AND filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
+            v_where_clients := v_where_clients || ' AND cidade IN (SELECT cidade FROM public.config_city_branches WHERE filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || '''])) ';
         END IF;
     END IF;
 
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
-        v_where_clients := v_where_clients || ' AND cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
-        v_where_base_prev := v_where_base_prev || ' AND cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+        v_where_clients := v_where_clients || ' AND dc.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
         v_where_chart := v_where_chart || ' AND cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
     END IF;
 
+    -- The frequency table does NOT use Supervisor levels in its current tree, but if a filter is passed, we apply it to the base clients 
+    -- by checking the supervisor of the current seller.
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
-        v_where_base_prev := v_where_base_prev || ' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+        v_where_clients := v_where_clients || ' AND dv.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
         v_where_chart := v_where_chart || ' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
-        v_where_base_prev := v_where_base_prev || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+        v_where_clients := v_where_clients || ' AND dv.nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || ''']) ';
         v_where_chart := v_where_chart || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
     END IF;
 
+    -- Fornecedor and Rede are product/client traits
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_fornecedor)) THEN
-            v_where_base := v_where_base || ' AND codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
-            v_where_base_prev := v_where_base_prev || ' AND codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
+            v_where_base := v_where_base || ' AND s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
+            v_where_base_prev := v_where_base_prev || ' AND s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
             v_where_chart := v_where_chart || ' AND codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
         END IF;
     END IF;
 
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
-        v_where_clients := v_where_clients || ' AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
-        v_where_base_prev := v_where_base_prev || ' AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+        v_where_clients := v_where_clients || ' AND dc.ramo = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
         v_where_chart := v_where_chart || ' AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
     END IF;
 
     -- JSONB Filters for Arrays (Using ?| to check if any array element exists as a key/element in jsonb)
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND produtos ?| ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
-        v_where_base_prev := v_where_base_prev || ' AND produtos ?| ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
+        v_where_base := v_where_base || ' AND s.produtos ?| ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
+        v_where_base_prev := v_where_base_prev || ' AND s.produtos ?| ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
         v_where_chart := v_where_chart || ' AND produtos ?| ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
     END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND categorias ?| ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
-        v_where_base_prev := v_where_base_prev || ' AND categorias ?| ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
+        v_where_base := v_where_base || ' AND s.categorias ?| ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
+        v_where_base_prev := v_where_base_prev || ' AND s.categorias ?| ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
         v_where_chart := v_where_chart || ' AND categorias ?| ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND tipovenda = ANY(ARRAY[' || array_to_string(p_tipovenda, ',') || ']) ';
-        v_where_base_prev := v_where_base_prev || ' AND tipovenda = ANY(ARRAY[' || array_to_string(p_tipovenda, ',') || ']) ';
+        v_where_base := v_where_base || ' AND s.tipovenda = ANY(ARRAY[' || array_to_string(p_tipovenda, ',') || ']) ';
+        v_where_base_prev := v_where_base_prev || ' AND s.tipovenda = ANY(ARRAY[' || array_to_string(p_tipovenda, ',') || ']) ';
         v_where_chart := v_where_chart || ' AND tipovenda = ANY(ARRAY[' || array_to_string(p_tipovenda, ',') || ']) ';
     END IF;
 
     -- Dynamic Query
     v_sql := '
-    WITH current_data AS (
+    WITH base_clients AS (
         SELECT
-            COALESCE(s.filial, ''SEM FILIAL'') as filial,
-            COALESCE(s.cidade, ''SEM CIDADE'') as cidade,
-            COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
+            dc.codigo_cliente as codcli,
+            COALESCE(cb.filial, ''SEM FILIAL'') as filial,
+            COALESCE(dc.cidade, ''SEM CIDADE'') as cidade,
+            COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor
+        FROM public.data_clients dc
+        LEFT JOIN public.config_city_branches cb USING (cidade)
+        LEFT JOIN public.dim_vendedores dv ON dc.rca1 = dv.codigo
+        ' || v_where_clients || '
+    ),
+    current_data AS (
+        SELECT
+            bc.filial,
+            bc.cidade,
+            bc.vendedor,
+            s.mes,
             s.codcli,
             s.pedido,
             s.tipovenda,
             s.vlvenda,
             s.peso,
-            jsonb_array_length(s.produtos) as qt_skus
+            s.produtos
         FROM public.data_summary_frequency s
-        LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
+        INNER JOIN base_clients bc ON s.codcli = bc.codcli
         ' || v_where_base || '
     ),
     previous_data AS (
         SELECT
-            GROUPING(COALESCE(s.filial, ''SEM FILIAL'')) as grp_filial,
-            GROUPING(COALESCE(s.cidade, ''SEM CIDADE'')) as grp_cidade,
-            GROUPING(COALESCE(dv.nome, ''SEM VENDEDOR'')) as grp_vendedor,
-            COALESCE(s.filial, ''SEM FILIAL'') as filial,
-            COALESCE(s.cidade, ''SEM CIDADE'') as cidade,
-            COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor,
+            GROUPING(bc.filial) as grp_filial,
+            GROUPING(bc.cidade) as grp_cidade,
+            GROUPING(bc.vendedor) as grp_vendedor,
+            COALESCE(bc.filial, ''TOTAL_GERAL'') as filial,
+            COALESCE(bc.cidade, ''TOTAL_CIDADE'') as cidade,
+            COALESCE(bc.vendedor, ''TOTAL_VENDEDOR'') as vendedor,
             SUM(s.vlvenda) as faturamento_prev
         FROM public.data_summary_frequency s
-        LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
+        INNER JOIN base_clients bc ON s.codcli = bc.codcli
         ' || v_where_base_prev || ' AND s.tipovenda NOT IN (''5'', ''11'')
-        GROUP BY ROLLUP(COALESCE(s.filial, ''SEM FILIAL''), COALESCE(s.cidade, ''SEM CIDADE''), COALESCE(dv.nome, ''SEM VENDEDOR''))
+        GROUP BY ROLLUP(bc.filial, bc.cidade, bc.vendedor)
     ),
     client_base AS (
         SELECT
-            COALESCE(cidade, ''SEM CIDADE'') as cidade,
-            COUNT(DISTINCT codigo_cliente) as base_total
-        FROM public.data_clients
-        ' || v_where_clients || '
-        GROUP BY 1
+            GROUPING(filial) as grp_filial,
+            GROUPING(cidade) as grp_cidade,
+            GROUPING(vendedor) as grp_vendedor,
+            COALESCE(filial, ''TOTAL_GERAL'') as filial,
+            COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
+            COALESCE(vendedor, ''TOTAL_VENDEDOR'') as vendedor,
+            COUNT(DISTINCT codcli) as base_total
+        FROM base_clients
+        GROUP BY ROLLUP(filial, cidade, vendedor)
     ),
     client_totals AS (
-        SELECT filial, cidade, vendedor, codcli,
+        SELECT codcli,
                SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN vlvenda ELSE 0 END) as total_vlvenda
         FROM current_data
-        GROUP BY filial, cidade, vendedor, codcli
+        GROUP BY codcli
     ),
     valid_clients AS (
-        SELECT filial, cidade, vendedor, codcli
+        SELECT codcli
         FROM client_totals
         WHERE total_vlvenda >= 1
+    ),
+    current_skus AS (
+        SELECT filial, cidade, vendedor, codcli, jsonb_array_elements_text(produtos) as sku
+        FROM current_data
+        WHERE tipovenda NOT IN (''5'', ''11'')
     ),
     aggregated_curr AS (
         SELECT
@@ -187,25 +206,37 @@ BEGIN
             SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
             COUNT(DISTINCT vc.codcli) as positivacao,
             COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END) as total_pedidos,
-            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.qt_skus ELSE 0 END) as sum_skus
+            COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
-        LEFT JOIN valid_clients vc ON c.filial = vc.filial AND c.cidade = vc.cidade AND c.vendedor = vc.vendedor AND c.codcli = vc.codcli AND c.tipovenda NOT IN (''5'', ''11'')
+        LEFT JOIN valid_clients vc ON c.codcli = vc.codcli AND c.tipovenda NOT IN (''5'', ''11'')
         GROUP BY ROLLUP(c.filial, c.cidade, c.vendedor)
+    ),
+    aggregated_skus AS (
+        SELECT
+            GROUPING(filial) as grp_filial,
+            GROUPING(cidade) as grp_cidade,
+            GROUPING(vendedor) as grp_vendedor,
+            COALESCE(filial, ''TOTAL_GERAL'') as filial,
+            COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
+            COALESCE(vendedor, ''TOTAL_VENDEDOR'') as vendedor,
+            COUNT(DISTINCT codcli || ''-'' || sku) as sum_skus
+        FROM current_skus
+        GROUP BY ROLLUP(filial, cidade, vendedor)
     ),
     final_tree AS (
         SELECT
             ac.grp_filial,
             ac.grp_cidade,
             ac.grp_vendedor,
-            COALESCE(ac.filial, ''TOTAL_GERAL'') as filial,
-            COALESCE(ac.cidade, ''TOTAL_CIDADE'') as cidade,
-            COALESCE(ac.vendedor, ''TOTAL_VENDEDOR'') as vendedor,
+            ac.filial,
+            ac.cidade,
+            ac.vendedor,
             ac.tons,
             ac.faturamento,
             COALESCE(pd.faturamento_prev, 0) as faturamento_prev,
             ac.positivacao,
-            ac.sum_skus,
-            ac.total_pedidos,
+            (COALESCE(ask.sum_skus, 0)::numeric / GREATEST(ac.q_meses, 1)) as sum_skus,
+            (ac.total_pedidos::numeric / GREATEST(ac.q_meses, 1)) as total_pedidos,
             COALESCE(cb.base_total, 0) as base_total
         FROM aggregated_curr ac
         LEFT JOIN previous_data pd ON ac.grp_filial = pd.grp_filial 
@@ -214,7 +245,18 @@ BEGIN
                                   AND ac.filial = pd.filial 
                                   AND ac.cidade = pd.cidade 
                                   AND ac.vendedor = pd.vendedor
-        LEFT JOIN client_base cb ON ac.cidade = cb.cidade AND ac.grp_vendedor = 1 AND ac.grp_cidade = 0 AND ac.grp_filial = 0
+        LEFT JOIN aggregated_skus ask ON ac.grp_filial = ask.grp_filial 
+                                  AND ac.grp_cidade = ask.grp_cidade 
+                                  AND ac.grp_vendedor = ask.grp_vendedor 
+                                  AND ac.filial = ask.filial 
+                                  AND ac.cidade = ask.cidade 
+                                  AND ac.vendedor = ask.vendedor
+        LEFT JOIN client_base cb ON ac.grp_filial = cb.grp_filial 
+                                AND ac.grp_cidade = cb.grp_cidade 
+                                AND ac.grp_vendedor = cb.grp_vendedor 
+                                AND ac.filial = cb.filial 
+                                AND ac.cidade = cb.cidade
+                                AND ac.vendedor = cb.vendedor
     ),
     chart_data AS (
         SELECT
