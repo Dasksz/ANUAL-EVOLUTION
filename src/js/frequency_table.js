@@ -55,14 +55,21 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
 
         // Identify node level by explicit ROLLUP output names
         // Prevent pseudo-totals from rendering as valid string names if grp_ flags are somehow missing
-        if (filial === 'TOTAL_GERAL' || filial === 'PRIME' || (filial === 'SEM FILIAL' && cidade === 'TOTAL_CIDADE' && vendedor === 'TOTAL_VENDEDOR') || row.grp_filial == 1) {
+        // Explicitly reject pseudo-totals entering the leaf logic
+        const isGrandTotal = (filial === 'TOTAL_GERAL' || filial === 'PRIME' || row.grp_filial == 1);
+        const isFilialTotal = (cidade === 'TOTAL_CIDADE' || row.grp_cidade == 1);
+        const isCidadeTotal = (vendedor === 'TOTAL_VENDEDOR' || row.grp_vendedor == 1);
+
+        if (isGrandTotal) {
             // Grand Total (PRIME)
             hierarchy.totals = { ...rowData, base_total: data.global_base_total || rowData.base_total || 0 };
             return;
         } 
         
-        if (cidade === 'TOTAL_CIDADE' || row.grp_cidade == 1) {
+        if (isFilialTotal) {
             // Filial Total
+            if (filial === 'TOTAL_GERAL') return; // Paranoia check
+
             if (!hierarchy.children[filial]) {
                 hierarchy.children[filial] = { name: filial, children: {}, totals: rowData };
             } else {
@@ -71,8 +78,10 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
             return;
         } 
         
-        if (vendedor === 'TOTAL_VENDEDOR' || row.grp_vendedor == 1) {
+        if (isCidadeTotal) {
             // Cidade Total
+            if (filial === 'TOTAL_GERAL') return; // Paranoia check
+
             if (!hierarchy.children[filial]) {
                 hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
             }
@@ -86,7 +95,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         
         // Vendedor (Leaf)
         // Extra sanity check: skip insertion if any grouping name somehow sneaked through
-        if (filial === 'TOTAL_GERAL' || cidade === 'TOTAL_CIDADE' || vendedor === 'TOTAL_VENDEDOR') {
+        if (filial === 'TOTAL_GERAL' || filial === 'PRIME' || cidade === 'TOTAL_CIDADE' || vendedor === 'TOTAL_VENDEDOR' || row.grp_filial == 1 || row.grp_cidade == 1 || row.grp_vendedor == 1) {
             return;
         }
 
