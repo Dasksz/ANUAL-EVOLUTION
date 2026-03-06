@@ -5747,13 +5747,19 @@ window.renderInnovationsTable = function(data) {
     if (!tbody || !data || !data.categories) return;
 
     let html = '';
-    const active = data.active_clients || 1; // Reverted to the consistent 12-month active base
+
+    // Use dynamic period-specific attended bases instead of a fixed 12m active base
+    // Fallback to 1 to prevent division by zero
+    const attCurrent = data.attended_current || 1;
+    const attPrevYear = data.attended_prev_year || 1;
+    const attPrevM1 = data.attended_prev_m1 || 1;
+    const attAvg12m = data.attended_12m > 0 ? (data.attended_12m / 3.0) : 1;
 
     data.categories.forEach((cat, idx) => {
-        let catPosAtual = ((cat.pos_current / active) * 100).toFixed(2);
-        let catPosPrevYear = ((cat.pos_prev_year / active) * 100).toFixed(2);
-        let catPosPrevM1 = ((cat.pos_prev_m1 / active) * 100).toFixed(2);
-        let catPosAvg12m = ((cat.pos_avg_12m / active) * 100).toFixed(2);
+        let catPosAtual = ((cat.pos_current / attCurrent) * 100).toFixed(2);
+        let catPosPrevYear = ((cat.pos_prev_year / attPrevYear) * 100).toFixed(2);
+        let catPosPrevM1 = ((cat.pos_prev_m1 / attPrevM1) * 100).toFixed(2);
+        let catPosAvg12m = ((cat.pos_avg_12m / attAvg12m) * 100).toFixed(2);
         let catEstoque = Math.round(cat.estoque_current || 0);
         
         let varPercent = cat.pos_prev_m1 > 0 ? (((cat.pos_current - cat.pos_prev_m1) / cat.pos_prev_m1) * 100).toFixed(1) : (cat.pos_current > 0 ? 100 : 0);
@@ -5781,10 +5787,10 @@ window.renderInnovationsTable = function(data) {
         // Product Rows (Children)
         const productsInCat = data.products.filter(p => p.category_name === cat.name);
         productsInCat.forEach(p => {
-            let posAtual = ((p.pos_current / active) * 100).toFixed(2);
-            let posPrevYear = ((p.pos_prev_year / active) * 100).toFixed(2);
-            let posPrevM1 = ((p.pos_prev_m1 / active) * 100).toFixed(2);
-            let posAvg12m = ((p.pos_avg_12m / active) * 100).toFixed(2);
+            let posAtual = ((p.pos_current / attCurrent) * 100).toFixed(2);
+            let posPrevYear = ((p.pos_prev_year / attPrevYear) * 100).toFixed(2);
+            let posPrevM1 = ((p.pos_prev_m1 / attPrevM1) * 100).toFixed(2);
+            let posAvg12m = ((p.pos_avg_12m / attAvg12m) * 100).toFixed(2);
             let pEstoque = Math.round(p.estoque_current || 0);
             
             let pVarPercent = p.pos_prev_m1 > 0 ? (((p.pos_current - p.pos_prev_m1) / p.pos_prev_m1) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
@@ -5812,7 +5818,7 @@ window.renderInnovationsTable = function(data) {
     }
 
     tbody.innerHTML = html;
-}
+};
 
 // Helper para pegar valor de inputs (pode precisar ajuste dependendo de como voce estruturou os selects)
 function getSelectedValues(id) {

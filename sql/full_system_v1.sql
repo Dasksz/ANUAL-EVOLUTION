@@ -3811,3 +3811,320 @@ BEGIN
     RETURN v_result;
 END;
 $BODY$;
+-- Function to retrieve innovations dashboard data
+-- Updated with new attended bases for percentage calculation
+CREATE OR REPLACE FUNCTION get_innovations_data(
+    p_filial text[] default null,
+    p_cidade text[] default null,
+    p_supervisor text[] default null,
+    p_vendedor text[] default null,
+    p_rede text[] default null,
+    p_tipovenda text[] default null,
+    p_categoria_inovacao text default null,
+    p_ano text default null,
+    p_mes text default null
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET statement_timeout = '15s'
+AS $$
+DECLARE
+    v_curr_start date;
+    v_curr_end date;
+    v_prev_start date;
+    v_prev_end date;
+    v_12m_start date;
+    v_12m_end date;
+    v_current_year integer;
+    v_current_month integer;
+    v_sql text;
+    v_where_base text := ' WHERE 1=1 ';
+    v_where_client_base text := ' WHERE 1=1 ';
+    v_where_inov text := ' 1=1 ';
+    v_filial_cities text[];
+BEGIN
+    -- 1. Date Resolution
+    IF p_ano IS NULL OR p_ano = '' OR p_ano = 'todos' THEN
+        SELECT EXTRACT(YEAR FROM MAX(dtped)) INTO v_current_year FROM public.data_detailed;
+        IF v_current_year IS NULL THEN
+            v_current_year := EXTRACT(YEAR FROM CURRENT_DATE);
+        END IF;
+    ELSE
+        v_current_year := p_ano::integer;
+    END IF;
+
+    IF p_mes IS NULL OR p_mes = '' THEN
+        -- If no month, use whole year
+        v_curr_start := make_date(v_current_year, 1, 1);
+        v_curr_end := make_date(v_current_year + 1, 1, 1);
+        v_prev_start := make_date(v_current_year - 1, 1, 1);
+        v_prev_end := make_date(v_current_year, 1, 1);
+        -- For 'todos', 12m avg doesn't make as much sense, but we'll use previous year
+        v_12m_start := make_date(v_current_year - 1, 1, 1);
+        v_12m_end := make_date(v_current_year, 1, 1);
+    ELSE
+        v_current_month := p_mes::integer;
+        v_curr_start := make_date(v_current_year, v_current_month, 1);
+        v_curr_end := v_curr_start + interval '1 month';
+
+        v_prev_start := make_date(v_current_year - 1, v_current_month, 1);
+        v_prev_end := v_prev_start + interval '1 month';
+
+        v_12m_end := v_curr_start;
+        v_12m_start := v_curr_start - interval '3 months'; -- Using last 3 months for average
+    END IF;
+
+    -- 2. Build Dynamic Filters
+    -- Filial to City Mapping
+    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+        IF 'ambas' = ANY(p_filial) THEN
+            -- Do nothing, include all
+        ELSE
+            SELECT array_agg(DISTINCT unnest(cidades)) INTO v_filial_cities
+            FROM public.config_city_branches
+            WHERE filial = ANY(p_filial);
+
+            IF v_filial_cities IS NOT NULL THEN
+                v_where_base := v_where_base || ' AND c.cidade = ANY(ARRAY[''' || array_to_string(v_filial_cities, ''',''') || ''']) ';
+                v_where_client_base := v_where_client_base || ' AND cidade = ANY(ARRAY[''' || array_to_string(v_filial_cities, ''',''') || ''']) ';
+            ELSE
+                v_where_base := v_where_base || ' AND 1=0 ';
+                v_where_client_base := v_where_client_base || ' AND 1=0 ';
+            END IF;
+        END IF;
+    END IF;
+
+    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
+        v_where_base := v_where_base || ' AND c.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+        v_where_client_base := v_where_client_base || ' AND cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+    END IF;
+
+    IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
+        v_where_base := v_where_base || format(' AND d.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+    END IF;
+
+    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+        v_where_base := v_where_base || format(' AND d.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+    END IF;
+
+    IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
+        v_where_base := v_where_base || format(' AND d.tipovenda = ANY(%L::text[]) ', p_tipovenda);
+    END IF;
+
+    -- Redes
+    IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
+        IF 'com_ramo' = ANY(p_rede) AND 'sem_ramo' = ANY(p_rede) THEN
+            -- Do nothing, include all
+        ELSIF 'com_ramo' = ANY(p_rede) THEN
+            v_where_base := v_where_base || ' AND c.ramo IS NOT NULL AND c.ramo != '''' ';
+            v_where_client_base := v_where_client_base || ' AND ramo IS NOT NULL AND ramo != '''' ';
+        ELSIF 'sem_ramo' = ANY(p_rede) THEN
+            v_where_base := v_where_base || ' AND (c.ramo IS NULL OR c.ramo = '''') ';
+            v_where_client_base := v_where_client_base || ' AND (ramo IS NULL OR ramo = '''') ';
+        ELSE
+            v_where_base := v_where_base || ' AND c.ramo = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+            v_where_client_base := v_where_client_base || ' AND ramo = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+        END IF;
+    END IF;
+
+    -- Categoria Inovação Filter
+    IF p_categoria_inovacao IS NOT NULL AND p_categoria_inovacao != '' THEN
+        v_where_inov := ' i.inovacoes = ' || quote_literal(p_categoria_inovacao) || ' ';
+    END IF;
+
+    -- 3. Dynamic Query Execution
+    v_sql := '
+    WITH base_clients AS (
+        SELECT COUNT(*) as val FROM public.data_clients ' || v_where_client_base || '
+    ),
+    attended_clients AS (
+        SELECT COUNT(*) as val
+        FROM (
+            SELECT d.codcli
+            FROM (
+                SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_detailed WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
+                UNION ALL
+                SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_history WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
+            ) d
+            JOIN data_clients c ON c.codigo_cliente = d.codcli
+            ' || v_where_base || '
+            GROUP BY d.codcli
+            HAVING SUM(d.vlvenda) >= 1
+        ) as sub
+    ),
+    active_clients AS (
+        SELECT
+            MAX((d.dtped >= ''' || v_curr_start || ''' AND d.dtped < ''' || v_curr_end || ''')::int)::boolean AS is_current,
+            MAX((d.dtped >= ''' || v_prev_start || ''' AND d.dtped < ''' || v_prev_end || ''')::int)::boolean AS is_prev_year,
+            MAX((d.dtped >= ''' || v_12m_start || ''' AND d.dtped < ''' || v_12m_end || ''')::int)::boolean AS is_avg_12m,
+            MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''1 month'') AND d.dtped < ''' || v_curr_start || ''')::int)::boolean AS is_prev_m1,
+            MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''2 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''1 month''))::int)::boolean AS is_prev_m2,
+            MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''3 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''2 months''))::int)::boolean AS is_prev_m3,
+            d.codcli
+        FROM (
+            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, dtped FROM data_detailed WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
+            UNION ALL
+            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, dtped FROM data_history WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
+        ) d
+        JOIN data_clients c ON c.codigo_cliente = d.codcli
+        ' || v_where_base || '
+        GROUP BY d.codcli
+        HAVING SUM(d.vlvenda) >= 1
+    ),
+    attended_bases AS (
+        SELECT
+            COUNT(DISTINCT CASE WHEN is_current THEN codcli END) as attended_current,
+            COUNT(DISTINCT CASE WHEN is_prev_year THEN codcli END) as attended_prev_year,
+            COUNT(DISTINCT CASE WHEN is_prev_m1 THEN codcli END) as attended_prev_m1,
+            COUNT(DISTINCT CASE WHEN is_prev_m2 THEN codcli END) as attended_prev_m2,
+            COUNT(DISTINCT CASE WHEN is_prev_m3 THEN codcli END) as attended_prev_m3,
+            COUNT(DISTINCT codcli) as active_total,
+            COUNT(DISTINCT CASE WHEN is_avg_12m THEN codcli END) as attended_12m
+        FROM active_clients
+    ),
+    innovation_sales AS (
+        SELECT
+            i.inovacoes AS category_name,
+            i.codigo AS product_code,
+            p.descricao AS product_name,
+            to_char(d.dtped, ''YYYY-MM'') AS period_month,
+            d.codcli,
+            MAX((d.dtped >= ''' || v_curr_start || ''' AND d.dtped < ''' || v_curr_end || ''')::int)::boolean AS is_current,
+            MAX((d.dtped >= ''' || v_prev_start || ''' AND d.dtped < ''' || v_prev_end || ''')::int)::boolean AS is_prev_year,
+            MAX((d.dtped >= ''' || v_12m_start || ''' AND d.dtped < ''' || v_12m_end || ''')::int)::boolean AS is_avg_12m,
+            MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''1 month'') AND d.dtped < ''' || v_curr_start || ''')::int)::boolean AS is_prev_m1,
+            MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''2 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''1 month''))::int)::boolean AS is_prev_m2,
+            MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''3 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''2 months''))::int)::boolean AS is_prev_m3
+        FROM (
+            SELECT codcli, produto, dtped, vlvenda
+            FROM data_detailed
+            WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
+              AND produto IN (SELECT codigo FROM data_innovations)
+            UNION ALL
+            SELECT codcli, produto, dtped, vlvenda
+            FROM data_history
+            WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
+              AND produto IN (SELECT codigo FROM data_innovations)
+        ) d
+        JOIN data_innovations i ON d.produto = i.codigo
+        JOIN dim_produtos p ON p.codigo = i.codigo
+        -- active_clients inner join removed here because active_clients is now returning boolean arrays instead of just valid codclis
+        -- Instead we just explicitly apply base filter
+        JOIN data_clients c ON c.codigo_cliente = d.codcli
+        WHERE ' || v_where_inov || '
+        ' || v_where_base || '
+        GROUP BY 1, 2, 3, 4, 5
+        HAVING SUM(d.vlvenda) >= 1
+    ),
+    aggregated_base AS (
+        SELECT
+            category_name,
+            product_code,
+            product_name,
+            COUNT(DISTINCT CASE WHEN is_current THEN codcli END) AS pos_current,
+            COUNT(DISTINCT CASE WHEN is_prev_year THEN codcli END) AS pos_prev_year,
+            COUNT(DISTINCT CASE WHEN is_prev_m1 THEN codcli END) AS pos_prev_m1,
+            COUNT(DISTINCT CASE WHEN is_prev_m2 THEN codcli END) AS pos_prev_m2,
+            COUNT(DISTINCT CASE WHEN is_prev_m3 THEN codcli END) AS pos_prev_m3
+        FROM innovation_sales
+        GROUP BY 1, 2, 3
+    ),
+    pos_12m AS (
+        SELECT
+            category_name,
+            product_code,
+            product_name,
+            COUNT(DISTINCT codcli) / 3.0 AS pos_count
+        FROM innovation_sales
+        WHERE is_avg_12m
+        GROUP BY 1, 2, 3, period_month
+    ),
+    pos_12m_avg AS (
+        SELECT
+            category_name,
+            product_code,
+            product_name,
+            SUM(pos_count) AS pos_avg
+        FROM pos_12m
+        GROUP BY 1, 2, 3
+    ),
+    aggregated AS (
+        SELECT
+            COALESCE(ab.category_name, p12.category_name) AS category_name,
+            COALESCE(ab.product_code, p12.product_code) AS product_code,
+            COALESCE(ab.product_name, p12.product_name) AS product_name,
+            COALESCE(ab.pos_current, 0) AS pos_current,
+            COALESCE(ab.pos_prev_year, 0) AS pos_prev_year,
+            COALESCE(ab.pos_prev_m1, 0) AS pos_prev_m1,
+            COALESCE(ab.pos_prev_m2, 0) AS pos_prev_m2,
+            COALESCE(ab.pos_prev_m3, 0) AS pos_prev_m3,
+            COALESCE(p12.pos_avg, 0) AS pos_avg_12m,
+            -- ESTOQUE IS NOW DYNAMICALLY EXTRACTED FROM dim_produtos.estoque_filial
+            COALESCE((
+                SELECT SUM(value::numeric)
+                FROM jsonb_each_text((SELECT estoque_filial FROM dim_produtos WHERE codigo = COALESCE(ab.product_code, p12.product_code)))
+                WHERE ($1 IS NULL OR array_length($1, 1) = 0 OR ''ambas'' = ANY($1))
+                   OR key = ANY($1)
+            ), 0) AS estoque_current
+        FROM aggregated_base ab
+        FULL OUTER JOIN pos_12m_avg p12 ON ab.product_code = p12.product_code
+    )
+    SELECT json_build_object(
+        ''active_clients'', (SELECT active_total FROM attended_bases),
+        ''attended_current'', (SELECT attended_current FROM attended_bases),
+        ''attended_prev_year'', (SELECT attended_prev_year FROM attended_bases),
+        ''attended_prev_m1'', (SELECT attended_prev_m1 FROM attended_bases),
+        ''attended_prev_m2'', (SELECT attended_prev_m2 FROM attended_bases),
+        ''attended_prev_m3'', (SELECT attended_prev_m3 FROM attended_bases),
+        ''attended_12m'', (SELECT attended_12m FROM attended_bases),
+        ''kpi_clients_base'', (SELECT val FROM base_clients),
+        ''kpi_clients_attended'', (SELECT val FROM attended_clients),
+        ''kpi_innovations_attended'', (SELECT COUNT(DISTINCT codcli) FROM innovation_sales WHERE is_current),
+        ''categories'', (
+            SELECT COALESCE(json_agg(cat_agg), ''[]''::json)
+            FROM (
+                SELECT
+                    json_build_object(
+                        ''name'', category_name,
+                        ''pos_current'', SUM(pos_current),
+                        ''pos_prev_year'', SUM(pos_prev_year),
+                        ''pos_prev_m1'', SUM(pos_prev_m1),
+                        ''pos_prev_m2'', SUM(pos_prev_m2),
+                        ''pos_prev_m3'', SUM(pos_prev_m3),
+                        ''pos_avg_12m'', SUM(pos_avg_12m),
+                        ''estoque_current'', SUM(estoque_current),
+                        ''products_count'', COUNT(product_code),
+                        ''distinct_clients_current'', (SELECT COUNT(DISTINCT codcli) FROM innovation_sales WHERE is_current AND category_name = aggregated.category_name)
+                    ) as cat_agg
+                FROM aggregated
+                GROUP BY category_name
+            ) sub
+        ),
+        ''products'', (
+            SELECT COALESCE(json_agg(prod_agg), ''[]''::json)
+            FROM (
+                SELECT
+                    json_build_object(
+                        ''category_name'', category_name,
+                        ''product_code'', product_code,
+                        ''product_name'', product_name,
+                        ''pos_current'', pos_current,
+                        ''pos_prev_year'', pos_prev_year,
+                        ''pos_prev_m1'', pos_prev_m1,
+                        ''pos_prev_m2'', pos_prev_m2,
+                        ''pos_prev_m3'', pos_prev_m3,
+                        ''pos_avg_12m'', pos_avg_12m,
+                        ''estoque_current'', estoque_current
+                    ) as prod_agg
+                FROM aggregated
+                ORDER BY category_name, product_name
+            ) sub
+        )
+    )';
+
+    -- Execute
+    EXECUTE v_sql INTO v_sql USING p_filial;
+    RETURN v_sql::json;
+END;
+$$;
