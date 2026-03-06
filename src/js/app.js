@@ -1224,6 +1224,16 @@ document.addEventListener('DOMContentLoaded', () => {
         anoFilter.value = 'todos';
         mesFilter.value = '';
 
+        // Update custom dropdown visual text
+        if (anoFilter.nextElementSibling && anoFilter.nextElementSibling.tagName === 'BUTTON') {
+            const span = anoFilter.nextElementSibling.querySelector('span');
+            if (span) span.textContent = 'Todos';
+        }
+        if (mesFilter.nextElementSibling && mesFilter.nextElementSibling.tagName === 'BUTTON') {
+            const span = mesFilter.nextElementSibling.querySelector('span');
+            if (span) span.textContent = 'Todos';
+        }
+
         // Reset Multi Select Arrays
         selectedFiliais = [];
         selectedCidades = [];
