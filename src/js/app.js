@@ -365,7 +365,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const comparisonRedeFilterDropdown = document.getElementById('comparison-rede-filter-dropdown');
     const comparisonRedeFilterList = document.getElementById('comparison-rede-filter-list');
     const comparisonRedeFilterSearch = document.getElementById('comparison-rede-filter-search');
-    const comparisonFilialFilter = document.getElementById('comparison-filial-filter');
+    const comparisonFilialFilterBtn = document.getElementById('comparison-filial-filter-btn');
+    const comparisonFilialFilterDropdown = document.getElementById('comparison-filial-filter-dropdown');
     const comparisonCityFilterBtn = document.getElementById('comparison-city-filter-btn');
     const comparisonCityFilterDropdown = document.getElementById('comparison-city-filter-dropdown');
     const comparisonCityFilterList = document.getElementById('comparison-city-filter-list');
@@ -512,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (view === 'comparison') {
             state.ano = comparisonAnoFilter.value;
             state.mes = comparisonMesFilter.value;
-            state.filiais = (comparisonFilialFilter && comparisonFilialFilter.value !== 'ambas') ? [comparisonFilialFilter.value] : [];
+            state.filiais = selectedComparisonFiliais;
             state.cidades = selectedComparisonCities;
             state.supervisores = selectedComparisonSupervisors;
             state.vendedores = selectedComparisonSellers;
@@ -597,7 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
              if (getVal('mes')) comparisonMesFilter.value = getVal('mes');
 
              const filiais = getList('filiais');
-             if (filiais.length > 0 && comparisonFilialFilter) comparisonFilialFilter.value = filiais[0];
+             selectedComparisonFiliais = getList('filiais');
 
              selectedComparisonCities = getList('cidades');
 
@@ -4526,7 +4527,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let selectedComparisonProducts = [];
         let selectedComparisonTiposVenda = [];
         let selectedComparisonRedes = [];
-        let selectedComparisonCities = [];
+        let selectedComparisonFiliais = [];
+    let selectedComparisonCities = [];
         let selectedComparisonCategorias = [];
         let useTendencyComparison = false;
         let comparisonChartType = 'weekly';
@@ -4550,7 +4552,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const filters = {
-                p_filial: (comparisonFilialFilter && comparisonFilialFilter.value !== 'ambas') ? [comparisonFilialFilter.value] : null,
+                p_filial: selectedComparisonFiliais.length > 0 ? selectedComparisonFiliais : null,
                 p_cidade: selectedComparisonCities.length > 0 ? selectedComparisonCities : null,
                 p_supervisor: selectedComparisonSupervisors.length > 0 ? selectedComparisonSupervisors : null,
                 p_vendedor: selectedComparisonSellers.length > 0 ? selectedComparisonSellers : null,
@@ -4575,7 +4577,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (comparisonAnoFilter) comparisonAnoFilter.addEventListener('change', handleComparisonFilterChange);
         if (comparisonMesFilter) comparisonMesFilter.addEventListener('change', handleComparisonFilterChange);
 
-        if (comparisonFilialFilter) comparisonFilialFilter.addEventListener('change', handleComparisonFilterChange);
+
         if (comparisonPastaFilter) comparisonPastaFilter.addEventListener('change', handleComparisonFilterChange);
 
 
@@ -4647,7 +4649,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 selectedComparisonRedes = [];
                 selectedComparisonCategorias = [];
                 selectedComparisonCities = [];
-                if (comparisonFilialFilter) comparisonFilialFilter.value = 'ambas';
+                selectedComparisonFiliais = [];
                 if (comparisonPastaFilter) comparisonPastaFilter.value = 'ambas';
 
                 initComparisonFilters().then(loadComparisonView);
@@ -4655,8 +4657,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         document.addEventListener('click', (e) => {
-            const dropdowns = [comparisonSupervisorFilterDropdown, comparisonVendedorFilterDropdown, comparisonSupplierFilterDropdown, comparisonProductFilterDropdown, comparisonTipoVendaFilterDropdown, comparisonRedeFilterDropdown, comparisonCityFilterDropdown, comparisonCategoriaFilterDropdown];
-            const btns = [comparisonSupervisorFilterBtn, comparisonVendedorFilterBtn, comparisonSupplierFilterBtn, comparisonProductFilterBtn, comparisonTipoVendaFilterBtn, comparisonRedeFilterBtn, comparisonCityFilterBtn, comparisonCategoriaFilterBtn];
+            const dropdowns = [comparisonFilialFilterDropdown, comparisonSupervisorFilterDropdown, comparisonVendedorFilterDropdown, comparisonSupplierFilterDropdown, comparisonProductFilterDropdown, comparisonTipoVendaFilterDropdown, comparisonRedeFilterDropdown, comparisonCityFilterDropdown, comparisonCategoriaFilterDropdown];
+            const btns = [comparisonFilialFilterBtn, comparisonSupervisorFilterBtn, comparisonVendedorFilterBtn, comparisonSupplierFilterBtn, comparisonProductFilterBtn, comparisonTipoVendaFilterBtn, comparisonRedeFilterBtn, comparisonCityFilterBtn, comparisonCategoriaFilterBtn];
             let anyClosed = false;
 
             dropdowns.forEach((dd, idx) => {
@@ -4773,6 +4775,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Helper
                 const getList = (id) => document.getElementById(id);
                 
+                // Filiais
+                setupCityMultiSelect(comparisonFilialFilterBtn, comparisonFilialFilterDropdown, comparisonFilialFilterDropdown, filterData.filiais, selectedComparisonFiliais);
+
                 // Supervisors
                 const supList = getList('comparison-supervisor-filter-list') || comparisonSupervisorFilterDropdown;
                 setupCityMultiSelect(comparisonSupervisorFilterBtn, comparisonSupervisorFilterDropdown, supList, filterData.supervisors, selectedComparisonSupervisors);
@@ -4830,7 +4835,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const filters = {
-                p_filial: (comparisonFilialFilter && comparisonFilialFilter.value !== 'ambas') ? [comparisonFilialFilter.value] : null,
+                p_filial: selectedComparisonFiliais.length > 0 ? selectedComparisonFiliais : null,
                 p_cidade: selectedComparisonCities.length > 0 ? selectedComparisonCities : null,
                 p_supervisor: selectedComparisonSupervisors.length > 0 ? selectedComparisonSupervisors : null,
                 p_vendedor: selectedComparisonSellers.length > 0 ? selectedComparisonSellers : null,
