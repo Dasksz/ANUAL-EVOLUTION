@@ -4012,8 +4012,8 @@ BEGIN
         -- active_clients inner join removed here because active_clients is now returning boolean arrays instead of just valid codclis
         -- Instead we just explicitly apply base filter
         JOIN data_clients c ON c.codigo_cliente = d.codcli
-        WHERE ' || v_where_inov || '
-        ' || v_where_base || '
+        WHERE (' || v_where_inov || ') 
+        AND c.codigo_cliente IN (SELECT codigo_cliente FROM data_clients ' || v_where_client_base || ')
         GROUP BY 1, 2, 3, 4, 5
         HAVING SUM(d.vlvenda) >= 1
     ),
