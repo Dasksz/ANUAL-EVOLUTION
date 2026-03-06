@@ -3882,7 +3882,7 @@ BEGIN
         IF 'ambas' = ANY(p_filial) THEN
             -- Do nothing, include all
         ELSE
-            SELECT array_agg(DISTINCT unnest(cidades)) INTO v_filial_cities
+            SELECT array_agg(DISTINCT cidade) INTO v_filial_cities
             FROM public.config_city_branches
             WHERE filial = ANY(p_filial);
 

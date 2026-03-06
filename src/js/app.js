@@ -5964,9 +5964,19 @@ const setupInnovationsFilters = async () => {
     const anoSelect = document.getElementById('innovations-ano-filter');
     const mesSelect = document.getElementById('innovations-mes-filter');
     
-    const now = new Date();
-    const currentYear = String(now.getFullYear());
-    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    await fetchLastSalesDate();
+    let currentYear = '';
+    let currentMonth = '';
+
+    if (lastSalesDate) {
+        const lastDate = new Date(lastSalesDate + 'T12:00:00');
+        currentYear = String(lastDate.getFullYear());
+        currentMonth = String(lastDate.getMonth() + 1).padStart(2, '0');
+    } else {
+        const now = new Date();
+        currentYear = String(now.getFullYear());
+        currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    }
 
     if (anoSelect && filterData.anos) {
         anoSelect.innerHTML = '<option value="todos">Todos</option>';
@@ -6133,14 +6143,24 @@ async function renderLojaPerfeitaView() {
     updateLojaPerfeitaView();
 }
 
-window.clearAllFilters = function(prefix) {
+window.clearAllFilters = async function(prefix) {
     if (prefix === 'innovations') {
         const anoSelect = document.getElementById('innovations-ano-filter');
         const mesSelect = document.getElementById('innovations-mes-filter');
 
-        const now = new Date();
-        const currentYear = String(now.getFullYear());
-        const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+        await fetchLastSalesDate();
+        let currentYear = '';
+        let currentMonth = '';
+
+        if (lastSalesDate) {
+            const lastDate = new Date(lastSalesDate + 'T12:00:00');
+            currentYear = String(lastDate.getFullYear());
+            currentMonth = String(lastDate.getMonth() + 1).padStart(2, '0');
+        } else {
+            const now = new Date();
+            currentYear = String(now.getFullYear());
+            currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+        }
 
         if (anoSelect) {
             // Check if currentYear is in options, if not default to 'todos'
