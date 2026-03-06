@@ -2709,7 +2709,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('city-mes-filter'),
             document.getElementById('comparison-ano-filter'),
             document.getElementById('comparison-mes-filter'),
-            document.getElementById('comparison-filial-filter'),
             document.getElementById('comparison-pasta-filter')
         ];
         selectsToEnhance.forEach(el => {
@@ -4541,14 +4540,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Apply "Pasta" filter logic on top of existing fornecedor if 'ambas' is not selected
             // "Pasta" is conceptually a macro-fornecedor. 
             if (comparisonPastaFilter && comparisonPastaFilter.value !== 'ambas') {
+                const pastaSuppliers = comparisonPastaFilter.value === 'ELMA' ? ['707', '708', '752'] : ['1119'];
                 if (!pFornecedorValue) {
-                    pFornecedorValue = [comparisonPastaFilter.value];
+                    pFornecedorValue = [...pastaSuppliers];
                 } else {
-                    // Intersection of selection and pasta (though users typically won't select both in contradictory ways)
-                    // If pasta is selected, we enforce it by ensuring it's in the array. 
-                    if (!pFornecedorValue.includes(comparisonPastaFilter.value)) {
-                         pFornecedorValue.push(comparisonPastaFilter.value);
-                    }
+                    const combined = new Set([...pFornecedorValue, ...pastaSuppliers]);
+                    pFornecedorValue = Array.from(combined);
                 }
             }
 
@@ -4562,8 +4559,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 p_tipovenda: selectedComparisonTiposVenda.length > 0 ? selectedComparisonTiposVenda : null,
                 p_rede: selectedComparisonRedes.length > 0 ? selectedComparisonRedes : null,
                 p_categoria: selectedComparisonCategorias.length > 0 ? selectedComparisonCategorias : null,
-                p_ano: comparisonAnoFilter.value === 'todos' ? null : comparisonAnoFilter.value,
-                p_mes: comparisonMesFilter.value === '' ? null : comparisonMesFilter.value
+                p_ano: comparisonAnoFilter.value,
+                p_mes: comparisonMesFilter.value
             };
             const currentFiltersStr = JSON.stringify(filters);
             if (currentFiltersStr === lastComparisonFiltersStr) return;
@@ -4630,9 +4627,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (clearComparisonFiltersBtn) {
-            clearComparisonFiltersBtn.addEventListener('click', () => {
-                comparisonAnoFilter.value = 'todos';
-                comparisonMesFilter.value = '';
+            clearComparisonFiltersBtn.addEventListener('click', async () => {
+                await fetchLastSalesDate();
+                if (lastSalesDate) {
+                    const lastDate = new Date(lastSalesDate + 'T12:00:00');
+                    comparisonAnoFilter.value = String(lastDate.getFullYear());
+                    comparisonMesFilter.value = String(lastDate.getMonth());
+                } else {
+                    const now = new Date();
+                    comparisonAnoFilter.value = String(now.getFullYear());
+                    comparisonMesFilter.value = String(now.getMonth());
+                }
+
                 selectedComparisonSupervisors = [];
                 selectedComparisonSellers = [];
                 selectedComparisonSuppliers = [];
@@ -4725,27 +4731,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (filterData.anos && comparisonAnoFilter) {
                 const currentVal = comparisonAnoFilter.value;
-                comparisonAnoFilter.innerHTML = '<option value="todos">Todos</option>';
+                comparisonAnoFilter.innerHTML = '';
                 filterData.anos.forEach(a => {
                     const opt = document.createElement('option');
                     opt.value = a;
                     opt.textContent = a;
                     comparisonAnoFilter.appendChild(opt);
                 });
-                if (currentVal && currentVal !== 'todos') comparisonAnoFilter.value = currentVal;
-                else if (filterData.anos.length > 0) comparisonAnoFilter.value = filterData.anos[0];
+                await fetchLastSalesDate();
+                if (currentVal && currentVal !== 'todos') {
+                    comparisonAnoFilter.value = currentVal;
+                } else if (lastSalesDate) {
+                    const lastDate = new Date(lastSalesDate + 'T12:00:00');
+                    comparisonAnoFilter.value = String(lastDate.getFullYear());
+                } else if (filterData.anos.length > 0) {
+                    comparisonAnoFilter.value = filterData.anos[0];
+                }
                 enhanceSelectToCustomDropdown(comparisonAnoFilter);
             }
 
             if (comparisonMesFilter && comparisonMesFilter.options.length <= 1) {
-                comparisonMesFilter.innerHTML = '<option value="">Todos</option>';
+                comparisonMesFilter.innerHTML = '';
                 const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
                 meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; comparisonMesFilter.appendChild(opt); });
+                const currentMesVal = comparisonMesFilter.value;
+                if (!currentMesVal || currentMesVal === '') {
+                    if (lastSalesDate) {
+                        const lastDate = new Date(lastSalesDate + 'T12:00:00');
+                        comparisonMesFilter.value = String(lastDate.getMonth());
+                    } else {
+                        const now = new Date();
+                        comparisonMesFilter.value = String(now.getMonth());
+                    }
+                }
                 enhanceSelectToCustomDropdown(comparisonMesFilter);
             }
 
-            if (comparisonFilialFilter) enhanceSelectToCustomDropdown(comparisonFilialFilter);
-            if (comparisonPastaFilter) enhanceSelectToCustomDropdown(comparisonPastaFilter);
+                        if (comparisonPastaFilter) enhanceSelectToCustomDropdown(comparisonPastaFilter);
 
             try {
         // Helper
@@ -4798,12 +4820,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let pFornecedorValue = selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null;
             if (comparisonPastaFilter && comparisonPastaFilter.value !== 'ambas') {
+                const pastaSuppliers = comparisonPastaFilter.value === 'ELMA' ? ['707', '708', '752'] : ['1119'];
                 if (!pFornecedorValue) {
-                    pFornecedorValue = [comparisonPastaFilter.value];
+                    pFornecedorValue = [...pastaSuppliers];
                 } else {
-                    if (!pFornecedorValue.includes(comparisonPastaFilter.value)) {
-                         pFornecedorValue.push(comparisonPastaFilter.value);
-                    }
+                    const combined = new Set([...pFornecedorValue, ...pastaSuppliers]);
+                    pFornecedorValue = Array.from(combined);
                 }
             }
 
@@ -4817,8 +4839,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 p_tipovenda: selectedComparisonTiposVenda.length > 0 ? selectedComparisonTiposVenda : null,
                 p_rede: selectedComparisonRedes.length > 0 ? selectedComparisonRedes : null,
                 p_categoria: selectedComparisonCategorias.length > 0 ? selectedComparisonCategorias : null,
-                p_ano: comparisonAnoFilter.value === 'todos' ? null : comparisonAnoFilter.value,
-                p_mes: comparisonMesFilter.value === '' ? null : comparisonMesFilter.value
+                p_ano: comparisonAnoFilter.value,
+                p_mes: comparisonMesFilter.value
             };
 
 
