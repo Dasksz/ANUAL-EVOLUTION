@@ -156,7 +156,6 @@ BEGIN
             s.tipovenda,
             s.vlvenda,
             s.peso,
-            s.bonificacao,
             s.produtos
         FROM public.data_summary_frequency s
         -- Removed inner join with base_clients
@@ -190,8 +189,10 @@ BEGIN
     ),
     valid_clients AS (
         SELECT codcli
-        FROM current_data
-        WHERE (
+        FROM public.data_summary s
+        -- We apply the same base filter (year/month/branch/seller/etc)
+        ' || v_where_base || '
+        AND (
             CASE
                 WHEN ($8 IS NOT NULL AND COALESCE(array_length($8, 1), 0) > 0) THEN tipovenda = ANY($8)
                 ELSE tipovenda NOT IN (''5'', ''11'')
@@ -205,12 +206,13 @@ BEGIN
         )
     ),
     current_skus AS (
-        SELECT filial, cidade, vendedor, codcli, jsonb_array_elements_text(produtos) as sku
-        FROM current_data
+        SELECT c.filial, c.cidade, c.vendedor, c.codcli, jsonb_array_elements_text(c.produtos) as sku
+        FROM current_data c
+        JOIN valid_clients vc ON c.codcli = vc.codcli
         WHERE (
             CASE
-                WHEN ($8 IS NOT NULL AND COALESCE(array_length($8, 1), 0) > 0) THEN tipovenda = ANY($8)
-                ELSE tipovenda NOT IN (''5'', ''11'')
+                WHEN ($8 IS NOT NULL AND COALESCE(array_length($8, 1), 0) > 0) THEN c.tipovenda = ANY($8)
+                ELSE c.tipovenda NOT IN (''5'', ''11'')
             END
         )
     ),
@@ -233,8 +235,7 @@ BEGIN
             END) as total_pedidos,
             COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
-        LEFT JOIN valid_clients vc ON c.codcli = vc.codcli
-        WHERE (
+        LEFT JOIN valid_clients vc ON c.codcli = vc.codcli AND (
             CASE
                 WHEN ($8 IS NOT NULL AND COALESCE(array_length($8, 1), 0) > 0) THEN c.tipovenda = ANY($8)
                 ELSE c.tipovenda NOT IN (''5'', ''11'')
