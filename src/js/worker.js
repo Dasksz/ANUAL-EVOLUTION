@@ -164,7 +164,7 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
         let vendorName = String(rawRow['NOME'] || '');
         let supervisorName = String(rawRow['SUPERV'] || '');
         let codUsur = String(rawRow['CODUSUR'] || '');
-        const pedido = String(rawRow['PEDIDO'] || '');
+        const pedido = String(rawRow['NUMPED'] || rawRow['PEDIDO'] || '');
         if (supervisorName.trim().toUpperCase() === 'OSÉAS SANTOS OL') supervisorName = 'OSVALDO NUNES O';
 
         const supervisorUpper = (supervisorName || '').trim().toUpperCase();

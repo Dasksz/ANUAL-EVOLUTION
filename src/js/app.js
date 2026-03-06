@@ -6222,7 +6222,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         return;
     }
 
-    // Build hierarchy
+    // Build hierarchy using explicit ROLLUP grp_ flags from backend
     const hierarchy = {
         name: 'PRIME',
         children: {},
@@ -6234,52 +6234,74 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         const cidade = row.cidade || 'SEM CIDADE';
         const vendedor = row.vendedor || 'SEM VENDEDOR';
 
+        const tons = row.tons || 0;
+        const faturamento = row.faturamento || 0;
+        const faturamento_prev = row.faturamento_prev || 0;
+        const positivacao = row.positivacao || 0;
+        const sum_skus = row.sum_skus || 0;
+        const total_pedidos = row.total_pedidos || 0;
+        const base_total = row.base_total || 0;
+        const clientsWithSales = (faturamento > 0) ? positivacao : 0;
+
+        const rowData = { tons, faturamento, faturamento_prev, positivacao, sum_skus, total_pedidos, base_total, clientsWithSales };
+
+        // Identify node level by explicit ROLLUP output names
+        // Prevent pseudo-totals from rendering as valid string names if grp_ flags are somehow missing
+        // Explicitly reject pseudo-totals entering the leaf logic
+        const isGrandTotal = (filial === 'TOTAL_GERAL' || filial === 'PRIME' || row.grp_filial == 1);
+        const isFilialTotal = (cidade === 'TOTAL_CIDADE' || row.grp_cidade == 1);
+        const isCidadeTotal = (vendedor === 'TOTAL_VENDEDOR' || row.grp_vendedor == 1);
+
+        if (isGrandTotal) {
+            // Grand Total (PRIME)
+            hierarchy.totals = { ...rowData, base_total: data.global_base_total || rowData.base_total || 0 };
+            return;
+        }
+
+        if (isFilialTotal) {
+            // Filial Total
+            if (filial === 'TOTAL_GERAL') return; // Paranoia check
+
+            if (!hierarchy.children[filial]) {
+                hierarchy.children[filial] = { name: filial, children: {}, totals: rowData };
+            } else {
+                hierarchy.children[filial].totals = rowData;
+            }
+            return;
+        }
+
+        if (isCidadeTotal) {
+            // Cidade Total
+            if (filial === 'TOTAL_GERAL') return; // Paranoia check
+
+            if (!hierarchy.children[filial]) {
+                hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
+            }
+            if (!hierarchy.children[filial].children[cidade]) {
+                hierarchy.children[filial].children[cidade] = { name: cidade, children: {}, totals: rowData };
+            } else {
+                hierarchy.children[filial].children[cidade].totals = rowData;
+            }
+            return;
+        }
+
+        // Vendedor (Leaf)
+        // Extra sanity check: skip insertion if any grouping name somehow sneaked through
+        if (filial === 'TOTAL_GERAL' || filial === 'PRIME' || cidade === 'TOTAL_CIDADE' || vendedor === 'TOTAL_VENDEDOR' || row.grp_filial == 1 || row.grp_cidade == 1 || row.grp_vendedor == 1) {
+            return;
+        }
+
         if (!hierarchy.children[filial]) {
-            hierarchy.children[filial] = {
-                name: filial,
-                children: {},
-                totals: { tons: 0, faturamento: 0, faturamento_prev: 0, positivacao: 0, sum_skus: 0, total_pedidos: 0, base_total: 0, clientsWithSales: 0 }
-            };
+            hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
         }
-
         if (!hierarchy.children[filial].children[cidade]) {
-            hierarchy.children[filial].children[cidade] = {
-                name: cidade,
-                children: {},
-                totals: { tons: 0, faturamento: 0, faturamento_prev: 0, positivacao: 0, sum_skus: 0, total_pedidos: 0, base_total: 0, clientsWithSales: 0 }
-            };
+            hierarchy.children[filial].children[cidade] = { name: cidade, children: {}, totals: {} };
         }
-
-        const leaf = {
+        hierarchy.children[filial].children[cidade].children[vendedor] = {
             name: vendedor,
-            tons: row.tons || 0,
-            faturamento: row.faturamento || 0,
-            faturamento_prev: row.faturamento_prev || 0,
-            positivacao: row.positivacao || 0,
-            sum_skus: row.sum_skus || 0,
-            total_pedidos: row.total_pedidos || 0,
-            base_total: row.base_total || 0,
-            clientsWithSales: (row.faturamento > 0) ? row.positivacao : 0
+            ...rowData
         };
-
-        hierarchy.children[filial].children[cidade].children[vendedor] = leaf;
-
-        // Roll up totals
-        [hierarchy, hierarchy.children[filial], hierarchy.children[filial].children[cidade]].forEach(node => {
-            node.totals.tons += leaf.tons;
-            node.totals.faturamento += leaf.faturamento;
-            node.totals.faturamento_prev += leaf.faturamento_prev;
-            node.totals.positivacao += leaf.positivacao;
-            node.totals.sum_skus += leaf.sum_skus;
-            node.totals.total_pedidos += leaf.total_pedidos;
-            // Base total is an approximation at higher levels, but for now we sum it.
-            // A more accurate base total requires distinct counting at each level in SQL.
-            // We'll use the SQL supplied base_total for branches/cities, but here we sum them.
-        });
     });
-
-    // Quick fix for base_total aggregation issues (distinct client counting is hard in JS without raw data):
-    // For simplicity, we just sum them. It might over-count if a client buys in multiple cities, but usually they don't.
 
     let rowCounter = 0;
 
@@ -6293,7 +6315,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
 
         const dataNode = isRoot ? node.totals : (hasChildren ? node.totals : node);
 
-        const tons = dataNode.tons / 1000;
+        const tons = (dataNode.tons || 0) / 1000;
 
         let varYago = 0;
         if (dataNode.faturamento_prev > 0) {
@@ -6305,44 +6327,20 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         const varYagoIcon = varYago > 0 ? '<svg class="w-4 h-4 text-green-500 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"></path></svg>' : (varYago < 0 ? '<svg class="w-4 h-4 text-red-500 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707 10.293a1 1 0 00-1.414 0l-3-3a1 1 0 101.414-1.414L9 14.586V11a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3z" clip-rule="evenodd"></path></svg>' : '');
 
         // SKU / PDV
-        const skuPdv = dataNode.positivacao > 0 ? (dataNode.sum_skus / dataNode.positivacao) : 0;
+        const skuPdv = dataNode.positivacao > 0 ? ((dataNode.sum_skus || 0) / dataNode.positivacao) : 0;
 
         // Frequencia
-        const freq = dataNode.positivacao > 0 ? (dataNode.total_pedidos / dataNode.positivacao) : 0;
+        const freq = dataNode.positivacao > 0 ? ((dataNode.total_pedidos || 0) / dataNode.positivacao) : 0;
 
         // % Posit
         let percPosit = 0;
-        if (isRoot) {
-            // For root, total base comes from the top SQL if possible. But here we sum the city bases.
-            let rootBase = data.global_base_total || 0;
-
-            // Use total clients attended from dashboard data as Posit if we want to be exact with Main Dashboard, but here we use table data
-             let distinctPosit = dataNode.positivacao;
-             percPosit = rootBase > 0 ? (distinctPosit / rootBase) * 100 : 0;
-        } else {
-             // Let's use node.base_total if it was a leaf, or sum of leaves.
-             // But wait, base_total for leaves is 0 in SQL. Let's adjust logic.
-             // City has base_total.
-             let nodeBase = dataNode.base_total || 0;
-             if(level === 1) { // Filial
-                  nodeBase = 0;
-                  Object.values(node.children).forEach(city => {
-                      // Sum the first leaf's base_total
-                      const leaves = Object.values(city.children);
-                      if(leaves.length > 0) nodeBase += leaves[0].base_total;
-                  });
-             } else if (level === 2) { // City
-                  const leaves = Object.values(node.children);
-                  if(leaves.length > 0) nodeBase = leaves[0].base_total;
-             }
-
-             if (nodeBase > 0) {
-                 percPosit = (dataNode.positivacao / nodeBase) * 100;
-             }
+        if (dataNode.base_total > 0) {
+            percPosit = ((dataNode.positivacao || 0) / dataNode.base_total) * 100;
         }
+        if (percPosit > 100) percPosit = 100;
 
-        // Failsafe for % posit > 100
-        if(percPosit > 100) percPosit = 100;
+        const positStr = dataNode.positivacao || 0;
+        const percPositStr = percPosit.toFixed(1) + '%';
 
         const rowHtml = `
             <tr class="hover:bg-white/5 transition-colors ${level > 0 ? 'hidden freq-child-row' : ''}" id="${id}" data-parent="${parentId}" data-level="${level}">
@@ -6354,8 +6352,8 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold ${varYagoColor}">${varYagoIcon} ${varYagoStr}</td>
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${skuPdv.toFixed(1)}</td>
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${freq.toFixed(1)}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${dataNode.positivacao}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${percPosit.toFixed(1)}%</td>
+                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${positStr}</td>
+                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${percPositStr}</td>
             </tr>
         `;
         tableBody.insertAdjacentHTML('beforeend', rowHtml);
@@ -6364,7 +6362,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
             Object.values(node.children).forEach(child => createRow(child, level + 1, id));
         }
 
-        return { tons, varYagoStr, varYagoColor, varYagoIcon, skuPdv, freq, positivacao: dataNode.positivacao, percPosit };
+        return { tons, varYagoStr, varYagoColor, varYagoIcon, skuPdv, freq, positivacao: dataNode.positivacao || 0, percPosit };
     };
 
     const rootData = createRow(hierarchy, 0);

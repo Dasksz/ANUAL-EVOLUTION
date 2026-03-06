@@ -99,17 +99,16 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
             return;
         }
 
-            if (!hierarchy.children[filial]) {
-                hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
-            }
-            if (!hierarchy.children[filial].children[cidade]) {
-                hierarchy.children[filial].children[cidade] = { name: cidade, children: {}, totals: {} };
-            }
-            hierarchy.children[filial].children[cidade].children[vendedor] = {
-                name: vendedor,
-                ...rowData
-            };
+        if (!hierarchy.children[filial]) {
+            hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
         }
+        if (!hierarchy.children[filial].children[cidade]) {
+            hierarchy.children[filial].children[cidade] = { name: cidade, children: {}, totals: {} };
+        }
+        hierarchy.children[filial].children[cidade].children[vendedor] = {
+            name: vendedor,
+            ...rowData
+        };
     });
 
     let rowCounter = 0;
