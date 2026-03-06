@@ -187,21 +187,34 @@ BEGIN
         FROM base_clients
         GROUP BY ROLLUP(filial, cidade, vendedor)
     ),
-    client_totals AS (
-        SELECT codcli,
-               SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN vlvenda ELSE 0 END) as total_vlvenda
-        FROM current_data
-        GROUP BY codcli
-    ),
     valid_clients AS (
         SELECT codcli
-        FROM client_totals
-        WHERE total_vlvenda >= 1
+        FROM public.data_summary s
+        -- We apply the same base filter (year/month/branch/seller/etc)
+        ' || v_where_base || '
+        AND (
+            CASE
+                WHEN ($8 IS NOT NULL AND COALESCE(array_length($8, 1), 0) > 0) THEN tipovenda = ANY($8)
+                ELSE tipovenda NOT IN (''5'', ''11'')
+            END
+        )
+        GROUP BY codcli
+        HAVING (
+            ( ($8 IS NOT NULL AND COALESCE(array_length($8, 1), 0) > 0 AND $8 <@ ARRAY[''5'',''11'']) AND SUM(bonificacao) > 0 )
+            OR
+            ( NOT ($8 IS NOT NULL AND COALESCE(array_length($8, 1), 0) > 0 AND $8 <@ ARRAY[''5'',''11'']) AND SUM(vlvenda) >= 1 )
+        )
     ),
     current_skus AS (
-        SELECT filial, cidade, vendedor, codcli, jsonb_array_elements_text(produtos) as sku
-        FROM current_data
-        WHERE tipovenda NOT IN (''5'', ''11'')
+        SELECT c.filial, c.cidade, c.vendedor, c.codcli, jsonb_array_elements_text(c.produtos) as sku
+        FROM current_data c
+        JOIN valid_clients vc ON c.codcli = vc.codcli
+        WHERE (
+            CASE
+                WHEN ($8 IS NOT NULL AND COALESCE(array_length($8, 1), 0) > 0) THEN c.tipovenda = ANY($8)
+                ELSE c.tipovenda NOT IN (''5'', ''11'')
+            END
+        )
     ),
     aggregated_curr AS (
         SELECT
@@ -214,10 +227,20 @@ BEGIN
             SUM(c.peso) as tons,
             SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
             COUNT(DISTINCT vc.codcli) as positivacao,
-            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END) as total_pedidos,
+            COUNT(DISTINCT CASE
+                WHEN ($8 IS NOT NULL AND COALESCE(array_length($8, 1), 0) > 0) THEN
+                    CASE WHEN c.tipovenda = ANY($8) THEN c.pedido ELSE NULL END
+                WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido
+                ELSE NULL
+            END) as total_pedidos,
             COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
-        LEFT JOIN valid_clients vc ON c.codcli = vc.codcli AND c.tipovenda NOT IN (''5'', ''11'')
+        LEFT JOIN valid_clients vc ON c.codcli = vc.codcli AND (
+            CASE
+                WHEN ($8 IS NOT NULL AND COALESCE(array_length($8, 1), 0) > 0) THEN c.tipovenda = ANY($8)
+                ELSE c.tipovenda NOT IN (''5'', ''11'')
+            END
+        )
         GROUP BY ROLLUP(c.filial, c.cidade, c.vendedor)
     ),
     aggregated_skus AS (
