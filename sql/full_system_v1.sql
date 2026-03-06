@@ -3682,9 +3682,9 @@ BEGIN
     active_clients AS (
         SELECT d.codcli
         FROM (
-            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_detailed WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
+            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_detailed WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
             UNION ALL
-            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_history WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
+            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_history WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
         ) d
         JOIN data_clients c ON c.codigo_cliente = d.codcli
         ' || v_where_base || '
@@ -3705,20 +3705,21 @@ BEGIN
             MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''2 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''1 month''))::int)::boolean AS is_prev_m2,
             MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''3 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''2 months''))::int)::boolean AS is_prev_m3
         FROM (
-            SELECT codcli, produto, dtped, vlvenda
+            SELECT codcli, produto, dtped, vlvenda, codsupervisor, codusur, tipovenda
             FROM data_detailed
-            WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
+            WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
               AND produto IN (SELECT codigo FROM data_innovations)
             UNION ALL
-            SELECT codcli, produto, dtped, vlvenda
+            SELECT codcli, produto, dtped, vlvenda, codsupervisor, codusur, tipovenda
             FROM data_history
-            WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
+            WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
               AND produto IN (SELECT codigo FROM data_innovations)
         ) d
         JOIN data_innovations i ON d.produto = i.codigo
         JOIN dim_produtos p ON p.codigo = i.codigo
         JOIN active_clients ac ON ac.codcli = d.codcli
-        WHERE ' || v_where_inov || '
+        WHERE (' || v_where_inov || ')
+        ' || v_where_base || '
         GROUP BY 1, 2, 3, 4, 5
         HAVING SUM(d.vlvenda) >= 1
     ),
@@ -3963,9 +3964,9 @@ BEGIN
             MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''3 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''2 months''))::int)::boolean AS is_prev_m3,
             d.codcli
         FROM (
-            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, dtped FROM data_detailed WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
+            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, dtped FROM data_detailed WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
             UNION ALL
-            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, dtped FROM data_history WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
+            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, dtped FROM data_history WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
         ) d
         JOIN data_clients c ON c.codigo_cliente = d.codcli
         ' || v_where_base || '
@@ -3997,14 +3998,14 @@ BEGIN
             MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''2 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''1 month''))::int)::boolean AS is_prev_m2,
             MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''3 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''2 months''))::int)::boolean AS is_prev_m3
         FROM (
-            SELECT codcli, produto, dtped, vlvenda
+            SELECT codcli, produto, dtped, vlvenda, codsupervisor, codusur, tipovenda
             FROM data_detailed
-            WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
+            WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
               AND produto IN (SELECT codigo FROM data_innovations)
             UNION ALL
-            SELECT codcli, produto, dtped, vlvenda
+            SELECT codcli, produto, dtped, vlvenda, codsupervisor, codusur, tipovenda
             FROM data_history
-            WHERE (dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || ''')
+            WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
               AND produto IN (SELECT codigo FROM data_innovations)
         ) d
         JOIN data_innovations i ON d.produto = i.codigo
