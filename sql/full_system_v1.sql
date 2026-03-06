@@ -64,18 +64,21 @@ BEGIN
     v_where_chart := v_where_chart || ' AND ano IN (' || v_previous_year || ', ' || v_current_year || ') ';
 
     -- 2. Build Where Clauses
-    -- Since we INNER JOIN data_summary_frequency (s) with base_clients (bc) which ALREADY enforces current territory,
-    -- we only apply regional filters (filial, cidade, vendedor) to v_where_clients and chart queries!
+    -- We apply regional filters (filial, cidade, vendedor) directly to v_where_base, v_where_base_prev, and v_where_clients
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_filial)) THEN
             v_where_chart := v_where_chart || ' AND filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
             v_where_clients := v_where_clients || ' AND cidade IN (SELECT cidade FROM public.config_city_branches WHERE filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || '''])) ';
+            v_where_base := v_where_base || ' AND s.filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
+            v_where_base_prev := v_where_base_prev || ' AND s.filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
         END IF;
     END IF;
 
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where_clients := v_where_clients || ' AND dc.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
         v_where_chart := v_where_chart || ' AND cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+        v_where_base := v_where_base || ' AND s.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+        v_where_base_prev := v_where_base_prev || ' AND s.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
     END IF;
 
     -- The frequency table does NOT use Supervisor levels in its current tree, but if a filter is passed, we apply it to the base clients 
@@ -83,11 +86,15 @@ BEGIN
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where_clients := v_where_clients || ' AND dv.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
         v_where_chart := v_where_chart || ' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+        v_where_base := v_where_base || ' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
         v_where_clients := v_where_clients || ' AND dv.nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || ''']) ';
         v_where_chart := v_where_chart || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+        v_where_base := v_where_base || ' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
     END IF;
 
     -- Fornecedor and Rede are product/client traits
@@ -102,6 +109,8 @@ BEGIN
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
         v_where_clients := v_where_clients || ' AND dc.ramo = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
         v_where_chart := v_where_chart || ' AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+        v_where_base := v_where_base || ' AND s.rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+        v_where_base_prev := v_where_base_prev || ' AND s.rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
     END IF;
 
     -- JSONB Filters for Arrays (Using ?| to check if any array element exists as a key/element in jsonb)
@@ -138,9 +147,9 @@ BEGIN
     ),
     current_data AS (
         SELECT
-            bc.filial,
-            bc.cidade,
-            bc.vendedor,
+            s.filial,
+            s.cidade,
+            COALESCE((SELECT nome FROM public.dim_vendedores WHERE codigo = s.codusur LIMIT 1), ''SEM VENDEDOR'') as vendedor,
             s.mes,
             s.codcli,
             s.pedido,
@@ -149,22 +158,22 @@ BEGIN
             s.peso,
             s.produtos
         FROM public.data_summary_frequency s
-        INNER JOIN base_clients bc ON s.codcli = bc.codcli
+        -- Removed inner join with base_clients
         ' || v_where_base || '
     ),
     previous_data AS (
         SELECT
-            GROUPING(bc.filial) as grp_filial,
-            GROUPING(bc.cidade) as grp_cidade,
-            GROUPING(bc.vendedor) as grp_vendedor,
-            COALESCE(bc.filial, ''TOTAL_GERAL'') as filial,
-            COALESCE(bc.cidade, ''TOTAL_CIDADE'') as cidade,
-            COALESCE(bc.vendedor, ''TOTAL_VENDEDOR'') as vendedor,
+            GROUPING(s.filial) as grp_filial,
+            GROUPING(s.cidade) as grp_cidade,
+            GROUPING(COALESCE((SELECT nome FROM public.dim_vendedores WHERE codigo = s.codusur LIMIT 1), ''SEM VENDEDOR'')) as grp_vendedor,
+            COALESCE(s.filial, ''TOTAL_GERAL'') as filial,
+            COALESCE(s.cidade, ''TOTAL_CIDADE'') as cidade,
+            COALESCE(COALESCE((SELECT nome FROM public.dim_vendedores WHERE codigo = s.codusur LIMIT 1), ''SEM VENDEDOR''), ''TOTAL_VENDEDOR'') as vendedor,
             SUM(s.vlvenda) as faturamento_prev
         FROM public.data_summary_frequency s
-        INNER JOIN base_clients bc ON s.codcli = bc.codcli
+        -- Removed inner join with base_clients
         ' || v_where_base_prev || ' AND s.tipovenda NOT IN (''5'', ''11'')
-        GROUP BY ROLLUP(bc.filial, bc.cidade, bc.vendedor)
+        GROUP BY ROLLUP(s.filial, s.cidade, COALESCE((SELECT nome FROM public.dim_vendedores WHERE codigo = s.codusur LIMIT 1), ''SEM VENDEDOR''))
     ),
     client_base AS (
         SELECT
