@@ -28,7 +28,9 @@ CREATE OR REPLACE FUNCTION get_frequency_table_data(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 DECLARE
     v_current_year int;
@@ -149,7 +151,7 @@ BEGIN
         SELECT
             s.filial,
             s.cidade,
-            COALESCE((SELECT nome FROM public.dim_vendedores WHERE codigo = s.codusur LIMIT 1), ''SEM VENDEDOR'') as vendedor,
+            s.codusur,
             s.mes,
             s.codcli,
             s.pedido,
@@ -158,22 +160,20 @@ BEGIN
             s.peso,
             s.produtos
         FROM public.data_summary_frequency s
-        -- Removed inner join with base_clients
         ' || v_where_base || '
     ),
     previous_data AS (
         SELECT
             GROUPING(s.filial) as grp_filial,
             GROUPING(s.cidade) as grp_cidade,
-            GROUPING(COALESCE((SELECT nome FROM public.dim_vendedores WHERE codigo = s.codusur LIMIT 1), ''SEM VENDEDOR'')) as grp_vendedor,
+            GROUPING(s.codusur) as grp_vendedor,
             COALESCE(s.filial, ''TOTAL_GERAL'') as filial,
             COALESCE(s.cidade, ''TOTAL_CIDADE'') as cidade,
-            COALESCE(COALESCE((SELECT nome FROM public.dim_vendedores WHERE codigo = s.codusur LIMIT 1), ''SEM VENDEDOR''), ''TOTAL_VENDEDOR'') as vendedor,
+            s.codusur as vendedor_cod,
             SUM(s.vlvenda) as faturamento_prev
         FROM public.data_summary_frequency s
-        -- Removed inner join with base_clients
         ' || v_where_base_prev || ' AND s.tipovenda NOT IN (''5'', ''11'')
-        GROUP BY ROLLUP(s.filial, s.cidade, COALESCE((SELECT nome FROM public.dim_vendedores WHERE codigo = s.codusur LIMIT 1), ''SEM VENDEDOR''))
+        GROUP BY ROLLUP(s.filial, s.cidade, s.codusur)
     ),
     client_base AS (
         SELECT
@@ -199,7 +199,7 @@ BEGIN
         WHERE total_vlvenda >= 1
     ),
     current_skus AS (
-        SELECT filial, cidade, vendedor, codcli, jsonb_array_elements_text(produtos) as sku
+        SELECT filial, cidade, codusur, codcli, jsonb_array_elements_text(produtos) as sku
         FROM current_data
         WHERE tipovenda NOT IN (''5'', ''11'')
     ),
@@ -207,10 +207,10 @@ BEGIN
         SELECT
             GROUPING(c.filial) as grp_filial,
             GROUPING(c.cidade) as grp_cidade,
-            GROUPING(c.vendedor) as grp_vendedor,
+            GROUPING(c.codusur) as grp_vendedor,
             COALESCE(c.filial, ''TOTAL_GERAL'') as filial,
             COALESCE(c.cidade, ''TOTAL_CIDADE'') as cidade,
-            COALESCE(c.vendedor, ''TOTAL_VENDEDOR'') as vendedor,
+            c.codusur as vendedor_cod,
             SUM(c.peso) as tons,
             SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
             COUNT(DISTINCT vc.codcli) as positivacao,
@@ -218,19 +218,19 @@ BEGIN
             COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
         LEFT JOIN valid_clients vc ON c.codcli = vc.codcli AND c.tipovenda NOT IN (''5'', ''11'')
-        GROUP BY ROLLUP(c.filial, c.cidade, c.vendedor)
+        GROUP BY ROLLUP(c.filial, c.cidade, c.codusur)
     ),
     aggregated_skus AS (
         SELECT
             GROUPING(filial) as grp_filial,
             GROUPING(cidade) as grp_cidade,
-            GROUPING(vendedor) as grp_vendedor,
+            GROUPING(codusur) as grp_vendedor,
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
-            COALESCE(vendedor, ''TOTAL_VENDEDOR'') as vendedor,
+            codusur as vendedor_cod,
             COUNT(DISTINCT codcli || ''-'' || sku) as sum_skus
         FROM current_skus
-        GROUP BY ROLLUP(filial, cidade, vendedor)
+        GROUP BY ROLLUP(filial, cidade, codusur)
     ),
     final_tree AS (
         SELECT
@@ -239,7 +239,9 @@ BEGIN
             ac.grp_vendedor,
             ac.filial,
             ac.cidade,
-            ac.vendedor,
+            COALESCE((SELECT nome FROM public.dim_vendedores WHERE codigo = ac.vendedor_cod LIMIT 1),
+                CASE WHEN ac.grp_vendedor = 1 THEN ''TOTAL_VENDEDOR'' ELSE ''SEM VENDEDOR'' END
+            ) as vendedor,
             ac.tons,
             ac.faturamento,
             COALESCE(pd.faturamento_prev, 0) as faturamento_prev,
@@ -253,19 +255,20 @@ BEGIN
                                   AND ac.grp_vendedor = pd.grp_vendedor 
                                   AND ac.filial = pd.filial 
                                   AND ac.cidade = pd.cidade 
-                                  AND ac.vendedor = pd.vendedor
+                                  AND ac.vendedor_cod IS NOT DISTINCT FROM pd.vendedor_cod
         LEFT JOIN aggregated_skus ask ON ac.grp_filial = ask.grp_filial 
                                   AND ac.grp_cidade = ask.grp_cidade 
                                   AND ac.grp_vendedor = ask.grp_vendedor 
                                   AND ac.filial = ask.filial 
                                   AND ac.cidade = ask.cidade 
-                                  AND ac.vendedor = ask.vendedor
+                                  AND ac.vendedor_cod IS NOT DISTINCT FROM ask.vendedor_cod
         LEFT JOIN client_base cb ON ac.grp_filial = cb.grp_filial 
                                 AND ac.grp_cidade = cb.grp_cidade 
                                 AND ac.grp_vendedor = cb.grp_vendedor 
                                 AND ac.filial = cb.filial 
                                 AND ac.cidade = cb.cidade
-                                AND ac.vendedor = cb.vendedor
+                                AND COALESCE((SELECT nome FROM public.dim_vendedores WHERE codigo = ac.vendedor_cod LIMIT 1),
+                                    CASE WHEN ac.grp_vendedor = 1 THEN ''TOTAL_VENDEDOR'' ELSE ''SEM VENDEDOR'' END) = cb.vendedor
     ),
     chart_data AS (
         SELECT
@@ -687,7 +690,9 @@ CREATE INDEX IF NOT EXISTS idx_cache_filters_rede_lookup ON public.cache_filters
 
 -- Helper Functions
 CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 BEGIN
   IF (select auth.role()) = 'service_role' THEN RETURN true; END IF;
@@ -696,7 +701,9 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.is_approved() RETURNS boolean
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 BEGIN
   IF (select auth.role()) = 'service_role' THEN RETURN true; END IF;
@@ -934,7 +941,9 @@ UPDATE public.dim_produtos SET descricao = descricao WHERE mix_marca IS NULL;
 CREATE OR REPLACE FUNCTION clear_all_data()
 RETURNS void
 LANGUAGE plpgsql
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 BEGIN
     DELETE FROM public.data_detailed;
@@ -950,7 +959,9 @@ $$;
 -- Safe Truncate Function
 CREATE OR REPLACE FUNCTION public.truncate_table(table_name text)
 RETURNS void
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 DECLARE
   v_table_name text := table_name;
@@ -977,7 +988,9 @@ CREATE OR REPLACE FUNCTION get_available_years()
 RETURNS int[]
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 DECLARE
     min_year int;
@@ -1026,7 +1039,9 @@ CREATE OR REPLACE FUNCTION refresh_summary_year(p_year int)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 BEGIN
     SET LOCAL statement_timeout = '600s';
@@ -1160,7 +1175,9 @@ CREATE OR REPLACE FUNCTION refresh_summary_month(p_year int, p_month int)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 BEGIN
     SET LOCAL statement_timeout = '600s';
@@ -1297,7 +1314,9 @@ CREATE OR REPLACE FUNCTION refresh_cache_filters(p_ano int default null, p_mes i
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 DECLARE
     r RECORD;
@@ -1383,7 +1402,9 @@ CREATE OR REPLACE FUNCTION get_dashboard_filters(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 DECLARE
     v_where_filial text := ' WHERE 1=1 ';
@@ -1547,7 +1568,9 @@ CREATE OR REPLACE FUNCTION refresh_dashboard_cache()
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 DECLARE
     r_year int;
@@ -1576,7 +1599,9 @@ CREATE OR REPLACE FUNCTION optimize_database()
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN
@@ -1631,7 +1656,9 @@ CREATE OR REPLACE FUNCTION toggle_holiday(p_date date)
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN
@@ -1653,7 +1680,9 @@ CREATE OR REPLACE FUNCTION calc_working_days(start_date date, end_date date)
 RETURNS int
 LANGUAGE plpgsql
 STABLE
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 DECLARE
     days int;
@@ -1673,7 +1702,9 @@ CREATE OR REPLACE FUNCTION get_data_version()
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 DECLARE
     v_last_update timestamp with time zone;
@@ -1716,7 +1747,9 @@ CREATE OR REPLACE FUNCTION get_main_dashboard_data(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 DECLARE
     v_current_year int;
@@ -1937,25 +1970,16 @@ BEGIN
         FROM public.data_summary
         ' || v_where_base || '
     ),
-    monthly_client_agg AS (
-        SELECT ano, mes, codcli
+    monthly_counts AS (
+        SELECT ano, mes, COUNT(DISTINCT codcli) as active_count
         FROM filtered_summary
         WHERE (
-            CASE
-                WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1)
-                ELSE tipovenda NOT IN (''5'', ''11'')
-            END
-        )
-        GROUP BY ano, mes, codcli
-        HAVING (
-            ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(bonificacao) > 0 )
+            ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND bonificacao > 0 AND tipovenda = ANY($1) )
             OR
-            ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(vlvenda) >= 1 )
+            ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND vlvenda >= 1 AND
+              (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1) ELSE tipovenda NOT IN (''5'', ''11'') END)
+            )
         )
-    ),
-    monthly_counts AS (
-        SELECT ano, mes, COUNT(*) as active_count
-        FROM monthly_client_agg
         GROUP BY ano, mes
     ),
     agg_data AS (
@@ -1999,7 +2023,7 @@ BEGIN
                 ELSE fs.devolucao
             END) as devolucao,
 
-            COALESCE(mc.active_count, 0) as positivacao_count,
+            COALESCE(MAX(mc.active_count), 0) as positivacao_count,
 
             SUM(CASE 
                 WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN
@@ -2016,7 +2040,7 @@ BEGIN
             END) as mix_client_count
         FROM filtered_summary fs
         LEFT JOIN monthly_counts mc ON fs.ano = mc.ano AND fs.mes = mc.mes
-        GROUP BY fs.ano, fs.mes, mc.active_count
+        GROUP BY fs.ano, fs.mes
     ),
     kpi_active_count AS (
         SELECT COUNT(*) as val
@@ -2136,7 +2160,9 @@ CREATE OR REPLACE FUNCTION get_boxes_dashboard_data(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 DECLARE
     v_current_year int;
@@ -2515,7 +2541,9 @@ CREATE OR REPLACE FUNCTION get_branch_comparison_data(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 DECLARE
     v_current_year int;
@@ -2676,7 +2704,9 @@ CREATE OR REPLACE FUNCTION get_city_view_data(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 DECLARE
     v_current_year int;
@@ -2919,7 +2949,9 @@ CREATE OR REPLACE FUNCTION get_comparison_view_data(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 DECLARE
     -- Date Ranges
@@ -3330,7 +3362,9 @@ CREATE OR REPLACE FUNCTION public.get_table_hashes(p_table_name text)
 RETURNS TABLE (row_hash text)
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
@@ -3348,7 +3382,9 @@ CREATE OR REPLACE FUNCTION public.delete_by_hashes(p_table_name text, p_hashes t
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
@@ -3372,7 +3408,9 @@ CREATE OR REPLACE FUNCTION public.sync_sales_chunk(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 DECLARE
     v_start_date date;
@@ -3432,7 +3470,9 @@ CREATE OR REPLACE FUNCTION public.begin_sync_chunk(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 DECLARE
     v_start_date date;
@@ -3474,7 +3514,9 @@ CREATE OR REPLACE FUNCTION public.append_sync_chunk(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
@@ -3508,7 +3550,9 @@ CREATE OR REPLACE FUNCTION public.commit_sync_chunk(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
@@ -3538,7 +3582,9 @@ CREATE OR REPLACE FUNCTION get_innovations_data(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public;
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
 AS $BODY$
 DECLARE
     v_result json;
