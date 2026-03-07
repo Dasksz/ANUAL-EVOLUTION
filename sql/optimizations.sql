@@ -5,14 +5,14 @@
 -- 1. PROPOSTA 2: Remoção de colunas `id` (UUIDs) das tabelas massivas
 DO $$
 BEGIN
-    -- Remove id from data_detailed if it exists
+    -- Remove id from data_detailed if it exists (cascade to views like all_sales)
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_detailed' AND column_name = 'id') THEN
-        ALTER TABLE public.data_detailed DROP COLUMN id;
+        ALTER TABLE public.data_detailed DROP COLUMN id CASCADE;
     END IF;
 
     -- Remove id from data_history if it exists
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_history' AND column_name = 'id') THEN
-        ALTER TABLE public.data_history DROP COLUMN id;
+        ALTER TABLE public.data_history DROP COLUMN id CASCADE;
     END IF;
 END $$;
 
@@ -21,20 +21,27 @@ DO $$
 BEGIN
     -- Remove from data_detailed
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_detailed' AND column_name = 'created_at') THEN
-        ALTER TABLE public.data_detailed DROP COLUMN created_at;
+        ALTER TABLE public.data_detailed DROP COLUMN created_at CASCADE;
     END IF;
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_detailed' AND column_name = 'posicao') THEN
-        ALTER TABLE public.data_detailed DROP COLUMN posicao;
+        ALTER TABLE public.data_detailed DROP COLUMN posicao CASCADE;
     END IF;
 
     -- Remove from data_history
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_history' AND column_name = 'created_at') THEN
-        ALTER TABLE public.data_history DROP COLUMN created_at;
+        ALTER TABLE public.data_history DROP COLUMN created_at CASCADE;
     END IF;
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_history' AND column_name = 'posicao') THEN
-        ALTER TABLE public.data_history DROP COLUMN posicao;
+        ALTER TABLE public.data_history DROP COLUMN posicao CASCADE;
     END IF;
 END $$;
+
+-- Recreate the all_sales view that was potentially dropped via CASCADE
+DROP VIEW IF EXISTS public.all_sales;
+create or replace view public.all_sales with (security_invoker = true) as
+select * from public.data_detailed
+union all
+select * from public.data_history;
 
 -- 3. PROPOSTA 4: Otimização de Índices (Substituição de B-Trees por BRIN na coluna dtped)
 
