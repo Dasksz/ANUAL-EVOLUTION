@@ -13,7 +13,7 @@ DROP FUNCTION IF EXISTS get_frequency_table_data();
 
 
 CREATE OR REPLACE FUNCTION get_frequency_table_data(
-    p_filial text[] default null,
+    p_filial text,[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
     p_vendedor text[] default null,
@@ -335,7 +335,7 @@ create table if not exists public.data_detailed (
   dtsaida timestamp with time zone,
   -- posicao text, -- REMOVED
   tipovenda text,
-  filial text
+  filial text,
   -- created_at timestamp with time zone default now() -- REMOVED
 );
 
@@ -362,7 +362,7 @@ create table if not exists public.data_history (
   dtsaida timestamp with time zone,
   -- posicao text, -- REMOVED
   tipovenda text,
-  filial text
+  filial text,
   -- created_at timestamp with time zone default now() -- REMOVED
 );
 
@@ -462,7 +462,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS public.config_city_branches (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     cidade text NOT NULL UNIQUE,
-    filial text
+    filial text,
     updated_at timestamp with time zone DEFAULT now(),
     created_at timestamp with time zone DEFAULT now()
 );
@@ -559,7 +559,7 @@ create table if not exists public.data_summary (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     ano int,
     mes int,
-    filial text
+    filial text,
     cidade text,
     codsupervisor text, -- Replaces superv (name)
     codusur text,       -- Replaces nome (name)
@@ -584,7 +584,7 @@ create table if not exists public.data_summary_frequency (
   id uuid not null default uuid_generate_v4 (),
   ano integer null,
   mes integer null,
-  filial text null,
+  filial text, null,
   cidade text null,
   codsupervisor text null,
   codusur text null,
@@ -612,7 +612,7 @@ CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_categorias_gin on public.data_su
 DROP TABLE IF EXISTS public.cache_filters CASCADE;
 create table if not exists public.cache_filters (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-    filial text
+    filial text,
     cidade text,
     superv text,
     nome text,
@@ -1369,7 +1369,7 @@ $$;
 DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[]);
 
 CREATE OR REPLACE FUNCTION get_dashboard_filters(
-    p_filial text[] default null,
+    p_filial text,[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
     p_vendedor text[] default null,
@@ -1386,7 +1386,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    v_where_filial text := ' WHERE 1=1 ';
+    v_where_filial text, := ' WHERE 1=1 ';
     v_where_cidade text := ' WHERE 1=1 ';
     v_where_supervisor text := ' WHERE 1=1 ';
     v_where_vendedor text := ' WHERE 1=1 ';
@@ -1701,7 +1701,7 @@ BEGIN
 END $$;
 
 CREATE OR REPLACE FUNCTION get_main_dashboard_data(
-    p_filial text[] default null,
+    p_filial text,[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
     p_vendedor text[] default null,
@@ -2121,7 +2121,7 @@ $$;
 
 -- E. Get Boxes Dashboard (Join dim_produtos)
 CREATE OR REPLACE FUNCTION get_boxes_dashboard_data(
-    p_filial text[] default null,
+    p_filial text,[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
     p_vendedor text[] default null,
@@ -2500,7 +2500,7 @@ $$;
 
 -- F. Branch Comparison (Update to use Codes)
 CREATE OR REPLACE FUNCTION get_branch_comparison_data(
-    p_filial text[] default null,
+    p_filial text,[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
     p_vendedor text[] default null,
@@ -2658,7 +2658,7 @@ $$;
 
 -- G. City View Data (Update filtering for codes)
 CREATE OR REPLACE FUNCTION get_city_view_data(
-    p_filial text[] default null,
+    p_filial text,[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
     p_vendedor text[] default null,
@@ -2904,7 +2904,7 @@ $$;
 
 -- H. Comparison View (Restored & Updated)
 CREATE OR REPLACE FUNCTION get_comparison_view_data(
-    p_filial text[] default null,
+    p_filial text,[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
     p_vendedor text[] default null,
@@ -3525,7 +3525,7 @@ DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], tex
 DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text[], text, text, text);
 
 CREATE OR REPLACE FUNCTION get_innovations_data(
-    p_filial text[] default null,
+    p_filial text,[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
     p_vendedor text[] default null,
@@ -3827,7 +3827,7 @@ $BODY$;
 -- Function to retrieve innovations dashboard data
 -- Updated with new attended bases for percentage calculation
 CREATE OR REPLACE FUNCTION get_innovations_data(
-    p_filial text[] default null,
+    p_filial text,[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
     p_vendedor text[] default null,
