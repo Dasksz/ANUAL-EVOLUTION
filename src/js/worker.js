@@ -214,7 +214,7 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
             totpesoliq: parseBrazilianNumber(rawRow['TOTPESOLIQ']),
             dtped: formattedDtPed,
             dtsaida: formattedDtSaida,
-            posicao: String(rawRow['POSICAO'] || ''),
+            // posicao: String(rawRow["POSICAO"] || ""), // REMOVED
             filial: filialValue,
             codsupervisor: String(rawRow['CODSUPERVISOR'] || '').trim(),
             tipovenda: String(rawRow['TIPOVENDA'] || '').trim()
@@ -857,7 +857,7 @@ self.onmessage = async (event) => {
                 // 2b. History-specific Optimization
                 if (isHistory) {
                     // delete newSale.pedido; // PRESERVED FOR FREQUENCY TABLE
-                    delete newSale.posicao;
+                    // delete newSale.posicao; // REMOVED
                 }
 
                 // Identify Chunk Key (YYYY-MM)
