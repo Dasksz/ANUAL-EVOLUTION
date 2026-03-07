@@ -28,9 +28,7 @@ CREATE OR REPLACE FUNCTION get_frequency_table_data(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 DECLARE
     v_current_year int;
@@ -45,6 +43,9 @@ DECLARE
     v_sql text;
     v_result json;
 BEGIN
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
+
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = 'todos' THEN
         SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary_frequency;
@@ -690,9 +691,7 @@ CREATE INDEX IF NOT EXISTS idx_cache_filters_rede_lookup ON public.cache_filters
 
 -- Helper Functions
 CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 BEGIN
   IF (select auth.role()) = 'service_role' THEN RETURN true; END IF;
@@ -701,9 +700,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.is_approved() RETURNS boolean
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 BEGIN
   IF (select auth.role()) = 'service_role' THEN RETURN true; END IF;
@@ -941,9 +938,7 @@ UPDATE public.dim_produtos SET descricao = descricao WHERE mix_marca IS NULL;
 CREATE OR REPLACE FUNCTION clear_all_data()
 RETURNS void
 LANGUAGE plpgsql
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 BEGIN
     DELETE FROM public.data_detailed;
@@ -959,9 +954,7 @@ $$;
 -- Safe Truncate Function
 CREATE OR REPLACE FUNCTION public.truncate_table(table_name text)
 RETURNS void
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 DECLARE
   v_table_name text := table_name;
@@ -988,9 +981,7 @@ CREATE OR REPLACE FUNCTION get_available_years()
 RETURNS int[]
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 DECLARE
     min_year int;
@@ -1039,9 +1030,7 @@ CREATE OR REPLACE FUNCTION refresh_summary_year(p_year int)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 BEGIN
     SET LOCAL statement_timeout = '600s';
@@ -1175,9 +1164,7 @@ CREATE OR REPLACE FUNCTION refresh_summary_month(p_year int, p_month int)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 BEGIN
     SET LOCAL statement_timeout = '600s';
@@ -1314,9 +1301,7 @@ CREATE OR REPLACE FUNCTION refresh_cache_filters(p_ano int default null, p_mes i
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 DECLARE
     r RECORD;
@@ -1402,9 +1387,7 @@ CREATE OR REPLACE FUNCTION get_dashboard_filters(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 DECLARE
     v_where_filial text := ' WHERE 1=1 ';
@@ -1568,9 +1551,7 @@ CREATE OR REPLACE FUNCTION refresh_dashboard_cache()
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 DECLARE
     r_year int;
@@ -1599,9 +1580,7 @@ CREATE OR REPLACE FUNCTION optimize_database()
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN
@@ -1656,9 +1635,7 @@ CREATE OR REPLACE FUNCTION toggle_holiday(p_date date)
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN
@@ -1680,9 +1657,7 @@ CREATE OR REPLACE FUNCTION calc_working_days(start_date date, end_date date)
 RETURNS int
 LANGUAGE plpgsql
 STABLE
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 DECLARE
     days int;
@@ -1702,9 +1677,7 @@ CREATE OR REPLACE FUNCTION get_data_version()
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 DECLARE
     v_last_update timestamp with time zone;
@@ -1747,9 +1720,7 @@ CREATE OR REPLACE FUNCTION get_main_dashboard_data(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 DECLARE
     v_current_year int;
@@ -1798,7 +1769,7 @@ BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
 
     SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '60s';
+    SET LOCAL statement_timeout = '120s';
 
     -- 1. Determine Date Ranges
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
@@ -2160,9 +2131,7 @@ CREATE OR REPLACE FUNCTION get_boxes_dashboard_data(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 DECLARE
     v_current_year int;
@@ -2541,9 +2510,7 @@ CREATE OR REPLACE FUNCTION get_branch_comparison_data(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 DECLARE
     v_current_year int;
@@ -2704,9 +2671,7 @@ CREATE OR REPLACE FUNCTION get_city_view_data(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 DECLARE
     v_current_year int;
@@ -2949,9 +2914,7 @@ CREATE OR REPLACE FUNCTION get_comparison_view_data(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 DECLARE
     -- Date Ranges
@@ -3362,9 +3325,7 @@ CREATE OR REPLACE FUNCTION public.get_table_hashes(p_table_name text)
 RETURNS TABLE (row_hash text)
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
@@ -3382,9 +3343,7 @@ CREATE OR REPLACE FUNCTION public.delete_by_hashes(p_table_name text, p_hashes t
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
@@ -3408,9 +3367,7 @@ CREATE OR REPLACE FUNCTION public.sync_sales_chunk(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 DECLARE
     v_start_date date;
@@ -3470,9 +3427,7 @@ CREATE OR REPLACE FUNCTION public.begin_sync_chunk(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 DECLARE
     v_start_date date;
@@ -3514,9 +3469,7 @@ CREATE OR REPLACE FUNCTION public.append_sync_chunk(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
@@ -3550,9 +3503,7 @@ CREATE OR REPLACE FUNCTION public.commit_sync_chunk(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
@@ -3582,9 +3533,7 @@ CREATE OR REPLACE FUNCTION get_innovations_data(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public;
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+SET search_path = public
 AS $BODY$
 DECLARE
     v_result json;
@@ -3905,6 +3854,9 @@ DECLARE
     v_where_inov text := ' 1=1 ';
     v_filial_cities text[];
 BEGIN
+    SET LOCAL work_mem = '64MB';
+    SET LOCAL statement_timeout = '120s';
+
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = '' OR p_ano = 'todos' THEN
         SELECT EXTRACT(YEAR FROM MAX(dtped)) INTO v_current_year FROM public.data_detailed;
