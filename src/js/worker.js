@@ -856,7 +856,7 @@ self.onmessage = async (event) => {
 
                 // 2b. History-specific Optimization
                 if (isHistory) {
-                    delete newSale.pedido;
+                    // delete newSale.pedido; // PRESERVED FOR FREQUENCY TABLE
                     delete newSale.posicao;
                 }
 
