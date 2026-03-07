@@ -584,7 +584,7 @@ create table if not exists public.data_summary_frequency (
   id uuid not null default uuid_generate_v4 (),
   ano integer null,
   mes integer null,
-  filial text, null,
+  filial text null,
   cidade text null,
   codsupervisor text null,
   codusur text null,
@@ -1386,7 +1386,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    v_where_filial text, := ' WHERE 1=1 ';
+    v_where_filial text := ' WHERE 1=1 ';
     v_where_cidade text := ' WHERE 1=1 ';
     v_where_supervisor text := ' WHERE 1=1 ';
     v_where_vendedor text := ' WHERE 1=1 ';
