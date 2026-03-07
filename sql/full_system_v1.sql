@@ -130,9 +130,9 @@ BEGIN
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND s.tipovenda = ANY(ARRAY[' || array_to_string(p_tipovenda, ',') || ']) ';
-        v_where_base_prev := v_where_base_prev || ' AND s.tipovenda = ANY(ARRAY[' || array_to_string(p_tipovenda, ',') || ']) ';
-        v_where_chart := v_where_chart || ' AND tipovenda = ANY(ARRAY[' || array_to_string(p_tipovenda, ',') || ']) ';
+        v_where_base := v_where_base || ' AND s.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
+        v_where_base_prev := v_where_base_prev || ' AND s.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
+        v_where_chart := v_where_chart || ' AND tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
     END IF;
 
     -- Dynamic Query
@@ -170,7 +170,7 @@ BEGIN
             GROUPING(s.codusur) as grp_vendedor,
             COALESCE(s.filial, ''TOTAL_GERAL'') as filial,
             COALESCE(s.cidade, ''TOTAL_CIDADE'') as cidade,
-            s.codusur as vendedor_cod,
+            COALESCE(s.codusur, ''TOTAL_VENDEDOR'') as vendedor_cod,
             SUM(s.vlvenda) as faturamento_prev
         FROM public.data_summary_frequency s
         ' || v_where_base_prev || ' AND s.tipovenda NOT IN (''5'', ''11'')
@@ -211,7 +211,7 @@ BEGIN
             GROUPING(c.codusur) as grp_vendedor,
             COALESCE(c.filial, ''TOTAL_GERAL'') as filial,
             COALESCE(c.cidade, ''TOTAL_CIDADE'') as cidade,
-            c.codusur as vendedor_cod,
+            COALESCE(c.codusur, ''TOTAL_VENDEDOR'') as vendedor_cod,
             SUM(c.peso) as tons,
             SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
             COUNT(DISTINCT vc.codcli) as positivacao,
@@ -228,7 +228,7 @@ BEGIN
             GROUPING(codusur) as grp_vendedor,
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
-            codusur as vendedor_cod,
+            COALESCE(codusur, ''TOTAL_VENDEDOR'') as vendedor_cod,
             COUNT(DISTINCT codcli || ''-'' || sku) as sum_skus
         FROM current_skus
         GROUP BY ROLLUP(filial, cidade, codusur)
@@ -256,20 +256,19 @@ BEGIN
                                   AND ac.grp_vendedor = pd.grp_vendedor 
                                   AND ac.filial = pd.filial 
                                   AND ac.cidade = pd.cidade 
-                                  AND ac.vendedor_cod IS NOT DISTINCT FROM pd.vendedor_cod
+                                  AND ac.vendedor_cod = pd.vendedor_cod
         LEFT JOIN aggregated_skus ask ON ac.grp_filial = ask.grp_filial 
                                   AND ac.grp_cidade = ask.grp_cidade 
                                   AND ac.grp_vendedor = ask.grp_vendedor 
                                   AND ac.filial = ask.filial 
                                   AND ac.cidade = ask.cidade 
-                                  AND ac.vendedor_cod IS NOT DISTINCT FROM ask.vendedor_cod
+                                  AND ac.vendedor_cod = ask.vendedor_cod
         LEFT JOIN client_base cb ON ac.grp_filial = cb.grp_filial 
                                 AND ac.grp_cidade = cb.grp_cidade 
                                 AND ac.grp_vendedor = cb.grp_vendedor 
                                 AND ac.filial = cb.filial 
                                 AND ac.cidade = cb.cidade
-                                AND COALESCE((SELECT nome FROM public.dim_vendedores WHERE codigo = ac.vendedor_cod LIMIT 1),
-                                    CASE WHEN ac.grp_vendedor = 1 THEN ''TOTAL_VENDEDOR'' ELSE ''SEM VENDEDOR'' END) = cb.vendedor
+                                AND ac.vendedor_cod = cb.vendedor
     ),
     chart_data AS (
         SELECT
