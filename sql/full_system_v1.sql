@@ -314,7 +314,7 @@ create extension if not exists "uuid-ossp";
 
 -- Sales Detailed (Current Month/Recent)
 create table if not exists public.data_detailed (
-  id uuid default uuid_generate_v4 () primary key,
+  -- id uuid default uuid_generate_v4 () primary key, -- REMOVED
   pedido text,
   codusur text,
   codsupervisor text,
@@ -333,15 +333,15 @@ create table if not exists public.data_detailed (
   totpesoliq numeric,
   dtped timestamp with time zone,
   dtsaida timestamp with time zone,
-  posicao text,
+  -- posicao text, -- REMOVED
   tipovenda text,
   filial text,
-  created_at timestamp with time zone default now()
+  -- created_at timestamp with time zone default now() -- REMOVED
 );
 
 -- Sales History
 create table if not exists public.data_history (
-  id uuid default uuid_generate_v4 () primary key,
+  -- id uuid default uuid_generate_v4 () primary key, -- REMOVED
   pedido text,
   codusur text,
   codsupervisor text,
@@ -360,10 +360,10 @@ create table if not exists public.data_history (
   totpesoliq numeric,
   dtped timestamp with time zone,
   dtsaida timestamp with time zone,
-  posicao text,
+  -- posicao text, -- REMOVED
   tipovenda text,
   filial text,
-  created_at timestamp with time zone default now()
+  -- created_at timestamp with time zone default now() -- REMOVED
 );
 
 -- Migration Helper: Drop columns if they exist (for existing databases)
@@ -3403,12 +3403,12 @@ BEGIN
         INSERT INTO public.%I (
             pedido, codusur, codsupervisor, produto, codfor, codcli, cidade, 
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq, 
-            dtped, dtsaida, posicao, tipovenda, filial
+            dtped, dtsaida, tipovenda, filial
         )
         SELECT 
             pedido, codusur, codsupervisor, produto, codfor, codcli, cidade, 
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq, 
-            dtped, dtsaida, posicao, tipovenda, filial
+            dtped, dtsaida, tipovenda, filial
         FROM jsonb_populate_recordset(null::public.%I, $1)
     ', p_table_name, p_table_name) USING p_rows;
 
@@ -3488,12 +3488,12 @@ BEGIN
         INSERT INTO public.%I (
             pedido, codusur, codsupervisor, produto, codfor, codcli, cidade,
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq,
-            dtped, dtsaida, posicao, tipovenda, filial
+            dtped, dtsaida, tipovenda, filial
         )
         SELECT
             pedido, codusur, codsupervisor, produto, codfor, codcli, cidade,
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq,
-            dtped, dtsaida, posicao, tipovenda, filial
+            dtped, dtsaida, tipovenda, filial
         FROM jsonb_populate_recordset(null::public.%I, $1)
     ', p_table_name, p_table_name) USING p_rows;
 END;
