@@ -290,7 +290,7 @@ BEGIN
         ''chart_data'', (SELECT COALESCE(json_agg(row_to_json(chart_data)), ''[]''::json) FROM chart_data),
         ''current_year'', ' || v_current_year || ',
         ''previous_year'', ' || v_previous_year || ',
-        ''global_base_total'', (SELECT COUNT(DISTINCT codcli) FROM base_clients)
+        ''global_base_total'', (SELECT COUNT(DISTINCT codigo_cliente) FROM public.data_clients ' || v_where_clients || ')
     );
     ';
 
@@ -3544,6 +3544,8 @@ DECLARE
     v_result json;
     v_where_base text := ' WHERE 1=1 ';
     v_where_client_base text := ' WHERE 1=1 ';
+    v_where_client_tipo text := '';
+    v_having_client_tipo text := ' SUM(d.vlvenda) >= 1 ';
     v_sql text;
 
     v_last_sale_date date;
@@ -3679,27 +3681,27 @@ BEGIN
         FROM (
             SELECT d.codcli
             FROM (
-                SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_detailed WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
+                SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, vlbonific FROM data_detailed WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
                 UNION ALL
-                SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_history WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
+                SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, vlbonific FROM data_history WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
             ) d
             JOIN data_clients c ON c.codigo_cliente = d.codcli
-            ' || v_where_base || '
+            ' || v_where_base || v_where_client_tipo || '
             GROUP BY d.codcli
-            HAVING SUM(d.vlvenda) >= 1
+            HAVING ' || v_having_client_tipo || '
         ) as sub
     ),
     active_clients AS (
         SELECT d.codcli
         FROM (
-            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_detailed WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
+            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, vlbonific FROM data_detailed WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
             UNION ALL
-            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_history WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
+            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, vlbonific FROM data_history WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
         ) d
         JOIN data_clients c ON c.codigo_cliente = d.codcli
-        ' || v_where_base || '
+        ' || v_where_base || v_where_client_tipo || '
         GROUP BY d.codcli
-        HAVING SUM(d.vlvenda) >= 1
+        HAVING ' || v_having_client_tipo || '
     ),
     innovation_sales AS (
         SELECT
@@ -3729,9 +3731,9 @@ BEGIN
         JOIN dim_produtos p ON p.codigo = i.codigo
         JOIN active_clients ac ON ac.codcli = d.codcli
         WHERE (' || v_where_inov || ')
-        ' || v_where_base || '
+        ' || v_where_base || v_where_client_tipo || '
         GROUP BY 1, 2, 3, 4, 5
-        HAVING SUM(d.vlvenda) >= 1
+        HAVING ' || v_having_client_tipo || '
     ),
     aggregated_base AS (
         SELECT 
