@@ -3636,6 +3636,16 @@ BEGIN
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND d.tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where_client_tipo := ' '; -- Already in v_where_base
+        IF p_tipovenda <@ ARRAY['5', '11'] THEN
+            v_having_client_tipo := ' SUM(d.vlbonific) > 0 ';
+        ELSE
+            v_having_client_tipo := ' (SUM(d.vlvenda) >= 1 OR SUM(d.vlbonific) > 0) ';
+        END IF;
+    ELSE
+        -- Global tipovenda rule when not selected: ignore 5 and 11
+        v_where_client_tipo := ' AND d.tipovenda NOT IN (''5'', ''11'') ';
+        v_having_client_tipo := ' (SUM(d.vlvenda) >= 1 OR SUM(d.vlbonific) > 0) ';
     END IF;
 
     -- Redes
@@ -3705,12 +3715,12 @@ BEGIN
             MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''2 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''1 month''))::int)::boolean AS is_prev_m2,
             MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''3 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''2 months''))::int)::boolean AS is_prev_m3
         FROM (
-            SELECT codcli, produto, dtped, vlvenda, codsupervisor, codusur, tipovenda
+            SELECT codcli, produto, dtped, vlvenda, vlbonific, codsupervisor, codusur, tipovenda
             FROM data_detailed
             WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
               AND produto IN (SELECT codigo FROM data_innovations)
             UNION ALL
-            SELECT codcli, produto, dtped, vlvenda, codsupervisor, codusur, tipovenda
+            SELECT codcli, produto, dtped, vlvenda, vlbonific, codsupervisor, codusur, tipovenda
             FROM data_history
             WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
               AND produto IN (SELECT codigo FROM data_innovations)
@@ -3842,6 +3852,8 @@ DECLARE
     v_sql text;
     v_where_base text := ' WHERE 1=1 ';
     v_where_client_base text := ' WHERE 1=1 ';
+    v_where_client_tipo text := '';
+    v_having_client_tipo text := ' SUM(d.vlvenda) >= 1 ';
     v_where_inov text := ' 1=1 ';
     v_filial_cities text[];
 BEGIN
@@ -3911,6 +3923,16 @@ BEGIN
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND d.tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where_client_tipo := ' '; -- Already in v_where_base
+        IF p_tipovenda <@ ARRAY['5', '11'] THEN
+            v_having_client_tipo := ' SUM(d.vlbonific) > 0 ';
+        ELSE
+            v_having_client_tipo := ' (SUM(d.vlvenda) >= 1 OR SUM(d.vlbonific) > 0) ';
+        END IF;
+    ELSE
+        -- Global tipovenda rule when not selected: ignore 5 and 11
+        v_where_client_tipo := ' AND d.tipovenda NOT IN (''5'', ''11'') ';
+        v_having_client_tipo := ' (SUM(d.vlvenda) >= 1 OR SUM(d.vlbonific) > 0) ';
     END IF;
 
     -- Redes
@@ -3944,14 +3966,14 @@ BEGIN
         FROM (
             SELECT d.codcli
             FROM (
-                SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_detailed WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
+                SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, vlbonific FROM data_detailed WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
                 UNION ALL
-                SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda FROM data_history WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
+                SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, vlbonific FROM data_history WHERE dtped >= ''' || v_curr_start || ''' AND dtped < ''' || v_curr_end || '''
             ) d
             JOIN data_clients c ON c.codigo_cliente = d.codcli
-            ' || v_where_base || '
+            ' || v_where_base || v_where_client_tipo || '
             GROUP BY d.codcli
-            HAVING SUM(d.vlvenda) >= 1
+            HAVING ' || v_having_client_tipo || '
         ) as sub
     ),
     active_clients AS (
@@ -3964,14 +3986,14 @@ BEGIN
             MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''3 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''2 months''))::int)::boolean AS is_prev_m3,
             d.codcli
         FROM (
-            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, dtped FROM data_detailed WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
+            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, vlbonific, dtped FROM data_detailed WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
             UNION ALL
-            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, dtped FROM data_history WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
+            SELECT codcli, codsupervisor, codusur, tipovenda, vlvenda, vlbonific, dtped FROM data_history WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
         ) d
         JOIN data_clients c ON c.codigo_cliente = d.codcli
-        ' || v_where_base || '
+        ' || v_where_base || v_where_client_tipo || '
         GROUP BY d.codcli
-        HAVING SUM(d.vlvenda) >= 1
+        HAVING ' || v_having_client_tipo || '
     ),
     attended_bases AS (
         SELECT
@@ -3998,12 +4020,12 @@ BEGIN
             MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''2 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''1 month''))::int)::boolean AS is_prev_m2,
             MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''3 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''2 months''))::int)::boolean AS is_prev_m3
         FROM (
-            SELECT codcli, produto, dtped, vlvenda, codsupervisor, codusur, tipovenda
+            SELECT codcli, produto, dtped, vlvenda, vlbonific, codsupervisor, codusur, tipovenda
             FROM data_detailed
             WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
               AND produto IN (SELECT codigo FROM data_innovations)
             UNION ALL
-            SELECT codcli, produto, dtped, vlvenda, codsupervisor, codusur, tipovenda
+            SELECT codcli, produto, dtped, vlvenda, vlbonific, codsupervisor, codusur, tipovenda
             FROM data_history
             WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
               AND produto IN (SELECT codigo FROM data_innovations)
@@ -4013,10 +4035,10 @@ BEGIN
         -- active_clients inner join removed here because active_clients is now returning boolean arrays instead of just valid codclis
         -- Instead we just explicitly apply base filter
         JOIN data_clients c ON c.codigo_cliente = d.codcli
-        ' || v_where_base || '
+        ' || v_where_base || v_where_client_tipo || '
         AND (' || v_where_inov || ')
         GROUP BY 1, 2, 3, 4, 5
-        HAVING SUM(d.vlvenda) >= 1
+        HAVING ' || v_having_client_tipo || '
     ),
     aggregated_base AS (
         SELECT 

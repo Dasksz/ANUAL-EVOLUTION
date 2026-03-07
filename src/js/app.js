@@ -5449,6 +5449,12 @@ async function updateInnovationsMonthView() {
     const anoSelect = document.getElementById('innovations-ano-filter');
     const mesSelect = document.getElementById('innovations-mes-filter');
 
+    const mappedRedes = innovationsSelectedRedes.map(r => {
+        if (r === 'C/ REDE') return 'com_ramo';
+        if (r === 'S/ REDE') return 'sem_ramo';
+        return r;
+    });
+
     const filters = {
         p_ano: anoSelect ? (anoSelect.value === 'todos' ? null : anoSelect.value) : null,
         p_mes: mesSelect ? (mesSelect.value === '' ? null : mesSelect.value) : null,
@@ -5456,7 +5462,7 @@ async function updateInnovationsMonthView() {
         p_filial: innovationsSelectedFiliais,
         p_supervisor: innovationsSelectedSupervisors,
         p_vendedor: innovationsSelectedVendedores,
-        p_rede: innovationsSelectedRedes,
+        p_rede: mappedRedes,
         p_tipovenda: innovationsSelectedTiposVenda,
         p_categoria_inovacao: innovationsSelectedCategorias
     };
@@ -6198,6 +6204,21 @@ window.clearAllFilters = async function(prefix) {
             }
         });
 
+        // Clear visual tags if any (they are usually sibling or child elements of the dropdown container)
+        const tagContainers = [
+            'innovations-supervisor-filter-dropdown', 'innovations-vendedor-filter-dropdown',
+            'innovations-cidade-filter-dropdown', 'innovations-tipovenda-filter-dropdown',
+            'innovations-rede-filter-dropdown', 'innovations-filial-filter-dropdown',
+            'innovations-categoria-filter-dropdown'
+        ];
+        tagContainers.forEach(id => {
+            const dropdown = document.getElementById(id);
+            if (dropdown && dropdown.parentElement) {
+                const tagContainer = dropdown.parentElement.querySelector('.flex.flex-wrap.gap-1.items-center');
+                if (tagContainer) tagContainer.innerHTML = '';
+            }
+        });
+
         // Reset button labels
         const btns = [
             'innovations-supervisor-filter-btn', 'innovations-vendedor-filter-btn',
@@ -6219,7 +6240,39 @@ window.clearAllFilters = async function(prefix) {
             }
         });
 
-        updateInnovationsMonthView();
+        // We must re-setup the filters to ensure options are refreshed correctly.
+        // `isInnovationsInitialized` flag is true, so `setupInnovationsFilters` won't run its code.
+        // We will directly call the RPC to get fresh filters without any active selection.
+        const filters = {
+            p_ano: currentYear !== '' ? currentYear : null,
+            p_mes: currentMonth !== '' ? currentMonth : null,
+            p_cidade: [], p_filial: [], p_supervisor: [], p_vendedor: [],
+            p_rede: [], p_tipovenda: [], p_categoria: []
+        };
+        supabase.rpc('get_dashboard_filters', filters).then(({data, error}) => {
+            if (data && !error) {
+                // Re-bind the standard multi-selects to ensure the checkboxes are correctly refreshed from DB
+                setupCityMultiSelect(document.getElementById('innovations-supervisor-filter-btn'), document.getElementById('innovations-supervisor-filter-dropdown'), document.getElementById('innovations-supervisor-filter-dropdown'), data.supervisors, innovationsSelectedSupervisors);
+                setupCityMultiSelect(document.getElementById('innovations-vendedor-filter-btn'), document.getElementById('innovations-vendedor-filter-dropdown'), document.getElementById('innovations-vendedor-filter-list'), data.vendedores, innovationsSelectedVendedores, document.getElementById('innovations-vendedor-filter-search'));
+                setupCityMultiSelect(document.getElementById('innovations-cidade-filter-btn'), document.getElementById('innovations-cidade-filter-dropdown'), document.getElementById('innovations-cidade-filter-list'), data.cidades, innovationsSelectedCidades, document.getElementById('innovations-cidade-filter-search'));
+                setupCityMultiSelect(document.getElementById('innovations-tipovenda-filter-btn'), document.getElementById('innovations-tipovenda-filter-dropdown'), document.getElementById('innovations-tipovenda-filter-dropdown'), data.tipos_venda, innovationsSelectedTiposVenda);
+
+                const redes = ['C/ REDE', 'S/ REDE', ...(data.redes || [])];
+                setupCityMultiSelect(document.getElementById('innovations-rede-filter-btn'), document.getElementById('innovations-rede-filter-dropdown'), document.getElementById('innovations-rede-filter-list'), redes, innovationsSelectedRedes, document.getElementById('innovations-rede-filter-search'));
+
+                setupCityMultiSelect(document.getElementById('innovations-filial-filter-btn'), document.getElementById('innovations-filial-filter-dropdown'), document.getElementById('innovations-filial-filter-dropdown'), data.filiais, innovationsSelectedFiliais);
+
+                supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true }).then(({data: inovacData}) => {
+                    if (inovacData) {
+                        const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
+                        setupCityMultiSelect(document.getElementById('innovations-categoria-filter-btn'), document.getElementById('innovations-categoria-filter-dropdown'), document.getElementById('innovations-categoria-filter-dropdown'), uniqueInovacoes, innovationsSelectedCategorias);
+                    }
+                    updateInnovationsMonthView();
+                });
+            } else {
+                updateInnovationsMonthView();
+            }
+        });
     } else if (prefix === 'lp') {
         const wrappers = ['lp-supervisor-filter-wrapper', 'lp-vendedor-filter-wrapper', 'lp-rede-filter-wrapper', 'lp-codcli-filter'];
         wrappers.forEach(id => {
