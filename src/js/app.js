@@ -6219,6 +6219,17 @@ window.clearAllFilters = async function(prefix) {
             }
         });
 
+
+        // Reset Search Inputs
+        const searchInputIds = [
+            'innovations-supervisor-filter-search', 'innovations-vendedor-filter-search',
+            'innovations-cidade-filter-search', 'innovations-rede-filter-search'
+        ];
+        searchInputIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+
         // Reset button labels
         const btns = [
             'innovations-supervisor-filter-btn', 'innovations-vendedor-filter-btn',
@@ -6244,8 +6255,8 @@ window.clearAllFilters = async function(prefix) {
         // `isInnovationsInitialized` flag is true, so `setupInnovationsFilters` won't run its code.
         // We will directly call the RPC to get fresh filters without any active selection.
         const filters = {
-            p_ano: currentYear !== '' ? currentYear : null,
-            p_mes: currentMonth !== '' ? currentMonth : null,
+            p_ano: 'todos',
+            p_mes: null,
             p_cidade: [], p_filial: [], p_supervisor: [], p_vendedor: [],
             p_rede: [], p_tipovenda: [], p_categoria: []
         };

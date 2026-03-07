@@ -84,7 +84,7 @@ BEGIN
     -- The frequency table does NOT use Supervisor levels in its current tree, but if a filter is passed, we apply it to the base clients 
     -- by checking the supervisor of the current seller.
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_clients := v_where_clients || ' AND dv.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+        v_where_clients := v_where_clients || ' AND dc.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
         v_where_chart := v_where_chart || ' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
         v_where_base := v_where_base || ' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
         v_where_base_prev := v_where_base_prev || ' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
@@ -290,7 +290,7 @@ BEGIN
         ''chart_data'', (SELECT COALESCE(json_agg(row_to_json(chart_data)), ''[]''::json) FROM chart_data),
         ''current_year'', ' || v_current_year || ',
         ''previous_year'', ' || v_previous_year || ',
-        ''global_base_total'', (SELECT COUNT(DISTINCT codigo_cliente) FROM public.data_clients ' || v_where_clients || ')
+        ''global_base_total'', (SELECT COUNT(DISTINCT codcli) FROM base_clients)
     );
     ';
 
