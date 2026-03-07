@@ -335,7 +335,7 @@ create table if not exists public.data_detailed (
   dtsaida timestamp with time zone,
   -- posicao text, -- REMOVED
   tipovenda text,
-  filial text,
+  filial text
   -- created_at timestamp with time zone default now() -- REMOVED
 );
 
@@ -362,7 +362,7 @@ create table if not exists public.data_history (
   dtsaida timestamp with time zone,
   -- posicao text, -- REMOVED
   tipovenda text,
-  filial text,
+  filial text
   -- created_at timestamp with time zone default now() -- REMOVED
 );
 
@@ -462,7 +462,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS public.config_city_branches (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     cidade text NOT NULL UNIQUE,
-    filial text, 
+    filial text
     updated_at timestamp with time zone DEFAULT now(),
     created_at timestamp with time zone DEFAULT now()
 );
@@ -559,7 +559,7 @@ create table if not exists public.data_summary (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     ano int,
     mes int,
-    filial text,
+    filial text
     cidade text,
     codsupervisor text, -- Replaces superv (name)
     codusur text,       -- Replaces nome (name)
@@ -612,7 +612,7 @@ CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_categorias_gin on public.data_su
 DROP TABLE IF EXISTS public.cache_filters CASCADE;
 create table if not exists public.cache_filters (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-    filial text,
+    filial text
     cidade text,
     superv text,
     nome text,
