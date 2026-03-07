@@ -335,7 +335,7 @@ create table if not exists public.data_detailed (
   dtsaida timestamp with time zone,
   -- posicao text, -- REMOVED
   tipovenda text,
-  filial text,
+  filial text
   -- created_at timestamp with time zone default now() -- REMOVED
 );
 
@@ -362,7 +362,7 @@ create table if not exists public.data_history (
   dtsaida timestamp with time zone,
   -- posicao text, -- REMOVED
   tipovenda text,
-  filial text,
+  filial text
   -- created_at timestamp with time zone default now() -- REMOVED
 );
 
