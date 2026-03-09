@@ -1866,7 +1866,7 @@ BEGIN
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_mix_constraint := ' 1=1 ';
     ELSE
-        v_mix_constraint := ' fs.codfor IN (''707'', ''708'') ';
+        v_mix_constraint := ' fs.codfor IN (''707'', ''708'', ''752'') ';
     END IF;
 
     -- KPI Base Filter (Table: data_clients)
@@ -3123,7 +3123,7 @@ BEGIN
             SELECT
                 codcli,
                 SUM(prod_val) as total_val,
-                COUNT(CASE WHEN codfor IN (''707'', ''708'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
+                COUNT(CASE WHEN codfor IN (''707'', ''708'', ''752'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
                 MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
                 MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
                 MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
@@ -3165,7 +3165,7 @@ BEGIN
                 m_date,
                 codcli,
                 SUM(prod_val) as total_val,
-                COUNT(CASE WHEN codfor IN (''707'', ''708'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
+                COUNT(CASE WHEN codfor IN (''707'', ''708'', ''752'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
                 MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
                 MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
                 MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
