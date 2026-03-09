@@ -612,6 +612,15 @@ CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_pedido_cli on public.data_summar
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_produtos_gin on public.data_summary_frequency using gin (produtos);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_categorias_gin on public.data_summary_frequency using gin (categorias);
 
+-- Novas Otimizações de Índices para a Tabela de Frequência (Get Frequency Table Data)
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_tipovenda on public.data_summary_frequency using btree (ano, mes, tipovenda);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_filial on public.data_summary_frequency using btree (ano, mes, filial, cidade);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_vendedor on public.data_summary_frequency using btree (ano, mes, codusur);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_supervisor on public.data_summary_frequency using btree (ano, mes, codsupervisor);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_fornecedor on public.data_summary_frequency using btree (ano, mes, codfor);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_rede on public.data_summary_frequency using btree (ano, mes, rede);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_codcli on public.data_summary_frequency using btree (ano, codcli);
+
 -- Cache Table (For Filter Dropdowns)
 DROP TABLE IF EXISTS public.cache_filters CASCADE;
 create table if not exists public.cache_filters (
