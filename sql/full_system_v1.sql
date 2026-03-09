@@ -4072,6 +4072,44 @@ BEGIN
         FROM pos_12m
         GROUP BY 1, 2, 3
     ),
+    category_base AS (
+        SELECT
+            category_name,
+            COUNT(DISTINCT CASE WHEN is_current THEN codcli END) AS pos_current,
+            COUNT(DISTINCT CASE WHEN is_prev_year THEN codcli END) AS pos_prev_year,
+            COUNT(DISTINCT CASE WHEN is_prev_m1 THEN codcli END) AS pos_prev_m1,
+            COUNT(DISTINCT CASE WHEN is_prev_m2 THEN codcli END) AS pos_prev_m2,
+            COUNT(DISTINCT CASE WHEN is_prev_m3 THEN codcli END) AS pos_prev_m3
+        FROM innovation_sales
+        GROUP BY 1
+    ),
+    category_pos_12m AS (
+        SELECT
+            category_name,
+            COUNT(DISTINCT codcli) / 3.0 AS pos_count
+        FROM innovation_sales
+        WHERE is_avg_12m
+        GROUP BY 1, period_month
+    ),
+    category_pos_12m_avg AS (
+        SELECT
+            category_name,
+            SUM(pos_count) AS pos_avg
+        FROM category_pos_12m
+        GROUP BY 1
+    ),
+    category_aggregated AS (
+        SELECT
+            COALESCE(cb.category_name, cp12.category_name) AS category_name,
+            COALESCE(cb.pos_current, 0) AS pos_current,
+            COALESCE(cb.pos_prev_year, 0) AS pos_prev_year,
+            COALESCE(cb.pos_prev_m1, 0) AS pos_prev_m1,
+            COALESCE(cb.pos_prev_m2, 0) AS pos_prev_m2,
+            COALESCE(cb.pos_prev_m3, 0) AS pos_prev_m3,
+            COALESCE(cp12.pos_avg, 0) AS pos_avg_12m
+        FROM category_base cb
+        FULL OUTER JOIN category_pos_12m_avg cp12 ON cb.category_name = cp12.category_name
+    ),
     aggregated AS (
         SELECT
             COALESCE(ab.category_name, p12.category_name) AS category_name,
@@ -4109,19 +4147,20 @@ BEGIN
             FROM (
                 SELECT
                     json_build_object(
-                        ''name'', category_name,
-                        ''pos_current'', SUM(pos_current),
-                        ''pos_prev_year'', SUM(pos_prev_year),
-                        ''pos_prev_m1'', SUM(pos_prev_m1),
-                        ''pos_prev_m2'', SUM(pos_prev_m2),
-                        ''pos_prev_m3'', SUM(pos_prev_m3),
-                        ''pos_avg_12m'', SUM(pos_avg_12m),
-                        ''estoque_current'', SUM(estoque_current),
-                        ''products_count'', COUNT(product_code),
-                        ''distinct_clients_current'', (SELECT COUNT(DISTINCT codcli) FROM innovation_sales WHERE is_current AND category_name = aggregated.category_name)
+                        ''name'', ca.category_name,
+                        ''pos_current'', ca.pos_current,
+                        ''pos_prev_year'', ca.pos_prev_year,
+                        ''pos_prev_m1'', ca.pos_prev_m1,
+                        ''pos_prev_m2'', ca.pos_prev_m2,
+                        ''pos_prev_m3'', ca.pos_prev_m3,
+                        ''pos_avg_12m'', ca.pos_avg_12m,
+                        ''estoque_current'', SUM(ag.estoque_current),
+                        ''products_count'', COUNT(ag.product_code),
+                        ''distinct_clients_current'', ca.pos_current
                     ) as cat_agg
-                FROM aggregated
-                GROUP BY category_name
+                FROM category_aggregated ca
+                LEFT JOIN aggregated ag ON ca.category_name = ag.category_name
+                GROUP BY ca.category_name, ca.pos_current, ca.pos_prev_year, ca.pos_prev_m1, ca.pos_prev_m2, ca.pos_prev_m3, ca.pos_avg_12m
             ) sub
         ),
         ''products'', (
