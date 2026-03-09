@@ -1223,7 +1223,9 @@ document.addEventListener('DOMContentLoaded', () => {
     clearFiltersBtn.addEventListener('click', async () => {
         // Reset Single Selects
         anoFilter.value = 'todos';
+        anoFilter.dispatchEvent(new Event('change', { bubbles: true }));
         mesFilter.value = '';
+        mesFilter.dispatchEvent(new Event('change', { bubbles: true }));
 
         // Update custom dropdown visual text
         if (anoFilter.nextElementSibling && anoFilter.nextElementSibling.tagName === 'BUTTON') {
@@ -3583,7 +3585,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cityClearFiltersBtn) {
         cityClearFiltersBtn.addEventListener('click', () => {
              cityAnoFilter.value = 'todos';
+             cityAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
              cityMesFilter.value = '';
+             cityMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
              citySelectedFiliais = [];
              citySelectedCidades = [];
              citySelectedSupervisores = [];
@@ -3917,7 +3921,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     branchClearFiltersBtn?.addEventListener('click', () => {
          branchAnoFilter.value = 'todos';
+         branchAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
          branchMesFilter.value = '';
+         branchMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
          branchSelectedFiliais = []; // Reset but re-init will likely pick first 2
          branchSelectedCidades = [];
          branchSelectedSupervisores = [];
