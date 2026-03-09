@@ -4634,11 +4634,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (lastSalesDate) {
                     const lastDate = new Date(lastSalesDate + 'T12:00:00');
                     comparisonAnoFilter.value = String(lastDate.getFullYear());
+                    comparisonAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
                     comparisonMesFilter.value = String(lastDate.getMonth());
+                    comparisonMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
                 } else {
                     const now = new Date();
                     comparisonAnoFilter.value = String(now.getFullYear());
+                    comparisonAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
                     comparisonMesFilter.value = String(now.getMonth());
+                    comparisonMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
                 }
 
                 selectedComparisonSupervisors = [];
@@ -4746,6 +4750,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (lastSalesDate) {
                     const lastDate = new Date(lastSalesDate + 'T12:00:00');
                     comparisonAnoFilter.value = String(lastDate.getFullYear());
+                    comparisonAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
                 } else if (filterData.anos.length > 0) {
                     comparisonAnoFilter.value = filterData.anos[0];
                 }
@@ -4761,9 +4766,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (lastSalesDate) {
                         const lastDate = new Date(lastSalesDate + 'T12:00:00');
                         comparisonMesFilter.value = String(lastDate.getMonth());
+                    comparisonMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
                     } else {
                         const now = new Date();
                         comparisonMesFilter.value = String(now.getMonth());
+                    comparisonMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
                     }
                 }
                 enhanceSelectToCustomDropdown(comparisonMesFilter);
@@ -6011,6 +6018,7 @@ const setupInnovationsFilters = async () => {
 
         // Initial filter value
         mesSelect.value = currentMonth;
+            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
 
         enhanceSelectToCustomDropdown(mesSelect);
         mesSelect.addEventListener('change', handleInnovationsFilterChange);
@@ -6172,14 +6180,11 @@ window.clearAllFilters = async function(prefix) {
             // Check if currentYear is in options, if not default to 'todos'
             let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
             anoSelect.value = hasYear ? currentYear : 'todos';
-            const btn = document.getElementById('btn-innovations-ano-filter');
-            if (btn) btn.innerHTML = `<span class="truncate w-[90%] text-left">${anoSelect.value === 'todos' ? 'Todos' : currentYear}</span><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
+            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
         if (mesSelect) {
             mesSelect.value = currentMonth;
-            const btn = document.getElementById('btn-innovations-mes-filter');
-            const mesName = mesSelect.options[mesSelect.selectedIndex]?.text || 'Todos';
-            if (btn) btn.innerHTML = `<span class="truncate w-[90%] text-left">${mesName}</span><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
+            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
         
         innovationsSelectedSupervisors = [];
