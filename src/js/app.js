@@ -1976,7 +1976,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initBoxesFilters() {
         const filters = {
-            p_ano: 'todos',
+            p_ano: null,
             p_mes: null,
             p_filial: [],
             p_cidade: [],
@@ -3718,7 +3718,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initCityFilters() {
         const filters = {
-            p_ano: 'todos',
+            p_ano: null,
             p_mes: null,
             p_filial: [],
             p_cidade: [],
@@ -3933,7 +3933,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initBranchFilters() {
         const filters = {
-            p_ano: 'todos',
+            p_ano: null,
             p_mes: null,
             p_filial: [],
             p_cidade: [],
@@ -4761,7 +4761,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         async function initComparisonFilters() {
             const filters = {
-                p_ano: 'todos',
+                p_ano: null,
                 p_mes: null,
                 p_filial: [],
                 p_cidade: [],
@@ -4786,7 +4786,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     comparisonAnoFilter.appendChild(opt);
                 });
                 await fetchLastSalesDate();
-                if (currentVal && currentVal !== 'todos') {
+                if (currentVal && currentVal !== 'todos' && currentVal !== '') {
                     comparisonAnoFilter.value = currentVal;
                 } else if (lastSalesDate) {
                     const lastDate = new Date(lastSalesDate + 'T12:00:00');
@@ -4799,20 +4799,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (comparisonMesFilter && comparisonMesFilter.options.length <= 1) {
+                // Get the current value BEFORE we wipe the options
+                const currentMesVal = comparisonMesFilter.value;
+
                 comparisonMesFilter.innerHTML = '';
                 const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
                 meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; comparisonMesFilter.appendChild(opt); });
-                const currentMesVal = comparisonMesFilter.value;
-                if (!currentMesVal || currentMesVal === '') {
+
+                // If there's an active valid selected month (not empty), keep it
+                // Otherwise, default to the last sales date month
+                if (currentMesVal && currentMesVal !== '') {
+                    comparisonMesFilter.value = currentMesVal;
+                } else {
                     if (lastSalesDate) {
                         const lastDate = new Date(lastSalesDate + 'T12:00:00');
                         comparisonMesFilter.value = String(lastDate.getMonth());
-                    comparisonMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
                     } else {
                         const now = new Date();
                         comparisonMesFilter.value = String(now.getMonth());
-                    comparisonMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
                     }
+                    comparisonMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
                 }
                 enhanceSelectToCustomDropdown(comparisonMesFilter);
             }
@@ -5213,9 +5219,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const selectedMonth = comparisonMesFilter.value;
                 const defaultRefDate = lastSalesDate ? new Date(lastSalesDate) : new Date();
 
-                if (selectedYear && selectedYear !== 'todos') {
+                if (selectedYear && selectedYear !== 'todos' && selectedYear !== '') {
                     const year = parseInt(selectedYear);
-                    if (selectedMonth !== '') {
+                    if (selectedMonth && selectedMonth !== '') {
                         refDate = new Date(Date.UTC(year, parseInt(selectedMonth), 15));
                     } else {
                         const currentYear = defaultRefDate.getFullYear();
@@ -5980,7 +5986,7 @@ const setupInnovationsFilters = async () => {
     showDashboardLoading('innovations-month-view');
 
     const filters = {
-        p_ano: 'todos',
+        p_ano: null,
         p_mes: null,
         p_filial: [],
         p_cidade: [],
@@ -6301,7 +6307,7 @@ window.clearAllFilters = async function(prefix) {
         // `isInnovationsInitialized` flag is true, so `setupInnovationsFilters` won't run its code.
         // We will directly call the RPC to get fresh filters without any active selection.
         const filters = {
-            p_ano: 'todos',
+            p_ano: null,
             p_mes: null,
             p_cidade: [], p_filial: [], p_supervisor: [], p_vendedor: [],
             p_rede: [], p_tipovenda: [], p_categoria: []
