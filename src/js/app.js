@@ -1952,7 +1952,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (boxesClearFiltersBtn) {
         boxesClearFiltersBtn.addEventListener('click', () => {
             boxesAnoFilter.value = 'todos';
+            boxesAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
             boxesMesFilter.value = '';
+            boxesMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
             boxesSelectedFiliais = [];
             boxesSelectedProducts = [];
             boxesSelectedSupervisores = [];
@@ -2465,11 +2467,24 @@ document.addEventListener('DOMContentLoaded', () => {
             if (filterText) {
                 const lower = filterText.toLowerCase();
                 filteredItems = filteredItems.filter(item => {
-                    const val = isObject ? item.name : item;
-                    return String(val).toLowerCase().includes(lower);
+                    const nameVal = isObject ? item.name : item;
+                    const codVal = isObject ? item.cod : '';
+                    return String(nameVal).toLowerCase().includes(lower) || (isObject && String(codVal).toLowerCase().includes(lower));
                 });
             }
             
+                        // Sort items so selected ones appear first
+            filteredItems.sort((a, b) => {
+                const valA = String(isObject ? a.cod : a);
+                const valB = String(isObject ? b.cod : b);
+                const isSelectedA = selectedArray.includes(valA);
+                const isSelectedB = selectedArray.includes(valB);
+
+                if (isSelectedA && !isSelectedB) return -1;
+                if (!isSelectedA && isSelectedB) return 1;
+                return 0;
+            });
+
             const displayItems = filteredItems.slice(0, MAX_ITEMS);
             
             displayItems.forEach(item => {
@@ -3625,11 +3640,24 @@ document.addEventListener('DOMContentLoaded', () => {
             if (filterText) {
                 const lower = filterText.toLowerCase();
                 filteredItems = filteredItems.filter(item => {
-                    const val = isObject ? item.name : item;
-                    return String(val).toLowerCase().includes(lower);
+                    const nameVal = isObject ? item.name : item;
+                    const codVal = isObject ? item.cod : '';
+                    return String(nameVal).toLowerCase().includes(lower) || (isObject && String(codVal).toLowerCase().includes(lower));
                 });
             }
             
+                        // Sort items so selected ones appear first
+            filteredItems.sort((a, b) => {
+                const valA = String(isObject ? a.cod : a);
+                const valB = String(isObject ? b.cod : b);
+                const isSelectedA = selectedArray.includes(valA);
+                const isSelectedB = selectedArray.includes(valB);
+
+                if (isSelectedA && !isSelectedB) return -1;
+                if (!isSelectedA && isSelectedB) return 1;
+                return 0;
+            });
+
             const displayItems = filteredItems.slice(0, MAX_ITEMS);
 
             displayItems.forEach(item => {
@@ -4044,11 +4072,24 @@ document.addEventListener('DOMContentLoaded', () => {
             if (filterText) {
                 const lower = filterText.toLowerCase();
                 filteredItems = filteredItems.filter(item => {
-                    const val = isObject ? item.name : item;
-                    return String(val).toLowerCase().includes(lower);
+                    const nameVal = isObject ? item.name : item;
+                    const codVal = isObject ? item.cod : '';
+                    return String(nameVal).toLowerCase().includes(lower) || (isObject && String(codVal).toLowerCase().includes(lower));
                 });
             }
             
+                        // Sort items so selected ones appear first
+            filteredItems.sort((a, b) => {
+                const valA = String(isObject ? a.cod : a);
+                const valB = String(isObject ? b.cod : b);
+                const isSelectedA = selectedArray.includes(valA);
+                const isSelectedB = selectedArray.includes(valB);
+
+                if (isSelectedA && !isSelectedB) return -1;
+                if (!isSelectedA && isSelectedB) return 1;
+                return 0;
+            });
+
             const displayItems = filteredItems.slice(0, MAX_ITEMS);
 
             displayItems.forEach(item => {
