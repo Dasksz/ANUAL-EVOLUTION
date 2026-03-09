@@ -2636,7 +2636,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update when original select changes its value externally
         selectElement.addEventListener('change', (e) => {
-            if (e.isTrusted) renderOptions();
+            renderOptions();
         });
     }
 
