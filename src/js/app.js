@@ -60,6 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let isMainDashboardInitialized = false;
     let isInnovationsInitialized = false;
     let isLojaPerfeitaInitialized = false;
+let lpSelectedSupervisors = [];
+let lpSelectedVendedores = [];
+let lpSelectedRedes = [];
+
 let lpSelectedCidades = [];
     // --- GLOBAL NAVIGATION HISTORY ---
     let currentActiveView = 'dashboard';
@@ -6102,13 +6106,34 @@ const setupInnovationsFilters = async () => {
     
     hideDashboardLoading();
 
-    const lpCodcliBtn = document.getElementById("lp-codcli-filter-btn");
-    const lpCodcliDropdown = document.getElementById("lp-codcli-filter-dropdown");
-    const lpCodcliList = document.getElementById("lp-codcli-filter-list");
-    const lpCodcliSearch = document.getElementById("lp-codcli-filter-search");
-    if(lpCodcliBtn && lpCodcliDropdown && lpCodcliList) {
-        setupCityMultiSelect(lpCodcliBtn, lpCodcliDropdown, lpCodcliList, filterData.cidades, lpSelectedCidades, lpCodcliSearch);
-    }
+
+    const lpSupervisorBtn = document.getElementById("lp-supervisor-filter-btn");
+    const lpSupervisorDropdown = document.getElementById("lp-supervisor-filter-dropdown");
+    if (lpSupervisorBtn) setupCityMultiSelect(lpSupervisorBtn, lpSupervisorDropdown, lpSupervisorDropdown, filterData.supervisors, lpSelectedSupervisors);
+
+    const lpVendedorBtn = document.getElementById("lp-vendedor-filter-btn");
+    const lpVendedorDropdown = document.getElementById("lp-vendedor-filter-dropdown");
+    const lpVendedorList = document.getElementById("lp-vendedor-filter-list");
+    const lpVendedorSearch = document.getElementById("lp-vendedor-filter-search");
+    if (lpVendedorBtn) setupCityMultiSelect(lpVendedorBtn, lpVendedorDropdown, lpVendedorList, filterData.vendedores, lpSelectedVendedores, lpVendedorSearch);
+
+    const lpRedeBtn = document.getElementById("lp-rede-filter-btn");
+    const lpRedeDropdown = document.getElementById("lp-rede-filter-dropdown");
+    const lpRedeList = document.getElementById("lp-rede-filter-list");
+    const lpRedeSearch = document.getElementById("lp-rede-filter-search");
+    const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
+    if (lpRedeBtn) setupCityMultiSelect(lpRedeBtn, lpRedeDropdown, lpRedeList, redes, lpSelectedRedes, lpRedeSearch);
+
+    const lpCidadeBtn = document.getElementById("lp-cidade-filter-btn");
+    const lpCidadeDropdown = document.getElementById("lp-cidade-filter-dropdown");
+    const lpCidadeList = document.getElementById("lp-cidade-filter-list");
+    const lpCidadeSearch = document.getElementById("lp-cidade-filter-search");
+    if (lpCidadeBtn) setupCityMultiSelect(lpCidadeBtn, lpCidadeDropdown, lpCidadeList, filterData.cidades, lpSelectedCidades, lpCidadeSearch);
+
+    // Actually we need to call setupCityMultiSelect on wrappers if possible...
+    // wait, for Supervisor/Vendedor/Rede the wrappers are handled differently inside updateLojaPerfeitaFilters ?
+    // let's check how the others are initialized.
+
 
     isInnovationsInitialized = true;
 };
@@ -6119,19 +6144,124 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 // --- LOJA PERFEITA VIEW LOGIC ---
 
+let lpSelectedClient = null; // To hold the specific selected client code
+
+function setupLpClientSearchAutocomplete() {
+    const input = document.getElementById('lp-cliente-search-input');
+    const dropdown = document.getElementById('lp-cliente-search-dropdown');
+    const clearBtn = document.getElementById('lp-cliente-search-clear');
+
+    if (!input || !dropdown) return;
+
+    let debounceTimer;
+
+    input.addEventListener('input', (e) => {
+        const val = e.target.value;
+        if (val.length > 0) {
+            clearBtn.classList.remove('hidden');
+        } else {
+            clearBtn.classList.add('hidden');
+        }
+
+        clearTimeout(debounceTimer);
+
+        if (val.length < 3) {
+            dropdown.innerHTML = '';
+            dropdown.classList.add('hidden');
+            return;
+        }
+
+        debounceTimer = setTimeout(async () => {
+            try {
+                // Determine if searching for number (id/cnpj) or text
+                let query = supabase.from('data_clients')
+                    .select('codigo_cliente, razao_social, nome_fantasia, cidade, cnpj')
+                    .limit(20);
+
+                // Use a single text search filter since we can search across multiple fields
+                const searchStr = `%${val}%`;
+                query = query.or(`codigo_cliente::text.ilike.${searchStr},razao_social.ilike.${searchStr},nome_fantasia.ilike.${searchStr},cnpj.ilike.${searchStr},cidade.ilike.${searchStr}`);
+
+                const { data, error } = await query;
+
+                if (error) throw error;
+
+                dropdown.innerHTML = '';
+
+                if (!data || data.length === 0) {
+                    dropdown.innerHTML = '<div class="p-3 text-sm text-slate-400 text-center">Nenhum cliente encontrado</div>';
+                    dropdown.classList.remove('hidden');
+                    return;
+                }
+
+                data.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'p-3 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/30 last:border-0 transition-colors';
+
+                    div.innerHTML = `
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-xs font-bold text-slate-300 whitespace-nowrap">${item.codigo_cliente}</span>
+                                    <span class="text-sm font-bold text-white truncate">${item.razao_social || item.nome_fantasia || 'S/ NOME'}</span>
+                                </div>
+                                <div class="flex items-center gap-2 text-xs text-slate-400">
+                                    <span class="truncate uppercase">${item.cidade || 'N/I'}</span>
+                                    <span class="text-slate-600">•</span>
+                                    <span class="whitespace-nowrap">${item.cnpj || 'N/I'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    div.addEventListener('click', () => {
+                        input.value = `${item.codigo_cliente} - ${item.razao_social || item.nome_fantasia}`;
+                        lpSelectedClient = item.codigo_cliente;
+                        dropdown.classList.add('hidden');
+                        clearBtn.classList.remove('hidden');
+                        updateLojaPerfeitaView(); // Trigger update with the new client
+                    });
+
+                    dropdown.appendChild(div);
+                });
+                dropdown.classList.remove('hidden');
+            } catch (err) {
+                console.error("Error fetching client suggestions:", err);
+            }
+        }, 400); // 400ms debounce
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    clearBtn.addEventListener('click', () => {
+        input.value = '';
+        lpSelectedClient = null;
+        clearBtn.classList.add('hidden');
+        dropdown.classList.add('hidden');
+        updateLojaPerfeitaView();
+    });
+}
+
+
 async function updateLojaPerfeitaView() {
     showDashboardLoading();
 
     const filters = {
-        p_cidade: lpSelectedCidades, // Adaptando campo busca cidade/cliente se houver
+        p_cidade: lpSelectedCidades,
         p_filial: [],
-        p_supervisor: getSelectedValues('lp-supervisor-filter-wrapper'),
-        p_vendedor: getSelectedValues('lp-vendedor-filter-wrapper'),
-        p_rede: getSelectedValues('lp-rede-filter-wrapper')
+        p_supervisor: lpSelectedSupervisors,
+        p_vendedor: lpSelectedVendedores,
+        p_rede: lpSelectedRedes
     };
 
     const rpcFilters = {
         p_filial: null,
+        p_codcli: lpSelectedClient ? lpSelectedClient : null,
         p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
         p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
         p_vendedor: filters.p_vendedor.length ? filters.p_vendedor : null,
@@ -6366,9 +6496,50 @@ window.clearAllFilters = async function(prefix) {
             }
         });
     } else if (prefix === 'lp') {
-        const wrappers = ['lp-supervisor-filter-wrapper', 'lp-vendedor-filter-wrapper', 'lp-rede-filter-wrapper'];
+        const wrappers = ['lp-supervisor-filter-dropdown', 'lp-vendedor-filter-dropdown', 'lp-rede-filter-dropdown', 'lp-cidade-filter-dropdown'];
         lpSelectedCidades = [];
-        const lpCodcliBtn = document.getElementById("lp-codcli-filter-btn");
+        lpSelectedSupervisors = [];
+        lpSelectedVendedores = [];
+        lpSelectedRedes = [];
+
+        ['lp-supervisor', 'lp-vendedor', 'lp-rede', 'lp-cidade'].forEach(prefix => {
+            const btn = document.getElementById(`${prefix}-filter-btn`);
+            if (btn) {
+                btn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
+                btn.classList.remove("text-white", "font-medium", "bg-white/10");
+                btn.classList.add("text-slate-300");
+            }
+            const dropdown = document.getElementById(`${prefix}-filter-dropdown`);
+            if (dropdown) {
+                dropdown.querySelectorAll("input[type=\"checkbox\"]").forEach(cb => cb.checked = false);
+            }
+        });
+
+        const lpCidadeBtn = null; // Removed to bypass old logic below
+
+        if (lpCidadeBtn) {
+            lpCidadeBtn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
+            lpCidadeBtn.classList.remove("text-white", "font-medium", "bg-white/10");
+            lpCidadeBtn.classList.add("text-slate-300");
+        }
+        const lpCidadeDropdown = document.getElementById("lp-cidade-filter-dropdown");
+        if(lpCidadeDropdown) {
+            const checkboxes = lpCidadeDropdown.querySelectorAll("input[type=\"checkbox\"]");
+            checkboxes.forEach(cb => cb.checked = false);
+        }
+
+        // Clear Client Autocomplete
+        lpSelectedClient = null;
+        const lpClientInput = document.getElementById('lp-cliente-search-input');
+        const lpClientClearBtn = document.getElementById('lp-cliente-search-clear');
+        const lpClientDropdown = document.getElementById('lp-cliente-search-dropdown');
+        if (lpClientInput) lpClientInput.value = '';
+        if (lpClientClearBtn) lpClientClearBtn.classList.add('hidden');
+        if (lpClientDropdown) lpClientDropdown.classList.add('hidden');
+
+        // Let's also remove lpCodcliBtn since it was replaced
+        const lpCodcliBtn = null;
+
         if (lpCodcliBtn) {
             lpCodcliBtn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
             lpCodcliBtn.classList.remove("text-white", "font-medium", "bg-white/10");

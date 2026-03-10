@@ -4199,3 +4199,26 @@ BEGIN
     RETURN v_sql::json;
 END;
 $$;
+
+-- NOTA: O usuário tem a RPC get_loja_perfeita_data criada no banco de dados.
+-- Instruções de documentação para que ele atualize a assinatura lá.
+/*
+-- =========================================================================================
+-- UPDATE REQUIRED FOR LOJA PERFEITA:
+-- Por favor, atualize a função `get_loja_perfeita_data` no seu banco de dados Supabase
+-- para aceitar o novo parâmetro `p_codcli text DEFAULT NULL`.
+--
+-- Exemplo de nova assinatura:
+-- CREATE OR REPLACE FUNCTION get_loja_perfeita_data(
+--     p_filial text[] DEFAULT NULL,
+--     p_cidade text[] DEFAULT NULL,
+--     p_supervisor text[] DEFAULT NULL,
+--     p_vendedor text[] DEFAULT NULL,
+--     p_rede text[] DEFAULT NULL,
+--     p_codcli text DEFAULT NULL
+-- )
+--
+-- E adicione o filtro na base da query dentro da função, como:
+-- AND (p_codcli IS NULL OR base_table.codcli = p_codcli)
+-- =========================================================================================
+*/
