@@ -6175,12 +6175,12 @@ function setupLpClientSearchAutocomplete() {
             try {
                 // Determine if searching for number (id/cnpj) or text
                 let query = supabase.from('data_clients')
-                    .select('codigo_cliente, razao_social, nome_fantasia, cidade, cnpj')
+                    .select('codigo_cliente, razaosocial, nomecliente, cidade, cnpj')
                     .limit(20);
 
                 // Use a single text search filter since we can search across multiple fields
                 const searchStr = `%${val}%`;
-                query = query.or(`codigo_cliente::text.ilike.${searchStr},razao_social.ilike.${searchStr},nome_fantasia.ilike.${searchStr},cnpj.ilike.${searchStr},cidade.ilike.${searchStr}`);
+                query = query.or(`codigo_cliente::text.ilike.${searchStr},razaosocial.ilike.${searchStr},nomecliente.ilike.${searchStr},cnpj.ilike.${searchStr},cidade.ilike.${searchStr}`);
 
                 const { data, error } = await query;
 
@@ -6203,7 +6203,7 @@ function setupLpClientSearchAutocomplete() {
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 mb-1">
                                     <span class="text-xs font-bold text-slate-300 whitespace-nowrap">${item.codigo_cliente}</span>
-                                    <span class="text-sm font-bold text-white truncate">${item.razao_social || item.nome_fantasia || 'S/ NOME'}</span>
+                                    <span class="text-sm font-bold text-white truncate">${item.razaosocial || item.nomecliente || 'S/ NOME'}</span>
                                 </div>
                                 <div class="flex items-center gap-2 text-xs text-slate-400">
                                     <span class="truncate uppercase">${item.cidade || 'N/I'}</span>
@@ -6215,7 +6215,7 @@ function setupLpClientSearchAutocomplete() {
                     `;
 
                     div.addEventListener('click', () => {
-                        input.value = `${item.codigo_cliente} - ${item.razao_social || item.nome_fantasia}`;
+                        input.value = `${item.codigo_cliente} - ${item.razaosocial || item.nomecliente}`;
                         lpSelectedClient = item.codigo_cliente;
                         dropdown.classList.add('hidden');
                         clearBtn.classList.remove('hidden');
