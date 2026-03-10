@@ -205,7 +205,7 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
             codusur: codUsur,
             codcli: String(rawRow['CODCLI'] || '').trim(),
             cliente_nome: clientInfo.nomeCliente || String(rawRow['CLIENTE'] || rawRow['NOMECLIENTE'] || rawRow['RAZAOSOCIAL'] || 'N/A').toUpperCase(),
-            cidade: clientInfo.cidade || String(rawRow['MUNICIPIO'] || 'N/A').toUpperCase(),
+            cidade: clientInfo.cidade || (rawRow['MUNICIPIO'] ? String(rawRow['MUNICIPIO']).trim().toUpperCase() : null),
             bairro: clientInfo.bairro || String(rawRow['BAIRRO'] || 'N/A').toUpperCase(),
             qtvenda: qtVenda,
             vlvenda: parseBrazilianNumber(rawRow['VLVENDA']),
@@ -453,13 +453,13 @@ self.onmessage = async (event) => {
 
             // Use city from sales map
             const salesCity = salesCityMap.get(codCli);
-            const finalCity = salesCity || 'N/A';
+            // finalCity removed
 
             const clientData = {
                 codigo_cliente: codCli,
                 rca1: rca1,
                 // rca2: rca2, -- Removed
-                cidade: finalCity, // Was: String(client['Nome da Cidade'] || 'N/A'),
+                cidade: salesCity || String(client['Nome da Cidade'] || client['Cidade'] || '').trim().toUpperCase() || null,
                 nomecliente: String(client['Fantasia'] || client['Cliente'] || 'N/A'),
                 bairro: String(client['Bairro'] || 'N/A'),
                 razaosocial: String(client['Cliente'] || 'N/A'),
