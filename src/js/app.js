@@ -6345,7 +6345,9 @@ async function renderInnovationsMonthView() {
 
 async function renderLojaPerfeitaView() {
     if (!isLojaPerfeitaInitialized) {
-        await setupInnovationsFilters();
+        await setupInnovationsFilters(); // Re-use the existing filter fetch logic
+        setupLpClientSearchAutocomplete();
+        isLojaPerfeitaInitialized = true;
     }
     updateLojaPerfeitaView();
 }
@@ -6496,7 +6498,6 @@ window.clearAllFilters = async function(prefix) {
             }
         });
     } else if (prefix === 'lp') {
-        const wrappers = ['lp-supervisor-filter-dropdown', 'lp-vendedor-filter-dropdown', 'lp-rede-filter-dropdown', 'lp-cidade-filter-dropdown'];
         lpSelectedCidades = [];
         lpSelectedSupervisors = [];
         lpSelectedVendedores = [];
@@ -6513,20 +6514,11 @@ window.clearAllFilters = async function(prefix) {
             if (dropdown) {
                 dropdown.querySelectorAll("input[type=\"checkbox\"]").forEach(cb => cb.checked = false);
             }
-        });
-        
-        const lpCidadeBtn = null; // Removed to bypass old logic below
 
-        if (lpCidadeBtn) {
-            lpCidadeBtn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
-            lpCidadeBtn.classList.remove("text-white", "font-medium", "bg-white/10");
-            lpCidadeBtn.classList.add("text-slate-300");
-        }
-        const lpCidadeDropdown = document.getElementById("lp-cidade-filter-dropdown");
-        if(lpCidadeDropdown) {
-            const checkboxes = lpCidadeDropdown.querySelectorAll("input[type=\"checkbox\"]");
-            checkboxes.forEach(cb => cb.checked = false);
-        }
+            // clear search inputs if they exist
+            const searchInput = document.getElementById(`${prefix}-filter-search`);
+            if (searchInput) searchInput.value = '';
+        });
         
         // Clear Client Autocomplete
         lpSelectedClient = null;
@@ -6537,33 +6529,6 @@ window.clearAllFilters = async function(prefix) {
         if (lpClientClearBtn) lpClientClearBtn.classList.add('hidden');
         if (lpClientDropdown) lpClientDropdown.classList.add('hidden');
         
-        // Let's also remove lpCodcliBtn since it was replaced
-        const lpCodcliBtn = null;
-        
-        if (lpCodcliBtn) {
-            lpCodcliBtn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
-            lpCodcliBtn.classList.remove("text-white", "font-medium", "bg-white/10");
-            lpCodcliBtn.classList.add("text-slate-300");
-        }
-        const lpCodcliDropdown = document.getElementById("lp-codcli-filter-dropdown");
-        if(lpCodcliDropdown) {
-            const checkboxes = lpCodcliDropdown.querySelectorAll("input[type=\"checkbox\"]");
-            checkboxes.forEach(cb => cb.checked = false);
-        }
-
-        wrappers.forEach(id => {
-            const container = document.getElementById(id);
-            if (container) {
-                const select = container.querySelector('select');
-                if (select) {
-                    Array.from(select.options).forEach(opt => opt.selected = false);
-                    const tagContainer = container.querySelector('.flex.flex-wrap.gap-1.items-center');
-                    if (tagContainer) tagContainer.innerHTML = '';
-                    const mainBtn = container.querySelector('button.w-full.bg-\\[\\#1e293b\\]');
-                    if (mainBtn) mainBtn.innerHTML = '<span class="truncate w-[90%] text-left">Todos</span><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
-                }
-            }
-        });
         updateLojaPerfeitaView();
     }
 };
