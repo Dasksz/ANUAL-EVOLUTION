@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isMainDashboardInitialized = false;
     let isInnovationsInitialized = false;
     let isLojaPerfeitaInitialized = false;
+let lpSelectedCidades = [];
     // --- GLOBAL NAVIGATION HISTORY ---
     let currentActiveView = 'dashboard';
     let viewHistory = [];
@@ -6100,6 +6101,15 @@ const setupInnovationsFilters = async () => {
     }
     
     hideDashboardLoading();
+
+    const lpCodcliBtn = document.getElementById("lp-codcli-filter-btn");
+    const lpCodcliDropdown = document.getElementById("lp-codcli-filter-dropdown");
+    const lpCodcliList = document.getElementById("lp-codcli-filter-list");
+    const lpCodcliSearch = document.getElementById("lp-codcli-filter-search");
+    if(lpCodcliBtn && lpCodcliDropdown && lpCodcliList) {
+        setupCityMultiSelect(lpCodcliBtn, lpCodcliDropdown, lpCodcliList, filterData.cidades, lpSelectedCidades, lpCodcliSearch);
+    }
+
     isInnovationsInitialized = true;
 };
 
@@ -6113,7 +6123,7 @@ async function updateLojaPerfeitaView() {
     showDashboardLoading();
 
     const filters = {
-        p_cidade: getSelectedValues('lp-codcli-filter'), // Adaptando campo busca cidade/cliente se houver
+        p_cidade: lpSelectedCidades, // Adaptando campo busca cidade/cliente se houver
         p_filial: [],
         p_supervisor: getSelectedValues('lp-supervisor-filter-wrapper'),
         p_vendedor: getSelectedValues('lp-vendedor-filter-wrapper'),
@@ -6255,6 +6265,19 @@ window.clearAllFilters = async function(prefix) {
             'innovations-rede-filter-dropdown', 'innovations-filial-filter-dropdown',
             'innovations-categoria-filter-dropdown'
         ];
+        lpSelectedCidades = [];
+        const lpCodcliBtn = document.getElementById("lp-codcli-filter-btn");
+        if (lpCodcliBtn) {
+            lpCodcliBtn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
+            lpCodcliBtn.classList.remove("text-white", "font-medium", "bg-white/10");
+            lpCodcliBtn.classList.add("text-slate-300");
+        }
+        const lpCodcliDropdown = document.getElementById("lp-codcli-filter-dropdown");
+        if(lpCodcliDropdown) {
+            const checkboxes = lpCodcliDropdown.querySelectorAll("input[type=\"checkbox\"]");
+            checkboxes.forEach(cb => cb.checked = false);
+        }
+
         wrappers.forEach(id => {
             const dropdown = document.getElementById(id);
             if (dropdown) {
@@ -6343,7 +6366,20 @@ window.clearAllFilters = async function(prefix) {
             }
         });
     } else if (prefix === 'lp') {
-        const wrappers = ['lp-supervisor-filter-wrapper', 'lp-vendedor-filter-wrapper', 'lp-rede-filter-wrapper', 'lp-codcli-filter'];
+        const wrappers = ['lp-supervisor-filter-wrapper', 'lp-vendedor-filter-wrapper', 'lp-rede-filter-wrapper'];
+        lpSelectedCidades = [];
+        const lpCodcliBtn = document.getElementById("lp-codcli-filter-btn");
+        if (lpCodcliBtn) {
+            lpCodcliBtn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
+            lpCodcliBtn.classList.remove("text-white", "font-medium", "bg-white/10");
+            lpCodcliBtn.classList.add("text-slate-300");
+        }
+        const lpCodcliDropdown = document.getElementById("lp-codcli-filter-dropdown");
+        if(lpCodcliDropdown) {
+            const checkboxes = lpCodcliDropdown.querySelectorAll("input[type=\"checkbox\"]");
+            checkboxes.forEach(cb => cb.checked = false);
+        }
+
         wrappers.forEach(id => {
             const container = document.getElementById(id);
             if (container) {
