@@ -6121,8 +6121,8 @@ const setupInnovationsFilters = async () => {
     const lpRedeDropdown = document.getElementById("lp-rede-filter-dropdown");
     const lpRedeList = document.getElementById("lp-rede-filter-list");
     const lpRedeSearch = document.getElementById("lp-rede-filter-search");
-    const lpRedes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-    if (lpRedeBtn) setupCityMultiSelect(lpRedeBtn, lpRedeDropdown, lpRedeList, lpRedes, lpSelectedRedes, lpRedeSearch);
+    const lpRedesArray = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
+    if (lpRedeBtn) setupCityMultiSelect(lpRedeBtn, lpRedeDropdown, lpRedeList, lpRedesArray, lpSelectedRedes, lpRedeSearch);
 
     const lpCidadeBtn = document.getElementById("lp-cidade-filter-btn");
     const lpCidadeDropdown = document.getElementById("lp-cidade-filter-dropdown");
