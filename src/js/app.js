@@ -6106,7 +6106,7 @@ const setupInnovationsFilters = async () => {
     
     hideDashboardLoading();
 
-
+    
     const lpSupervisorBtn = document.getElementById("lp-supervisor-filter-btn");
     const lpSupervisorDropdown = document.getElementById("lp-supervisor-filter-dropdown");
     if (lpSupervisorBtn) setupCityMultiSelect(lpSupervisorBtn, lpSupervisorDropdown, lpSupervisorDropdown, filterData.supervisors, lpSelectedSupervisors);
@@ -6121,8 +6121,8 @@ const setupInnovationsFilters = async () => {
     const lpRedeDropdown = document.getElementById("lp-rede-filter-dropdown");
     const lpRedeList = document.getElementById("lp-rede-filter-list");
     const lpRedeSearch = document.getElementById("lp-rede-filter-search");
-    const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-    if (lpRedeBtn) setupCityMultiSelect(lpRedeBtn, lpRedeDropdown, lpRedeList, redes, lpSelectedRedes, lpRedeSearch);
+    const lpRedes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
+    if (lpRedeBtn) setupCityMultiSelect(lpRedeBtn, lpRedeDropdown, lpRedeList, lpRedes, lpSelectedRedes, lpRedeSearch);
 
     const lpCidadeBtn = document.getElementById("lp-cidade-filter-btn");
     const lpCidadeDropdown = document.getElementById("lp-cidade-filter-dropdown");
@@ -6133,7 +6133,7 @@ const setupInnovationsFilters = async () => {
     // Actually we need to call setupCityMultiSelect on wrappers if possible...
     // wait, for Supervisor/Vendedor/Rede the wrappers are handled differently inside updateLojaPerfeitaFilters ?
     // let's check how the others are initialized.
-
+    
 
     isInnovationsInitialized = true;
 };
@@ -6164,7 +6164,7 @@ function setupLpClientSearchAutocomplete() {
         }
 
         clearTimeout(debounceTimer);
-
+        
         if (val.length < 3) {
             dropdown.innerHTML = '';
             dropdown.classList.add('hidden');
@@ -6183,11 +6183,11 @@ function setupLpClientSearchAutocomplete() {
                 query = query.or(`codigo_cliente::text.ilike.${searchStr},razao_social.ilike.${searchStr},nome_fantasia.ilike.${searchStr},cnpj.ilike.${searchStr},cidade.ilike.${searchStr}`);
 
                 const { data, error } = await query;
-
+                
                 if (error) throw error;
 
                 dropdown.innerHTML = '';
-
+                
                 if (!data || data.length === 0) {
                     dropdown.innerHTML = '<div class="p-3 text-sm text-slate-400 text-center">Nenhum cliente encontrado</div>';
                     dropdown.classList.remove('hidden');
@@ -6197,7 +6197,7 @@ function setupLpClientSearchAutocomplete() {
                 data.forEach(item => {
                     const div = document.createElement('div');
                     div.className = 'p-3 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/30 last:border-0 transition-colors';
-
+                    
                     div.innerHTML = `
                         <div class="flex items-start justify-between">
                             <div class="flex-1 min-w-0">
@@ -6213,7 +6213,7 @@ function setupLpClientSearchAutocomplete() {
                             </div>
                         </div>
                     `;
-
+                    
                     div.addEventListener('click', () => {
                         input.value = `${item.codigo_cliente} - ${item.razao_social || item.nome_fantasia}`;
                         lpSelectedClient = item.codigo_cliente;
@@ -6221,7 +6221,7 @@ function setupLpClientSearchAutocomplete() {
                         clearBtn.classList.remove('hidden');
                         updateLojaPerfeitaView(); // Trigger update with the new client
                     });
-
+                    
                     dropdown.appendChild(div);
                 });
                 dropdown.classList.remove('hidden');
@@ -6501,7 +6501,7 @@ window.clearAllFilters = async function(prefix) {
         lpSelectedSupervisors = [];
         lpSelectedVendedores = [];
         lpSelectedRedes = [];
-
+        
         ['lp-supervisor', 'lp-vendedor', 'lp-rede', 'lp-cidade'].forEach(prefix => {
             const btn = document.getElementById(`${prefix}-filter-btn`);
             if (btn) {
@@ -6514,7 +6514,7 @@ window.clearAllFilters = async function(prefix) {
                 dropdown.querySelectorAll("input[type=\"checkbox\"]").forEach(cb => cb.checked = false);
             }
         });
-
+        
         const lpCidadeBtn = null; // Removed to bypass old logic below
 
         if (lpCidadeBtn) {
@@ -6527,7 +6527,7 @@ window.clearAllFilters = async function(prefix) {
             const checkboxes = lpCidadeDropdown.querySelectorAll("input[type=\"checkbox\"]");
             checkboxes.forEach(cb => cb.checked = false);
         }
-
+        
         // Clear Client Autocomplete
         lpSelectedClient = null;
         const lpClientInput = document.getElementById('lp-cliente-search-input');
@@ -6536,10 +6536,10 @@ window.clearAllFilters = async function(prefix) {
         if (lpClientInput) lpClientInput.value = '';
         if (lpClientClearBtn) lpClientClearBtn.classList.add('hidden');
         if (lpClientDropdown) lpClientDropdown.classList.add('hidden');
-
+        
         // Let's also remove lpCodcliBtn since it was replaced
         const lpCodcliBtn = null;
-
+        
         if (lpCodcliBtn) {
             lpCodcliBtn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
             lpCodcliBtn.classList.remove("text-white", "font-medium", "bg-white/10");
