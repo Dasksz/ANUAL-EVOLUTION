@@ -447,6 +447,76 @@ END $$;
 
 -- Config City Branches (Mapping)
 CREATE TABLE IF NOT EXISTS public.config_city_branches (
+-- Missing table definitions for `data_summary` and `data_summary_frequency`
+CREATE TABLE IF NOT EXISTS public.data_summary (
+    id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+    ano integer,
+    mes integer,
+    filial text,
+    cidade text,
+    codsupervisor text,
+    codusur text,
+    codfor text,
+    tipovenda text,
+    codcli text,
+    vlvenda numeric,
+    peso numeric,
+    bonificacao numeric,
+    devolucao numeric,
+    pre_mix_count integer DEFAULT 0,
+    pre_positivacao_val integer DEFAULT 0,
+    ramo text,
+    caixas numeric DEFAULT 0,
+    categoria_produto text,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_summary_composite_main ON public.data_summary USING btree (ano, mes, filial, cidade);
+CREATE INDEX IF NOT EXISTS idx_summary_codes ON public.data_summary USING btree (codsupervisor, codusur, filial);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_filial ON public.data_summary USING btree (ano, filial);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_cidade ON public.data_summary USING btree (ano, cidade);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_supcode ON public.data_summary USING btree (ano, codsupervisor);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_usurcode ON public.data_summary USING btree (ano, codusur);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_codfor ON public.data_summary USING btree (ano, codfor);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_tipovenda ON public.data_summary USING btree (ano, tipovenda);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_codcli ON public.data_summary USING btree (ano, codcli);
+CREATE INDEX IF NOT EXISTS idx_summary_ano_ramo ON public.data_summary USING btree (ano, ramo);
+CREATE INDEX IF NOT EXISTS idx_summary_categoria ON public.data_summary USING btree (categoria_produto);
+
+
+CREATE TABLE IF NOT EXISTS public.data_summary_frequency (
+    id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+    ano integer,
+    mes integer,
+    filial text,
+    cidade text,
+    codsupervisor text,
+    codusur text,
+    codfor text,
+    codcli text,
+    tipovenda text,
+    pedido text,
+    vlvenda numeric,
+    peso numeric,
+    produtos jsonb,
+    categorias jsonb,
+    rede text,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes ON public.data_summary_frequency USING btree (ano, mes);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_filial_cidade ON public.data_summary_frequency USING btree (filial, cidade);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_vendedor_supervisor ON public.data_summary_frequency USING btree (codusur, codsupervisor);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_pedido_cli ON public.data_summary_frequency USING btree (pedido, codcli);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_produtos_gin ON public.data_summary_frequency USING gin (produtos);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_categorias_gin ON public.data_summary_frequency USING gin (categorias);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_tipovenda ON public.data_summary_frequency USING btree (ano, mes, tipovenda);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_filial ON public.data_summary_frequency USING btree (ano, mes, filial, cidade);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_vendedor ON public.data_summary_frequency USING btree (ano, mes, codusur);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_supervisor ON public.data_summary_frequency USING btree (ano, mes, codsupervisor);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_fornecedor ON public.data_summary_frequency USING btree (ano, mes, codfor);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_rede ON public.data_summary_frequency USING btree (ano, mes, rede);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_codcli ON public.data_summary_frequency USING btree (ano, codcli);
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     cidade text NOT NULL UNIQUE,
     filial text, 
@@ -1159,12 +1229,28 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    SET LOCAL statement_timeout = '600s';
+    SET LOCAL statement_timeout = '1800s'; -- Increased to 30 mins to avoid immediate API cutoff
+    SET LOCAL work_mem = '128MB'; -- More memory for internal hashing during grouped inserts
 
     -- Clear data for this year/month first (avoid duplicates)
     DELETE FROM public.data_summary WHERE ano = p_year AND mes = p_month;
     DELETE FROM public.data_summary_frequency WHERE ano = p_year AND mes = p_month;
     
+    -- STEP A: Create a temporary table for the raw data of the month to avoid massive UNION ALL memory plans
+    CREATE TEMP TABLE tmp_raw_data ON COMMIT DROP AS
+    SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+    FROM public.data_detailed
+    WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
+    UNION ALL
+    SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+    FROM public.data_history
+    WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month');
+
+    CREATE INDEX idx_tmp_raw_produto ON tmp_raw_data(produto);
+    CREATE INDEX idx_tmp_raw_codcli ON tmp_raw_data(codcli);
+    CREATE INDEX idx_tmp_raw_pedido ON tmp_raw_data(pedido);
+
+    -- STEP B: Insert into data_summary using the temporary table
     INSERT INTO public.data_summary (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao, 
@@ -1184,15 +1270,6 @@ BEGIN
                 ELSE '1119_OUTROS'
             END as codfor_enhanced
         FROM public.dim_produtos
-    ),
-    raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
-        FROM public.data_detailed
-        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
-        UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
-        FROM public.data_history
-        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
     ),
     augmented_data AS (
         SELECT 
@@ -1214,7 +1291,7 @@ BEGIN
             s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
             c.ramo,
             dp.categoria_produto
-        FROM raw_data s
+        FROM tmp_raw_data s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
         LEFT JOIN dim_prod_enhanced dp ON s.produto = dp.codigo
     ),
@@ -1251,20 +1328,12 @@ BEGIN
         categoria_produto
     FROM client_agg;
     
-    -- Update data_summary_frequency for the month
+
+    -- STEP C: Insert into data_summary_frequency using the temporary table
     INSERT INTO public.data_summary_frequency (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede
     )
-    WITH raw_freq AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto
-        FROM public.data_detailed
-        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
-        UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto
-        FROM public.data_history
-        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
-    ),
-    freq_agg_base AS (
+    WITH freq_agg_base AS (
         SELECT
             p_year as ano,
             p_month as mes,
@@ -1279,7 +1348,7 @@ BEGIN
             SUM(vlvenda) as vlvenda,
             SUM(totpesoliq) as peso,
             jsonb_agg(DISTINCT produto) as produtos
-        FROM raw_freq
+        FROM tmp_raw_data
         GROUP BY
             filial,
             cidade,
@@ -1317,7 +1386,8 @@ BEGIN
     FROM freq_agg_base f
     LEFT JOIN public.data_clients c ON f.codcli = c.codigo_cliente;
 
-    -- No internal ANALYZE to keep chunks fast
+    -- STEP D: Cleanup
+    DROP TABLE IF EXISTS tmp_raw_data;
 END;
 $$;
 
