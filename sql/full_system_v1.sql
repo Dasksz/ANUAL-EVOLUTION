@@ -3794,6 +3794,7 @@ BEGIN
                         ''pos_avg_12m'', SUM(pos_avg_12m),
                         ''estoque_current'', SUM(estoque_current),
                         ''products_count'', COUNT(product_code),
+                        ''products_pos_sum_current'', SUM(pos_current),
                         ''distinct_clients_current'', (SELECT COUNT(DISTINCT codcli) FROM innovation_sales WHERE is_current AND category_name = aggregated.category_name)
                     ) as cat_agg
                 FROM aggregated
@@ -4062,11 +4063,12 @@ BEGIN
                         ''pos_avg_12m'', ca.pos_avg_12m,
                         ''estoque_current'', SUM(ag.estoque_current),
                         ''products_count'', COUNT(ag.product_code),
+                        ''products_pos_sum_current'', SUM(ag.prod_pos_current),
                         ''distinct_clients_current'', ca.pos_current
                     ) as cat_agg
                 FROM category_base ca
                 JOIN (
-                    SELECT product_code, category_name,
+                    SELECT product_code, category_name, pos_current AS prod_pos_current,
                     COALESCE((
                         SELECT SUM(value::numeric)
                         FROM jsonb_each_text((SELECT estoque_filial FROM dim_produtos WHERE codigo = ab.product_code))
