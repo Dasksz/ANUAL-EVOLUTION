@@ -2595,10 +2595,8 @@ let lpSelectedCidades = [];
                     e.stopPropagation();
                     selectElement.value = opt.value;
                     span.textContent = opt.text;
-                    dropdown.classList.add('hidden');
-
-                    // Trigger change event for listeners attached to the original select
-                    selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+                    // Removed dropdown.classList.add('hidden');
+                    // Removed immediate selectElement.dispatchEvent(new Event('change', { bubbles: true }));
                     // Find all items and uncheck them
                     Array.from(dropdown.children).forEach(child => {
                         const cb = child.querySelector('input');
@@ -2628,11 +2626,40 @@ let lpSelectedCidades = [];
 
         renderOptions();
 
+        // Force update visual state without recreating DOM to fix unselected bug on reopen
+        const updateVisualState = () => {
+            const selectedOpt = selectElement.options[selectElement.selectedIndex];
+            if (selectedOpt) span.textContent = selectedOpt.text;
+
+            Array.from(dropdown.children).forEach((child, index) => {
+                const opt = selectElement.options[index];
+                if (!opt) return;
+
+                const isSelected = selectElement.value === opt.value;
+                const cb = child.querySelector('input');
+                if (cb) cb.checked = isSelected;
+
+                const lbl = child.querySelector('label');
+                if (lbl) {
+                    if (isSelected) {
+                        lbl.classList.remove('text-slate-200');
+                        lbl.classList.add('text-orange-500', 'font-bold');
+                    } else {
+                        lbl.classList.remove('text-orange-500', 'font-bold');
+                        lbl.classList.add('text-slate-200');
+                    }
+                }
+            });
+        };
+
         // Observe changes to the select options
         const observer = new MutationObserver((mutations) => {
+            // Re-render full options when DOM changes
             renderOptions();
         });
         observer.observe(selectElement, { childList: true });
+
+        let initialValueOnOpen = selectElement.value;
 
         // Handle button click
         btn.addEventListener('click', (e) => {
@@ -2641,11 +2668,22 @@ let lpSelectedCidades = [];
 
             // Close all dropdowns
             document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
-                if (!el.classList.contains('hidden')) el.classList.add('hidden');
+                if (!el.classList.contains('hidden')) {
+                    el.classList.add('hidden');
+                    // We can't cleanly trigger change here for other elements easily, but they have their own handlers.
+                }
             });
 
             if (isHidden) {
+                updateVisualState(); // Sync visuals just before opening
                 dropdown.classList.remove('hidden');
+                initialValueOnOpen = selectElement.value; // Store value when opened
+            } else {
+                dropdown.classList.add('hidden');
+                // Trigger change if value changed while open
+                if (selectElement.value !== initialValueOnOpen) {
+                    selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+                }
             }
         });
 
@@ -2653,6 +2691,9 @@ let lpSelectedCidades = [];
         document.addEventListener('click', (e) => {
             if (!dropdown.classList.contains('hidden') && !dropdown.contains(e.target) && !btn.contains(e.target)) {
                 dropdown.classList.add('hidden');
+                if (selectElement.value !== initialValueOnOpen) {
+                    selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+                }
             }
         });
 
