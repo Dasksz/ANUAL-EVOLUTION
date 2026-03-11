@@ -1433,7 +1433,7 @@ let lpSelectedCidades = [];
 
         statusText.textContent = 'Processando...';
         
-        const worker = new Worker('src/js/worker.js?v=2');
+        const worker = new Worker('src/js/worker.js?v=3');
         // Pass files AND the city map
         worker.postMessage({ ...files, cityBranchMap });
 

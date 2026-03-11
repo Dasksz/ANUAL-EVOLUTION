@@ -1521,7 +1521,7 @@ BEGIN
             FROM public.cache_filters ' || v_where_fornecedor || '
         ),
         ''tipos_venda'', (SELECT array_agg(DISTINCT tipovenda ORDER BY tipovenda) FROM public.cache_filters ' || v_where_tipovenda || '),
-        ''redes'', (SELECT array_agg(DISTINCT rede ORDER BY rede) FROM public.cache_filters ' || v_where_rede || ' AND rede IS NOT NULL),
+        ''redes'', (SELECT array_agg(DISTINCT rede ORDER BY rede) FROM public.cache_filters ' || v_where_rede || ' AND rede IS NOT NULL AND rede NOT IN (''N/A'', ''N/D'')),
         ''categorias'', (SELECT array_agg(DISTINCT categoria_produto ORDER BY categoria_produto) FROM public.cache_filters ' || v_where_cat || ' AND categoria_produto IS NOT NULL),
         ''produtos'', (
             SELECT json_agg(jsonb_build_object(''cod'', codigo, ''name'', descricao))
