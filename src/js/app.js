@@ -5727,7 +5727,7 @@ function renderInnovationsKPIs(data) {
     const topCovLabel = document.getElementById('innovations-month-top-coverage-label');
 
     if (topCovTitle) topCovTitle.textContent = bestCategory || 'N/A';
-    if (topCovLabel) topCovLabel.textContent = 'Média por Cliente';
+    if (topCovLabel) topCovLabel.textContent = 'Melhor Categoria';
     
     // Changing the count label to the calculated average
     if (topCovKpi) topCovKpi.textContent = bestAvgPerClient > 0 ? bestAvgPerClient.toFixed(2) : '0.00';
