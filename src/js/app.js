@@ -5909,7 +5909,7 @@ window.renderInnovationsTable = function(data) {
         `;
 
         // Product Rows (Children)
-        const productsInCat = data.products.filter(p => p.category_name === cat.name);
+        const productsInCat = data.products.filter(p => p.category === cat.name);
         productsInCat.forEach(p => {
             let posAtual = ((p.pos_current / attCurrent) * 100).toFixed(2);
             let posPrevYear = ((p.pos_prev_year / attPrevYear) * 100).toFixed(2);
@@ -5925,7 +5925,7 @@ window.renderInnovationsTable = function(data) {
                     <td class="px-4 py-4 pl-10 text-slate-400 text-xs flex items-center gap-2">
                         <svg class="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </td>
-                    <td class="px-4 py-4 text-slate-300 text-xs">${p.product_code} - ${p.product_name}</td>
+                    <td class="px-4 py-4 text-slate-300 text-xs">${p.code} - ${p.name}</td>
                     <td class="px-4 py-4 text-center font-medium text-slate-300">${pEstoque} cx</td>
                     <td class="px-4 py-4 text-center text-slate-500">${posAvg12m}%</td>
                     <td class="px-4 py-4 text-center text-slate-500">${posPrevYear}%</td>
