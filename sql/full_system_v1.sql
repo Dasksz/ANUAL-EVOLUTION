@@ -1222,29 +1222,45 @@ END;
 $$;
 
 -- 2.1. Refresh Summary for Specific Month (Granular for Timeout Avoidance)
-CREATE OR REPLACE FUNCTION refresh_summary_month(p_year int, p_month int)
+-- NOVA FUNÇÃO PARA LIMPAR O MÊS ANTES DOS CHUNKS
+CREATE OR REPLACE FUNCTION clear_summary_month(p_year int, p_month int)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+    DELETE FROM public.data_summary WHERE ano = p_year AND mes = p_month;
+    DELETE FROM public.data_summary_frequency WHERE ano = p_year AND mes = p_month;
+END;
+$$;
+
+-- FUNÇÃO ATUALIZADA PARA PROCESSAR UM CHUNK DE DATAS
+CREATE OR REPLACE FUNCTION refresh_summary_chunk(p_start_date date, p_end_date date)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_year int;
+    v_month int;
+BEGIN
     SET LOCAL statement_timeout = '1800s'; -- Increased to 30 mins to avoid immediate API cutoff
     SET LOCAL work_mem = '128MB'; -- More memory for internal hashing during grouped inserts
 
-    -- Clear data for this year/month first (avoid duplicates)
-    DELETE FROM public.data_summary WHERE ano = p_year AND mes = p_month;
-    DELETE FROM public.data_summary_frequency WHERE ano = p_year AND mes = p_month;
+    v_year := EXTRACT(YEAR FROM p_start_date);
+    v_month := EXTRACT(MONTH FROM p_start_date);
     
     -- STEP A: Create a temporary table for the raw data of the month to avoid massive UNION ALL memory plans
     CREATE TEMP TABLE tmp_raw_data ON COMMIT DROP AS
     SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
     FROM public.data_detailed
-    WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
+    WHERE dtped >= p_start_date AND dtped < p_end_date
     UNION ALL
     SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
     FROM public.data_history
-    WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month');
+    WHERE dtped >= p_start_date AND dtped < p_end_date;
 
     CREATE INDEX idx_tmp_raw_produto ON tmp_raw_data(produto);
     CREATE INDEX idx_tmp_raw_codcli ON tmp_raw_data(codcli);
@@ -1273,10 +1289,10 @@ BEGIN
     ),
     augmented_data AS (
         SELECT 
-            p_year as ano,
-            p_month as mes,
+            v_year as ano,
+            v_month as mes,
             CASE
-                WHEN s.codcli = '11625' AND p_year = 2025 AND p_month = 12 THEN '05'
+                WHEN s.codcli = '11625' AND v_year = 2025 AND v_month = 12 THEN '05'
                 ELSE s.filial
             END as filial,
             COALESCE(s.cidade, c.cidade) as cidade, 
@@ -1335,8 +1351,8 @@ BEGIN
     )
     WITH freq_agg_base AS (
         SELECT
-            p_year as ano,
-            p_month as mes,
+            v_year as ano,
+            v_month as mes,
             filial,
             cidade,
             codsupervisor,
@@ -1390,6 +1406,7 @@ BEGIN
     DROP TABLE IF EXISTS tmp_raw_data;
 END;
 $$;
+
 
 -- 3. Refresh Filters Cache (Optimized: Uses data_summary)
 DROP FUNCTION IF EXISTS refresh_cache_filters();
@@ -3632,7 +3649,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $BODY$
+AS $$BODY$
 DECLARE
     v_result json;
     v_where_base text := ' WHERE 1=1 ';
@@ -3917,7 +3934,7 @@ BEGIN
 
     RETURN v_result;
 END;
-$BODY$;
+$BODY$$;
 -- Function to retrieve innovations dashboard data
 -- Updated with new attended bases for percentage calculation
 CREATE OR REPLACE FUNCTION get_innovations_data(
