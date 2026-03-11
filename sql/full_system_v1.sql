@@ -446,7 +446,6 @@ BEGIN
 END $$;
 
 -- Config City Branches (Mapping)
-CREATE TABLE IF NOT EXISTS public.config_city_branches (
 -- Missing table definitions for `data_summary` and `data_summary_frequency`
 CREATE TABLE IF NOT EXISTS public.data_summary (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -517,6 +516,7 @@ CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_supervisor ON public.dat
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_fornecedor ON public.data_summary_frequency USING btree (ano, mes, codfor);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_rede ON public.data_summary_frequency USING btree (ano, mes, rede);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_codcli ON public.data_summary_frequency USING btree (ano, codcli);
+CREATE TABLE IF NOT EXISTS public.config_city_branches (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     cidade text NOT NULL UNIQUE,
     filial text, 
