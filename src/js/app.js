@@ -5926,10 +5926,10 @@ window.renderInnovationsTable = function(data) {
     const attAvg12m = data.attended_12m > 0 ? (data.attended_12m / 3.0) : 1; 
 
     data.categories.forEach((cat, idx) => {
-        let catPosAtual = ((cat.pos_current / attCurrent) * 100).toFixed(2);
-        let catPosPrevYear = ((cat.pos_prev_year / attPrevYear) * 100).toFixed(2);
-        let catPosPrevM1 = ((cat.pos_prev_m1 / attPrevM1) * 100).toFixed(2);
-        let catPosAvg12m = ((cat.pos_avg_12m / attAvg12m) * 100).toFixed(2);
+        let catPosAtual = Math.round(cat.pos_current || 0);
+        let catPosPrevYear = Math.round(cat.pos_prev_year || 0);
+        let catPosPrevM1 = Math.round(cat.pos_prev_m1 || 0);
+        let catPosAvg12m = Math.round(cat.pos_avg_12m || 0);
         let catEstoque = Math.round(cat.estoque_current || 0);
         
         let varPercent = cat.pos_prev_m1 > 0 ? (((cat.pos_current - cat.pos_prev_m1) / cat.pos_prev_m1) * 100).toFixed(1) : (cat.pos_current > 0 ? 100 : 0);
@@ -5946,10 +5946,10 @@ window.renderInnovationsTable = function(data) {
                 </td>
                 <td class="px-4 py-4 text-slate-400 text-xs italic"></td>
                 <td class="px-4 py-4 text-center font-bold text-white">${catEstoque} cx</td>
-                <td class="px-4 py-4 text-center text-slate-400">${catPosAvg12m}%</td>
-                <td class="px-4 py-4 text-center text-slate-400">${catPosPrevYear}%</td>
-                <td class="px-4 py-4 text-center text-slate-400">${catPosPrevM1}%</td>
-                <td class="px-4 py-4 text-center font-bold text-white">${catPosAtual}%</td>
+                <td class="px-4 py-4 text-center text-slate-400">${catPosAvg12m}</td>
+                <td class="px-4 py-4 text-center text-slate-400">${catPosPrevYear}</td>
+                <td class="px-4 py-4 text-center text-slate-400">${catPosPrevM1}</td>
+                <td class="px-4 py-4 text-center font-bold text-white">${catPosAtual}</td>
                 <td class="px-4 py-4 text-center ${varColor} font-bold">${varPercent}%</td>
             </tr>
         `;
@@ -5957,10 +5957,10 @@ window.renderInnovationsTable = function(data) {
         // Product Rows (Children)
         const productsInCat = data.products.filter(p => p.category === cat.name);
         productsInCat.forEach(p => {
-            let posAtual = ((p.pos_current / attCurrent) * 100).toFixed(2);
-            let posPrevYear = ((p.pos_prev_year / attPrevYear) * 100).toFixed(2);
-            let posPrevM1 = ((p.pos_prev_m1 / attPrevM1) * 100).toFixed(2);
-            let posAvg12m = ((p.pos_avg_12m / attAvg12m) * 100).toFixed(2);
+            let posAtual = Math.round(p.pos_current || 0);
+            let posPrevYear = Math.round(p.pos_prev_year || 0);
+            let posPrevM1 = Math.round(p.pos_prev_m1 || 0);
+            let posAvg12m = Math.round(p.pos_avg_12m || 0);
             let pEstoque = Math.round(p.estoque_current || 0);
             
             let pVarPercent = p.pos_prev_m1 > 0 ? (((p.pos_current - p.pos_prev_m1) / p.pos_prev_m1) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
@@ -5973,10 +5973,10 @@ window.renderInnovationsTable = function(data) {
                     </td>
                     <td class="px-4 py-4 text-slate-300 text-xs">${p.code} - ${p.name}</td>
                     <td class="px-4 py-4 text-center font-medium text-slate-300">${pEstoque} cx</td>
-                    <td class="px-4 py-4 text-center text-slate-500">${posAvg12m}%</td>
-                    <td class="px-4 py-4 text-center text-slate-500">${posPrevYear}%</td>
-                    <td class="px-4 py-4 text-center text-slate-500">${posPrevM1}%</td>
-                    <td class="px-4 py-4 text-center font-medium text-slate-300">${posAtual}%</td>
+                    <td class="px-4 py-4 text-center text-slate-500">${posAvg12m}</td>
+                    <td class="px-4 py-4 text-center text-slate-500">${posPrevYear}</td>
+                    <td class="px-4 py-4 text-center text-slate-500">${posPrevM1}</td>
+                    <td class="px-4 py-4 text-center font-medium text-slate-300">${posAtual}</td>
                     <td class="px-4 py-4 text-center ${pVarColor} text-xs font-bold">${pVarPercent}%</td>
                 </tr>
             `;
