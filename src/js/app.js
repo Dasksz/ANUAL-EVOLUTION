@@ -467,6 +467,8 @@ let lpSelectedCidades = [];
         if (!boxesView.classList.contains('hidden')) return 'boxes';
         if (!branchView.classList.contains('hidden')) return 'branch';
         if (comparisonView && !comparisonView.classList.contains('hidden')) return 'comparison';
+        if (innovationsMonthView && !innovationsMonthView.classList.contains('hidden')) return 'innovations';
+        if (lojaPerfeitaView && !lojaPerfeitaView.classList.contains('hidden')) return 'loja-perfeita';
         return 'dashboard';
     }
 
@@ -527,6 +529,24 @@ let lpSelectedCidades = [];
             state.tiposvenda = selectedComparisonTiposVenda;
             state.redes = selectedComparisonRedes;
             state.categorias = selectedComparisonCategorias;
+        } else if (view === 'innovations') {
+            const anoSelect = document.getElementById('innovations-ano-filter');
+            const mesSelect = document.getElementById('innovations-mes-filter');
+            state.ano = anoSelect ? anoSelect.value : null;
+            state.mes = mesSelect ? mesSelect.value : null;
+            state.filiais = innovationsSelectedFiliais;
+            state.cidades = innovationsSelectedCidades;
+            state.supervisores = innovationsSelectedSupervisors;
+            state.vendedores = innovationsSelectedVendedores;
+            state.tiposvenda = innovationsSelectedTiposVenda;
+            state.redes = innovationsSelectedRedes;
+            state.categorias = innovationsSelectedCategorias;
+        } else if (view === 'loja-perfeita') {
+            state.cidades = lpSelectedCidades;
+            state.supervisores = lpSelectedSupervisors;
+            state.vendedores = lpSelectedVendedores;
+            state.redes = lpSelectedRedes;
+            if (lpSelectedClient) state.codcli = lpSelectedClient;
         }
 
         const serialize = (key, val) => {
@@ -614,6 +634,25 @@ let lpSelectedCidades = [];
              selectedComparisonTiposVenda = getList('tiposvenda');
              selectedComparisonRedes = getList('redes');
              selectedComparisonCategorias = getList('categorias');
+        } else if (view === 'innovations') {
+            const anoSelect = document.getElementById('innovations-ano-filter');
+            const mesSelect = document.getElementById('innovations-mes-filter');
+            if (getVal('ano') && anoSelect) anoSelect.value = getVal('ano');
+            if (getVal('mes') && mesSelect) mesSelect.value = getVal('mes');
+            innovationsSelectedFiliais = getList('filiais');
+            innovationsSelectedCidades = getList('cidades');
+            innovationsSelectedSupervisors = getList('supervisores');
+            innovationsSelectedVendedores = getList('vendedores');
+            innovationsSelectedTiposVenda = getList('tiposvenda');
+            innovationsSelectedRedes = getList('redes');
+            innovationsSelectedCategorias = getList('categorias');
+        } else if (view === 'loja-perfeita') {
+            lpSelectedCidades = getList('cidades');
+            lpSelectedSupervisors = getList('supervisores');
+            lpSelectedVendedores = getList('vendedores');
+            lpSelectedRedes = getList('redes');
+            if (getVal('codcli')) lpSelectedClient = getVal('codcli');
+        }
         }
     }
 
@@ -635,7 +674,7 @@ let lpSelectedCidades = [];
         showScreen('app-layout');
 
         // Provide a default if the view wasn't set or is invalid
-        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison'];
+        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison', 'innovations', 'loja-perfeita'];
         if (!view || !validViews.includes(view)) {
             view = 'dashboard';
         }
@@ -1101,6 +1140,20 @@ let lpSelectedCidades = [];
                     loadComparisonView();
                 }
                 break;
+            case 'innovations':
+                if (innovationsMonthView && navInnovationsBtn) {
+                    innovationsMonthView.classList.remove('hidden');
+                    setActiveNavLink(navInnovationsBtn);
+                    renderInnovationsMonthView();
+                }
+                break;
+            case 'loja-perfeita':
+                if (lojaPerfeitaView && navLojaPerfeitaBtn) {
+                    lojaPerfeitaView.classList.remove('hidden');
+                    setActiveNavLink(navLojaPerfeitaBtn);
+                    renderLojaPerfeitaView();
+                }
+                break;
             case 'branch':
                 if (branchView && navBranchBtn) {
                     branchView.classList.remove('hidden');
@@ -1152,20 +1205,14 @@ let lpSelectedCidades = [];
     if (navInnovationsBtn) {
         navInnovationsBtn.addEventListener('click', (e) => {
             if (navigateWithCtrl(e, 'innovations')) return;
-            resetViews();
-            if (innovationsMonthView) innovationsMonthView.classList.remove('hidden');
-            setActiveNavLink(navInnovationsBtn);
-            renderInnovationsMonthView();
+            renderView('innovations');
         });
     }
 
     if (navLojaPerfeitaBtn) {
         navLojaPerfeitaBtn.addEventListener('click', (e) => {
             if (navigateWithCtrl(e, 'loja-perfeita')) return;
-            resetViews();
-            if (lojaPerfeitaView) lojaPerfeitaView.classList.remove('hidden');
-            setActiveNavLink(navLojaPerfeitaBtn);
-            renderLojaPerfeitaView();
+            renderView('loja-perfeita');
         });
     }
 
