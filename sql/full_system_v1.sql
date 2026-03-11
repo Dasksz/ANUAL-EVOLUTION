@@ -84,8 +84,6 @@ BEGIN
         v_where_base_prev := v_where_base_prev || ' AND s.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
     END IF;
 
-    -- The frequency table does NOT use Supervisor levels in its current tree, but if a filter is passed, we apply it to the base clients 
-    -- by checking the supervisor of the current seller.
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where_clients := v_where_clients || ' AND EXISTS (SELECT 1 FROM public.data_summary_frequency sf WHERE sf.codcli = dc.codigo_cliente AND sf.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || ''']))) ';
         v_where_chart := v_where_chart || ' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
@@ -100,7 +98,6 @@ BEGIN
         v_where_base_prev := v_where_base_prev || ' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
     END IF;
 
-    -- Fornecedor and Rede are product/client traits
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_fornecedor)) THEN
             v_where_base := v_where_base || ' AND s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
@@ -116,7 +113,6 @@ BEGIN
         v_where_base_prev := v_where_base_prev || ' AND s.rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
     END IF;
 
-    -- JSONB Filters for Arrays (Using ?| to check if any array element exists as a key/element in jsonb)
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
         v_where_base := v_where_base || ' AND s.produtos ?| ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
         v_where_base_prev := v_where_base_prev || ' AND s.produtos ?| ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
@@ -188,21 +184,17 @@ BEGIN
         FROM base_clients
         GROUP BY ROLLUP(filial, cidade, vendedor)
     ),
-    client_totals AS (
-        SELECT codcli,
-               SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN vlvenda ELSE 0 END) as total_vlvenda
-        FROM current_data
-        GROUP BY codcli
-    ),
-    valid_clients AS (
-        SELECT codcli
-        FROM client_totals
-        WHERE total_vlvenda >= 1
-    ),
     current_skus AS (
         SELECT filial, cidade, codusur, codcli, jsonb_array_elements_text(produtos) as sku
         FROM current_data
         WHERE tipovenda NOT IN (''5'', ''11'')
+    ),
+    pre_aggregated_skus AS (
+        SELECT
+            filial, cidade, codusur,
+            COUNT(DISTINCT codcli || ''-'' || sku) as dist_skus
+        FROM current_skus
+        GROUP BY filial, cidade, codusur
     ),
     aggregated_curr AS (
         SELECT
@@ -214,11 +206,10 @@ BEGIN
             c.codusur as vendedor_cod,
             SUM(c.peso) as tons,
             SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
-            COUNT(DISTINCT vc.codcli) as positivacao,
+            COUNT(DISTINCT CASE WHEN c.vlvenda >= 1 AND c.tipovenda NOT IN (''5'', ''11'') THEN c.codcli END) as positivacao,
             COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END) as total_pedidos,
             COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
-        LEFT JOIN valid_clients vc ON c.codcli = vc.codcli AND c.tipovenda NOT IN (''5'', ''11'')
         GROUP BY ROLLUP(c.filial, c.cidade, c.codusur)
     ),
     aggregated_skus AS (
@@ -229,8 +220,8 @@ BEGIN
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
             codusur as vendedor_cod,
-            COUNT(DISTINCT codcli || ''-'' || sku) as sum_skus
-        FROM current_skus
+            SUM(dist_skus) as sum_skus
+        FROM pre_aggregated_skus
         GROUP BY ROLLUP(filial, cidade, codusur)
     ),
     final_tree AS (
@@ -275,18 +266,10 @@ BEGIN
         SELECT
             ano,
             mes,
-            COUNT(DISTINCT pedido) as total_pedidos,
-            COUNT(DISTINCT CASE WHEN total_vlvenda >= 1 THEN codcli END) as total_clientes
-        FROM (
-            SELECT
-                s.ano,
-                s.mes,
-                s.pedido,
-                s.codcli,
-                SUM(s.vlvenda) OVER (PARTITION BY s.ano, s.mes, s.codcli) as total_vlvenda
-            FROM public.data_summary_frequency s
-            ' || v_where_chart || ' AND tipovenda NOT IN (''5'', ''11'')
-        ) sub_chart
+            COUNT(DISTINCT CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN pedido END) as total_pedidos,
+            COUNT(DISTINCT CASE WHEN vlvenda >= 1 AND tipovenda NOT IN (''5'', ''11'') THEN codcli END) as total_clientes
+        FROM public.data_summary_frequency s
+        ' || v_where_chart || '
         GROUP BY 1, 2
     )
     SELECT json_build_object(
