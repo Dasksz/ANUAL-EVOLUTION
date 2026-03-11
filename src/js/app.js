@@ -653,7 +653,6 @@ let lpSelectedCidades = [];
             lpSelectedRedes = getList('redes');
             if (getVal('codcli')) lpSelectedClient = getVal('codcli');
         }
-        }
     }
 
     async function handleInitialRouting() {
