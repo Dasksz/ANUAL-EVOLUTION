@@ -5714,7 +5714,8 @@ function renderInnovationsKPIs(data) {
             maxCoverageCount = cat.pos_current;
             // distinct_clients_current comes from the new SQL aggregation
             let distClients = cat.distinct_clients_current || 1;
-            bestAvgPerClient = (cat.pos_current / distClients);
+            let prodSum = cat.products_pos_sum_current || cat.pos_current;
+            bestAvgPerClient = (prodSum / distClients);
             if(cat.pos_current === 0) bestAvgPerClient = 0;
         }
         totalSelectionPos += cat.pos_current;
