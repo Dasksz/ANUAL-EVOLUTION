@@ -1751,10 +1751,30 @@ let lpSelectedCidades = [];
                         const monthStep = yearStep / 12;
                         const progress = 80 + Math.round((i * yearStep) + (m * monthStep));
                         
-                        updateStatus(`Processando ${m}/${year}...`, progress);
-                        const { error: chunkErr } = await supabase.rpc('refresh_summary_month', { p_year: year, p_month: m });
-                        
-                        if (chunkErr) throw new Error(`Erro processando ${m}/${year}: ${chunkErr.message}`);
+                        updateStatus(`Limpando dados ${m}/${year}...`, progress);
+                        const { error: clearErr } = await supabase.rpc('clear_summary_month', { p_year: year, p_month: m });
+                        if (clearErr) throw new Error(`Erro limpando ${m}/${year}: ${clearErr.message}`);
+
+                        // Calculate date boundaries
+                        const startDate = `${year}-${String(m).padStart(2, '0')}-01`;
+                        const midDate = `${year}-${String(m).padStart(2, '0')}-16`;
+                        let nextMonth = m + 1;
+                        let nextYear = year;
+                        if (nextMonth > 12) {
+                            nextMonth = 1;
+                            nextYear++;
+                        }
+                        const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+
+                        // Chunk 1: 1st to 15th
+                        updateStatus(`Processando ${m}/${year} (Parte 1)...`, progress + Math.round(monthStep * 0.2));
+                        const { error: chunk1Err } = await supabase.rpc('refresh_summary_chunk', { p_start_date: startDate, p_end_date: midDate });
+                        if (chunk1Err) throw new Error(`Erro processando ${m}/${year} (Parte 1): ${chunk1Err.message}`);
+
+                        // Chunk 2: 16th to end of month
+                        updateStatus(`Processando ${m}/${year} (Parte 2)...`, progress + Math.round(monthStep * 0.4));
+                        const { error: chunk2Err } = await supabase.rpc('refresh_summary_chunk', { p_start_date: midDate, p_end_date: endDate });
+                        if (chunk2Err) throw new Error(`Erro processando ${m}/${year} (Parte 2): ${chunk2Err.message}`);
 
                         updateStatus(`Atualizando filtros ${m}/${year}...`, progress + Math.round(monthStep / 2));
                         const { error: filterErr } = await supabase.rpc('refresh_cache_filters', { p_ano: year, p_mes: m });
