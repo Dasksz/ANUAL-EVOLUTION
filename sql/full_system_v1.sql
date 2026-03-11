@@ -1171,7 +1171,21 @@ BEGIN
         pre_mix_count, pre_positivacao_val,
         ramo, caixas, categoria_produto
     )
-    WITH raw_data AS (
+    WITH dim_prod_enhanced AS (
+        SELECT
+            codigo,
+            categoria_produto,
+            qtde_embalagem_master,
+            CASE
+                WHEN '1119' = '1119' AND descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
+                WHEN '1119' = '1119' AND descricao ILIKE '%TODDY %' THEN '1119_TODDY'
+                WHEN '1119' = '1119' AND descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
+                WHEN '1119' = '1119' AND descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
+                ELSE '1119_OUTROS'
+            END as codfor_enhanced
+        FROM public.dim_produtos
+    ),
+    raw_data AS (
         SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
         FROM public.data_detailed
         WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
@@ -1182,31 +1196,27 @@ BEGIN
     ),
     augmented_data AS (
         SELECT 
-            EXTRACT(YEAR FROM s.dtped)::int as ano,
-            EXTRACT(MONTH FROM s.dtped)::int as mes,
+            p_year as ano,
+            p_month as mes,
             CASE
-                WHEN s.codcli = '11625' AND EXTRACT(YEAR FROM s.dtped) = 2025 AND EXTRACT(MONTH FROM s.dtped) = 12 THEN '05'
+                WHEN s.codcli = '11625' AND p_year = 2025 AND p_month = 12 THEN '05'
                 ELSE s.filial
             END as filial,
             COALESCE(s.cidade, c.cidade) as cidade, 
             s.codsupervisor,
             s.codusur,
             CASE 
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDY %' THEN '1119_TODDY'
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
-                WHEN s.codfor = '1119' THEN '1119_OUTROS'
+                WHEN s.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS')
                 ELSE s.codfor 
             END as codfor, 
             s.tipovenda, 
             s.codcli,
             s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
             c.ramo,
-            dp.categoria_produto -- Added
+            dp.categoria_produto
         FROM raw_data s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
-        LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+        LEFT JOIN dim_prod_enhanced dp ON s.produto = dp.codigo
     ),
     product_agg AS (
         SELECT 
@@ -1241,46 +1251,72 @@ BEGIN
         categoria_produto
     FROM client_agg;
     
-
     -- Update data_summary_frequency for the month
     INSERT INTO public.data_summary_frequency (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede
     )
-    SELECT
-        EXTRACT(YEAR FROM s.dtped)::int as ano,
-        EXTRACT(MONTH FROM s.dtped)::int as mes,
-        s.filial,
-        s.cidade,
-        s.codsupervisor,
-        s.codusur,
-        s.codfor,
-        s.codcli,
-        s.tipovenda,
-        s.pedido,
-        SUM(s.vlvenda) as vlvenda,
-        SUM(s.totpesoliq) as peso,
-        jsonb_agg(DISTINCT s.produto) as produtos,
-        jsonb_agg(DISTINCT dp.categoria_produto) as categorias,
-        c.ramo as rede
-    FROM (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto FROM public.data_detailed WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
+    WITH raw_freq AS (
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto
+        FROM public.data_detailed
+        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
         UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto FROM public.data_history WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
-    ) s
-    LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
-    LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-    GROUP BY
-        EXTRACT(YEAR FROM s.dtped)::int,
-        EXTRACT(MONTH FROM s.dtped)::int,
-        s.filial,
-        s.cidade,
-        s.codsupervisor,
-        s.codusur,
-        s.codfor,
-        s.codcli,
-        s.tipovenda,
-        s.pedido,
-        c.ramo;
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto
+        FROM public.data_history
+        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
+    ),
+    freq_agg_base AS (
+        SELECT
+            p_year as ano,
+            p_month as mes,
+            filial,
+            cidade,
+            codsupervisor,
+            codusur,
+            codfor,
+            codcli,
+            tipovenda,
+            pedido,
+            SUM(vlvenda) as vlvenda,
+            SUM(totpesoliq) as peso,
+            jsonb_agg(DISTINCT produto) as produtos
+        FROM raw_freq
+        GROUP BY
+            filial,
+            cidade,
+            codsupervisor,
+            codusur,
+            codfor,
+            codcli,
+            tipovenda,
+            pedido
+    ),
+    dim_prod_mapping AS (
+        SELECT codigo, categoria_produto FROM public.dim_produtos
+    )
+    SELECT
+        f.ano,
+        f.mes,
+        f.filial,
+        f.cidade,
+        f.codsupervisor,
+        f.codusur,
+        f.codfor,
+        f.codcli,
+        f.tipovenda,
+        f.pedido,
+        f.vlvenda,
+        f.peso,
+        f.produtos,
+        (
+            SELECT jsonb_agg(DISTINCT dp.categoria_produto)
+            FROM jsonb_array_elements_text(f.produtos) as p_code
+            LEFT JOIN dim_prod_mapping dp ON p_code = dp.codigo
+            WHERE dp.categoria_produto IS NOT NULL
+        ) as categorias,
+        c.ramo as rede
+    FROM freq_agg_base f
+    LEFT JOIN public.data_clients c ON f.codcli = c.codigo_cliente;
+
     -- No internal ANALYZE to keep chunks fast
 END;
 $$;
