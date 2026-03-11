@@ -5575,12 +5575,24 @@ async function updateInnovationsMonthView() {
     }
 
     try {
-        renderInnovationsKPIs(data);
-        renderInnovationsChart(data);
-        renderInnovationsTable(data);
+        // Tira o peso da renderização síncrona, desdobrando o frontend.
+        requestAnimationFrame(() => {
+            renderInnovationsKPIs(data);
+            renderInnovationsChart(data);
+
+            // Renderiza a tabela depois que o gráfico e os números grandes acendem
+            setTimeout(() => {
+                try {
+                    renderInnovationsTable(data);
+                } catch(e) {
+                    console.error('Error in table:', e);
+                } finally {
+                    hideDashboardLoading();
+                }
+            }, 10);
+        });
     } catch (err) {
         console.error('Error rendering innovations:', err);
-    } finally {
         hideDashboardLoading();
     }
 }
