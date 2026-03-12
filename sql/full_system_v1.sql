@@ -3649,7 +3649,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$BODY$
+AS $BODY$
 DECLARE
     v_result json;
     v_where_base text := ' WHERE 1=1 ';
