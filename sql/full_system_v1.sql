@@ -516,6 +516,12 @@ CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_supervisor ON public.dat
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_fornecedor ON public.data_summary_frequency USING btree (ano, mes, codfor);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_rede ON public.data_summary_frequency USING btree (ano, mes, rede);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_codcli ON public.data_summary_frequency USING btree (ano, codcli);
+
+-- NOVOS ÍNDICES OTIMIZADOS PARA get_frequency_table_data (Evita Timeout 500)
+CREATE INDEX IF NOT EXISTS idx_freq_partial_agg_metrics ON public.data_summary_frequency (ano, mes, codusur, filial, cidade) INCLUDE (vlvenda, peso, codcli, pedido, tipovenda) WHERE tipovenda NOT IN ('5', '11');
+CREATE INDEX IF NOT EXISTS idx_freq_partial_skus ON public.data_summary_frequency (ano, mes, codusur, codcli) INCLUDE (produtos, tipovenda) WHERE tipovenda NOT IN ('5', '11');
+CREATE INDEX IF NOT EXISTS idx_freq_chart_metrics ON public.data_summary_frequency (ano, mes) INCLUDE (pedido, codcli, vlvenda, tipovenda) WHERE tipovenda NOT IN ('5', '11');
+
 CREATE TABLE IF NOT EXISTS public.config_city_branches (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     cidade text NOT NULL UNIQUE,
@@ -673,6 +679,12 @@ CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_supervisor on public.dat
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_fornecedor on public.data_summary_frequency using btree (ano, mes, codfor);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_rede on public.data_summary_frequency using btree (ano, mes, rede);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_codcli on public.data_summary_frequency using btree (ano, codcli);
+
+-- NOVOS ÍNDICES OTIMIZADOS PARA get_frequency_table_data (Evita Timeout 500)
+CREATE INDEX IF NOT EXISTS idx_freq_partial_agg_metrics ON public.data_summary_frequency (ano, mes, codusur, filial, cidade) INCLUDE (vlvenda, peso, codcli, pedido, tipovenda) WHERE tipovenda NOT IN ('5', '11');
+CREATE INDEX IF NOT EXISTS idx_freq_partial_skus ON public.data_summary_frequency (ano, mes, codusur, codcli) INCLUDE (produtos, tipovenda) WHERE tipovenda NOT IN ('5', '11');
+CREATE INDEX IF NOT EXISTS idx_freq_chart_metrics ON public.data_summary_frequency (ano, mes) INCLUDE (pedido, codcli, vlvenda, tipovenda) WHERE tipovenda NOT IN ('5', '11');
+
 
 -- Cache Table (For Filter Dropdowns)
 DROP TABLE IF EXISTS public.cache_filters CASCADE;
