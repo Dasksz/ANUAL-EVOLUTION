@@ -3934,7 +3934,7 @@ BEGIN
 
     RETURN v_result;
 END;
-$BODY$$;
+$BODY$;
 -- Function to retrieve innovations dashboard data
 -- Updated with new attended bases for percentage calculation
 CREATE OR REPLACE FUNCTION get_innovations_data(
