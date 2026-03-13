@@ -447,6 +447,8 @@ self.onmessage = async (event) => {
             if (!codCli) continue;
 
             const rca1 = String(client['RCA 1'] || '');
+            const rawCnpj = client['CNPJ/CPF'] || client['Cpf/Cnpj'] || '';
+            const cleanedCnpj = rawCnpj ? String(rawCnpj).replace(/[^0-9]/g, '') : null;
             // RCA 2 Removed
             const ultimaCompraRaw = client['Data da Última Compra'];
             const ultimaCompra = parseDate(ultimaCompraRaw);
@@ -458,6 +460,7 @@ self.onmessage = async (event) => {
             const clientData = {
                 codigo_cliente: codCli,
                 rca1: rca1,
+                cnpj: cleanedCnpj,
                 // rca2: rca2, -- Removed
                 cidade: salesCity || String(client['Nome da Cidade'] || client['Cidade'] || '').trim().toUpperCase() || null,
                 nomecliente: String(client['Fantasia'] || client['Cliente'] || 'N/A'),
@@ -477,6 +480,7 @@ self.onmessage = async (event) => {
                 cidade: clientData.cidade,
                 bairro: clientData.bairro,
                 rca1: rca1,
+                cnpj: cleanedCnpj,
                 razaosocial: clientData.razaosocial
             });
             clientsToInsert.push(clientData);
