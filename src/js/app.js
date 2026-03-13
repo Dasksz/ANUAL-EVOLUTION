@@ -6269,8 +6269,39 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add setup on tab click or initially if those tabs are visible
 });
 // --- LOJA PERFEITA VIEW LOGIC ---
-
 let lpSelectedClient = null; // To hold the specific selected client code
+
+const handleLojaPerfeitaFilterChange = () => {
+    updateLojaPerfeitaView();
+};
+
+document.addEventListener('click', (e) => {
+    const dropdowns = [
+        document.getElementById('lp-supervisor-filter-dropdown'),
+        document.getElementById('lp-vendedor-filter-dropdown'),
+        document.getElementById('lp-rede-filter-dropdown'),
+        document.getElementById('lp-cidade-filter-dropdown')
+    ];
+    const btns = [
+        document.getElementById('lp-supervisor-filter-btn'),
+        document.getElementById('lp-vendedor-filter-btn'),
+        document.getElementById('lp-rede-filter-btn'),
+        document.getElementById('lp-cidade-filter-btn')
+    ];
+    let anyClosed = false;
+
+    dropdowns.forEach((dd, idx) => {
+        if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
+            dd.classList.add('hidden');
+            anyClosed = true;
+        }
+    });
+
+    if (anyClosed) {
+        handleLojaPerfeitaFilterChange();
+    }
+});
+
 
 function setupLpClientSearchAutocomplete() {
     const input = document.getElementById('lp-cliente-search-input');
