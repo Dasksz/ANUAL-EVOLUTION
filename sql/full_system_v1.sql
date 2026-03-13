@@ -1372,30 +1372,29 @@ BEGIN
         SELECT
             v_year as ano,
             v_month as mes,
-            filial,
-            cidade,
-            codsupervisor,
-            codusur,
-            codfor,
-            codcli,
-            tipovenda,
-            pedido,
-            SUM(vlvenda) as vlvenda,
-            SUM(totpesoliq) as peso,
-            jsonb_agg(DISTINCT produto) as produtos
-        FROM tmp_raw_data
+            t.filial,
+            t.cidade,
+            t.codsupervisor,
+            t.codusur,
+            t.codfor,
+            t.codcli,
+            t.tipovenda,
+            t.pedido,
+            SUM(t.vlvenda) as vlvenda,
+            SUM(t.totpesoliq) as peso,
+            jsonb_agg(DISTINCT t.produto) as produtos,
+            jsonb_agg(DISTINCT dp.categoria_produto) FILTER (WHERE dp.categoria_produto IS NOT NULL) as categorias
+        FROM tmp_raw_data t
+        LEFT JOIN public.dim_produtos dp ON t.produto = dp.codigo
         GROUP BY
-            filial,
-            cidade,
-            codsupervisor,
-            codusur,
-            codfor,
-            codcli,
-            tipovenda,
-            pedido
-    ),
-    dim_prod_mapping AS (
-        SELECT codigo, categoria_produto FROM public.dim_produtos
+            t.filial,
+            t.cidade,
+            t.codsupervisor,
+            t.codusur,
+            t.codfor,
+            t.codcli,
+            t.tipovenda,
+            t.pedido
     )
     SELECT
         f.ano,
@@ -1411,12 +1410,7 @@ BEGIN
         f.vlvenda,
         f.peso,
         f.produtos,
-        (
-            SELECT jsonb_agg(DISTINCT dp.categoria_produto)
-            FROM jsonb_array_elements_text(f.produtos) as p_code
-            LEFT JOIN dim_prod_mapping dp ON p_code = dp.codigo
-            WHERE dp.categoria_produto IS NOT NULL
-        ) as categorias,
+        COALESCE(f.categorias, '[]'::jsonb) as categorias,
         c.ramo as rede
     FROM freq_agg_base f
     LEFT JOIN public.data_clients c ON f.codcli = c.codigo_cliente;
