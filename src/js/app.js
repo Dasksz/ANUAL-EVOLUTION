@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isMainDashboardInitialized = false;
     let isInnovationsInitialized = false;
     let isLojaPerfeitaInitialized = false;
+let lpSelectedFiliais = [];
 let lpSelectedSupervisors = [];
 let lpSelectedVendedores = [];
 let lpSelectedRedes = [];
@@ -6281,7 +6282,7 @@ async function loadLojaPerfeitaFilters(forceClear = false) {
 
         p_mes: null,
 
-        p_filial: [],
+        p_filial: forceClear ? [] : lpSelectedFiliais,
 
         p_cidade: forceClear ? [] : lpSelectedCidades,
 
@@ -6316,6 +6317,10 @@ async function loadLojaPerfeitaFilters(forceClear = false) {
         if (!filterData) return;
 
 
+
+        const lpFilialBtn = document.getElementById("lp-filial-filter-btn");
+        const lpFilialDropdown = document.getElementById("lp-filial-filter-dropdown");
+        if (lpFilialBtn) setupCityMultiSelect(lpFilialBtn, lpFilialDropdown, lpFilialDropdown, filterData.filiais, lpSelectedFiliais);
 
         const lpSupervisorBtn = document.getElementById("lp-supervisor-filter-btn");
 
@@ -6436,8 +6441,16 @@ function setupLpClientSearchAutocomplete() {
 
         debounceTimer = setTimeout(async () => {
             try {
-                // Determine if searching for number (id/cnpj) or text
-                const { data, error } = await supabase.rpc('search_clients', { p_search: val });
+                // Use custom RPC to apply current filters to client search
+                const searchParams = {
+                    p_search: val,
+                    p_filial: lpSelectedFiliais.length > 0 ? lpSelectedFiliais : null,
+                    p_cidade: lpSelectedCidades.length > 0 ? lpSelectedCidades : null,
+                    p_supervisor: lpSelectedSupervisors.length > 0 ? lpSelectedSupervisors : null,
+                    p_vendedor: lpSelectedVendedores.length > 0 ? lpSelectedVendedores : null,
+                    p_rede: lpSelectedRedes.length > 0 ? lpSelectedRedes : null
+                };
+                const { data, error } = await supabase.rpc('search_loja_perfeita_clients', searchParams);
                 
                 if (error) throw error;
 
@@ -6755,6 +6768,7 @@ window.clearAllFilters = async function(prefix) {
         });
     } else if (prefix === 'lp') {
         lpSelectedCidades.length = 0;
+        lpSelectedFiliais.length = 0;
         lpSelectedSupervisors.length = 0;
         lpSelectedVendedores.length = 0;
         lpSelectedRedes.length = 0;
