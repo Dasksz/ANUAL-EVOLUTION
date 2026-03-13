@@ -312,6 +312,7 @@ create table if not exists public.data_detailed (
   codcli text,
   -- cliente_nome text, -- REMOVED (Storage Optimization)
   cidade text,
+  cnpj text,
   -- bairro text, -- REMOVED (Storage Optimization)
   qtvenda numeric,
   vlvenda numeric,
@@ -339,6 +340,7 @@ create table if not exists public.data_history (
   codcli text,
   -- cliente_nome text, -- REMOVED (Storage Optimization)
   cidade text,
+  cnpj text,
   -- bairro text, -- REMOVED (Storage Optimization)
   qtvenda numeric,
   vlvenda numeric,
@@ -391,6 +393,7 @@ create table if not exists public.data_clients (
   codigo_cliente text unique,
   rca1 text,
   cidade text,
+  cnpj text,
   nomecliente text,
   bairro text,
   razaosocial text,
@@ -453,6 +456,7 @@ CREATE TABLE IF NOT EXISTS public.data_summary (
     mes integer,
     filial text,
     cidade text,
+  cnpj text,
     codsupervisor text,
     codusur text,
     codfor text,
@@ -489,6 +493,7 @@ CREATE TABLE IF NOT EXISTS public.data_summary_frequency (
     mes integer,
     filial text,
     cidade text,
+  cnpj text,
     codsupervisor text,
     codusur text,
     codfor text,
@@ -624,6 +629,7 @@ create table if not exists public.data_summary (
     mes int,
     filial text,
     cidade text,
+  cnpj text,
     codsupervisor text, -- Replaces superv (name)
     codusur text,       -- Replaces nome (name)
     codfor text,
@@ -692,6 +698,7 @@ create table if not exists public.cache_filters (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     filial text,
     cidade text,
+  cnpj text,
     superv text,
     nome text,
     codfor text,
@@ -4363,3 +4370,37 @@ $$;
 
 
 
+
+-- ==========================================
+-- Add search_clients RPC
+-- ==========================================
+CREATE OR REPLACE FUNCTION public.search_clients(p_search text)
+RETURNS TABLE (
+    codigo_cliente text,
+    razaosocial text,
+    nomecliente text,
+    cidade text,
+    cnpj text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        dc.codigo_cliente,
+        dc.razaosocial,
+        dc.nomecliente,
+        dc.cidade,
+        dc.cnpj
+    FROM public.data_clients dc
+    WHERE
+        dc.codigo_cliente ILIKE '%' || p_search || '%' OR
+        dc.razaosocial ILIKE '%' || p_search || '%' OR
+        dc.nomecliente ILIKE '%' || p_search || '%' OR
+        dc.cidade ILIKE '%' || p_search || '%' OR
+        dc.cnpj ILIKE '%' || p_search || '%'
+    LIMIT 20;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.search_clients(text) TO anon, authenticated;

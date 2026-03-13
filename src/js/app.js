@@ -1433,7 +1433,7 @@ let lpSelectedCidades = [];
 
         statusText.textContent = 'Processando...';
         
-        const worker = new Worker('src/js/worker.js?v=3');
+        const worker = new Worker('src/js/worker.js?v=4');
         // Pass files AND the city map
         worker.postMessage({ ...files, cityBranchMap });
 
@@ -6437,15 +6437,7 @@ function setupLpClientSearchAutocomplete() {
         debounceTimer = setTimeout(async () => {
             try {
                 // Determine if searching for number (id/cnpj) or text
-                let query = supabase.from('data_clients')
-                    .select('codigo_cliente, razaosocial, nomecliente, cidade, cnpj')
-                    .limit(20);
-
-                // Use a single text search filter since we can search across multiple fields
-                const searchStr = `%${val}%`;
-                query = query.or(`codigo_cliente::text.ilike.${searchStr},razaosocial.ilike.${searchStr},nomecliente.ilike.${searchStr},cnpj.ilike.${searchStr},cidade.ilike.${searchStr}`);
-
-                const { data, error } = await query;
+                const { data, error } = await supabase.rpc('search_clients', { p_search: val });
                 
                 if (error) throw error;
 
