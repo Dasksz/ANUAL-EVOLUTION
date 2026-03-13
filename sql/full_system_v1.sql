@@ -4398,3 +4398,94 @@ BEGIN
 END;
 $$;
 GRANT EXECUTE ON FUNCTION public.search_clients(text) TO anon, authenticated;
+-- ==========================================
+-- Add search_loja_perfeita_clients RPC
+-- ==========================================
+CREATE OR REPLACE FUNCTION public.search_loja_perfeita_clients(
+    p_search text,
+    p_filial text[] DEFAULT NULL,
+    p_cidade text[] DEFAULT NULL,
+    p_supervisor text[] DEFAULT NULL,
+    p_vendedor text[] DEFAULT NULL,
+    p_rede text[] DEFAULT NULL
+)
+RETURNS TABLE (
+    codigo_cliente text,
+    razaosocial text,
+    nomecliente text,
+    cidade text,
+    cnpj text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_where text := '1=1';
+    v_sql text;
+BEGIN
+    IF p_search IS NOT NULL AND p_search <> '' THEN
+        v_where := v_where || format(' AND (
+            dc.codigo_cliente ILIKE ''%%'' || %L || ''%%'' OR
+            dc.razaosocial ILIKE ''%%'' || %L || ''%%'' OR
+            dc.nomecliente ILIKE ''%%'' || %L || ''%%'' OR
+            dc.cidade ILIKE ''%%'' || %L || ''%%'' OR
+            dc.cnpj ILIKE ''%%'' || %L || ''%%''
+        )', p_search, p_search, p_search, p_search, p_search);
+    END IF;
+
+    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
+        v_where := v_where || format(' AND dc.cidade = ANY(%L::text[])', p_cidade);
+    END IF;
+
+    IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
+        IF 'S/ REDE' = ANY(p_rede) THEN
+            v_where := v_where || format(' AND (dc.ramo = ANY(%L::text[]) OR dc.ramo IS NULL OR dc.ramo IN (''N/A'', ''N/D''))', p_rede);
+        ELSE
+            v_where := v_where || format(' AND dc.ramo = ANY(%L::text[])', p_rede);
+        END IF;
+    END IF;
+
+    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+        v_where := v_where || format(' AND dv.nome = ANY(%L::text[])', p_vendedor);
+    END IF;
+
+    IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
+        v_where := v_where || format(' AND ds.nome = ANY(%L::text[])', p_supervisor);
+    END IF;
+
+    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+        v_where := v_where || format(' AND cm.filial = ANY(%L::text[])', p_filial);
+    END IF;
+
+    v_sql := format('
+        WITH latest_sales AS (
+            SELECT
+                codcli, codsupervisor, codusur, filial,
+                ROW_NUMBER() OVER(PARTITION BY codcli ORDER BY ano DESC, mes DESC, created_at DESC) as rn
+            FROM public.data_summary_frequency
+        ),
+        client_mapping AS (
+            SELECT codcli, codsupervisor, codusur, filial
+            FROM latest_sales
+            WHERE rn = 1
+        )
+        SELECT DISTINCT
+            dc.codigo_cliente,
+            dc.razaosocial,
+            dc.nomecliente,
+            dc.cidade,
+            dc.cnpj
+        FROM public.data_nota_perfeita np
+        INNER JOIN public.data_clients dc ON np.codigo_cliente = dc.codigo_cliente
+        LEFT JOIN client_mapping cm ON np.codigo_cliente = cm.codcli
+        LEFT JOIN public.dim_vendedores dv ON cm.codusur = dv.codigo
+        LEFT JOIN public.dim_supervisores ds ON cm.codsupervisor = ds.codigo
+        WHERE %s
+        LIMIT 20
+    ', v_where);
+
+    RETURN QUERY EXECUTE v_sql;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.search_loja_perfeita_clients(text, text[], text[], text[], text[], text[]) TO anon, authenticated;
