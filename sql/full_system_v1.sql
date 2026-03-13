@@ -4251,6 +4251,7 @@ $$;
 
 
 
+
 -- =========================================================================================
 -- FUNÇÃO: get_loja_perfeita_data
 -- DESCRIÇÃO: Retorna os KPIs e tabela detalhada da Loja Perfeita.
@@ -4290,11 +4291,11 @@ BEGIN
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND cm.codusur = ANY(%L::text[])', p_vendedor);
+        v_where_base := v_where_base || format(' AND dv.nome = ANY(%L::text[])', p_vendedor);
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND cm.codsupervisor = ANY(%L::text[])', p_supervisor);
+        v_where_base := v_where_base || format(' AND ds.nome = ANY(%L::text[])', p_supervisor);
     END IF;
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
@@ -4303,7 +4304,7 @@ BEGIN
 
     v_sql := format('
         WITH latest_sales AS (
-            SELECT
+            SELECT 
                 codcli, codsupervisor, codusur, filial,
                 ROW_NUMBER() OVER(PARTITION BY codcli ORDER BY ano DESC, mes DESC, created_at DESC) as rn
             FROM public.data_summary_frequency
@@ -4314,7 +4315,7 @@ BEGIN
             WHERE rn = 1
         ),
         filtered_data AS (
-            SELECT
+            SELECT 
                 np.codigo_cliente as codcli,
                 dc.nomecliente as client_name,
                 np.pesquisador as researcher,
@@ -4325,10 +4326,12 @@ BEGIN
             FROM public.data_nota_perfeita np
             LEFT JOIN public.data_clients dc ON np.codigo_cliente = dc.codigo_cliente
             LEFT JOIN client_mapping cm ON np.codigo_cliente = cm.codcli
+            LEFT JOIN public.dim_vendedores dv ON cm.codusur = dv.codusur
+            LEFT JOIN public.dim_supervisores ds ON cm.codsupervisor = ds.codsupervisor
             WHERE %s
         ),
         kpis AS (
-            SELECT
+            SELECT 
                 COALESCE(AVG(score), 0) as avg_score,
                 COALESCE(SUM(auditorias), 0) as total_audits,
                 COALESCE(SUM(auditorias_perfeitas), 0) as perfect_stores
@@ -4357,3 +4360,6 @@ BEGIN
     RETURN v_result;
 END;
 $$;
+
+
+
