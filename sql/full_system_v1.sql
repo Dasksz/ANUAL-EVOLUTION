@@ -4326,8 +4326,8 @@ BEGIN
             FROM public.data_nota_perfeita np
             LEFT JOIN public.data_clients dc ON np.codigo_cliente = dc.codigo_cliente
             LEFT JOIN client_mapping cm ON np.codigo_cliente = cm.codcli
-            LEFT JOIN public.dim_vendedores dv ON cm.codusur = dv.codusur
-            LEFT JOIN public.dim_supervisores ds ON cm.codsupervisor = ds.codsupervisor
+            LEFT JOIN public.dim_vendedores dv ON cm.codusur = dv.codigo
+            LEFT JOIN public.dim_supervisores ds ON cm.codsupervisor = ds.codigo
             WHERE %s
         ),
         kpis AS (
