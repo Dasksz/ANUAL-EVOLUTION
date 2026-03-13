@@ -6655,10 +6655,10 @@ window.clearAllFilters = async function(prefix) {
             }
         });
     } else if (prefix === 'lp') {
-        lpSelectedCidades = [];
-        lpSelectedSupervisors = [];
-        lpSelectedVendedores = [];
-        lpSelectedRedes = [];
+        lpSelectedCidades.length = 0;
+        lpSelectedSupervisors.length = 0;
+        lpSelectedVendedores.length = 0;
+        lpSelectedRedes.length = 0;
         
         ['lp-supervisor', 'lp-vendedor', 'lp-rede', 'lp-cidade'].forEach(prefix => {
             const btn = document.getElementById(`${prefix}-filter-btn`);
