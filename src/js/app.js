@@ -6271,7 +6271,113 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- LOJA PERFEITA VIEW LOGIC ---
 let lpSelectedClient = null; // To hold the specific selected client code
 
+let lpFilterDebounce;
+
+async function loadLojaPerfeitaFilters(forceClear = false) {
+
+    const filters = {
+
+        p_ano: null,
+
+        p_mes: null,
+
+        p_filial: [],
+
+        p_cidade: forceClear ? [] : lpSelectedCidades,
+
+        p_supervisor: forceClear ? [] : lpSelectedSupervisors,
+
+        p_vendedor: forceClear ? [] : lpSelectedVendedores,
+
+        p_fornecedor: [],
+
+        p_tipovenda: [],
+
+        p_rede: forceClear ? [] : lpSelectedRedes,
+
+        p_categoria: []
+
+    };
+
+
+
+    try {
+
+        const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
+
+        if (error) {
+
+            console.error('Error fetching Loja Perfeita filters:', error);
+
+            return;
+
+        }
+
+        if (!filterData) return;
+
+
+
+        const lpSupervisorBtn = document.getElementById("lp-supervisor-filter-btn");
+
+        const lpSupervisorDropdown = document.getElementById("lp-supervisor-filter-dropdown");
+
+        if (lpSupervisorBtn) setupCityMultiSelect(lpSupervisorBtn, lpSupervisorDropdown, lpSupervisorDropdown, filterData.supervisors, lpSelectedSupervisors);
+
+
+
+        const lpVendedorBtn = document.getElementById("lp-vendedor-filter-btn");
+
+        const lpVendedorDropdown = document.getElementById("lp-vendedor-filter-dropdown");
+
+        const lpVendedorList = document.getElementById("lp-vendedor-filter-list");
+
+        const lpVendedorSearch = document.getElementById("lp-vendedor-filter-search");
+
+        if (lpVendedorBtn) setupCityMultiSelect(lpVendedorBtn, lpVendedorDropdown, lpVendedorList, filterData.vendedores, lpSelectedVendedores, lpVendedorSearch);
+
+
+
+        const lpRedeBtn = document.getElementById("lp-rede-filter-btn");
+
+        const lpRedeDropdown = document.getElementById("lp-rede-filter-dropdown");
+
+        const lpRedeList = document.getElementById("lp-rede-filter-list");
+
+        const lpRedeSearch = document.getElementById("lp-rede-filter-search");
+
+        const lpRedesArray = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
+
+        if (lpRedeBtn) setupCityMultiSelect(lpRedeBtn, lpRedeDropdown, lpRedeList, lpRedesArray, lpSelectedRedes, lpRedeSearch);
+
+
+
+        const lpCidadeBtn = document.getElementById("lp-cidade-filter-btn");
+
+        const lpCidadeDropdown = document.getElementById("lp-cidade-filter-dropdown");
+
+        const lpCidadeList = document.getElementById("lp-cidade-filter-list");
+
+        const lpCidadeSearch = document.getElementById("lp-cidade-filter-search");
+
+        if (lpCidadeBtn) setupCityMultiSelect(lpCidadeBtn, lpCidadeDropdown, lpCidadeList, filterData.cidades, lpSelectedCidades, lpCidadeSearch);
+
+
+
+    } catch (err) {
+
+        console.error('Exception fetching Loja Perfeita filters:', err);
+
+    }
+
+}
+
+
 const handleLojaPerfeitaFilterChange = () => {
+    clearTimeout(lpFilterDebounce);
+    lpFilterDebounce = setTimeout(() => {
+        loadLojaPerfeitaFilters();
+    }, 300);
+
     updateLojaPerfeitaView();
 };
 
@@ -6502,7 +6608,8 @@ async function renderInnovationsMonthView() {
 
 async function renderLojaPerfeitaView() {
     if (!isLojaPerfeitaInitialized) {
-        await setupInnovationsFilters(); // Re-use the existing filter fetch logic
+        await setupInnovationsFilters();
+        await loadLojaPerfeitaFilters();
         setupLpClientSearchAutocomplete();
         isLojaPerfeitaInitialized = true;
     }
@@ -6685,6 +6792,7 @@ window.clearAllFilters = async function(prefix) {
         if (lpClientInput) lpClientInput.value = '';
         if (lpClientClearBtn) lpClientClearBtn.classList.add('hidden');
         if (lpClientDropdown) lpClientDropdown.classList.add('hidden');
+        loadLojaPerfeitaFilters(true);
         
         updateLojaPerfeitaView();
     }
