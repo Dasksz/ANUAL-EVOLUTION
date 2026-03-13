@@ -6612,6 +6612,7 @@ async function renderInnovationsMonthView() {
 }
 
 async function renderLojaPerfeitaView() {
+    showDashboardLoading('loja-perfeita-view');
     if (!isLojaPerfeitaInitialized) {
         await setupInnovationsFilters();
         await loadLojaPerfeitaFilters();
