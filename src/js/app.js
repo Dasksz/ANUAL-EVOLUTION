@@ -6517,7 +6517,7 @@ function setupLpClientSearchAutocomplete() {
 
 
 async function updateLojaPerfeitaView() {
-    showDashboardLoading();
+    showDashboardLoading('loja-perfeita-view');
 
     const filters = {
         p_cidade: lpSelectedCidades,
