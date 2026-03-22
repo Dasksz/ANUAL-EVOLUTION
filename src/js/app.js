@@ -1,12 +1,19 @@
 
 import supabase from './supabase.js?v=2';
 
+// --- Logging System ---
+const AppLog = {
+    log: (...args) => console.log(...args),
+    warn: (...args) => console.warn(...args),
+    error: (...args) => console.error(...args)
+};
+
 // --- Toast Notification System ---
 window.showToast = function(type, message, title = '') {
     const container = document.getElementById('toast-container');
     if (!container) {
-        console.error('Toast container not found!');
-        console.log(`[${type}] ${message}`);
+        AppLog.error('Toast container not found!');
+        AppLog.log(`[${type}] ${message}`);
         return;
     }
 
@@ -56,7 +63,7 @@ window.showToast = function(type, message, title = '') {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("App Version: 2.0 (Cache Refresh Split)");
+    AppLog.log("App Version: 2.0 (Cache Refresh Split)");
     let isMainDashboardInitialized = false;
     let isInnovationsInitialized = false;
     let isLojaPerfeitaInitialized = false;
@@ -721,7 +728,7 @@ let lpSelectedCidades = [];
             const db = await initDB();
             return await db.get(STORE_NAME, key);
         } catch (e) {
-            console.warn('Erro ao ler cache:', e);
+            AppLog.warn('Erro ao ler cache:', e);
             return null;
         }
     };
@@ -733,7 +740,7 @@ let lpSelectedCidades = [];
             const payload = { timestamp: Date.now(), data: value };
             await db.put(STORE_NAME, payload, key);
         } catch (e) {
-            console.warn('Erro ao salvar cache:', e);
+            AppLog.warn('Erro ao salvar cache:', e);
         }
     };
 
@@ -1108,7 +1115,7 @@ let lpSelectedCidades = [];
                 history.pushState(null, null, '#' + view);
             }
         } catch (e) {
-            console.warn("History pushState failed", e);
+            AppLog.warn("History pushState failed", e);
         }
 
         resetViews();
@@ -1395,7 +1402,7 @@ let lpSelectedCidades = [];
     async function fetchCityBranchMap() {
         const { data, error } = await supabase.from('config_city_branches').select('cidade, filial');
         if (error) {
-            console.error("Erro ao buscar mapa de cidades:", error);
+            AppLog.error("Erro ao buscar mapa de cidades:", error);
             return {};
         }
         const map = {};
@@ -1452,7 +1459,7 @@ let lpSelectedCidades = [];
                         const newCityBatch = data.newCities.map(c => ({ cidade: c, filial: null })); // Insert with null filial
                         // Use upsert to avoid conflicts if logic overlaps
                         const { error: cityErr } = await supabase.from('config_city_branches').upsert(newCityBatch, { onConflict: 'cidade', ignoreDuplicates: true });
-                        if (cityErr) console.warn('Erro ao inserir novas cidades:', cityErr);
+                        if (cityErr) AppLog.warn('Erro ao inserir novas cidades:', cityErr);
                     }
 
                     await enviarDadosParaSupabase(data);
@@ -1492,7 +1499,7 @@ let lpSelectedCidades = [];
                     return await operation();
                 } catch (error) {
                     if (i === retries - 1) throw error;
-                    console.warn(`Tentativa ${i + 1} falhou. Retentando em ${delay}ms...`, error);
+                    AppLog.warn(`Tentativa ${i + 1} falhou. Retentando em ${delay}ms...`, error);
                     await new Promise(resolve => setTimeout(resolve, delay));
                     delay *= 2; // Exponential backoff
                 }
@@ -1581,7 +1588,7 @@ let lpSelectedCidades = [];
             const totalChunks = localKeys.length;
             let processedChunks = 0;
 
-            console.log(`[${tableName}] Total Chunks: ${totalChunks}`);
+            AppLog.log(`[${tableName}] Total Chunks: ${totalChunks}`);
 
             // 2. Iterate Chunks
             for (const key of localKeys) {
@@ -1589,7 +1596,7 @@ let lpSelectedCidades = [];
                 const serverHash = serverMap.get(key);
 
                 if (serverHash !== localChunk.hash) {
-                    console.log(`[${tableName}] Syncing chunk ${key} (Size: ${localChunk.rows.length})...`);
+                    AppLog.log(`[${tableName}] Syncing chunk ${key} (Size: ${localChunk.rows.length})...`);
                     updateStatus(`Sincronizando ${tableName} (${key})...`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
                     
                     // --- GRANULAR UPLOAD STRATEGY ---
@@ -1627,7 +1634,7 @@ let lpSelectedCidades = [];
                     if (commitErr) throw new Error(`Erro COMMIT chunk ${key}: ${commitErr.message}`);
 
                 } else {
-                    console.log(`[${tableName}] Chunk ${key} is up-to-date.`);
+                    AppLog.log(`[${tableName}] Chunk ${key} is up-to-date.`);
                 }
                 processedChunks++;
             }
@@ -1663,8 +1670,8 @@ let lpSelectedCidades = [];
                 }
             });
 
-            console.log(`[${tableName}] Total Client: ${clientRows.length}, Total Server: ${serverHashes.length}`);
-            console.log(`[${tableName}] To Insert: ${toInsert.length}, To Delete: ${toDeleteHashes.length}, Unchanged: ${serverHashSet.size - toDeleteHashes.length}`);
+            AppLog.log(`[${tableName}] Total Client: ${clientRows.length}, Total Server: ${serverHashes.length}`);
+            AppLog.log(`[${tableName}] To Insert: ${toInsert.length}, To Delete: ${toDeleteHashes.length}, Unchanged: ${serverHashSet.size - toDeleteHashes.length}`);
 
             // 3. Perform Deletes (Batch RPC)
             if (toDeleteHashes.length > 0) {
@@ -1792,7 +1799,7 @@ let lpSelectedCidades = [];
 
 
         } catch (error) {
-            console.error(error);
+            AppLog.error(error);
             throw error;
         }
     }
@@ -1845,7 +1852,7 @@ let lpSelectedCidades = [];
         
         const { data, error } = await supabase.rpc('get_dashboard_filters', currentFilters);
         if (error) {
-            console.error('Error refreshing boxes filters:', error);
+            AppLog.error('Error refreshing boxes filters:', error);
             return;
         }
 
@@ -2068,7 +2075,7 @@ let lpSelectedCidades = [];
             p_categoria: []
         };
         const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
-        if (error) console.error('Error fetching boxes filters:', error);
+        if (error) AppLog.error('Error fetching boxes filters:', error);
         if (!filterData) return;
 
         if (filterData.anos && boxesAnoFilter) {
@@ -2130,16 +2137,16 @@ let lpSelectedCidades = [];
         try {
             const cachedEntry = await getFromCache(cacheKey);
             if (cachedEntry && cachedEntry.data) {
-                console.log('Serving Boxes View from Cache');
+                AppLog.log('Serving Boxes View from Cache');
                 data = cachedEntry.data;
             }
-        } catch (e) { console.warn('Cache error:', e); }
+        } catch (e) { AppLog.warn('Cache error:', e); }
 
         if (!data) {
             const { data: rpcData, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
             
             if (error) {
-                console.error(error);
+                AppLog.error(error);
                 hideDashboardLoading();
                 if (error.message.includes('function get_boxes_dashboard_data') && error.message.includes('does not exist')) {
                     window.showToast('error', "Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
@@ -2461,12 +2468,12 @@ let lpSelectedCidades = [];
     async function checkDataVersion() {
         try {
             const { data: serverVersion, error } = await supabase.rpc('get_data_version');
-            if (error) { console.warn('Erro ao verificar versão:', error); return; }
+            if (error) { AppLog.warn('Erro ao verificar versão:', error); return; }
 
             const localVersion = localStorage.getItem('dashboard_data_version');
             
             if (serverVersion && serverVersion !== localVersion) {
-                console.log('Nova versão de dados detectada. Limpando cache...', serverVersion);
+                AppLog.log('Nova versão de dados detectada. Limpando cache...', serverVersion);
                 
                 // Clear IndexedDB
                 const db = await initDB();
@@ -2476,7 +2483,7 @@ let lpSelectedCidades = [];
                 localStorage.setItem('dashboard_data_version', serverVersion);
             }
         } catch (e) {
-            console.error('Falha na validação de cache:', e);
+            AppLog.error('Falha na validação de cache:', e);
         }
     }
 
@@ -2505,12 +2512,12 @@ let lpSelectedCidades = [];
             if (cachedEntry && cachedEntry.timestamp) {
                 const age = Date.now() - cachedEntry.timestamp;
                 if (age < CACHE_TTL) {
-                    console.log('Serving filters from cache (fresh)');
+                    AppLog.log('Serving filters from cache (fresh)');
                     applyFiltersData(cachedEntry.data);
                     return; 
                 }
             }
-        } catch (e) { console.warn('Cache error:', e); }
+        } catch (e) { AppLog.warn('Cache error:', e); }
 
         const { data, error } = await supabase.rpc('get_dashboard_filters', currentFilters);
         if (error) {
@@ -2885,8 +2892,8 @@ let lpSelectedCidades = [];
         clearTimeout(filterDebounceTimer);
         filterDebounceTimer = setTimeout(async () => {
             showDashboardLoading();
-            try { await loadFilters(filters); } catch (err) { console.error("Failed to load filters:", err); }
-            try { await loadMainDashboardData(); } catch (err) { console.error("Failed to load dashboard data:", err); }
+            try { await loadFilters(filters); } catch (err) { AppLog.error("Failed to load filters:", err); }
+            try { await loadMainDashboardData(); } catch (err) { AppLog.error("Failed to load dashboard data:", err); }
             if (!cityView.classList.contains('hidden')) { currentCityPage = 0; await loadCityView(); }
         }, 500);
     };
@@ -2905,29 +2912,29 @@ let lpSelectedCidades = [];
                 if (cachedEntry && cachedEntry.timestamp && cachedEntry.data) {
                     const age = Date.now() - cachedEntry.timestamp;
                     if (age < CACHE_TTL) {
-                        if (!isBackground) console.log('Serving from Cache (Instant)');
+                        if (!isBackground) AppLog.log('Serving from Cache (Instant)');
                         return { data: cachedEntry.data, source: 'cache', timestamp: cachedEntry.timestamp };
                     } else {
                          return { data: cachedEntry.data, source: 'stale', timestamp: cachedEntry.timestamp };
                     }
                 }
-            } catch (e) { console.warn('Cache error:', e); }
+            } catch (e) { AppLog.warn('Cache error:', e); }
         } else {
-            console.log('Force Refresh: Bypassing cache.');
+            AppLog.log('Force Refresh: Bypassing cache.');
         }
 
         // 2. Network Request
-        if (isBackground) console.log(`[Background] Fetching data from API...`);
+        if (isBackground) AppLog.log(`[Background] Fetching data from API...`);
         const { data, error } = await supabase.rpc('get_main_dashboard_data', filters);
         
         if (error) {
-            console.error('API Error:', error);
+            AppLog.error('API Error:', error);
             return { data: null, error };
         }
 
         // 3. Save to Cache
         await saveToCache(cacheKey, data);
-        if (isBackground) console.log(`[Background] Cached successfully.`);
+        if (isBackground) AppLog.log(`[Background] Cached successfully.`);
 
         return { data, source: 'api' };
     }
@@ -2941,27 +2948,27 @@ let lpSelectedCidades = [];
             try {
                 const cachedEntry = await getFromCache(cacheKey);
                 if (cachedEntry && cachedEntry.data) {
-                    console.log('SWR: Rendering cached data immediately...');
+                    AppLog.log('SWR: Rendering cached data immediately...');
                     renderDashboard(cachedEntry.data);
                     loadFrequencyTable(filters);
                     lastDashboardData = cachedEntry.data;
 
                     const age = Date.now() - cachedEntry.timestamp;
                     if (age < 60 * 1000) { // Fresh enough (1 min)
-                         console.log('SWR: Cache is fresh (<1min), skipping background fetch.');
+                         AppLog.log('SWR: Cache is fresh (<1min), skipping background fetch.');
                          await fetchLastSalesDate();
                          hideDashboardLoading();
                          prefetchViews(filters);
                          return;
                     } else {
-                        console.log('SWR: Cache is stale, fetching update in background...');
+                        AppLog.log('SWR: Cache is stale, fetching update in background...');
                         showDashboardLoading(); // Optional: show loading indicator non-intrusively
                     }
                 } else {
                     showDashboardLoading();
                 }
             } catch (e) {
-                console.warn('SWR Cache Error:', e);
+                AppLog.warn('SWR Cache Error:', e);
                 showDashboardLoading();
             }
         } else {
@@ -2977,7 +2984,7 @@ let lpSelectedCidades = [];
         const { data, error } = dashboardResult;
         
         if (data && !error) {
-            console.log('SWR: Updated with fresh data.');
+            AppLog.log('SWR: Updated with fresh data.');
             lastDashboardData = data;
             renderDashboard(data);
             await loadFrequencyTable(filters);
@@ -2997,7 +3004,7 @@ let lpSelectedCidades = [];
         const runPrefetch = async () => {
             if (document.hidden) return; // Save resources if tab hidden
 
-            console.log('[Prefetch] Starting background fetch for other views...');
+            AppLog.log('[Prefetch] Starting background fetch for other views...');
 
             // 1. Branch Data (Aggregated RPC)
             const branchKey = generateCacheKey('branch_data', filters);
@@ -3051,14 +3058,14 @@ let lpSelectedCidades = [];
                 lastSalesDate = null;
             }
         } catch (e) {
-            console.error("Error fetching last sales date:", e);
+            AppLog.error("Error fetching last sales date:", e);
         }
     }
 
     // --- Background Prefetch Logic ---
 
     async function queueCommonFilters() {
-        console.log('[Background] Iniciando estratégia de pré-carregamento massivo...');
+        AppLog.log('[Background] Iniciando estratégia de pré-carregamento massivo...');
         const currentFilters = getCurrentFilters();
         const baseFilters = {
             p_ano: currentFilters.p_ano,
@@ -3109,10 +3116,10 @@ let lpSelectedCidades = [];
         await Promise.all(tasks);
 
         if (prefetchQueue.length > 0) {
-            console.log(`[Background] ${prefetchQueue.length} filtros novos agendados.`);
+            AppLog.log(`[Background] ${prefetchQueue.length} filtros novos agendados.`);
             processQueue();
         } else {
-            console.log('[Background] Todos os filtros comuns já estão em cache.');
+            AppLog.log('[Background] Todos os filtros comuns já estão em cache.');
         }
     }
 
@@ -3131,7 +3138,7 @@ let lpSelectedCidades = [];
         isPrefetching = true;
         const task = prefetchQueue.shift();
         
-        console.log(`[Background] Processando filtro para: ${task.label} (${prefetchQueue.length} restantes)`);
+        AppLog.log(`[Background] Processando filtro para: ${task.label} (${prefetchQueue.length} restantes)`);
         
         // We use fetchDashboardData which handles the "Check Cache -> Fetch -> Save Cache" loop
         // We pass isBackground=true to suppress standard logs and enable specific ones
@@ -3352,7 +3359,7 @@ let lpSelectedCidades = [];
             elMixPerc.className = `text-lg font-bold ${varMix >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
             document.getElementById('kpi-mix-sec').textContent = avgMixPrev.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         } catch (err) {
-            console.error('Error updating new KPIs:', err);
+            AppLog.error('Error updating new KPIs:', err);
         }
 
         updateKpiCard({
@@ -3738,7 +3745,7 @@ let lpSelectedCidades = [];
         if(!btn || !dropdown) return;
         // Safety check for container
         if (!container) {
-            console.warn('Container not found for filter', btn.id);
+            AppLog.warn('Container not found for filter', btn.id);
             return;
         }
         
@@ -3853,7 +3860,7 @@ let lpSelectedCidades = [];
             p_categoria: []
         };
          const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
-         if (error) console.error('Error fetching city filters:', error);
+         if (error) AppLog.error('Error fetching city filters:', error);
          if (!filterData) return;
 
          if (filterData.anos && cityAnoFilter) {
@@ -3915,7 +3922,7 @@ let lpSelectedCidades = [];
         
         hideDashboardLoading();
 
-        if(error) { console.error(error); return; }
+        if(error) { AppLog.error(error); return; }
 
         totalActiveClients = data.total_active_count || 0;
 
@@ -4070,7 +4077,7 @@ let lpSelectedCidades = [];
             p_categoria: []
         };
          const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
-         if (error) console.error('Error fetching branch filters:', error);
+         if (error) AppLog.error('Error fetching branch filters:', error);
          if (!filterData) return;
 
          // Years
@@ -4300,7 +4307,7 @@ let lpSelectedCidades = [];
         try {
             const cachedEntry = await getFromCache(cacheKey);
             if (cachedEntry && cachedEntry.data) {
-                console.log('Serving Branch View from Cache');
+                AppLog.log('Serving Branch View from Cache');
                 branchDataMap = cachedEntry.data;
             } else {
                 const { data, error } = await supabase.rpc('get_branch_comparison_data', filters);
@@ -4308,11 +4315,11 @@ let lpSelectedCidades = [];
                     branchDataMap = data;
                     saveToCache(cacheKey, data);
                 } else {
-                    console.error('Erro ao carregar filiais:', error);
+                    AppLog.error('Erro ao carregar filiais:', error);
                 }
             }
         } catch (e) {
-            console.error("Erro geral no fetch de filiais:", e);
+            AppLog.error("Erro geral no fetch de filiais:", e);
         }
         
         hideDashboardLoading();
@@ -4639,11 +4646,11 @@ let lpSelectedCidades = [];
         // Add Click Listeners
         calendarModalContent.querySelectorAll('.calendar-day[data-date]').forEach(el => {
             el.addEventListener('click', async () => {
-                console.log("Calendar day clicked:", el.getAttribute('data-date'));
+                AppLog.log("Calendar day clicked:", el.getAttribute('data-date'));
                 
                 // Allow click even if role is unknown for debugging, but ideally check permissions
                 if (window.userRole !== 'adm') {
-                    console.warn("User role not adm:", window.userRole);
+                    AppLog.warn("User role not adm:", window.userRole);
                     window.showToast('error', "Apenas administradores podem alterar feriados.");
                     return;
                 }
@@ -4665,11 +4672,11 @@ let lpSelectedCidades = [];
                 // Call RPC
                 const { data: result, error } = await supabase.rpc('toggle_holiday', { p_date: date });
                 if (error) {
-                    console.error("Error toggling holiday:", error);
+                    AppLog.error("Error toggling holiday:", error);
                     el.classList.toggle('selected'); // Revert
                     window.showToast('error', "Erro ao alterar feriado: " + error.message);
                 } else {
-                    console.log("Holiday toggled successfully.");
+                    AppLog.log("Holiday toggled successfully.");
                     
                     // Update local holidays array
                     if (isSelected) {
@@ -4898,7 +4905,7 @@ let lpSelectedCidades = [];
                 p_categoria: []
             };
             const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
-            if (error) console.error('Error fetching comparison filters:', error);
+            if (error) AppLog.error('Error fetching comparison filters:', error);
             if (!filterData) return;
 
             if (filterData.anos && comparisonAnoFilter) {
@@ -4991,7 +4998,7 @@ let lpSelectedCidades = [];
                 const redeList = getList('comparison-rede-filter-list') || comparisonRedeFilterDropdown;
                 setupCityMultiSelect(comparisonRedeFilterBtn, comparisonRedeFilterDropdown, redeList, redes, selectedComparisonRedes, document.getElementById('comparison-rede-filter-search'));
             } catch (e) {
-                console.error('Error setting up comparison filters:', e);
+                AppLog.error('Error setting up comparison filters:', e);
             }
         }
 
@@ -5034,16 +5041,16 @@ let lpSelectedCidades = [];
             try {
                 const cachedEntry = await getFromCache(cacheKey);
                 if (cachedEntry && cachedEntry.data) {
-                    console.log('Serving Comparison View from Cache');
+                    AppLog.log('Serving Comparison View from Cache');
                     data = cachedEntry.data;
                 }
-            } catch (e) { console.warn('Cache error:', e); }
+            } catch (e) { AppLog.warn('Cache error:', e); }
 
             if (!data) {
                 const { data: rpcData, error } = await supabase.rpc('get_comparison_view_data', filters);
 
                 if (error) {
-                    console.error("RPC Error:", error);
+                    AppLog.error("RPC Error:", error);
                     hideDashboardLoading();
                     if (error.message.includes('function get_comparison_view_data') && error.message.includes('does not exist')) {
                         window.showToast('error', "A função 'get_comparison_view_data' não foi encontrada no banco de dados. \n\nPor favor, execute o script 'sql/comparison_view_rpc.sql' no Supabase SQL Editor para corrigir isso.");
@@ -5665,24 +5672,24 @@ async function updateInnovationsMonthView() {
     try {
         const cachedEntry = await getFromCache(cacheKey);
         if (cachedEntry && cachedEntry.data) {
-            console.log('Serving Innovations View from Cache');
+            AppLog.log('Serving Innovations View from Cache');
             data = cachedEntry.data;
         }
-    } catch (e) { console.warn('Cache error:', e); }
+    } catch (e) { AppLog.warn('Cache error:', e); }
 
     if (!data) {
         try {
             const { data: rpcData, error } = await supabase.rpc('get_innovations_data', rpcFilters);
 
             if (error) {
-                console.error('Error fetching innovations:', error);
+                AppLog.error('Error fetching innovations:', error);
                 hideDashboardLoading();
                 return;
             }
             data = rpcData;
             saveToCache(cacheKey, data);
         } catch (err) {
-            console.error('Exception fetching innovations:', err);
+            AppLog.error('Exception fetching innovations:', err);
             hideDashboardLoading();
             return;
         }
@@ -5699,14 +5706,14 @@ async function updateInnovationsMonthView() {
                 try {
                     renderInnovationsTable(data);
                 } catch(e) {
-                    console.error('Error in table:', e);
+                    AppLog.error('Error in table:', e);
                 } finally {
                     hideDashboardLoading();
                 }
             }, 10);
         });
     } catch (err) {
-        console.error('Error rendering innovations:', err);
+        AppLog.error('Error rendering innovations:', err);
         hideDashboardLoading();
     }
 }
@@ -6142,10 +6149,10 @@ const setupInnovationsFilters = async () => {
     try {
         const cachedEntry = await getFromCache(cacheKey);
         if (cachedEntry && cachedEntry.data) {
-            console.log('Serving Innovations Filters from Cache');
+            AppLog.log('Serving Innovations Filters from Cache');
             filterData = cachedEntry.data;
         }
-    } catch (e) { console.warn('Cache error:', e); }
+    } catch (e) { AppLog.warn('Cache error:', e); }
 
     if (!filterData) {
         const { data } = await supabase.rpc('get_dashboard_filters', filters);
@@ -6228,7 +6235,7 @@ const setupInnovationsFilters = async () => {
             setupCityMultiSelect(innovationsCategoriaFilterBtn, innovationsCategoriaFilterDropdown, innovationsCategoriaFilterDropdown, uniqueInovacoes, innovationsSelectedCategorias);
         }
     } catch (e) {
-        console.error("Error loading inovacoes categories", e);
+        AppLog.error("Error loading inovacoes categories", e);
     }
     
     hideDashboardLoading();
@@ -6308,7 +6315,7 @@ async function loadLojaPerfeitaFilters(forceClear = false) {
 
         if (error) {
 
-            console.error('Error fetching Loja Perfeita filters:', error);
+            AppLog.error('Error fetching Loja Perfeita filters:', error);
 
             return;
 
@@ -6370,7 +6377,7 @@ async function loadLojaPerfeitaFilters(forceClear = false) {
 
     } catch (err) {
 
-        console.error('Exception fetching Loja Perfeita filters:', err);
+        AppLog.error('Exception fetching Loja Perfeita filters:', err);
 
     }
 
@@ -6494,7 +6501,7 @@ function setupLpClientSearchAutocomplete() {
                 });
                 dropdown.classList.remove('hidden');
             } catch (err) {
-                console.error("Error fetching client suggestions:", err);
+                AppLog.error("Error fetching client suggestions:", err);
             }
         }, 400); // 400ms debounce
     });
@@ -6540,7 +6547,7 @@ async function updateLojaPerfeitaView() {
         const { data, error } = await supabase.rpc('get_loja_perfeita_data', rpcFilters);
 
         if (error) {
-            console.error('Error fetching Loja Perfeita data:', error);
+            AppLog.error('Error fetching Loja Perfeita data:', error);
             hideDashboardLoading();
             return;
         }
@@ -6549,7 +6556,7 @@ async function updateLojaPerfeitaView() {
         renderLpTable(data.clients);
 
     } catch (err) {
-        console.error('Exception fetching Loja Perfeita data:', err);
+        AppLog.error('Exception fetching Loja Perfeita data:', err);
     } finally {
         hideDashboardLoading();
     }
@@ -6835,7 +6842,7 @@ async function loadFrequencyTable(filters) {
         renderFrequencyChart(data);
 
     } catch (err) {
-        console.error("Erro ao carregar tabela de frequência:", err);
+        AppLog.error("Erro ao carregar tabela de frequência:", err);
         tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500 text-xs">Erro ao carregar dados.</td></tr>';
     }
 }
