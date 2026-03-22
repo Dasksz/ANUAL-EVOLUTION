@@ -1,4 +1,6 @@
-self.importScripts('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+if (typeof self !== 'undefined' && typeof self.importScripts === 'function') {
+    self.importScripts('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+}
 
 function parseDate(dateString) {
     if (!dateString) return null;
@@ -354,6 +356,7 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
             return { data: Array.from(grouped.values()), uniqueCount: uniqueClientsFound.size };
         }
 
+if (typeof self !== 'undefined') {
 self.onmessage = async (event) => {
     // Removed credential requirements since worker no longer interacts with Supabase
     const { salesPrevYearFile, salesCurrYearFile, salesCurrMonthFile, clientsFile, productsFile, innovationsFile, notaInvolvesFile1, notaInvolvesFile2, cityBranchMap } = event.data;
@@ -961,3 +964,14 @@ self.onmessage = async (event) => {
         self.postMessage({ type: 'error', message: error.message + (error.stack ? `\nStack: ${error.stack}`: '') });
     }
 };
+}
+
+// Export functions for testing in Node.js environment
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        parseDate,
+        parseBrazilianNumber,
+        isIbgeCode,
+        generateHash
+    };
+}
