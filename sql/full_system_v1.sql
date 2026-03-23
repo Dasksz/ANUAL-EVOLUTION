@@ -1,4 +1,5 @@
 DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
 DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[]);
 DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[]);
 DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[]);
@@ -10,6 +11,9 @@ DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[]);
 DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[]);
 DROP FUNCTION IF EXISTS get_frequency_table_data(text[]);
 DROP FUNCTION IF EXISTS get_frequency_table_data();
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text[], text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
 
 
 CREATE OR REPLACE FUNCTION get_frequency_table_data(
