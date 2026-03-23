@@ -7174,7 +7174,7 @@ const setupEstrelasFilters = async () => {
         const { data } = await supabase.rpc('get_dashboard_filters', filters);
         filterData = data;
     } catch (e) {
-        console.error(e);
+        AppLog.error(e);
     }
 
     if (!filterData) {
@@ -7259,7 +7259,7 @@ async function renderEstrelasView() {
 
 async function updateEstrelasView() {
     // Placeholder for future data loading
-    console.log("Estrelas view updated with filters", {
+    AppLog.log("Estrelas view updated with filters", {
         ano: document.getElementById('estrelas-ano-filter')?.value,
         mes: document.getElementById('estrelas-mes-filter')?.value,
         filiais: estrelasSelectedFiliais,
