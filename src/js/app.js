@@ -3571,6 +3571,9 @@ let lpSelectedCidades = [];
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: { top: 20 }
+                },
                 plugins: {
                     legend: { labels: { color: '#cbd5e1' } },
                     tooltip: {
@@ -3599,6 +3602,7 @@ let lpSelectedCidades = [];
                 },
                 scales: {
                     y: { 
+                        grace: '10%',
                         ticks: { color: '#94a3b8' }, 
                         grid: { color: 'rgba(255, 255, 255, 0.05)' },
                         afterFit: (axis) => { axis.width = 150; } // Force Y-axis width to match table first column
