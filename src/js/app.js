@@ -48,8 +48,8 @@ window.showToast = function(type, message, title = '') {
     toast.innerHTML = `
         <div class="toast-icon">${variant.icon}</div>
         <div class="flex-1 min-w-0">
-            <h4 class="toast-title">${finalTitle}</h4>
-            <p class="toast-message">${message}</p>
+            <h4 class="toast-title"></h4>
+            <p class="toast-message"></p>
         </div>
         <button class="toast-close-btn" onclick="
             this.parentElement.classList.add('hiding');
@@ -58,6 +58,10 @@ window.showToast = function(type, message, title = '') {
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
     `;
+
+    // Use textContent to prevent XSS
+    toast.querySelector('.toast-title').textContent = finalTitle;
+    toast.querySelector('.toast-message').textContent = message;
 
     container.appendChild(toast);
 };
@@ -3571,6 +3575,9 @@ let lpSelectedCidades = [];
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: { top: 20 }
+                },
                 plugins: {
                     legend: { labels: { color: '#cbd5e1' } },
                     tooltip: {
@@ -3599,6 +3606,7 @@ let lpSelectedCidades = [];
                 },
                 scales: {
                     y: { 
+                        grace: '10%',
                         ticks: { color: '#94a3b8' }, 
                         grid: { color: 'rgba(255, 255, 255, 0.05)' },
                         afterFit: (axis) => { axis.width = 150; } // Force Y-axis width to match table first column
