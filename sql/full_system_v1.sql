@@ -238,8 +238,8 @@ BEGIN
             ac.faturamento,
             COALESCE(pd.faturamento_prev, 0) as faturamento_prev,
             ac.positivacao,
-            (COALESCE(ask.sum_skus, 0)::numeric / GREATEST(ac.positivacao, 1)) as sum_skus,
-            (ac.total_pedidos::numeric / GREATEST(ac.q_meses, 1)) as total_pedidos,
+            COALESCE(ask.sum_skus, 0)::numeric as sum_skus,
+            ac.total_pedidos::numeric as total_pedidos,
             COALESCE(cb.base_total, 0) as base_total
         FROM aggregated_curr ac
         LEFT JOIN previous_data pd ON ac.grp_filial = pd.grp_filial 
