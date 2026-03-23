@@ -1,1 +1,5 @@
-nda
+# Local configuration
+
+# OS specific files
+.DS_Store
+Thumbs.db
