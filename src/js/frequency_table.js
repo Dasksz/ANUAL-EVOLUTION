@@ -34,7 +34,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
     const hierarchy = {
         name: 'PRIME',
         children: {},
-        totals: { tons: 0, faturamento: 0, faturamento_prev: 0, positivacao: 0, sum_skus: 0, total_pedidos: 0, base_total: 0, clientsWithSales: 0, q_meses: 0 }
+        totals: { tons: 0, faturamento: 0, faturamento_prev: 0, positivacao: 0, positivacao_mensal: 0, sum_skus: 0, total_pedidos: 0, base_total: 0, clientsWithSales: 0, q_meses: 0 }
     };
 
     treeData.forEach(row => {
@@ -46,13 +46,14 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         const faturamento = row.faturamento || 0;
         const faturamento_prev = row.faturamento_prev || 0;
         const positivacao = row.positivacao || 0;
+        const positivacao_mensal = row.positivacao_mensal || 0;
         const sum_skus = row.sum_skus || 0;
         const total_pedidos = row.total_pedidos || 0;
         const base_total = row.base_total || 0;
         const q_meses = row.q_meses || 1;
         const clientsWithSales = (faturamento > 0) ? positivacao : 0;
 
-        const rowData = { tons, faturamento, faturamento_prev, positivacao, sum_skus, total_pedidos, base_total, clientsWithSales, q_meses };
+        const rowData = { tons, faturamento, faturamento_prev, positivacao, positivacao_mensal, sum_skus, total_pedidos, base_total, clientsWithSales, q_meses };
 
         // Rely strictly on ROLLUP flags
         if (row.grp_filial === 1) {
@@ -108,7 +109,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         const skuPdv = dataNode.positivacao > 0 ? ((dataNode.sum_skus || 0) / dataNode.positivacao) : 0;
 
         // Frequencia
-        const freq = dataNode.positivacao > 0 ? ((dataNode.total_pedidos || 0) / dataNode.positivacao / (dataNode.q_meses || 1)) : 0;
+        const freq = dataNode.positivacao_mensal > 0 ? ((dataNode.total_pedidos || 0) / dataNode.positivacao_mensal) : 0;
 
         // % Posit
         let percPosit = 0;
@@ -140,7 +141,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
             Object.values(node.children).forEach(child => createRow(child, level + 1, id));
         }
 
-        return { tons, varYagoStr, varYagoColor, varYagoIcon, skuPdv, freq, positivacao: dataNode.positivacao || 0, percPosit, q_meses: dataNode.q_meses };
+        return { tons, varYagoStr, varYagoColor, varYagoIcon, skuPdv, freq, positivacao: dataNode.positivacao || 0, percPosit, positivacao_mensal: dataNode.positivacao_mensal || 0, q_meses: dataNode.q_meses };
     };
 
     const rootData = createRow(hierarchy, 0);
