@@ -230,6 +230,7 @@ BEGIN
             ac.positivacao,
             COALESCE(ask.sum_skus, 0)::numeric as sum_skus,
             ac.total_pedidos::numeric as total_pedidos,
+            ac.q_meses,
             COALESCE(cb.base_total, 0) as base_total
         FROM aggregated_curr ac
         LEFT JOIN previous_data pd ON ac.grp_filial = pd.grp_filial

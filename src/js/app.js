@@ -5741,7 +5741,7 @@ async function updateInnovationsMonthView() {
     // Replace empty arrays with null to avoid PostgREST overloading resolution issues
     const rpcFilters = {
         p_ano: filters.p_ano,
-        p_mes: filters.p_mes,
+        p_mes: filters.p_mes !== null ? (parseInt(filters.p_mes) + 1).toString() : null,
         p_filial: filters.p_filial.length ? filters.p_filial : null,
         p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
         p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
@@ -6913,7 +6913,7 @@ async function loadFrequencyTable(filters) {
         p_vendedor: filters.p_vendedor,
         p_fornecedor: filters.p_fornecedor,
         p_ano: filters.p_ano,
-        p_mes: filters.p_mes,
+        p_mes: filters.p_mes !== null ? (parseInt(filters.p_mes) + 1).toString() : null,
         p_tipovenda: filters.p_tipovenda,
         p_rede: filters.p_rede,
         p_categoria: filters.p_categoria
