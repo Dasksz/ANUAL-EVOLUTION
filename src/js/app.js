@@ -5848,6 +5848,7 @@ function renderInnovationsChart(data) {
     const labelM3 = getMonthName(targetDate, 3);
 
     innovationsChart = new Chart(ctx, {
+        plugins: [ChartDataLabels],
         type: 'bar',
         data: {
             labels: labels,
