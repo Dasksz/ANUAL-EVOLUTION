@@ -211,7 +211,7 @@ BEGIN
             SUM(c.peso) as tons,
             SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
             COUNT(DISTINCT CASE WHEN c.vlvenda >= 1 AND c.tipovenda NOT IN (''5'', ''11'') THEN c.codcli END) as positivacao,
-            COUNT(DISTINCT CASE WHEN c.vlvenda >= 1 AND c.tipovenda NOT IN (''5'', ''11'') THEN c.codcli || '-' || c.mes END) as positivacao_mensal,
+            COUNT(DISTINCT CASE WHEN c.vlvenda >= 1 AND c.tipovenda NOT IN (''5'', ''11'') THEN c.codcli || ''-'' || c.mes END) as positivacao_mensal,
             COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END) as total_pedidos,
             COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
