@@ -20,9 +20,38 @@ function parseDate(dateString) {
 
     if (typeof dateString !== 'string') return null;
 
-    // Check DD/MM/YYYY or DD-MM-YYYY
-    const str = dateString.trim().substring(0, 10); // Extract date part only, ignore time if any
-    const parts = str.split(/[\/\-]/);
+    const str = dateString.trim();
+    if (str.length === 0) return null;
+
+    // Fast path for YYYY-MM-DD or DD/MM/YYYY
+    if (str.length >= 10) {
+        const c4 = str.charAt(4);
+        const c2 = str.charAt(2);
+
+        if (c4 === '-' && str.charAt(7) === '-') {
+            // yyyy-mm-dd
+            const y = parseInt(str.substring(0, 4), 10);
+            const m = parseInt(str.substring(5, 7), 10);
+            const d = parseInt(str.substring(8, 10), 10);
+            if (y === y && m === m && d === d) {
+                const dt = new Date(Date.UTC(y, m - 1, d));
+                return !isNaN(dt.getTime()) ? dt : null;
+            }
+        } else if ((c2 === '/' || c2 === '-') && (str.charAt(5) === '/' || str.charAt(5) === '-')) {
+            // dd/mm/yyyy or dd-mm-yyyy
+            const d = parseInt(str.substring(0, 2), 10);
+            const m = parseInt(str.substring(3, 5), 10);
+            let y = parseInt(str.substring(6, 10), 10);
+            if (y === y && m === m && d === d) {
+                const dt = new Date(Date.UTC(y, m - 1, d));
+                return !isNaN(dt.getTime()) ? dt : null;
+            }
+        }
+    }
+
+    // Check DD/MM/YYYY or DD-MM-YYYY (fallback)
+    const strPart = str.substring(0, 10); // Extract date part only, ignore time if any
+    const parts = strPart.split(/[\/\-]/);
 
     if (parts.length === 3) {
         let day, month, year;
@@ -97,21 +126,38 @@ async function fetchIbgeMapping() {
 }
 
 // Hashing Helper
+const _hexMap = [];
+for (let i = 0; i < 256; i++) {
+    _hexMap[i] = i.toString(16).padStart(2, '0');
+}
+const _hashEncoder = new TextEncoder();
+
 async function generateHash(row) {
     // Sort keys to ensure deterministic order
     const keys = Object.keys(row).sort();
-    const values = keys.map(k => {
-        const val = row[k];
-        if (val === null || val === undefined) return '';
-        if (val instanceof Date) return val.toISOString(); // Ensure Date determinism
-        return String(val);
-    });
-    const stringData = values.join('|'); // Delimiter to avoid boundary collisions
-    const encoder = new TextEncoder();
-    const data = encoder.encode(stringData);
+    let stringData = '';
+    for (let i = 0; i < keys.length; i++) {
+        const val = row[keys[i]];
+        if (i > 0) stringData += '|';
+        if (val !== null && val !== undefined) {
+            if (val instanceof Date) {
+                stringData += val.toISOString(); // Ensure Date determinism
+            } else {
+                stringData += val;
+            }
+        }
+    }
+
+    // Delimiter to avoid boundary collisions
+    const data = _hashEncoder.encode(stringData);
     const hashBuffer = await self.crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const hashArray = new Uint8Array(hashBuffer);
+
+    let hex = '';
+    for (let i = 0; i < hashArray.length; i++) {
+        hex += _hexMap[hashArray[i]];
+    }
+    return hex;
 }
 
 const readFile = (file) => {
@@ -951,11 +997,15 @@ self.onmessage = async (event) => {
 
                  // Calculate Chunk Hash (SHA-256 of JSON string of sorted rows)
                  const jsonStr = JSON.stringify(chunks[key].rows);
-                 const encoder = new TextEncoder();
-                 const data = encoder.encode(jsonStr);
+             const data = _hashEncoder.encode(jsonStr);
                  const hashBuffer = await self.crypto.subtle.digest('SHA-256', data);
-                 const hashArray = Array.from(new Uint8Array(hashBuffer));
-                 chunks[key].hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+             const hashArray = new Uint8Array(hashBuffer);
+
+             let hex = '';
+             for (let i = 0; i < hashArray.length; i++) {
+                 hex += _hexMap[hashArray[i]];
+             }
+             chunks[key].hash = hex;
              }
 
              return chunks;
