@@ -33,8 +33,11 @@ function parseDate(dateString) {
             day = parts[0];
             month = parts[1];
             year = parts[2];
-            // Fix 2-digit years if they ever appear (e.g., 26 -> 2026)
-            if (year.length === 2) year = '20' + year;
+            // Fix 2-digit years if they ever appear (e.g., 26 -> 2026, 99 -> 1999)
+            if (year.length === 2) {
+                const y = parseInt(year, 10);
+                year = y < 50 ? '20' + year : '19' + year;
+            }
         }
 
         // Validate parts
