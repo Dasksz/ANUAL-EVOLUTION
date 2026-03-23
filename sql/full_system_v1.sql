@@ -130,9 +130,9 @@ BEGIN
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND s.tipovenda = ANY(ARRAY[' || array_to_string(p_tipovenda, ',') || ']) ';
-        v_where_base_prev := v_where_base_prev || ' AND s.tipovenda = ANY(ARRAY[' || array_to_string(p_tipovenda, ',') || ']) ';
-        v_where_chart := v_where_chart || ' AND tipovenda = ANY(ARRAY[' || array_to_string(p_tipovenda, ',') || ']) ';
+        v_where_base := v_where_base || ' AND s.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
+        v_where_base_prev := v_where_base_prev || ' AND s.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
+        v_where_chart := v_where_chart || ' AND tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
     END IF;
 
     -- Dynamic Query
