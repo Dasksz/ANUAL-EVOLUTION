@@ -2773,7 +2773,7 @@ let lpSelectedCidades = [];
             });
 
             if (isHidden) {
-                updateVisualState(); // Sync visuals just before opening
+                renderOptions(); // Sync visuals just before opening
                 dropdown.classList.remove('hidden');
                 initialValueOnOpen = selectElement.value; // Store value when opened
             } else {
@@ -2797,7 +2797,7 @@ let lpSelectedCidades = [];
 
         // Update when original select changes its value externally
         selectElement.addEventListener('change', (e) => {
-            renderOptions();
+            updateVisualState();
         });
     }
 
