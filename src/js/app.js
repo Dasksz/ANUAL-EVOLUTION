@@ -1,5 +1,5 @@
 
-import supabase from './supabase.js?v=2';
+import supabase from './supabase.js?v=3';
 
 // --- Logging System ---
 const AppLog = {
@@ -1678,11 +1678,22 @@ let lpSelectedCidades = [];
                 updateStatus(`Removendo ${toDeleteHashes.length} registros obsoletos de ${tableName}...`, progressStart + 2);
                 // Batch deletes to avoid huge payload issues
                 const DELETE_BATCH = 5000;
-                for (let i = 0; i < toDeleteHashes.length; i += DELETE_BATCH) {
-                    const batch = toDeleteHashes.slice(i, i + DELETE_BATCH);
-                    const { error: delErr } = await supabase.rpc('delete_by_hashes', { p_table_name: tableName, p_hashes: batch });
-                    if (delErr) throw new Error(`Erro ao deletar de ${tableName}: ${delErr.message}`);
-                }
+                const totalBatches = Math.ceil(toDeleteHashes.length / DELETE_BATCH);
+                const queue = Array.from({ length: totalBatches }, (_, i) => i);
+
+                const worker = async () => {
+                    while (queue.length > 0) {
+                        const batchIndex = queue.shift();
+                        const start = batchIndex * DELETE_BATCH;
+                        const end = start + DELETE_BATCH;
+                        const batch = toDeleteHashes.slice(start, end);
+
+                        const { error: delErr } = await supabase.rpc('delete_by_hashes', { p_table_name: tableName, p_hashes: batch });
+                        if (delErr) throw new Error(`Erro ao deletar de ${tableName}: ${delErr.message}`);
+                    }
+                };
+
+                await Promise.all(Array.from({ length: Math.min(CONCURRENT_REQUESTS, totalBatches) }, worker));
             }
 
             // 4. Perform Inserts (Using existing uploadBatch logic)
@@ -5837,6 +5848,7 @@ function renderInnovationsChart(data) {
     const labelM3 = getMonthName(targetDate, 3);
 
     innovationsChart = new Chart(ctx, {
+        plugins: [ChartDataLabels],
         type: 'bar',
         data: {
             labels: labels,
