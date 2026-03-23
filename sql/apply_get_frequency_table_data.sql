@@ -1,3 +1,17 @@
+DROP FUNCTION IF EXISTS public.get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS public.get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS public.get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[]);
+DROP FUNCTION IF EXISTS public.get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[]);
+DROP FUNCTION IF EXISTS public.get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[]);
+DROP FUNCTION IF EXISTS public.get_frequency_table_data(text[], text[], text[], text[], text[], text, text);
+DROP FUNCTION IF EXISTS public.get_frequency_table_data(text[], text[], text[], text[], text[], text);
+DROP FUNCTION IF EXISTS public.get_frequency_table_data(text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS public.get_frequency_table_data(text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS public.get_frequency_table_data(text[], text[], text[]);
+DROP FUNCTION IF EXISTS public.get_frequency_table_data(text[], text[]);
+DROP FUNCTION IF EXISTS public.get_frequency_table_data(text[]);
+DROP FUNCTION IF EXISTS public.get_frequency_table_data();
+
 CREATE OR REPLACE FUNCTION public.get_frequency_table_data(
     p_ano text DEFAULT NULL,
     p_mes text DEFAULT NULL,
