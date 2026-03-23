@@ -1477,11 +1477,19 @@ let lpSelectedCidades = [];
                         initDashboard();
                     }, 1500);
                 } catch (e) {
-                    statusText.innerHTML = `<span class="text-red-500">Erro: ${e.message}</span>`;
+                    statusText.innerHTML = '';
+                    const span = document.createElement('span');
+                    span.className = 'text-red-500';
+                    span.textContent = `Erro: ${e.message}`;
+                    statusText.appendChild(span);
                     generateBtn.disabled = false;
                 }
             } else if (type === 'error') {
-                statusText.innerHTML = `<span class="text-red-500">Erro: ${message}</span>`;
+                statusText.innerHTML = '';
+                const span = document.createElement('span');
+                span.className = 'text-red-500';
+                span.textContent = `Erro: ${message}`;
+                statusText.appendChild(span);
                 generateBtn.disabled = false;
             }
         };
