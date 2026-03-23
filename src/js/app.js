@@ -1,5 +1,5 @@
 
-import supabase from './supabase.js?v=2';
+import supabase from './supabase.js?v=3';
 
 // --- Logging System ---
 const AppLog = {

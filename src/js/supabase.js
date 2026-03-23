@@ -15,21 +15,34 @@ const supabase = window.supabase.createClient(SUPABASE_URL || '', SUPABASE_KEY |
     global: {
         fetch: (url, options) => {
             // Safely merge headers using the Headers constructor
-            // This handles whether options.headers is a plain object or a Headers instance
             const headers = new Headers(options?.headers);
             
             // Ensure apikey is present (fixes "No API key found in request" error)
-            if (!headers.has('apikey')) {
+            if (!headers.has('apikey') || !headers.get('apikey')) {
                 headers.set('apikey', SUPABASE_KEY);
             }
+
+            // Ensure Authorization is present (Standard Supabase requirement)
+            if (!headers.has('Authorization')) {
+                headers.set('Authorization', `Bearer ${SUPABASE_KEY}`);
+            }
             
-            headers.set('Cache-Control', 'max-age=60'); // Cache de 1 min em rede
+            // Apply cache only to GET requests to avoid issues with mutations
+            const method = options?.method?.toUpperCase() || 'GET';
+            if (method === 'GET') {
+                headers.set('Cache-Control', 'max-age=60');
+            }
 
             const newOptions = {
                 ...options,
-                signal: AbortSignal.timeout(600000), // 10 minutes timeout
                 headers: headers
             };
+
+            // Use a default timeout signal if none is provided
+            if (!options?.signal && typeof AbortSignal.timeout === 'function') {
+                newOptions.signal = AbortSignal.timeout(600000); // 10 minutes timeout
+            }
+
             return fetch(url, newOptions);
         }
     }
