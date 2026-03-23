@@ -2598,7 +2598,19 @@ let lpSelectedCidades = [];
                 const isSelected = selectedArray.includes(String(value));
                 const div = document.createElement('div');
                 div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
-                div.innerHTML = `<input type="checkbox" value="${value}" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2"><label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${label}</label>`;
+
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.value = value;
+                input.className = 'w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2';
+                if (isSelected) input.checked = true;
+
+                const labelEl = document.createElement('label');
+                labelEl.className = 'ml-2 text-sm text-slate-200 cursor-pointer flex-1';
+                labelEl.textContent = label;
+
+                div.appendChild(input);
+                div.appendChild(labelEl);
                 div.onclick = (e) => {
                     e.stopPropagation();
                     const checkbox = div.querySelector('input');
@@ -2687,7 +2699,19 @@ let lpSelectedCidades = [];
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
                 const isSelected = selectElement.value === opt.value;
-                itemDiv.innerHTML = `<input type="checkbox" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2 pointer-events-none" readonly><label class="ml-2 text-sm cursor-pointer flex-1 ${isSelected ? 'text-orange-500 font-bold' : 'text-slate-200'}">${opt.text}</label>`;
+
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.className = 'w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2 pointer-events-none';
+                input.readOnly = true;
+                if (isSelected) input.checked = true;
+
+                const labelEl = document.createElement('label');
+                labelEl.className = 'ml-2 text-sm cursor-pointer flex-1 ' + (isSelected ? 'text-orange-500 font-bold' : 'text-slate-200');
+                labelEl.textContent = opt.text;
+
+                itemDiv.appendChild(input);
+                itemDiv.appendChild(labelEl);
 
                 itemDiv.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -3818,7 +3842,19 @@ let lpSelectedCidades = [];
                 const isSelected = selectedArray.includes(String(value));
                 const div = document.createElement('div');
                 div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
-                div.innerHTML = `<input type="checkbox" value="${value}" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2"><label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${label}</label>`;
+
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.value = value;
+                input.className = 'w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2';
+                if (isSelected) input.checked = true;
+
+                const labelEl = document.createElement('label');
+                labelEl.className = 'ml-2 text-sm text-slate-200 cursor-pointer flex-1';
+                labelEl.textContent = label;
+
+                div.appendChild(input);
+                div.appendChild(labelEl);
                 div.onclick = (e) => {
                     e.stopPropagation();
                     const checkbox = div.querySelector('input');
@@ -4167,7 +4203,19 @@ let lpSelectedCidades = [];
                 const isSelected = selectedArray.includes(val);
                 const div = document.createElement('div');
                 div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
-                div.innerHTML = `<input type="checkbox" value="${val}" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2"><label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${val}</label>`;
+
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.value = val;
+                input.className = 'w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2';
+                if (isSelected) input.checked = true;
+
+                const labelEl = document.createElement('label');
+                labelEl.className = 'ml-2 text-sm text-slate-200 cursor-pointer flex-1';
+                labelEl.textContent = val;
+
+                div.appendChild(input);
+                div.appendChild(labelEl);
                 div.onclick = (e) => {
                     e.stopPropagation();
                     const checkbox = div.querySelector('input');
@@ -4252,7 +4300,19 @@ let lpSelectedCidades = [];
                 const isSelected = selectedArray.includes(String(value));
                 const div = document.createElement('div');
                 div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
-                div.innerHTML = `<input type="checkbox" value="${value}" ${isSelected ? 'checked' : ''} class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2"><label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${label}</label>`;
+
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.value = value;
+                input.className = 'w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2';
+                if (isSelected) input.checked = true;
+
+                const labelEl = document.createElement('label');
+                labelEl.className = 'ml-2 text-sm text-slate-200 cursor-pointer flex-1';
+                labelEl.textContent = label;
+
+                div.appendChild(input);
+                div.appendChild(labelEl);
                 div.onclick = (e) => {
                     e.stopPropagation();
                     const checkbox = div.querySelector('input');
