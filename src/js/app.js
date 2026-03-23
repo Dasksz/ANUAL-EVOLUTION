@@ -1186,7 +1186,7 @@ let estrelasSelectedCategorias = [];
                 history.pushState(null, null, '#' + view);
             }
         } catch (e) {
-            AppLog.warn("History pushState failed", e);
+            AppLog.warn("App [Navigation]: History pushState failed", e);
         }
 
         resetViews();
