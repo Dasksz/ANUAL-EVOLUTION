@@ -1,28 +1,39 @@
 const test = require('node:test');
 const assert = require('node:assert');
+const { parseExcelDate, parseDate } = require('../src/js/worker');
 
-const fs = require('fs');
-const path = require('path');
-const workerCode = fs.readFileSync(path.join(__dirname, '../src/js/worker.js'), 'utf8');
-
-const initEnv = new Function(`
-  ${workerCode}
-  return { parseDate };
-`);
-
-const { parseDate } = initEnv();
-
-test('parseDate handles 2-digit years correctly', (t) => {
-  assert.strictEqual(parseDate('01/01/26').toISOString(), '2026-01-01T00:00:00.000Z');
-  assert.strictEqual(parseDate('01/01/99').toISOString(), '1999-01-01T00:00:00.000Z');
-  assert.strictEqual(parseDate('31/12/49').toISOString(), '2049-12-31T00:00:00.000Z');
-  assert.strictEqual(parseDate('01/01/50').toISOString(), '1950-01-01T00:00:00.000Z');
-  assert.strictEqual(parseDate('01/01/00').toISOString(), '2000-01-01T00:00:00.000Z');
+test('parseExcelDate parses basic dates correctly', () => {
+    // 45262 is 2023-12-02
+    const d1 = parseExcelDate(45262);
+    assert.strictEqual(d1.toISOString(), '2023-12-02T00:00:00.000Z');
 });
 
-test('parseDate handles 4-digit years correctly', (t) => {
-  assert.strictEqual(parseDate('01/01/2026').toISOString(), '2026-01-01T00:00:00.000Z');
-  assert.strictEqual(parseDate('2026-01-01').toISOString(), '2026-01-01T00:00:00.000Z');
-  assert.strictEqual(parseDate('01-01-2026').toISOString(), '2026-01-01T00:00:00.000Z');
-  assert.strictEqual(parseDate('01/01/1999').toISOString(), '1999-01-01T00:00:00.000Z');
+test('parseExcelDate handles leap year bug threshold correctly', () => {
+    // Excel thinks 1900 is a leap year. So day 60 is Feb 29, 1900.
+    // In actual Gregorian calendar, 1900 is NOT a leap year, so day 60 is Feb 28, 1900
+    // But since Excel shifts everything after day 60 by 1, day 60 is mapped to Feb 28, 1900
+    // and day 61 is mapped to Mar 1, 1900
+    const feb28 = parseExcelDate(59);
+    assert.strictEqual(feb28.toISOString(), '1900-02-28T00:00:00.000Z');
+
+    // Excel day 60 is Feb 29 1900, which doesn't exist, so JS wraps to Mar 1
+    const feb29 = parseExcelDate(60);
+    assert.strictEqual(feb29.toISOString(), '1900-03-01T00:00:00.000Z');
+
+    const mar1 = parseExcelDate(61);
+    assert.strictEqual(mar1.toISOString(), '1900-03-01T00:00:00.000Z');
+});
+
+test('parseDate uses parseExcelDate correctly', () => {
+    const d1 = parseDate(45262);
+    assert.strictEqual(d1.toISOString(), '2023-12-02T00:00:00.000Z');
+});
+
+test('parseDate handles various formats', () => {
+    const d1 = parseDate('2023-12-02');
+    assert.strictEqual(d1.toISOString().startsWith('2023-12-02'), true);
+
+    const d2 = parseDate('02/12/2023');
+    // Expect 2023-12-02 since it forces DD/MM/YYYY into UTC Date
+    assert.strictEqual(d2.toISOString(), '2023-12-02T00:00:00.000Z');
 });

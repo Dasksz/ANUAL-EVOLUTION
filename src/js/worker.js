@@ -2,16 +2,20 @@ if (typeof self !== 'undefined' && typeof self.importScripts === 'function') {
     self.importScripts('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
 }
 
+
+function parseExcelDate(serial) {
+    let days = serial;
+    if (days > 60) days -= 1;
+    return new Date(Math.round((days - 25568) * 86400 * 1000));
+}
+
 function parseDate(dateString) {
     if (!dateString) return null;
     if (dateString instanceof Date) return !isNaN(dateString.getTime()) ? dateString : null;
 
     // Excel Serial Date (1900 format)
     if (typeof dateString === 'number') {
-        // Adjust for Excel leap year bug (1900 is not a leap year but Excel thinks it is)
-        let days = dateString;
-        if (days > 60) days -= 1;
-        return new Date(Math.round((days - 25568) * 86400 * 1000));
+        return parseExcelDate(dateString);
     }
 
     if (typeof dateString !== 'string') return null;
@@ -243,7 +247,7 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                 // Check if Excel Serial Date
                 if (typeof val === 'number') {
                     if (val < 1000000) {
-                        dateObj = new Date(Math.round((val - 25569) * 86400 * 1000));
+                        dateObj = parseExcelDate(val);
                     } else {
                         dateObj = new Date(val);
                     }
@@ -1024,6 +1028,7 @@ self.onmessage = async (event) => {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         parseDate,
+        parseExcelDate,
         parseBrazilianNumber,
         isIbgeCode,
         generateHash
