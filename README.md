@@ -4,13 +4,9 @@ Sistema de acompanhamento de evolução anual.
 
 ## Configuração
 
-Este projeto utiliza o [Supabase](https://supabase.com/) como backend. Para configurar as chaves de API necessárias:
+Este projeto utiliza o [Supabase](https://supabase.com/) como backend. As chaves de API estão configuradas no arquivo `src/js/supabase.js`.
 
-1. Localize o arquivo `src/js/config.example.js`.
-2. Faça uma cópia deste arquivo e renomeie-a para `src/js/config.js`.
-3. Abra `src/js/config.js` e substitua os valores de `SUPABASE_URL` e `SUPABASE_KEY` pelas credenciais do seu projeto no painel do Supabase (Configurações > API).
-
-**Importante:** O arquivo `src/js/config.js` é ignorado pelo Git para garantir que suas chaves de API não sejam expostas publicamente.
+**Atenção:** Como o projeto é executado inteiramente no navegador do cliente (GitHub Pages), a Anon Key e URL do Supabase são públicas e incluídas no código fonte. Por conta disso, a segurança dos dados DEVE ser tratada no banco de dados, configurando rigorosamente as políticas RLS (Row Level Security) do Supabase para prevenir acesso não autorizado aos dados.
 
 ## Desenvolvimento
 
