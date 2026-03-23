@@ -1350,10 +1350,13 @@ let lpSelectedCidades = [];
             if (isHidden) {
                 optionalFilesContainer.classList.remove('hidden');
                 optionalFilesIcon.classList.add('rotate-90');
+                toggleOptionalFilesBtn.setAttribute('aria-expanded', 'true');
             } else {
                 optionalFilesContainer.classList.add('hidden');
                 optionalFilesIcon.classList.remove('rotate-90');
+                toggleOptionalFilesBtn.setAttribute('aria-expanded', 'false');
             }
+
         });
     }
 
