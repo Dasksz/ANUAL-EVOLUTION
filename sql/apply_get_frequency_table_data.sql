@@ -38,6 +38,9 @@ BEGIN
 
     v_previous_year := v_current_year - 1;
 
+    -- Chart should always be restricted to the exact two years being compared
+    v_where_chart := v_where_chart || ' AND ano IN (' || v_current_year || ', ' || v_previous_year || ') ';
+
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_target_month := p_mes::int;
         v_where_base := v_where_base || ' AND s.ano = ' || v_current_year || ' AND s.mes = ' || v_target_month || ' ';
