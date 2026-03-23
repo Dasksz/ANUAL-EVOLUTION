@@ -2643,7 +2643,7 @@ let lpSelectedCidades = [];
             } else if (selectedArray.length === 1) {
                 const val = selectedArray[0];
                 let found;
-                if (isObject) found = items.find(i => String(i.cod) === val); else found = items.find(i => String(i) === val);
+                if (isObject) found = (items || []).find(i => String(i.cod) === val); else found = (items || []).find(i => String(i) === val);
                 if (found) span.textContent = isObject ? found.name : found; else span.textContent = val;
             } else { span.textContent = `${selectedArray.length} selecionados`; }
         };
@@ -3892,7 +3892,7 @@ let lpSelectedCidades = [];
             } else if (selectedArray.length === 1) {
                 const val = selectedArray[0];
                 let found;
-                if (isObject) found = items.find(i => String(i.cod) === val); else found = items.find(i => String(i) === val);
+                if (isObject) found = (items || []).find(i => String(i.cod) === val); else found = (items || []).find(i => String(i) === val);
                 if (found) span.textContent = isObject ? found.name : found; else span.textContent = val;
             } else { span.textContent = `${selectedArray.length} selecionados`; }
         };
@@ -4345,7 +4345,7 @@ let lpSelectedCidades = [];
             } else if (selectedArray.length === 1) {
                 const val = selectedArray[0];
                 let found;
-                if (isObject) found = items.find(i => String(i.cod) === val); else found = items.find(i => String(i) === val);
+                if (isObject) found = (items || []).find(i => String(i.cod) === val); else found = (items || []).find(i => String(i) === val);
                 if (found) span.textContent = isObject ? found.name : found; else span.textContent = val;
             } else { span.textContent = `${selectedArray.length} selecionados`; }
         };
