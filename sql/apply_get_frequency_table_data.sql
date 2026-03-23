@@ -1,6 +1,6 @@
 CREATE OR REPLACE FUNCTION public.get_frequency_table_data(
-    p_ano text[] DEFAULT NULL::text[],
-    p_mes text[] DEFAULT NULL::text[],
+    p_ano text DEFAULT NULL,
+    p_mes text DEFAULT NULL,
     p_filial text[] DEFAULT NULL::text[],
     p_cidade text[] DEFAULT NULL::text[],
     p_vendedor text[] DEFAULT NULL::text[],
@@ -30,16 +30,16 @@ BEGIN
     SET LOCAL statement_timeout = '120s';
 
     -- 1. Date Resolution
-    IF p_ano IS NULL OR array_length(p_ano, 1) IS NULL OR p_ano[1] = 'todos' THEN
+    IF p_ano IS NULL OR p_ano = 'todos' THEN
         SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary_frequency;
     ELSE
-        v_current_year := p_ano[1]::int;
+        v_current_year := p_ano::int;
     END IF;
 
     v_previous_year := v_current_year - 1;
 
-    IF p_mes IS NOT NULL AND array_length(p_mes, 1) > 0 AND p_mes[1] != '' AND p_mes[1] != 'todos' THEN
-        v_target_month := p_mes[1]::int;
+    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
+        v_target_month := p_mes::int;
         v_where_base := v_where_base || ' AND s.ano = ' || v_current_year || ' AND s.mes = ' || v_target_month || ' ';
         v_where_base_prev := v_where_base_prev || ' AND s.ano = ' || v_previous_year || ' AND s.mes = ' || v_target_month || ' ';
     ELSE
