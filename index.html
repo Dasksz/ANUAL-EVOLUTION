@@ -2031,14 +2031,10 @@
                         <span class="absolute left-2 text-[10px] font-bold text-white mix-blend-difference">Total PDB</span>
                     </div>
 
-                    <div class="bg-blue-900/30 border border-blue-500/30 rounded-lg p-3 mt-4">
-                        <p class="text-sm text-slate-300 font-medium">Pontos Possíveis: <span id="pontos-possiveis-sellout" class="text-white font-bold">0</span></p>
-                        <p class="text-sm text-slate-300 font-medium">Pontos Parciais: <span id="pontos-parciais-sellout" class="text-white font-bold">0</span></p>
-                    </div>
                 </div>
             </div>
 
-            <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors mt-4">
+            <button onclick="openDetalhadoModal('sellout')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors mt-4">
                 Resultado detalhado
             </button>
         </div>
@@ -2059,11 +2055,16 @@
                             <p class="text-sm text-slate-300 font-medium mt-2">Pontos possíveis: <span id="pontos-possiveis-pos" class="text-white font-bold">0</span></p>
                         </div>
 
-                        <div class="w-full bg-slate-700/50 rounded-full h-4 overflow-hidden flex relative items-center mt-auto">
-                            <div id="pos-salty-bar" class="bg-emerald-500 h-4 rounded-full transition-all duration-1000" style="width: 0%"></div>
-                            <span class="absolute right-2 text-[10px] font-bold text-white mix-blend-difference" id="pos-salty-pct">0%</span>
-                            <span class="absolute left-2 text-[10px] font-bold text-white mix-blend-difference">Total Salty</span>
+                        <div class="mt-auto">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs font-bold text-slate-300">Total Salty</span>
+                                <span class="text-xs font-bold text-emerald-400" id="pos-salty-pct">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden flex relative items-center">
+                                <div id="pos-salty-bar" class="bg-emerald-500 h-3 rounded-full transition-all duration-1000" style="width: 0%"></div>
+                            </div>
                         </div>
+                        <button onclick="openDetalhadoModal('positivacao')" class="w-full text-xs text-blue-400 hover:text-blue-300 underline font-bold py-2 mt-4 text-center block">Resultado detalhado</button>
                     </div>
 
                     <!-- Aceleradores -->
@@ -2076,11 +2077,16 @@
                             <p class="text-sm text-slate-300 font-medium">Parcial: <span id="aceleradores-parcial-val" class="text-white font-bold">0</span></p>
                         </div>
 
-                        <div class="w-full bg-slate-700/50 rounded-full h-4 overflow-hidden flex relative items-center mt-auto">
-                            <div id="acel-batatas-bar" class="bg-emerald-500 h-4 rounded-full transition-all duration-1000" style="width: 0%"></div>
-                            <span class="absolute right-2 text-[10px] font-bold text-white mix-blend-difference" id="acel-batatas-pct">0%</span>
-                            <span class="absolute left-2 text-[10px] font-bold text-white mix-blend-difference">Positivação Aceleradores</span>
+                        <div class="mt-auto">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs font-bold text-slate-300">Positivação Aceleradores</span>
+                                <span class="text-xs font-bold text-emerald-400" id="acel-batatas-pct">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden flex relative items-center">
+                                <div id="acel-batatas-bar" class="bg-emerald-500 h-3 rounded-full transition-all duration-1000" style="width: 0%"></div>
+                            </div>
                         </div>
+                        <button onclick="openDetalhadoModal('aceleradores')" class="w-full text-xs text-blue-400 hover:text-blue-300 underline font-bold py-2 mt-4 text-center block">Resultado detalhado</button>
                     </div>
                 </div>
             </div>
@@ -2157,5 +2163,40 @@
     <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-80 sm:w-96 pointer-events-none"></div>
 
     <script type="module" src="src/js/app.js?v=1773266628"></script>
+
+
+<!-- MODAL RESULTADO DETALHADO -->
+<div id="modal-resultado-detalhado" class="hidden fixed inset-0 z-[1000] flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeDetalhadoModal()"></div>
+    <div class="bg-[#1a1920] border border-white/10 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col relative shadow-2xl z-10">
+        <div class="p-6 border-b border-white/10 flex justify-between items-center">
+            <div>
+                <h2 id="modal-detalhado-title" class="text-xl font-bold text-white">Resultado Detalhado</h2>
+                <p id="modal-detalhado-subtitle" class="text-sm text-slate-400 mt-1 hidden"></p>
+            </div>
+            <button onclick="closeDetalhadoModal()" class="text-slate-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 p-2 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr id="modal-detalhado-thead" class="text-xs uppercase text-slate-400 border-b border-white/10">
+                            <!-- Headers dynamically injected here -->
+                        </tr>
+                    </thead>
+                    <tbody id="modal-detalhado-tbody" class="text-sm text-white">
+                        <!-- Rows dynamically injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>
