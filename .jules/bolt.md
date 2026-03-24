@@ -1,0 +1,3 @@
+## 2025-05-18 - [Dropdown Render Bottleneck]
+**Learning:** Using `.includes()` on arrays inside `.sort()` callbacks leads to O(n^2 log n) complexity. Appending individual DOM elements to a container in a loop causes numerous layout reflows per render.
+**Action:** Convert arrays to `Set` objects for O(1) lookups during sorting. Use `DocumentFragment` to batch DOM appends into a single reflow when updating UI lists.
