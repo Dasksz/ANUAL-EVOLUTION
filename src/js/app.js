@@ -1,4 +1,122 @@
 
+let estrelasDetailedData = [];
+let estrelasQtdMarcas = 0;
+
+// Modal functions
+window.openDetalhadoModal = function(type) {
+    const modal = document.getElementById('modal-resultado-detalhado');
+    const title = document.getElementById('modal-detalhado-title');
+    const subtitle = document.getElementById('modal-detalhado-subtitle');
+    const thead = document.getElementById('modal-detalhado-thead');
+    const tbody = document.getElementById('modal-detalhado-tbody');
+
+    // Reset contents
+    thead.innerHTML = '';
+    tbody.innerHTML = '';
+    subtitle.classList.add('hidden');
+
+    let totalRealizado = 0;
+
+    if (type === 'sellout') {
+        title.textContent = 'Resultado Detalhado - Sellout (Tons)';
+        thead.innerHTML = `
+            <th class="py-3 px-4 text-left rounded-tl-lg bg-white/5">Vendedor</th>
+            <th class="py-3 px-4 text-left bg-white/5">Filial</th>
+            <th class="py-3 px-4 text-right bg-white/5">Realizado (Salty + Foods)</th>
+            <th class="py-3 px-4 text-right bg-white/5">Meta</th>
+            <th class="py-3 px-4 text-right rounded-tr-lg bg-white/5">% Share</th>
+        `;
+
+        // Calculate total for share
+        totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + (curr.sellout_salty + curr.sellout_foods), 0);
+
+        estrelasDetailedData.forEach((row, index) => {
+            const realizado = (row.sellout_salty + row.sellout_foods) / 1000.0; // Assuming the JSON returns KG, so divide by 1000
+            const meta = 0; // Mocked
+            const share = totalRealizado > 0 ? (((row.sellout_salty + row.sellout_foods) / totalRealizado) * 100).toFixed(2) : 0;
+
+            tbody.innerHTML += `
+                <tr class="border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}">
+                    <td class="py-3 px-4 whitespace-nowrap">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
+                    <td class="py-3 px-4 whitespace-nowrap text-slate-400">${escapeHtml(row.filial || 'N/D')}</td>
+                    <td class="py-3 px-4 text-right font-medium text-white">${realizado.toFixed(2)} tons</td>
+                    <td class="py-3 px-4 text-right text-slate-400">${meta.toFixed(2)} tons</td>
+                    <td class="py-3 px-4 text-right font-bold text-emerald-400">${share}%</td>
+                </tr>
+            `;
+        });
+
+    } else if (type === 'positivacao') {
+        title.textContent = 'Resultado Detalhado - Positivação (PDV)';
+        thead.innerHTML = `
+            <th class="py-3 px-4 text-left rounded-tl-lg bg-white/5">Vendedor</th>
+            <th class="py-3 px-4 text-left bg-white/5">Filial</th>
+            <th class="py-3 px-4 text-right bg-white/5">Realizado (Salty + Foods)</th>
+            <th class="py-3 px-4 text-right bg-white/5">Meta</th>
+            <th class="py-3 px-4 text-right rounded-tr-lg bg-white/5">% Share</th>
+        `;
+
+        // Calculate total for share
+        totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + (curr.pos_salty + curr.pos_foods), 0);
+
+        estrelasDetailedData.forEach((row, index) => {
+            const realizado = row.pos_salty + row.pos_foods;
+            const meta = 0; // Mocked
+            const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
+
+            tbody.innerHTML += `
+                <tr class="border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}">
+                    <td class="py-3 px-4 whitespace-nowrap">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
+                    <td class="py-3 px-4 whitespace-nowrap text-slate-400">${escapeHtml(row.filial || 'N/D')}</td>
+                    <td class="py-3 px-4 text-right font-medium text-white">${realizado} PDV(s)</td>
+                    <td class="py-3 px-4 text-right text-slate-400">${meta} PDV(s)</td>
+                    <td class="py-3 px-4 text-right font-bold text-emerald-400">${share}%</td>
+                </tr>
+            `;
+        });
+
+    } else if (type === 'aceleradores') {
+        title.textContent = 'Resultado Detalhado - Aceleradores';
+        subtitle.textContent = `Total de Marcas Cadastradas: ${estrelasQtdMarcas}`;
+        subtitle.classList.remove('hidden');
+
+        thead.innerHTML = `
+            <th class="py-3 px-4 text-left rounded-tl-lg bg-white/5">Vendedor</th>
+            <th class="py-3 px-4 text-left bg-white/5">Filial</th>
+            <th class="py-3 px-4 text-right bg-white/5">Aceleradores (Realizado)</th>
+            <th class="py-3 px-4 text-right bg-white/5">Meta (50% da Pos.)</th>
+            <th class="py-3 px-4 text-right rounded-tr-lg bg-white/5">% Share</th>
+        `;
+
+        totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + curr.acel_realizado, 0);
+
+        estrelasDetailedData.forEach((row, index) => {
+            const realizado = row.acel_realizado;
+            const metaPositivação = 0; // The actual Positivação Meta is 0 now. Later it'll be replaced.
+            const meta = metaPositivação * 0.5;
+            const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
+
+            tbody.innerHTML += `
+                <tr class="border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}">
+                    <td class="py-3 px-4 whitespace-nowrap">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
+                    <td class="py-3 px-4 whitespace-nowrap text-slate-400">${escapeHtml(row.filial || 'N/D')}</td>
+                    <td class="py-3 px-4 text-right font-medium text-white">${realizado}</td>
+                    <td class="py-3 px-4 text-right text-slate-400">${meta}</td>
+                    <td class="py-3 px-4 text-right font-bold text-emerald-400">${share}%</td>
+                </tr>
+            `;
+        });
+    }
+
+    modal.classList.remove('hidden');
+};
+
+window.closeDetalhadoModal = function() {
+    const modal = document.getElementById('modal-resultado-detalhado');
+    modal.classList.add('hidden');
+};
+
+
 import supabase from './supabase.js?v=3';
 
 // --- Security Utilities ---
@@ -7289,8 +7407,10 @@ async function updateEstrelasView() {
         document.getElementById('sellout-salty-val').textContent = `${data.sellout_salty < 0.01 ? '0.00' : data.sellout_salty.toFixed(2)} tons`;
         document.getElementById('sellout-foods-val').textContent = `${data.sellout_foods < 0.01 ? '0.00' : data.sellout_foods.toFixed(2)} tons`;
         
-        document.getElementById('pontos-possiveis-sellout').textContent = data.base_clientes;
-        document.getElementById('pontos-parciais-sellout').textContent = 0; // mocked
+
+        // Store the details globally for the modal
+        estrelasDetailedData = data.detalhes || [];
+        estrelasQtdMarcas = data.aceleradores_qtd_marcas || 0;
 
         document.getElementById('pos-realizado-salty-val').textContent = `${data.positivacao_salty} PDV(s)`;
         document.getElementById('pos-realizado-foods-val').textContent = `${data.positivacao_foods} PDV(s)`;

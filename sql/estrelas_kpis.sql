@@ -1,8 +1,3 @@
-CREATE TABLE IF NOT EXISTS public.config_aceleradores (
-    id SERIAL PRIMARY KEY,
-    nome_categoria TEXT NOT NULL UNIQUE
-);
-
 CREATE OR REPLACE FUNCTION get_estrelas_kpis_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -26,12 +21,10 @@ DECLARE
 
     v_where_base text := ' WHERE 1=1 ';
     v_where_clients text := ' WHERE 1=1 ';
-    v_where_acel text := '';
-
     v_sql text;
     v_result json;
 BEGIN
-    SET LOCAL work_mem = '64MB';
+    SET LOCAL work_mem = '128MB';
 
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = 'todos' THEN
@@ -67,7 +60,6 @@ BEGIN
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-        -- Client filtering logic simplified for exact matching where possible
         v_where_clients := v_where_clients || format(' AND EXISTS (SELECT 1 FROM public.data_summary_frequency sf WHERE sf.codcli = dc.codigo_cliente AND sf.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[]))) ', p_vendedor);
     END IF;
 
@@ -85,8 +77,6 @@ BEGIN
         END IF;
     END IF;
 
-    -- Note: Since we are calculating specific suppliers (707, 708, 752, 1119), p_fornecedor filter might override this if provided.
-    -- If p_fornecedor is passed, we apply it. But usually, this view is specifically for Pepsico (707, 708, 752, 1119).
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
     END IF;
@@ -95,7 +85,6 @@ BEGIN
         v_where_base := v_where_base || format(' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.categorias) c WHERE c = ANY(%L::text[])) ', p_categoria);
     END IF;
 
-
     v_sql := format('
         WITH base_clientes_cte AS (
             SELECT COUNT(codigo_cliente) as total_clientes
@@ -103,9 +92,10 @@ BEGIN
             %s
         ),
         target_sales AS (
-            SELECT s.*
+            SELECT s.*, dv.nome as vendedor_nome
             FROM public.data_summary_frequency s
             LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
+            LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
             %s
         ),
         sales_data AS (
@@ -130,6 +120,35 @@ BEGIN
                 COUNT(DISTINCT CASE WHEN (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias)) THEN s.codcli END) as aceleradores_realizado,
                 COUNT(DISTINCT CASE WHEN (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) && ARRAY(SELECT jsonb_array_elements_text(s.categorias)) AND NOT ((SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias))) THEN s.codcli END) as aceleradores_parcial
             FROM target_sales s
+        ),
+        -- Detalhado por Vendedor e Filial
+        vendedor_stats AS (
+            SELECT
+                COALESCE(s.vendedor_nome, s.codusur) as vendedor_nome,
+                s.filial,
+                SUM(CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.peso ELSE 0 END) as sellout_salty,
+                SUM(CASE WHEN s.codfor IN (''1119'') THEN s.peso ELSE 0 END) as sellout_foods,
+                COUNT(DISTINCT CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.codcli END) as pos_salty,
+                COUNT(DISTINCT CASE WHEN s.codfor IN (''1119'') THEN s.codcli END) as pos_foods,
+                COUNT(DISTINCT CASE WHEN (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias)) THEN s.codcli END) as acel_realizado,
+                COUNT(DISTINCT CASE WHEN (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) && ARRAY(SELECT jsonb_array_elements_text(s.categorias)) AND NOT ((SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias))) THEN s.codcli END) as acel_parcial
+            FROM target_sales s
+            GROUP BY COALESCE(s.vendedor_nome, s.codusur), s.filial
+        ),
+        vendedor_stats_json AS (
+            SELECT json_agg(
+                json_build_object(
+                    ''vendedor_nome'', vendedor_nome,
+                    ''filial'', filial,
+                    ''sellout_salty'', sellout_salty,
+                    ''sellout_foods'', sellout_foods,
+                    ''pos_salty'', pos_salty,
+                    ''pos_foods'', pos_foods,
+                    ''acel_realizado'', acel_realizado,
+                    ''acel_parcial'', acel_parcial
+                )
+            ) as detalhes
+            FROM vendedor_stats
         )
         SELECT json_build_object(
             ''base_clientes'', COALESCE((SELECT total_clientes FROM base_clientes_cte), 0),
@@ -138,7 +157,9 @@ BEGIN
             ''positivacao_salty'', COALESCE((SELECT positivacao_salty FROM sales_data), 0),
             ''positivacao_foods'', COALESCE((SELECT positivacao_foods FROM sales_data), 0),
             ''aceleradores_realizado'', COALESCE((SELECT aceleradores_realizado FROM aceleradores_calc), 0),
-            ''aceleradores_parcial'', COALESCE((SELECT aceleradores_parcial FROM aceleradores_calc), 0)
+            ''aceleradores_parcial'', COALESCE((SELECT aceleradores_parcial FROM aceleradores_calc), 0),
+            ''aceleradores_qtd_marcas'', COALESCE((SELECT array_length(nomes, 1) FROM aceleradores_config), 0),
+            ''detalhes'', COALESCE((SELECT detalhes FROM vendedor_stats_json), ''[]''::json)
         )
     ', v_where_clients, v_where_base);
 
