@@ -748,22 +748,26 @@ CREATE INDEX IF NOT EXISTS idx_cache_filters_rede_lookup ON public.cache_filters
 
 -- Helper Functions
 CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $
 BEGIN
-  IF (select auth.role()) = 'service_role' THEN RETURN true; END IF;
-  RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'adm');
+  IF auth.role() = 'service_role' THEN RETURN true; END IF;
+  RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'adm');
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$;
 
 CREATE OR REPLACE FUNCTION public.is_approved() RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $
 BEGIN
-  IF (select auth.role()) = 'service_role' THEN RETURN true; END IF;
-  RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND status = 'aprovado');
+  IF auth.role() = 'service_role' THEN RETURN true; END IF;
+  RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND status = 'aprovado');
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$;
 
 -- Enable RLS
 ALTER TABLE public.data_detailed ENABLE ROW LEVEL SECURITY;
