@@ -1046,9 +1046,9 @@ let estrelasSelectedCategorias = [];
             const btn = formSignin.querySelector('button[type="submit"]');
             const btnText = btn.querySelector('.btn-text');
             const svgLoader = btn.querySelector('.loader') || document.createElement('svg');
-            const oldText = btnText ? btnText.textContent : btn.textContent;
+            const oldText = btnText ? btnText.innerHTML : btn.innerHTML;
 
-            if(btnText) btnText.textContent = 'Entrando...';
+            if(btnText) btnText.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Entrando...';
             btn.disabled = true;
 
             const { data, error } = await supabase.auth.signInWithPassword({
@@ -1057,7 +1057,7 @@ let estrelasSelectedCategorias = [];
             });
 
             if (error) {
-                if(btnText) btnText.textContent = oldText;
+                if(btnText) btnText.innerHTML = oldText;
                 btn.disabled = false;
                 loginError.textContent = 'Erro ao iniciar login: ' + error.message;
                 loginError.classList.remove('hidden');
@@ -1079,8 +1079,8 @@ let estrelasSelectedCategorias = [];
             }
 
             const btn = formSignup.querySelector('button[type="submit"]');
-            const oldText = btn.textContent;
-            btn.disabled = true; btn.textContent = 'Cadastrando...';
+            const oldText = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Cadastrando...';
 
             const { data, error } = await supabase.auth.signUp({
                 email,
@@ -1096,7 +1096,7 @@ let estrelasSelectedCategorias = [];
 
             if (error) {
                 window.showToast('error', 'Erro ao realizar cadastro: ' + error.message);
-                btn.disabled = false; btn.textContent = oldText;
+                btn.disabled = false; btn.innerHTML = oldText;
                 return;
             }
 
@@ -1113,8 +1113,8 @@ let estrelasSelectedCategorias = [];
             const email = document.getElementById('forgot-email').value;
 
             const btn = formForgot.querySelector('button[type="submit"]');
-            const oldText = btn.textContent;
-            btn.disabled = true; btn.textContent = 'Enviando...';
+            const oldText = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Enviando...';
 
             try {
                 const { data: profile, error: profileError } = await supabase
@@ -1125,7 +1125,7 @@ let estrelasSelectedCategorias = [];
 
                 if (profileError || !profile || profile.status !== 'aprovado') {
                     window.showToast('error', 'E-mail não encontrado ou cadastro pendente de aprovação.');
-                    btn.disabled = false; btn.textContent = oldText;
+                    btn.disabled = false; btn.innerHTML = oldText;
                     return;
                 }
 
@@ -1142,7 +1142,7 @@ let estrelasSelectedCategorias = [];
             } catch (err) {
                 window.showToast('error', 'Ocorreu um erro ao processar sua solicitação.');
             } finally {
-                btn.disabled = false; btn.textContent = oldText;
+                btn.disabled = false; btn.innerHTML = oldText;
             }
         });
     }
