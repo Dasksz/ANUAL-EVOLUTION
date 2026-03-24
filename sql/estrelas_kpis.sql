@@ -88,7 +88,7 @@ BEGIN
     -- Note: Since we are calculating specific suppliers (707, 708, 752, 1119), p_fornecedor filter might override this if provided.
     -- If p_fornecedor is passed, we apply it. But usually, this view is specifically for Pepsico (707, 708, 752, 1119).
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.fornecedores) f WHERE f = ANY(%L::text[])) ', p_fornecedor);
+        v_where_base := v_where_base || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
     END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
@@ -112,14 +112,14 @@ BEGIN
             SELECT
                 SUM(s.peso) as total_tonnage,
                 -- Salty Tonnage
-                SUM(CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.fornecedores) f WHERE f IN (''707'', ''708'', ''752'')) THEN s.peso ELSE 0 END) as salty_tonnage,
+                SUM(CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.peso ELSE 0 END) as salty_tonnage,
                 -- Foods Tonnage
-                SUM(CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.fornecedores) f WHERE f IN (''1119'')) THEN s.peso ELSE 0 END) as foods_tonnage,
+                SUM(CASE WHEN s.codfor IN (''1119'') THEN s.peso ELSE 0 END) as foods_tonnage,
 
                 -- Salty Positivacao
-                COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.fornecedores) f WHERE f IN (''707'', ''708'', ''752'')) THEN s.codcli END) as positivacao_salty,
+                COUNT(DISTINCT CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.codcli END) as positivacao_salty,
                 -- Foods Positivacao
-                COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.fornecedores) f WHERE f IN (''1119'')) THEN s.codcli END) as positivacao_foods
+                COUNT(DISTINCT CASE WHEN s.codfor IN (''1119'') THEN s.codcli END) as positivacao_foods
             FROM target_sales s
         ),
         aceleradores_config AS (
