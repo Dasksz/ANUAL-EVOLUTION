@@ -784,31 +784,187 @@ ALTER TABLE public.data_holidays ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.config_city_branches ENABLE ROW LEVEL SECURITY;
 
 -- Clean up Insecure Policies
-DO $$
-DECLARE t text;
-BEGIN
-    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_clients', 'data_detailed', 'data_history', 'profiles', 'data_summary', 'data_summary_frequency', 'cache_filters', 'data_holidays', 'config_city_branches', 'dim_supervisores', 'dim_vendedores', 'dim_fornecedores')
-    LOOP
-        EXECUTE format('DROP POLICY IF EXISTS "Enable access for all users" ON public.%I;', t);
-        EXECUTE format('DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.%I;', t);
-        EXECUTE format('DROP POLICY IF EXISTS "Read Access Approved" ON public.%I;', t);
-        EXECUTE format('DROP POLICY IF EXISTS "Write Access Admin" ON public.%I;', t);
-        EXECUTE format('DROP POLICY IF EXISTS "Update Access Admin" ON public.%I;', t);
-        EXECUTE format('DROP POLICY IF EXISTS "Delete Access Admin" ON public.%I;', t);
-        EXECUTE format('DROP POLICY IF EXISTS "All Access Admin" ON public.%I;', t);
-        -- Drop obsolete policies causing performance warnings
-        EXECUTE format('DROP POLICY IF EXISTS "Delete Admin" ON public.%I;', t);
-        EXECUTE format('DROP POLICY IF EXISTS "Insert Admin" ON public.%I;', t);
-        EXECUTE format('DROP POLICY IF EXISTS "Update Admin" ON public.%I;', t);
-        EXECUTE format('DROP POLICY IF EXISTS "Read Access" ON public.%I;', t);
-        
-        -- New standardized policy names
-        EXECUTE format('DROP POLICY IF EXISTS "Unified Read Access" ON public.%I;', t);
-        EXECUTE format('DROP POLICY IF EXISTS "Admin Insert" ON public.%I;', t);
-        EXECUTE format('DROP POLICY IF EXISTS "Admin Update" ON public.%I;', t);
-        EXECUTE format('DROP POLICY IF EXISTS "Admin Delete" ON public.%I;', t);
-    END LOOP;
-END $$;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.data_clients;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.data_clients;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.data_clients;
+DROP POLICY IF EXISTS "Write Access Admin" ON public.data_clients;
+DROP POLICY IF EXISTS "Update Access Admin" ON public.data_clients;
+DROP POLICY IF EXISTS "Delete Access Admin" ON public.data_clients;
+DROP POLICY IF EXISTS "All Access Admin" ON public.data_clients;
+DROP POLICY IF EXISTS "Delete Admin" ON public.data_clients;
+DROP POLICY IF EXISTS "Insert Admin" ON public.data_clients;
+DROP POLICY IF EXISTS "Update Admin" ON public.data_clients;
+DROP POLICY IF EXISTS "Read Access" ON public.data_clients;
+DROP POLICY IF EXISTS "Unified Read Access" ON public.data_clients;
+DROP POLICY IF EXISTS "Admin Insert" ON public.data_clients;
+DROP POLICY IF EXISTS "Admin Update" ON public.data_clients;
+DROP POLICY IF EXISTS "Admin Delete" ON public.data_clients;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.data_detailed;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.data_detailed;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.data_detailed;
+DROP POLICY IF EXISTS "Write Access Admin" ON public.data_detailed;
+DROP POLICY IF EXISTS "Update Access Admin" ON public.data_detailed;
+DROP POLICY IF EXISTS "Delete Access Admin" ON public.data_detailed;
+DROP POLICY IF EXISTS "All Access Admin" ON public.data_detailed;
+DROP POLICY IF EXISTS "Delete Admin" ON public.data_detailed;
+DROP POLICY IF EXISTS "Insert Admin" ON public.data_detailed;
+DROP POLICY IF EXISTS "Update Admin" ON public.data_detailed;
+DROP POLICY IF EXISTS "Read Access" ON public.data_detailed;
+DROP POLICY IF EXISTS "Unified Read Access" ON public.data_detailed;
+DROP POLICY IF EXISTS "Admin Insert" ON public.data_detailed;
+DROP POLICY IF EXISTS "Admin Update" ON public.data_detailed;
+DROP POLICY IF EXISTS "Admin Delete" ON public.data_detailed;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.data_history;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.data_history;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.data_history;
+DROP POLICY IF EXISTS "Write Access Admin" ON public.data_history;
+DROP POLICY IF EXISTS "Update Access Admin" ON public.data_history;
+DROP POLICY IF EXISTS "Delete Access Admin" ON public.data_history;
+DROP POLICY IF EXISTS "All Access Admin" ON public.data_history;
+DROP POLICY IF EXISTS "Delete Admin" ON public.data_history;
+DROP POLICY IF EXISTS "Insert Admin" ON public.data_history;
+DROP POLICY IF EXISTS "Update Admin" ON public.data_history;
+DROP POLICY IF EXISTS "Read Access" ON public.data_history;
+DROP POLICY IF EXISTS "Unified Read Access" ON public.data_history;
+DROP POLICY IF EXISTS "Admin Insert" ON public.data_history;
+DROP POLICY IF EXISTS "Admin Update" ON public.data_history;
+DROP POLICY IF EXISTS "Admin Delete" ON public.data_history;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.profiles;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.profiles;
+DROP POLICY IF EXISTS "Write Access Admin" ON public.profiles;
+DROP POLICY IF EXISTS "Update Access Admin" ON public.profiles;
+DROP POLICY IF EXISTS "Delete Access Admin" ON public.profiles;
+DROP POLICY IF EXISTS "All Access Admin" ON public.profiles;
+DROP POLICY IF EXISTS "Delete Admin" ON public.profiles;
+DROP POLICY IF EXISTS "Insert Admin" ON public.profiles;
+DROP POLICY IF EXISTS "Update Admin" ON public.profiles;
+DROP POLICY IF EXISTS "Read Access" ON public.profiles;
+DROP POLICY IF EXISTS "Unified Read Access" ON public.profiles;
+DROP POLICY IF EXISTS "Admin Insert" ON public.profiles;
+DROP POLICY IF EXISTS "Admin Update" ON public.profiles;
+DROP POLICY IF EXISTS "Admin Delete" ON public.profiles;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.data_summary;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.data_summary;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.data_summary;
+DROP POLICY IF EXISTS "Write Access Admin" ON public.data_summary;
+DROP POLICY IF EXISTS "Update Access Admin" ON public.data_summary;
+DROP POLICY IF EXISTS "Delete Access Admin" ON public.data_summary;
+DROP POLICY IF EXISTS "All Access Admin" ON public.data_summary;
+DROP POLICY IF EXISTS "Delete Admin" ON public.data_summary;
+DROP POLICY IF EXISTS "Insert Admin" ON public.data_summary;
+DROP POLICY IF EXISTS "Update Admin" ON public.data_summary;
+DROP POLICY IF EXISTS "Read Access" ON public.data_summary;
+DROP POLICY IF EXISTS "Unified Read Access" ON public.data_summary;
+DROP POLICY IF EXISTS "Admin Insert" ON public.data_summary;
+DROP POLICY IF EXISTS "Admin Update" ON public.data_summary;
+DROP POLICY IF EXISTS "Admin Delete" ON public.data_summary;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.data_summary_frequency;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.data_summary_frequency;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.data_summary_frequency;
+DROP POLICY IF EXISTS "Write Access Admin" ON public.data_summary_frequency;
+DROP POLICY IF EXISTS "Update Access Admin" ON public.data_summary_frequency;
+DROP POLICY IF EXISTS "Delete Access Admin" ON public.data_summary_frequency;
+DROP POLICY IF EXISTS "All Access Admin" ON public.data_summary_frequency;
+DROP POLICY IF EXISTS "Delete Admin" ON public.data_summary_frequency;
+DROP POLICY IF EXISTS "Insert Admin" ON public.data_summary_frequency;
+DROP POLICY IF EXISTS "Update Admin" ON public.data_summary_frequency;
+DROP POLICY IF EXISTS "Read Access" ON public.data_summary_frequency;
+DROP POLICY IF EXISTS "Unified Read Access" ON public.data_summary_frequency;
+DROP POLICY IF EXISTS "Admin Insert" ON public.data_summary_frequency;
+DROP POLICY IF EXISTS "Admin Update" ON public.data_summary_frequency;
+DROP POLICY IF EXISTS "Admin Delete" ON public.data_summary_frequency;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.cache_filters;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.cache_filters;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.cache_filters;
+DROP POLICY IF EXISTS "Write Access Admin" ON public.cache_filters;
+DROP POLICY IF EXISTS "Update Access Admin" ON public.cache_filters;
+DROP POLICY IF EXISTS "Delete Access Admin" ON public.cache_filters;
+DROP POLICY IF EXISTS "All Access Admin" ON public.cache_filters;
+DROP POLICY IF EXISTS "Delete Admin" ON public.cache_filters;
+DROP POLICY IF EXISTS "Insert Admin" ON public.cache_filters;
+DROP POLICY IF EXISTS "Update Admin" ON public.cache_filters;
+DROP POLICY IF EXISTS "Read Access" ON public.cache_filters;
+DROP POLICY IF EXISTS "Unified Read Access" ON public.cache_filters;
+DROP POLICY IF EXISTS "Admin Insert" ON public.cache_filters;
+DROP POLICY IF EXISTS "Admin Update" ON public.cache_filters;
+DROP POLICY IF EXISTS "Admin Delete" ON public.cache_filters;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.data_holidays;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.data_holidays;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.data_holidays;
+DROP POLICY IF EXISTS "Write Access Admin" ON public.data_holidays;
+DROP POLICY IF EXISTS "Update Access Admin" ON public.data_holidays;
+DROP POLICY IF EXISTS "Delete Access Admin" ON public.data_holidays;
+DROP POLICY IF EXISTS "All Access Admin" ON public.data_holidays;
+DROP POLICY IF EXISTS "Delete Admin" ON public.data_holidays;
+DROP POLICY IF EXISTS "Insert Admin" ON public.data_holidays;
+DROP POLICY IF EXISTS "Update Admin" ON public.data_holidays;
+DROP POLICY IF EXISTS "Read Access" ON public.data_holidays;
+DROP POLICY IF EXISTS "Unified Read Access" ON public.data_holidays;
+DROP POLICY IF EXISTS "Admin Insert" ON public.data_holidays;
+DROP POLICY IF EXISTS "Admin Update" ON public.data_holidays;
+DROP POLICY IF EXISTS "Admin Delete" ON public.data_holidays;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Write Access Admin" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Update Access Admin" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Delete Access Admin" ON public.config_city_branches;
+DROP POLICY IF EXISTS "All Access Admin" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Delete Admin" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Insert Admin" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Update Admin" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Read Access" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Unified Read Access" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Admin Insert" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Admin Update" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Admin Delete" ON public.config_city_branches;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.dim_supervisores;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.dim_supervisores;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.dim_supervisores;
+DROP POLICY IF EXISTS "Write Access Admin" ON public.dim_supervisores;
+DROP POLICY IF EXISTS "Update Access Admin" ON public.dim_supervisores;
+DROP POLICY IF EXISTS "Delete Access Admin" ON public.dim_supervisores;
+DROP POLICY IF EXISTS "All Access Admin" ON public.dim_supervisores;
+DROP POLICY IF EXISTS "Delete Admin" ON public.dim_supervisores;
+DROP POLICY IF EXISTS "Insert Admin" ON public.dim_supervisores;
+DROP POLICY IF EXISTS "Update Admin" ON public.dim_supervisores;
+DROP POLICY IF EXISTS "Read Access" ON public.dim_supervisores;
+DROP POLICY IF EXISTS "Unified Read Access" ON public.dim_supervisores;
+DROP POLICY IF EXISTS "Admin Insert" ON public.dim_supervisores;
+DROP POLICY IF EXISTS "Admin Update" ON public.dim_supervisores;
+DROP POLICY IF EXISTS "Admin Delete" ON public.dim_supervisores;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.dim_vendedores;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.dim_vendedores;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.dim_vendedores;
+DROP POLICY IF EXISTS "Write Access Admin" ON public.dim_vendedores;
+DROP POLICY IF EXISTS "Update Access Admin" ON public.dim_vendedores;
+DROP POLICY IF EXISTS "Delete Access Admin" ON public.dim_vendedores;
+DROP POLICY IF EXISTS "All Access Admin" ON public.dim_vendedores;
+DROP POLICY IF EXISTS "Delete Admin" ON public.dim_vendedores;
+DROP POLICY IF EXISTS "Insert Admin" ON public.dim_vendedores;
+DROP POLICY IF EXISTS "Update Admin" ON public.dim_vendedores;
+DROP POLICY IF EXISTS "Read Access" ON public.dim_vendedores;
+DROP POLICY IF EXISTS "Unified Read Access" ON public.dim_vendedores;
+DROP POLICY IF EXISTS "Admin Insert" ON public.dim_vendedores;
+DROP POLICY IF EXISTS "Admin Update" ON public.dim_vendedores;
+DROP POLICY IF EXISTS "Admin Delete" ON public.dim_vendedores;
+DROP POLICY IF EXISTS "Enable access for all users" ON public.dim_fornecedores;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.dim_fornecedores;
+DROP POLICY IF EXISTS "Read Access Approved" ON public.dim_fornecedores;
+DROP POLICY IF EXISTS "Write Access Admin" ON public.dim_fornecedores;
+DROP POLICY IF EXISTS "Update Access Admin" ON public.dim_fornecedores;
+DROP POLICY IF EXISTS "Delete Access Admin" ON public.dim_fornecedores;
+DROP POLICY IF EXISTS "All Access Admin" ON public.dim_fornecedores;
+DROP POLICY IF EXISTS "Delete Admin" ON public.dim_fornecedores;
+DROP POLICY IF EXISTS "Insert Admin" ON public.dim_fornecedores;
+DROP POLICY IF EXISTS "Update Admin" ON public.dim_fornecedores;
+DROP POLICY IF EXISTS "Read Access" ON public.dim_fornecedores;
+DROP POLICY IF EXISTS "Unified Read Access" ON public.dim_fornecedores;
+DROP POLICY IF EXISTS "Admin Insert" ON public.dim_fornecedores;
+DROP POLICY IF EXISTS "Admin Update" ON public.dim_fornecedores;
+DROP POLICY IF EXISTS "Admin Delete" ON public.dim_fornecedores;
+
 
 -- trigger on user creation
 create or replace function public.handle_new_user () RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
@@ -859,24 +1015,47 @@ DROP POLICY IF EXISTS "Profiles Delete" ON public.profiles;
 CREATE POLICY "Profiles Delete" ON public.profiles FOR DELETE USING (public.is_admin());
 
 -- Config City Branches & Dimensions
-DO $$
-DECLARE t text;
-BEGIN
-    FOR t IN SELECT unnest(ARRAY['config_city_branches', 'dim_supervisores', 'dim_vendedores', 'dim_fornecedores', 'dim_produtos'])
-    LOOP
-        EXECUTE format('DROP POLICY IF EXISTS "Unified Read Access" ON public.%I', t);
-        EXECUTE format('CREATE POLICY "Unified Read Access" ON public.%I FOR SELECT USING (public.is_admin() OR public.is_approved())', t);
-        
-        EXECUTE format('DROP POLICY IF EXISTS "Admin Insert" ON public.%I', t);
-        EXECUTE format('CREATE POLICY "Admin Insert" ON public.%I FOR INSERT WITH CHECK (public.is_admin())', t);
-        
-        EXECUTE format('DROP POLICY IF EXISTS "Admin Update" ON public.%I', t);
-        EXECUTE format('CREATE POLICY "Admin Update" ON public.%I FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin())', t);
-        
-        EXECUTE format('DROP POLICY IF EXISTS "Admin Delete" ON public.%I', t);
-        EXECUTE format('CREATE POLICY "Admin Delete" ON public.%I FOR DELETE USING (public.is_admin())', t);
-    END LOOP;
-END $$;
+DROP POLICY IF EXISTS "Unified Read Access" ON public.config_city_branches;
+CREATE POLICY "Unified Read Access" ON public.config_city_branches FOR SELECT USING (public.is_admin() OR public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.config_city_branches;
+CREATE POLICY "Admin Insert" ON public.config_city_branches FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.config_city_branches;
+CREATE POLICY "Admin Update" ON public.config_city_branches FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.config_city_branches;
+CREATE POLICY "Admin Delete" ON public.config_city_branches FOR DELETE USING (public.is_admin());
+DROP POLICY IF EXISTS "Unified Read Access" ON public.dim_supervisores;
+CREATE POLICY "Unified Read Access" ON public.dim_supervisores FOR SELECT USING (public.is_admin() OR public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.dim_supervisores;
+CREATE POLICY "Admin Insert" ON public.dim_supervisores FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.dim_supervisores;
+CREATE POLICY "Admin Update" ON public.dim_supervisores FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.dim_supervisores;
+CREATE POLICY "Admin Delete" ON public.dim_supervisores FOR DELETE USING (public.is_admin());
+DROP POLICY IF EXISTS "Unified Read Access" ON public.dim_vendedores;
+CREATE POLICY "Unified Read Access" ON public.dim_vendedores FOR SELECT USING (public.is_admin() OR public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.dim_vendedores;
+CREATE POLICY "Admin Insert" ON public.dim_vendedores FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.dim_vendedores;
+CREATE POLICY "Admin Update" ON public.dim_vendedores FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.dim_vendedores;
+CREATE POLICY "Admin Delete" ON public.dim_vendedores FOR DELETE USING (public.is_admin());
+DROP POLICY IF EXISTS "Unified Read Access" ON public.dim_fornecedores;
+CREATE POLICY "Unified Read Access" ON public.dim_fornecedores FOR SELECT USING (public.is_admin() OR public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.dim_fornecedores;
+CREATE POLICY "Admin Insert" ON public.dim_fornecedores FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.dim_fornecedores;
+CREATE POLICY "Admin Update" ON public.dim_fornecedores FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.dim_fornecedores;
+CREATE POLICY "Admin Delete" ON public.dim_fornecedores FOR DELETE USING (public.is_admin());
+DROP POLICY IF EXISTS "Unified Read Access" ON public.dim_produtos;
+CREATE POLICY "Unified Read Access" ON public.dim_produtos FOR SELECT USING (public.is_admin() OR public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.dim_produtos;
+CREATE POLICY "Admin Insert" ON public.dim_produtos FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.dim_produtos;
+CREATE POLICY "Admin Update" ON public.dim_produtos FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.dim_produtos;
+CREATE POLICY "Admin Delete" ON public.dim_produtos FOR DELETE USING (public.is_admin());
+
 
 -- Holidays Policies
 DROP POLICY IF EXISTS "Unified Read Access" ON public.data_holidays;
@@ -890,26 +1069,79 @@ CREATE POLICY "Admin Delete" ON public.data_holidays FOR DELETE USING (public.is
 
 -- Data Tables (Detailed, History, Clients, Summary, Cache)
 -- Data Tables (Detailed, History, Clients, Summary, Cache, Innovations, Nota Perfeita, Relação Involves)
-DO $$
-DECLARE t text;
-BEGIN
-    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_detailed', 'data_history', 'data_clients', 'data_summary', 'data_summary_frequency', 'cache_filters', 'data_innovations', 'data_nota_perfeita', 'relacao_rota_involves')
-    LOOP
-        -- Read: Approved Users
-        EXECUTE format('DROP POLICY IF EXISTS "Unified Read Access" ON public.%I', t);
-        EXECUTE format('CREATE POLICY "Unified Read Access" ON public.%I FOR SELECT USING (public.is_approved());', t);
-        
-        -- Write: Admins Only
-        EXECUTE format('DROP POLICY IF EXISTS "Admin Insert" ON public.%I', t);
-        EXECUTE format('CREATE POLICY "Admin Insert" ON public.%I FOR INSERT WITH CHECK (public.is_admin());', t);
-        
-        EXECUTE format('DROP POLICY IF EXISTS "Admin Update" ON public.%I', t);
-        EXECUTE format('CREATE POLICY "Admin Update" ON public.%I FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());', t);
-        
-        EXECUTE format('DROP POLICY IF EXISTS "Admin Delete" ON public.%I', t);
-        EXECUTE format('CREATE POLICY "Admin Delete" ON public.%I FOR DELETE USING (public.is_admin());', t);
-    END LOOP;
-END $$;
+DROP POLICY IF EXISTS "Unified Read Access" ON public.data_detailed;
+CREATE POLICY "Unified Read Access" ON public.data_detailed FOR SELECT USING (public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.data_detailed;
+CREATE POLICY "Admin Insert" ON public.data_detailed FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.data_detailed;
+CREATE POLICY "Admin Update" ON public.data_detailed FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.data_detailed;
+CREATE POLICY "Admin Delete" ON public.data_detailed FOR DELETE USING (public.is_admin());
+DROP POLICY IF EXISTS "Unified Read Access" ON public.data_history;
+CREATE POLICY "Unified Read Access" ON public.data_history FOR SELECT USING (public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.data_history;
+CREATE POLICY "Admin Insert" ON public.data_history FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.data_history;
+CREATE POLICY "Admin Update" ON public.data_history FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.data_history;
+CREATE POLICY "Admin Delete" ON public.data_history FOR DELETE USING (public.is_admin());
+DROP POLICY IF EXISTS "Unified Read Access" ON public.data_clients;
+CREATE POLICY "Unified Read Access" ON public.data_clients FOR SELECT USING (public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.data_clients;
+CREATE POLICY "Admin Insert" ON public.data_clients FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.data_clients;
+CREATE POLICY "Admin Update" ON public.data_clients FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.data_clients;
+CREATE POLICY "Admin Delete" ON public.data_clients FOR DELETE USING (public.is_admin());
+DROP POLICY IF EXISTS "Unified Read Access" ON public.data_summary;
+CREATE POLICY "Unified Read Access" ON public.data_summary FOR SELECT USING (public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.data_summary;
+CREATE POLICY "Admin Insert" ON public.data_summary FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.data_summary;
+CREATE POLICY "Admin Update" ON public.data_summary FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.data_summary;
+CREATE POLICY "Admin Delete" ON public.data_summary FOR DELETE USING (public.is_admin());
+DROP POLICY IF EXISTS "Unified Read Access" ON public.data_summary_frequency;
+CREATE POLICY "Unified Read Access" ON public.data_summary_frequency FOR SELECT USING (public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.data_summary_frequency;
+CREATE POLICY "Admin Insert" ON public.data_summary_frequency FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.data_summary_frequency;
+CREATE POLICY "Admin Update" ON public.data_summary_frequency FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.data_summary_frequency;
+CREATE POLICY "Admin Delete" ON public.data_summary_frequency FOR DELETE USING (public.is_admin());
+DROP POLICY IF EXISTS "Unified Read Access" ON public.cache_filters;
+CREATE POLICY "Unified Read Access" ON public.cache_filters FOR SELECT USING (public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.cache_filters;
+CREATE POLICY "Admin Insert" ON public.cache_filters FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.cache_filters;
+CREATE POLICY "Admin Update" ON public.cache_filters FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.cache_filters;
+CREATE POLICY "Admin Delete" ON public.cache_filters FOR DELETE USING (public.is_admin());
+DROP POLICY IF EXISTS "Unified Read Access" ON public.data_innovations;
+CREATE POLICY "Unified Read Access" ON public.data_innovations FOR SELECT USING (public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.data_innovations;
+CREATE POLICY "Admin Insert" ON public.data_innovations FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.data_innovations;
+CREATE POLICY "Admin Update" ON public.data_innovations FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.data_innovations;
+CREATE POLICY "Admin Delete" ON public.data_innovations FOR DELETE USING (public.is_admin());
+DROP POLICY IF EXISTS "Unified Read Access" ON public.data_nota_perfeita;
+CREATE POLICY "Unified Read Access" ON public.data_nota_perfeita FOR SELECT USING (public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.data_nota_perfeita;
+CREATE POLICY "Admin Insert" ON public.data_nota_perfeita FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.data_nota_perfeita;
+CREATE POLICY "Admin Update" ON public.data_nota_perfeita FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.data_nota_perfeita;
+CREATE POLICY "Admin Delete" ON public.data_nota_perfeita FOR DELETE USING (public.is_admin());
+DROP POLICY IF EXISTS "Unified Read Access" ON public.relacao_rota_involves;
+CREATE POLICY "Unified Read Access" ON public.relacao_rota_involves FOR SELECT USING (public.is_approved());
+DROP POLICY IF EXISTS "Admin Insert" ON public.relacao_rota_involves;
+CREATE POLICY "Admin Insert" ON public.relacao_rota_involves FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.relacao_rota_involves;
+CREATE POLICY "Admin Update" ON public.relacao_rota_involves FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.relacao_rota_involves;
+CREATE POLICY "Admin Delete" ON public.relacao_rota_involves FOR DELETE USING (public.is_admin());
+
 
 -- ==============================================================================
 -- 4. RPCS & FUNCTIONS (LOGIC)
