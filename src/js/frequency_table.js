@@ -6,7 +6,20 @@ async function loadFrequencyTable(filters) {
     tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-slate-400 text-xs">Carregando Frequência...</td></tr>';
 
     try {
-        const { data, error } = await supabase.rpc('get_frequency_table_data', filters);
+        const reqFilters = {
+            p_filial: (filters.p_filial && filters.p_filial.length) ? filters.p_filial : null,
+            p_cidade: (filters.p_cidade && filters.p_cidade.length) ? filters.p_cidade : null,
+            p_supervisor: (filters.p_supervisor && filters.p_supervisor.length) ? filters.p_supervisor : null,
+            p_vendedor: (filters.p_vendedor && filters.p_vendedor.length) ? filters.p_vendedor : null,
+            p_fornecedor: (filters.p_fornecedor && filters.p_fornecedor.length) ? filters.p_fornecedor : null,
+            p_ano: filters.p_ano,
+            p_mes: (filters.p_mes !== null && filters.p_mes !== '') ? (parseInt(filters.p_mes) + 1).toString() : null,
+            p_tipovenda: (filters.p_tipovenda && filters.p_tipovenda.length) ? filters.p_tipovenda : null,
+            p_rede: (filters.p_rede && filters.p_rede.length) ? filters.p_rede : null,
+            p_produto: (filters.p_produto && filters.p_produto.length) ? filters.p_produto : null,
+            p_categoria: (filters.p_categoria && filters.p_categoria.length) ? filters.p_categoria : null
+        };
+        const { data, error } = await supabase.rpc('get_frequency_table_data', reqFilters);
 
         if (error) throw error;
 

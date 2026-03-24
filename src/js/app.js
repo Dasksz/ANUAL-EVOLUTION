@@ -7312,6 +7312,7 @@ async function loadFrequencyTable(filters) {
         p_mes: (filters.p_mes !== null && filters.p_mes !== '') ? (parseInt(filters.p_mes) + 1).toString() : null,
         p_tipovenda: (filters.p_tipovenda && filters.p_tipovenda.length) ? filters.p_tipovenda : null,
         p_rede: (filters.p_rede && filters.p_rede.length) ? filters.p_rede : null,
+        p_produto: (filters.p_produto && filters.p_produto.length) ? filters.p_produto : null,
         p_categoria: (filters.p_categoria && filters.p_categoria.length) ? filters.p_categoria : null
     };
 
