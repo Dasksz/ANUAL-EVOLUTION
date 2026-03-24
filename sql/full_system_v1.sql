@@ -968,8 +968,8 @@ DROP POLICY IF EXISTS "Admin Delete" ON public.dim_fornecedores;
 
 -- trigger on user creation
 create or replace function public.handle_new_user () RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
-set
-  search_path = public as $$
+SET search_path = public
+AS $
 DECLARE
   v_name text;
   v_phone text;
