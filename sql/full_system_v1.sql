@@ -1514,11 +1514,13 @@ CREATE TABLE IF NOT EXISTS public.config_aceleradores (
 
 ALTER TABLE public.config_aceleradores ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Acesso publico de leitura para categorias aceleradoras" ON public.config_aceleradores;
 CREATE POLICY "Acesso publico de leitura para categorias aceleradoras"
 ON public.config_aceleradores
 FOR SELECT
 USING (true);
 
+DROP POLICY IF EXISTS "Acesso de escrita restrito a administradores" ON public.config_aceleradores;
 CREATE POLICY "Acesso de escrita restrito a administradores"
 ON public.config_aceleradores
 FOR ALL
