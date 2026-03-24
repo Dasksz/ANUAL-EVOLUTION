@@ -1,6 +1,17 @@
 
 import supabase from './supabase.js?v=3';
 
+// --- Security Utilities ---
+function escapeHtml(unsafe) {
+    if (unsafe == null) return '';
+    return String(unsafe)
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
+
 // --- Logging System ---
 const AppLog = {
     log: (...args) => console.log(...args),
@@ -2482,8 +2493,8 @@ let estrelasSelectedCategorias = [];
         if (products.length > 0) {
             tableBody.innerHTML = products.map(p => `
                 <tr class="table-row">
-                    <td class="p-2">${p.produto}</td>
-                    <td class="p-2">${p.descricao}</td>
+                    <td class="p-2">${escapeHtml(p.produto)}</td>
+                    <td class="p-2">${escapeHtml(p.descricao)}</td>
                     <td class="p-2 text-right font-bold text-emerald-400">${Math.round(safeVal(p.caixas)).toLocaleString('pt-BR')}</td>
                     <td class="p-2 text-right">${safeVal(p.faturamento).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                     <td class="p-2 text-right">${(safeVal(p.peso) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} Ton</td>
@@ -4089,13 +4100,13 @@ let estrelasSelectedCategorias = [];
             if (items && items.length > 0) {
                 body.innerHTML = items.map(c => `
                     <tr class="table-row">
-                        <td class="p-2">${c['Código']}</td>
-                        <td class="p-2">${c.fantasia || c.razaoSocial}</td>
+                        <td class="p-2">${escapeHtml(c['Código'])}</td>
+                        <td class="p-2">${escapeHtml(c.fantasia || c.razaoSocial)}</td>
                         ${c.totalFaturamento !== undefined ? `<td class="p-2 text-right">${c.totalFaturamento.toLocaleString('pt-BR', {style:'currency', currency: 'BRL'})}</td>` : ''}
-                        <td class="p-2">${c.cidade}</td>
-                        <td class="p-2">${c.bairro}</td>
+                        <td class="p-2">${escapeHtml(c.cidade)}</td>
+                        <td class="p-2">${escapeHtml(c.bairro)}</td>
                         ${c.ultimaCompra ? `<td class="p-2 text-center">${new Date(c.ultimaCompra).toLocaleDateString('pt-BR')}</td>` : ''}
-                        <td class="p-2">${c.rca1 || '-'}</td>
+                        <td class="p-2">${escapeHtml(c.rca1 || '-')}</td>
                     </tr>
                 `).join('');
             } else {
@@ -5729,7 +5740,7 @@ let estrelasSelectedCategorias = [];
                 else if (kpi.title.includes('Clientes')) glowClass = 'kpi-glow-purple';
 
                 return `<div class="kpi-card p-4 rounded-lg text-center kpi-glow-base ${glowClass}">
-                            <p class="text-slate-300 text-sm">${kpi.title}</p>
+                            <p class="text-slate-300 text-sm">${escapeHtml(kpi.title)}</p>
                             <p class="text-2xl font-bold text-white my-2">${fmt(kpi.current, kpi.format)}</p>
                             <p class="text-sm ${colorClass}">${variation > 0 ? '+' : ''}${variation.toFixed(1)}% vs Média</p>
                             <p class="text-xs text-slate-500">Média: ${fmt(kpi.history, kpi.format)}</p>
@@ -5784,7 +5795,7 @@ let estrelasSelectedCategorias = [];
                 const variation = vals.history > 0 ? ((vals.current - vals.history) / vals.history) * 100 : 0;
                 const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
                 return `<tr class="hover:bg-slate-700">
-                            <td class="px-4 py-2">${sup}</td>
+                            <td class="px-4 py-2">${escapeHtml(sup)}</td>
                             <td class="px-4 py-2 text-right">${vals.history.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td>
                             <td class="px-4 py-2 text-right">${vals.current.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td>
                             <td class="px-4 py-2 text-right ${colorClass}">${variation.toFixed(2)}%</td>
@@ -6644,13 +6655,13 @@ function setupLpClientSearchAutocomplete() {
                         <div class="flex items-start justify-between">
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-xs font-bold text-slate-300 whitespace-nowrap">${item.codigo_cliente}</span>
-                                    <span class="text-sm font-bold text-white truncate">${item.razaosocial || item.nomecliente || 'S/ NOME'}</span>
+                                    <span class="text-xs font-bold text-slate-300 whitespace-nowrap">${escapeHtml(item.codigo_cliente)}</span>
+                                    <span class="text-sm font-bold text-white truncate">${escapeHtml(item.razaosocial || item.nomecliente || 'S/ NOME')}</span>
                                 </div>
                                 <div class="flex items-center gap-2 text-xs text-slate-400">
-                                    <span class="truncate uppercase">${item.cidade || 'N/I'}</span>
+                                    <span class="truncate uppercase">${escapeHtml(item.cidade || 'N/I')}</span>
                                     <span class="text-slate-600">•</span>
-                                    <span class="whitespace-nowrap">${item.cnpj || 'N/I'}</span>
+                                    <span class="whitespace-nowrap">${escapeHtml(item.cnpj || 'N/I')}</span>
                                 </div>
                             </div>
                         </div>
