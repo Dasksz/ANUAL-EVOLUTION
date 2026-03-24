@@ -437,15 +437,8 @@ create table if not exists public.profiles (
   updated_at timestamp with time zone default now()
 );
 
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'name') THEN
-        ALTER TABLE public.profiles ADD COLUMN name text;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'phone') THEN
-        ALTER TABLE public.profiles ADD COLUMN phone text;
-    END IF;
-END $$;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS name text;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS phone text;
 
 -- Config City Branches (Mapping)
 -- Missing table definitions for `data_summary` and `data_summary_frequency`
@@ -564,24 +557,11 @@ CREATE TABLE IF NOT EXISTS public.dim_produtos (
 );
 ALTER TABLE public.dim_produtos ENABLE ROW LEVEL SECURITY;
 
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'codfor') THEN
-        ALTER TABLE public.dim_produtos ADD COLUMN codfor text;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'mix_marca') THEN
-        ALTER TABLE public.dim_produtos ADD COLUMN mix_marca text;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'mix_categoria') THEN
-        ALTER TABLE public.dim_produtos ADD COLUMN mix_categoria text;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'categoria_produto') THEN
-        ALTER TABLE public.dim_produtos ADD COLUMN categoria_produto text;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'estoque_filial') THEN
-        ALTER TABLE public.dim_produtos ADD COLUMN estoque_filial jsonb DEFAULT '{}'::jsonb;
-    END IF;
-END $$;
+ALTER TABLE IF EXISTS public.dim_produtos ADD COLUMN IF NOT EXISTS codfor text;
+ALTER TABLE IF EXISTS public.dim_produtos ADD COLUMN IF NOT EXISTS mix_marca text;
+ALTER TABLE IF EXISTS public.dim_produtos ADD COLUMN IF NOT EXISTS mix_categoria text;
+ALTER TABLE IF EXISTS public.dim_produtos ADD COLUMN IF NOT EXISTS categoria_produto text;
+ALTER TABLE IF EXISTS public.dim_produtos ADD COLUMN IF NOT EXISTS estoque_filial jsonb DEFAULT '{}'::jsonb;
 
 -- Update Products Stock Helper
 CREATE OR REPLACE FUNCTION public.update_products_stock(p_stock_data jsonb)
@@ -3433,15 +3413,8 @@ CREATE POLICY "Admin All" ON public.data_metadata FOR ALL USING (public.is_admin
 ALTER TABLE public.data_clients ADD COLUMN IF NOT EXISTS row_hash text;
 
 -- Remove Row Hash from Sales if it exists (Cleanup)
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_detailed' AND column_name = 'row_hash') THEN
-        ALTER TABLE public.data_detailed DROP COLUMN row_hash;
-    END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_history' AND column_name = 'row_hash') THEN
-        ALTER TABLE public.data_history DROP COLUMN row_hash;
-    END IF;
-END $$;
+ALTER TABLE IF EXISTS public.data_detailed DROP COLUMN IF EXISTS row_hash CASCADE;
+ALTER TABLE IF EXISTS public.data_history DROP COLUMN IF EXISTS row_hash CASCADE;
 
 -- 3. Indexes
 CREATE INDEX IF NOT EXISTS idx_clients_hash ON public.data_clients (row_hash);
