@@ -578,7 +578,8 @@ let estrelasSelectedCategorias = [];
             state.tiposvenda = innovationsSelectedTiposVenda;
             state.redes = innovationsSelectedRedes;
             state.categorias = innovationsSelectedCategorias;
-                } else if (view === 'estrelas') {
+
+        } else if (view === 'estrelas') {
             const anoSelect = document.getElementById('estrelas-ano-filter');
             const mesSelect = document.getElementById('estrelas-mes-filter');
             state.ano = anoSelect ? anoSelect.value : null;
@@ -591,20 +592,7 @@ let estrelasSelectedCategorias = [];
             state.tiposvenda = estrelasSelectedTiposVenda;
             state.redes = estrelasSelectedRedes;
             state.categorias = estrelasSelectedCategorias;
-        } else if (view === 'estrelas') {
-            const anoSelect = document.getElementById('estrelas-ano-filter');
-            const mesSelect = document.getElementById('estrelas-mes-filter');
-            if (getVal('ano') && anoSelect) anoSelect.value = getVal('ano');
-            if (getVal('mes') && mesSelect) mesSelect.value = getVal('mes');
-            estrelasSelectedFiliais = getList('filiais');
-            estrelasSelectedCidades = getList('cidades');
-            estrelasSelectedSupervisors = getList('supervisores');
-            estrelasSelectedVendedores = getList('vendedores');
-            estrelasSelectedFornecedores = getList('fornecedores');
-            estrelasSelectedTiposVenda = getList('tiposvenda');
-            estrelasSelectedRedes = getList('redes');
-            estrelasSelectedCategorias = getList('categorias');
-} else if (view === 'loja-perfeita') {
+        } else if (view === 'loja-perfeita') {
             state.cidades = lpSelectedCidades;
             state.supervisores = lpSelectedSupervisors;
             state.vendedores = lpSelectedVendedores;
@@ -709,19 +697,7 @@ let estrelasSelectedCategorias = [];
             innovationsSelectedTiposVenda = getList('tiposvenda');
             innovationsSelectedRedes = getList('redes');
             innovationsSelectedCategorias = getList('categorias');
-                } else if (view === 'estrelas') {
-            const anoSelect = document.getElementById('estrelas-ano-filter');
-            const mesSelect = document.getElementById('estrelas-mes-filter');
-            state.ano = anoSelect ? anoSelect.value : null;
-            state.mes = mesSelect ? mesSelect.value : null;
-            state.filiais = estrelasSelectedFiliais;
-            state.cidades = estrelasSelectedCidades;
-            state.supervisores = estrelasSelectedSupervisors;
-            state.vendedores = estrelasSelectedVendedores;
-            state.fornecedores = estrelasSelectedFornecedores;
-            state.tiposvenda = estrelasSelectedTiposVenda;
-            state.redes = estrelasSelectedRedes;
-            state.categorias = estrelasSelectedCategorias;
+
         } else if (view === 'estrelas') {
             const anoSelect = document.getElementById('estrelas-ano-filter');
             const mesSelect = document.getElementById('estrelas-mes-filter');
@@ -735,7 +711,7 @@ let estrelasSelectedCategorias = [];
             estrelasSelectedTiposVenda = getList('tiposvenda');
             estrelasSelectedRedes = getList('redes');
             estrelasSelectedCategorias = getList('categorias');
-} else if (view === 'loja-perfeita') {
+        } else if (view === 'loja-perfeita') {
             lpSelectedCidades = getList('cidades');
             lpSelectedSupervisors = getList('supervisores');
             lpSelectedVendedores = getList('vendedores');
