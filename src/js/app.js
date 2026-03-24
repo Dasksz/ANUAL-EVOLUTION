@@ -1740,8 +1740,6 @@ let estrelasSelectedCategorias = [];
                     });
                     if (commitErr) throw new Error(`Erro COMMIT chunk ${key}: ${commitErr.message}`);
 
-                } else {
-                    AppLog.log(`[${tableName}] Chunk ${key} is up-to-date.`);
                 }
                 processedChunks++;
             }
@@ -7280,18 +7278,6 @@ async function renderEstrelasView() {
 
 async function updateEstrelasView() {
     // Placeholder for future data loading
-    AppLog.log("Estrelas view updated with filters", {
-        ano: document.getElementById('estrelas-ano-filter')?.value,
-        mes: document.getElementById('estrelas-mes-filter')?.value,
-        filiais: estrelasSelectedFiliais,
-        cidades: estrelasSelectedCidades,
-        supervisores: estrelasSelectedSupervisors,
-        vendedores: estrelasSelectedVendedores,
-        fornecedores: estrelasSelectedFornecedores,
-        tiposvenda: estrelasSelectedTiposVenda,
-        redes: estrelasSelectedRedes,
-        categorias: estrelasSelectedCategorias
-    });
 }
 
 });
