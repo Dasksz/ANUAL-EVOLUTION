@@ -1512,6 +1512,20 @@ CREATE TABLE IF NOT EXISTS public.config_aceleradores (
     nome_categoria TEXT NOT NULL UNIQUE
 );
 
+ALTER TABLE public.config_aceleradores ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Acesso publico de leitura para categorias aceleradoras" ON public.config_aceleradores;
+CREATE POLICY "Acesso publico de leitura para categorias aceleradoras"
+ON public.config_aceleradores
+FOR SELECT
+USING (true);
+
+DROP POLICY IF EXISTS "Acesso de escrita restrito a administradores" ON public.config_aceleradores;
+CREATE POLICY "Acesso de escrita restrito a administradores"
+ON public.config_aceleradores
+FOR ALL
+USING (public.is_admin());
+
 CREATE OR REPLACE FUNCTION get_estrelas_kpis_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -1619,11 +1633,11 @@ BEGIN
         ),
         sales_data AS (
             SELECT
-                SUM(s.totpesoliq) as total_tonnage,
+                SUM(s.peso) as total_tonnage,
                 -- Salty Tonnage
-                SUM(CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.fornecedores) f WHERE f IN (''707'', ''708'', ''752'')) THEN s.totpesoliq ELSE 0 END) as salty_tonnage,
+                SUM(CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.fornecedores) f WHERE f IN (''707'', ''708'', ''752'')) THEN s.peso ELSE 0 END) as salty_tonnage,
                 -- Foods Tonnage
-                SUM(CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.fornecedores) f WHERE f IN (''1119'')) THEN s.totpesoliq ELSE 0 END) as foods_tonnage,
+                SUM(CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.fornecedores) f WHERE f IN (''1119'')) THEN s.peso ELSE 0 END) as foods_tonnage,
 
                 -- Salty Positivacao
                 COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.fornecedores) f WHERE f IN (''707'', ''708'', ''752'')) THEN s.codcli END) as positivacao_salty,
