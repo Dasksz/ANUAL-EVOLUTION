@@ -7402,35 +7402,45 @@ async function updateEstrelasView() {
         const metaPos = 0; // future meta
         const metaAcel = 0; // future meta
 
+        // Helper function to safely update DOM
+        const updateEl = (id, val, isStyle = false) => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (isStyle) el.style.width = val;
+                else el.textContent = val;
+            }
+        };
+
         // Update UI
-        document.getElementById('sellout-realizado-val').textContent = `${data.sellout_salty + data.sellout_foods < 0.01 ? '0.00' : (data.sellout_salty + data.sellout_foods).toFixed(2)} tons`;
-        document.getElementById('sellout-salty-val').textContent = `${data.sellout_salty < 0.01 ? '0.00' : data.sellout_salty.toFixed(2)} tons`;
-        document.getElementById('sellout-foods-val').textContent = `${data.sellout_foods < 0.01 ? '0.00' : data.sellout_foods.toFixed(2)} tons`;
+        updateEl('sellout-realizado-val', `${data.sellout_salty + data.sellout_foods < 0.01 ? '0.00' : (data.sellout_salty + data.sellout_foods).toFixed(2)} tons`);
+        updateEl('sellout-salty-val', `${data.sellout_salty < 0.01 ? '0.00' : data.sellout_salty.toFixed(2)} tons`);
+        updateEl('sellout-foods-val', `${data.sellout_foods < 0.01 ? '0.00' : data.sellout_foods.toFixed(2)} tons`);
         
+        // Remove old unused nodes safely if they exist in DOM (just in case they weren't removed from HTML)
+        updateEl('pontos-possiveis-sellout', data.base_clientes);
+        updateEl('pontos-parciais-sellout', 0);
 
         // Store the details globally for the modal
         estrelasDetailedData = data.detalhes || [];
         estrelasQtdMarcas = data.aceleradores_qtd_marcas || 0;
 
-        document.getElementById('pos-realizado-salty-val').textContent = `${data.positivacao_salty} PDV(s)`;
-        document.getElementById('pos-realizado-foods-val').textContent = `${data.positivacao_foods} PDV(s)`;
-        document.getElementById('pontos-possiveis-pos').textContent = data.base_clientes;
+        updateEl('pos-realizado-salty-val', `${data.positivacao_salty} PDV(s)`);
+        updateEl('pos-realizado-foods-val', `${data.positivacao_foods} PDV(s)`);
+        updateEl('pontos-possiveis-pos', data.base_clientes);
 
-        document.getElementById('aceleradores-realizado-val').textContent = data.aceleradores_realizado;
-        document.getElementById('aceleradores-parcial-val').textContent = data.aceleradores_parcial;
-        document.getElementById('pontos-possiveis-acel').textContent = data.base_clientes;
+        updateEl('aceleradores-realizado-val', data.aceleradores_realizado);
+        updateEl('aceleradores-parcial-val', data.aceleradores_parcial);
+        updateEl('pontos-possiveis-acel', data.base_clientes);
 
-        // Progress Bars (assuming Meta = 0 for now, making bars 0% or using a mocked calculation based on base_clientes if needed)
-        // Since meta is 0, progress is 0. But for pos and acel, the user said "Calculada baseada na positivação da equipe (Realizado / Pontos possíveis)"
-        
+        // Progress Bars
         let pctPos = data.base_clientes > 0 ? (data.positivacao_salty / data.base_clientes) * 100 : 0;
         let pctAcel = data.base_clientes > 0 ? (data.aceleradores_realizado / data.base_clientes) * 100 : 0;
         
-        document.getElementById('pos-salty-bar').style.width = `${Math.min(pctPos, 100).toFixed(0)}%`;
-        document.getElementById('pos-salty-pct').textContent = `${pctPos.toFixed(0)}%`;
+        updateEl('pos-salty-bar', `${Math.min(pctPos, 100).toFixed(0)}%`, true);
+        updateEl('pos-salty-pct', `${pctPos.toFixed(0)}%`);
 
-        document.getElementById('acel-batatas-bar').style.width = `${Math.min(pctAcel, 100).toFixed(0)}%`;
-        document.getElementById('acel-batatas-pct').textContent = `${pctAcel.toFixed(0)}%`;
+        updateEl('acel-batatas-bar', `${Math.min(pctAcel, 100).toFixed(0)}%`, true);
+        updateEl('acel-batatas-pct', `${pctAcel.toFixed(0)}%`);
 
     } catch (err) {
         AppLog.error("Erro ao carregar dados de KPIs Estrelas:", err);
