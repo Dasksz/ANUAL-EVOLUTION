@@ -291,7 +291,30 @@ BEGIN
     EXECUTE v_sql INTO v_result;
     RETURN v_result;
 END;
-$$;
+$;
+
+-- OVERLOAD: Fallback function for missing 'p_ano' / 'p_mes' payload keys from Javascript (PGRST202 FIX)
+CREATE OR REPLACE FUNCTION get_frequency_table_data(
+    p_filial text[] default null,
+    p_cidade text[] default null,
+    p_supervisor text[] default null,
+    p_vendedor text[] default null,
+    p_fornecedor text[] default null,
+    p_tipovenda text[] default null,
+    p_rede text[] default null,
+    p_produto text[] default null,
+    p_categoria text[] default null
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $
+BEGIN
+    RETURN get_frequency_table_data(p_filial, p_cidade, p_supervisor, p_vendedor, p_fornecedor, null::text, null::text, p_tipovenda, p_rede, p_produto, p_categoria);
+END;
+$;
+
 
 -- ==============================================================================
 -- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT (V2 - Storage Optimized)

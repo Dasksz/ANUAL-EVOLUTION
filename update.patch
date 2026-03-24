@@ -1,0 +1,29 @@
+--- sql/full_system_v1.sql
++++ sql/full_system_v1.sql
+@@ -524,6 +524,24 @@
+
+     RETURN result;
+ END;
++$$;
++
++-- OVERLOAD: Fallback function for missing 'p_ano' / 'p_mes' payload keys from Javascript
++CREATE OR REPLACE FUNCTION get_frequency_table_data(
++    p_filial text[] default null,
++    p_cidade text[] default null,
++    p_supervisor text[] default null,
++    p_vendedor text[] default null,
++    p_fornecedor text[] default null,
++    p_tipovenda text[] default null,
++    p_rede text[] default null,
++    p_produto text[] default null,
++    p_categoria text[] default null
++)
++RETURNS JSON
++LANGUAGE plpgsql
++AS $$
++BEGIN
++    RETURN get_frequency_table_data(p_filial, p_cidade, p_supervisor, p_vendedor, p_fornecedor, null::text, null::text, p_tipovenda, p_rede, p_produto, p_categoria);
++END;
+ $$;
+
+ -- CREATE INDEXES (Optional, for performance)
