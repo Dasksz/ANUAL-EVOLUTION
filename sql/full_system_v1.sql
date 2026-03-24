@@ -1512,6 +1512,18 @@ CREATE TABLE IF NOT EXISTS public.config_aceleradores (
     nome_categoria TEXT NOT NULL UNIQUE
 );
 
+ALTER TABLE public.config_aceleradores ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Acesso publico de leitura para categorias aceleradoras"
+ON public.config_aceleradores
+FOR SELECT
+USING (true);
+
+CREATE POLICY "Acesso de escrita restrito a administradores"
+ON public.config_aceleradores
+FOR ALL
+USING (public.is_admin());
+
 CREATE OR REPLACE FUNCTION get_estrelas_kpis_data(
     p_filial text[] default null,
     p_cidade text[] default null,
