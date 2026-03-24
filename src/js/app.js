@@ -9,14 +9,14 @@ window.openDetalhadoModal = function(type) {
     const subtitle = document.getElementById('modal-detalhado-subtitle');
     const thead = document.getElementById('modal-detalhado-thead');
     const tbody = document.getElementById('modal-detalhado-tbody');
-
+    
     // Reset contents
     thead.innerHTML = '';
     tbody.innerHTML = '';
     subtitle.classList.add('hidden');
-
+    
     let totalRealizado = 0;
-
+    
     if (type === 'sellout') {
         title.textContent = 'Resultado Detalhado - Sellout (Tons)';
         thead.innerHTML = `
@@ -26,15 +26,15 @@ window.openDetalhadoModal = function(type) {
             <th class="py-3 px-4 text-right bg-white/5">Meta</th>
             <th class="py-3 px-4 text-right rounded-tr-lg bg-white/5">% Share</th>
         `;
-
+        
         // Calculate total for share
         totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + (curr.sellout_salty + curr.sellout_foods), 0);
-
+        
         estrelasDetailedData.forEach((row, index) => {
             const realizado = (row.sellout_salty + row.sellout_foods) / 1000.0; // Assuming the JSON returns KG, so divide by 1000
             const meta = 0; // Mocked
             const share = totalRealizado > 0 ? (((row.sellout_salty + row.sellout_foods) / totalRealizado) * 100).toFixed(2) : 0;
-
+            
             tbody.innerHTML += `
                 <tr class="border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}">
                     <td class="py-3 px-4 whitespace-nowrap">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
@@ -45,7 +45,7 @@ window.openDetalhadoModal = function(type) {
                 </tr>
             `;
         });
-
+        
     } else if (type === 'positivacao') {
         title.textContent = 'Resultado Detalhado - Positivação (PDV)';
         thead.innerHTML = `
@@ -55,15 +55,15 @@ window.openDetalhadoModal = function(type) {
             <th class="py-3 px-4 text-right bg-white/5">Meta</th>
             <th class="py-3 px-4 text-right rounded-tr-lg bg-white/5">% Share</th>
         `;
-
+        
         // Calculate total for share
         totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + (curr.pos_salty + curr.pos_foods), 0);
-
+        
         estrelasDetailedData.forEach((row, index) => {
             const realizado = row.pos_salty + row.pos_foods;
             const meta = 0; // Mocked
             const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
-
+            
             tbody.innerHTML += `
                 <tr class="border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}">
                     <td class="py-3 px-4 whitespace-nowrap">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
@@ -74,12 +74,12 @@ window.openDetalhadoModal = function(type) {
                 </tr>
             `;
         });
-
+        
     } else if (type === 'aceleradores') {
         title.textContent = 'Resultado Detalhado - Aceleradores';
         subtitle.textContent = `Total de Marcas Cadastradas: ${estrelasQtdMarcas}`;
         subtitle.classList.remove('hidden');
-
+        
         thead.innerHTML = `
             <th class="py-3 px-4 text-left rounded-tl-lg bg-white/5">Vendedor</th>
             <th class="py-3 px-4 text-left bg-white/5">Filial</th>
@@ -87,15 +87,15 @@ window.openDetalhadoModal = function(type) {
             <th class="py-3 px-4 text-right bg-white/5">Meta (50% da Pos.)</th>
             <th class="py-3 px-4 text-right rounded-tr-lg bg-white/5">% Share</th>
         `;
-
+        
         totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + curr.acel_realizado, 0);
-
+        
         estrelasDetailedData.forEach((row, index) => {
             const realizado = row.acel_realizado;
             const metaPositivação = 0; // The actual Positivação Meta is 0 now. Later it'll be replaced.
-            const meta = metaPositivação * 0.5;
+            const meta = metaPositivação * 0.5; 
             const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
-
+            
             tbody.innerHTML += `
                 <tr class="border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}">
                     <td class="py-3 px-4 whitespace-nowrap">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
@@ -7402,35 +7402,45 @@ async function updateEstrelasView() {
         const metaPos = 0; // future meta
         const metaAcel = 0; // future meta
 
+        // Helper function to safely update DOM
+        const updateEl = (id, val, isStyle = false) => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (isStyle) el.style.width = val;
+                else el.textContent = val;
+            }
+        };
+
         // Update UI
-        document.getElementById('sellout-realizado-val').textContent = `${data.sellout_salty + data.sellout_foods < 0.01 ? '0.00' : (data.sellout_salty + data.sellout_foods).toFixed(2)} tons`;
-        document.getElementById('sellout-salty-val').textContent = `${data.sellout_salty < 0.01 ? '0.00' : data.sellout_salty.toFixed(2)} tons`;
-        document.getElementById('sellout-foods-val').textContent = `${data.sellout_foods < 0.01 ? '0.00' : data.sellout_foods.toFixed(2)} tons`;
+        updateEl('sellout-realizado-val', `${data.sellout_salty + data.sellout_foods < 0.01 ? '0.00' : (data.sellout_salty + data.sellout_foods).toFixed(2)} tons`);
+        updateEl('sellout-salty-val', `${data.sellout_salty < 0.01 ? '0.00' : data.sellout_salty.toFixed(2)} tons`);
+        updateEl('sellout-foods-val', `${data.sellout_foods < 0.01 ? '0.00' : data.sellout_foods.toFixed(2)} tons`);
         
+        // Remove old unused nodes safely if they exist in DOM (just in case they weren't removed from HTML)
+        updateEl('pontos-possiveis-sellout', data.base_clientes);
+        updateEl('pontos-parciais-sellout', 0);
 
         // Store the details globally for the modal
         estrelasDetailedData = data.detalhes || [];
         estrelasQtdMarcas = data.aceleradores_qtd_marcas || 0;
 
-        document.getElementById('pos-realizado-salty-val').textContent = `${data.positivacao_salty} PDV(s)`;
-        document.getElementById('pos-realizado-foods-val').textContent = `${data.positivacao_foods} PDV(s)`;
-        document.getElementById('pontos-possiveis-pos').textContent = data.base_clientes;
+        updateEl('pos-realizado-salty-val', `${data.positivacao_salty} PDV(s)`);
+        updateEl('pos-realizado-foods-val', `${data.positivacao_foods} PDV(s)`);
+        updateEl('pontos-possiveis-pos', data.base_clientes);
 
-        document.getElementById('aceleradores-realizado-val').textContent = data.aceleradores_realizado;
-        document.getElementById('aceleradores-parcial-val').textContent = data.aceleradores_parcial;
-        document.getElementById('pontos-possiveis-acel').textContent = data.base_clientes;
+        updateEl('aceleradores-realizado-val', data.aceleradores_realizado);
+        updateEl('aceleradores-parcial-val', data.aceleradores_parcial);
+        updateEl('pontos-possiveis-acel', data.base_clientes);
 
-        // Progress Bars (assuming Meta = 0 for now, making bars 0% or using a mocked calculation based on base_clientes if needed)
-        // Since meta is 0, progress is 0. But for pos and acel, the user said "Calculada baseada na positivação da equipe (Realizado / Pontos possíveis)"
-        
+        // Progress Bars
         let pctPos = data.base_clientes > 0 ? (data.positivacao_salty / data.base_clientes) * 100 : 0;
         let pctAcel = data.base_clientes > 0 ? (data.aceleradores_realizado / data.base_clientes) * 100 : 0;
         
-        document.getElementById('pos-salty-bar').style.width = `${Math.min(pctPos, 100).toFixed(0)}%`;
-        document.getElementById('pos-salty-pct').textContent = `${pctPos.toFixed(0)}%`;
+        updateEl('pos-salty-bar', `${Math.min(pctPos, 100).toFixed(0)}%`, true);
+        updateEl('pos-salty-pct', `${pctPos.toFixed(0)}%`);
 
-        document.getElementById('acel-batatas-bar').style.width = `${Math.min(pctAcel, 100).toFixed(0)}%`;
-        document.getElementById('acel-batatas-pct').textContent = `${pctAcel.toFixed(0)}%`;
+        updateEl('acel-batatas-bar', `${Math.min(pctAcel, 100).toFixed(0)}%`, true);
+        updateEl('acel-batatas-pct', `${pctAcel.toFixed(0)}%`);
 
     } catch (err) {
         AppLog.error("Erro ao carregar dados de KPIs Estrelas:", err);
