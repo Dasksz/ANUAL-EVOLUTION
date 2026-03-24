@@ -7280,7 +7280,7 @@ async function renderEstrelasView() {
 
 async function updateEstrelasView() {
     AppLog.log("Estrelas view updating...");
-
+    
     // Show overlay
     const overlay = document.getElementById('dashboard-loading-overlay');
     if (overlay) overlay.classList.remove('hidden');
@@ -7312,7 +7312,7 @@ async function updateEstrelasView() {
         document.getElementById('sellout-realizado-val').textContent = `${data.sellout_salty + data.sellout_foods < 0.01 ? '0.00' : (data.sellout_salty + data.sellout_foods).toFixed(2)} tons`;
         document.getElementById('sellout-salty-val').textContent = `${data.sellout_salty < 0.01 ? '0.00' : data.sellout_salty.toFixed(2)} tons`;
         document.getElementById('sellout-foods-val').textContent = `${data.sellout_foods < 0.01 ? '0.00' : data.sellout_foods.toFixed(2)} tons`;
-
+        
         document.getElementById('pontos-possiveis-sellout').textContent = data.base_clientes;
         document.getElementById('pontos-parciais-sellout').textContent = 0; // mocked
 
@@ -7326,10 +7326,10 @@ async function updateEstrelasView() {
 
         // Progress Bars (assuming Meta = 0 for now, making bars 0% or using a mocked calculation based on base_clientes if needed)
         // Since meta is 0, progress is 0. But for pos and acel, the user said "Calculada baseada na positivação da equipe (Realizado / Pontos possíveis)"
-
+        
         let pctPos = data.base_clientes > 0 ? (data.positivacao_salty / data.base_clientes) * 100 : 0;
         let pctAcel = data.base_clientes > 0 ? (data.aceleradores_realizado / data.base_clientes) * 100 : 0;
-
+        
         document.getElementById('pos-salty-bar').style.width = `${Math.min(pctPos, 100).toFixed(0)}%`;
         document.getElementById('pos-salty-pct').textContent = `${pctPos.toFixed(0)}%`;
 
@@ -7343,6 +7343,8 @@ async function updateEstrelasView() {
         if (overlay) overlay.classList.add('hidden');
     }
 }
+
+});
 async function loadFrequencyTable(filters) {
     const tableBody = document.getElementById('frequency-table-body');
     const tableFooter = document.getElementById('frequency-table-footer');
