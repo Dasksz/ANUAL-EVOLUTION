@@ -566,11 +566,9 @@ ALTER TABLE IF EXISTS public.dim_produtos ADD COLUMN IF NOT EXISTS estoque_filia
 -- Update Products Stock Helper
 CREATE OR REPLACE FUNCTION public.update_products_stock(p_stock_data jsonb)
 RETURNS void
-LANGUAGE plpgsql
+LANGUAGE sql
 SECURITY DEFINER
-AS $$
-BEGIN
-    -- p_stock_data expects: [{"codigo": "123", "filial": "05", "estoque": 100}, ...]
+AS $
     WITH raw_stock AS (
         SELECT 
             (rec->>'codigo')::text as codigo, 
@@ -590,8 +588,7 @@ BEGIN
     SET estoque_filial = COALESCE(p.estoque_filial, '{}'::jsonb) || agg_stock.j
     FROM agg_stock
     WHERE p.codigo = agg_stock.codigo;
-END;
-$$;
+$;
 
 -- Unified View
 DROP VIEW IF EXISTS public.all_sales CASCADE;
