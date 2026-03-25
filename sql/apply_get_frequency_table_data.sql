@@ -200,6 +200,31 @@ BEGIN
         FROM current_skus
         GROUP BY filial, cidade, codusur
     ),
+
+    monthly_freq AS (
+        SELECT
+            c.filial,
+            c.cidade,
+            c.codusur,
+            c.mes,
+            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN ('5', '11') THEN c.pedido END)::numeric as month_pedidos,
+            COUNT(DISTINCT CASE WHEN c.vlvenda >= 1 AND c.tipovenda NOT IN ('5', '11') THEN c.codcli END)::numeric as month_clientes
+        FROM current_data c
+        GROUP BY c.filial, c.cidade, c.codusur, c.mes
+    ),
+    rolled_monthly_freq AS (
+        SELECT
+            GROUPING(filial) as grp_filial,
+            GROUPING(cidade) as grp_cidade,
+            GROUPING(codusur) as grp_vendedor,
+            COALESCE(filial, 'TOTAL_GERAL') as filial,
+            COALESCE(cidade, 'TOTAL_CIDADE') as cidade,
+            codusur as vendedor_cod,
+            -- Calculate frequency per month, then average those frequencies across active months
+            AVG(CASE WHEN month_clientes > 0 THEN month_pedidos / month_clientes ELSE NULL END) as avg_monthly_freq
+        FROM monthly_freq
+        GROUP BY ROLLUP(filial, cidade, codusur)
+    ),
     aggregated_curr AS (
         SELECT
             GROUPING(c.filial) as grp_filial,
@@ -247,6 +272,7 @@ BEGIN
             COALESCE(ask.sum_skus, 0)::numeric as sum_skus,
             ac.total_pedidos::numeric as total_pedidos,
             ac.q_meses,
+            COALESCE(mf.avg_monthly_freq, 0) as avg_monthly_freq,
             COALESCE(cb.base_total, 0) as base_total
         FROM aggregated_curr ac
         LEFT JOIN previous_data pd ON ac.grp_filial = pd.grp_filial
@@ -255,6 +281,13 @@ BEGIN
                                   AND ac.filial = pd.filial
                                   AND ac.cidade = pd.cidade
                                   AND ac.vendedor_cod IS NOT DISTINCT FROM pd.vendedor_cod
+
+        LEFT JOIN rolled_monthly_freq mf ON ac.grp_filial = mf.grp_filial
+                                  AND ac.grp_cidade = mf.grp_cidade
+                                  AND ac.grp_vendedor = mf.grp_vendedor
+                                  AND ac.filial = mf.filial
+                                  AND ac.cidade = mf.cidade
+                                  AND ac.vendedor_cod IS NOT DISTINCT FROM mf.vendedor_cod
         LEFT JOIN aggregated_skus ask ON ac.grp_filial = ask.grp_filial
                                   AND ac.grp_cidade = ask.grp_cidade
                                   AND ac.grp_vendedor = ask.grp_vendedor
