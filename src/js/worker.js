@@ -9,6 +9,8 @@ function parseExcelDate(serial) {
     return new Date(Math.round((days - 25568) * 86400 * 1000));
 }
 
+const isDigit = (code) => code >= 48 && code <= 57;
+
 function parseDate(dateString) {
     if (!dateString) return null;
     if (dateString instanceof Date) return !isNaN(dateString.getTime()) ? dateString : null;
@@ -25,24 +27,35 @@ function parseDate(dateString) {
 
     // Fast path for YYYY-MM-DD or DD/MM/YYYY
     if (str.length >= 10) {
-        const c4 = str.charAt(4);
-        const c2 = str.charAt(2);
+        const c4 = str.charCodeAt(4);
+        const c2 = str.charCodeAt(2);
 
-        if (c4 === '-' && str.charAt(7) === '-') {
-            // yyyy-mm-dd
-            const y = parseInt(str.substring(0, 4), 10);
-            const m = parseInt(str.substring(5, 7), 10);
-            const d = parseInt(str.substring(8, 10), 10);
-            if (y === y && m === m && d === d) {
+        // yyyy-mm-dd ('-' is 45)
+        if (c4 === 45 && str.charCodeAt(7) === 45) {
+            if (
+                isDigit(str.charCodeAt(0)) && isDigit(str.charCodeAt(1)) &&
+                isDigit(str.charCodeAt(2)) && isDigit(str.charCodeAt(3)) &&
+                isDigit(str.charCodeAt(5)) && isDigit(str.charCodeAt(6)) &&
+                isDigit(str.charCodeAt(8)) && isDigit(str.charCodeAt(9))
+            ) {
+                const y = (str.charCodeAt(0) - 48) * 1000 + (str.charCodeAt(1) - 48) * 100 + (str.charCodeAt(2) - 48) * 10 + (str.charCodeAt(3) - 48);
+                const m = (str.charCodeAt(5) - 48) * 10 + (str.charCodeAt(6) - 48);
+                const d = (str.charCodeAt(8) - 48) * 10 + (str.charCodeAt(9) - 48);
                 const dt = new Date(Date.UTC(y, m - 1, d));
                 return !isNaN(dt.getTime()) ? dt : null;
             }
-        } else if ((c2 === '/' || c2 === '-') && (str.charAt(5) === '/' || str.charAt(5) === '-')) {
-            // dd/mm/yyyy or dd-mm-yyyy
-            const d = parseInt(str.substring(0, 2), 10);
-            const m = parseInt(str.substring(3, 5), 10);
-            let y = parseInt(str.substring(6, 10), 10);
-            if (y === y && m === m && d === d) {
+        }
+        // dd/mm/yyyy or dd-mm-yyyy ('/' is 47, '-' is 45)
+        else if ((c2 === 47 || c2 === 45) && (str.charCodeAt(5) === 47 || str.charCodeAt(5) === 45)) {
+            if (
+                isDigit(str.charCodeAt(0)) && isDigit(str.charCodeAt(1)) &&
+                isDigit(str.charCodeAt(3)) && isDigit(str.charCodeAt(4)) &&
+                isDigit(str.charCodeAt(6)) && isDigit(str.charCodeAt(7)) &&
+                isDigit(str.charCodeAt(8)) && isDigit(str.charCodeAt(9))
+            ) {
+                const d = (str.charCodeAt(0) - 48) * 10 + (str.charCodeAt(1) - 48);
+                const m = (str.charCodeAt(3) - 48) * 10 + (str.charCodeAt(4) - 48);
+                const y = (str.charCodeAt(6) - 48) * 1000 + (str.charCodeAt(7) - 48) * 100 + (str.charCodeAt(8) - 48) * 10 + (str.charCodeAt(9) - 48);
                 const dt = new Date(Date.UTC(y, m - 1, d));
                 return !isNaN(dt.getTime()) ? dt : null;
             }
