@@ -43,11 +43,11 @@ window.openDetalhadoModal = function(type) {
     }
 
     if (type === 'sellout') {
-        title.innerHTML = `<span class="flex items-center text-indigo-400">${iconChart} Resultado Detalhado - Sellout (Tons)</span>`;
+        title.innerHTML = `<span class="flex items-center text-indigo-400">${iconChart} Resultado Detalhado - Sellout</span>`;
         thead.innerHTML = `
             <th class="py-3 px-4 text-left rounded-tl-lg bg-indigo-500/10 text-indigo-200">${iconVendedor}Vendedor</th>
             <th class="py-3 px-4 text-left bg-indigo-500/10 text-indigo-200">${iconFilial}Filial</th>
-            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconChart}Realizado (Salty + Foods)</th>
+            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconChart}Realizado</th>
             <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconTarget}Meta</th>
             <th class="py-3 px-4 text-right rounded-tr-lg bg-indigo-500/10 text-indigo-200">${iconShare}% Share</th>
         `;
@@ -75,11 +75,11 @@ window.openDetalhadoModal = function(type) {
         tbody.appendChild(fragment);
         
     } else if (type === 'positivacao') {
-        title.innerHTML = `<span class="flex items-center text-emerald-400">${iconChart} Resultado Detalhado - Positivação (PDV)</span>`;
+        title.innerHTML = `<span class="flex items-center text-emerald-400">${iconChart} Resultado Detalhado - Positivação</span>`;
         thead.innerHTML = `
             <th class="py-3 px-4 text-left rounded-tl-lg bg-emerald-500/10 text-emerald-200">${iconVendedor}Vendedor</th>
             <th class="py-3 px-4 text-left bg-emerald-500/10 text-emerald-200">${iconFilial}Filial</th>
-            <th class="py-3 px-4 text-right bg-emerald-500/10 text-emerald-200">${iconChart}Realizado (Salty + Foods)</th>
+            <th class="py-3 px-4 text-right bg-emerald-500/10 text-emerald-200">${iconChart}Realizado</th>
             <th class="py-3 px-4 text-right bg-emerald-500/10 text-emerald-200">${iconTarget}Meta</th>
             <th class="py-3 px-4 text-right rounded-tr-lg bg-emerald-500/10 text-emerald-200">${iconShare}% Share</th>
         `;
@@ -2072,7 +2072,8 @@ let estrelasSelectedCategorias = [];
                 p_fornecedor: boxesSelectedFornecedores.length > 0 ? boxesSelectedFornecedores : null,
                 p_produto: boxesSelectedProducts.length > 0 ? boxesSelectedProducts : null,
                 p_tipovenda: boxesSelectedTiposVenda.length > 0 ? boxesSelectedTiposVenda : null,
-                p_categoria: boxesSelectedCategorias.length > 0 ? boxesSelectedCategorias : null,
+            p_rede: null,
+            p_categoria: boxesSelectedCategorias.length > 0 ? boxesSelectedCategorias : null,
                 p_ano: boxesAnoFilter.value === 'todos' ? null : boxesAnoFilter.value,
                 p_mes: boxesMesFilter.value === '' ? null : boxesMesFilter.value
             };
@@ -2307,13 +2308,13 @@ let estrelasSelectedCategorias = [];
         const filters = {
             p_ano: null,
             p_mes: null,
-            p_filial: [],
-            p_cidade: [],
-            p_supervisor: [],
-            p_vendedor: [],
-            p_fornecedor: [],
-            p_tipovenda: [],
-            p_rede: [],
+            p_filial: null,
+            p_cidade: null,
+            p_supervisor: null,
+            p_vendedor: null,
+            p_fornecedor: null,
+            p_tipovenda: null,
+            p_rede: null,
             p_categoria: []
         };
         const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
@@ -2368,6 +2369,7 @@ let estrelasSelectedCategorias = [];
             p_fornecedor: boxesSelectedFornecedores.length > 0 ? boxesSelectedFornecedores : null,
             p_produto: boxesSelectedProducts.length > 0 ? boxesSelectedProducts : null,
             p_tipovenda: boxesSelectedTiposVenda.length > 0 ? boxesSelectedTiposVenda : null,
+            p_rede: null,
             p_categoria: boxesSelectedCategorias.length > 0 ? boxesSelectedCategorias : null,
             p_ano: boxesAnoFilter.value === 'todos' ? null : boxesAnoFilter.value,
             p_mes: boxesMesFilter.value === '' ? null : boxesMesFilter.value
@@ -3341,7 +3343,7 @@ let estrelasSelectedCategorias = [];
         const baseFilters = {
             p_ano: currentFilters.p_ano,
             p_mes: currentFilters.p_mes,
-            p_filial: [], p_cidade: [], p_supervisor: [], p_vendedor: [], p_fornecedor: [], p_tipovenda: []
+            p_filial: null, p_cidade: null, p_supervisor: null, p_vendedor: null, p_fornecedor: null, p_tipovenda: []
         };
         
         // Helper to check and add
@@ -4142,13 +4144,13 @@ let estrelasSelectedCategorias = [];
         const filters = {
             p_ano: null,
             p_mes: null,
-            p_filial: [],
-            p_cidade: [],
-            p_supervisor: [],
-            p_vendedor: [],
-            p_fornecedor: [],
-            p_tipovenda: [],
-            p_rede: [],
+            p_filial: null,
+            p_cidade: null,
+            p_supervisor: null,
+            p_vendedor: null,
+            p_fornecedor: null,
+            p_tipovenda: null,
+            p_rede: null,
             p_categoria: []
         };
          const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
@@ -4359,13 +4361,13 @@ let estrelasSelectedCategorias = [];
         const filters = {
             p_ano: null,
             p_mes: null,
-            p_filial: [],
-            p_cidade: [],
-            p_supervisor: [],
-            p_vendedor: [],
-            p_fornecedor: [],
-            p_tipovenda: [],
-            p_rede: [],
+            p_filial: null,
+            p_cidade: null,
+            p_supervisor: null,
+            p_vendedor: null,
+            p_fornecedor: null,
+            p_tipovenda: null,
+            p_rede: null,
             p_categoria: []
         };
          const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
@@ -5211,13 +5213,13 @@ let estrelasSelectedCategorias = [];
             const filters = {
                 p_ano: null,
                 p_mes: null,
-                p_filial: [],
-                p_cidade: [],
-                p_supervisor: [],
-                p_vendedor: [],
-                p_fornecedor: [],
-                p_tipovenda: [],
-                p_rede: [],
+                p_filial: null,
+                p_cidade: null,
+                p_supervisor: null,
+                p_vendedor: null,
+                p_fornecedor: null,
+                p_tipovenda: null,
+                p_rede: null,
                 p_categoria: []
             };
             const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
@@ -5972,7 +5974,7 @@ async function updateInnovationsMonthView() {
     // Replace empty arrays with null to avoid PostgREST overloading resolution issues
     const rpcFilters = {
         p_ano: filters.p_ano || null,
-        p_mes: (filters.p_mes !== null && filters.p_mes !== '') ? (parseInt(filters.p_mes) + 1).toString() : null,
+        p_mes: (filters.p_mes !== null && filters.p_mes !== '') ? filters.p_mes : null,
         p_filial: filters.p_filial.length ? filters.p_filial : null,
         p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
         p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
@@ -6450,13 +6452,13 @@ const setupInnovationsFilters = async () => {
     const filters = {
         p_ano: null,
         p_mes: null,
-        p_filial: [],
-        p_cidade: [],
-        p_supervisor: [],
-        p_vendedor: [],
-        p_fornecedor: [],
-        p_tipovenda: [],
-        p_rede: [],
+        p_filial: null,
+        p_cidade: null,
+        p_supervisor: null,
+        p_vendedor: null,
+        p_fornecedor: null,
+        p_tipovenda: null,
+        p_rede: null,
         p_categoria: []
     };
 
@@ -6606,17 +6608,17 @@ async function loadLojaPerfeitaFilters(forceClear = false) {
 
         p_mes: null,
 
-        p_filial: forceClear ? [] : lpSelectedFiliais,
+        p_filial: forceClear ? null : (lpSelectedFiliais.length ? lpSelectedFiliais : null),
 
-        p_cidade: forceClear ? [] : lpSelectedCidades,
+        p_cidade: forceClear ? null : (lpSelectedCidades.length ? lpSelectedCidades : null),
 
-        p_supervisor: forceClear ? [] : lpSelectedSupervisors,
+        p_supervisor: forceClear ? null : (lpSelectedSupervisors.length ? lpSelectedSupervisors : null),
 
-        p_vendedor: forceClear ? [] : lpSelectedVendedores,
+        p_vendedor: forceClear ? null : (lpSelectedVendedores.length ? lpSelectedVendedores : null),
 
-        p_fornecedor: [],
+        p_fornecedor: null,
 
-        p_tipovenda: [],
+        p_tipovenda: null,
 
         p_rede: forceClear ? [] : lpSelectedRedes,
 
@@ -6873,7 +6875,7 @@ async function updateLojaPerfeitaView() {
 
     const filters = {
         p_cidade: lpSelectedCidades,
-        p_filial: [],
+        p_filial: null,
         p_supervisor: lpSelectedSupervisors,
         p_vendedor: lpSelectedVendedores,
         p_rede: lpSelectedRedes
@@ -7092,8 +7094,8 @@ window.clearAllFilters = async function(prefix) {
         const filters = {
             p_ano: null,
             p_mes: null,
-            p_cidade: [], p_filial: [], p_supervisor: [], p_vendedor: [],
-            p_rede: [], p_tipovenda: [], p_categoria: []
+            p_cidade: null, p_filial: null, p_supervisor: null, p_vendedor: null,
+            p_rede: null, p_tipovenda: null, p_categoria: []
         };
         supabase.rpc('get_dashboard_filters', filters).then(({data, error}) => {
             if (data && !error) {
@@ -7202,8 +7204,8 @@ window.clearAllFilters = async function(prefix) {
         });
 
         const filters = {
-            p_ano: null, p_mes: null, p_cidade: [], p_filial: [], p_supervisor: [],
-            p_vendedor: [], p_rede: [], p_tipovenda: [], p_categoria: [], p_fornecedor: []
+            p_ano: null, p_mes: null, p_cidade: null, p_filial: null, p_supervisor: null,
+            p_vendedor: null, p_rede: null, p_tipovenda: null, p_categoria: null, p_fornecedor: null
         };
         supabase.rpc('get_dashboard_filters', filters).then(({data, error}) => {
             if (data && !error && typeof setupCityMultiSelect === 'function') {
@@ -7337,13 +7339,13 @@ const setupEstrelasFilters = async () => {
     const filters = {
         p_ano: null,
         p_mes: null,
-        p_filial: [],
-        p_cidade: [],
-        p_supervisor: [],
-        p_vendedor: [],
-        p_fornecedor: [],
-        p_tipovenda: [],
-        p_rede: [],
+        p_filial: null,
+        p_cidade: null,
+        p_supervisor: null,
+        p_vendedor: null,
+        p_fornecedor: null,
+        p_tipovenda: null,
+        p_rede: null,
         p_categoria: []
     };
 
@@ -7528,7 +7530,7 @@ async function loadFrequencyTable(filters) {
         p_vendedor: (filters.p_vendedor && filters.p_vendedor.length) ? filters.p_vendedor : null,
         p_fornecedor: (filters.p_fornecedor && filters.p_fornecedor.length) ? filters.p_fornecedor : null,
         p_ano: filters.p_ano || null,
-        p_mes: (filters.p_mes !== null && filters.p_mes !== '') ? (parseInt(filters.p_mes) + 1).toString() : null,
+        p_mes: (filters.p_mes !== null && filters.p_mes !== '') ? filters.p_mes : null,
         p_tipovenda: (filters.p_tipovenda && filters.p_tipovenda.length) ? filters.p_tipovenda : null,
         p_rede: (filters.p_rede && filters.p_rede.length) ? filters.p_rede : null,
         p_produto: (filters.p_produto && filters.p_produto.length) ? filters.p_produto : null,
@@ -7542,6 +7544,7 @@ async function loadFrequencyTable(filters) {
 
         renderFrequencyTable(data, tableBody, tableFooter);
         renderFrequencyChart(data);
+        renderMixSaltyFoodsChart(data);
 
     } catch (err) {
         AppLog.error("Erro ao carregar tabela de frequência:", err);
@@ -7726,6 +7729,261 @@ function hideChildren(parentId) {
 }
 
 let frequencyChartInstance = null;
+let mixSaltyFoodsChartInstance = null;
+
+function renderMixSaltyFoodsChart(data) {
+
+    const ctx = document.getElementById('mixSaltyFoodsChartContainer');
+
+    if (!ctx) return;
+
+
+
+    // Clear existing
+
+    ctx.innerHTML = '<canvas id="mixSaltyFoodsCanvas"></canvas>';
+
+    const canvas = document.getElementById('mixSaltyFoodsCanvas');
+
+
+
+    if (mixSaltyFoodsChartInstance) {
+
+        mixSaltyFoodsChartInstance.destroy();
+
+    }
+
+
+
+    const chartData = data.mix_chart_data || [];
+
+    const monthInitials = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+
+
+
+    const saltyDataArray = new Array(12).fill(null);
+
+    const foodsDataArray = new Array(12).fill(null);
+
+    const ambosDataArray = new Array(12).fill(null);
+
+
+
+    chartData.forEach(row => {
+
+        if(row.mes >= 1 && row.mes <= 12) {
+
+            saltyDataArray[row.mes - 1] = row.total_salty || 0;
+
+            foodsDataArray[row.mes - 1] = row.total_foods || 0;
+
+            ambosDataArray[row.mes - 1] = row.total_ambos || 0;
+
+        }
+
+    });
+
+
+
+    const config = {
+
+        type: 'line',
+
+        data: {
+
+            labels: monthInitials,
+
+            datasets: [
+
+                {
+
+                    label: 'Salty',
+
+                    data: saltyDataArray,
+
+                    borderColor: '#f97316', // orange-500
+
+                    backgroundColor: 'rgba(249, 115, 22, 0.2)',
+
+                    borderWidth: 2,
+
+                    pointBackgroundColor: '#f97316',
+
+                    pointBorderColor: '#151419',
+
+                    pointBorderWidth: 2,
+
+                    pointRadius: 4,
+
+                    pointHoverRadius: 6,
+
+                    fill: true,
+
+                    tension: 0.3
+
+                },
+
+                {
+
+                    label: 'Foods',
+
+                    data: foodsDataArray,
+
+                    borderColor: '#3b82f6', // blue-500
+
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+
+                    borderWidth: 2,
+
+                    pointBackgroundColor: '#3b82f6',
+
+                    pointBorderColor: '#151419',
+
+                    pointBorderWidth: 2,
+
+                    pointRadius: 4,
+
+                    pointHoverRadius: 6,
+
+                    fill: true,
+
+                    tension: 0.3
+
+                },
+
+                {
+
+                    label: 'Ambos',
+
+                    data: ambosDataArray,
+
+                    borderColor: '#a855f7', // purple-500
+
+                    backgroundColor: 'rgba(168, 85, 247, 0.2)',
+
+                    borderWidth: 2,
+
+                    pointBackgroundColor: '#a855f7',
+
+                    pointBorderColor: '#151419',
+
+                    pointBorderWidth: 2,
+
+                    pointRadius: 4,
+
+                    pointHoverRadius: 6,
+
+                    fill: true,
+
+                    tension: 0.3
+
+                }
+
+            ]
+
+        },
+
+        options: {
+
+            responsive: true,
+
+            maintainAspectRatio: false,
+
+            interaction: {
+
+                mode: 'index',
+
+                intersect: false,
+
+            },
+
+            plugins: {
+
+                legend: {
+
+                    display: false // Using custom HTML legend
+
+                },
+
+                tooltip: {
+
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+
+                    titleColor: '#fff',
+
+                    bodyColor: '#cbd5e1',
+
+                    borderColor: 'rgba(255,255,255,0.1)',
+
+                    borderWidth: 1,
+
+                    padding: 10,
+
+                    usePointStyle: true,
+
+                    boxPadding: 6
+
+                },
+
+                datalabels: {
+
+                    display: false
+
+                }
+
+            },
+
+            scales: {
+
+                x: {
+
+                    grid: {
+
+                        display: false,
+
+                        drawBorder: false
+
+                    },
+
+                    ticks: {
+
+                        color: '#94a3b8',
+
+                        font: { size: 10, family: "'Inter', sans-serif" }
+
+                    }
+
+                },
+
+                y: {
+
+                    display: false,
+
+                    grid: {
+
+                        display: false
+
+                    },
+
+                    min: 0,
+
+                    grace: '10%'
+
+                }
+
+            }
+
+        }
+
+    };
+
+
+
+    mixSaltyFoodsChartInstance = window.createChart(canvas, config);
+
+}
+
+
 function renderFrequencyChart(data) {
     const ctx = document.getElementById('frequencyChartContainer');
     if (!ctx) return;
