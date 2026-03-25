@@ -378,10 +378,10 @@ BEGIN
     ),
     pre_aggregated_skus AS (
         SELECT
-            filial, cidade, codusur,
-            COUNT(DISTINCT codcli || '-' || sku) as dist_skus
+            filial, cidade, codusur, codcli,
+            COUNT(DISTINCT sku) as dist_skus_per_cli
         FROM current_skus
-        GROUP BY filial, cidade, codusur
+        GROUP BY filial, cidade, codusur, codcli
     ),
     
     monthly_freq AS (
@@ -433,7 +433,7 @@ BEGIN
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
             codusur as vendedor_cod,
-            SUM(dist_skus) as sum_skus
+            SUM(dist_skus_per_cli) as sum_skus
         FROM pre_aggregated_skus
         GROUP BY ROLLUP(filial, cidade, codusur)
     ),
@@ -496,31 +496,69 @@ BEGIN
         GROUP BY 1, 2
     ),
     mix_chart_base AS (
-        SELECT
+
+        SELECT 
+
+            s.ano,
+
             s.mes,
+
             s.codcli,
-            bool_or(s.produtos ?| ARRAY[''CHEETOS'']) as has_cheetos,
-            bool_or(s.produtos ?| ARRAY[''DORITOS'']) as has_doritos,
-            bool_or(s.produtos ?| ARRAY[''FANDANGOS'']) as has_fandangos,
-            bool_or(s.produtos ?| ARRAY[''RUFFLES'']) as has_ruffles,
-            bool_or(s.produtos ?| ARRAY[''TORCIDA'']) as has_torcida,
-            bool_or(s.produtos ?| ARRAY[''TODDYNHO'']) as has_toddynho,
-            bool_or(s.produtos ?| ARRAY[''TODDY '']) as has_toddy,
-            bool_or(s.produtos ?| ARRAY[''QUAKER'']) as has_quaker,
-            bool_or(s.produtos ?| ARRAY[''KEROCOCO'']) as has_kerococo
-        FROM public.data_summary_frequency s
-        ' || v_where_base || ' AND s.tipovenda NOT IN (''5'', ''11'') AND s.vlvenda >= 1
-        GROUP BY 1, 2
+
+            bool_or(dp.descricao ILIKE ''%CHEETOS%'') as has_cheetos,
+
+            bool_or(dp.descricao ILIKE ''%DORITOS%'') as has_doritos,
+
+            bool_or(dp.descricao ILIKE ''%FANDANGOS%'') as has_fandangos,
+
+            bool_or(dp.descricao ILIKE ''%RUFFLES%'') as has_ruffles,
+
+            bool_or(dp.descricao ILIKE ''%TORCIDA%'') as has_torcida,
+
+            bool_or(dp.descricao ILIKE ''%TODDYNHO%'') as has_toddynho,
+
+            bool_or(dp.descricao ILIKE ''%TODDY %'') as has_toddy,
+
+            bool_or(dp.descricao ILIKE ''%QUAKER%'') as has_quaker,
+
+            bool_or(dp.descricao ILIKE ''%KEROCOCO%'') as has_kerococo
+
+        FROM (
+
+            SELECT ss.ano, ss.mes, ss.codcli, jsonb_array_elements_text(ss.produtos) as produto
+
+            FROM public.data_summary_frequency ss
+
+            ' || replace(v_where_chart, 'ano', 'ss.ano') || ' AND ss.tipovenda NOT IN (''5'', ''11'') AND ss.vlvenda >= 1
+
+        ) s
+
+        JOIN public.dim_produtos dp ON s.produto = dp.codigo
+
+        GROUP BY 1, 2, 3
+
     ),
+
     mix_chart_data AS (
-        SELECT
+
+        SELECT 
+
+            ano,
+
             mes,
+
             SUM(CASE WHEN has_cheetos AND has_doritos AND has_fandangos AND has_ruffles AND has_torcida THEN 1 ELSE 0 END) as total_salty,
+
             SUM(CASE WHEN has_toddynho AND has_toddy AND has_quaker AND has_kerococo THEN 1 ELSE 0 END) as total_foods,
+
             SUM(CASE WHEN (has_cheetos AND has_doritos AND has_fandangos AND has_ruffles AND has_torcida) AND (has_toddynho AND has_toddy AND has_quaker AND has_kerococo) THEN 1 ELSE 0 END) as total_ambos
+
         FROM mix_chart_base
-        GROUP BY 1
+
+        GROUP BY 1, 2
+
     )
+
     SELECT json_build_object(
         ''tree_data'', (SELECT COALESCE(json_agg(row_to_json(final_tree)), ''[]''::json) FROM final_tree),
         ''chart_data'', (SELECT COALESCE(json_agg(row_to_json(chart_data)), ''[]''::json) FROM chart_data),
