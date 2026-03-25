@@ -141,7 +141,7 @@ BEGIN
             FROM target_sales s
             LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
             GROUP BY dv.nome, s.filial
-            ORDER BY COALESCE(SUM(CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.peso ELSE 0 END), 0) + COALESCE(SUM(CASE WHEN s.codfor IN (''1119'') THEN s.peso ELSE 0 END), 0) DESC
+            ORDER BY sellout_salty + sellout_foods DESC
         ),
         detalhes_json AS (
             SELECT COALESCE(json_agg(row_to_json(d)), ''[]''::json) as detalhes_array
@@ -374,14 +374,14 @@ BEGIN
     current_skus AS (
         SELECT filial, cidade, codusur, codcli, jsonb_array_elements_text(produtos) as sku
         FROM current_data
-        WHERE tipovenda NOT IN (''5'', ''11'')
+        WHERE tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1
     ),
     pre_aggregated_skus AS (
         SELECT
-            filial, cidade, codusur,
-            COUNT(DISTINCT codcli || ''-'' || sku) as dist_skus
+            filial, cidade, codusur, codcli,
+            COUNT(DISTINCT sku) as dist_skus_per_cli
         FROM current_skus
-        GROUP BY filial, cidade, codusur
+        GROUP BY filial, cidade, codusur, codcli
     ),
     
     monthly_freq AS (
@@ -433,7 +433,7 @@ BEGIN
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
             codusur as vendedor_cod,
-            SUM(dist_skus) as sum_skus
+            SUM(dist_skus_per_cli) as sum_skus
         FROM pre_aggregated_skus
         GROUP BY ROLLUP(filial, cidade, codusur)
     ),
