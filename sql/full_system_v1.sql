@@ -117,7 +117,7 @@ BEGIN
                 -- Salty Positivacao
                 COUNT(DISTINCT CASE WHEN s.codfor IN (''707'', ''708'', ''752'') AND s.vlvenda >= 1 THEN s.codcli END) as positivacao_salty,
                 -- Foods Positivacao
-                COUNT(DISTINCT CASE WHEN s.codfor IN (''1119'') AND s.vlvenda >= 1 THEN s.codcli END) as positivacao_foods
+                COUNT(DISTINCT CASE WHEN NOT EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor NOT IN (''1119'')) AND EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor IN (''1119'')) AND s.vlvenda >= 1 THEN s.codcli END) as positivacao_foods
             FROM target_sales s
         ),
         aceleradores_config AS (
