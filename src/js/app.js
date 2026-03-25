@@ -43,11 +43,11 @@ window.openDetalhadoModal = function(type) {
     }
 
     if (type === 'sellout') {
-        title.innerHTML = `<span class="flex items-center text-indigo-400">${iconChart} Resultado Detalhado - Sellout</span>`;
+        title.innerHTML = `<span class="flex items-center text-indigo-400">${iconChart} Resultado Detalhado - Sellout (Tons)</span>`;
         thead.innerHTML = `
             <th class="py-3 px-4 text-left rounded-tl-lg bg-indigo-500/10 text-indigo-200">${iconVendedor}Vendedor</th>
             <th class="py-3 px-4 text-left bg-indigo-500/10 text-indigo-200">${iconFilial}Filial</th>
-            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconChart}Realizado</th>
+            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconChart}Realizado (Salty + Foods)</th>
             <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconTarget}Meta</th>
             <th class="py-3 px-4 text-right rounded-tr-lg bg-indigo-500/10 text-indigo-200">${iconShare}% Share</th>
         `;
@@ -75,11 +75,11 @@ window.openDetalhadoModal = function(type) {
         tbody.appendChild(fragment);
         
     } else if (type === 'positivacao') {
-        title.innerHTML = `<span class="flex items-center text-emerald-400">${iconChart} Resultado Detalhado - Positivação</span>`;
+        title.innerHTML = `<span class="flex items-center text-emerald-400">${iconChart} Resultado Detalhado - Positivação (PDV)</span>`;
         thead.innerHTML = `
             <th class="py-3 px-4 text-left rounded-tl-lg bg-emerald-500/10 text-emerald-200">${iconVendedor}Vendedor</th>
             <th class="py-3 px-4 text-left bg-emerald-500/10 text-emerald-200">${iconFilial}Filial</th>
-            <th class="py-3 px-4 text-right bg-emerald-500/10 text-emerald-200">${iconChart}Realizado</th>
+            <th class="py-3 px-4 text-right bg-emerald-500/10 text-emerald-200">${iconChart}Realizado (Salty + Foods)</th>
             <th class="py-3 px-4 text-right bg-emerald-500/10 text-emerald-200">${iconTarget}Meta</th>
             <th class="py-3 px-4 text-right rounded-tr-lg bg-emerald-500/10 text-emerald-200">${iconShare}% Share</th>
         `;
