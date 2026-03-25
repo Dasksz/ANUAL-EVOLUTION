@@ -1,4 +1,4 @@
-2025-03-25: Changed `get_frequency_table_data` RPC `frequency` logic to use simple averaging of monthly frequencies natively inside PostgreSQL (`rolled_monthly_freq` CTE using `AVG(month_pedidos/month_clientes)`). The frontend was updated to directly consume `avg_monthly_freq`, reducing JS DOM overhead and guaranteeing accurate roll-up math without pulling granular arrays to the client.
+## Bolt Performance Learnings
 
 ## 2025-03-25
 **Optimization:** Optimized `get_frequency_table_data` calculation for `SKU/PDV` (Mix).
@@ -14,3 +14,5 @@ Instead, calculate distinct combinations directly in a higher-level CTE using a 
 COUNT(DISTINCT codcli || '-' || sku) as dist_skus
 ```
 Group this by the dimensions that actually slice the data horizontally (e.g., `filial, cidade, codusur`) without grouping by the client ID itself. This effectively tracks true unique (Client + SKU) events up the grouping hierarchy, ensuring accurate macro-level metrics like `MIX PDV` without the heavy processing overhead of multi-level lateral DISTINCT aggregations.
+### 2024-10-24
+- Added the `mix_chart_data` CTE securely into the single `get_frequency_table_data` RPC execution to return both Chart and Freq results in a single database round-trip to the Supabase client, avoiding additional latency over network.
