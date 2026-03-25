@@ -128,6 +128,24 @@ BEGIN
                 COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias)) THEN s.codcli END) as aceleradores_realizado,
                 COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) && ARRAY(SELECT jsonb_array_elements_text(s.categorias)) AND NOT ((SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias))) THEN s.codcli END) as aceleradores_parcial
             FROM target_sales s
+        ),
+        detalhes_calc AS (
+            SELECT
+                COALESCE(dv.nome, ''N/D'') AS vendedor_nome,
+                s.filial,
+                COALESCE(SUM(CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.peso ELSE 0 END), 0) AS sellout_salty,
+                COALESCE(SUM(CASE WHEN s.codfor IN (''1119'') THEN s.peso ELSE 0 END), 0) AS sellout_foods,
+                COUNT(DISTINCT CASE WHEN s.codfor IN (''707'', ''708'', ''752'') AND s.vlvenda >= 1 THEN s.codcli END) AS pos_salty,
+                COUNT(DISTINCT CASE WHEN NOT EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor NOT IN (''1119'')) AND EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor IN (''1119'')) AND s.vlvenda >= 1 THEN s.codcli END) AS pos_foods,
+                COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias)) THEN s.codcli END) AS acel_realizado
+            FROM target_sales s
+            LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
+            GROUP BY dv.nome, s.filial
+            ORDER BY sellout_salty + sellout_foods DESC
+        ),
+        detalhes_json AS (
+            SELECT COALESCE(json_agg(row_to_json(d)), ''[]''::json) as detalhes_array
+            FROM detalhes_calc d
         )
         SELECT json_build_object(
             ''base_clientes'', COALESCE((SELECT total_clientes FROM base_clientes_cte), 0),
@@ -137,7 +155,8 @@ BEGIN
             ''positivacao_foods'', COALESCE((SELECT positivacao_foods FROM sales_data), 0),
             ''aceleradores_realizado'', COALESCE((SELECT aceleradores_realizado FROM aceleradores_calc), 0),
             ''aceleradores_parcial'', COALESCE((SELECT aceleradores_parcial FROM aceleradores_calc), 0),
-            ''aceleradores_qtd_marcas'', COALESCE((SELECT array_length(nomes, 1) FROM aceleradores_config), 0)
+            ''aceleradores_qtd_marcas'', COALESCE((SELECT array_length(nomes, 1) FROM aceleradores_config), 0),
+            ''detalhes'', COALESCE((SELECT detalhes_array FROM detalhes_json), ''[]''::json)
         )
     ', v_where_clients, v_where_base);
 
