@@ -494,10 +494,37 @@ BEGIN
         FROM public.data_summary_frequency s
         ' || v_where_chart || '
         GROUP BY 1, 2
+    ),
+    mix_chart_base AS (
+        SELECT
+            s.mes,
+            s.codcli,
+            bool_or(s.produtos ?| ARRAY[''CHEETOS'']) as has_cheetos,
+            bool_or(s.produtos ?| ARRAY[''DORITOS'']) as has_doritos,
+            bool_or(s.produtos ?| ARRAY[''FANDANGOS'']) as has_fandangos,
+            bool_or(s.produtos ?| ARRAY[''RUFFLES'']) as has_ruffles,
+            bool_or(s.produtos ?| ARRAY[''TORCIDA'']) as has_torcida,
+            bool_or(s.produtos ?| ARRAY[''TODDYNHO'']) as has_toddynho,
+            bool_or(s.produtos ?| ARRAY[''TODDY '']) as has_toddy,
+            bool_or(s.produtos ?| ARRAY[''QUAKER'']) as has_quaker,
+            bool_or(s.produtos ?| ARRAY[''KEROCOCO'']) as has_kerococo
+        FROM public.data_summary_frequency s
+        ' || v_where_base || ' AND s.tipovenda NOT IN (''5'', ''11'') AND s.vlvenda >= 1
+        GROUP BY 1, 2
+    ),
+    mix_chart_data AS (
+        SELECT
+            mes,
+            SUM(CASE WHEN has_cheetos AND has_doritos AND has_fandangos AND has_ruffles AND has_torcida THEN 1 ELSE 0 END) as total_salty,
+            SUM(CASE WHEN has_toddynho AND has_toddy AND has_quaker AND has_kerococo THEN 1 ELSE 0 END) as total_foods,
+            SUM(CASE WHEN (has_cheetos AND has_doritos AND has_fandangos AND has_ruffles AND has_torcida) AND (has_toddynho AND has_toddy AND has_quaker AND has_kerococo) THEN 1 ELSE 0 END) as total_ambos
+        FROM mix_chart_base
+        GROUP BY 1
     )
     SELECT json_build_object(
         ''tree_data'', (SELECT COALESCE(json_agg(row_to_json(final_tree)), ''[]''::json) FROM final_tree),
         ''chart_data'', (SELECT COALESCE(json_agg(row_to_json(chart_data)), ''[]''::json) FROM chart_data),
+        ''mix_chart_data'', (SELECT COALESCE(json_agg(row_to_json(mix_chart_data)), ''[]''::json) FROM mix_chart_data),
         ''current_year'', ' || v_current_year || ',
         ''previous_year'', ' || v_previous_year || ',
         ''global_base_total'', (SELECT COUNT(DISTINCT codcli) FROM base_clients)
