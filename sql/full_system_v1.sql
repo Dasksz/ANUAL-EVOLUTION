@@ -260,14 +260,14 @@ BEGIN
 
     -- Redes Filtering Logic matching Innovations
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-        IF 'com_ramo' = ANY(p_rede) AND 'sem_ramo' = ANY(p_rede) THEN
+        IF ('com_ramo' = ANY(p_rede) OR 'C/ REDE' = ANY(p_rede)) AND ('sem_ramo' = ANY(p_rede) OR 'S/ REDE' = ANY(p_rede)) THEN
             -- Do nothing, both selected essentially means all
-        ELSIF 'com_ramo' = ANY(p_rede) THEN
+        ELSIF 'com_ramo' = ANY(p_rede) OR 'C/ REDE' = ANY(p_rede) THEN
             v_where_clients := v_where_clients || ' AND dc.ramo IS NOT NULL AND dc.ramo != '''' ';
             v_where_chart := v_where_chart || ' AND rede IS NOT NULL AND rede != '''' ';
             v_where_base := v_where_base || ' AND s.rede IS NOT NULL AND s.rede != '''' ';
             v_where_base_prev := v_where_base_prev || ' AND s.rede IS NOT NULL AND s.rede != '''' ';
-        ELSIF 'sem_ramo' = ANY(p_rede) THEN
+        ELSIF 'sem_ramo' = ANY(p_rede) OR 'S/ REDE' = ANY(p_rede) THEN
             v_where_clients := v_where_clients || ' AND (dc.ramo IS NULL OR dc.ramo = '''') ';
             v_where_chart := v_where_chart || ' AND (rede IS NULL OR rede = '''') ';
             v_where_base := v_where_base || ' AND (s.rede IS NULL OR s.rede = '''') ';
