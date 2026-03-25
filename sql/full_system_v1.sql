@@ -348,15 +348,15 @@ BEGIN
         FROM current_skus
         GROUP BY filial, cidade, codusur
     ),
-
+    
     monthly_freq AS (
         SELECT
             c.filial,
             c.cidade,
             c.codusur,
             c.mes,
-            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN ('5', '11') THEN c.pedido END)::numeric as month_pedidos,
-            COUNT(DISTINCT CASE WHEN c.vlvenda >= 1 AND c.tipovenda NOT IN ('5', '11') THEN c.codcli END)::numeric as month_clientes
+            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END)::numeric as month_pedidos,
+            COUNT(DISTINCT CASE WHEN c.vlvenda >= 1 AND c.tipovenda NOT IN (''5'', ''11'') THEN c.codcli END)::numeric as month_clientes
         FROM current_data c
         GROUP BY c.filial, c.cidade, c.codusur, c.mes
     ),
@@ -365,8 +365,8 @@ BEGIN
             GROUPING(filial) as grp_filial,
             GROUPING(cidade) as grp_cidade,
             GROUPING(codusur) as grp_vendedor,
-            COALESCE(filial, 'TOTAL_GERAL') as filial,
-            COALESCE(cidade, 'TOTAL_CIDADE') as cidade,
+            COALESCE(filial, ''TOTAL_GERAL'') as filial,
+            COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
             codusur as vendedor_cod,
             -- Calculate frequency per month, then average those frequencies across active months
             AVG(CASE WHEN month_clientes > 0 THEN month_pedidos / month_clientes ELSE NULL END) as avg_monthly_freq
@@ -429,7 +429,7 @@ BEGIN
                                   AND ac.filial = pd.filial 
                                   AND ac.cidade = pd.cidade 
                                   AND ac.vendedor_cod IS NOT DISTINCT FROM pd.vendedor_cod
-
+        
         LEFT JOIN rolled_monthly_freq mf ON ac.grp_filial = mf.grp_filial
                                   AND ac.grp_cidade = mf.grp_cidade
                                   AND ac.grp_vendedor = mf.grp_vendedor
