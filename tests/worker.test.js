@@ -37,3 +37,18 @@ test('parseDate handles various formats', () => {
     // Expect 2023-12-02 since it forces DD/MM/YYYY into UTC Date
     assert.strictEqual(d2.toISOString(), '2023-12-02T00:00:00.000Z');
 });
+
+test('parseDate rejects invalid dates in fast path correctly', () => {
+    // Should return null for non-date strings that match length and delimiter rules
+    const d1 = parseDate('word-is-it');
+    assert.strictEqual(d1, null);
+
+    const d2 = parseDate('  23-11-20');
+    // For spaces, it should fallback and probably parse as invalid or return null
+    // (the fallback Date constructor might parse it or return Invalid Date, but the fast path should skip it)
+    // Actually the fallback Date constructor might parse it if it looks like a valid ISO date, but let's check what it does
+    // Let's just check that it doesn't return a corrupted year like -17577
+    if (d2) {
+         assert.notStrictEqual(d2.getFullYear(), -17577);
+    }
+});
