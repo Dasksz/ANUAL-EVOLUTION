@@ -1,7 +1,4 @@
-## 2024-05-24 - Cross-Site Scripting (XSS) via `innerHTML`
-**Vulnerability:** Directly injecting unescaped object property values (such as dynamically loaded labels or database-driven text strings) into `div.innerHTML` logic when dynamically constructing components like dropdown checkboxes and lists.
-**Learning:** `innerHTML` executes dynamically generated template strings. Unsanitized strings loaded from an external source or database (e.g. `opt.text`, `label`, `value`) can execute script payloads in the browser if they contain malicious HTML or `<script>` tags. Replacing these injections with `document.createElement` and `textContent` ensures all inserted data is rendered strictly as safe text.
-**Prevention:** Avoid `innerHTML` whenever mixing strings with user or remote data. Use robust, safe element-building wrappers or the `textContent` API. In React/Vue environments this is mitigated by default, but vanilla JavaScript templates require strict adherence to DOM node manipulation instead of template string assignments.
+# Sentinel Learnings
 
-## 2024-05-19 - [SQL Injection Assessment for KPI Functions]
-**No security vulnerabilities found during SQL review**: Reviewed changes in the `sql/estrelas_kpis.sql` and `sql/full_system_v1.sql` functions. The changes only impacted the internal boolean expressions and did not introduce any SQL injection vectors, as inputs continue to be safely passed via standard parameters or strictly cast dynamic sql building strategies.
+## 2026-03-25: Secure DOM Construction
+When building dynamic tables with JavaScript, `innerHTML +=` introduces security vulnerabilities (DOM-based XSS) and performance issues. Always use `document.createElement()`, `DocumentFragment`, and securely map variables (with fallbacks for `undefined` or missing keys). In `app.js`, the `openDetalhadoModal` was refactored to construct rows safely and avoid bugs where an empty initial array failed to map to a table correctly.
