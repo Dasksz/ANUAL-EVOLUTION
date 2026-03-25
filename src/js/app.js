@@ -6755,21 +6755,49 @@ function setupLpClientSearchAutocomplete() {
                     const div = document.createElement('div');
                     div.className = 'p-3 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/30 last:border-0 transition-colors';
                     
-                    div.innerHTML = `
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-xs font-bold text-slate-300 whitespace-nowrap">${escapeHtml(item.codigo_cliente)}</span>
-                                    <span class="text-sm font-bold text-white truncate">${escapeHtml(item.razaosocial || item.nomecliente || 'S/ NOME')}</span>
-                                </div>
-                                <div class="flex items-center gap-2 text-xs text-slate-400">
-                                    <span class="truncate uppercase">${escapeHtml(item.cidade || 'N/I')}</span>
-                                    <span class="text-slate-600">•</span>
-                                    <span class="whitespace-nowrap">${escapeHtml(item.cnpj || 'N/I')}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                    const flexContainer = document.createElement('div');
+                    flexContainer.className = 'flex items-start justify-between';
+
+                    const innerContainer = document.createElement('div');
+                    innerContainer.className = 'flex-1 min-w-0';
+
+                    const topRow = document.createElement('div');
+                    topRow.className = 'flex items-center gap-2 mb-1';
+
+                    const codSpan = document.createElement('span');
+                    codSpan.className = 'text-xs font-bold text-slate-300 whitespace-nowrap';
+                    codSpan.textContent = item.codigo_cliente;
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'text-sm font-bold text-white truncate';
+                    nameSpan.textContent = item.razaosocial || item.nomecliente || 'S/ NOME';
+
+                    topRow.appendChild(codSpan);
+                    topRow.appendChild(nameSpan);
+
+                    const bottomRow = document.createElement('div');
+                    bottomRow.className = 'flex items-center gap-2 text-xs text-slate-400';
+
+                    const citySpan = document.createElement('span');
+                    citySpan.className = 'truncate uppercase';
+                    citySpan.textContent = item.cidade || 'N/I';
+
+                    const dotSpan = document.createElement('span');
+                    dotSpan.className = 'text-slate-600';
+                    dotSpan.textContent = '•';
+
+                    const cnpjSpan = document.createElement('span');
+                    cnpjSpan.className = 'whitespace-nowrap';
+                    cnpjSpan.textContent = item.cnpj || 'N/I';
+
+                    bottomRow.appendChild(citySpan);
+                    bottomRow.appendChild(dotSpan);
+                    bottomRow.appendChild(cnpjSpan);
+
+                    innerContainer.appendChild(topRow);
+                    innerContainer.appendChild(bottomRow);
+                    flexContainer.appendChild(innerContainer);
+                    div.appendChild(flexContainer);
                     
                     div.addEventListener('click', () => {
                         input.value = `${item.codigo_cliente} - ${item.razaosocial || item.nomecliente}`;
