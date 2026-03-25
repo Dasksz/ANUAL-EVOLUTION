@@ -2166,7 +2166,7 @@
 <!-- MODAL RESULTADO DETALHADO -->
 <div id="modal-resultado-detalhado" class="hidden fixed inset-0 z-[1000] flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeDetalhadoModal()"></div>
-    <div class="bg-[#1a1920] border border-white/10 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col relative shadow-2xl z-10">
+    <div class="bg-[#1a1920] border border-white/10 rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col relative shadow-2xl z-10">
         <div class="p-6 border-b border-white/10 flex justify-between items-center">
             <div>
                 <h2 id="modal-detalhado-title" class="text-xl font-bold text-white">Resultado Detalhado</h2>
@@ -2179,9 +2179,9 @@
             </button>
         </div>
         
-        <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
+        <div class="p-6 overflow-y-auto custom-scrollbar flex-1" style="min-height: 50vh;">
+            <div class="overflow-x-auto w-full">
+                <table class="w-full text-left border-collapse whitespace-nowrap">
                     <thead>
                         <tr id="modal-detalhado-thead" class="text-xs uppercase text-slate-400 border-b border-white/10">
                             <!-- Headers dynamically injected here -->

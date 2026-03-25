@@ -17,95 +17,130 @@ window.openDetalhadoModal = function(type) {
     
     let totalRealizado = 0;
     
+    const iconVendedor = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 inline text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>`;
+    const iconFilial = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 inline text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1v1H9V7zm5 0h1v1h-1V7zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1z" /></svg>`;
+    const iconChart = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 inline text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>`;
+    const iconTarget = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 inline text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
+    const iconShare = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 inline text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>`;
+
+    if (!estrelasDetailedData || estrelasDetailedData.length === 0) {
+        title.textContent = type === 'sellout' ? 'Resultado Detalhado - Sellout' : (type === 'positivacao' ? 'Resultado Detalhado - Positivação' : 'Resultado Detalhado - Aceleradores');
+        thead.innerHTML = '';
+        tbody.innerHTML = `
+            <tr>
+                <td class="py-12 px-4 text-center text-slate-400" colspan="100%">
+                    <div class="flex flex-col items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-3 text-slate-500 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                        </svg>
+                        <span class="text-base font-medium text-slate-300">Nenhum dado encontrado</span>
+                        <span class="text-sm mt-1">Ajuste os filtros ou aguarde a sincronização.</span>
+                    </div>
+                </td>
+            </tr>`;
+        modal.classList.remove('hidden');
+        return;
+    }
+
     if (type === 'sellout') {
-        title.textContent = 'Resultado Detalhado - Sellout (Tons)';
+        title.innerHTML = `<span class="flex items-center text-indigo-400">${iconChart} Resultado Detalhado - Sellout (Tons)</span>`;
         thead.innerHTML = `
-            <th class="py-3 px-4 text-left rounded-tl-lg bg-white/5">Vendedor</th>
-            <th class="py-3 px-4 text-left bg-white/5">Filial</th>
-            <th class="py-3 px-4 text-right bg-white/5">Realizado (Salty + Foods)</th>
-            <th class="py-3 px-4 text-right bg-white/5">Meta</th>
-            <th class="py-3 px-4 text-right rounded-tr-lg bg-white/5">% Share</th>
+            <th class="py-3 px-4 text-left rounded-tl-lg bg-indigo-500/10 text-indigo-200">${iconVendedor}Vendedor</th>
+            <th class="py-3 px-4 text-left bg-indigo-500/10 text-indigo-200">${iconFilial}Filial</th>
+            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconChart}Realizado (Salty + Foods)</th>
+            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconTarget}Meta</th>
+            <th class="py-3 px-4 text-right rounded-tr-lg bg-indigo-500/10 text-indigo-200">${iconShare}% Share</th>
         `;
         
-        // Calculate total for share
-        totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + (curr.sellout_salty + curr.sellout_foods), 0);
+        totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + ((curr.sellout_salty || 0) + (curr.sellout_foods || 0)), 0);
         
+        const fragment = document.createDocumentFragment();
         estrelasDetailedData.forEach((row, index) => {
-            const realizado = (row.sellout_salty + row.sellout_foods) / 1000.0; // Assuming the JSON returns KG, so divide by 1000
+            const realizado = ((row.sellout_salty || 0) + (row.sellout_foods || 0)) / 1000.0;
             const meta = 0; // Mocked
-            const share = totalRealizado > 0 ? (((row.sellout_salty + row.sellout_foods) / totalRealizado) * 100).toFixed(2) : 0;
+            const share = totalRealizado > 0 ? ((((row.sellout_salty || 0) + (row.sellout_foods || 0)) / totalRealizado) * 100).toFixed(2) : 0;
             
-            tbody.innerHTML += `
-                <tr class="border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}">
-                    <td class="py-3 px-4 whitespace-nowrap">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
-                    <td class="py-3 px-4 whitespace-nowrap text-slate-400">${escapeHtml(row.filial || 'N/D')}</td>
-                    <td class="py-3 px-4 text-right font-medium text-white">${realizado.toFixed(2)} tons</td>
-                    <td class="py-3 px-4 text-right text-slate-400">${meta.toFixed(2)} tons</td>
-                    <td class="py-3 px-4 text-right font-bold text-emerald-400">${share}%</td>
-                </tr>
+            const tr = document.createElement('tr');
+            tr.className = `border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}`;
+
+            tr.innerHTML = `
+                <td class="py-3 px-4 whitespace-nowrap text-slate-200">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
+                <td class="py-3 px-4 whitespace-nowrap"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs border border-slate-700">${escapeHtml(row.filial || 'N/D')}</span></td>
+                <td class="py-3 px-4 text-right font-medium text-white">${realizado.toFixed(2)} <span class="text-xs text-slate-400">tons</span></td>
+                <td class="py-3 px-4 text-right text-slate-400">${meta.toFixed(2)} <span class="text-xs">tons</span></td>
+                <td class="py-3 px-4 text-right font-bold text-indigo-400">${share}%</td>
             `;
+            fragment.appendChild(tr);
         });
+        tbody.appendChild(fragment);
         
     } else if (type === 'positivacao') {
-        title.textContent = 'Resultado Detalhado - Positivação (PDV)';
+        title.innerHTML = `<span class="flex items-center text-emerald-400">${iconChart} Resultado Detalhado - Positivação (PDV)</span>`;
         thead.innerHTML = `
-            <th class="py-3 px-4 text-left rounded-tl-lg bg-white/5">Vendedor</th>
-            <th class="py-3 px-4 text-left bg-white/5">Filial</th>
-            <th class="py-3 px-4 text-right bg-white/5">Realizado (Salty + Foods)</th>
-            <th class="py-3 px-4 text-right bg-white/5">Meta</th>
-            <th class="py-3 px-4 text-right rounded-tr-lg bg-white/5">% Share</th>
+            <th class="py-3 px-4 text-left rounded-tl-lg bg-emerald-500/10 text-emerald-200">${iconVendedor}Vendedor</th>
+            <th class="py-3 px-4 text-left bg-emerald-500/10 text-emerald-200">${iconFilial}Filial</th>
+            <th class="py-3 px-4 text-right bg-emerald-500/10 text-emerald-200">${iconChart}Realizado (Salty + Foods)</th>
+            <th class="py-3 px-4 text-right bg-emerald-500/10 text-emerald-200">${iconTarget}Meta</th>
+            <th class="py-3 px-4 text-right rounded-tr-lg bg-emerald-500/10 text-emerald-200">${iconShare}% Share</th>
         `;
         
-        // Calculate total for share
-        totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + (curr.pos_salty + curr.pos_foods), 0);
+        totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + ((curr.pos_salty || 0) + (curr.pos_foods || 0)), 0);
         
+        const fragment = document.createDocumentFragment();
         estrelasDetailedData.forEach((row, index) => {
-            const realizado = row.pos_salty + row.pos_foods;
+            const realizado = (row.pos_salty || 0) + (row.pos_foods || 0);
             const meta = 0; // Mocked
             const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
             
-            tbody.innerHTML += `
-                <tr class="border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}">
-                    <td class="py-3 px-4 whitespace-nowrap">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
-                    <td class="py-3 px-4 whitespace-nowrap text-slate-400">${escapeHtml(row.filial || 'N/D')}</td>
-                    <td class="py-3 px-4 text-right font-medium text-white">${realizado} PDV(s)</td>
-                    <td class="py-3 px-4 text-right text-slate-400">${meta} PDV(s)</td>
-                    <td class="py-3 px-4 text-right font-bold text-emerald-400">${share}%</td>
-                </tr>
+            const tr = document.createElement('tr');
+            tr.className = `border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}`;
+
+            tr.innerHTML = `
+                <td class="py-3 px-4 whitespace-nowrap text-slate-200">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
+                <td class="py-3 px-4 whitespace-nowrap"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs border border-slate-700">${escapeHtml(row.filial || 'N/D')}</span></td>
+                <td class="py-3 px-4 text-right font-medium text-white">${realizado} <span class="text-xs text-slate-400">PDV(s)</span></td>
+                <td class="py-3 px-4 text-right text-slate-400">${meta} <span class="text-xs">PDV(s)</span></td>
+                <td class="py-3 px-4 text-right font-bold text-emerald-400">${share}%</td>
             `;
+            fragment.appendChild(tr);
         });
+        tbody.appendChild(fragment);
         
     } else if (type === 'aceleradores') {
-        title.textContent = 'Resultado Detalhado - Aceleradores';
+        title.innerHTML = `<span class="flex items-center text-amber-400">${iconTarget} Resultado Detalhado - Aceleradores</span>`;
         subtitle.textContent = `Total de Marcas Cadastradas: ${estrelasQtdMarcas}`;
         subtitle.classList.remove('hidden');
         
         thead.innerHTML = `
-            <th class="py-3 px-4 text-left rounded-tl-lg bg-white/5">Vendedor</th>
-            <th class="py-3 px-4 text-left bg-white/5">Filial</th>
-            <th class="py-3 px-4 text-right bg-white/5">Aceleradores (Realizado)</th>
-            <th class="py-3 px-4 text-right bg-white/5">Meta (50% da Pos.)</th>
-            <th class="py-3 px-4 text-right rounded-tr-lg bg-white/5">% Share</th>
+            <th class="py-3 px-4 text-left rounded-tl-lg bg-amber-500/10 text-amber-200">${iconVendedor}Vendedor</th>
+            <th class="py-3 px-4 text-left bg-amber-500/10 text-amber-200">${iconFilial}Filial</th>
+            <th class="py-3 px-4 text-right bg-amber-500/10 text-amber-200">${iconChart}Aceleradores (Realizado)</th>
+            <th class="py-3 px-4 text-right bg-amber-500/10 text-amber-200">${iconTarget}Meta (50% da Pos.)</th>
+            <th class="py-3 px-4 text-right rounded-tr-lg bg-amber-500/10 text-amber-200">${iconShare}% Share</th>
         `;
         
-        totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + curr.acel_realizado, 0);
+        totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + (curr.acel_realizado || 0), 0);
         
+        const fragment = document.createDocumentFragment();
         estrelasDetailedData.forEach((row, index) => {
-            const realizado = row.acel_realizado;
-            const metaPositivação = 0; // The actual Positivação Meta is 0 now. Later it'll be replaced.
+            const realizado = row.acel_realizado || 0;
+            const metaPositivação = 0;
             const meta = metaPositivação * 0.5; 
             const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
             
-            tbody.innerHTML += `
-                <tr class="border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}">
-                    <td class="py-3 px-4 whitespace-nowrap">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
-                    <td class="py-3 px-4 whitespace-nowrap text-slate-400">${escapeHtml(row.filial || 'N/D')}</td>
-                    <td class="py-3 px-4 text-right font-medium text-white">${realizado}</td>
-                    <td class="py-3 px-4 text-right text-slate-400">${meta}</td>
-                    <td class="py-3 px-4 text-right font-bold text-emerald-400">${share}%</td>
-                </tr>
+            const tr = document.createElement('tr');
+            tr.className = `border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}`;
+
+            tr.innerHTML = `
+                <td class="py-3 px-4 whitespace-nowrap text-slate-200">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
+                <td class="py-3 px-4 whitespace-nowrap"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs border border-slate-700">${escapeHtml(row.filial || 'N/D')}</span></td>
+                <td class="py-3 px-4 text-right font-medium text-white">${realizado}</td>
+                <td class="py-3 px-4 text-right text-slate-400">${meta}</td>
+                <td class="py-3 px-4 text-right font-bold text-amber-400">${share}%</td>
             `;
+            fragment.appendChild(tr);
         });
+        tbody.appendChild(fragment);
     }
 
     modal.classList.remove('hidden');
