@@ -109,7 +109,7 @@ BEGIN
                 -- Salty Positivacao
                 COUNT(DISTINCT CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.codcli END) as positivacao_salty,
                 -- Foods Positivacao
-                COUNT(DISTINCT CASE WHEN s.codfor IN (''1119'') THEN s.codcli END) as positivacao_foods
+                COUNT(DISTINCT CASE WHEN NOT EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.codfor NOT IN (''1119'')) AND EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.codfor IN (''1119'')) THEN s.codcli END) as positivacao_foods
             FROM target_sales s
         ),
         aceleradores_config AS (
@@ -129,7 +129,7 @@ BEGIN
                 SUM(CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.peso ELSE 0 END) as sellout_salty,
                 SUM(CASE WHEN s.codfor IN (''1119'') THEN s.peso ELSE 0 END) as sellout_foods,
                 COUNT(DISTINCT CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.codcli END) as pos_salty,
-                COUNT(DISTINCT CASE WHEN s.codfor IN (''1119'') THEN s.codcli END) as pos_foods,
+                COUNT(DISTINCT CASE WHEN NOT EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.codfor NOT IN (''1119'')) AND EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.codfor IN (''1119'')) THEN s.codcli END) as pos_foods,
                 COUNT(DISTINCT CASE WHEN (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias)) THEN s.codcli END) as acel_realizado,
                 COUNT(DISTINCT CASE WHEN (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) && ARRAY(SELECT jsonb_array_elements_text(s.categorias)) AND NOT ((SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias))) THEN s.codcli END) as acel_parcial
             FROM target_sales s
