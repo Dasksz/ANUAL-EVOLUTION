@@ -141,7 +141,7 @@ BEGIN
             FROM target_sales s
             LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
             GROUP BY dv.nome, s.filial
-            ORDER BY sellout_salty + sellout_foods DESC
+            ORDER BY COALESCE(SUM(CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.peso ELSE 0 END), 0) + COALESCE(SUM(CASE WHEN s.codfor IN (''1119'') THEN s.peso ELSE 0 END), 0) DESC
         ),
         detalhes_json AS (
             SELECT COALESCE(json_agg(row_to_json(d)), ''[]''::json) as detalhes_array
