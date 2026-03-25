@@ -378,10 +378,10 @@ BEGIN
     ),
     pre_aggregated_skus AS (
         SELECT
-            filial, cidade, codusur, codcli,
-            COUNT(DISTINCT sku) as dist_skus_per_cli
+            filial, cidade, codusur,
+            COUNT(DISTINCT codcli || '-' || sku) as dist_skus
         FROM current_skus
-        GROUP BY filial, cidade, codusur, codcli
+        GROUP BY filial, cidade, codusur
     ),
     
     monthly_freq AS (
@@ -433,7 +433,7 @@ BEGIN
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
             codusur as vendedor_cod,
-            SUM(dist_skus_per_cli) as sum_skus
+            SUM(dist_skus) as sum_skus
         FROM pre_aggregated_skus
         GROUP BY ROLLUP(filial, cidade, codusur)
     ),
