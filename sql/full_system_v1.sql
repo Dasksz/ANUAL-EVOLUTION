@@ -2316,25 +2316,17 @@ BEGIN
         GROUP BY fs.ano, fs.mes
     ),
     kpi_active_count AS (
-        SELECT COUNT(*) as val
-        FROM (
-            SELECT codcli
-            FROM filtered_summary
-            WHERE ano = $2
-            ' || CASE WHEN v_is_month_filtered THEN ' AND mes = $3 ' ELSE '' END || '
-            AND (
-                CASE
-                    WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1)
-                    ELSE tipovenda NOT IN (''5'', ''11'')
-                END
+        SELECT COUNT(DISTINCT codcli) as val
+        FROM filtered_summary
+        WHERE ano = $2
+        ' || CASE WHEN v_is_month_filtered THEN ' AND mes = $3 ' ELSE '' END || '
+        AND (
+            ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND bonificacao > 0 AND tipovenda = ANY($1) )
+            OR
+            ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND vlvenda >= 1 AND
+              (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1) ELSE tipovenda NOT IN (''5'', ''11'') END)
             )
-            GROUP BY codcli
-            HAVING (
-                ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(bonificacao) > 0 )
-                OR
-                ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(vlvenda) >= 1 )
-            )
-        ) t
+        )
     ),
     kpi_base_count AS (
         SELECT COUNT(*) as val FROM public.data_clients
