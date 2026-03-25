@@ -3,7 +3,16 @@ async function loadFrequencyTable(filters) {
     const tableFooter = document.getElementById('frequency-table-footer');
     if (!tableBody || !tableFooter) return;
 
-    tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-slate-400 text-xs">Carregando Frequência...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-slate-400 text-xs">Carregando Frequência...</td></tr>';\n
+    let mappedRedes = null;
+    if (filters.p_rede && filters.p_rede.length) {
+        mappedRedes = filters.p_rede.map(r => {
+            if (r === 'C/ REDE') return 'com_ramo';
+            if (r === 'S/ REDE') return 'sem_ramo';
+            return r;
+        });
+    }
+
 
     try {
         const reqFilters = {
@@ -15,7 +24,7 @@ async function loadFrequencyTable(filters) {
             p_ano: filters.p_ano || null,
             p_mes: (filters.p_mes !== null && filters.p_mes !== '') ? (parseInt(filters.p_mes) + 1).toString() : null,
             p_tipovenda: (filters.p_tipovenda && filters.p_tipovenda.length) ? filters.p_tipovenda : null,
-            p_rede: (filters.p_rede && filters.p_rede.length) ? filters.p_rede : null,
+            p_rede: mappedRedes,
             p_produto: (filters.p_produto && filters.p_produto.length) ? filters.p_produto : null,
             p_categoria: (filters.p_categoria && filters.p_categoria.length) ? filters.p_categoria : null
         };
