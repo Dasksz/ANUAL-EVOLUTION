@@ -7094,7 +7094,7 @@ window.clearAllFilters = async function(prefix) {
         const filters = {
             p_ano: null,
             p_mes: null,
-            p_cidade: null, p_filial: null, p_supervisor: null, p_vendedor: null,
+            p_cidade: [], p_filial: [], p_supervisor: [], p_vendedor: [],
             p_rede: null, p_tipovenda: null, p_categoria: []
         };
         supabase.rpc('get_dashboard_filters', filters).then(({data, error}) => {
@@ -7205,7 +7205,7 @@ window.clearAllFilters = async function(prefix) {
 
         const filters = {
             p_ano: null, p_mes: null, p_cidade: null, p_filial: null, p_supervisor: null,
-            p_vendedor: null, p_rede: null, p_tipovenda: null, p_categoria: null, p_fornecedor: null
+            p_vendedor: [], p_rede: [], p_tipovenda: [], p_categoria: [], p_fornecedor: []
         };
         supabase.rpc('get_dashboard_filters', filters).then(({data, error}) => {
             if (data && !error && typeof setupCityMultiSelect === 'function') {
@@ -7477,29 +7477,29 @@ async function updateEstrelasView() {
         };
 
         // Update UI
-        updateEl('sellout-realizado-val', `${data.sellout_salty + data.sellout_foods < 0.01 ? '0.00' : (data.sellout_salty + data.sellout_foods).toFixed(2)} tons`);
-        updateEl('sellout-salty-val', `${data.sellout_salty < 0.01 ? '0.00' : data.sellout_salty.toFixed(2)} tons`);
-        updateEl('sellout-foods-val', `${data.sellout_foods < 0.01 ? '0.00' : data.sellout_foods.toFixed(2)} tons`);
+        updateEl('sellout-realizado-val', `${(data.sellout_salty || 0) + (data.sellout_foods || 0) < 0.01 ? '0.00' : ((data.sellout_salty || 0) + (data.sellout_foods || 0)).toFixed(2)} tons`);
+        updateEl('sellout-salty-val', `${(data.sellout_salty || 0) < 0.01 ? '0.00' : (data.sellout_salty || 0).toFixed(2)} tons`);
+        updateEl('sellout-foods-val', `${(data.sellout_foods || 0) < 0.01 ? '0.00' : (data.sellout_foods || 0).toFixed(2)} tons`);
         
         // Remove old unused nodes safely if they exist in DOM (just in case they weren't removed from HTML)
-        updateEl('pontos-possiveis-sellout', data.base_clientes);
+        updateEl('pontos-possiveis-sellout', (data.base_clientes || 0));
         updateEl('pontos-parciais-sellout', 0);
 
         // Store the details globally for the modal
         estrelasDetailedData = data.detalhes || [];
-        estrelasQtdMarcas = data.aceleradores_qtd_marcas || 0;
+        estrelasQtdMarcas = (data.aceleradores_qtd_marcas || 0) || 0;
 
-        updateEl('pos-realizado-salty-val', `${data.positivacao_salty} PDV(s)`);
-        updateEl('pos-realizado-foods-val', `${data.positivacao_foods} PDV(s)`);
-        updateEl('pontos-possiveis-pos', data.base_clientes);
+        updateEl('pos-realizado-salty-val', `${(data.positivacao_salty || 0)} PDV(s)`);
+        updateEl('pos-realizado-foods-val', `${(data.positivacao_foods || 0)} PDV(s)`);
+        updateEl('pontos-possiveis-pos', (data.base_clientes || 0));
 
-        updateEl('aceleradores-realizado-val', data.aceleradores_realizado);
+        updateEl('aceleradores-realizado-val', (data.aceleradores_realizado || 0));
         updateEl('aceleradores-parcial-val', data.aceleradores_parcial);
-        updateEl('pontos-possiveis-acel', data.base_clientes);
+        updateEl('pontos-possiveis-acel', (data.base_clientes || 0));
 
         // Progress Bars
-        let pctPos = data.base_clientes > 0 ? (data.positivacao_salty / data.base_clientes) * 100 : 0;
-        let pctAcel = data.base_clientes > 0 ? (data.aceleradores_realizado / data.base_clientes) * 100 : 0;
+        let pctPos = (data.base_clientes || 0) > 0 ? ((data.positivacao_salty || 0) / (data.base_clientes || 0)) * 100 : 0;
+        let pctAcel = (data.base_clientes || 0) > 0 ? ((data.aceleradores_realizado || 0) / (data.base_clientes || 0)) * 100 : 0;
         
         updateEl('pos-salty-bar', `${Math.min(pctPos, 100).toFixed(0)}%`, true);
         updateEl('pos-salty-pct', `${pctPos.toFixed(0)}%`);
