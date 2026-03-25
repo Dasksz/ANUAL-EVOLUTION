@@ -1669,10 +1669,12 @@ FOR SELECT
 USING (true);
 
 DROP POLICY IF EXISTS "Acesso de escrita restrito a administradores" ON public.config_aceleradores;
-CREATE POLICY "Acesso de escrita restrito a administradores"
-ON public.config_aceleradores
-FOR ALL
-USING (public.is_admin());
+DROP POLICY IF EXISTS "Acesso de escrita restrito a administradores_insert" ON public.config_aceleradores;
+CREATE POLICY "Acesso de escrita restrito a administradores_insert" ON public.config_aceleradores FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Acesso de escrita restrito a administradores_update" ON public.config_aceleradores;
+CREATE POLICY "Acesso de escrita restrito a administradores_update" ON public.config_aceleradores FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Acesso de escrita restrito a administradores_delete" ON public.config_aceleradores;
+CREATE POLICY "Acesso de escrita restrito a administradores_delete" ON public.config_aceleradores FOR DELETE USING (public.is_admin());
 
 CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_filial text[] default null,
@@ -3594,7 +3596,12 @@ DROP POLICY IF EXISTS "Unified Read Access" ON public.data_metadata;
 CREATE POLICY "Unified Read Access" ON public.data_metadata FOR SELECT USING (public.is_admin()); -- Only admins need to see metadata for upload
 
 DROP POLICY IF EXISTS "Admin All" ON public.data_metadata;
-CREATE POLICY "Admin All" ON public.data_metadata FOR ALL USING (public.is_admin());
+DROP POLICY IF EXISTS "Admin Insert" ON public.data_metadata;
+CREATE POLICY "Admin Insert" ON public.data_metadata FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Update" ON public.data_metadata;
+CREATE POLICY "Admin Update" ON public.data_metadata FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "Admin Delete" ON public.data_metadata;
+CREATE POLICY "Admin Delete" ON public.data_metadata FOR DELETE USING (public.is_admin());
 
 -- 2. Add Hash Column ONLY for Clients (Sales use Chunking)
 ALTER TABLE public.data_clients ADD COLUMN IF NOT EXISTS row_hash text;
@@ -4655,3 +4662,18 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.search_loja_perfeita_clients(text, text[], text[], text[], text[], text[]) TO anon, authenticated;
+
+
+-- FIX LINTER WARNINGS: SEARCH_PATH
+ALTER FUNCTION public.append_to_chunk_v2(p_table_name text, p_rows jsonb) SET search_path = public;
+ALTER FUNCTION public.sync_chunk_v2(p_table_name text, p_chunk_key text, p_rows jsonb, p_hash text) SET search_path = public;
+ALTER FUNCTION public.get_frequency_table_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_fornecedor text[], p_tipovenda text[], p_rede text[], p_produto text[], p_categoria text[]) SET search_path = public;
+ALTER FUNCTION public.get_frequency_table_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_fornecedor text[], p_ano text, p_mes text, p_tipovenda text[], p_rede text[], p_produto text[], p_categoria text[]) SET search_path = public;
+ALTER FUNCTION public.get_frequency_table_data(p_diretoria text[], p_gerencia text[], p_filial text[], p_vendedor text[], p_supervisor text[], p_ano text, p_mes text, p_fornecedor text[], p_rede text[], p_produto text[], p_categoria text[], p_tipovenda text[]) SET search_path = public;
+ALTER FUNCTION public.update_products_stock(p_stock_data jsonb) SET search_path = public;
+ALTER FUNCTION public.classify_product_mix() SET search_path = public;
+ALTER FUNCTION public.get_innovations_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[], p_tipovenda text[], p_categoria_inovacao text, p_ano text, p_mes text) SET search_path = public;
+ALTER FUNCTION public.get_loja_perfeita_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[]) SET search_path = public;
+ALTER FUNCTION public.get_loja_perfeita_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[], p_codcli text) SET search_path = public;
+ALTER FUNCTION public.search_clients(p_search text) SET search_path = public;
+ALTER FUNCTION public.search_loja_perfeita_clients(p_search text, p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[]) SET search_path = public;
