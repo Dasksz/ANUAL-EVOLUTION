@@ -167,8 +167,8 @@ function escapeHtml(unsafe) {
 
 // --- Logging System ---
 const AppLog = {
-    log: (...args) => AppLog.log(...args),
-    warn: (...args) => AppLog.warn(...args),
+    log: (...args) => console.log(...args),
+    warn: (...args) => console.warn(...args),
     error: (...args) => AppLog.error(...args)
 };
 
