@@ -3903,7 +3903,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$BODY$
+AS $BODY$
 DECLARE
     v_result json;
     v_where_base text := ' WHERE 1=1 ';
@@ -4188,7 +4188,7 @@ BEGIN
 
     RETURN v_result;
 END;
-$BODY$$;
+$BODY$;
 -- Function to retrieve innovations dashboard data
 -- Updated with new attended bases for percentage calculation
 CREATE OR REPLACE FUNCTION get_innovations_data(
