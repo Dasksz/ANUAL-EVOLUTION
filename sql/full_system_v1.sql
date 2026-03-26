@@ -4761,7 +4761,7 @@ AS $$
 DECLARE
     v_current_year int;
     v_target_month int;
-    v_where_chart text := ' WHERE 1=1 AND s.vlvenda >= 1 AND s.tipovenda NOT IN (''5'', ''11'') ';
+    v_where_chart text := ' WHERE 1=1 ';
     v_where_rede text := '';
     v_sql text;
     v_result json;
