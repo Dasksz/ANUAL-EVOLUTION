@@ -7787,7 +7787,7 @@ function renderFrequencyChart(data) {
                     borderColor: '#1A73E8', // Blue
                     backgroundColor: '#1A73E8',
                     tension: 0.4,
-                    borderWidth: 3,
+                    borderWidth: 1.5,
                     pointRadius: 2.5,
                     pointBackgroundColor: '#1A73E8',
                     spanGaps: true
