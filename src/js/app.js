@@ -3940,7 +3940,7 @@ let estrelasSelectedCategorias = [];
                  rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-white">${ind.fmt(tVal)}</td>`;
             }
             rowHTML += '</tr>';
-            tableBody.innerHTML += rowHTML;
+            tableBody.insertAdjacentHTML("beforeend", rowHTML);
         });
     }
 
@@ -6503,7 +6503,7 @@ const setupInnovationsFilters = async () => {
     if (anoSelect && filterData.anos) {
         anoSelect.innerHTML = '<option value="todos">Todos</option>';
         filterData.anos.forEach(ano => {
-            anoSelect.innerHTML += `<option value="${ano}">${ano}</option>`;
+            anoSelect.insertAdjacentHTML("beforeend", `<option value="${ano}">${ano}</option>`);
         });
 
         // Initial filter values
@@ -7382,7 +7382,7 @@ const setupEstrelasFilters = async () => {
     if (anoSelect && filterData.anos) {
         anoSelect.innerHTML = '<option value="todos">Todos</option>';
         filterData.anos.forEach(ano => {
-            anoSelect.innerHTML += `<option value="${ano}">${ano}</option>`;
+            anoSelect.insertAdjacentHTML("beforeend", `<option value="${ano}">${ano}</option>`);
         });
 
         let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
