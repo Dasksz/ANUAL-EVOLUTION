@@ -370,22 +370,12 @@ let estrelasSelectedCategorias = [];
     if (profileMenuBtn && profileDropdown) {
         profileMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const isHidden = profileDropdown.classList.toggle('hidden');
-            profileMenuBtn.setAttribute('aria-expanded', !isHidden);
+            profileDropdown.classList.toggle('hidden');
         });
 
         document.addEventListener('click', (e) => {
             if (!profileDropdown.contains(e.target) && !profileMenuBtn.contains(e.target)) {
                 profileDropdown.classList.add('hidden');
-                profileMenuBtn.setAttribute('aria-expanded', 'false');
-            }
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !profileDropdown.classList.contains('hidden')) {
-                profileDropdown.classList.add('hidden');
-                profileMenuBtn.setAttribute('aria-expanded', 'false');
-                profileMenuBtn.focus();
             }
         });
     }
@@ -7889,45 +7879,57 @@ function renderMixSaltyFoodsChart(data) {
         }
     });
 
+    const saltySum = saltyData.reduce((a, b) => a + b, 0);
+    const foodsSum = foodsData.reduce((a, b) => a + b, 0);
+    const ambasSum = ambasData.reduce((a, b) => a + b, 0);
+
+    const datasets = [
+        {
+            label: 'Salty',
+            data: saltyData,
+            borderColor: '#F97316', // orange
+            backgroundColor: 'rgba(249, 115, 22, 0.2)',
+            tension: 0.4,
+            borderWidth: 2,
+            pointRadius: 4,
+            pointBackgroundColor: '#F97316',
+            fill: true,
+            _sum: saltySum
+        },
+        {
+            label: 'Foods',
+            data: foodsData,
+            borderColor: '#3B82F6', // blue
+            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+            tension: 0.4,
+            borderWidth: 2,
+            pointRadius: 4,
+            pointBackgroundColor: '#3B82F6',
+            fill: true,
+            _sum: foodsSum
+        },
+        {
+            label: 'Ambas',
+            data: ambasData,
+            borderColor: '#A855F7', // purple
+            backgroundColor: 'rgba(168, 85, 247, 0.2)',
+            tension: 0.4,
+            borderWidth: 2,
+            pointRadius: 4,
+            pointBackgroundColor: '#A855F7',
+            fill: true,
+            _sum: ambasSum
+        }
+    ];
+
+    // Ordenar para desenhar primeiro os maiores volumes (atrás), depois os menores (na frente)
+    datasets.sort((a, b) => b._sum - a._sum);
+
     mixSaltyFoodsChartInstance = new Chart(canvas, {
         type: 'line',
         data: {
             labels: monthInitials,
-            datasets: [
-                {
-                    label: 'Salty',
-                    data: saltyData,
-                    borderColor: '#F97316', // orange
-                    backgroundColor: 'rgba(249, 115, 22, 0.2)',
-                    tension: 0.4,
-                    borderWidth: 2,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#F97316',
-                    fill: true
-                },
-                {
-                    label: 'Foods',
-                    data: foodsData,
-                    borderColor: '#3B82F6', // blue
-                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                    tension: 0.4,
-                    borderWidth: 2,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#3B82F6',
-                    fill: true
-                },
-                {
-                    label: 'Ambas',
-                    data: ambasData,
-                    borderColor: '#A855F7', // purple
-                    backgroundColor: 'rgba(168, 85, 247, 0.2)',
-                    tension: 0.4,
-                    borderWidth: 2,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#A855F7',
-                    fill: true
-                }
-            ]
+            datasets: datasets
         },
         options: {
             responsive: true,
