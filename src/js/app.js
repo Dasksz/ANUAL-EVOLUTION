@@ -7776,8 +7776,8 @@ function renderFrequencyChart(data) {
                     backgroundColor: '#CBD5E1',
                     borderDash: [5, 5],
                     tension: 0.4,
-                    borderWidth: 2,
-                    pointRadius: 4,
+                    borderWidth: 1.5,
+                    pointRadius: 2.5,
                     pointBackgroundColor: '#CBD5E1',
                     spanGaps: true
                 },
@@ -7788,7 +7788,7 @@ function renderFrequencyChart(data) {
                     backgroundColor: '#1A73E8',
                     tension: 0.4,
                     borderWidth: 3,
-                    pointRadius: 4,
+                    pointRadius: 2.5,
                     pointBackgroundColor: '#1A73E8',
                     spanGaps: true
                 }
@@ -7890,8 +7890,8 @@ function renderMixSaltyFoodsChart(data) {
             borderColor: '#F97316', // orange
             backgroundColor: 'rgba(249, 115, 22, 0.2)',
             tension: 0.4,
-            borderWidth: 2,
-            pointRadius: 4,
+            borderWidth: 1.5,
+            pointRadius: 2.5,
             pointBackgroundColor: '#F97316',
             fill: true,
             _sum: saltySum
@@ -7902,8 +7902,8 @@ function renderMixSaltyFoodsChart(data) {
             borderColor: '#3B82F6', // blue
             backgroundColor: 'rgba(59, 130, 246, 0.2)',
             tension: 0.4,
-            borderWidth: 2,
-            pointRadius: 4,
+            borderWidth: 1.5,
+            pointRadius: 2.5,
             pointBackgroundColor: '#3B82F6',
             fill: true,
             _sum: foodsSum
@@ -7914,8 +7914,8 @@ function renderMixSaltyFoodsChart(data) {
             borderColor: '#A855F7', // purple
             backgroundColor: 'rgba(168, 85, 247, 0.2)',
             tension: 0.4,
-            borderWidth: 2,
-            pointRadius: 4,
+            borderWidth: 1.5,
+            pointRadius: 2.5,
             pointBackgroundColor: '#A855F7',
             fill: true,
             _sum: ambasSum
