@@ -3,7 +3,7 @@ async function loadFrequencyTable(filters) {
     const tableFooter = document.getElementById('frequency-table-footer');
     if (!tableBody || !tableFooter) return;
 
-    tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-slate-400 text-xs">Carregando Frequência...</td></tr>';\n
+    tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-slate-400 text-xs">Carregando Frequência...</td></tr>';
     let mappedRedes = null;
     if (filters.p_rede && filters.p_rede.length) {
         mappedRedes = filters.p_rede.map(r => {
@@ -359,9 +359,9 @@ function renderMixSaltyFoodsChart(data) {
     chartData.forEach(row => {
         const monthIndex = row.mes - 1;
         if (monthIndex >= 0 && monthIndex < 12) {
-            saltyData[monthIndex] = row.total_salty || null;
-            foodsData[monthIndex] = row.total_foods || null;
-            ambasData[monthIndex] = row.total_ambas || null;
+            saltyData[monthIndex] = row.total_salty !== undefined ? row.total_salty : null;
+            foodsData[monthIndex] = row.total_foods !== undefined ? row.total_foods : null;
+            ambasData[monthIndex] = row.total_ambas !== undefined ? row.total_ambas : null;
         }
     });
 
@@ -451,7 +451,7 @@ function renderMixSaltyFoodsChart(data) {
                 },
                 y: {
                     display: false, // Hide Y axis like in frequency chart
-                    beginAtZero: true,
+                    min: 0,
                     grace: '10%'
                 }
             }
