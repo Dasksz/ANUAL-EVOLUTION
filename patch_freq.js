@@ -43,16 +43,16 @@ function renderMixSaltyFoodsChart(data) {
     // We only have the current year data in chartData because of the SQL constraint
     // Always initialize with 12 months array for the current year
     const monthInitials = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-    const saltyData = new Array(12).fill(null);
-    const foodsData = new Array(12).fill(null);
-    const ambasData = new Array(12).fill(null);
+    const saltyData = new Array(12).fill(0);
+    const foodsData = new Array(12).fill(0);
+    const ambasData = new Array(12).fill(0);
 
     chartData.forEach(row => {
         const monthIndex = row.mes - 1;
         if (monthIndex >= 0 && monthIndex < 12) {
-            saltyData[monthIndex] = row.total_salty !== undefined ? row.total_salty : null;
-            foodsData[monthIndex] = row.total_foods !== undefined ? row.total_foods : null;
-            ambasData[monthIndex] = row.total_ambas !== undefined ? row.total_ambas : null;
+            saltyData[monthIndex] = row.total_salty !== undefined ? row.total_salty : 0;
+            foodsData[monthIndex] = row.total_foods !== undefined ? row.total_foods : 0;
+            ambasData[monthIndex] = row.total_ambas !== undefined ? row.total_ambas : 0;
         }
     });
 
@@ -71,7 +71,6 @@ function renderMixSaltyFoodsChart(data) {
                     pointRadius: 4,
                     pointBackgroundColor: '#F97316',
                     fill: true,
-                    spanGaps: true
                 },
                 {
                     label: 'Foods',
@@ -83,7 +82,6 @@ function renderMixSaltyFoodsChart(data) {
                     pointRadius: 4,
                     pointBackgroundColor: '#3B82F6',
                     fill: true,
-                    spanGaps: true
                 },
                 {
                     label: 'Ambas',
@@ -95,7 +93,6 @@ function renderMixSaltyFoodsChart(data) {
                     pointRadius: 4,
                     pointBackgroundColor: '#A855F7',
                     fill: true,
-                    spanGaps: true
                 }
             ]
         },
