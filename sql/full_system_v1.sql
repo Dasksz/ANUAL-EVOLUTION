@@ -1955,6 +1955,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+    SET LOCAL statement_timeout = '600s'; -- 10 minutes to allow index rebuilding without API timeout
     IF NOT public.is_admin() THEN
         RETURN 'Acesso negado: Apenas administradores podem otimizar o banco.';
     END IF;
@@ -1989,12 +1990,6 @@ BEGIN
     CREATE INDEX IF NOT EXISTS idx_summary_ano_codcli ON public.data_summary (ano, codcli);
     CREATE INDEX IF NOT EXISTS idx_summary_ano_ramo ON public.data_summary (ano, ramo);
     
-    -- Re-cluster table for physical order optimization (Manual Only)
-    BEGIN
-        CLUSTER public.data_summary USING idx_summary_ano_filial;
-    EXCEPTION WHEN OTHERS THEN
-        NULL; -- Ignore clustering errors if any
-    END;
 
     RETURN 'Banco de dados otimizado com sucesso! Índices reconstruídos.';
 EXCEPTION WHEN OTHERS THEN
