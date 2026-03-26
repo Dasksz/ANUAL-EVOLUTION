@@ -328,6 +328,8 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
             const searchedKeyParts = new Set();
             const allKnownKeys = new Set();
 
+            let lastProcessedRow = null;
+
             const getVal = (row, keyPart) => {
                 if (!row) return undefined;
                 // 1. Direct match (fastest path)
@@ -342,17 +344,24 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                 }
 
                 // 3. Fast exit for known missing keys
-                let hasNewKeys = false;
-                for (const k in row) {
-                    if (!allKnownKeys.has(k)) {
-                        allKnownKeys.add(k);
-                        hasNewKeys = true;
+                // Bolt Optimization: Only check for new keys once per row reference to avoid
+                // redundant O(N) object key iterations for every missing property lookup.
+                if (row !== lastProcessedRow) {
+                    let hasNewKeys = false;
+                    for (const k in row) {
+                        if (!allKnownKeys.has(k)) {
+                            allKnownKeys.add(k);
+                            hasNewKeys = true;
+                        }
                     }
+
+                    if (hasNewKeys) {
+                        searchedKeyParts.clear();
+                    }
+                    lastProcessedRow = row;
                 }
 
-                if (hasNewKeys) {
-                    searchedKeyParts.clear();
-                } else if (searchedKeyParts.has(keyPart)) {
+                if (searchedKeyParts.has(keyPart)) {
                     return undefined;
                 }
 
