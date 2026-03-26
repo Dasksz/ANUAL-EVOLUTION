@@ -4854,12 +4854,12 @@ BEGIN
     -- Dynamic Query using the exact same logic from get_comparison_view_data
     v_sql := '
     WITH all_sales AS (
-        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.descricao, s.codfor
+        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.mix_marca, dp.mix_categoria, s.codfor
         FROM public.data_detailed s
         LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
         ' || v_where_chart || v_where_rede || '
         UNION ALL
-        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.descricao, s.codfor
+        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.mix_marca, dp.mix_categoria, s.codfor
         FROM public.data_history s
         LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
         ' || v_where_chart || v_where_rede || '
@@ -4869,7 +4869,8 @@ BEGIN
             EXTRACT(MONTH FROM dtped)::int as mes,
             codcli,
             produto,
-            MAX(descricao) as descricao,
+            MAX(mix_marca) as mix_marca,
+            MAX(mix_categoria) as mix_cat,
             MAX(codfor) as codfor,
             SUM(vlvenda) as prod_val
         FROM all_sales
@@ -4880,15 +4881,15 @@ BEGIN
             mes,
             codcli,
             SUM(prod_val) as total_val,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%CHEETOS%'' THEN 1 ELSE 0 END) as has_cheetos,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%DORITOS%'' THEN 1 ELSE 0 END) as has_doritos,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%FANDANGOS%'' THEN 1 ELSE 0 END) as has_fandangos,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%RUFFLES%'' THEN 1 ELSE 0 END) as has_ruffles,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%TORCIDA%'' THEN 1 ELSE 0 END) as has_torcida,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%TODDYNHO%'' THEN 1 ELSE 0 END) as has_toddynho,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%TODDY %'' THEN 1 ELSE 0 END) as has_toddy,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%QUAKER%'' THEN 1 ELSE 0 END) as has_quaker,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%KEROCOCO%'' THEN 1 ELSE 0 END) as has_kerococo
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''RUFFLES'' THEN 1 ELSE 0 END) as has_ruffles,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TORCIDA'' THEN 1 ELSE 0 END) as has_torcida,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDYNHO'' THEN 1 ELSE 0 END) as has_toddynho,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDY'' THEN 1 ELSE 0 END) as has_toddy,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''QUAKER'' THEN 1 ELSE 0 END) as has_quaker,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''KEROCOCO'' THEN 1 ELSE 0 END) as has_kerococo
         FROM prod_agg
         GROUP BY 1, 2
     ),
