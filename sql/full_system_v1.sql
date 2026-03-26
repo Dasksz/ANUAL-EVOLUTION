@@ -4766,9 +4766,16 @@ AS $$
 DECLARE
     v_current_year int;
     v_target_month int;
-    v_where_chart text := ' WHERE tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1 ';
+    v_where_chart text := ' WHERE 1=1 AND s.vlvenda >= 1 AND s.tipovenda NOT IN (''5'', ''11'') ';
+    v_where_rede text := '';
     v_sql text;
     v_result json;
+
+    -- Rede Logic Vars
+    v_has_com_rede boolean;
+    v_has_sem_rede boolean;
+    v_specific_redes text[];
+    v_rede_condition text := '';
 BEGIN
     SET LOCAL work_mem = '64MB';
     SET LOCAL statement_timeout = '120s';
@@ -4780,102 +4787,129 @@ BEGIN
         v_current_year := p_ano::int;
     END IF;
 
-    -- For the chart we always want the full current year to show the trend
-    v_where_chart := v_where_chart || ' AND ano = ' || v_current_year || ' ';
+    v_where_chart := v_where_chart || ' AND s.dtped >= make_date(' || v_current_year || ', 1, 1) AND s.dtped <= make_date(' || v_current_year || ', 12, 31) ';
 
     -- 2. Build Where Clauses
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_filial)) THEN
-            v_where_chart := v_where_chart || ' AND filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
+            v_where_chart := v_where_chart || ' AND s.filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
         END IF;
     END IF;
 
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+        v_where_chart := v_where_chart || ' AND s.codcli IN (SELECT codigo_cliente FROM public.data_clients WHERE cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || '''])) ';
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_fornecedor)) THEN
-            v_where_chart := v_where_chart || ' AND codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
+            v_where_chart := v_where_chart || ' AND s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
         END IF;
     END IF;
 
+    -- REDE Logic (same as comparativo)
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-        IF ('com_ramo' = ANY(p_rede) OR 'C/ REDE' = ANY(p_rede)) AND ('sem_ramo' = ANY(p_rede) OR 'S/ REDE' = ANY(p_rede)) THEN
-            -- Do nothing
-        ELSIF 'com_ramo' = ANY(p_rede) OR 'C/ REDE' = ANY(p_rede) THEN
-            v_where_chart := v_where_chart || ' AND rede IS NOT NULL AND rede != '''' ';
-        ELSIF 'sem_ramo' = ANY(p_rede) OR 'S/ REDE' = ANY(p_rede) THEN
-            v_where_chart := v_where_chart || ' AND (rede IS NULL OR rede = '''') ';
-        ELSE
-            v_where_chart := v_where_chart || ' AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
-        END IF;
+       v_has_com_rede := ('C/ REDE' = ANY(p_rede));
+       v_has_sem_rede := ('S/ REDE' = ANY(p_rede));
+       v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
+
+       IF array_length(v_specific_redes, 1) > 0 THEN
+           v_rede_condition := format('c.ramo = ANY(ARRAY[''%s''])', array_to_string(v_specific_redes, ''','''));
+       END IF;
+
+       IF v_has_com_rede THEN
+           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+           v_rede_condition := v_rede_condition || ' (c.ramo IS NOT NULL AND c.ramo NOT IN (''N/A'', ''N/D'')) ';
+       END IF;
+
+       IF v_has_sem_rede THEN
+           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+           v_rede_condition := v_rede_condition || ' (c.ramo IS NULL OR c.ramo IN (''N/A'', ''N/D'')) ';
+       END IF;
+
+       IF v_rede_condition != '' THEN
+           v_where_rede := ' AND EXISTS (SELECT 1 FROM public.data_clients c WHERE c.codigo_cliente = s.codcli AND (' || v_rede_condition || ')) ';
+       END IF;
     END IF;
 
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND produtos ?| ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
+        v_where_chart := v_where_chart || ' AND s.produto = ANY(ARRAY[''' || array_to_string(p_produto, ''',''') || ''']) ';
     END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND categorias ?| ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
+        v_where_chart := v_where_chart || ' AND dp.categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || ''']) ';
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
+        v_where_chart := v_where_chart || ' AND s.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
     END IF;
 
-    -- Dynamic Query
-    -- To find if a client positivou Salty: needs ALL 5 categories
-    -- To find if a client positivou Foods: needs ALL 4 categories (either TODDY or TODDY )
+    -- Dynamic Query using the exact same logic from get_comparison_view_data
     v_sql := '
-    WITH monthly_client_categories AS (
-        SELECT
-            ano,
-            mes,
-            codcli,
-            jsonb_agg(categorias) as all_categorias_month
-        FROM public.data_summary_frequency s
-        ' || v_where_chart || '
-        GROUP BY ano, mes, codcli
+    WITH all_sales AS (
+        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.descricao, s.codfor
+        FROM public.data_detailed s
+        LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+        ' || v_where_chart || v_where_rede || '
+        UNION ALL
+        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.descricao, s.codfor
+        FROM public.data_history s
+        LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+        ' || v_where_chart || v_where_rede || '
     ),
-    client_pos_flags AS (
+    prod_agg AS (
         SELECT
-            ano,
+            EXTRACT(MONTH FROM dtped)::int as mes,
+            codcli,
+            produto,
+            MAX(descricao) as descricao,
+            MAX(codfor) as codfor,
+            SUM(vlvenda) as prod_val
+        FROM all_sales
+        GROUP BY 1, 2, 3
+    ),
+    monthly_mix AS (
+        SELECT
             mes,
             codcli,
-            (
-                all_categorias_month::text LIKE ''%"CHEETOS"%'' AND
-                all_categorias_month::text LIKE ''%"DORITOS"%'' AND
-                all_categorias_month::text LIKE ''%"FANDANGOS"%'' AND
-                all_categorias_month::text LIKE ''%"RUFFLES"%'' AND
-                all_categorias_month::text LIKE ''%"TORCIDA"%''
-            ) as is_salty,
-            (
-                all_categorias_month::text LIKE ''%"TODDYNHO"%'' AND
-                (all_categorias_month::text LIKE ''%"TODDY"%'' OR all_categorias_month::text LIKE ''%"TODDY "%'') AND
-                all_categorias_month::text LIKE ''%"QUAKER"%'' AND
-                all_categorias_month::text LIKE ''%"KEROCOCO"%''
-            ) as is_foods
-        FROM monthly_client_categories
+            SUM(prod_val) as total_val,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%CHEETOS%'' THEN 1 ELSE 0 END) as has_cheetos,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%DORITOS%'' THEN 1 ELSE 0 END) as has_doritos,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%FANDANGOS%'' THEN 1 ELSE 0 END) as has_fandangos,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%RUFFLES%'' THEN 1 ELSE 0 END) as has_ruffles,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%TORCIDA%'' THEN 1 ELSE 0 END) as has_torcida,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%TODDYNHO%'' THEN 1 ELSE 0 END) as has_toddynho,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%TODDY %'' THEN 1 ELSE 0 END) as has_toddy,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%QUAKER%'' THEN 1 ELSE 0 END) as has_quaker,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%KEROCOCO%'' THEN 1 ELSE 0 END) as has_kerococo
+        FROM prod_agg
+        GROUP BY 1, 2
+    ),
+    monthly_flags AS (
+        SELECT
+            mes,
+            codcli,
+            (has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1) as is_salty,
+            (has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1) as is_foods
+        FROM monthly_mix
     ),
     chart_data AS (
         SELECT
-            ano,
+            ' || v_current_year || ' as ano,
             mes,
             COUNT(DISTINCT CASE WHEN is_salty THEN codcli END) as total_salty,
             COUNT(DISTINCT CASE WHEN is_foods THEN codcli END) as total_foods,
             COUNT(DISTINCT CASE WHEN is_salty AND is_foods THEN codcli END) as total_ambas
-        FROM client_pos_flags
-        GROUP BY ano, mes
-        ORDER BY ano, mes
+        FROM monthly_flags
+        GROUP BY mes
+        ORDER BY mes
     )
     SELECT COALESCE(json_agg(row_to_json(chart_data)), ''[]''::json) FROM chart_data;
     ';
