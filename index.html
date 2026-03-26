@@ -403,32 +403,38 @@
             <a id="nav-estrelas-btn" class="nav-link">Estrelas</a>
         </nav>
         <div class="top-nav-actions relative">
-            <div class="user-avatar cursor-pointer hover:ring-2 hover:ring-orange-500 transition-all" id="profile-menu-btn" title="Perfil">
+            <button class="user-avatar cursor-pointer hover:ring-2 hover:ring-orange-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 transition-all" id="profile-menu-btn" title="Perfil" aria-label="Menu do usuário" aria-haspopup="menu" aria-expanded="false" aria-controls="profile-dropdown">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-            </div>
+            </button>
 
             <!-- Dropdown Menu -->
-            <div id="profile-dropdown" class="hidden absolute right-0 top-full mt-2 w-56 bg-[#0f0e13] border border-white/10 rounded-xl shadow-2xl py-2 z-[99999]">
+            <div id="profile-dropdown" class="hidden absolute right-0 top-full mt-2 w-56 bg-[#0f0e13] border border-white/10 rounded-xl shadow-2xl py-2 z-[99999]" role="menu" aria-orientation="vertical" aria-labelledby="profile-menu-btn">
                 <!-- User Info -->
-                <div class="px-4 py-3 border-b border-white/10 mb-2">
-                    <p id="profile-dropdown-name" class="text-sm font-bold text-white">Usuário</p>
-                    <p id="profile-dropdown-role" class="text-xs text-slate-400 uppercase tracking-wider mt-0.5">ADM</p>
+                <div class="px-4 py-3 border-b border-white/10 mb-2 flex flex-col gap-1">
+                    <p class="text-sm font-bold text-white flex items-center gap-2">
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span id="profile-dropdown-name">Usuário</span>
+                    </p>
+                    <p class="text-xs text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
+                        <span id="profile-dropdown-role">ADM</span>
+                    </p>
                 </div>
 
                 <!-- Actions -->
-                <button id="nav-uploader" class="w-full hidden text-left px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-orange-500 transition-colors flex items-center gap-3">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                <button id="nav-uploader" role="menuitem" class="w-full hidden text-left px-4 py-2.5 text-sm text-slate-300 hover:bg-orange-500/10 hover:text-orange-500 hover:pl-6 transition-all duration-200 flex items-center gap-3 group">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                     Upload de Arquivos
                 </button>
-                <button id="optimize-db-btn-nav" class="w-full hidden text-left px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-orange-500 transition-colors flex items-center gap-3">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <button id="optimize-db-btn-nav" role="menuitem" class="w-full hidden text-left px-4 py-2.5 text-sm text-slate-300 hover:bg-orange-500/10 hover:text-orange-500 hover:pl-6 transition-all duration-200 flex items-center gap-3 group">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     Otimizar Banco
                 </button>
 
                 <div class="border-t border-white/10 my-2"></div>
 
-                <button id="logout-btn" class="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors flex items-center gap-3">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                <button id="logout-btn" role="menuitem" class="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 hover:pl-6 transition-all duration-200 flex items-center gap-3 group">
+                    <svg class="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                     Sair
                 </button>
             </div>

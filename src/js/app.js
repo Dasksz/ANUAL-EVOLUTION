@@ -370,12 +370,22 @@ let estrelasSelectedCategorias = [];
     if (profileMenuBtn && profileDropdown) {
         profileMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            profileDropdown.classList.toggle('hidden');
+            const isHidden = profileDropdown.classList.toggle('hidden');
+            profileMenuBtn.setAttribute('aria-expanded', !isHidden);
         });
 
         document.addEventListener('click', (e) => {
             if (!profileDropdown.contains(e.target) && !profileMenuBtn.contains(e.target)) {
                 profileDropdown.classList.add('hidden');
+                profileMenuBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !profileDropdown.classList.contains('hidden')) {
+                profileDropdown.classList.add('hidden');
+                profileMenuBtn.setAttribute('aria-expanded', 'false');
+                profileMenuBtn.focus();
             }
         });
     }
