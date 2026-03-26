@@ -169,7 +169,7 @@ function escapeHtml(unsafe) {
 const AppLog = {
     log: (...args) => console.log(...args),
     warn: (...args) => console.warn(...args),
-    error: (...args) => AppLog.error(...args)
+    error: (...args) => console.error(...args)
 };
 
 // --- Toast Notification System ---
