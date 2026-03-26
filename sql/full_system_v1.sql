@@ -1168,15 +1168,15 @@ BEGIN
     NEW.mix_marca := NULL;
     NEW.mix_categoria := NULL;
 
-    IF NEW.descricao ILIKE '%CHEETOS%' THEN NEW.mix_marca := 'CHEETOS';
-    ELSIF NEW.descricao ILIKE '%DORITOS%' THEN NEW.mix_marca := 'DORITOS';
-    ELSIF NEW.descricao ILIKE '%FANDANGOS%' THEN NEW.mix_marca := 'FANDANGOS';
-    ELSIF NEW.descricao ILIKE '%RUFFLES%' THEN NEW.mix_marca := 'RUFFLES';
-    ELSIF NEW.descricao ILIKE '%TORCIDA%' THEN NEW.mix_marca := 'TORCIDA';
-    ELSIF NEW.descricao ILIKE '%TODDYNHO%' THEN NEW.mix_marca := 'TODDYNHO';
-    ELSIF NEW.descricao ILIKE '%TODDY %' THEN NEW.mix_marca := 'TODDY';
-    ELSIF NEW.descricao ILIKE '%QUAKER%' THEN NEW.mix_marca := 'QUAKER';
-    ELSIF NEW.descricao ILIKE '%KEROCOCO%' THEN NEW.mix_marca := 'KEROCOCO';
+    IF NEW.mix_marca = 'CHEETOS' THEN NEW.mix_marca := 'CHEETOS';
+    ELSIF NEW.mix_marca = 'DORITOS' THEN NEW.mix_marca := 'DORITOS';
+    ELSIF NEW.mix_marca = 'FANDANGOS' THEN NEW.mix_marca := 'FANDANGOS';
+    ELSIF NEW.mix_marca = 'RUFFLES' THEN NEW.mix_marca := 'RUFFLES';
+    ELSIF NEW.mix_marca = 'TORCIDA' THEN NEW.mix_marca := 'TORCIDA';
+    ELSIF NEW.mix_marca = 'TODDYNHO' THEN NEW.mix_marca := 'TODDYNHO';
+    ELSIF NEW.mix_marca = 'TODDY' THEN NEW.mix_marca := 'TODDY';
+    ELSIF NEW.mix_marca = 'QUAKER' THEN NEW.mix_marca := 'QUAKER';
+    ELSIF NEW.mix_marca = 'KEROCOCO' THEN NEW.mix_marca := 'KEROCOCO';
     END IF;
 
     IF NEW.mix_marca IN ('CHEETOS', 'DORITOS', 'FANDANGOS', 'RUFFLES', 'TORCIDA') THEN
@@ -1198,29 +1198,29 @@ BEGIN
     -- General Matches
     ELSIF NEW.descricao ILIKE '%BACONZITOS%' THEN NEW.categoria_produto := 'BACONZITOS';
     ELSIF NEW.descricao ILIKE '%CEBOLITOS%' THEN NEW.categoria_produto := 'CEBOLITOS';
-    ELSIF NEW.descricao ILIKE '%CHEETOS%' THEN NEW.categoria_produto := 'CHEETOS';
-    ELSIF NEW.descricao ILIKE '%DORITOS%' THEN NEW.categoria_produto := 'DORITOS';
+    ELSIF NEW.mix_marca = 'CHEETOS' THEN NEW.categoria_produto := 'CHEETOS';
+    ELSIF NEW.mix_marca = 'DORITOS' THEN NEW.categoria_produto := 'DORITOS';
     ELSIF NEW.descricao ILIKE '%AMENDOIM%' THEN NEW.categoria_produto := 'ELMA-CHIPS AMENDOIM';
     ELSIF NEW.descricao ILIKE '%PALHA%' THEN NEW.categoria_produto := 'ELMA-CHIPS PALHA';
-    ELSIF NEW.descricao ILIKE '%FANDANGOS%' THEN NEW.categoria_produto := 'FANDANGOS';
+    ELSIF NEW.mix_marca = 'FANDANGOS' THEN NEW.categoria_produto := 'FANDANGOS';
     ELSIF NEW.descricao ILIKE '%LANCHINHO%' THEN NEW.categoria_produto := 'LANCHINHO';
     ELSIF NEW.descricao ILIKE '%LAYS%' THEN NEW.categoria_produto := 'LAYS';
     ELSIF NEW.descricao ILIKE '%PINGO DOURO%' THEN NEW.categoria_produto := 'PINGO DOURO';
     ELSIF NEW.descricao ILIKE '%POPCORNERS%' THEN NEW.categoria_produto := 'POPCORNERS';
-    ELSIF NEW.descricao ILIKE '%RUFFLES%' THEN NEW.categoria_produto := 'RUFFLES';
+    ELSIF NEW.mix_marca = 'RUFFLES' THEN NEW.categoria_produto := 'RUFFLES';
     -- SENSACOES moved up
     -- STAX moved up
     ELSIF NEW.descricao ILIKE '%STIKSY%' THEN NEW.categoria_produto := 'STIKSY';
     ELSIF NEW.descricao ILIKE '%TOSTITOS%' THEN NEW.categoria_produto := 'TOSTITOS';
     ELSIF NEW.descricao ILIKE '%EQLIBRI%' THEN NEW.categoria_produto := 'EQLIBRI';
     ELSIF NEW.descricao ILIKE '%FOFURA%' THEN NEW.categoria_produto := 'FOFURA';
-    ELSIF NEW.descricao ILIKE '%TORCIDA%' THEN NEW.categoria_produto := 'TORCIDA';
+    ELSIF NEW.mix_marca = 'TORCIDA' THEN NEW.categoria_produto := 'TORCIDA';
     
     -- Foods / Others (Mapped to same names as legacy mix but in new column)
-    ELSIF NEW.descricao ILIKE '%TODDYNHO%' THEN NEW.categoria_produto := 'TODDYNHO';
-    ELSIF NEW.descricao ILIKE '%TODDY %' THEN NEW.categoria_produto := 'TODDY';
-    ELSIF NEW.descricao ILIKE '%QUAKER%' THEN NEW.categoria_produto := 'QUAKER';
-    ELSIF NEW.descricao ILIKE '%KEROCOCO%' THEN NEW.categoria_produto := 'KEROCOCO';
+    ELSIF NEW.mix_marca = 'TODDYNHO' THEN NEW.categoria_produto := 'TODDYNHO';
+    ELSIF NEW.mix_marca = 'TODDY' THEN NEW.categoria_produto := 'TODDY';
+    ELSIF NEW.mix_marca = 'QUAKER' THEN NEW.categoria_produto := 'QUAKER';
+    ELSIF NEW.mix_marca = 'KEROCOCO' THEN NEW.categoria_produto := 'KEROCOCO';
     END IF;
 
     RETURN NEW;
@@ -1370,10 +1370,10 @@ BEGIN
             s.codsupervisor,
             s.codusur,
             CASE 
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDY %' THEN '1119_TODDY'
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
+                WHEN s.codfor = '1119' AND dp.mix_marca, dp.mix_categoria ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
+                WHEN s.codfor = '1119' AND dp.mix_marca, dp.mix_categoria ILIKE '%TODDY %' THEN '1119_TODDY'
+                WHEN s.codfor = '1119' AND dp.mix_marca, dp.mix_categoria ILIKE '%QUAKER%' THEN '1119_QUAKER'
+                WHEN s.codfor = '1119' AND dp.mix_marca, dp.mix_categoria ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
                 WHEN s.codfor = '1119' THEN '1119_OUTROS'
                 ELSE s.codfor 
             END as codfor, 
@@ -1521,10 +1521,10 @@ BEGIN
             categoria_produto,
             qtde_embalagem_master,
             CASE
-                WHEN '1119' = '1119' AND descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
-                WHEN '1119' = '1119' AND descricao ILIKE '%TODDY %' THEN '1119_TODDY'
-                WHEN '1119' = '1119' AND descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
-                WHEN '1119' = '1119' AND descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
+                WHEN '1119' = '1119' AND mix_marca = 'TODDYNHO' THEN '1119_TODDYNHO'
+                WHEN '1119' = '1119' AND mix_marca = 'TODDY' THEN '1119_TODDY'
+                WHEN '1119' = '1119' AND mix_marca = 'QUAKER' THEN '1119_QUAKER'
+                WHEN '1119' = '1119' AND mix_marca = 'KEROCOCO' THEN '1119_KEROCOCO'
                 ELSE '1119_OUTROS'
             END as codfor_enhanced
         FROM public.dim_produtos
@@ -2631,15 +2631,15 @@ BEGIN
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
                 IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%TODDYNHO%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.mix_marca, dp.mix_categoria ILIKE ''%TODDYNHO%'')');
                 ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%TODDY %'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.mix_marca, dp.mix_categoria ILIKE ''%TODDY %'')');
                 ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%QUAKER%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.mix_marca, dp.mix_categoria ILIKE ''%QUAKER%'')');
                 ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%KEROCOCO%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.mix_marca, dp.mix_categoria ILIKE ''%KEROCOCO%'')');
                 ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao NOT ILIKE ''%TODDYNHO%'' AND dp.descricao NOT ILIKE ''%TODDY %'' AND dp.descricao NOT ILIKE ''%QUAKER%'' AND dp.descricao NOT ILIKE ''%KEROCOCO%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.mix_marca, dp.mix_categoria NOT ILIKE ''%TODDYNHO%'' AND dp.mix_marca, dp.mix_categoria NOT ILIKE ''%TODDY %'' AND dp.mix_marca, dp.mix_categoria NOT ILIKE ''%QUAKER%'' AND dp.mix_marca, dp.mix_categoria NOT ILIKE ''%KEROCOCO%'')');
                 ELSE
                     v_simple_codes := array_append(v_simple_codes, v_code);
                 END IF;
@@ -2722,12 +2722,12 @@ BEGIN
             ),
             -- Products Table (Updated to JOIN dim_produtos)
             prod_base AS (
-                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master
+                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.mix_marca, dp.mix_categoria, s.dtped, dp.qtde_embalagem_master
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
                 UNION ALL
-                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master
+                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.mix_marca, dp.mix_categoria, s.dtped, dp.qtde_embalagem_master
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
@@ -2735,7 +2735,8 @@ BEGIN
             prod_agg AS (
                 SELECT
                     produto,
-                    MAX(descricao) as descricao,
+                    MAX(mix_marca) as mix_marca,
+            MAX(mix_categoria) as mix_cat,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     SUM(vlvenda) as faturamento,
                     SUM(totpesoliq) as peso,
@@ -2765,12 +2766,12 @@ BEGIN
         -- SLOW PATH (Full Raw Data with dim_produtos join)
         EXECUTE format('
             WITH base_data AS (
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.mix_marca, dp.mix_categoria, dp.qtde_embalagem_master
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= make_date(%L, 1, 1)
                 UNION ALL
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.mix_marca, dp.mix_categoria, dp.qtde_embalagem_master
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= make_date(%L, 1, 1)
@@ -2813,7 +2814,8 @@ BEGIN
             prod_agg AS (
                 SELECT
                     produto,
-                    MAX(descricao) as descricao,
+                    MAX(mix_marca) as mix_marca,
+            MAX(mix_categoria) as mix_cat,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     SUM(vlvenda) as faturamento,
                     SUM(totpesoliq) as peso,
@@ -3386,15 +3388,15 @@ BEGIN
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
                 IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%TODDYNHO%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.mix_marca, dp.mix_categoria ILIKE ''%TODDYNHO%'')');
                 ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%TODDY %'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.mix_marca, dp.mix_categoria ILIKE ''%TODDY %'')');
                 ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%QUAKER%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.mix_marca, dp.mix_categoria ILIKE ''%QUAKER%'')');
                 ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%KEROCOCO%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.mix_marca, dp.mix_categoria ILIKE ''%KEROCOCO%'')');
                 ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao NOT ILIKE ''%TODDYNHO%'' AND dp.descricao NOT ILIKE ''%TODDY %'' AND dp.descricao NOT ILIKE ''%QUAKER%'' AND dp.descricao NOT ILIKE ''%KEROCOCO%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.mix_marca, dp.mix_categoria NOT ILIKE ''%TODDYNHO%'' AND dp.mix_marca, dp.mix_categoria NOT ILIKE ''%TODDY %'' AND dp.mix_marca, dp.mix_categoria NOT ILIKE ''%QUAKER%'' AND dp.mix_marca, dp.mix_categoria NOT ILIKE ''%KEROCOCO%'')');
                 ELSE
                     v_simple_codes := array_append(v_simple_codes, v_code);
                 END IF;
@@ -3451,23 +3453,23 @@ BEGIN
 
     EXECUTE format('
         WITH target_sales AS (
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.mix_marca, dp.mix_categoria, s.codfor
             FROM public.data_detailed s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
             UNION ALL
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.mix_marca, dp.mix_categoria, s.codfor
             FROM public.data_history s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
         ),
         history_sales AS (
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.mix_marca, dp.mix_categoria, s.codfor
             FROM public.data_detailed s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
             UNION ALL
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.mix_marca, dp.mix_categoria, s.codfor
             FROM public.data_history s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
@@ -4854,12 +4856,12 @@ BEGIN
     -- Dynamic Query using the exact same logic from get_comparison_view_data
     v_sql := '
     WITH all_sales AS (
-        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.descricao, s.codfor
+        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.mix_marca, dp.mix_categoria, s.codfor
         FROM public.data_detailed s
         LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
         ' || v_where_chart || v_where_rede || '
         UNION ALL
-        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.descricao, s.codfor
+        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.mix_marca, dp.mix_categoria, s.codfor
         FROM public.data_history s
         LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
         ' || v_where_chart || v_where_rede || '
@@ -4869,7 +4871,8 @@ BEGIN
             EXTRACT(MONTH FROM dtped)::int as mes,
             codcli,
             produto,
-            MAX(descricao) as descricao,
+            MAX(mix_marca) as mix_marca,
+            MAX(mix_categoria) as mix_cat,
             MAX(codfor) as codfor,
             SUM(vlvenda) as prod_val
         FROM all_sales
@@ -4880,15 +4883,15 @@ BEGIN
             mes,
             codcli,
             SUM(prod_val) as total_val,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%CHEETOS%'' THEN 1 ELSE 0 END) as has_cheetos,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%DORITOS%'' THEN 1 ELSE 0 END) as has_doritos,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%FANDANGOS%'' THEN 1 ELSE 0 END) as has_fandangos,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%RUFFLES%'' THEN 1 ELSE 0 END) as has_ruffles,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%TORCIDA%'' THEN 1 ELSE 0 END) as has_torcida,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%TODDYNHO%'' THEN 1 ELSE 0 END) as has_toddynho,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%TODDY %'' THEN 1 ELSE 0 END) as has_toddy,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%QUAKER%'' THEN 1 ELSE 0 END) as has_quaker,
-            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%KEROCOCO%'' THEN 1 ELSE 0 END) as has_kerococo
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''RUFFLES'' THEN 1 ELSE 0 END) as has_ruffles,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TORCIDA'' THEN 1 ELSE 0 END) as has_torcida,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDYNHO'' THEN 1 ELSE 0 END) as has_toddynho,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDY'' THEN 1 ELSE 0 END) as has_toddy,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''QUAKER'' THEN 1 ELSE 0 END) as has_quaker,
+            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''KEROCOCO'' THEN 1 ELSE 0 END) as has_kerococo
         FROM prod_agg
         GROUP BY 1, 2
     ),
