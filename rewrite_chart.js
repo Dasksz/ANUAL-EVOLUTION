@@ -3,29 +3,9 @@ const fs = require('fs');
 const path = 'src/js/frequency_table.js';
 let content = fs.readFileSync(path, 'utf-8');
 
-const target1 = `        const { data, error } = await supabase.rpc('get_frequency_table_data', reqFilters);
+const regex = /let mixSaltyFoodsChartInstance = null;[\s\S]*\}\n\}\n/g;
 
-        if (error) throw error;
-
-        renderFrequencyTable(data, tableBody, tableFooter);
-        renderFrequencyChart(data);`;
-
-const replacement1 = `        const [freqResponse, mixResponse] = await Promise.all([
-            supabase.rpc('get_frequency_table_data', reqFilters),
-            supabase.rpc('get_mix_salty_foods_data', reqFilters)
-        ]);
-
-        if (freqResponse.error) throw freqResponse.error;
-        if (mixResponse.error) throw mixResponse.error;
-
-        renderFrequencyTable(freqResponse.data, tableBody, tableFooter);
-        renderFrequencyChart(freqResponse.data);
-        renderMixSaltyFoodsChart(mixResponse.data);`;
-
-content = content.replace(target1, replacement1);
-
-const mixSaltyFoodsCode = `
-let mixSaltyFoodsChartInstance = null;
+const newCode = `let mixSaltyFoodsChartInstance = null;
 function renderMixSaltyFoodsChart(data) {
     const container = document.getElementById('mixSaltyFoodsChartContainer');
     if (!container) {
@@ -142,6 +122,5 @@ function renderMixSaltyFoodsChart(data) {
 }
 `;
 
-content += mixSaltyFoodsCode;
-
+content = content.replace(regex, newCode);
 fs.writeFileSync(path, content);
