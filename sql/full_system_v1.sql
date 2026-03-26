@@ -17,7 +17,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     v_current_year int;
     v_target_month int;
@@ -164,7 +164,7 @@ BEGIN
 
     RETURN v_result;
 END;
-$$;
+$$$;
 DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
 DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
 DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[]);
@@ -200,7 +200,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     v_current_year int;
     v_previous_year int;
@@ -507,7 +507,7 @@ BEGIN
     EXECUTE v_sql INTO v_result;
     RETURN v_result;
 END;
-$$;
+$$$;
 
 -- ==============================================================================
 -- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT (V2 - Storage Optimized)
@@ -608,7 +608,7 @@ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_history' AND column_name = 'descricao') THEN
         ALTER TABLE public.data_history DROP COLUMN descricao CASCADE;
     END IF;
-END $$;
+END $$$;
 
 -- Clients (Optimized: No RCA2)
 create table if not exists public.data_clients (
@@ -633,7 +633,7 @@ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_clients' AND column_name = 'rca2') THEN
         ALTER TABLE public.data_clients DROP COLUMN rca2;
     END IF;
-END $$;
+END $$$;
 
 -- Add Ramo column if it does not exist (Schema Migration)
 DO $$
@@ -641,7 +641,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_clients' AND column_name = 'ramo') THEN
         ALTER TABLE public.data_clients ADD COLUMN ramo text;
     END IF;
-END $$;
+END $$$;
 
 -- Holidays Table
 create table if not exists public.data_holidays (
@@ -669,7 +669,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'phone') THEN
         ALTER TABLE public.profiles ADD COLUMN phone text;
     END IF;
-END $$;
+END $$$;
 
 -- Config City Branches (Mapping)
 -- Missing table definitions for `data_summary` and `data_summary_frequency`
@@ -805,14 +805,14 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'estoque_filial') THEN
         ALTER TABLE public.dim_produtos ADD COLUMN estoque_filial jsonb DEFAULT '{}'::jsonb;
     END IF;
-END $$;
+END $$$;
 
 -- Update Products Stock Helper
 CREATE OR REPLACE FUNCTION public.update_products_stock(p_stock_data jsonb)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $$
+AS $$$
 BEGIN
     -- p_stock_data expects: [{"codigo": "123", "filial": "05", "estoque": 100}, ...]
     WITH raw_stock AS (
@@ -835,7 +835,7 @@ BEGIN
     FROM agg_stock
     WHERE p.codigo = agg_stock.codigo;
 END;
-$$;
+$$$;
 
 -- Unified View
 DROP VIEW IF EXISTS public.all_sales CASCADE;
@@ -996,7 +996,7 @@ CREATE INDEX IF NOT EXISTS idx_cache_filters_rede_lookup ON public.cache_filters
 -- Helper Functions
 CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean
 SET search_path = public
-AS $$
+AS $$$
 BEGIN
   IF (select auth.role()) = 'service_role' THEN RETURN true; END IF;
   RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND role = 'adm');
@@ -1005,7 +1005,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.is_approved() RETURNS boolean
 SET search_path = public
-AS $$
+AS $$$
 BEGIN
   IF (select auth.role()) = 'service_role' THEN RETURN true; END IF;
   RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = (select auth.uid()) AND status = 'aprovado');
@@ -1051,7 +1051,7 @@ BEGIN
         EXECUTE format('DROP POLICY IF EXISTS "Admin Update" ON public.%I;', t);
         EXECUTE format('DROP POLICY IF EXISTS "Admin Delete" ON public.%I;', t);
     END LOOP;
-END $$;
+END $$$;
 
 -- trigger on user creation
 create or replace function public.handle_new_user () RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
@@ -1078,7 +1078,7 @@ BEGIN
 
   return new;
 end;
-$$;
+$$$;
 
 drop trigger IF exists on_auth_user_created on auth.users;
 
@@ -1119,7 +1119,7 @@ BEGIN
         EXECUTE format('DROP POLICY IF EXISTS "Admin Delete" ON public.%I', t);
         EXECUTE format('CREATE POLICY "Admin Delete" ON public.%I FOR DELETE USING (public.is_admin())', t);
     END LOOP;
-END $$;
+END $$$;
 
 -- Holidays Policies
 DROP POLICY IF EXISTS "Unified Read Access" ON public.data_holidays;
@@ -1152,7 +1152,7 @@ BEGIN
         EXECUTE format('DROP POLICY IF EXISTS "Admin Delete" ON public.%I', t);
         EXECUTE format('CREATE POLICY "Admin Delete" ON public.%I FOR DELETE USING (public.is_admin());', t);
     END LOOP;
-END $$;
+END $$$;
 
 -- ==============================================================================
 -- 4. RPCS & FUNCTIONS (LOGIC)
@@ -1162,7 +1162,7 @@ END $$;
 CREATE OR REPLACE FUNCTION classify_product_mix()
 RETURNS trigger
 LANGUAGE plpgsql
-AS $$
+AS $$$
 BEGIN
     -- 1. Legacy Mix Logic (Keep for backward compatibility)
     NEW.mix_marca := NULL;
@@ -1225,7 +1225,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$$;
+$$$;
 
 -- Trigger to keep mix columns updated
 DROP TRIGGER IF EXISTS trg_classify_products ON public.dim_produtos;
@@ -1243,7 +1243,7 @@ CREATE OR REPLACE FUNCTION clear_all_data()
 RETURNS void
 LANGUAGE plpgsql
 SET search_path = public
-AS $$
+AS $$$
 BEGIN
     DELETE FROM public.data_detailed;
     DELETE FROM public.data_history;
@@ -1253,13 +1253,13 @@ BEGIN
     TRUNCATE TABLE public.data_summary_frequency;
     TRUNCATE TABLE public.cache_filters;
 END;
-$$;
+$$$;
 
 -- Safe Truncate Function
 CREATE OR REPLACE FUNCTION public.truncate_table(table_name text)
 RETURNS void
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
   v_table_name text := table_name;
 BEGIN
@@ -1286,7 +1286,7 @@ RETURNS int[]
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     min_year int;
     max_year int;
@@ -1327,7 +1327,7 @@ BEGIN
     
     RETURN years;
 END;
-$$;
+$$$;
 
 -- 2. Refresh Summary for Specific Year (Idempotent)
 CREATE OR REPLACE FUNCTION refresh_summary_year(p_year int)
@@ -1335,7 +1335,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 BEGIN
     SET LOCAL statement_timeout = '600s';
 
@@ -1461,7 +1461,7 @@ BEGIN
         c.ramo;
     -- ANALYZE public.data_summary;
 END;
-$$;
+$$$;
 
 -- 2.1. Refresh Summary for Specific Month (Granular for Timeout Avoidance)
 -- NOVA FUNÇÃO PARA LIMPAR O MÊS ANTES DOS CHUNKS
@@ -1470,12 +1470,12 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 BEGIN
     DELETE FROM public.data_summary WHERE ano = p_year AND mes = p_month;
     DELETE FROM public.data_summary_frequency WHERE ano = p_year AND mes = p_month;
 END;
-$$;
+$$$;
 
 -- FUNÇÃO ATUALIZADA PARA PROCESSAR UM CHUNK DE DATAS
 CREATE OR REPLACE FUNCTION refresh_summary_chunk(p_start_date date, p_end_date date)
@@ -1483,7 +1483,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     v_year int;
     v_month int;
@@ -1641,7 +1641,7 @@ BEGIN
     -- STEP D: Cleanup
     DROP TABLE IF EXISTS tmp_raw_data;
 END;
-$$;
+$$$;
 
 
 -- 3. Refresh Filters Cache (Optimized: Uses data_summary)
@@ -1653,7 +1653,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     r RECORD;
 BEGIN
@@ -1718,7 +1718,7 @@ BEGIN
     LEFT JOIN public.dim_vendedores dv ON dc.codusur = dv.codigo
     LEFT JOIN public.dim_fornecedores df ON dc.codfor = df.codigo;
 END;
-$$;
+$$$;
 
 -- 5. Update Get Filters
 DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[]);
@@ -1760,7 +1760,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     v_where_filial text := ' WHERE 1=1 ';
     v_where_cidade text := ' WHERE 1=1 ';
@@ -1916,7 +1916,7 @@ BEGIN
 
     RETURN v_result;
 END;
-$$;
+$$$;
 
 -- 4. Refresh Dashboard Cache Wrapper (Looping version for manual use)
 CREATE OR REPLACE FUNCTION refresh_dashboard_cache()
@@ -1924,7 +1924,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     r_year int;
     r_month int;
@@ -1945,7 +1945,7 @@ BEGIN
     -- 3. Refresh Filters
     PERFORM refresh_cache_filters(null, null);
 END;
-$$;
+$$$;
 
 -- Database Optimization Function (Rebuilds Targeted Indexes)
 CREATE OR REPLACE FUNCTION optimize_database()
@@ -1953,7 +1953,7 @@ RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 BEGIN
     IF NOT public.is_admin() THEN
         RETURN 'Acesso negado: Apenas administradores podem otimizar o banco.';
@@ -2000,7 +2000,7 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
     RETURN 'Erro ao otimizar banco: ' || SQLERRM;
 END;
-$$;
+$$$;
 
 -- Toggle Holiday RPC
 CREATE OR REPLACE FUNCTION toggle_holiday(p_date date)
@@ -2008,7 +2008,7 @@ RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 BEGIN
     IF NOT public.is_admin() THEN
         RETURN 'Acesso negado.';
@@ -2022,7 +2022,7 @@ BEGIN
         RETURN 'Feriado adicionado.';
     END IF;
 END;
-$$;
+$$$;
 
 -- Helper: Calculate Working Days
 CREATE OR REPLACE FUNCTION calc_working_days(start_date date, end_date date)
@@ -2030,7 +2030,7 @@ RETURNS int
 LANGUAGE plpgsql
 STABLE
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     days int;
 BEGIN
@@ -2042,7 +2042,7 @@ BEGIN
     
     RETURN days;
 END;
-$$;
+$$$;
 
 -- Get Data Version (Cache Invalidation)
 CREATE OR REPLACE FUNCTION get_data_version()
@@ -2050,7 +2050,7 @@ RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     v_last_update timestamp with time zone;
 BEGIN
@@ -2058,7 +2058,7 @@ BEGIN
     IF v_last_update IS NULL THEN RETURN '1970-01-01 00:00:00+00'; END IF;
     RETURN v_last_update::text;
 END;
-$$;
+$$$;
 
 -- Get Main Dashboard Data (Dynamic SQL, Parallelism, Pre-Aggregation)
 
@@ -2074,7 +2074,7 @@ BEGIN
     LOOP
         EXECUTE 'DROP FUNCTION ' || r.func_signature || ' CASCADE';
     END LOOP;
-END $$;
+END $$$;
 
 CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_filial text[] default null,
@@ -2093,7 +2093,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     v_current_year int;
     v_previous_year int;
@@ -2476,7 +2476,7 @@ BEGIN
     );
     RETURN v_result;
 END;
-$$;
+$$$;
 
 -- E. Get Boxes Dashboard (Join dim_produtos)
 CREATE OR REPLACE FUNCTION get_boxes_dashboard_data(
@@ -2496,7 +2496,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     v_current_year int;
     v_previous_year int;
@@ -2855,7 +2855,7 @@ BEGIN
         )
     );
 END;
-$$;
+$$$;
 
 -- F. Branch Comparison (Update to use Codes)
 CREATE OR REPLACE FUNCTION get_branch_comparison_data(
@@ -2875,7 +2875,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     v_current_year int;
     v_target_month int;
@@ -3013,7 +3013,7 @@ BEGIN
 
     RETURN COALESCE(v_result, '{}'::json);
 END;
-$$;
+$$$;
 
 -- G. City View Data (Update filtering for codes)
 CREATE OR REPLACE FUNCTION get_city_view_data(
@@ -3036,7 +3036,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     v_current_year int;
     v_target_month int;
@@ -3258,7 +3258,7 @@ BEGIN
         'city_ranking', COALESCE(v_city_ranking, '{"cols":[], "rows":[]}'::json)
     );
 END;
-$$;
+$$$;
 
 
 -- H. Comparison View (Restored & Updated)
@@ -3279,7 +3279,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     -- Date Ranges
     v_ref_date date;
@@ -3604,7 +3604,7 @@ BEGIN
         'debug_range', json_build_object('start', v_start_target, 'end', v_end_target, 'h_start', v_start_quarter, 'h_end', v_end_quarter)
     );
 END;
-$$;
+$$$;
 
 -- ==============================================================================
 -- INCREMENTAL UPLOAD SUPPORT (METADATA CHUNKING FOR SALES, ROW HASH FOR CLIENTS)
@@ -3683,7 +3683,7 @@ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_history' AND column_name = 'row_hash') THEN
         ALTER TABLE public.data_history DROP COLUMN row_hash;
     END IF;
-END $$;
+END $$$;
 
 -- 3. Indexes
 CREATE INDEX IF NOT EXISTS idx_clients_hash ON public.data_clients (row_hash);
@@ -3695,7 +3695,7 @@ RETURNS TABLE (row_hash text)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
 
@@ -3705,7 +3705,7 @@ BEGIN
         RAISE EXCEPTION 'Esta função suporta apenas data_clients. Use sync_sales_chunk para vendas.';
     END IF;
 END;
-$$;
+$$$;
 
 -- 5. RPC: Delete Rows by Hash (Clients Only)
 CREATE OR REPLACE FUNCTION public.delete_by_hashes(p_table_name text, p_hashes text[])
@@ -3713,7 +3713,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
 
@@ -3723,7 +3723,7 @@ BEGIN
         RAISE EXCEPTION 'Esta função suporta apenas data_clients.';
     END IF;
 END;
-$$;
+$$$;
 
 -- 6. RPC: Sync Sales Chunk (Atomic Replace by Month)
 -- DEPRECATED: Use Granular Functions below for large uploads
@@ -3737,7 +3737,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     v_start_date date;
     v_end_date date;
@@ -3781,7 +3781,7 @@ BEGIN
     ON CONFLICT (table_name, chunk_key) 
     DO UPDATE SET chunk_hash = EXCLUDED.chunk_hash, updated_at = now();
 END;
-$$;
+$$$;
 
 -- ==============================================================================
 -- GRANULAR SYNC FUNCTIONS (Wipe -> Append -> Commit)
@@ -3797,7 +3797,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 DECLARE
     v_start_date date;
     v_end_date date;
@@ -3828,7 +3828,7 @@ BEGIN
     DELETE FROM public.data_metadata
     WHERE chunk_key = p_chunk_key AND table_name IN ('data_detailed', 'data_history');
 END;
-$$;
+$$$;
 
 -- 2. Append Sync (Insert Batch)
 CREATE OR REPLACE FUNCTION public.append_sync_chunk(
@@ -3839,7 +3839,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
 
@@ -3861,7 +3861,7 @@ BEGIN
         FROM jsonb_populate_recordset(null::public.%I, $1)
     ', p_table_name, p_table_name) USING p_rows;
 END;
-$$;
+$$$;
 
 -- 3. Commit Sync (Update Metadata)
 CREATE OR REPLACE FUNCTION public.commit_sync_chunk(
@@ -3873,7 +3873,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $$$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
 
@@ -3882,7 +3882,7 @@ BEGIN
     ON CONFLICT (table_name, chunk_key)
     DO UPDATE SET chunk_hash = EXCLUDED.chunk_hash, updated_at = now();
 END;
-$$;
+$$$;
 -- This script patches the `get_innovations_data` to support the new YoY and 12-month average comparisons
 
 DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text[], text);
@@ -3903,7 +3903,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $BODY$
+AS $$BODY$
 DECLARE
     v_result json;
     v_where_base text := ' WHERE 1=1 ';
@@ -4188,7 +4188,7 @@ BEGIN
 
     RETURN v_result;
 END;
-$BODY$;
+$BODY$$;
 -- Function to retrieve innovations dashboard data
 -- Updated with new attended bases for percentage calculation
 CREATE OR REPLACE FUNCTION get_innovations_data(
@@ -4206,7 +4206,7 @@ RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET statement_timeout = '15s'
-AS $$
+AS $$$
 DECLARE
     v_curr_start date;
     v_curr_end date;
@@ -4489,7 +4489,7 @@ BEGIN
     EXECUTE v_sql INTO v_sql USING p_filial;
     RETURN v_sql::json;
 END;
-$$;
+$$$;
 
 
 
@@ -4509,7 +4509,7 @@ CREATE OR REPLACE FUNCTION get_loja_perfeita_data(
 RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $$
+AS $$$
 DECLARE
     v_result json;
     v_where_base text := '1=1';
@@ -4601,7 +4601,7 @@ BEGIN
 
     RETURN v_result;
 END;
-$$;
+$$$;
 
 
 
@@ -4619,7 +4619,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $$
+AS $$$
 BEGIN
     RETURN QUERY
     SELECT
@@ -4637,7 +4637,7 @@ BEGIN
         dc.cnpj ILIKE '%' || p_search || '%'
     LIMIT 20;
 END;
-$$;
+$$$;
 GRANT EXECUTE ON FUNCTION public.search_clients(text) TO anon, authenticated;
 -- ==========================================
 -- Add search_loja_perfeita_clients RPC
@@ -4659,7 +4659,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $$
+AS $$$
 DECLARE
     v_where text := '1=1';
     v_sql text;
@@ -4727,7 +4727,7 @@ BEGIN
 
     RETURN QUERY EXECUTE v_sql;
 END;
-$$;
+$$$;
 
 GRANT EXECUTE ON FUNCTION public.search_loja_perfeita_clients(text, text[], text[], text[], text[], text[]) TO anon, authenticated;
 
@@ -4766,9 +4766,16 @@ AS $$
 DECLARE
     v_current_year int;
     v_target_month int;
-    v_where_chart text := ' WHERE tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1 ';
+    v_where_chart text := ' WHERE 1=1 AND s.vlvenda >= 1 AND s.tipovenda NOT IN (''5'', ''11'') ';
+    v_where_rede text := '';
     v_sql text;
     v_result json;
+
+    -- Rede Logic Vars
+    v_has_com_rede boolean;
+    v_has_sem_rede boolean;
+    v_specific_redes text[];
+    v_rede_condition text := '';
 BEGIN
     SET LOCAL work_mem = '64MB';
     SET LOCAL statement_timeout = '120s';
@@ -4780,102 +4787,129 @@ BEGIN
         v_current_year := p_ano::int;
     END IF;
 
-    -- For the chart we always want the full current year to show the trend
-    v_where_chart := v_where_chart || ' AND ano = ' || v_current_year || ' ';
+    v_where_chart := v_where_chart || ' AND s.dtped >= make_date(' || v_current_year || ', 1, 1) AND s.dtped <= make_date(' || v_current_year || ', 12, 31) ';
 
     -- 2. Build Where Clauses
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_filial)) THEN
-            v_where_chart := v_where_chart || ' AND filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
+            v_where_chart := v_where_chart || ' AND s.filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
         END IF;
     END IF;
 
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+        v_where_chart := v_where_chart || ' AND s.codcli IN (SELECT codigo_cliente FROM public.data_clients WHERE cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || '''])) ';
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_fornecedor)) THEN
-            v_where_chart := v_where_chart || ' AND codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
+            v_where_chart := v_where_chart || ' AND s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
         END IF;
     END IF;
 
+    -- REDE Logic (same as comparativo)
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-        IF ('com_ramo' = ANY(p_rede) OR 'C/ REDE' = ANY(p_rede)) AND ('sem_ramo' = ANY(p_rede) OR 'S/ REDE' = ANY(p_rede)) THEN
-            -- Do nothing
-        ELSIF 'com_ramo' = ANY(p_rede) OR 'C/ REDE' = ANY(p_rede) THEN
-            v_where_chart := v_where_chart || ' AND rede IS NOT NULL AND rede != '''' ';
-        ELSIF 'sem_ramo' = ANY(p_rede) OR 'S/ REDE' = ANY(p_rede) THEN
-            v_where_chart := v_where_chart || ' AND (rede IS NULL OR rede = '''') ';
-        ELSE
-            v_where_chart := v_where_chart || ' AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
-        END IF;
+       v_has_com_rede := ('C/ REDE' = ANY(p_rede));
+       v_has_sem_rede := ('S/ REDE' = ANY(p_rede));
+       v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
+
+       IF array_length(v_specific_redes, 1) > 0 THEN
+           v_rede_condition := format('c.ramo = ANY(ARRAY[''%s''])', array_to_string(v_specific_redes, ''','''));
+       END IF;
+
+       IF v_has_com_rede THEN
+           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+           v_rede_condition := v_rede_condition || ' (c.ramo IS NOT NULL AND c.ramo NOT IN (''N/A'', ''N/D'')) ';
+       END IF;
+
+       IF v_has_sem_rede THEN
+           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+           v_rede_condition := v_rede_condition || ' (c.ramo IS NULL OR c.ramo IN (''N/A'', ''N/D'')) ';
+       END IF;
+
+       IF v_rede_condition != '' THEN
+           v_where_rede := ' AND EXISTS (SELECT 1 FROM public.data_clients c WHERE c.codigo_cliente = s.codcli AND (' || v_rede_condition || ')) ';
+       END IF;
     END IF;
 
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND produtos ?| ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
+        v_where_chart := v_where_chart || ' AND s.produto = ANY(ARRAY[''' || array_to_string(p_produto, ''',''') || ''']) ';
     END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND categorias ?| ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
+        v_where_chart := v_where_chart || ' AND dp.categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || ''']) ';
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
+        v_where_chart := v_where_chart || ' AND s.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
     END IF;
 
-    -- Dynamic Query
-    -- To find if a client positivou Salty: needs ALL 5 categories
-    -- To find if a client positivou Foods: needs ALL 4 categories (either TODDY or TODDY )
+    -- Dynamic Query using the exact same logic from get_comparison_view_data
     v_sql := '
-    WITH monthly_client_categories AS (
-        SELECT
-            ano,
-            mes,
-            codcli,
-            jsonb_agg(categorias) as all_categorias_month
-        FROM public.data_summary_frequency s
-        ' || v_where_chart || '
-        GROUP BY ano, mes, codcli
+    WITH all_sales AS (
+        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.descricao, s.codfor
+        FROM public.data_detailed s
+        LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+        ' || v_where_chart || v_where_rede || '
+        UNION ALL
+        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.descricao, s.codfor
+        FROM public.data_history s
+        LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+        ' || v_where_chart || v_where_rede || '
     ),
-    client_pos_flags AS (
+    prod_agg AS (
         SELECT
-            ano,
+            EXTRACT(MONTH FROM dtped)::int as mes,
+            codcli,
+            produto,
+            MAX(descricao) as descricao,
+            MAX(codfor) as codfor,
+            SUM(vlvenda) as prod_val
+        FROM all_sales
+        GROUP BY 1, 2, 3
+    ),
+    monthly_mix AS (
+        SELECT
             mes,
             codcli,
-            (
-                all_categorias_month::text LIKE ''%"CHEETOS"%'' AND
-                all_categorias_month::text LIKE ''%"DORITOS"%'' AND
-                all_categorias_month::text LIKE ''%"FANDANGOS"%'' AND
-                all_categorias_month::text LIKE ''%"RUFFLES"%'' AND
-                all_categorias_month::text LIKE ''%"TORCIDA"%''
-            ) as is_salty,
-            (
-                all_categorias_month::text LIKE ''%"TODDYNHO"%'' AND
-                (all_categorias_month::text LIKE ''%"TODDY"%'' OR all_categorias_month::text LIKE ''%"TODDY "%'') AND
-                all_categorias_month::text LIKE ''%"QUAKER"%'' AND
-                all_categorias_month::text LIKE ''%"KEROCOCO"%''
-            ) as is_foods
-        FROM monthly_client_categories
+            SUM(prod_val) as total_val,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%CHEETOS%'' THEN 1 ELSE 0 END) as has_cheetos,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%DORITOS%'' THEN 1 ELSE 0 END) as has_doritos,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%FANDANGOS%'' THEN 1 ELSE 0 END) as has_fandangos,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%RUFFLES%'' THEN 1 ELSE 0 END) as has_ruffles,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%TORCIDA%'' THEN 1 ELSE 0 END) as has_torcida,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%TODDYNHO%'' THEN 1 ELSE 0 END) as has_toddynho,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%TODDY %'' THEN 1 ELSE 0 END) as has_toddy,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%QUAKER%'' THEN 1 ELSE 0 END) as has_quaker,
+            MAX(CASE WHEN prod_val >= 1 AND descricao ILIKE ''%KEROCOCO%'' THEN 1 ELSE 0 END) as has_kerococo
+        FROM prod_agg
+        GROUP BY 1, 2
+    ),
+    monthly_flags AS (
+        SELECT
+            mes,
+            codcli,
+            (has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1) as is_salty,
+            (has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1) as is_foods
+        FROM monthly_mix
     ),
     chart_data AS (
         SELECT
-            ano,
+            ' || v_current_year || ' as ano,
             mes,
             COUNT(DISTINCT CASE WHEN is_salty THEN codcli END) as total_salty,
             COUNT(DISTINCT CASE WHEN is_foods THEN codcli END) as total_foods,
             COUNT(DISTINCT CASE WHEN is_salty AND is_foods THEN codcli END) as total_ambas
-        FROM client_pos_flags
-        GROUP BY ano, mes
-        ORDER BY ano, mes
+        FROM monthly_flags
+        GROUP BY mes
+        ORDER BY mes
     )
     SELECT COALESCE(json_agg(row_to_json(chart_data)), ''[]''::json) FROM chart_data;
     ';
