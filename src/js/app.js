@@ -7554,9 +7554,6 @@ async function loadFrequencyTable(filters) {
     }
 }
 
-    }
-}
-
 function renderFrequencyTable(data, tableBody, tableFooter) {
     tableBody.innerHTML = '';
     tableFooter.innerHTML = '';
