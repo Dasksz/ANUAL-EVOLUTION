@@ -1787,14 +1787,14 @@ BEGIN
         v_where_cat := v_where_cat || format(' AND ano = %L ', p_ano::int);
     END IF;
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
-        v_where_filial := v_where_filial || format(' AND mes = %L ', p_mes::int + 1);
-        v_where_cidade := v_where_cidade || format(' AND mes = %L ', p_mes::int + 1);
-        v_where_supervisor := v_where_supervisor || format(' AND mes = %L ', p_mes::int + 1);
-        v_where_vendedor := v_where_vendedor || format(' AND mes = %L ', p_mes::int + 1);
-        v_where_fornecedor := v_where_fornecedor || format(' AND mes = %L ', p_mes::int + 1);
-        v_where_tipovenda := v_where_tipovenda || format(' AND mes = %L ', p_mes::int + 1);
-        v_where_rede := v_where_rede || format(' AND mes = %L ', p_mes::int + 1);
-        v_where_cat := v_where_cat || format(' AND mes = %L ', p_mes::int + 1);
+        v_where_filial := v_where_filial || format(' AND mes = %L ', p_mes::int);
+        v_where_cidade := v_where_cidade || format(' AND mes = %L ', p_mes::int);
+        v_where_supervisor := v_where_supervisor || format(' AND mes = %L ', p_mes::int);
+        v_where_vendedor := v_where_vendedor || format(' AND mes = %L ', p_mes::int);
+        v_where_fornecedor := v_where_fornecedor || format(' AND mes = %L ', p_mes::int);
+        v_where_tipovenda := v_where_tipovenda || format(' AND mes = %L ', p_mes::int);
+        v_where_rede := v_where_rede || format(' AND mes = %L ', p_mes::int);
+        v_where_cat := v_where_cat || format(' AND mes = %L ', p_mes::int);
     END IF;
 
     -- Filial
@@ -2147,7 +2147,7 @@ BEGIN
     v_previous_year := v_current_year - 1;
 
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
-        v_target_month := p_mes::int + 1;
+        v_target_month := p_mes::int;
         v_is_month_filtered := true;
     ELSE
          SELECT COALESCE(MAX(mes), 12) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year;
@@ -2161,7 +2161,7 @@ BEGIN
     v_trend_allowed := (v_current_year = EXTRACT(YEAR FROM v_max_sale_date)::int);
     
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
-       IF (p_mes::int + 1) != EXTRACT(MONTH FROM v_max_sale_date)::int THEN
+       IF (p_mes::int) != EXTRACT(MONTH FROM v_max_sale_date)::int THEN
            v_trend_allowed := false;
        END IF;
     END IF;
@@ -2538,7 +2538,7 @@ BEGIN
     v_previous_year := v_current_year - 1;
 
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
-        v_target_month := p_mes::int + 1;
+        v_target_month := p_mes::int;
         v_ref_date := make_date(v_current_year, v_target_month, 1);
     ELSE
         IF v_current_year < EXTRACT(YEAR FROM CURRENT_DATE)::int THEN
@@ -2558,7 +2558,7 @@ BEGIN
     v_trend_allowed := (v_current_year = EXTRACT(YEAR FROM v_max_sale_date)::int);
 
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
-       IF (p_mes::int + 1) != EXTRACT(MONTH FROM v_max_sale_date)::int THEN
+       IF (p_mes::int) != EXTRACT(MONTH FROM v_max_sale_date)::int THEN
            v_trend_allowed := false;
        END IF;
     END IF;
@@ -2901,14 +2901,14 @@ BEGIN
         SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
     ELSE v_current_year := p_ano::int; END IF;
 
-    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN v_target_month := p_mes::int + 1;
+    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN v_target_month := p_mes::int;
     ELSE SELECT COALESCE(MAX(mes), 12) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year; END IF;
 
     SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
     IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
     v_trend_allowed := (v_current_year = EXTRACT(YEAR FROM v_max_sale_date)::int);
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
-       IF (p_mes::int + 1) != EXTRACT(MONTH FROM v_max_sale_date)::int THEN v_trend_allowed := false; END IF;
+       IF (p_mes::int) != EXTRACT(MONTH FROM v_max_sale_date)::int THEN v_trend_allowed := false; END IF;
     END IF;
 
     IF v_trend_allowed THEN
@@ -3129,7 +3129,7 @@ BEGIN
     -- Target month filter logic for summary
     v_where := v_where || format(' AND ano = %L ', v_current_year);
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
-        v_target_month := p_mes::int + 1;
+        v_target_month := p_mes::int;
         v_where := v_where || format(' AND mes = %L ', v_target_month);
 
         -- Trend calculation logic (last 3 months from target month)
@@ -3318,8 +3318,8 @@ BEGIN
     -- 1. Date Logic
     IF p_ano IS NOT NULL AND p_ano != 'todos' AND p_ano != '' THEN
         IF p_mes IS NOT NULL AND p_mes != '' THEN
-            v_ref_date := make_date(p_ano::int, p_mes::int + 1, 15);
-            v_end_target := (make_date(p_ano::int, p_mes::int + 1, 1) + interval '1 month' - interval '1 second');
+            v_ref_date := make_date(p_ano::int, p_mes::int, 15);
+            v_end_target := (make_date(p_ano::int, p_mes::int, 1) + interval '1 month' - interval '1 second');
         ELSE
             IF p_ano::int = EXTRACT(YEAR FROM CURRENT_DATE)::int THEN
                 v_ref_date := CURRENT_DATE;
@@ -4915,6 +4915,42 @@ BEGIN
     RETURN json_build_object(
         'chart_data', v_result,
         'current_year', v_current_year
+    );
+END;
+$$;
+
+-- Added overload for get_dashboard_filters to support p_produto from frontend calls (Fixes PGRST203)
+CREATE OR REPLACE FUNCTION get_dashboard_filters(
+    p_filial text[] default null,
+    p_cidade text[] default null,
+    p_supervisor text[] default null,
+    p_vendedor text[] default null,
+    p_fornecedor text[] default null,
+    p_ano text default null,
+    p_mes text default null,
+    p_tipovenda text[] default null,
+    p_rede text[] default null,
+    p_produto text[] default null,
+    p_categoria text[] default null
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    -- This function simply calls the base one ignoring p_produto for the general dimension filters
+    RETURN get_dashboard_filters(
+        p_filial,
+        p_cidade,
+        p_supervisor,
+        p_vendedor,
+        p_fornecedor,
+        p_ano,
+        p_mes,
+        p_tipovenda,
+        p_rede,
+        p_categoria
     );
 END;
 $$;
