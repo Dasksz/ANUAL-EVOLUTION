@@ -4259,6 +4259,7 @@ DECLARE
     v_current_year integer;
     v_current_month integer;
     v_sql text;
+    v_result json;
     v_where_base text := ' WHERE 1=1 ';
     v_where_client_base text := ' WHERE 1=1 ';
     v_where_client_tipo text := '';
@@ -4270,7 +4271,7 @@ DECLARE
     v_has_sem_rede boolean;
     v_specific_redes text[];
     v_rede_condition text := '';
-    v_having_client_tipo text := ' SUM(d.vlvenda) >= 1 ';
+    v_having_client_tipo text := ' SUM(CASE WHEN d.tipovenda NOT IN (''5'',''11'') THEN d.vlvenda ELSE 0 END) >= 1 ';
     v_where_inov text := ' 1=1 ';
     v_filial_cities text[];
 BEGIN
@@ -4304,16 +4305,13 @@ BEGIN
         v_prev_start := make_date(v_current_year - 1, v_current_month, 1);
         v_prev_end := v_prev_start + interval '1 month';
         
+        v_12m_start := v_curr_start - interval '3 months';
         v_12m_end := v_curr_start;
-        v_12m_start := v_curr_start - interval '3 months'; -- Using last 3 months for average
     END IF;
 
-    -- 2. Build Dynamic Filters
-    -- Filial to City Mapping
+    -- 2. Build Where Clauses
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        IF 'ambas' = ANY(p_filial) THEN
-            -- Do nothing, include all
-        ELSE
+        IF NOT ('ambas' = ANY(p_filial)) THEN
             SELECT array_agg(DISTINCT cidade) INTO v_filial_cities
             FROM public.config_city_branches
             WHERE filial = ANY(p_filial);
@@ -4364,14 +4362,16 @@ BEGIN
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND d.tipovenda = ANY(%L::text[]) ', p_tipovenda);
-        v_where_client_tipo := ' '; -- Already in v_where_base
+        v_where_client_tipo := ' ';
         IF p_tipovenda <@ ARRAY['5', '11'] THEN
             v_having_client_tipo := ' SUM(d.vlbonific) > 0 ';
-        ELSE
+        ELSIF NOT (p_tipovenda && ARRAY['5', '11']) THEN
             v_having_client_tipo := ' SUM(d.vlvenda) >= 1 ';
+        ELSE
+            v_having_client_tipo := ' SUM(CASE WHEN d.tipovenda NOT IN (''5'',''11'') THEN d.vlvenda ELSE 0 END) >= 1 OR SUM(CASE WHEN d.tipovenda IN (''5'',''11'') THEN d.vlbonific ELSE 0 END) > 0 ';
         END IF;
     ELSE
-        -- Global tipovenda rule when not selected: ignore 5 and 11
+        -- Global tipovenda rule when not selected: same as main dashboard
         v_where_client_tipo := ' AND d.tipovenda NOT IN (''5'', ''11'') ';
         v_having_client_tipo := ' SUM(d.vlvenda) >= 1 ';
     END IF;
@@ -4580,11 +4580,13 @@ BEGIN
         )
     )';
 
+    EXECUTE v_sql INTO v_result USING p_filial;
 
-    EXECUTE v_sql INTO v_sql USING p_filial;
-    RETURN v_sql::json;
+    RETURN v_result;
 END;
 $$;
+
+
 
 
 
