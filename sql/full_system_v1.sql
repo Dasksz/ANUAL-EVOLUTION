@@ -39,7 +39,7 @@ BEGIN
     END IF;
 
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
-        v_target_month := p_mes::int;
+        v_target_month := p_mes::int + 1;
         v_where_base := v_where_base || format(' AND s.ano = %L AND s.mes = %L ', v_current_year, v_target_month);
     ELSE
         v_where_base := v_where_base || format(' AND s.ano = %L ', v_current_year);
@@ -227,7 +227,7 @@ BEGIN
     v_previous_year := v_current_year - 1;
 
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
-        v_target_month := p_mes::int;
+        v_target_month := p_mes::int + 1;
         v_where_base := v_where_base || ' AND s.ano = ' || v_current_year || ' AND s.mes = ' || v_target_month || ' ';
         v_where_base_prev := v_where_base_prev || ' AND s.ano = ' || v_previous_year || ' AND s.mes = ' || v_target_month || ' ';
     ELSE
