@@ -4261,7 +4261,7 @@ let estrelasSelectedCategorias = [];
                     const varArrow = c['Variação'] > 0 ? '▲' : (c['Variação'] < 0 ? '▼' : '-');
                     return `
                     <tr class="table-row">
-                        <td class="p-2 font-semibold">${c['Cidade']}</td>
+                        <td class="p-2 font-semibold">${escapeHtml(c['Cidade'])}</td>
                         <td class="p-2 text-right text-cyan-400 font-bold">${parseFloat(c['% Share']).toFixed(2)}%</td>
                         <td class="p-2 text-right font-bold ${varClass}">${varArrow} ${Math.abs(c['Variação']).toFixed(2)}%</td>
                     </tr>
@@ -6937,12 +6937,12 @@ function renderLpTable(clients) {
 
         html += `
             <tr class="hover:bg-slate-700/30 transition-colors">
-                <td class="px-6 py-4 text-slate-400 text-xs">${c.codcli}</td>
-                <td class="px-6 py-4 font-bold text-slate-200">${c.client_name}</td>
+                <td class="px-6 py-4 text-slate-400 text-xs">${escapeHtml(c.codcli)}</td>
+                <td class="px-6 py-4 font-bold text-slate-200">${escapeHtml(c.client_name)}</td>
                 <td class="px-6 py-4">
-                    <span class="font-bold text-white block">${c.researcher}</span>
+                    <span class="font-bold text-white block">${escapeHtml(c.researcher)}</span>
                 </td>
-                <td class="px-6 py-4 text-slate-400">${c.city || '--'}</td>
+                <td class="px-6 py-4 text-slate-400">${escapeHtml(c.city || '--')}</td>
                 <td class="px-6 py-4 text-center font-bold ${colorClass} text-base">${formatNumber(c.score, 1)}</td>
             </tr>
         `;
