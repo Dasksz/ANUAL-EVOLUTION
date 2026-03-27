@@ -1,8 +1,7 @@
-serving at port 3000
-127.0.0.1 - - [27/Mar/2026 09:32:49] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [27/Mar/2026 09:32:49] "GET /src/css/styles.css HTTP/1.1" 200 -
-127.0.0.1 - - [27/Mar/2026 09:32:49] "GET /src/css/nav.css HTTP/1.1" 200 -
-127.0.0.1 - - [27/Mar/2026 09:32:49] "GET /src/js/app.js?v=1773266628 HTTP/1.1" 200 -
-127.0.0.1 - - [27/Mar/2026 09:32:49] "GET /logo.svg HTTP/1.1" 200 -
-127.0.0.1 - - [27/Mar/2026 09:32:49] "GET /logo.png HTTP/1.1" 200 -
-127.0.0.1 - - [27/Mar/2026 09:32:51] "GET /src/js/supabase.js?v=3 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 11:47:31] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 11:47:32] "GET /src/css/styles.css HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 11:47:32] "GET /src/css/nav.css HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 11:47:32] "GET /logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 11:47:32] "GET /src/js/app.js?v=1773266628 HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 11:47:32] "GET /logo.svg HTTP/1.1" 200 -
+127.0.0.1 - - [27/Mar/2026 11:47:33] "GET /src/js/supabase.js?v=3 HTTP/1.1" 200 -
