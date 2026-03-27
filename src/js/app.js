@@ -6052,7 +6052,7 @@ function renderInnovationsKPIs(data) {
 
     // Total Clients (Base Total)
     const activeClientsEl = document.getElementById('innovations-month-active-clients-kpi');
-    if (activeClientsEl) activeClientsEl.textContent = formatNumber(activeClients, 0);
+    if (activeClientsEl) activeClientsEl.textContent = formatNumber(baseClients, 0);
 
     // Calculate Best Coverage & Avg Per Client
     let bestCategory = null;
