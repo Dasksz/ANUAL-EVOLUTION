@@ -4048,12 +4048,12 @@ BEGIN
         IF p_tipovenda <@ ARRAY['5', '11'] THEN
             v_having_client_tipo := ' SUM(d.vlbonific) > 0 ';
         ELSE
-            v_having_client_tipo := ' (SUM(d.vlvenda) >= 1 OR SUM(d.vlbonific) > 0) ';
+            v_having_client_tipo := ' SUM(d.vlvenda) >= 1 ';
         END IF;
     ELSE
         -- Global tipovenda rule when not selected: ignore 5 and 11
         v_where_client_tipo := ' AND d.tipovenda NOT IN (''5'', ''11'') ';
-        v_having_client_tipo := ' (SUM(d.vlvenda) >= 1 OR SUM(d.vlbonific) > 0) ';
+        v_having_client_tipo := ' SUM(d.vlvenda) >= 1 ';
     END IF;
 
     -- Redes
@@ -4368,12 +4368,12 @@ BEGIN
         IF p_tipovenda <@ ARRAY['5', '11'] THEN
             v_having_client_tipo := ' SUM(d.vlbonific) > 0 ';
         ELSE
-            v_having_client_tipo := ' (SUM(d.vlvenda) >= 1 OR SUM(d.vlbonific) > 0) ';
+            v_having_client_tipo := ' SUM(d.vlvenda) >= 1 ';
         END IF;
     ELSE
         -- Global tipovenda rule when not selected: ignore 5 and 11
         v_where_client_tipo := ' AND d.tipovenda NOT IN (''5'', ''11'') ';
-        v_having_client_tipo := ' (SUM(d.vlvenda) >= 1 OR SUM(d.vlbonific) > 0) ';
+        v_having_client_tipo := ' SUM(d.vlvenda) >= 1 ';
     END IF;
 
     -- Redes
