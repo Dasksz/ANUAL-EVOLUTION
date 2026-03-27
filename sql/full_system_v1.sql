@@ -3955,9 +3955,9 @@ DECLARE
     v_sql text;
 
     v_last_sale_date date;
-    
+
     v_target_date date;
-    
+
     -- New date boundary variables
     v_curr_start date;
     v_curr_end date;
@@ -3975,7 +3975,7 @@ BEGIN
     IF v_last_sale_date IS NULL THEN
         RETURN json_build_object('active_clients', 0, 'categories', '[]'::json, 'products', '[]'::json);
     END IF;
-    
+
     -- Se tem ano filtrado
     IF p_ano IS NOT NULL AND p_ano != 'todos' THEN
         IF p_mes IS NOT NULL AND p_mes != '' THEN
@@ -4004,10 +4004,10 @@ BEGIN
     -- Calculate exact date boundaries for indexing
     v_curr_start := date_trunc('month', v_target_date)::date;
     v_curr_end := (v_curr_start + interval '1 month')::date;
-    
+
     v_prev_start := (v_curr_start - interval '1 year')::date;
     v_prev_end := (v_curr_end - interval '1 year')::date;
-    
+
     -- Change 12m to 3m bounds
     v_12m_start := (v_curr_start - interval '3 months')::date;
     v_12m_end := v_curr_start; -- The 3 months before current month
@@ -4142,9 +4142,9 @@ BEGIN
         HAVING ' || v_having_client_tipo || '
     ),
     aggregated_base AS (
-        SELECT 
-            category_name, 
-            product_code, 
+        SELECT
+            category_name,
+            product_code,
             product_name,
             COUNT(DISTINCT CASE WHEN is_current THEN codcli END) AS pos_current,
             COUNT(DISTINCT CASE WHEN is_prev_year THEN codcli END) AS pos_prev_year,
@@ -4155,9 +4155,9 @@ BEGIN
         GROUP BY 1, 2, 3
     ),
     pos_12m AS (
-        SELECT 
-            category_name, 
-            product_code, 
+        SELECT
+            category_name,
+            product_code,
             product_name,
             COUNT(DISTINCT codcli) / 3.0 AS pos_count
         FROM innovation_sales
@@ -4165,9 +4165,9 @@ BEGIN
         GROUP BY 1, 2, 3, period_month
     ),
     pos_12m_avg AS (
-        SELECT 
-            category_name, 
-            product_code, 
+        SELECT
+            category_name,
+            product_code,
             product_name,
             SUM(pos_count) AS pos_avg
         FROM pos_12m
@@ -4186,9 +4186,9 @@ BEGIN
             COALESCE(p12.pos_avg, 0) AS pos_avg_12m,
             -- ESTOQUE IS NOW DYNAMICALLY EXTRACTED FROM dim_produtos.estoque_filial
             COALESCE((
-                SELECT SUM(value::numeric) 
-                FROM jsonb_each_text((SELECT estoque_filial FROM dim_produtos WHERE codigo = COALESCE(ab.product_code, p12.product_code))) 
-                WHERE ($1 IS NULL OR array_length($1, 1) = 0 OR ''ambas'' = ANY($1)) 
+                SELECT SUM(value::numeric)
+                FROM jsonb_each_text((SELECT estoque_filial FROM dim_produtos WHERE codigo = COALESCE(ab.product_code, p12.product_code)))
+                WHERE ($1 IS NULL OR array_length($1, 1) = 0 OR ''ambas'' = ANY($1))
                    OR key = ANY($1)
             ), 0) AS estoque_current
         FROM aggregated_base ab
