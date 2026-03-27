@@ -3955,9 +3955,9 @@ DECLARE
     v_sql text;
 
     v_last_sale_date date;
-
+    
     v_target_date date;
-
+    
     -- New date boundary variables
     v_curr_start date;
     v_curr_end date;
@@ -3975,7 +3975,7 @@ BEGIN
     IF v_last_sale_date IS NULL THEN
         RETURN json_build_object('active_clients', 0, 'categories', '[]'::json, 'products', '[]'::json);
     END IF;
-
+    
     -- Se tem ano filtrado
     IF p_ano IS NOT NULL AND p_ano != 'todos' THEN
         IF p_mes IS NOT NULL AND p_mes != '' THEN
@@ -4004,10 +4004,10 @@ BEGIN
     -- Calculate exact date boundaries for indexing
     v_curr_start := date_trunc('month', v_target_date)::date;
     v_curr_end := (v_curr_start + interval '1 month')::date;
-
+    
     v_prev_start := (v_curr_start - interval '1 year')::date;
     v_prev_end := (v_curr_end - interval '1 year')::date;
-
+    
     -- Change 12m to 3m bounds
     v_12m_start := (v_curr_start - interval '3 months')::date;
     v_12m_end := v_curr_start; -- The 3 months before current month
@@ -4142,9 +4142,9 @@ BEGIN
         HAVING ' || v_having_client_tipo || '
     ),
     aggregated_base AS (
-        SELECT
-            category_name,
-            product_code,
+        SELECT 
+            category_name, 
+            product_code, 
             product_name,
             COUNT(DISTINCT CASE WHEN is_current THEN codcli END) AS pos_current,
             COUNT(DISTINCT CASE WHEN is_prev_year THEN codcli END) AS pos_prev_year,
@@ -4155,9 +4155,9 @@ BEGIN
         GROUP BY 1, 2, 3
     ),
     pos_12m AS (
-        SELECT
-            category_name,
-            product_code,
+        SELECT 
+            category_name, 
+            product_code, 
             product_name,
             COUNT(DISTINCT codcli) / 3.0 AS pos_count
         FROM innovation_sales
@@ -4165,9 +4165,9 @@ BEGIN
         GROUP BY 1, 2, 3, period_month
     ),
     pos_12m_avg AS (
-        SELECT
-            category_name,
-            product_code,
+        SELECT 
+            category_name, 
+            product_code, 
             product_name,
             SUM(pos_count) AS pos_avg
         FROM pos_12m
@@ -4186,9 +4186,9 @@ BEGIN
             COALESCE(p12.pos_avg, 0) AS pos_avg_12m,
             -- ESTOQUE IS NOW DYNAMICALLY EXTRACTED FROM dim_produtos.estoque_filial
             COALESCE((
-                SELECT SUM(value::numeric)
-                FROM jsonb_each_text((SELECT estoque_filial FROM dim_produtos WHERE codigo = COALESCE(ab.product_code, p12.product_code)))
-                WHERE ($1 IS NULL OR array_length($1, 1) = 0 OR ''ambas'' = ANY($1))
+                SELECT SUM(value::numeric) 
+                FROM jsonb_each_text((SELECT estoque_filial FROM dim_produtos WHERE codigo = COALESCE(ab.product_code, p12.product_code))) 
+                WHERE ($1 IS NULL OR array_length($1, 1) = 0 OR ''ambas'' = ANY($1)) 
                    OR key = ANY($1)
             ), 0) AS estoque_current
         FROM aggregated_base ab
@@ -4262,6 +4262,14 @@ DECLARE
     v_where_base text := ' WHERE 1=1 ';
     v_where_client_base text := ' WHERE 1=1 ';
     v_where_client_tipo text := '';
+    
+    v_supervisor_rcas text[];
+    v_vendedor_rcas text[];
+    
+    v_has_com_rede boolean;
+    v_has_sem_rede boolean;
+    v_specific_redes text[];
+    v_rede_condition text := '';
     v_having_client_tipo text := ' SUM(d.vlvenda) >= 1 ';
     v_where_inov text := ' 1=1 ';
     v_filial_cities text[];
@@ -4327,10 +4335,31 @@ BEGIN
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND d.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        
+        SELECT array_agg(DISTINCT d.codusur) INTO v_supervisor_rcas
+        FROM public.data_detailed d
+        JOIN public.dim_supervisores ds ON d.codsupervisor = ds.codigo
+        WHERE ds.nome = ANY(p_supervisor);
+
+        IF v_supervisor_rcas IS NOT NULL THEN
+            v_where_client_base := v_where_client_base || format(' AND rca1 = ANY(%L) ', v_supervisor_rcas);
+        ELSE
+            v_where_client_base := v_where_client_base || ' AND 1=0 ';
+        END IF;
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND d.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        
+        SELECT array_agg(DISTINCT codigo) INTO v_vendedor_rcas
+        FROM public.dim_vendedores
+        WHERE nome = ANY(p_vendedor);
+
+        IF v_vendedor_rcas IS NOT NULL THEN
+            v_where_client_base := v_where_client_base || format(' AND rca1 = ANY(%L) ', v_vendedor_rcas);
+        ELSE
+            v_where_client_base := v_where_client_base || ' AND 1=0 ';
+        END IF;
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
@@ -4349,17 +4378,41 @@ BEGIN
 
     -- Redes
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-        IF 'com_ramo' = ANY(p_rede) AND 'sem_ramo' = ANY(p_rede) THEN
-            -- Do nothing, include all
-        ELSIF 'com_ramo' = ANY(p_rede) THEN
-            v_where_base := v_where_base || ' AND c.ramo IS NOT NULL AND c.ramo != '''' ';
-            v_where_client_base := v_where_client_base || ' AND ramo IS NOT NULL AND ramo != '''' ';
-        ELSIF 'sem_ramo' = ANY(p_rede) THEN
-            v_where_base := v_where_base || ' AND (c.ramo IS NULL OR c.ramo = '''') ';
-            v_where_client_base := v_where_client_base || ' AND (ramo IS NULL OR ramo = '''') ';
-        ELSE
-            v_where_base := v_where_base || ' AND c.ramo = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
-            v_where_client_base := v_where_client_base || ' AND ramo = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+        v_has_com_rede := ('C/ REDE' = ANY(p_rede));
+        v_has_sem_rede := ('S/ REDE' = ANY(p_rede));
+        v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
+
+        -- Base WHERE
+        IF array_length(v_specific_redes, 1) > 0 THEN
+            v_rede_condition := format('c.ramo = ANY(%L)', v_specific_redes);
+        END IF;
+        IF v_has_com_rede THEN
+            IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+            v_rede_condition := v_rede_condition || ' (c.ramo IS NOT NULL AND c.ramo NOT IN (''N/A'', ''N/D'')) ';
+        END IF;
+        IF v_has_sem_rede THEN
+            IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+            v_rede_condition := v_rede_condition || ' (c.ramo IS NULL OR c.ramo IN (''N/A'', ''N/D'')) ';
+        END IF;
+        IF v_rede_condition != '' THEN
+            v_where_base := v_where_base || ' AND (' || v_rede_condition || ') ';
+        END IF;
+
+        -- Client Base WHERE (no table prefix)
+        v_rede_condition := '';
+        IF array_length(v_specific_redes, 1) > 0 THEN
+            v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
+        END IF;
+        IF v_has_com_rede THEN
+            IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+            v_rede_condition := v_rede_condition || ' (ramo IS NOT NULL AND ramo NOT IN (''N/A'', ''N/D'')) ';
+        END IF;
+        IF v_has_sem_rede THEN
+            IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+            v_rede_condition := v_rede_condition || ' (ramo IS NULL OR ramo IN (''N/A'', ''N/D'')) ';
+        END IF;
+        IF v_rede_condition != '' THEN
+            v_where_client_base := v_where_client_base || ' AND (' || v_rede_condition || ') ';
         END IF;
     END IF;
 
