@@ -271,9 +271,18 @@ BEGIN
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_fornecedor)) THEN
-            v_where_base := v_where_base || ' AND s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
-            v_where_base_prev := v_where_base_prev || ' AND s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
-            v_where_chart := v_where_chart || ' AND codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
+            v_where_base := v_where_base || ' AND (
+                s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || '''])
+                OR s.codfor LIKE ''1119_%''
+            ) ';
+            v_where_base_prev := v_where_base_prev || ' AND (
+                s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || '''])
+                OR s.codfor LIKE ''1119_%''
+            ) ';
+            v_where_chart := v_where_chart || ' AND (
+                codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || '''])
+                OR codfor LIKE ''1119_%''
+            ) ';
         END IF;
     END IF;
 
@@ -1424,6 +1433,19 @@ BEGIN
     INSERT INTO public.data_summary_frequency (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede
     )
+    WITH dim_prod_enhanced AS (
+        SELECT
+            codigo,
+            categoria_produto,
+            CASE
+                WHEN descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
+                WHEN descricao ILIKE '%TODDY %' THEN '1119_TODDY'
+                WHEN descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
+                WHEN descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
+                ELSE '1119_OUTROS'
+            END as codfor_enhanced
+        FROM public.dim_produtos
+    )
     SELECT
         EXTRACT(YEAR FROM s.dtped)::int as ano,
         EXTRACT(MONTH FROM s.dtped)::int as mes,
@@ -1431,7 +1453,10 @@ BEGIN
         s.cidade,
         s.codsupervisor,
         s.codusur,
-        s.codfor,
+        CASE
+            WHEN s.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS')
+            ELSE s.codfor
+        END as codfor,
         s.codcli,
         s.tipovenda,
         s.pedido,
@@ -1446,7 +1471,7 @@ BEGIN
         SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto FROM public.data_history WHERE EXTRACT(YEAR FROM dtped)::int = p_year
     ) s
     LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
-    LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+    LEFT JOIN dim_prod_enhanced dp ON s.produto = dp.codigo
     GROUP BY
         EXTRACT(YEAR FROM s.dtped)::int,
         EXTRACT(MONTH FROM s.dtped)::int,
@@ -1454,7 +1479,10 @@ BEGIN
         s.cidade,
         s.codsupervisor,
         s.codusur,
-        s.codfor,
+        CASE
+            WHEN s.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS')
+            ELSE s.codfor
+        END,
         s.codcli,
         s.tipovenda,
         s.pedido,
@@ -1591,7 +1619,20 @@ BEGIN
     INSERT INTO public.data_summary_frequency (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede
     )
-    WITH freq_agg_base AS (
+    WITH dim_prod_enhanced AS (
+        SELECT
+            codigo,
+            categoria_produto,
+            CASE
+                WHEN descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
+                WHEN descricao ILIKE '%TODDY %' THEN '1119_TODDY'
+                WHEN descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
+                WHEN descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
+                ELSE '1119_OUTROS'
+            END as codfor_enhanced
+        FROM public.dim_produtos
+    ),
+    freq_agg_base AS (
         SELECT
             v_year as ano,
             v_month as mes,
@@ -1599,7 +1640,10 @@ BEGIN
             t.cidade,
             t.codsupervisor,
             t.codusur,
-            t.codfor,
+            CASE
+                WHEN t.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS')
+                ELSE t.codfor
+            END as codfor,
             t.codcli,
             t.tipovenda,
             t.pedido,
@@ -1608,13 +1652,16 @@ BEGIN
             jsonb_agg(DISTINCT t.produto) as produtos,
             jsonb_agg(DISTINCT dp.categoria_produto) FILTER (WHERE dp.categoria_produto IS NOT NULL) as categorias
         FROM tmp_raw_data t
-        LEFT JOIN public.dim_produtos dp ON t.produto = dp.codigo
+        LEFT JOIN dim_prod_enhanced dp ON t.produto = dp.codigo
         GROUP BY
             t.filial,
             t.cidade,
             t.codsupervisor,
             t.codusur,
-            t.codfor,
+            CASE
+                WHEN t.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS')
+                ELSE t.codfor
+            END,
             t.codcli,
             t.tipovenda,
             t.pedido
@@ -4805,7 +4852,18 @@ BEGIN
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_fornecedor)) THEN
-            v_where_chart := v_where_chart || ' AND s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
+            v_where_chart := v_where_chart || ' AND (
+                s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || '''])
+                OR (s.codfor = ''1119'' AND (
+                    CASE
+                        WHEN dp.descricao ILIKE ''%TODDYNHO%'' THEN ''1119_TODDYNHO''
+                        WHEN dp.descricao ILIKE ''%TODDY %'' THEN ''1119_TODDY''
+                        WHEN dp.descricao ILIKE ''%QUAKER%'' THEN ''1119_QUAKER''
+                        WHEN dp.descricao ILIKE ''%KEROCOCO%'' THEN ''1119_KEROCOCO''
+                        ELSE ''1119_OUTROS''
+                    END
+                ) = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']))
+            ) ';
         END IF;
     END IF;
 
@@ -4849,12 +4907,34 @@ BEGIN
     -- Dynamic Query using the exact same logic from get_comparison_view_data
     v_sql := '
     WITH all_sales AS (
-        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.mix_marca, dp.mix_categoria, s.codfor
+        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.mix_marca, dp.mix_categoria,
+            CASE
+                WHEN s.codfor = ''1119'' THEN COALESCE(
+                    CASE
+                        WHEN dp.descricao ILIKE ''%TODDYNHO%'' THEN ''1119_TODDYNHO''
+                        WHEN dp.descricao ILIKE ''%TODDY %'' THEN ''1119_TODDY''
+                        WHEN dp.descricao ILIKE ''%QUAKER%'' THEN ''1119_QUAKER''
+                        WHEN dp.descricao ILIKE ''%KEROCOCO%'' THEN ''1119_KEROCOCO''
+                        ELSE ''1119_OUTROS''
+                    END, ''1119_OUTROS'')
+                ELSE s.codfor
+            END as codfor
         FROM public.data_detailed s
         LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
         ' || v_where_chart || v_where_rede || '
         UNION ALL
-        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.mix_marca, dp.mix_categoria, s.codfor
+        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.mix_marca, dp.mix_categoria,
+            CASE
+                WHEN s.codfor = ''1119'' THEN COALESCE(
+                    CASE
+                        WHEN dp.descricao ILIKE ''%TODDYNHO%'' THEN ''1119_TODDYNHO''
+                        WHEN dp.descricao ILIKE ''%TODDY %'' THEN ''1119_TODDY''
+                        WHEN dp.descricao ILIKE ''%QUAKER%'' THEN ''1119_QUAKER''
+                        WHEN dp.descricao ILIKE ''%KEROCOCO%'' THEN ''1119_KEROCOCO''
+                        ELSE ''1119_OUTROS''
+                    END, ''1119_OUTROS'')
+                ELSE s.codfor
+            END as codfor
         FROM public.data_history s
         LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
         ' || v_where_chart || v_where_rede || '
