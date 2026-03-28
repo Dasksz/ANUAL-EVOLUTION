@@ -4182,7 +4182,6 @@ ALTER FUNCTION public.get_frequency_table_data(p_filial text[], p_cidade text[],
 ALTER FUNCTION public.get_frequency_table_data(p_diretoria text[], p_gerencia text[], p_filial text[], p_vendedor text[], p_supervisor text[], p_ano text, p_mes text, p_fornecedor text[], p_rede text[], p_produto text[], p_categoria text[], p_tipovenda text[]) SET search_path = public;
 ALTER FUNCTION public.update_products_stock(p_stock_data jsonb) SET search_path = public;
 ALTER FUNCTION public.classify_product_mix() SET search_path = public;
-ALTER FUNCTION public.get_innovations_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[], p_tipovenda text[], p_categoria_inovacao text, p_ano text, p_mes text) SET search_path = public;
 ALTER FUNCTION public.get_loja_perfeita_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[]) SET search_path = public;
 ALTER FUNCTION public.get_loja_perfeita_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[], p_codcli text) SET search_path = public;
 ALTER FUNCTION public.search_clients(p_search text) SET search_path = public;
