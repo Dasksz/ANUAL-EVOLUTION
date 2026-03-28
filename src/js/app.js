@@ -6297,11 +6297,13 @@ window.renderInnovationsTable = function(data) {
         const safeId = cat.name.replace(/[^a-zA-Z0-9]/g, '_');
 
         // Category Row (Parent)
+        // Note: Using escapeHtml for the onclick handler requires careful handling of quotes.
+        // Since escapeHtml escapes single quotes to &#039;, we can safely use it here.
         html += `
-            <tr class="hover:bg-slate-700/30 transition-colors cursor-pointer bg-slate-800/30" onclick="toggleInnovationRow('${cat.name}')">
+            <tr class="hover:bg-slate-700/30 transition-colors cursor-pointer bg-slate-800/30" onclick="toggleInnovationRow('${escapeHtml(cat.name).replace(/'/g, "\\'")}')">
                 <td class="px-4 py-4 text-white font-bold whitespace-normal flex items-center gap-2">
                     <svg id="icon-innovations-${safeId}" class="w-4 h-4 text-orange-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                    ${cat.name}
+                    ${escapeHtml(cat.name)}
                 </td>
                 <td class="px-4 py-4 text-slate-400 text-xs italic"></td>
                 <td class="px-4 py-4 text-center font-bold text-white">${catEstoque} cx</td>
@@ -6330,7 +6332,7 @@ window.renderInnovationsTable = function(data) {
                     <td class="px-4 py-4 pl-10 text-slate-400 text-xs flex items-center gap-2">
                         <svg class="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </td>
-                    <td class="px-4 py-4 text-slate-300 text-xs">${p.code} - ${p.name}</td>
+                    <td class="px-4 py-4 text-slate-300 text-xs">${escapeHtml(p.code)} - ${escapeHtml(p.name)}</td>
                     <td class="px-4 py-4 text-center font-medium text-slate-300">${pEstoque} cx</td>
                     <td class="px-4 py-4 text-center text-slate-500">${posAvg12m}</td>
                     <td class="px-4 py-4 text-center text-slate-500">${posPrevYear}</td>
