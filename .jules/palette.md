@@ -9,3 +9,7 @@
 ## 2025-02-19 - Screen Reader Noise in SVGs inside Buttons
 **Learning:** In complex dashboards with custom Tailwind components, combining informative `aria-label`s on buttons with inline SVG icons can create a double-read effect or confusing output for screen reader users if the SVG isn't explicitly hidden. Even if a button has an `aria-label`, screen readers may still try to interpret nested SVG properties if `aria-hidden="true"` is omitted, causing unnecessary auditory clutter.
 **Action:** Whenever implementing a button containing an SVG icon for visual decoration, always ensure the SVG carries `aria-hidden="true"` while the parent `<button>` provides the context via `aria-label` or inner text.
+
+## 2026-03-28 - [Accessibility of JS-driven navigation]
+**Learning:** Using `<a>` tags without `href` attributes for javascript-driven application navigation renders the links entirely inaccessible to keyboard users (no tab-focus).
+**Action:** When a design calls for navigation that functions as a view-toggle without page reloads, use `<button type="button">` instead of an `<a>` tag without an `href`. This natively provides the element with keyboard focusability and keypress event handling (Enter/Space) required for accessibility without extra JS workarounds.
