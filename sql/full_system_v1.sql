@@ -3930,10 +3930,6 @@ $$;
 DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text[], text);
 DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], text[], text[], text, text, text);
 
-$BODY$;
--- Function to retrieve innovations dashboard data
--- Updated with new attended bases for percentage calculation
-$$;
 
 
 
