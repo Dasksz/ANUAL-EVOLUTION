@@ -514,6 +514,9 @@ self.onmessage = async (event) => {
         salesCurrYearHistDataRaw = salesCurrYearHistDataRaw.filter(combinedFilter);
         salesCurrMonthDataRaw = salesCurrMonthDataRaw.filter(combinedFilter);
 
+        // Bolt Optimization: Pre-compute combined array to avoid multiple O(N) memory allocations
+        const allSalesRaw = salesPrevYearDataRaw.concat(salesCurrYearHistDataRaw, salesCurrMonthDataRaw);
+
         // --- IBGE Code Resolution ---
         self.postMessage({ type: 'progress', status: 'Verificando códigos IBGE...', percentage: 18 });
         
@@ -525,7 +528,7 @@ self.onmessage = async (event) => {
             if (isIbgeCode(val)) potentialCodes.add(String(val).trim());
         };
 
-        [...salesPrevYearDataRaw, ...salesCurrYearHistDataRaw, ...salesCurrMonthDataRaw].forEach(r => collectCodes(r, 'MUNICIPIO'));
+        allSalesRaw.forEach(r => collectCodes(r, 'MUNICIPIO'));
         // Removed client code collection
 
         let ibgeMap = {};
@@ -546,9 +549,7 @@ self.onmessage = async (event) => {
         };
 
         if (Object.keys(ibgeMap).length > 0) {
-            salesPrevYearDataRaw.forEach(r => replaceIbgeCode(r, 'MUNICIPIO'));
-            salesCurrYearHistDataRaw.forEach(r => replaceIbgeCode(r, 'MUNICIPIO'));
-            salesCurrMonthDataRaw.forEach(r => replaceIbgeCode(r, 'MUNICIPIO'));
+            allSalesRaw.forEach(r => replaceIbgeCode(r, 'MUNICIPIO'));
             // Removed client code replacement
         }
 
@@ -558,7 +559,7 @@ self.onmessage = async (event) => {
 
         // Iterate all sales to build map: CODCLI -> MUNICIPIO
         // Use sequential order: PrevYear -> CurrHist -> CurrMonth so latest wins if diff
-        [...salesPrevYearDataRaw, ...salesCurrYearHistDataRaw, ...salesCurrMonthDataRaw].forEach(row => {
+        allSalesRaw.forEach(row => {
             const codCli = String(row['CODCLI'] || '').trim();
             const municipio = String(row['MUNICIPIO'] || '').trim().toUpperCase();
             if (codCli && municipio) {
@@ -661,7 +662,7 @@ self.onmessage = async (event) => {
             }
         };
 
-        [...salesPrevYearDataRaw, ...salesCurrYearHistDataRaw, ...salesCurrMonthDataRaw].forEach(checkCity);
+        allSalesRaw.forEach(checkCity);
 
         // 2. Identify Predominant Supervisor for City (using Curr Month only) for Inactive Logic
         const citySupervisorCounts = new Map(); // City -> Map(Supervisor -> Count)
@@ -703,7 +704,7 @@ self.onmessage = async (event) => {
 
 
         // Combine Sales for Map Logic
-        const allSalesRaw = [...salesPrevYearDataRaw, ...salesCurrYearHistDataRaw, ...salesCurrMonthDataRaw];
+        // allSalesRaw pre-computed above
 
         self.postMessage({ type: 'progress', status: 'Criando mapa mestre de vendedores...', percentage: 40 });
         const rcaInfoMap = new Map();
@@ -1034,7 +1035,7 @@ self.onmessage = async (event) => {
              return chunks;
         };
 
-        const historyChunks = await chunkData([...processedPrevYear, ...processedCurrYearHist], true);
+        const historyChunks = await chunkData(processedPrevYear.concat(processedCurrYearHist), true);
         const detailedChunks = await chunkData(processedCurrMonth, false);
 
         self.postMessage({ type: 'progress', status: 'Preparando dados para envio...', percentage: 90 });
