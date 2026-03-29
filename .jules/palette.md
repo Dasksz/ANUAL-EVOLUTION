@@ -9,3 +9,7 @@
 ## 2025-02-19 - Screen Reader Noise in SVGs inside Buttons
 **Learning:** In complex dashboards with custom Tailwind components, combining informative `aria-label`s on buttons with inline SVG icons can create a double-read effect or confusing output for screen reader users if the SVG isn't explicitly hidden. Even if a button has an `aria-label`, screen readers may still try to interpret nested SVG properties if `aria-hidden="true"` is omitted, causing unnecessary auditory clutter.
 **Action:** Whenever implementing a button containing an SVG icon for visual decoration, always ensure the SVG carries `aria-hidden="true"` while the parent `<button>` provides the context via `aria-label` or inner text.
+
+## 2026-03-29 - Missing Visible Form Labels for Accessibility
+**Learning:** Secondary and hidden forms (like Signup and Forgot Password views) frequently omit explicit `<label>` elements in favor of minimalist designs relying only on `aria-label` and `placeholder`. This causes a poor UX since context is lost while typing, and hurts accessibility since screen readers may announce elements inconsistently without a dedicated bound `<label>`. In this app, the login form followed best practices while the adjacent secondary views omitted them.
+**Action:** When reviewing secondary interactive views or multi-step form sequences, always ensure they match the structural accessibility of the primary view. Specifically, verify that every `<input>` has an explicit visible `<label>` bound via `for`, and replace redundant placeholders with contextual examples.
