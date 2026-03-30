@@ -3932,7 +3932,7 @@ let estrelasSelectedCategorias = [];
         ];
 
         indicators.forEach(ind => {
-            let rowHTML = `<tr class="table-row"><td class="font-bold p-2 text-left">${ind.name}</td>`;
+            let rowHTML = `<tr class="table-row"><td class="font-bold p-2 text-left">${escapeHtml(ind.name)}</td>`;
             for(let i=0; i<12; i++) {
                 const d = currData.find(x => x.month_index === i);
                 let val = d ? d[ind.key] : null;
@@ -6243,8 +6243,7 @@ function renderInnovationsChart(data) {
 }
 
 // Make global to be accessible by inline onclick handler
-window.toggleInnovationRow = function(categoryNameStr) {
-    const safeId = categoryNameStr.replace(/[^a-zA-Z0-9]/g, '_');
+window.toggleInnovationRow = function(safeId) {
     const childRows = document.querySelectorAll(`.innovations-child-${safeId}`);
     const icon = document.getElementById(`icon-innovations-${safeId}`);
     
@@ -6298,10 +6297,10 @@ window.renderInnovationsTable = function(data) {
 
         // Category Row (Parent)
         html += `
-            <tr class="hover:bg-slate-700/30 transition-colors cursor-pointer bg-slate-800/30" onclick="toggleInnovationRow('${cat.name}')">
+            <tr class="hover:bg-slate-700/30 transition-colors cursor-pointer bg-slate-800/30" onclick="toggleInnovationRow('${safeId}')">
                 <td class="px-4 py-4 text-white font-bold whitespace-normal flex items-center gap-2">
                     <svg id="icon-innovations-${safeId}" class="w-4 h-4 text-orange-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                    ${cat.name}
+                    ${escapeHtml(cat.name)}
                 </td>
                 <td class="px-4 py-4 text-slate-400 text-xs italic"></td>
                 <td class="px-4 py-4 text-center font-bold text-white">${catEstoque} cx</td>
@@ -6330,7 +6329,7 @@ window.renderInnovationsTable = function(data) {
                     <td class="px-4 py-4 pl-10 text-slate-400 text-xs flex items-center gap-2">
                         <svg class="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </td>
-                    <td class="px-4 py-4 text-slate-300 text-xs">${p.code} - ${p.name}</td>
+                    <td class="px-4 py-4 text-slate-300 text-xs">${escapeHtml(p.code)} - ${escapeHtml(p.name)}</td>
                     <td class="px-4 py-4 text-center font-medium text-slate-300">${pEstoque} cx</td>
                     <td class="px-4 py-4 text-center text-slate-500">${posAvg12m}</td>
                     <td class="px-4 py-4 text-center text-slate-500">${posPrevYear}</td>
@@ -7667,7 +7666,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
                 <td class="px-2 py-2 border-b border-white/5 w-8 text-center cursor-pointer" onclick="toggleFreqNode('${id}')">
                     ${hasChildren ? '<svg id="icon-' + id + '" class="w-4 h-4 text-slate-400 inline transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>' : ''}
                 </td>
-                <td class="px-2 py-2 border-b border-white/5 font-medium ${indentClass}">${node.name}</td>
+                <td class="px-2 py-2 border-b border-white/5 font-medium ${indentClass}">${escapeHtml(node.name)}</td>
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${tons.toFixed(1)}</td>
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold ${varYagoColor}">${varYagoIcon} ${varYagoStr}</td>
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${skuPdv.toFixed(1)}</td>
