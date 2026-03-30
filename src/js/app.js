@@ -546,7 +546,7 @@ let estrelasSelectedCategorias = [];
                     // Remover ícones ou texto extra do botão de nav se houver
                     viewTitle = activeNav.textContent.trim();
                 }
-
+                
                 // Criar cabeçalho customizado para o PDF
                 const currentDate = new Date().toLocaleString('pt-BR');
                 headerEl = document.createElement('div');
@@ -561,21 +561,25 @@ let estrelasSelectedCategorias = [];
                         <p class="text-xs text-slate-500">Gerado em: ${currentDate}</p>
                     </div>
                 `;
-
+                
                 // Inserir cabeçalho no topo da view
                 activeView.insertBefore(headerEl, activeView.firstChild);
 
                 // Determine layout sizes and prepare for high-res export
                 const opt = {
-                    margin:       5, // mm
+                    margin:       0, // Sem margens brancas (usamos o padding do CSS)
                     filename:     `export_${new Date().toISOString().split('T')[0]}.pdf`,
                     image:        { type: 'jpeg', quality: 0.98 },
-                    pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] },
+                    pagebreak:    { mode: ['css', 'legacy'] }, // avoid-all causa páginas em branco/cortes
                     html2canvas:  { 
                         scale: 4, // High resolution
                         useCORS: true, 
                         logging: false,
-                        windowWidth: activeView.scrollWidth,
+                        x: 0,
+                        y: 0,
+                        scrollX: 0,
+                        scrollY: 0,
+                        windowWidth: document.documentElement.scrollWidth,
                         backgroundColor: '#131217' // Match dashboard background
                     },
                     jsPDF:        { unit: 'mm', format: 'a3', orientation: 'landscape' }
@@ -594,7 +598,7 @@ let estrelasSelectedCategorias = [];
                 if (headerEl && headerEl.parentNode) {
                     headerEl.parentNode.removeChild(headerEl);
                 }
-
+                
                 // Restore button state
                 exportPdfBtn.innerHTML = originalHtml;
                 exportPdfBtn.disabled = false;
