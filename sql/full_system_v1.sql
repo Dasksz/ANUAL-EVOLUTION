@@ -75,11 +75,11 @@ BEGIN
 
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
         IF 'S/ REDE' = ANY(p_rede) THEN
-            v_where_base := v_where_base || format(' AND (c.ramo = ANY(%L::text[]) OR c.ramo IS NULL OR c.ramo IN (''N/A'', ''N/D'')) ', p_rede);
-            v_where_clients := v_where_clients || format(' AND (dc.ramo = ANY(%L::text[]) OR dc.ramo IS NULL OR dc.ramo IN (''N/A'', ''N/D'')) ', p_rede);
+            v_where_base := v_where_base || format(' AND (UPPER(c.ramo) = ANY(ARRAY(SELECT UPPER(x) FROM unnest(%L::text[]) x)) OR c.ramo IS NULL OR c.ramo IN (''N/A'', ''N/D'')) ', p_rede);
+            v_where_clients := v_where_clients || format(' AND (UPPER(dc.ramo) = ANY(ARRAY(SELECT UPPER(x) FROM unnest(%L::text[]) x)) OR dc.ramo IS NULL OR dc.ramo IN (''N/A'', ''N/D'')) ', p_rede);
         ELSE
-            v_where_base := v_where_base || format(' AND c.ramo = ANY(%L::text[]) ', p_rede);
-            v_where_clients := v_where_clients || format(' AND dc.ramo = ANY(%L::text[]) ', p_rede);
+            v_where_base := v_where_base || format(' AND UPPER(c.ramo) = ANY(ARRAY(SELECT UPPER(x) FROM unnest(%L::text[]) x)) ', p_rede);
+            v_where_clients := v_where_clients || format(' AND UPPER(dc.ramo) = ANY(ARRAY(SELECT UPPER(x) FROM unnest(%L::text[]) x)) ', p_rede);
         END IF;
     END IF;
 
@@ -2258,7 +2258,7 @@ BEGIN
        v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
        
        IF array_length(v_specific_redes, 1) > 0 THEN
-           v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
+           v_rede_condition := format('UPPER(ramo) = ANY(ARRAY(SELECT UPPER(x) FROM unnest(%L::text[]) x))', v_specific_redes);
        END IF;
        
        IF v_has_com_rede THEN
@@ -2333,7 +2333,7 @@ BEGIN
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
         v_rede_condition := ''; -- reset
         IF array_length(v_specific_redes, 1) > 0 THEN
-           v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
+           v_rede_condition := format('UPPER(ramo) = ANY(ARRAY(SELECT UPPER(x) FROM unnest(%L::text[]) x))', v_specific_redes);
         END IF;
         IF v_has_com_rede THEN
            IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
@@ -2720,7 +2720,7 @@ BEGIN
        v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
        
        IF array_length(v_specific_redes, 1) > 0 THEN
-           v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
+           v_rede_condition := format('UPPER(ramo) = ANY(ARRAY(SELECT UPPER(x) FROM unnest(%L::text[]) x))', v_specific_redes);
        END IF;
        
        IF v_has_com_rede THEN
@@ -3017,7 +3017,7 @@ BEGIN
        v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
        
        IF array_length(v_specific_redes, 1) > 0 THEN
-           v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
+           v_rede_condition := format('UPPER(ramo) = ANY(ARRAY(SELECT UPPER(x) FROM unnest(%L::text[]) x))', v_specific_redes);
        END IF;
        
        IF v_has_com_rede THEN
@@ -3171,7 +3171,7 @@ BEGIN
        v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
 
        IF array_length(v_specific_redes, 1) > 0 THEN
-           v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
+           v_rede_condition := format('UPPER(ramo) = ANY(ARRAY(SELECT UPPER(x) FROM unnest(%L::text[]) x))', v_specific_redes);
        END IF;
 
        IF v_has_com_rede THEN
@@ -4444,7 +4444,7 @@ DECLARE
     v_sql text;
     v_result json;
     v_where_base text := ' WHERE 1=1 ';
-    v_where_client_base text := ' WHERE 1=1 ';
+    v_where_client_base text := ' WHERE bloqueio != ''S'' ';
     v_where_client_tipo text := '';
 
     v_supervisor_rcas text[];
@@ -4598,7 +4598,7 @@ BEGIN
         -- Client Base WHERE (no table prefix)
         v_rede_condition := '';
         IF array_length(v_specific_redes, 1) > 0 THEN
-            v_rede_condition := format('ramo = ANY(%L)', v_specific_redes);
+            v_rede_condition := format('UPPER(ramo) = ANY(ARRAY(SELECT UPPER(x) FROM unnest(%L::text[]) x))', v_specific_redes);
         END IF;
         IF v_has_com_rede THEN
             IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
