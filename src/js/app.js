@@ -385,7 +385,7 @@ let estrelasSelectedCategorias = [];
         if (!exportDropdown) return;
         const isClickInsideDropdown = exportDropdown.contains(e.target);
         const isClickOnActiveNav = e.target.closest('.nav-link.active');
-
+        
         if (!isClickInsideDropdown && !isClickOnActiveNav && !exportDropdown.classList.contains('hidden')) {
             exportDropdown.classList.add('hidden');
         }
@@ -398,7 +398,7 @@ let estrelasSelectedCategorias = [];
     if (exportExcelBtn) {
         exportExcelBtn.addEventListener('click', () => {
             if (exportDropdown) exportDropdown.classList.add('hidden');
-
+            
             let activeView = null;
             const views = [
                 { id: 'main-dashboard-view', navId: 'nav-dashboard', name: 'Visao Geral' },
@@ -410,7 +410,7 @@ let estrelasSelectedCategorias = [];
                 { id: 'loja-perfeita-view', navId: 'nav-loja-perfeita-btn', name: 'Loja Perfeita' },
                 { id: 'estrelas-view', navId: 'nav-estrelas-btn', name: 'Estrelas' }
             ];
-
+            
             let viewName = 'Export';
             for (const view of views) {
                 const navEl = document.getElementById(view.navId);
@@ -449,7 +449,7 @@ let estrelasSelectedCategorias = [];
                     const clonedTable = table.cloneNode(true);
                     const hiddenRows = clonedTable.querySelectorAll('.hidden, [style*="display: none"]');
                     hiddenRows.forEach(row => row.parentNode.removeChild(row));
-
+                    
                     // Sanitize text if there are icons or complex formatting
                     const thTdElements = clonedTable.querySelectorAll('th, td');
                     thTdElements.forEach(cell => {
@@ -461,7 +461,7 @@ let estrelasSelectedCategorias = [];
 
                     // Generate worksheet
                     const ws = XLSX.utils.table_to_sheet(clonedTable, { raw: true });
-
+                    
                     // Name the sheet
                     let sheetName = `Tabela ${sheetCounter}`;
                     // Attempt to find a title above the table
@@ -471,7 +471,7 @@ let estrelasSelectedCategorias = [];
                     } else if (table.id) {
                          sheetName = table.id.replace(/[-_]/g, ' ').substring(0, 30);
                     }
-
+                    
                     // Ensure unique sheet name
                     let baseName = sheetName;
                     let dupCounter = 1;
@@ -504,7 +504,7 @@ let estrelasSelectedCategorias = [];
         exportPdfBtn.addEventListener('click', async () => {
             // Hide dropdown
             if (exportDropdown) exportDropdown.classList.add('hidden');
-
+            
             // Find currently active view
             let activeView = null;
             const views = [
@@ -517,7 +517,7 @@ let estrelasSelectedCategorias = [];
                 { id: 'loja-perfeita-view', navId: 'nav-loja-perfeita-btn' },
                 { id: 'estrelas-view', navId: 'nav-estrelas-btn' }
             ];
-
+            
             for (const view of views) {
                 const navEl = document.getElementById(view.navId);
                 const viewEl = document.getElementById(view.id);
@@ -543,21 +543,21 @@ let estrelasSelectedCategorias = [];
                     margin:       5, // mm
                     filename:     `export_${new Date().toISOString().split('T')[0]}.pdf`,
                     image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  {
+                    html2canvas:  { 
                         scale: 2, // High resolution
-                        useCORS: true,
+                        useCORS: true, 
                         logging: false,
                         windowWidth: activeView.scrollWidth,
                         backgroundColor: '#131217' // Match dashboard background
                     },
                     jsPDF:        { unit: 'mm', format: 'a3', orientation: 'landscape' }
                 };
-
+                
                 // Add a temporary class to optimize for PDF capture if needed
                 activeView.classList.add('pdf-exporting');
 
                 await html2pdf().set(opt).from(activeView).save();
-
+                
             } catch (err) {
                 console.error("Erro ao gerar PDF:", err);
                 alert("Ocorreu um erro ao gerar o PDF. Tente novamente.");
@@ -1509,14 +1509,13 @@ let estrelasSelectedCategorias = [];
     checkSession();
 
     // --- Navigation Logic (Updated for Top Nav) ---
-    function setActiveNavLink(link) {
     // Helper to check if a clicked link is already active
     function handleActiveLinkClick(e, navBtn, viewId) {
         if (navBtn.classList.contains('active')) {
             e.preventDefault();
             e.stopPropagation(); // prevent other handlers
             currentActiveNavId = navBtn.id;
-
+            
             // Show Export Dropdown
             exportDropdown.classList.toggle('hidden');
             if (!exportDropdown.classList.contains('hidden')) {
@@ -1532,6 +1531,8 @@ let estrelasSelectedCategorias = [];
         }
         return false;
     }
+
+    function setActiveNavLink(link) {
         if (!link) return;
         document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
         link.classList.add('active');
