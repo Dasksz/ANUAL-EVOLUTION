@@ -4439,9 +4439,16 @@ let estrelasSelectedCategorias = [];
         
         const renderItems = () => {
             container.innerHTML = '';
+
+            // ⚡ Bolt Optimization: Use a Set for O(1) lookups during rendering instead of O(N) array.includes()
+            const selectedSet = new Set(selectedArray);
+
+            // ⚡ Bolt Optimization: Use DocumentFragment to batch DOM insertions and prevent layout thrashing
+            const fragment = document.createDocumentFragment();
+
             (items || []).forEach(item => {
                 const val = String(item);
-                const isSelected = selectedArray.includes(val);
+                const isSelected = selectedSet.has(val);
                 const div = document.createElement('div');
                 div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
 
@@ -4478,8 +4485,11 @@ let estrelasSelectedCategorias = [];
                     updateBtnLabel();
 // Removed immediate handleFilterChange call from here if any existed
                 };
-                container.appendChild(div);
+                fragment.appendChild(div);
             });
+
+            container.appendChild(fragment);
+
             if (!items || items.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
         };
         
@@ -4522,11 +4532,14 @@ let estrelasSelectedCategorias = [];
             }
             
                         // Sort items so selected ones appear first
+            // ⚡ Bolt Optimization: Use a Set for O(1) lookups during sorting instead of O(N) array.includes()
+            const selectedSet = new Set(selectedArray);
+
             filteredItems.sort((a, b) => {
                 const valA = String(isObject ? a.cod : a);
                 const valB = String(isObject ? b.cod : b);
-                const isSelectedA = selectedArray.includes(valA);
-                const isSelectedB = selectedArray.includes(valB);
+                const isSelectedA = selectedSet.has(valA);
+                const isSelectedB = selectedSet.has(valB);
 
                 if (isSelectedA && !isSelectedB) return -1;
                 if (!isSelectedA && isSelectedB) return 1;
@@ -4535,10 +4548,13 @@ let estrelasSelectedCategorias = [];
 
             const displayItems = filteredItems.slice(0, MAX_ITEMS);
 
+            // ⚡ Bolt Optimization: Use DocumentFragment to batch DOM insertions and prevent layout thrashing
+            const fragment = document.createDocumentFragment();
+
             displayItems.forEach(item => {
                 const value = isObject ? item.cod : item;
                 const label = isObject ? item.name : item;
-                const isSelected = selectedArray.includes(String(value));
+                const isSelected = selectedSet.has(String(value));
                 const div = document.createElement('div');
                 div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
 
@@ -4563,8 +4579,10 @@ let estrelasSelectedCategorias = [];
                     updateBtnLabel();
 // Removed immediate handleFilterChange call from here if any existed
                 };
-                container.appendChild(div);
+                fragment.appendChild(div);
             });
+
+            container.appendChild(fragment);
 
             if (filteredItems.length > MAX_ITEMS) {
                 const limitMsg = document.createElement('div');
