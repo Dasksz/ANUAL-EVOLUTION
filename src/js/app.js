@@ -1509,7 +1509,6 @@ let estrelasSelectedCategorias = [];
     checkSession();
 
     // --- Navigation Logic (Updated for Top Nav) ---
-    function setActiveNavLink(link) {
     // Helper to check if a clicked link is already active
     function handleActiveLinkClick(e, navBtn, viewId) {
         if (navBtn.classList.contains('active')) {
@@ -1532,6 +1531,8 @@ let estrelasSelectedCategorias = [];
         }
         return false;
     }
+
+    function setActiveNavLink(link) {
         if (!link) return;
         document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
         link.classList.add('active');
