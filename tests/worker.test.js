@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { parseExcelDate, parseDate } = require('../src/js/worker');
+const { parseExcelDate, parseDate, isIbgeCode } = require('../src/js/worker');
 
 test('parseExcelDate parses basic dates correctly', () => {
     // 45262 is 2023-12-02
@@ -51,4 +51,21 @@ test('parseDate rejects invalid dates in fast path correctly', () => {
     if (d2) {
          assert.notStrictEqual(d2.getFullYear(), -17577);
     }
+});
+
+test('isIbgeCode validates 6 and 7 digit codes correctly', () => {
+    // Valid cases
+    assert.strictEqual(isIbgeCode('123456'), true);
+    assert.strictEqual(isIbgeCode('1234567'), true);
+    assert.strictEqual(isIbgeCode(123456), true);
+    assert.strictEqual(isIbgeCode(1234567), true);
+    assert.strictEqual(isIbgeCode('  123456  '), true);
+
+    // Invalid cases
+    assert.strictEqual(isIbgeCode('12345'), false); // Too short
+    assert.strictEqual(isIbgeCode('12345678'), false); // Too long
+    assert.strictEqual(isIbgeCode('123a56'), false); // Non-numeric
+    assert.strictEqual(isIbgeCode(''), false); // Empty string
+    assert.strictEqual(isIbgeCode(null), false); // Null
+    assert.strictEqual(isIbgeCode(undefined), false); // Undefined
 });
