@@ -405,17 +405,6 @@ th {
     print-color-adjust: exact !important;
 }
 
-/* Page Break Helpers for html2pdf */
-.pdf-exporting .glass-card,
-.pdf-exporting .gatekeeper-card,
-.pdf-exporting .kpi-card,
-.pdf-exporting table,
-.pdf-exporting .chart-container,
-.pdf-exporting canvas {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-}
-
 .pdf-header-export h1,
 .pdf-header-export p {
     margin: 0;
