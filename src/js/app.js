@@ -567,15 +567,19 @@ let estrelasSelectedCategorias = [];
 
                 // Determine layout sizes and prepare for high-res export
                 const opt = {
-                    margin:       5, // mm
+                    margin:       0, // Sem margens brancas (usamos o padding do CSS)
                     filename:     `export_${new Date().toISOString().split('T')[0]}.pdf`,
                     image:        { type: 'jpeg', quality: 0.98 },
-                    pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] },
+                    pagebreak:    { mode: ['css', 'legacy'] }, // avoid-all causa páginas em branco/cortes
                     html2canvas:  { 
                         scale: 4, // High resolution
                         useCORS: true, 
                         logging: false,
-                        windowWidth: activeView.scrollWidth,
+                        x: 0,
+                        y: 0,
+                        scrollX: 0,
+                        scrollY: 0,
+                        windowWidth: document.documentElement.scrollWidth,
                         backgroundColor: '#131217' // Match dashboard background
                     },
                     jsPDF:        { unit: 'mm', format: 'a3', orientation: 'landscape' }
