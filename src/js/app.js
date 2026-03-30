@@ -565,24 +565,31 @@ let estrelasSelectedCategorias = [];
                 // Inserir cabeçalho no topo da view
                 activeView.insertBefore(headerEl, activeView.firstChild);
 
-                // Determine layout sizes and prepare for high-res export
+                const width = activeView.scrollWidth;
+                const height = activeView.scrollHeight;
+
+                // Determine layout sizes and prepare for high-res single page export
                 const opt = {
                     margin:       0, // Sem margens brancas (usamos o padding do CSS)
                     filename:     `export_${new Date().toISOString().split('T')[0]}.pdf`,
                     image:        { type: 'jpeg', quality: 0.98 },
-                    pagebreak:    { mode: ['css', 'legacy'] }, // avoid-all causa páginas em branco/cortes
                     html2canvas:  { 
-                        scale: 2.5, // Better balance between resolution and PDF scrolling performance
+                        scale: 2, // 2 is a good balance for a single large page, 2.5 might cause memory issues
                         useCORS: true, 
                         logging: false,
                         x: 0,
                         y: 0,
                         scrollX: 0,
                         scrollY: 0,
-                        windowWidth: document.documentElement.scrollWidth,
+                        windowWidth: width,
+                        windowHeight: height,
                         backgroundColor: '#131217' // Match dashboard background
                     },
-                    jsPDF:        { unit: 'mm', format: 'a3', orientation: 'landscape' }
+                    jsPDF:        {
+                        unit: 'px',
+                        format: [width, height],
+                        orientation: width > height ? 'landscape' : 'portrait'
+                    }
                 };
                 
                 // Add a temporary class to optimize for PDF capture if needed
