@@ -391,9 +391,12 @@ th {
 /* PDF Exporting Styles */
 .pdf-exporting {
     background-color: #131217 !important;
-    padding: 20px !important;
+    padding: 40px !important; /* Margem segura para PDF (como tiramos margin nas options do jsPDF) */
     /* Ensure the wrapper respects page breaks */
     box-sizing: border-box;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
 }
 
 .pdf-exporting * {
