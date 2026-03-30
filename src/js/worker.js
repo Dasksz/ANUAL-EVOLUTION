@@ -79,18 +79,22 @@ function parseDate(dateString) {
             day = parts[0];
             month = parts[1];
             year = parts[2];
-            // Fix 2-digit years if they ever appear (e.g., 26 -> 2026, 99 -> 1999)
-            if (year.length === 2) {
-                const y = parseInt(year, 10);
-                year = y < 50 ? '20' + year : '19' + year;
-            }
         }
 
+        const y = parseInt(year, 10);
+        const m = parseInt(month, 10);
+        const d = parseInt(day, 10);
+
         // Validate parts
-        if (day && month && year && !isNaN(day) && !isNaN(month) && !isNaN(year)) {
+        if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+            let finalYear = y;
+            // Fix 2-digit years if they ever appear (e.g., 26 -> 2026, 99 -> 1999)
+            if (finalYear < 100) {
+                finalYear += (finalYear < 50) ? 2000 : 1900;
+            }
             // Using Date.UTC to prevent timezone shift issues
-            const d = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10)));
-            return isNaN(d.getTime()) ? null : d;
+            const dt = new Date(Date.UTC(finalYear, m - 1, d));
+            return isNaN(dt.getTime()) ? null : dt;
         }
     }
 
