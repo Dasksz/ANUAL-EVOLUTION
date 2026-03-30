@@ -271,18 +271,24 @@ BEGIN
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_fornecedor)) THEN
-            v_where_base := v_where_base || ' AND (
-                s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || '''])
-                OR s.codfor LIKE ''1119_%''
-            ) ';
-            v_where_base_prev := v_where_base_prev || ' AND (
-                s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || '''])
-                OR s.codfor LIKE ''1119_%''
-            ) ';
-            v_where_chart := v_where_chart || ' AND (
-                codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || '''])
-                OR codfor LIKE ''1119_%''
-            ) ';
+            IF ('1119' = ANY(p_fornecedor)) THEN
+                v_where_base := v_where_base || ' AND (
+                    s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || '''])
+                    OR s.codfor LIKE ''1119_%''
+                ) ';
+                v_where_base_prev := v_where_base_prev || ' AND (
+                    s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || '''])
+                    OR s.codfor LIKE ''1119_%''
+                ) ';
+                v_where_chart := v_where_chart || ' AND (
+                    codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || '''])
+                    OR codfor LIKE ''1119_%''
+                ) ';
+            ELSE
+                v_where_base := v_where_base || ' AND s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
+                v_where_base_prev := v_where_base_prev || ' AND s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
+                v_where_chart := v_where_chart || ' AND codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
+            END IF;
         END IF;
     END IF;
 
