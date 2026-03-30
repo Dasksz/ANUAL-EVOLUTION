@@ -3932,7 +3932,7 @@ let estrelasSelectedCategorias = [];
         ];
 
         indicators.forEach(ind => {
-            let rowHTML = `<tr class="table-row"><td class="font-bold p-2 text-left">${ind.name}</td>`;
+            let rowHTML = `<tr class="table-row"><td class="font-bold p-2 text-left">${escapeHtml(ind.name)}</td>`;
             for(let i=0; i<12; i++) {
                 const d = currData.find(x => x.month_index === i);
                 let val = d ? d[ind.key] : null;
@@ -7666,7 +7666,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
                 <td class="px-2 py-2 border-b border-white/5 w-8 text-center cursor-pointer" onclick="toggleFreqNode('${id}')">
                     ${hasChildren ? '<svg id="icon-' + id + '" class="w-4 h-4 text-slate-400 inline transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>' : ''}
                 </td>
-                <td class="px-2 py-2 border-b border-white/5 font-medium ${indentClass}">${node.name}</td>
+                <td class="px-2 py-2 border-b border-white/5 font-medium ${indentClass}">${escapeHtml(node.name)}</td>
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${tons.toFixed(1)}</td>
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold ${varYagoColor}">${varYagoIcon} ${varYagoStr}</td>
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${skuPdv.toFixed(1)}</td>
