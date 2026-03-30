@@ -2297,37 +2297,7 @@ BEGIN
          v_where_base := v_where_base || format(' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        DECLARE
-            v_code text;
-            v_conditions text[] := '{}';
-            v_simple_codes text[] := '{}';
-            v_cond_str text;
-        BEGIN
-            FOREACH v_code IN ARRAY p_fornecedor LOOP
-                IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categorias ? ''TODDYNHO'')');
-                ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categorias ? ''TODDY'')');
-                ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categorias ? ''QUAKER'')');
-                ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categorias ? ''KEROCOCO'')');
-                ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND NOT (categorias ?| ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
-                ELSE
-                    v_simple_codes := array_append(v_simple_codes, v_code);
-                END IF;
-            END LOOP;
-
-            IF array_length(v_simple_codes, 1) > 0 THEN
-                v_conditions := array_append(v_conditions, format('codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
-            END IF;
-
-            IF array_length(v_conditions, 1) > 0 THEN
-                v_cond_str := array_to_string(v_conditions, ' OR ');
-                v_where_base := v_where_base || ' AND (' || v_cond_str || ') ';
-            END IF;
-        END;
+        v_where_base := v_where_base || format(' AND codfor = ANY(%L) ', p_fornecedor);
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND categoria_produto = ANY(%L) ', p_categoria);
@@ -5202,37 +5172,7 @@ BEGIN
          v_where_base := v_where_base || format(' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        DECLARE
-            v_code text;
-            v_conditions text[] := '{}';
-            v_simple_codes text[] := '{}';
-            v_cond_str text;
-        BEGIN
-            FOREACH v_code IN ARRAY p_fornecedor LOOP
-                IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categorias ? ''TODDYNHO'')');
-                ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categorias ? ''TODDY'')');
-                ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categorias ? ''QUAKER'')');
-                ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categorias ? ''KEROCOCO'')');
-                ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND NOT (categorias ?| ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
-                ELSE
-                    v_simple_codes := array_append(v_simple_codes, v_code);
-                END IF;
-            END LOOP;
-
-            IF array_length(v_simple_codes, 1) > 0 THEN
-                v_conditions := array_append(v_conditions, format('codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
-            END IF;
-
-            IF array_length(v_conditions, 1) > 0 THEN
-                v_cond_str := array_to_string(v_conditions, ' OR ');
-                v_where_base := v_where_base || ' AND (' || v_cond_str || ') ';
-            END IF;
-        END;
+        v_where_base := v_where_base || format(' AND codfor = ANY(%L) ', p_fornecedor);
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND categoria_produto = ANY(%L) ', p_categoria);
