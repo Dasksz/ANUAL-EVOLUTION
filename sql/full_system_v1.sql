@@ -4437,6 +4437,8 @@ DECLARE
     v_specific_redes text[];
     v_rede_condition text := '';
     v_having_client_tipo text := ' SUM(CASE WHEN d.tipovenda NOT IN (''5'',''11'') THEN d.vlvenda ELSE 0 END) >= 1 ';
+    v_sum_value_expr text := 'd.vlvenda';
+    v_sum_operator_expr text := '>= 1';
     v_where_inov text := ' 1=1 ';
     v_filial_cities text[];
 BEGIN
@@ -4530,16 +4532,28 @@ BEGIN
         v_where_client_tipo := ' ';
         IF p_tipovenda <@ ARRAY['5', '11'] THEN
             v_having_client_tipo := ' SUM(d.vlbonific) > 0 ';
+            v_sum_value_expr := 'd.vlbonific';
+            v_sum_operator_expr := '> 0';
         ELSIF NOT (p_tipovenda && ARRAY['5', '11']) THEN
             v_having_client_tipo := ' SUM(d.vlvenda) >= 1 ';
+            v_sum_value_expr := 'd.vlvenda';
+            v_sum_operator_expr := '>= 1';
         ELSE
             v_having_client_tipo := ' SUM(CASE WHEN d.tipovenda NOT IN (''5'',''11'') THEN d.vlvenda ELSE 0 END) >= 1 OR SUM(CASE WHEN d.tipovenda IN (''5'',''11'') THEN d.vlbonific ELSE 0 END) > 0 ';
+            -- Mixed types: we sum vlbonific for 5/11 and vlvenda for others
+            v_sum_value_expr := '(CASE WHEN d.tipovenda IN (''5'',''11'') THEN d.vlbonific ELSE d.vlvenda END)';
+            v_sum_operator_expr := '>= 1';
         END IF;
     ELSE
         -- Global tipovenda rule when not selected: same as main dashboard
         v_where_client_tipo := ' AND d.tipovenda NOT IN (''5'', ''11'') ';
         v_having_client_tipo := ' SUM(d.vlvenda) >= 1 ';
+        v_sum_value_expr := 'd.vlvenda';
+        v_sum_operator_expr := '>= 1';
     END IF;
+    
+    -- Fix: Append client_tipo filter so it physically excludes unused types from the query
+    v_where_base := v_where_base || v_where_client_tipo;
 
     -- Redes
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
@@ -4602,17 +4616,16 @@ BEGIN
     ),
     filtered_clients AS (
         SELECT d.codcli,
-               MAX((d.dtped >= ''' || v_curr_start || ''' AND d.dtped < ''' || v_curr_end || ''')::int)::boolean AS is_current,
-               MAX((d.dtped >= ''' || v_prev_start || ''' AND d.dtped < ''' || v_prev_end || ''')::int)::boolean AS is_prev_year,
-               MAX((d.dtped >= ''' || v_12m_start || ''' AND d.dtped < ''' || v_12m_end || ''')::int)::boolean AS is_avg_12m,
-               MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''1 month'') AND d.dtped < ''' || v_curr_start || ''')::int)::boolean AS is_prev_m1,
-               MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''2 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''1 month''))::int)::boolean AS is_prev_m2,
-               MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''3 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''2 months''))::int)::boolean AS is_prev_m3
+               (SUM(CASE WHEN d.dtped >= ''' || v_curr_start || ''' AND d.dtped < ''' || v_curr_end || ''' THEN ' || v_sum_value_expr || ' ELSE 0 END) ' || v_sum_operator_expr || ')::boolean AS is_current,
+               (SUM(CASE WHEN d.dtped >= ''' || v_prev_start || ''' AND d.dtped < ''' || v_prev_end || ''' THEN ' || v_sum_value_expr || ' ELSE 0 END) ' || v_sum_operator_expr || ')::boolean AS is_prev_year,
+               (SUM(CASE WHEN d.dtped >= ''' || v_12m_start || ''' AND d.dtped < ''' || v_12m_end || ''' THEN ' || v_sum_value_expr || ' ELSE 0 END) ' || v_sum_operator_expr || ')::boolean AS is_avg_12m,
+               (SUM(CASE WHEN d.dtped >= (''' || v_curr_start || '''::date - interval ''1 month'') AND d.dtped < ''' || v_curr_start || ''' THEN ' || v_sum_value_expr || ' ELSE 0 END) ' || v_sum_operator_expr || ')::boolean AS is_prev_m1,
+               (SUM(CASE WHEN d.dtped >= (''' || v_curr_start || '''::date - interval ''2 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''1 month'') THEN ' || v_sum_value_expr || ' ELSE 0 END) ' || v_sum_operator_expr || ')::boolean AS is_prev_m2,
+               (SUM(CASE WHEN d.dtped >= (''' || v_curr_start || '''::date - interval ''3 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''2 months'') THEN ' || v_sum_value_expr || ' ELSE 0 END) ' || v_sum_operator_expr || ')::boolean AS is_prev_m3
         FROM raw_sales d
         JOIN data_clients c ON c.codigo_cliente = d.codcli
         ' || v_where_base || '
         GROUP BY d.codcli
-        HAVING ' || v_having_client_tipo || '
     ),
     attended_bases AS (
         SELECT
@@ -4631,11 +4644,11 @@ BEGIN
             i.codigo AS product_code,
             p.descricao AS product_name,
             d.codcli,
-            MAX((d.dtped >= ''' || v_curr_start || ''' AND d.dtped < ''' || v_curr_end || ''')::int)::boolean AS is_current,
-            MAX((d.dtped >= ''' || v_prev_start || ''' AND d.dtped < ''' || v_prev_end || ''')::int)::boolean AS is_prev_year,
-            MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''1 month'') AND d.dtped < ''' || v_curr_start || ''')::int)::boolean AS is_prev_m1,
-            MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''2 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''1 month''))::int)::boolean AS is_prev_m2,
-            MAX((d.dtped >= (''' || v_curr_start || '''::date - interval ''3 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''2 months''))::int)::boolean AS is_prev_m3
+            (SUM(CASE WHEN d.dtped >= ''' || v_curr_start || ''' AND d.dtped < ''' || v_curr_end || ''' THEN ' || v_sum_value_expr || ' ELSE 0 END) ' || v_sum_operator_expr || ')::boolean AS is_current,
+            (SUM(CASE WHEN d.dtped >= ''' || v_prev_start || ''' AND d.dtped < ''' || v_prev_end || ''' THEN ' || v_sum_value_expr || ' ELSE 0 END) ' || v_sum_operator_expr || ')::boolean AS is_prev_year,
+            (SUM(CASE WHEN d.dtped >= (''' || v_curr_start || '''::date - interval ''1 month'') AND d.dtped < ''' || v_curr_start || ''' THEN ' || v_sum_value_expr || ' ELSE 0 END) ' || v_sum_operator_expr || ')::boolean AS is_prev_m1,
+            (SUM(CASE WHEN d.dtped >= (''' || v_curr_start || '''::date - interval ''2 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''1 month'') THEN ' || v_sum_value_expr || ' ELSE 0 END) ' || v_sum_operator_expr || ')::boolean AS is_prev_m2,
+            (SUM(CASE WHEN d.dtped >= (''' || v_curr_start || '''::date - interval ''3 months'') AND d.dtped < (''' || v_curr_start || '''::date - interval ''2 months'') THEN ' || v_sum_value_expr || ' ELSE 0 END) ' || v_sum_operator_expr || ')::boolean AS is_prev_m3
         FROM raw_sales d
         JOIN data_innovations i ON d.produto = i.codigo
         JOIN dim_produtos p ON p.codigo = i.codigo
@@ -4643,7 +4656,6 @@ BEGIN
         ' || v_where_base || '
         AND (' || v_where_inov || ')
         GROUP BY 1, 2, 3, 4
-        HAVING ' || v_having_client_tipo || '
     ),
     aggregated_base AS (
         SELECT
