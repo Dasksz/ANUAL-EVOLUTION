@@ -537,14 +537,42 @@ let estrelasSelectedCategorias = [];
             exportPdfBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Gerando...';
             exportPdfBtn.disabled = true;
 
+            let headerEl = null;
             try {
+                // Obter título da view ativa
+                let viewTitle = 'Dashboard de Vendas';
+                const activeNav = document.querySelector('.nav-link.active');
+                if (activeNav) {
+                    // Remover ícones ou texto extra do botão de nav se houver
+                    viewTitle = activeNav.textContent.trim();
+                }
+
+                // Criar cabeçalho customizado para o PDF
+                const currentDate = new Date().toLocaleString('pt-BR');
+                headerEl = document.createElement('div');
+                headerEl.className = 'pdf-header-export mb-6 pb-4 border-b border-white/10 flex justify-between items-center';
+                headerEl.innerHTML = `
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">${escapeHtml(viewTitle)}</h1>
+                        <p class="text-sm text-slate-400">Dados obtidos via banco de dados</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-slate-300 font-medium">PRIME | Distribuição</p>
+                        <p class="text-xs text-slate-500">Gerado em: ${currentDate}</p>
+                    </div>
+                `;
+
+                // Inserir cabeçalho no topo da view
+                activeView.insertBefore(headerEl, activeView.firstChild);
+
                 // Determine layout sizes and prepare for high-res export
                 const opt = {
                     margin:       5, // mm
                     filename:     `export_${new Date().toISOString().split('T')[0]}.pdf`,
                     image:        { type: 'jpeg', quality: 0.98 },
+                    pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] },
                     html2canvas:  { 
-                        scale: 2, // High resolution
+                        scale: 4, // High resolution
                         useCORS: true, 
                         logging: false,
                         windowWidth: activeView.scrollWidth,
@@ -562,6 +590,11 @@ let estrelasSelectedCategorias = [];
                 console.error("Erro ao gerar PDF:", err);
                 alert("Ocorreu um erro ao gerar o PDF. Tente novamente.");
             } finally {
+                // Remover cabeçalho customizado
+                if (headerEl && headerEl.parentNode) {
+                    headerEl.parentNode.removeChild(headerEl);
+                }
+
                 // Restore button state
                 exportPdfBtn.innerHTML = originalHtml;
                 exportPdfBtn.disabled = false;
