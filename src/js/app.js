@@ -572,7 +572,7 @@ let estrelasSelectedCategorias = [];
                     image:        { type: 'jpeg', quality: 0.98 },
                     pagebreak:    { mode: ['css', 'legacy'] }, // avoid-all causa páginas em branco/cortes
                     html2canvas:  { 
-                        scale: 4, // High resolution
+                        scale: 2.5, // Better balance between resolution and PDF scrolling performance
                         useCORS: true, 
                         logging: false,
                         x: 0,
