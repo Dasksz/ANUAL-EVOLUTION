@@ -79,18 +79,22 @@ function parseDate(dateString) {
             day = parts[0];
             month = parts[1];
             year = parts[2];
-            // Fix 2-digit years if they ever appear (e.g., 26 -> 2026, 99 -> 1999)
-            if (year.length === 2) {
-                const y = parseInt(year, 10);
-                year = y < 50 ? '20' + year : '19' + year;
-            }
         }
 
+        const y = parseInt(year, 10);
+        const m = parseInt(month, 10);
+        const d = parseInt(day, 10);
+
         // Validate parts
-        if (day && month && year && !isNaN(day) && !isNaN(month) && !isNaN(year)) {
+        if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+            let finalYear = y;
+            // Fix 2-digit years if they ever appear (e.g., 26 -> 2026, 99 -> 1999)
+            if (finalYear < 100) {
+                finalYear += (finalYear < 50) ? 2000 : 1900;
+            }
             // Using Date.UTC to prevent timezone shift issues
-            const d = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10)));
-            return isNaN(d.getTime()) ? null : d;
+            const dt = new Date(Date.UTC(finalYear, m - 1, d));
+            return isNaN(dt.getTime()) ? null : dt;
         }
     }
 
@@ -514,6 +518,10 @@ self.onmessage = async (event) => {
         salesCurrYearHistDataRaw = salesCurrYearHistDataRaw.filter(combinedFilter);
         salesCurrMonthDataRaw = salesCurrMonthDataRaw.filter(combinedFilter);
 
+        // ⚡ Bolt Optimization: Pre-compute the combined array once using optimized Array.prototype.concat
+        // to avoid repeatedly copying 100k+ objects into new memory blocks via [...a, ...b, ...c] spreads down the line.
+        const allSalesRaw = salesPrevYearDataRaw.concat(salesCurrYearHistDataRaw, salesCurrMonthDataRaw);
+
         // --- IBGE Code Resolution ---
         self.postMessage({ type: 'progress', status: 'Verificando códigos IBGE...', percentage: 18 });
         
@@ -525,7 +533,7 @@ self.onmessage = async (event) => {
             if (isIbgeCode(val)) potentialCodes.add(String(val).trim());
         };
 
-        [...salesPrevYearDataRaw, ...salesCurrYearHistDataRaw, ...salesCurrMonthDataRaw].forEach(r => collectCodes(r, 'MUNICIPIO'));
+        allSalesRaw.forEach(r => collectCodes(r, 'MUNICIPIO'));
         // Removed client code collection
 
         let ibgeMap = {};
@@ -558,7 +566,7 @@ self.onmessage = async (event) => {
 
         // Iterate all sales to build map: CODCLI -> MUNICIPIO
         // Use sequential order: PrevYear -> CurrHist -> CurrMonth so latest wins if diff
-        [...salesPrevYearDataRaw, ...salesCurrYearHistDataRaw, ...salesCurrMonthDataRaw].forEach(row => {
+        allSalesRaw.forEach(row => {
             const codCli = String(row['CODCLI'] || '').trim();
             const municipio = String(row['MUNICIPIO'] || '').trim().toUpperCase();
             if (codCli && municipio) {
@@ -661,7 +669,7 @@ self.onmessage = async (event) => {
             }
         };
 
-        [...salesPrevYearDataRaw, ...salesCurrYearHistDataRaw, ...salesCurrMonthDataRaw].forEach(checkCity);
+        allSalesRaw.forEach(checkCity);
 
         // 2. Identify Predominant Supervisor for City (using Curr Month only) for Inactive Logic
         const citySupervisorCounts = new Map(); // City -> Map(Supervisor -> Count)
@@ -702,9 +710,7 @@ self.onmessage = async (event) => {
         });
 
 
-        // Combine Sales for Map Logic
-        const allSalesRaw = [...salesPrevYearDataRaw, ...salesCurrYearHistDataRaw, ...salesCurrMonthDataRaw];
-
+        // Combine Sales for Map Logic (Already computed as allSalesRaw using .concat earlier)
         self.postMessage({ type: 'progress', status: 'Criando mapa mestre de vendedores...', percentage: 40 });
         const rcaInfoMap = new Map();
         const supervisorCodeMap = new Map(); // CODSUPERVISOR -> SUPERV NAME
