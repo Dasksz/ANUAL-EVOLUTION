@@ -359,6 +359,221 @@ let estrelasSelectedCategorias = [];
     const navInnovationsBtn = document.getElementById('nav-innovations-btn');
     const navLojaPerfeitaBtn = document.getElementById('nav-loja-perfeita-btn');
     const navEstrelasBtn = document.getElementById('nav-estrelas-btn');
+    // Export UI Logic
+    const exportDropdown = document.getElementById('export-dropdown');
+    let currentActiveNavId = 'nav-dashboard'; // keep track
+
+    function positionExportDropdown(targetEl) {
+        if (!exportDropdown || !targetEl) return;
+        const rect = targetEl.getBoundingClientRect();
+        exportDropdown.style.left = `${rect.left}px`;
+        exportDropdown.style.top = `${rect.bottom + 8}px`; // 8px spacing
+    }
+
+    function toggleExportDropdown(targetEl) {
+        if (!exportDropdown) return;
+        if (exportDropdown.classList.contains('hidden')) {
+            positionExportDropdown(targetEl);
+            exportDropdown.classList.remove('hidden');
+        } else {
+            exportDropdown.classList.add('hidden');
+        }
+    }
+
+    // Global click listener to close dropdown
+    document.addEventListener('click', (e) => {
+        if (!exportDropdown) return;
+        const isClickInsideDropdown = exportDropdown.contains(e.target);
+        const isClickOnActiveNav = e.target.closest('.nav-link.active');
+
+        if (!isClickInsideDropdown && !isClickOnActiveNav && !exportDropdown.classList.contains('hidden')) {
+            exportDropdown.classList.add('hidden');
+        }
+    });
+
+    // Handle Window Resize to keep dropdown positioned correctly or hide it
+
+    // --- EXPORT EXCEL LOGIC ---
+    const exportExcelBtn = document.getElementById('export-excel-btn');
+    if (exportExcelBtn) {
+        exportExcelBtn.addEventListener('click', () => {
+            if (exportDropdown) exportDropdown.classList.add('hidden');
+
+            let activeView = null;
+            const views = [
+                { id: 'main-dashboard-view', navId: 'nav-dashboard', name: 'Visao Geral' },
+                { id: 'city-view', navId: 'nav-city-analysis', name: 'Share' },
+                { id: 'boxes-view', navId: 'nav-boxes-btn', name: 'Cobertura' },
+                { id: 'branch-view', navId: 'nav-branch-btn', name: 'Filiais' },
+                { id: 'comparison-view', navId: 'nav-comparativo-btn', name: 'Comparativo' },
+                { id: 'innovations-month-view', navId: 'nav-innovations-btn', name: 'Inovacoes' },
+                { id: 'loja-perfeita-view', navId: 'nav-loja-perfeita-btn', name: 'Loja Perfeita' },
+                { id: 'estrelas-view', navId: 'nav-estrelas-btn', name: 'Estrelas' }
+            ];
+
+            let viewName = 'Export';
+            for (const view of views) {
+                const navEl = document.getElementById(view.navId);
+                const viewEl = document.getElementById(view.id);
+                if (navEl && navEl.classList.contains('active') && viewEl && !viewEl.classList.contains('hidden')) {
+                    activeView = viewEl;
+                    viewName = view.name;
+                    break;
+                }
+            }
+
+            if (!activeView) {
+                alert('Nenhuma visualização ativa encontrada para exportar.');
+                return;
+            }
+
+            // Find all visible tables
+            const tables = activeView.querySelectorAll('table:not(.hidden)');
+            if (tables.length === 0) {
+                alert('Nenhuma tabela encontrada na tela atual para exportar ao Excel.');
+                return;
+            }
+
+            // Show loading state
+            const originalHtml = exportExcelBtn.innerHTML;
+            exportExcelBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Gerando...';
+            exportExcelBtn.disabled = true;
+
+            try {
+                // Initialize a new workbook
+                const wb = XLSX.utils.book_new();
+
+                let sheetCounter = 1;
+                tables.forEach((table, index) => {
+                    // Filter out hidden rows entirely so they aren't parsed
+                    const clonedTable = table.cloneNode(true);
+                    const hiddenRows = clonedTable.querySelectorAll('.hidden, [style*="display: none"]');
+                    hiddenRows.forEach(row => row.parentNode.removeChild(row));
+
+                    // Sanitize text if there are icons or complex formatting
+                    const thTdElements = clonedTable.querySelectorAll('th, td');
+                    thTdElements.forEach(cell => {
+                        // Extract plain text to avoid extracting HTML attributes
+                        const text = cell.innerText || cell.textContent;
+                        // For numbers with R$ or formatting, excel might prefer strings that look like numbers
+                        cell.innerText = text.trim();
+                    });
+
+                    // Generate worksheet
+                    const ws = XLSX.utils.table_to_sheet(clonedTable, { raw: true });
+
+                    // Name the sheet
+                    let sheetName = `Tabela ${sheetCounter}`;
+                    // Attempt to find a title above the table
+                    const prevElement = table.previousElementSibling;
+                    if (prevElement && prevElement.tagName.match(/^H[1-6]$/i) && prevElement.textContent) {
+                         sheetName = prevElement.textContent.substring(0, 30).trim(); // Max 31 chars for Excel sheet name
+                    } else if (table.id) {
+                         sheetName = table.id.replace(/[-_]/g, ' ').substring(0, 30);
+                    }
+
+                    // Ensure unique sheet name
+                    let baseName = sheetName;
+                    let dupCounter = 1;
+                    while (wb.SheetNames.includes(sheetName)) {
+                        sheetName = `${baseName.substring(0, 25)} (${dupCounter})`;
+                        dupCounter++;
+                    }
+
+                    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                    sheetCounter++;
+                });
+
+                // Write file
+                XLSX.writeFile(wb, `${viewName}_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+            } catch (err) {
+                console.error("Erro ao gerar Excel:", err);
+                alert("Ocorreu um erro ao gerar o Excel. Tente novamente.");
+            } finally {
+                exportExcelBtn.innerHTML = originalHtml;
+                exportExcelBtn.disabled = false;
+            }
+        });
+    }
+
+
+    // --- EXPORT PDF LOGIC ---
+    const exportPdfBtn = document.getElementById('export-pdf-btn');
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', async () => {
+            // Hide dropdown
+            if (exportDropdown) exportDropdown.classList.add('hidden');
+
+            // Find currently active view
+            let activeView = null;
+            const views = [
+                { id: 'main-dashboard-view', navId: 'nav-dashboard' },
+                { id: 'city-view', navId: 'nav-city-analysis' },
+                { id: 'boxes-view', navId: 'nav-boxes-btn' },
+                { id: 'branch-view', navId: 'nav-branch-btn' },
+                { id: 'comparison-view', navId: 'nav-comparativo-btn' },
+                { id: 'innovations-month-view', navId: 'nav-innovations-btn' },
+                { id: 'loja-perfeita-view', navId: 'nav-loja-perfeita-btn' },
+                { id: 'estrelas-view', navId: 'nav-estrelas-btn' }
+            ];
+
+            for (const view of views) {
+                const navEl = document.getElementById(view.navId);
+                const viewEl = document.getElementById(view.id);
+                if (navEl && navEl.classList.contains('active') && viewEl && !viewEl.classList.contains('hidden')) {
+                    activeView = viewEl;
+                    break;
+                }
+            }
+
+            if (!activeView) {
+                alert('Nenhuma visualização ativa encontrada para exportar.');
+                return;
+            }
+
+            // Show loading state on button
+            const originalHtml = exportPdfBtn.innerHTML;
+            exportPdfBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Gerando...';
+            exportPdfBtn.disabled = true;
+
+            try {
+                // Determine layout sizes and prepare for high-res export
+                const opt = {
+                    margin:       5, // mm
+                    filename:     `export_${new Date().toISOString().split('T')[0]}.pdf`,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  {
+                        scale: 2, // High resolution
+                        useCORS: true,
+                        logging: false,
+                        windowWidth: activeView.scrollWidth,
+                        backgroundColor: '#131217' // Match dashboard background
+                    },
+                    jsPDF:        { unit: 'mm', format: 'a3', orientation: 'landscape' }
+                };
+
+                // Add a temporary class to optimize for PDF capture if needed
+                activeView.classList.add('pdf-exporting');
+
+                await html2pdf().set(opt).from(activeView).save();
+
+            } catch (err) {
+                console.error("Erro ao gerar PDF:", err);
+                alert("Ocorreu um erro ao gerar o PDF. Tente novamente.");
+            } finally {
+                // Restore button state
+                exportPdfBtn.innerHTML = originalHtml;
+                exportPdfBtn.disabled = false;
+                if (activeView) activeView.classList.remove('pdf-exporting');
+            }
+        });
+    }
+    window.addEventListener('resize', () => {
+        if (exportDropdown && !exportDropdown.classList.contains('hidden')) {
+             exportDropdown.classList.add('hidden');
+        }
+    });
     const navComparativoBtn = document.getElementById('nav-comparativo-btn');
     const optimizeDbBtnNav = document.getElementById('optimize-db-btn-nav');
     const profileMenuBtn = document.getElementById('profile-menu-btn');
@@ -1295,6 +1510,28 @@ let estrelasSelectedCategorias = [];
 
     // --- Navigation Logic (Updated for Top Nav) ---
     function setActiveNavLink(link) {
+    // Helper to check if a clicked link is already active
+    function handleActiveLinkClick(e, navBtn, viewId) {
+        if (navBtn.classList.contains('active')) {
+            e.preventDefault();
+            e.stopPropagation(); // prevent other handlers
+            currentActiveNavId = navBtn.id;
+
+            // Show Export Dropdown
+            exportDropdown.classList.toggle('hidden');
+            if (!exportDropdown.classList.contains('hidden')) {
+                const rect = navBtn.getBoundingClientRect();
+                exportDropdown.style.left = `${rect.left}px`;
+                exportDropdown.style.top = `${rect.bottom + 8}px`; // 8px spacing
+            }
+            return true; // handled
+        }
+        // if not active, hide it
+        if (exportDropdown && !exportDropdown.classList.contains('hidden')) {
+            exportDropdown.classList.add('hidden');
+        }
+        return false;
+    }
         if (!link) return;
         document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
         link.classList.add('active');
@@ -1397,17 +1634,20 @@ let estrelasSelectedCategorias = [];
     }
 
     navDashboardBtn.addEventListener('click', (e) => {
+        if (handleActiveLinkClick(e, navDashboardBtn, 'dashboard')) return;
         if (navigateWithCtrl(e, 'dashboard')) return;
         renderView('dashboard');
     });
 
     navCityAnalysisBtn.addEventListener('click', (e) => {
+        if (handleActiveLinkClick(e, navCityAnalysisBtn, 'city')) return;
         if (navigateWithCtrl(e, 'city')) return;
         renderView('city');
     });
 
     if (navBoxesBtn) {
         navBoxesBtn.addEventListener('click', (e) => {
+            if (handleActiveLinkClick(e, navBoxesBtn, 'boxes')) return;
             if (navigateWithCtrl(e, 'boxes')) return;
             renderView('boxes');
         });
@@ -1415,6 +1655,7 @@ let estrelasSelectedCategorias = [];
 
     if (navComparativoBtn) {
         navComparativoBtn.addEventListener('click', (e) => {
+            if (handleActiveLinkClick(e, navComparativoBtn, 'comparison')) return;
             if (navigateWithCtrl(e, 'comparison')) return;
             renderView('comparison');
         });
@@ -1422,6 +1663,7 @@ let estrelasSelectedCategorias = [];
 
     if (navBranchBtn) {
         navBranchBtn.addEventListener('click', (e) => {
+            if (handleActiveLinkClick(e, navBranchBtn, 'branch')) return;
             if (navigateWithCtrl(e, 'branch')) return;
             renderView('branch');
         });
@@ -1429,6 +1671,7 @@ let estrelasSelectedCategorias = [];
 
     if (navInnovationsBtn) {
         navInnovationsBtn.addEventListener('click', (e) => {
+            if (handleActiveLinkClick(e, navInnovationsBtn, 'innovations')) return;
             if (navigateWithCtrl(e, 'innovations')) return;
             renderView('innovations');
         });
@@ -1436,6 +1679,7 @@ let estrelasSelectedCategorias = [];
 
     if (navEstrelasBtn) {
         navEstrelasBtn.addEventListener('click', (e) => {
+            if (handleActiveLinkClick(e, navEstrelasBtn, 'estrelas')) return;
             if (navigateWithCtrl(e, 'estrelas')) return;
             renderView('estrelas');
         });
@@ -1443,6 +1687,7 @@ let estrelasSelectedCategorias = [];
 
     if (navLojaPerfeitaBtn) {
         navLojaPerfeitaBtn.addEventListener('click', (e) => {
+            if (handleActiveLinkClick(e, navLojaPerfeitaBtn, 'lojaperfeita')) return;
             if (navigateWithCtrl(e, 'loja-perfeita')) return;
             renderView('loja-perfeita');
         });
