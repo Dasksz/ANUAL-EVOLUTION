@@ -52,3 +52,18 @@ test('parseDate rejects invalid dates in fast path correctly', () => {
          assert.notStrictEqual(d2.getFullYear(), -17577);
     }
 });
+
+test('parseDate handles 2-digit years correctly in fallback path', () => {
+    const d1 = parseDate('13/01/24 10:00');
+    assert.notStrictEqual(d1, null, '13/01/24 10:00 should not be null');
+    assert.strictEqual(d1.getUTCFullYear(), 2024, '13/01/24 10:00 should be 2024');
+
+    const d2 = parseDate('1/1/24');
+    assert.strictEqual(d2.getUTCFullYear(), 2024, '1/1/24 should be 2024');
+
+    const d3 = parseDate('01/01/99');
+    assert.strictEqual(d3.getUTCFullYear(), 1999, '01/01/99 should be 1999');
+
+    const d4 = parseDate('01/01/00');
+    assert.strictEqual(d4.getUTCFullYear(), 2000, '01/01/00 should be 2000');
+});
