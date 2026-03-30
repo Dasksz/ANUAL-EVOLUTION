@@ -3565,8 +3565,22 @@ let estrelasSelectedCategorias = [];
 
             // Use filtered month data if month selected, otherwise all months
             const activeCurrentData = (mesFilter.value !== '') ? currentData.filter(d => d.month_index === targetIndex) : currentData;
-            // Logic for Previous: If Month selected, compare to same month prev year. If Year selected, compare to full prev year.
-            const activePreviousData = (mesFilter.value !== '') ? previousData.filter(d => d.month_index === targetIndex) : previousData;
+
+            // Logic for Previous:
+            // If Month selected, compare to same month prev year.
+            // If Year selected, compare ONLY to the months available in the current year.
+            let activePreviousData = [];
+            if (mesFilter.value !== '') {
+                activePreviousData = previousData.filter(d => d.month_index === targetIndex);
+            } else {
+                // Find the maximum month_index in the current year's data that has actual sales
+                const maxCurrentMonthIndex = currentData.length > 0
+                    ? Math.max(...currentData.map(d => d.month_index))
+                    : -1;
+
+                // Filter previous year's data to only include months up to maxCurrentMonthIndex
+                activePreviousData = previousData.filter(d => d.month_index <= maxCurrentMonthIndex);
+            }
 
             // Handle Trend for Current Year/Month
             activeCurrentData.forEach(d => {
