@@ -2304,10 +2304,18 @@ BEGIN
 
     -- SUPERVISOR LOGIC FOR KPI
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        SELECT array_agg(DISTINCT d.codusur) INTO v_supervisor_rcas
-        FROM public.data_detailed d
-        JOIN public.dim_supervisores ds ON d.codsupervisor = ds.codigo
-        WHERE ds.nome = ANY(p_supervisor);
+        SELECT array_agg(DISTINCT rs.codusur) INTO v_supervisor_rcas
+        FROM (
+            SELECT codusur, codsupervisor,
+                   ROW_NUMBER() OVER(PARTITION BY codusur ORDER BY dtped DESC) as rn
+            FROM (
+                SELECT codusur, codsupervisor, dtped FROM public.data_detailed
+                UNION ALL
+                SELECT codusur, codsupervisor, dtped FROM public.data_history
+            ) all_sales
+        ) rs
+        JOIN public.dim_supervisores ds ON rs.codsupervisor = ds.codigo
+        WHERE rs.rn = 1 AND ds.nome = ANY(p_supervisor);
 
         IF v_supervisor_rcas IS NOT NULL THEN
             v_where_kpi := v_where_kpi || format(' AND rca1 = ANY(%L) ', v_supervisor_rcas);
@@ -4519,10 +4527,18 @@ BEGIN
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND d.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
 
-        SELECT array_agg(DISTINCT d.codusur) INTO v_supervisor_rcas
-        FROM public.data_detailed d
-        JOIN public.dim_supervisores ds ON d.codsupervisor = ds.codigo
-        WHERE ds.nome = ANY(p_supervisor);
+        SELECT array_agg(DISTINCT rs.codusur) INTO v_supervisor_rcas
+        FROM (
+            SELECT codusur, codsupervisor,
+                   ROW_NUMBER() OVER(PARTITION BY codusur ORDER BY dtped DESC) as rn
+            FROM (
+                SELECT codusur, codsupervisor, dtped FROM public.data_detailed
+                UNION ALL
+                SELECT codusur, codsupervisor, dtped FROM public.data_history
+            ) all_sales
+        ) rs
+        JOIN public.dim_supervisores ds ON rs.codsupervisor = ds.codigo
+        WHERE rs.rn = 1 AND ds.nome = ANY(p_supervisor);
 
         IF v_supervisor_rcas IS NOT NULL THEN
             v_where_client_base := v_where_client_base || format(' AND rca1 = ANY(%L) ', v_supervisor_rcas);
