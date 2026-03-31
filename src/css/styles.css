@@ -393,10 +393,12 @@ th {
     background-color: #131217 !important;
     padding: 40px !important; /* Margem segura para PDF (como tiramos margin nas options do jsPDF) */
     /* Ensure the wrapper respects page breaks */
-    box-sizing: border-box;
-    width: 100% !important;
+    box-sizing: border-box !important;
+    width: max-content !important; /* Force width to expand to inner content if it overflows */
+    min-width: 100% !important; /* Never be smaller than container */
     max-width: none !important;
     margin: 0 !important;
+    overflow: visible !important; /* Allow charts to render fully without clipping */
 }
 
 .pdf-exporting * {
