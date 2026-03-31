@@ -432,17 +432,14 @@ BEGIN
         FROM base_clients
         GROUP BY ROLLUP(filial, cidade, vendedor)
     ),
-    current_skus AS (
-        SELECT filial, cidade, codusur, codcli, jsonb_array_length(produtos) as dist_skus
-        FROM current_data
-        WHERE tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1
-    ),
     pre_aggregated_skus AS (
         SELECT
-            filial, cidade, codusur, codcli,
-            SUM(dist_skus) as dist_skus_per_cli
-        FROM current_skus
-        GROUP BY filial, cidade, codusur, codcli
+            c.filial, c.cidade, c.codusur, c.codcli,
+            COUNT(DISTINCT p.produto) as dist_skus_per_cli
+        FROM current_data c
+        CROSS JOIN LATERAL jsonb_array_elements_text(c.produtos) AS p(produto)
+        WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
+        GROUP BY c.filial, c.cidade, c.codusur, c.codcli
     ),
     
     monthly_freq AS (
