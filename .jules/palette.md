@@ -16,3 +16,7 @@
 ## 2026-03-28 - [Accessibility of JS-driven navigation]
 **Learning:** Using `<a>` tags without `href` attributes for javascript-driven application navigation renders the links entirely inaccessible to keyboard users (no tab-focus).
 **Action:** When a design calls for navigation that functions as a view-toggle without page reloads, use `<button type="button">` instead of an `<a>` tag without an `href`. This natively provides the element with keyboard focusability and keypress event handling (Enter/Space) required for accessibility without extra JS workarounds.
+
+## 2025-03-31 - Visible Labels vs ARIA Labels in Forms
+**Learning:** While `aria-label` is sufficient for screen readers when space is extremely tight, omitting visible `<label>` elements in complex forms (like Signup) in favor of placeholders causes usability issues for sighted users, as the context disappears as soon as typing begins.
+**Action:** Always pair inputs with a visible `<label>` (linked via `for` and `id`) in primary data-entry forms to maintain context and ensure a larger clickable area for focusing the input.
