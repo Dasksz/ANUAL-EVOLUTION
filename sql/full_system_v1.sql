@@ -5386,9 +5386,10 @@ BEGIN
         GROUP BY ano, mes
     ),
     kpi_active_count AS (
-        SELECT SUM(is_active) as val
+        SELECT COUNT(DISTINCT codcli) as val
         FROM client_agg
         WHERE ano = $2
+        AND is_active = 1
         ' || CASE WHEN v_is_month_filtered THEN ' AND mes = $3 ' ELSE '' END || '
     ),
     kpi_base_count AS (
