@@ -24,7 +24,6 @@ DECLARE
 
     v_where_base text := ' WHERE 1=1 ';
     v_where_clients text := ' WHERE 1=1 ';
-    v_where_unnested text := ' ';
     v_where_acel text := '';
 
     v_sql text;
@@ -340,12 +339,12 @@ BEGIN
                 IF array_length(v_conditions, 1) > 0 THEN
                     v_cond_str := array_to_string(v_conditions, ' OR ');
                     v_unnested_str := array_to_string(v_unnested_conditions, ' OR ');
-
+                    
                     v_where_base := v_where_base || ' AND (' || v_cond_str || ') ';
                     v_where_base_prev := v_where_base_prev || ' AND (' || v_cond_str || ') ';
                     -- for chart alias 'codfor' is actually 's.codfor' in the view so we just string replace 's.' with '' for v_where_chart if necessary, but actually current_data in get_frequency_table_data has no alias prefix in monthly_freq, so let's use the CTE column name which is 'codfor' and 'categorias'
                     v_where_chart := v_where_chart || ' AND (' || replace(v_cond_str, 's.', '') || ') ';
-
+                    
                     IF v_unnested_str <> '' THEN
                         v_where_unnested := v_where_unnested || ' AND (' || v_unnested_str || ') ';
                     END IF;
@@ -451,7 +450,7 @@ BEGIN
         GROUP BY ROLLUP(filial, cidade, vendedor)
     ),
     pre_aggregated_skus AS (
-        SELECT
+        SELECT 
             c.filial, c.cidade, c.codusur, c.codcli,
             COUNT(DISTINCT dp.codigo) as dist_skus_per_cli
         FROM current_data c
@@ -4349,27 +4348,20 @@ BEGIN
             DECLARE
                 v_code text;
                 v_conditions text[] := '{}';
-                v_unnested_conditions text[] := '{}';
                 v_simple_codes text[] := '{}';
                 v_cond_str text;
-                v_unnested_str text;
             BEGIN
                 FOREACH v_code IN ARRAY p_fornecedor LOOP
                     IF v_code = '1119_TODDYNHO' THEN
                         v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDYNHO'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
                     ELSIF v_code = '1119_TODDY' THEN
                         v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDY'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
                     ELSIF v_code = '1119_QUAKER' THEN
                         v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''QUAKER'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
                     ELSIF v_code = '1119_KEROCOCO' THEN
                         v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''KEROCOCO'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
                     ELSIF v_code = '1119_OUTROS' THEN
                         v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND NOT (s.categorias ?| ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                     ELSE
                         v_simple_codes := array_append(v_simple_codes, v_code);
                     END IF;
@@ -4960,27 +4952,20 @@ BEGIN
             DECLARE
                 v_code text;
                 v_conditions text[] := '{}';
-                v_unnested_conditions text[] := '{}';
                 v_simple_codes text[] := '{}';
                 v_cond_str text;
-                v_unnested_str text;
             BEGIN
                 FOREACH v_code IN ARRAY p_fornecedor LOOP
                     IF v_code = '1119_TODDYNHO' THEN
                         v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDYNHO'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
                     ELSIF v_code = '1119_TODDY' THEN
                         v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDY'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
                     ELSIF v_code = '1119_QUAKER' THEN
                         v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''QUAKER'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
                     ELSIF v_code = '1119_KEROCOCO' THEN
                         v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''KEROCOCO'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
                     ELSIF v_code = '1119_OUTROS' THEN
                         v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND NOT (s.categorias ?| ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                     ELSE
                         v_simple_codes := array_append(v_simple_codes, v_code);
                     END IF;
@@ -5401,9 +5386,10 @@ BEGIN
         GROUP BY ano, mes
     ),
     kpi_active_count AS (
-        SELECT SUM(is_active) as val
+        SELECT COUNT(DISTINCT codcli) as val
         FROM client_agg
         WHERE ano = $2
+        AND is_active = 1
         ' || CASE WHEN v_is_month_filtered THEN ' AND mes = $3 ' ELSE '' END || '
     ),
     kpi_base_count AS (
