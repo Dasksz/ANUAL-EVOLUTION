@@ -1,3 +1,43 @@
+    current_skus AS (
+        SELECT ds.codcli, ds.codusur, cb.filial, ds.cidade, ds.tipovenda, ds.pre_mix_count, ds.vlvenda
+        FROM public.data_summary ds
+        LEFT JOIN public.config_city_branches cb ON ds.cidade = cb.cidade
+        ' || v_where_summary || '
+    ),
+    pre_aggregated_skus AS (
+        SELECT
+            COALESCE(filial, ''SEM FILIAL'') as filial,
+            COALESCE(cidade, ''SEM CIDADE'') as cidade,
+            codusur,
+            codcli,
+            SUM(CASE
+                WHEN tipovenda IN (''1'', ''9'') AND (' || v_mix_constraint || ') THEN pre_mix_count
+                ELSE 0
+            END) as dist_skus_per_cli
+        FROM current_skus ds
+        GROUP BY 1, 2, 3, 4
+    ),
+
+    current_skus AS (
+        SELECT ds.codcli, ds.codusur, cb.filial, ds.cidade, ds.tipovenda, ds.pre_mix_count, ds.vlvenda
+        FROM public.data_summary ds
+        LEFT JOIN public.config_city_branches cb ON ds.cidade = cb.cidade
+        '' || v_where_summary || ''
+    ),
+    pre_aggregated_skus AS (
+        SELECT
+            COALESCE(filial, ''SEM FILIAL'') as filial,
+            COALESCE(cidade, ''SEM CIDADE'') as cidade,
+            codusur,
+            codcli,
+            SUM(CASE
+                WHEN tipovenda IN (''1'', ''9'') AND ('' || v_mix_constraint || '') THEN pre_mix_count
+                ELSE 0
+            END) as dist_skus_per_cli
+        FROM current_skus ds
+        GROUP BY 1, 2, 3, 4
+    ),
+
 
 DROP FUNCTION IF EXISTS public.get_estrelas_kpis_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[]);
 DROP FUNCTION IF EXISTS public.get_estrelas_kpis_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[]);
@@ -70,7 +110,92 @@ BEGIN
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND s.tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where_base := v_where_base || ' AND s.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
+        v_where_summary := v_where_summary || ' AND ds.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
+        v_where_base_prev := v_where_base_prev || ' AND s.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
+        v_where_chart := v_where_chart || ' AND tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
+    END IF;
+
+    -- Mix Constraint Logic
+    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
+        v_mix_constraint := ' 1=1 ';
+    ELSE
+        v_mix_constraint := ' ds.codfor IN (''707'', ''708'', ''752'') ';
+    END IF;
+
+    -- Build v_where_summary
+    v_where_summary := v_where_summary || ' AND ds.ano = ' || v_current_year || ' ';
+    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
+        v_target_month := p_mes::int + 1;
+        v_where_summary := v_where_summary || ' AND ds.mes = ' || v_target_month || ' ';
+    END IF;
+    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+        v_where_summary := v_where_summary || ' AND ds.filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
+    END IF;
+    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
+        v_where_summary := v_where_summary || ' AND ds.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+    END IF;
+    IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
+        v_where_summary := v_where_summary || ' AND ds.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+    END IF;
+    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+         v_where_summary := v_where_summary || ' AND ds.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+    END IF;
+    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
+        v_where_summary := v_where_summary || ' AND ds.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
+    END IF;
+    IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
+        IF 'C/ REDE' = ANY(p_rede) THEN
+            v_where_summary := v_where_summary || ' AND (ds.ramo IS NOT NULL AND ds.ramo != '''') ';
+        ELSIF 'S/ REDE' = ANY(p_rede) THEN
+            v_where_summary := v_where_summary || ' AND (ds.ramo IS NULL OR ds.ramo = '''') ';
+        ELSE
+            v_where_summary := v_where_summary || ' AND ds.ramo = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+        END IF;
+    END IF;
+    IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
+        v_where_summary := v_where_summary || ' AND ds.categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || ''']) ';
+    END IF;
+
+    -- Mix Constraint Logic
+    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
+        v_mix_constraint := ' 1=1 ';
+    ELSE
+        v_mix_constraint := ' ds.codfor IN (''707'', ''708'', ''752'') ';
+    END IF;
+
+    -- Build v_where_summary
+    v_where_summary := v_where_summary || ' AND ds.ano = ' || v_current_year || ' ';
+    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
+        v_target_month := p_mes::int + 1;
+        v_where_summary := v_where_summary || ' AND ds.mes = ' || v_target_month || ' ';
+    END IF;
+    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+        v_where_summary := v_where_summary || ' AND ds.filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
+    END IF;
+    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
+        v_where_summary := v_where_summary || ' AND ds.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+    END IF;
+    IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
+        v_where_summary := v_where_summary || ' AND ds.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+    END IF;
+    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+         v_where_summary := v_where_summary || ' AND ds.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+    END IF;
+    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
+        v_where_summary := v_where_summary || ' AND ds.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
+    END IF;
+    IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
+        IF 'C/ REDE' = ANY(p_rede) THEN
+            v_where_summary := v_where_summary || ' AND (ds.ramo IS NOT NULL AND ds.ramo != '''') ';
+        ELSIF 'S/ REDE' = ANY(p_rede) THEN
+            v_where_summary := v_where_summary || ' AND (ds.ramo IS NULL OR ds.ramo = '''') ';
+        ELSE
+            v_where_summary := v_where_summary || ' AND ds.ramo = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+        END IF;
+    END IF;
+    IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
+        v_where_summary := v_where_summary || ' AND ds.categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || ''']) ';
     END IF;
 
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
