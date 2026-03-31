@@ -546,7 +546,7 @@ let estrelasSelectedCategorias = [];
                     // Remover ícones ou texto extra do botão de nav se houver
                     viewTitle = activeNav.textContent.trim();
                 }
-
+                
                 // Criar cabeçalho customizado para o PDF
                 const currentDate = new Date().toLocaleString('pt-BR');
                 headerEl = document.createElement('div');
@@ -561,7 +561,7 @@ let estrelasSelectedCategorias = [];
                         <p class="text-xs text-slate-500">Gerado em: ${currentDate}</p>
                     </div>
                 `;
-
+                
                 // Inserir cabeçalho no topo da view
                 activeView.insertBefore(headerEl, activeView.firstChild);
 
@@ -613,7 +613,7 @@ let estrelasSelectedCategorias = [];
                 if (headerEl && headerEl.parentNode) {
                     headerEl.parentNode.removeChild(headerEl);
                 }
-
+                
                 // Restore button state
                 exportPdfBtn.innerHTML = originalHtml;
                 exportPdfBtn.disabled = false;
