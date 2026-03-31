@@ -565,16 +565,24 @@ let estrelasSelectedCategorias = [];
                 // Inserir cabeçalho no topo da view
                 activeView.insertBefore(headerEl, activeView.firstChild);
 
-                const width = activeView.scrollWidth;
-                const height = activeView.scrollHeight;
+                                // Add a temporary class first so that the browser calculates the true size of the view with PDF padding applied
+                activeView.classList.add('pdf-exporting');
+
+                // Allow a tiny reflow tick for CSS to apply (specifically padding and width changes)
+                await new Promise(resolve => setTimeout(resolve, 50));
+
+                // Now calculate the true dimensions required, including the 40px padding from CSS
+                // We use scrollWidth/scrollHeight to capture everything even if it overflows the viewport
+                const width = Math.max(activeView.scrollWidth, activeView.offsetWidth);
+                const height = Math.max(activeView.scrollHeight, activeView.offsetHeight);
 
                 // Determine layout sizes and prepare for high-res single page export
                 const opt = {
-                    margin:       0, // Sem margens brancas (usamos o padding do CSS)
+                    margin:       0, // We handle margins via CSS padding on .pdf-exporting
                     filename:     `export_${new Date().toISOString().split('T')[0]}.pdf`,
                     image:        { type: 'jpeg', quality: 0.98 },
                     html2canvas:  { 
-                        scale: 2, // 2 is a good balance for a single large page, 2.5 might cause memory issues
+                        scale: 2,
                         useCORS: true, 
                         logging: false,
                         x: 0,
@@ -583,17 +591,17 @@ let estrelasSelectedCategorias = [];
                         scrollY: 0,
                         windowWidth: width,
                         windowHeight: height,
-                        backgroundColor: '#131217' // Match dashboard background
+                        width: width,   // Explicitly tell canvas to render this width
+                        height: height, // Explicitly tell canvas to render this height
+                        backgroundColor: '#131217'
                     },
                     jsPDF:        {
                         unit: 'px',
                         format: [width, height],
-                        orientation: width > height ? 'landscape' : 'portrait'
+                        orientation: width > height ? 'landscape' : 'portrait',
+                        hotfixes: ["px_scaling"] // Fixes some resolution/scaling bugs in jsPDF
                     }
                 };
-                
-                // Add a temporary class to optimize for PDF capture if needed
-                activeView.classList.add('pdf-exporting');
 
                 await html2pdf().set(opt).from(activeView).save();
                 
