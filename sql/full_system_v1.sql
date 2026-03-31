@@ -86,7 +86,37 @@ BEGIN
     -- Note: Since we are calculating specific suppliers (707, 708, 752, 1119), p_fornecedor filter might override this if provided.
     -- If p_fornecedor is passed, we apply it. But usually, this view is specifically for Pepsico (707, 708, 752, 1119).
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
+        DECLARE
+            v_code text;
+            v_conditions text[] := '{}';
+            v_simple_codes text[] := '{}';
+            v_cond_str text;
+        BEGIN
+            FOREACH v_code IN ARRAY p_fornecedor LOOP
+                IF v_code = '1119_TODDYNHO' THEN
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDYNHO'')');
+                ELSIF v_code = '1119_TODDY' THEN
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDY'')');
+                ELSIF v_code = '1119_QUAKER' THEN
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''QUAKER'')');
+                ELSIF v_code = '1119_KEROCOCO' THEN
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''KEROCOCO'')');
+                ELSIF v_code = '1119_OUTROS' THEN
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND NOT (s.categorias ?| ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
+                ELSE
+                    v_simple_codes := array_append(v_simple_codes, v_code);
+                END IF;
+            END LOOP;
+
+            IF array_length(v_simple_codes, 1) > 0 THEN
+                v_conditions := array_append(v_conditions, format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
+            END IF;
+
+            IF array_length(v_conditions, 1) > 0 THEN
+                v_cond_str := array_to_string(v_conditions, ' OR ');
+                v_where_base := v_where_base || ' AND (' || v_cond_str || ') ';
+            END IF;
+        END;
     END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
@@ -271,24 +301,40 @@ BEGIN
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_fornecedor)) THEN
-            IF ('1119' = ANY(p_fornecedor)) THEN
-                v_where_base := v_where_base || ' AND (
-                    s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || '''])
-                    OR s.codfor LIKE ''1119_%''
-                ) ';
-                v_where_base_prev := v_where_base_prev || ' AND (
-                    s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || '''])
-                    OR s.codfor LIKE ''1119_%''
-                ) ';
-                v_where_chart := v_where_chart || ' AND (
-                    codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || '''])
-                    OR codfor LIKE ''1119_%''
-                ) ';
-            ELSE
-                v_where_base := v_where_base || ' AND s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
-                v_where_base_prev := v_where_base_prev || ' AND s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
-                v_where_chart := v_where_chart || ' AND codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']) ';
-            END IF;
+            DECLARE
+                v_code text;
+                v_conditions text[] := '{}';
+                v_simple_codes text[] := '{}';
+                v_cond_str text;
+            BEGIN
+                FOREACH v_code IN ARRAY p_fornecedor LOOP
+                    IF v_code = '1119_TODDYNHO' THEN
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDYNHO'')');
+                    ELSIF v_code = '1119_TODDY' THEN
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDY'')');
+                    ELSIF v_code = '1119_QUAKER' THEN
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''QUAKER'')');
+                    ELSIF v_code = '1119_KEROCOCO' THEN
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''KEROCOCO'')');
+                    ELSIF v_code = '1119_OUTROS' THEN
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND NOT (s.categorias ?| ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
+                    ELSE
+                        v_simple_codes := array_append(v_simple_codes, v_code);
+                    END IF;
+                END LOOP;
+
+                IF array_length(v_simple_codes, 1) > 0 THEN
+                    v_conditions := array_append(v_conditions, format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
+                END IF;
+
+                IF array_length(v_conditions, 1) > 0 THEN
+                    v_cond_str := array_to_string(v_conditions, ' OR ');
+                    v_where_base := v_where_base || ' AND (' || v_cond_str || ') ';
+                    v_where_base_prev := v_where_base_prev || ' AND (' || v_cond_str || ') ';
+                    -- for chart alias 'codfor' is actually 's.codfor' in the view so we just string replace 's.' with '' for v_where_chart if necessary, but actually current_data in get_frequency_table_data has no alias prefix in monthly_freq, so let's use the CTE column name which is 'codfor' and 'categorias'
+                    v_where_chart := v_where_chart || ' AND (' || replace(v_cond_str, 's.', '') || ') ';
+                END IF;
+            END;
         END IF;
     END IF;
 
@@ -4281,23 +4327,43 @@ BEGIN
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
         v_where_chart := v_where_chart || ' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
     END IF;
-
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_fornecedor)) THEN
-            v_where_chart := v_where_chart || ' AND (
-                s.codfor = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || '''])
-                OR (s.codfor = ''1119'' AND (
-                    CASE
-                        WHEN dp.descricao ILIKE ''%TODDYNHO%'' THEN ''1119_TODDYNHO''
-                        WHEN dp.descricao ILIKE ''%TODDY %'' THEN ''1119_TODDY''
-                        WHEN dp.descricao ILIKE ''%QUAKER%'' THEN ''1119_QUAKER''
-                        WHEN dp.descricao ILIKE ''%KEROCOCO%'' THEN ''1119_KEROCOCO''
-                        ELSE ''1119_OUTROS''
-                    END
-                ) = ANY(ARRAY[''' || array_to_string(p_fornecedor, ''',''') || ''']))
-            ) ';
+            DECLARE
+                v_code text;
+                v_conditions text[] := '{}';
+                v_simple_codes text[] := '{}';
+                v_cond_str text;
+            BEGIN
+                FOREACH v_code IN ARRAY p_fornecedor LOOP
+                    IF v_code = '1119_TODDYNHO' THEN
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDYNHO'')');
+                    ELSIF v_code = '1119_TODDY' THEN
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDY'')');
+                    ELSIF v_code = '1119_QUAKER' THEN
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''QUAKER'')');
+                    ELSIF v_code = '1119_KEROCOCO' THEN
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''KEROCOCO'')');
+                    ELSIF v_code = '1119_OUTROS' THEN
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND NOT (s.categorias ?| ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
+                    ELSE
+                        v_simple_codes := array_append(v_simple_codes, v_code);
+                    END IF;
+                END LOOP;
+
+                IF array_length(v_simple_codes, 1) > 0 THEN
+                    v_conditions := array_append(v_conditions, format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
+                END IF;
+
+                IF array_length(v_conditions, 1) > 0 THEN
+                    v_cond_str := array_to_string(v_conditions, ' OR ');
+                    v_where_chart := v_where_chart || ' AND (' || v_cond_str || ') ';
+                END IF;
+            END;
         END IF;
     END IF;
+
+
 
     -- REDE Logic (same as comparativo)
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
@@ -4344,7 +4410,7 @@ BEGIN
                 WHEN s.codfor = ''1119'' THEN COALESCE(
                     CASE
                         WHEN dp.descricao ILIKE ''%TODDYNHO%'' THEN ''1119_TODDYNHO''
-                        WHEN dp.descricao ILIKE ''%TODDY %'' THEN ''1119_TODDY''
+                        WHEN dp.descricao ILIKE ''%TODDY%'' AND dp.descricao NOT ILIKE ''%TODDYNHO%'' THEN ''1119_TODDY''
                         WHEN dp.descricao ILIKE ''%QUAKER%'' THEN ''1119_QUAKER''
                         WHEN dp.descricao ILIKE ''%KEROCOCO%'' THEN ''1119_KEROCOCO''
                         ELSE ''1119_OUTROS''
@@ -4360,7 +4426,7 @@ BEGIN
                 WHEN s.codfor = ''1119'' THEN COALESCE(
                     CASE
                         WHEN dp.descricao ILIKE ''%TODDYNHO%'' THEN ''1119_TODDYNHO''
-                        WHEN dp.descricao ILIKE ''%TODDY %'' THEN ''1119_TODDY''
+                        WHEN dp.descricao ILIKE ''%TODDY%'' AND dp.descricao NOT ILIKE ''%TODDYNHO%'' THEN ''1119_TODDY''
                         WHEN dp.descricao ILIKE ''%QUAKER%'' THEN ''1119_QUAKER''
                         WHEN dp.descricao ILIKE ''%KEROCOCO%'' THEN ''1119_KEROCOCO''
                         ELSE ''1119_OUTROS''
@@ -4865,6 +4931,42 @@ BEGIN
         v_where_chart := v_where_chart || ' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
     END IF;
 
+    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
+        IF NOT ('ambas' = ANY(p_fornecedor)) THEN
+            DECLARE
+                v_code text;
+                v_conditions text[] := '{}';
+                v_simple_codes text[] := '{}';
+                v_cond_str text;
+            BEGIN
+                FOREACH v_code IN ARRAY p_fornecedor LOOP
+                    IF v_code = '1119_TODDYNHO' THEN
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDYNHO'')');
+                    ELSIF v_code = '1119_TODDY' THEN
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDY'')');
+                    ELSIF v_code = '1119_QUAKER' THEN
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''QUAKER'')');
+                    ELSIF v_code = '1119_KEROCOCO' THEN
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''KEROCOCO'')');
+                    ELSIF v_code = '1119_OUTROS' THEN
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND NOT (s.categorias ?| ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
+                    ELSE
+                        v_simple_codes := array_append(v_simple_codes, v_code);
+                    END IF;
+                END LOOP;
+
+                IF array_length(v_simple_codes, 1) > 0 THEN
+                    v_conditions := array_append(v_conditions, format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
+                END IF;
+
+                IF array_length(v_conditions, 1) > 0 THEN
+                    v_cond_str := array_to_string(v_conditions, ' OR ');
+                    v_where_chart := v_where_chart || ' AND (' || v_cond_str || ') ';
+                END IF;
+            END;
+        END IF;
+    END IF;
+
     -- REDE Logic
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
        v_has_com_rede := ('C/ REDE' = ANY(p_rede));
@@ -4906,7 +5008,7 @@ BEGIN
             MAX(CASE WHEN s.categorias ? ''RUFFLES'' THEN 1 ELSE 0 END) as has_ruffles,
             MAX(CASE WHEN s.categorias ? ''TORCIDA'' THEN 1 ELSE 0 END) as has_torcida,
             MAX(CASE WHEN s.categorias ? ''TODDYNHO'' THEN 1 ELSE 0 END) as has_toddynho,
-            MAX(CASE WHEN s.categorias ? ''TODDY '' THEN 1 ELSE 0 END) as has_toddy,
+            MAX(CASE WHEN s.categorias ? ''TODDY'' THEN 1 ELSE 0 END) as has_toddy,
             MAX(CASE WHEN s.categorias ? ''QUAKER'' THEN 1 ELSE 0 END) as has_quaker,
             MAX(CASE WHEN s.categorias ? ''KEROCOCO'' THEN 1 ELSE 0 END) as has_kerococo
         FROM public.data_summary_frequency s
