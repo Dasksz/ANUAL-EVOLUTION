@@ -217,16 +217,16 @@ DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], tex
         SELECT ds.codcli, ds.codusur, cb.filial, ds.cidade, ds.tipovenda, ds.pre_mix_count, ds.vlvenda
         FROM public.data_summary ds
         LEFT JOIN public.config_city_branches cb ON ds.cidade = cb.cidade
-        ' || v_where_summary || '
+        '' || v_where_summary || ''
     ),
     pre_aggregated_skus AS (
         SELECT
-            COALESCE(filial, ''SEM FILIAL'') as filial,
-            COALESCE(cidade, ''SEM CIDADE'') as cidade,
+            COALESCE(filial, ''''SEM FILIAL'''') as filial,
+            COALESCE(cidade, ''''SEM CIDADE'''') as cidade,
             codusur,
             codcli,
             SUM(CASE
-                WHEN tipovenda IN (''1'', ''9'') AND (' || v_mix_constraint || ') THEN pre_mix_count
+                WHEN tipovenda IN (''''1'''', ''''9'''') AND ('' || v_mix_constraint || '') THEN pre_mix_count
                 ELSE 0
             END) as dist_skus_per_cli
         FROM current_skus ds
