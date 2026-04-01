@@ -20,3 +20,7 @@
 ## 2025-03-31 - Visible Labels vs ARIA Labels in Forms
 **Learning:** While `aria-label` is sufficient for screen readers when space is extremely tight, omitting visible `<label>` elements in complex forms (like Signup) in favor of placeholders causes usability issues for sighted users, as the context disappears as soon as typing begins.
 **Action:** Always pair inputs with a visible `<label>` (linked via `for` and `id`) in primary data-entry forms to maintain context and ensure a larger clickable area for focusing the input.
+
+## 2025-04-01 - Missing for attribute on labels for select elements
+**Learning:** In dashboards with multiple filtering options using `<select>` tags, omitting the `for` attribute on the preceding `<label>` breaks the programmatic association between the label and the input. This means screen readers will not announce the label when the select gains focus, and sighted users cannot click the label text to focus the dropdown. This is a common accessibility oversight in rapid UI development.
+**Action:** Always ensure every `<label>` has a `for` attribute that exactly matches the `id` of its corresponding input or `<select>` element.
