@@ -7937,6 +7937,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         };
     });
 
+    let allRowsHtml = '';
     let rowCounter = 0;
 
     const createRow = (node, level, parentId = null) => {
@@ -7990,7 +7991,8 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${percPositStr}</td>
             </tr>
         `;
-        tableBody.insertAdjacentHTML('beforeend', rowHtml);
+        // ⚡ Bolt Optimization: Concatenate string to prevent layout thrashing and batch DOM updates
+        allRowsHtml += rowHtml;
 
         if (hasChildren) {
             Object.values(node.children).forEach(child => createRow(child, level + 1, id));
@@ -8000,6 +8002,9 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
     };
 
     const rootData = createRow(hierarchy, 0);
+
+    // Render all rows at once
+    tableBody.innerHTML = allRowsHtml;
 
     // Render footer (Totals - same as Root)
     tableFooter.innerHTML = `
