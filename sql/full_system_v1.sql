@@ -619,7 +619,7 @@ BEGIN
     EXECUTE v_sql INTO v_result;
     RETURN v_result;
 END;
-$;
+$$;
 
 -- ==============================================================================
 -- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT (V2 - Storage Optimized)
