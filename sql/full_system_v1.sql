@@ -246,7 +246,7 @@ DECLARE
     v_result json;
 BEGIN
     SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+    SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = 'todos' THEN
@@ -461,17 +461,26 @@ BEGIN
         GROUP BY c.filial, c.cidade, c.codusur, c.codcli
     ),
     
+    client_monthly_sales AS (
+        SELECT
+            c.filial, c.cidade, c.codusur, c.mes, c.codcli,
+            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END)::numeric as month_pedidos,
+            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as sum_vlvenda
+        FROM current_data c
+        GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
+    ),
     monthly_freq AS (
         SELECT
-            c.filial,
-            c.cidade,
-            c.codusur,
-            c.mes,
-            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END)::numeric as month_pedidos,
-            COUNT(DISTINCT CASE WHEN c.vlvenda >= 1 AND c.tipovenda NOT IN (''5'', ''11'') THEN c.codcli END)::numeric as month_clientes
-        FROM current_data c
-        GROUP BY c.filial, c.cidade, c.codusur, c.mes
+            filial,
+            cidade,
+            codusur,
+            mes,
+            SUM(month_pedidos) as month_pedidos,
+            SUM(CASE WHEN sum_vlvenda >= 1 THEN 1 ELSE 0 END)::numeric as month_clientes
+        FROM client_monthly_sales
+        GROUP BY filial, cidade, codusur, mes
     ),
+
     rolled_monthly_freq AS (
         SELECT
             GROUPING(filial) as grp_filial,
@@ -495,13 +504,25 @@ BEGIN
             c.codusur as vendedor_cod,
             SUM(c.peso) as tons,
             SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
-            COUNT(DISTINCT CASE WHEN c.vlvenda >= 1 AND c.tipovenda NOT IN (''5'', ''11'') THEN c.codcli END) as positivacao,
-            COUNT(DISTINCT CASE WHEN c.vlvenda >= 1 AND c.tipovenda NOT IN (''5'', ''11'') THEN c.codcli::text || ''-'' || c.mes::text END) as positivacao_mensal,
             COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END) as total_pedidos,
             COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
         GROUP BY ROLLUP(c.filial, c.cidade, c.codusur)
     ),
+    aggregated_positivados AS (
+        SELECT
+            GROUPING(filial) as grp_filial,
+            GROUPING(cidade) as grp_cidade,
+            GROUPING(codusur) as grp_vendedor,
+            COALESCE(filial, ''TOTAL_GERAL'') as filial,
+            COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
+            codusur as vendedor_cod,
+            COUNT(DISTINCT CASE WHEN sum_vlvenda >= 1 THEN codcli END) as positivacao,
+            COUNT(DISTINCT CASE WHEN sum_vlvenda >= 1 THEN codcli::text || ''-'' || mes::text END) as positivacao_mensal
+        FROM client_monthly_sales
+        GROUP BY ROLLUP(filial, cidade, codusur)
+    ),
+
     aggregated_skus AS (
         SELECT
             GROUPING(filial) as grp_filial,
@@ -527,14 +548,21 @@ BEGIN
             ac.tons,
             ac.faturamento,
             COALESCE(pd.faturamento_prev, 0) as faturamento_prev,
-            ac.positivacao,
-            ac.positivacao_mensal,
+            COALESCE(ap.positivacao, 0) as positivacao,
+            COALESCE(ap.positivacao_mensal, 0) as positivacao_mensal,
             COALESCE(ask.sum_skus, 0)::numeric as sum_skus,
             ac.total_pedidos::numeric as total_pedidos,
             ac.q_meses,
             COALESCE(mf.avg_monthly_freq, 0) as avg_monthly_freq,
             COALESCE(cb.base_total, 0) as base_total
         FROM aggregated_curr ac
+        LEFT JOIN aggregated_positivados ap
+            ON ac.grp_filial = ap.grp_filial
+            AND ac.grp_cidade = ap.grp_cidade
+            AND ac.grp_vendedor = ap.grp_vendedor
+            AND ac.filial = ap.filial
+            AND ac.cidade = ap.cidade
+            AND ac.vendedor_cod IS NOT DISTINCT FROM ap.vendedor_cod
         LEFT JOIN previous_data pd ON ac.grp_filial = pd.grp_filial 
                                   AND ac.grp_cidade = pd.grp_cidade 
                                   AND ac.grp_vendedor = pd.grp_vendedor 
@@ -562,14 +590,21 @@ BEGIN
                                 AND COALESCE((SELECT nome FROM public.dim_vendedores WHERE codigo = ac.vendedor_cod LIMIT 1),
                                     CASE WHEN ac.grp_vendedor = 1 THEN ''TOTAL_VENDEDOR'' ELSE ''SEM VENDEDOR'' END) = cb.vendedor
     ),
+    chart_monthly_sales AS (
+        SELECT s.ano, s.mes, s.codcli,
+               COUNT(DISTINCT CASE WHEN s.tipovenda NOT IN (''5'', ''11'') THEN s.pedido END) as month_pedidos,
+               SUM(CASE WHEN s.tipovenda NOT IN (''5'', ''11'') THEN s.vlvenda ELSE 0 END) as sum_vlvenda
+        FROM public.data_summary_frequency s
+        ' || v_where_chart || '
+        GROUP BY s.ano, s.mes, s.codcli
+    ),
     chart_data AS (
         SELECT
             ano,
             mes,
-            COUNT(DISTINCT CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN pedido END) as total_pedidos,
-            COUNT(DISTINCT CASE WHEN vlvenda >= 1 AND tipovenda NOT IN (''5'', ''11'') THEN codcli END) as total_clientes
-        FROM public.data_summary_frequency s
-        ' || v_where_chart || '
+            SUM(month_pedidos) as total_pedidos,
+            SUM(CASE WHEN sum_vlvenda >= 1 THEN 1 ELSE 0 END) as total_clientes
+        FROM chart_monthly_sales
         GROUP BY 1, 2
     )
     SELECT json_build_object(
@@ -584,7 +619,7 @@ BEGIN
     EXECUTE v_sql INTO v_result;
     RETURN v_result;
 END;
-$$;
+$;
 
 -- ==============================================================================
 -- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT (V2 - Storage Optimized)
