@@ -5181,18 +5181,46 @@ let estrelasSelectedCategorias = [];
         const startItem = (currentCityPage * cityPageSize) + 1;
         const endItem = Math.min((currentCityPage + 1) * cityPageSize, totalActiveClients);
 
-        container.innerHTML = `
-            <div class="flex justify-between items-center mt-4 px-4 text-sm text-slate-400">
-                <div>Mostrando ${totalActiveClients > 0 ? startItem : 0} a ${endItem} de ${totalActiveClients}</div>
-                <div class="flex gap-2">
-                    <button id="city-prev-btn" class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50" ${currentCityPage === 0 ? 'disabled' : ''}>Anterior</button>
-                    <span>${currentCityPage + 1} / ${totalPages || 1}</span>
-                    <button id="city-next-btn" class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50" ${currentCityPage >= totalPages - 1 ? 'disabled' : ''}>Próxima</button>
-                </div>
-            </div>
-        `;
-        document.getElementById('city-prev-btn')?.addEventListener('click', () => { if(currentCityPage > 0) { currentCityPage--; loadCityView(); }});
-        document.getElementById('city-next-btn')?.addEventListener('click', () => { if(currentCityPage < totalPages-1) { currentCityPage++; loadCityView(); }});
+        container.innerHTML = '';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex justify-between items-center mt-4 px-4 text-sm text-slate-400';
+
+        const infoDiv = document.createElement('div');
+        infoDiv.textContent = `Mostrando ${totalActiveClients > 0 ? startItem : 0} a ${endItem} de ${totalActiveClients}`;
+
+        const controlsDiv = document.createElement('div');
+        controlsDiv.className = 'flex gap-2';
+
+        const prevBtn = document.createElement('button');
+        prevBtn.id = 'city-prev-btn';
+        prevBtn.className = 'px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50';
+        prevBtn.textContent = 'Anterior';
+        if (currentCityPage === 0) prevBtn.disabled = true;
+        prevBtn.addEventListener('click', () => {
+            if (currentCityPage > 0) { currentCityPage--; loadCityView(); }
+        });
+
+        const pageSpan = document.createElement('span');
+        pageSpan.textContent = `${currentCityPage + 1} / ${totalPages || 1}`;
+
+        const nextBtn = document.createElement('button');
+        nextBtn.id = 'city-next-btn';
+        nextBtn.className = 'px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50';
+        nextBtn.textContent = 'Próxima';
+        if (currentCityPage >= totalPages - 1) nextBtn.disabled = true;
+        nextBtn.addEventListener('click', () => {
+            if (currentCityPage < totalPages - 1) { currentCityPage++; loadCityView(); }
+        });
+
+        controlsDiv.appendChild(prevBtn);
+        controlsDiv.appendChild(pageSpan);
+        controlsDiv.appendChild(nextBtn);
+
+        wrapper.appendChild(infoDiv);
+        wrapper.appendChild(controlsDiv);
+
+        container.appendChild(wrapper);
     }
 
     // --- Calendar Logic ---
