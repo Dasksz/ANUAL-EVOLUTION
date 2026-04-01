@@ -7984,7 +7984,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
                 <td class="px-2 py-2 border-b border-white/5 font-medium ${indentClass}">${escapeHtml(node.name)}</td>
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${tons.toFixed(1)}</td>
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold ${varYagoColor}">${varYagoIcon} ${varYagoStr}</td>
-                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${skuPdv.toFixed(1)}</td>
+                <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${skuPdv.toFixed(2)}</td>
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${freq.toFixed(2)}</td>
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${positStr}</td>
                 <td class="px-2 py-2 border-b border-white/5 text-right font-bold">${percPositStr}</td>
@@ -8008,7 +8008,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
             <td class="px-2 py-3 border-t border-white/20">Total</td>
             <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.tons.toFixed(1)}</td>
             <td class="px-2 py-3 border-t border-white/20 text-right ${rootData.varYagoColor}">${rootData.varYagoIcon} ${rootData.varYagoStr}</td>
-            <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.skuPdv.toFixed(1)}</td>
+            <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.skuPdv.toFixed(2)}</td>
             <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.freq.toFixed(2)}</td>
             <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.positivacao}</td>
             <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.percPosit.toFixed(1)}%</td>
