@@ -5642,8 +5642,20 @@ GRANT SELECT ON public.n8n_agent_view TO authenticated, anon;
 -- Materialized View: n8n_agent_view
 -- ==========================================
 
-/* Apaga a visualizacao fisica antiga */
-DROP MATERIALIZED VIEW IF EXISTS public.n8n_agent_view CASCADE;
+/* Apaga a visualizacao antiga (tratando erro de tipo caso mude de VIEW para MATERIALIZED VIEW) */
+DO $$
+BEGIN
+    DROP VIEW IF EXISTS public.n8n_agent_view CASCADE;
+EXCEPTION WHEN wrong_object_type THEN
+    NULL;
+END $$;
+
+DO $$
+BEGIN
+    DROP MATERIALIZED VIEW IF EXISTS public.n8n_agent_view CASCADE;
+EXCEPTION WHEN wrong_object_type THEN
+    NULL;
+END $$;
 
 /* Cria a tabela fisica com os dados consolidados e agora com endereco */
 CREATE MATERIALIZED VIEW public.n8n_agent_view AS
