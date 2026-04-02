@@ -24,3 +24,6 @@
 ## 2025-04-01 - Missing for attribute on labels for select elements
 **Learning:** In dashboards with multiple filtering options using `<select>` tags, omitting the `for` attribute on the preceding `<label>` breaks the programmatic association between the label and the input. This means screen readers will not announce the label when the select gains focus, and sighted users cannot click the label text to focus the dropdown. This is a common accessibility oversight in rapid UI development.
 **Action:** Always ensure every `<label>` has a `for` attribute that exactly matches the `id` of its corresponding input or `<select>` element.
+## 2026-04-02 - Regex pitfalls when updating HTML attributes
+**Learning:** When using Python regex scripts to mass-edit HTML files (e.g., adding `for=` attributes to `<label>` tags), failing to properly match the closing bracket `>` and inner text can inadvertently delete content and create malformed HTML (like `<label for="..." class="..."</label>`). Even minor mistakes can delete hundreds of lines or break page rendering.
+**Action:** When adding attributes via automated scripts, always use non-greedy matching `([^<]+)` to capture the exact text content and `([^>]+)` to capture attributes, ensuring the reconstruction preserves all parts of the original tag. Always run `git diff` and verify the syntax before committing.
