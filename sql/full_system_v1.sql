@@ -879,9 +879,27 @@ ALTER TABLE public.dim_supervisores ENABLE ROW LEVEL SECURITY;
 
 CREATE TABLE IF NOT EXISTS public.dim_vendedores (
     codigo text PRIMARY KEY,
-    nome text
+    nome text,
+    cpf text
 );
 ALTER TABLE public.dim_vendedores ENABLE ROW LEVEL SECURITY;
+
+-- Função para atualizar os vendedores vindos do Worker garantindo que a coluna CPF (inserida manualmente) não seja sobrescrita.
+CREATE OR REPLACE FUNCTION public.upsert_dim_vendedores(p_vendors jsonb)
+RETURNS void AS $$
+DECLARE
+    vendor_record record;
+BEGIN
+    FOR vendor_record IN SELECT * FROM jsonb_to_recordset(p_vendors) AS x(codigo text, nome text) LOOP
+        INSERT INTO public.dim_vendedores (codigo, nome)
+        VALUES (vendor_record.codigo, vendor_record.nome)
+        ON CONFLICT (codigo) DO UPDATE
+        SET nome = EXCLUDED.nome;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+GRANT EXECUTE ON FUNCTION public.upsert_dim_vendedores(jsonb) TO authenticated, anon;
+
 
 CREATE TABLE IF NOT EXISTS public.dim_fornecedores (
     codigo text PRIMARY KEY,
