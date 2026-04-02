@@ -2584,7 +2584,7 @@ BEGIN
             ''bonificacao'', a.bonificacao, 
             ''devolucao'', a.devolucao, 
             ''positivacao'', a.positivacao_count, 
-            ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END, 
+            ''mix_pdv'', CASE WHEN a.positivacao_count > 0 THEN a.total_mix_sum::numeric / a.positivacao_count ELSE 0 END,
             ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
         ) ORDER BY a.mes) FILTER (WHERE a.ano = $2), ''[]''::json),
         
@@ -2596,7 +2596,7 @@ BEGIN
             ''bonificacao'', a.bonificacao, 
             ''devolucao'', a.devolucao, 
             ''positivacao'', a.positivacao_count, 
-            ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END, 
+            ''mix_pdv'', CASE WHEN a.positivacao_count > 0 THEN a.total_mix_sum::numeric / a.positivacao_count ELSE 0 END,
             ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
         ) ORDER BY a.mes) FILTER (WHERE a.ano = $4), ''[]''::json)
     FROM agg_data a
@@ -5442,7 +5442,7 @@ BEGIN
             ''bonificacao'', a.bonificacao,
             ''devolucao'', a.devolucao,
             ''positivacao'', a.positivacao_count,
-            ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END,
+            ''mix_pdv'', CASE WHEN a.positivacao_count > 0 THEN a.total_mix_sum::numeric / a.positivacao_count ELSE 0 END,
             ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
         ) ORDER BY a.mes) FILTER (WHERE a.ano = $2), ''[]''::json),
 
@@ -5454,7 +5454,7 @@ BEGIN
             ''bonificacao'', a.bonificacao,
             ''devolucao'', a.devolucao,
             ''positivacao'', a.positivacao_count,
-            ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END,
+            ''mix_pdv'', CASE WHEN a.positivacao_count > 0 THEN a.total_mix_sum::numeric / a.positivacao_count ELSE 0 END,
             ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
         ) ORDER BY a.mes) FILTER (WHERE a.ano = $4), ''[]''::json)
     FROM agg_data a
@@ -5637,3 +5637,156 @@ LEFT JOIN public.dim_vendedores v ON pa.vendedor_cod = v.codigo
 LEFT JOIN public.dim_supervisores s ON pa.supervisor_cod = s.codigo;
 
 GRANT SELECT ON public.n8n_agent_view TO authenticated, anon;
+
+-- ==========================================
+-- Materialized View: n8n_agent_view
+-- ==========================================
+
+/* Apaga a visualizacao antiga (tratando erro de tipo caso mude de VIEW para MATERIALIZED VIEW) */
+DO $$
+BEGIN
+    DROP VIEW IF EXISTS public.n8n_agent_view CASCADE;
+EXCEPTION WHEN wrong_object_type THEN
+    NULL;
+END $$;
+
+DO $$
+BEGIN
+    DROP MATERIALIZED VIEW IF EXISTS public.n8n_agent_view CASCADE;
+EXCEPTION WHEN wrong_object_type THEN
+    NULL;
+END $$;
+
+/* Cria a tabela fisica com os dados consolidados e agora com endereco */
+CREATE MATERIALIZED VIEW public.n8n_agent_view AS
+WITH limites_data AS (
+    SELECT date_trunc('month', MAX(dtped)) - interval '12 months' as data_corte
+    FROM (
+        SELECT MAX(dtped) as dtped FROM public.data_detailed
+        UNION ALL
+        SELECT MAX(dtped) as dtped FROM public.data_history
+    ) max_datas
+),
+itens_brutos AS (
+    SELECT
+        EXTRACT(YEAR FROM s.dtped)::int as ano,
+        EXTRACT(MONTH FROM s.dtped)::int as mes,
+        s.codcli,
+        s.pedido,
+        s.dtped::date as data_pedido,
+        s.tipovenda,
+        s.filial,
+        s.codusur as vendedor_cod,
+        s.codsupervisor as supervisor_cod,
+        dp.descricao as produto,
+        s.qtvenda as quantidade,
+        CASE WHEN s.tipovenda IN ('5', '11') THEN s.vlbonific ELSE s.vlvenda END as valor_total_item,
+        (CASE WHEN s.tipovenda IN ('5', '11') THEN s.vlbonific ELSE s.vlvenda END / NULLIF(s.qtvenda, 0)) as preco_unitario
+    FROM public.data_detailed s
+    CROSS JOIN limites_data c
+    LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+    WHERE s.dtped >= c.data_corte
+
+    UNION ALL
+
+    SELECT
+        EXTRACT(YEAR FROM s.dtped)::int as ano,
+        EXTRACT(MONTH FROM s.dtped)::int as mes,
+        s.codcli,
+        s.pedido,
+        s.dtped::date as data_pedido,
+        s.tipovenda,
+        s.filial,
+        s.codusur as vendedor_cod,
+        s.codsupervisor as supervisor_cod,
+        dp.descricao as produto,
+        s.qtvenda as quantidade,
+        CASE WHEN s.tipovenda IN ('5', '11') THEN s.vlbonific ELSE s.vlvenda END as valor_total_item,
+        (CASE WHEN s.tipovenda IN ('5', '11') THEN s.vlbonific ELSE s.vlvenda END / NULLIF(s.qtvenda, 0)) as preco_unitario
+    FROM public.data_history s
+    CROSS JOIN limites_data c
+    LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+    WHERE s.dtped >= c.data_corte
+),
+pedidos_agrupados AS (
+    SELECT
+        ano,
+        mes,
+        codcli,
+        pedido,
+        MAX(data_pedido) as data_do_pedido,
+        MAX(tipovenda) as tipo_venda,
+        MAX(filial) as filial_pedido,
+        MAX(vendedor_cod) as vendedor_cod,
+        MAX(supervisor_cod) as supervisor_cod,
+        SUM(valor_total_item) as valor_total_pedido,
+        jsonb_agg(
+            jsonb_build_object(
+                'produto', produto,
+                'quantidade', quantidade,
+                'valor_total_R$', valor_total_item,
+                'preco_unitario_R$', ROUND(preco_unitario::numeric, 2)
+            )
+        ) as lista_itens_comprados
+    FROM itens_brutos
+    GROUP BY ano, mes, codcli, pedido
+),
+mix_mensal AS (
+    SELECT
+        codcli,
+        ano,
+        mes,
+        MAX(CASE WHEN categorias ? 'CHEETOS' THEN 1 ELSE 0 END) as has_cheetos,
+        MAX(CASE WHEN categorias ? 'DORITOS' THEN 1 ELSE 0 END) as has_doritos,
+        MAX(CASE WHEN categorias ? 'FANDANGOS' THEN 1 ELSE 0 END) as has_fandangos,
+        MAX(CASE WHEN categorias ? 'RUFFLES' THEN 1 ELSE 0 END) as has_ruffles,
+        MAX(CASE WHEN categorias ? 'TORCIDA' THEN 1 ELSE 0 END) as has_torcida,
+        MAX(CASE WHEN categorias ? 'TODDYNHO' THEN 1 ELSE 0 END) as has_toddynho,
+        MAX(CASE WHEN categorias ? 'TODDY' THEN 1 ELSE 0 END) as has_toddy,
+        MAX(CASE WHEN categorias ? 'QUAKER' THEN 1 ELSE 0 END) as has_quaker,
+        MAX(CASE WHEN categorias ? 'KEROCOCO' THEN 1 ELSE 0 END) as has_kerococo
+    FROM public.data_summary_frequency
+    GROUP BY codcli, ano, mes
+)
+SELECT
+    c.codigo_cliente,
+    c.cnpj,
+    c.razaosocial,
+    c.fantasia,
+    c.nomecliente as responsavel,
+    c.endereco,
+    c.cidade,
+    c.bairro,
+    c.ramo as rede_ou_ramo,
+    c.bloqueio,
+    c.ultimacompra,
+    pa.pedido as numero_pedido,
+    pa.data_do_pedido::text as data_pedido,
+    pa.tipo_venda as tipo_venda_pedido,
+    pa.valor_total_pedido,
+    CASE WHEN mm.has_cheetos=1 AND mm.has_doritos=1 AND mm.has_fandangos=1 AND mm.has_ruffles=1 AND mm.has_torcida=1 THEN 'SIM' ELSE 'NAO' END as mes_atingiu_mix_salty,
+    CASE WHEN mm.has_toddynho=1 AND mm.has_toddy=1 AND mm.has_quaker=1 AND mm.has_kerococo=1 THEN 'SIM' ELSE 'NAO' END as mes_atingiu_mix_foods,
+    v.nome as vendedor_responsavel_pedido,
+    s.nome as supervisor_responsavel_pedido,
+    pa.filial_pedido as filial,
+    pa.lista_itens_comprados
+FROM public.data_clients c
+JOIN pedidos_agrupados pa ON c.codigo_cliente = pa.codcli
+LEFT JOIN mix_mensal mm ON pa.codcli = mm.codcli AND pa.ano = mm.ano AND pa.mes = mm.mes
+LEFT JOIN public.dim_vendedores v ON pa.vendedor_cod = v.codigo
+LEFT JOIN public.dim_supervisores s ON pa.supervisor_cod = s.codigo;
+
+/* Cria os indices normais para a nova tabela */
+CREATE INDEX IF NOT EXISTS idx_n8n_agent_view_codcli ON public.n8n_agent_view (codigo_cliente);
+CREATE INDEX IF NOT EXISTS idx_n8n_agent_view_cnpj ON public.n8n_agent_view (cnpj);
+CREATE INDEX IF NOT EXISTS idx_n8n_agent_view_pedido ON public.n8n_agent_view (numero_pedido);
+CREATE INDEX IF NOT EXISTS idx_n8n_agent_view_tipo ON public.n8n_agent_view (tipo_venda_pedido);
+
+/* Permissoes */
+GRANT SELECT ON public.n8n_agent_view TO authenticated, anon;
+
+/* Ativa a extensao que permite ler pedacos de texto rapidamente */
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+/* Cria o super indice que faz a busca com asteriscos funcionar na hora */
+CREATE INDEX IF NOT EXISTS idx_n8n_agent_view_data_trgm ON public.n8n_agent_view USING GIN (data_pedido gin_trgm_ops);
