@@ -4555,38 +4555,104 @@ let estrelasSelectedCategorias = [];
 
         const renderTable = (bodyId, items) => {
             const body = document.getElementById(bodyId);
+            body.innerHTML = '';
             if (items && items.length > 0) {
-                body.innerHTML = items.map(c => `
-                    <tr class="table-row">
-                        <td class="p-2">${escapeHtml(c['Código'])}</td>
-                        <td class="p-2">${escapeHtml(c.fantasia || c.razaoSocial)}</td>
-                        ${c.totalFaturamento !== undefined ? `<td class="p-2 text-right">${c.totalFaturamento.toLocaleString('pt-BR', {style:'currency', currency: 'BRL'})}</td>` : ''}
-                        <td class="p-2">${escapeHtml(c.cidade)}</td>
-                        <td class="p-2">${escapeHtml(c.bairro)}</td>
-                        ${c.ultimaCompra ? `<td class="p-2 text-center">${new Date(c.ultimaCompra).toLocaleDateString('pt-BR')}</td>` : ''}
-                        <td class="p-2">${escapeHtml(c.rca1 || '-')}</td>
-                    </tr>
-                `).join('');
+                const fragment = document.createDocumentFragment();
+                items.forEach(c => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'table-row';
+
+                    const tdCode = document.createElement('td');
+                    tdCode.className = 'p-2';
+                    tdCode.textContent = c['Código'] || '';
+                    tr.appendChild(tdCode);
+
+                    const tdName = document.createElement('td');
+                    tdName.className = 'p-2';
+                    tdName.textContent = c.fantasia || c.razaoSocial || '';
+                    tr.appendChild(tdName);
+
+                    if (c.totalFaturamento !== undefined) {
+                        const tdFat = document.createElement('td');
+                        tdFat.className = 'p-2 text-right';
+                        tdFat.textContent = c.totalFaturamento.toLocaleString('pt-BR', {style:'currency', currency: 'BRL'});
+                        tr.appendChild(tdFat);
+                    }
+
+                    const tdCity = document.createElement('td');
+                    tdCity.className = 'p-2';
+                    tdCity.textContent = c.cidade || '';
+                    tr.appendChild(tdCity);
+
+                    const tdBairro = document.createElement('td');
+                    tdBairro.className = 'p-2';
+                    tdBairro.textContent = c.bairro || '';
+                    tr.appendChild(tdBairro);
+
+                    if (c.ultimaCompra) {
+                        const tdUlt = document.createElement('td');
+                        tdUlt.className = 'p-2 text-center';
+                        tdUlt.textContent = new Date(c.ultimaCompra).toLocaleDateString('pt-BR');
+                        tr.appendChild(tdUlt);
+                    }
+
+                    const tdRca = document.createElement('td');
+                    tdRca.className = 'p-2';
+                    tdRca.textContent = c.rca1 || '-';
+                    tr.appendChild(tdRca);
+
+                    fragment.appendChild(tr);
+                });
+                body.appendChild(fragment);
             } else {
-                body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>';
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 7;
+                td.className = 'p-4 text-center text-slate-500';
+                td.textContent = 'Nenhum registro encontrado.';
+                tr.appendChild(td);
+                body.appendChild(tr);
             }
         };
 
         const renderRankingTable = (bodyId, items) => {
             const body = document.getElementById(bodyId);
+            body.innerHTML = '';
             if (items && items.length > 0) {
-                body.innerHTML = items.map(c => {
+                const fragment = document.createDocumentFragment();
+                items.forEach(c => {
                     const varClass = c['Variação'] > 0 ? 'text-emerald-400' : (c['Variação'] < 0 ? 'text-red-400' : 'text-slate-400');
                     const varArrow = c['Variação'] > 0 ? '▲' : (c['Variação'] < 0 ? '▼' : '-');
-                    return `
-                    <tr class="table-row">
-                        <td class="p-2 font-semibold">${escapeHtml(c['Cidade'])}</td>
-                        <td class="p-2 text-right text-cyan-400 font-bold">${parseFloat(c['% Share']).toFixed(2)}%</td>
-                        <td class="p-2 text-right font-bold ${varClass}">${varArrow} ${Math.abs(c['Variação']).toFixed(2)}%</td>
-                    </tr>
-                `}).join('');
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'table-row';
+
+                    const tdCity = document.createElement('td');
+                    tdCity.className = 'p-2 font-semibold';
+                    tdCity.textContent = c['Cidade'] || '';
+                    tr.appendChild(tdCity);
+
+                    const tdShare = document.createElement('td');
+                    tdShare.className = 'p-2 text-right text-cyan-400 font-bold';
+                    tdShare.textContent = parseFloat(c['% Share']).toFixed(2) + '%';
+                    tr.appendChild(tdShare);
+
+                    const tdVar = document.createElement('td');
+                    tdVar.className = `p-2 text-right font-bold ${varClass}`;
+                    tdVar.textContent = `${varArrow} ${Math.abs(c['Variação']).toFixed(2)}%`;
+                    tr.appendChild(tdVar);
+
+                    fragment.appendChild(tr);
+                });
+                body.appendChild(fragment);
             } else {
-                body.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>';
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 3;
+                td.className = 'p-4 text-center text-slate-500';
+                td.textContent = 'Nenhum registro encontrado.';
+                tr.appendChild(td);
+                body.appendChild(tr);
             }
         };
 
