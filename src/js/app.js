@@ -2251,7 +2251,10 @@ let estrelasSelectedCategorias = [];
             }
             if (data.newVendors && data.newVendors.length > 0) {
                  updateStatus('Atualizando Vendedores...', 2);
-                 await performDimensionUpsert('dim_vendedores', data.newVendors);
+                 await retryOperation(async () => {
+                     const { error } = await supabase.rpc('upsert_dim_vendedores', { p_vendors: data.newVendors });
+                     if (error) throw new Error('Erro ao atualizar dim_vendedores: ' + error.message);
+                 });
             }
             if (data.newProviders && data.newProviders.length > 0) {
                  updateStatus('Atualizando Fornecedores...', 3);
