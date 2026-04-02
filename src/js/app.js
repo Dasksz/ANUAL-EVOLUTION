@@ -3149,9 +3149,21 @@ let estrelasSelectedCategorias = [];
                     const checkbox = div.querySelector('input');
                     if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
                     const val = String(value);
-                    if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
+
+                    if (checkbox.checked) {
+                        if (!selectedSet.has(val)) {
+                            selectedSet.add(val);
+                            selectedArray.push(val);
+                        }
+                    } else {
+                        if (selectedSet.has(val)) {
+                            selectedSet.delete(val);
+                            const idx = selectedArray.indexOf(val);
+                            if (idx > -1) selectedArray.splice(idx, 1);
+                        }
+                    }
+
                     updateBtnLabel();
-// Removed immediate handleFilterChange call from here if any existed
                 };
                 fragment.appendChild(div);
             });
@@ -4412,9 +4424,21 @@ let estrelasSelectedCategorias = [];
                     const checkbox = div.querySelector('input');
                     if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
                     const val = String(value);
-                    if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
+
+                    if (checkbox.checked) {
+                        if (!selectedSet.has(val)) {
+                            selectedSet.add(val);
+                            selectedArray.push(val);
+                        }
+                    } else {
+                        if (selectedSet.has(val)) {
+                            selectedSet.delete(val);
+                            const idx = selectedArray.indexOf(val);
+                            if (idx > -1) selectedArray.splice(idx, 1);
+                        }
+                    }
+
                     updateBtnLabel();
-// Removed immediate handleFilterChange call from here if any existed
                 };
                 fragment.appendChild(div);
             });
@@ -4749,11 +4773,12 @@ let estrelasSelectedCategorias = [];
         }
     };
         
+        const selectedSet = new Set(selectedArray);
         const renderItems = () => {
             container.innerHTML = '';
             (items || []).forEach(item => {
                 const val = String(item);
-                const isSelected = selectedArray.includes(val);
+                const isSelected = selectedSet.has(val);
                 const div = document.createElement('div');
                 div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
 
@@ -4776,19 +4801,25 @@ let estrelasSelectedCategorias = [];
                     if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
                     
                     if (checkbox.checked) {
-                        if (!selectedArray.includes(val)) {
+                        if (!selectedSet.has(val)) {
+                            selectedSet.add(val);
                             selectedArray.push(val);
                             // Enforce max 2: remove first added
-                            if (selectedArray.length > 2) selectedArray.shift();
+                            if (selectedArray.length > 2) {
+                                const removed = selectedArray.shift();
+                                selectedSet.delete(removed);
+                            }
                         }
                     } else {
-                        const idx = selectedArray.indexOf(val);
-                        if (idx > -1) selectedArray.splice(idx, 1);
+                        if (selectedSet.has(val)) {
+                            selectedSet.delete(val);
+                            const idx = selectedArray.indexOf(val);
+                            if (idx > -1) selectedArray.splice(idx, 1);
+                        }
                     }
                     
                     renderItems(); // Re-render to update checks visually (e.g. if one was auto-removed)
                     updateBtnLabel();
-// Removed immediate handleFilterChange call from here if any existed
                 };
                 container.appendChild(div);
             });
@@ -4873,9 +4904,21 @@ let estrelasSelectedCategorias = [];
                     const checkbox = div.querySelector('input');
                     if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
                     const val = String(value);
-                    if (checkbox.checked) { if (!selectedArray.includes(val)) selectedArray.push(val); } else { const idx = selectedArray.indexOf(val); if (idx > -1) selectedArray.splice(idx, 1); }
+
+                    if (checkbox.checked) {
+                        if (!selectedSet.has(val)) {
+                            selectedSet.add(val);
+                            selectedArray.push(val);
+                        }
+                    } else {
+                        if (selectedSet.has(val)) {
+                            selectedSet.delete(val);
+                            const idx = selectedArray.indexOf(val);
+                            if (idx > -1) selectedArray.splice(idx, 1);
+                        }
+                    }
+
                     updateBtnLabel();
-// Removed immediate handleFilterChange call from here if any existed
                 };
                 fragment.appendChild(div);
             });
