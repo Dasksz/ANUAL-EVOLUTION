@@ -2928,16 +2928,45 @@ let estrelasSelectedCategorias = [];
 
         const tableBody = document.getElementById('boxesProductTableBody');
         if (products.length > 0) {
-            tableBody.innerHTML = products.map(p => `
-                <tr class="table-row">
-                    <td class="p-2">${escapeHtml(p.produto)}</td>
-                    <td class="p-2">${escapeHtml(p.descricao)}</td>
-                    <td class="p-2 text-right font-bold text-emerald-400">${Math.round(safeVal(p.caixas)).toLocaleString('pt-BR')}</td>
-                    <td class="p-2 text-right">${safeVal(p.faturamento).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                    <td class="p-2 text-right">${(safeVal(p.peso) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} Ton</td>
-                    <td class="p-2 text-center text-slate-400">${p.ultima_venda ? new Date(p.ultima_venda).toLocaleDateString('pt-BR') : '-'}</td>
-                </tr>
-            `).join('');
+            tableBody.innerHTML = '';
+            const fragment = document.createDocumentFragment();
+            products.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = 'table-row';
+
+                const tdProd = document.createElement('td');
+                tdProd.className = 'p-2';
+                tdProd.textContent = p.produto;
+                tr.appendChild(tdProd);
+
+                const tdDesc = document.createElement('td');
+                tdDesc.className = 'p-2';
+                tdDesc.textContent = p.descricao;
+                tr.appendChild(tdDesc);
+
+                const tdCaixas = document.createElement('td');
+                tdCaixas.className = 'p-2 text-right font-bold text-emerald-400';
+                tdCaixas.textContent = Math.round(safeVal(p.caixas)).toLocaleString('pt-BR');
+                tr.appendChild(tdCaixas);
+
+                const tdFat = document.createElement('td');
+                tdFat.className = 'p-2 text-right';
+                tdFat.textContent = safeVal(p.faturamento).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                tr.appendChild(tdFat);
+
+                const tdPeso = document.createElement('td');
+                tdPeso.className = 'p-2 text-right';
+                tdPeso.textContent = (safeVal(p.peso) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + ' Ton';
+                tr.appendChild(tdPeso);
+
+                const tdUltimaVenda = document.createElement('td');
+                tdUltimaVenda.className = 'p-2 text-center text-slate-400';
+                tdUltimaVenda.textContent = p.ultima_venda ? new Date(p.ultima_venda).toLocaleDateString('pt-BR') : '-';
+                tr.appendChild(tdUltimaVenda);
+
+                fragment.appendChild(tr);
+            });
+            tableBody.appendChild(fragment);
         } else {
             tableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Nenhum produto encontrado.</td></tr>';
         }
@@ -6394,16 +6423,41 @@ let estrelasSelectedCategorias = [];
         function renderSupervisorTable(data) {
             const tbody = document.getElementById('supervisorComparisonTableBody');
             if (!tbody) return;
-            tbody.innerHTML = Object.entries(data).map(([sup, vals]) => {
+
+            tbody.innerHTML = '';
+            const fragment = document.createDocumentFragment();
+
+            Object.entries(data).forEach(([sup, vals]) => {
                 const variation = vals.history > 0 ? ((vals.current - vals.history) / vals.history) * 100 : 0;
                 const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
-                return `<tr class="hover:bg-slate-700">
-                            <td class="px-4 py-2">${escapeHtml(sup)}</td>
-                            <td class="px-4 py-2 text-right">${vals.history.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td>
-                            <td class="px-4 py-2 text-right">${vals.current.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</td>
-                            <td class="px-4 py-2 text-right ${colorClass}">${variation.toFixed(2)}%</td>
-                        </tr>`;
-            }).join('');
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-700';
+
+                const tdSup = document.createElement('td');
+                tdSup.className = 'px-4 py-2';
+                tdSup.textContent = sup;
+                tr.appendChild(tdSup);
+
+                const tdHist = document.createElement('td');
+                tdHist.className = 'px-4 py-2 text-right';
+                tdHist.textContent = vals.history.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+                tr.appendChild(tdHist);
+
+                const tdCurr = document.createElement('td');
+                tdCurr.className = 'px-4 py-2 text-right';
+                tdCurr.textContent = vals.current.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+                tr.appendChild(tdCurr);
+
+                const tdVar = document.createElement('td');
+                tdVar.className = `px-4 py-2 text-right ${colorClass}`;
+                tdVar.textContent = variation.toFixed(2) + '%';
+                tr.appendChild(tdVar);
+
+                fragment.appendChild(tr);
+            });
+
+            tbody.appendChild(fragment);
         }
 // --- INOVACOES VIEW LOGIC ---
 let innovationsChart = null;
@@ -7394,25 +7448,47 @@ function renderLpTable(clients) {
     const tbody = document.getElementById('lp-table-body');
     if (!tbody || !clients) return;
 
-    let html = '';
+    tbody.innerHTML = '';
+    const fragment = document.createDocumentFragment();
 
     clients.forEach(c => {
         let colorClass = c.score >= 80 ? 'text-green-400' : c.score >= 50 ? 'text-yellow-400' : 'text-red-400';
 
-        html += `
-            <tr class="hover:bg-slate-700/30 transition-colors">
-                <td class="px-6 py-4 text-slate-400 text-xs">${escapeHtml(c.codcli)}</td>
-                <td class="px-6 py-4 font-bold text-slate-200">${escapeHtml(c.client_name)}</td>
-                <td class="px-6 py-4">
-                    <span class="font-bold text-white block">${escapeHtml(c.researcher)}</span>
-                </td>
-                <td class="px-6 py-4 text-slate-400">${escapeHtml(c.city || '--')}</td>
-                <td class="px-6 py-4 text-center font-bold ${colorClass} text-base">${formatNumber(c.score, 1)}</td>
-            </tr>
-        `;
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-700/30 transition-colors';
+
+        const tdCod = document.createElement('td');
+        tdCod.className = 'px-6 py-4 text-slate-400 text-xs';
+        tdCod.textContent = c.codcli;
+        tr.appendChild(tdCod);
+
+        const tdName = document.createElement('td');
+        tdName.className = 'px-6 py-4 font-bold text-slate-200';
+        tdName.textContent = c.client_name;
+        tr.appendChild(tdName);
+
+        const tdRes = document.createElement('td');
+        tdRes.className = 'px-6 py-4';
+        const spanRes = document.createElement('span');
+        spanRes.className = 'font-bold text-white block';
+        spanRes.textContent = c.researcher;
+        tdRes.appendChild(spanRes);
+        tr.appendChild(tdRes);
+
+        const tdCity = document.createElement('td');
+        tdCity.className = 'px-6 py-4 text-slate-400';
+        tdCity.textContent = c.city || '--';
+        tr.appendChild(tdCity);
+
+        const tdScore = document.createElement('td');
+        tdScore.className = `px-6 py-4 text-center font-bold ${colorClass} text-base`;
+        tdScore.textContent = formatNumber(c.score, 1);
+        tr.appendChild(tdScore);
+
+        fragment.appendChild(tr);
     });
 
-    tbody.innerHTML = html;
+    tbody.appendChild(fragment);
 }
 
 function formatNumber(num, decimals = 2) {

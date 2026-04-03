@@ -14,3 +14,7 @@
 **Vulnerability:** XSS vulnerability where raw strings for the City View details and ranking tables were constructed using string concatenation and assigned directly to `innerHTML`.
 **Learning:** Template literal strings assigned to `innerHTML` are a recurring vector for XSS in this codebase. Even seemingly safe fields can be exploited if the underlying data is tampered with.
 **Prevention:** Consistently use `document.createElement()` and `textContent` over `innerHTML` for all dynamic UI rendering to prevent XSS.
+## 2026-04-03 - [Fix XSS in Table Rendering]
+**Vulnerability:** XSS vulnerability where template strings are assigned to `innerHTML` directly in `renderSupervisorTable`, `renderLpTable`, and the products table render. While the existing code used `escapeHtml()`, assigning interpolated strings to `innerHTML` is an unsafe pattern that can easily lead to vulnerabilities if escaping is forgotten.
+**Learning:** Relying on developer discipline to always use `escapeHtml()` with `innerHTML` is prone to error.
+**Prevention:** Consistently use `document.createElement()`, `textContent`, and `appendChild()` (often with a `DocumentFragment` for performance) over `innerHTML` for all dynamic UI rendering to natively prevent DOM-based XSS.
