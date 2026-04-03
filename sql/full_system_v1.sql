@@ -241,6 +241,7 @@ DECLARE
     v_where_unnested text := ' ';
     v_where_base_prev text := ' WHERE 1=1 ';
     v_where_chart text := ' WHERE 1=1 ';
+    v_mix_constraint text := ' 1=1 ';
 
     v_sql text;
     v_result json;
@@ -396,6 +397,14 @@ BEGIN
         v_where_chart := v_where_chart || ' AND tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
     END IF;
 
+
+    -- MIX Constraint Logic
+    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
+        v_mix_constraint := ' 1=1 ';
+    ELSE
+        v_mix_constraint := ' dp.codfor IN (''707'', ''708'', ''752'') ';
+    END IF;
+
     -- Dynamic Query
     v_sql := '
     WITH base_clients AS (
@@ -456,7 +465,13 @@ BEGIN
         FROM current_data c
         CROSS JOIN LATERAL jsonb_array_elements_text(c.produtos) AS p(produto)
         INNER JOIN public.dim_produtos dp ON dp.codigo = p.produto
-        WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
+        WHERE (
+            (' || CASE WHEN array_length(p_tipovenda, 1) > 0 THEN 'true' ELSE 'false' END || ' AND c.tipovenda NOT IN (''5'', ''11''))
+            OR
+            (' || CASE WHEN array_length(p_tipovenda, 1) > 0 THEN 'false' ELSE 'true' END || ' AND c.tipovenda IN (''1'', ''9''))
+        )
+        AND c.vlvenda >= 1
+        AND (' || v_mix_constraint || ')
         ' || v_where_unnested || '
         GROUP BY c.filial, c.cidade, c.codusur, c.codcli
     ),
