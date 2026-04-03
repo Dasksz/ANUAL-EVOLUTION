@@ -27,3 +27,7 @@
 ## 2026-04-02 - Regex pitfalls when updating HTML attributes
 **Learning:** When using Python regex scripts to mass-edit HTML files (e.g., adding `for=` attributes to `<label>` tags), failing to properly match the closing bracket `>` and inner text can inadvertently delete content and create malformed HTML (like `<label for="..." class="..."</label>`). Even minor mistakes can delete hundreds of lines or break page rendering.
 **Action:** When adding attributes via automated scripts, always use non-greedy matching `([^<]+)` to capture the exact text content and `([^>]+)` to capture attributes, ensuring the reconstruction preserves all parts of the original tag. Always run `git diff` and verify the syntax before committing.
+
+## 2025-04-03 - Acessibilidade de Botões Sem Texto em Elementos Dinâmicos (Toasts)
+**Learning:** Componentes dinâmicos criados por JavaScript, como notificações (toasts), frequentemente utilizam botões de fechar compostos apenas por ícones SVG (icon-only buttons) sem texto visível. Se não houver um `aria-label` explicitamente definido durante a criação do elemento na string de template (HTML literal), esses botões interativos serão silenciosos ou confusos para leitores de tela.
+**Action:** Ao adicionar ou modificar strings de template HTML dentro do JavaScript para elementos interativos que contêm apenas ícones, sempre adicione um `aria-label` (ex: `aria-label="Fechar notificação"`) para garantir que os usuários de tecnologia assistiva entendam a função do botão.
