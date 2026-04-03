@@ -4258,6 +4258,7 @@ let estrelasSelectedCategorias = [];
             { name: 'TON VENDIDA', key: 'peso', fmt: v => `${(v/1000).toFixed(2)} Kg` }
         ];
 
+        let allRowsHTML = '';
         indicators.forEach(ind => {
             let rowHTML = `<tr class="table-row"><td class="font-bold p-2 text-left">${escapeHtml(ind.name)}</td>`;
             for(let i=0; i<12; i++) {
@@ -4274,8 +4275,9 @@ let estrelasSelectedCategorias = [];
                  rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-white">${ind.fmt(tVal)}</td>`;
             }
             rowHTML += '</tr>';
-            tableBody.insertAdjacentHTML("beforeend", rowHTML);
+            allRowsHTML += rowHTML;
         });
+        tableBody.insertAdjacentHTML("beforeend", allRowsHTML);
     }
 
 
@@ -6962,10 +6964,11 @@ const setupInnovationsFilters = async () => {
     }
 
     if (anoSelect && filterData.anos) {
-        anoSelect.innerHTML = '<option value="todos">Todos</option>';
+        let optionsHTML = '<option value="todos">Todos</option>';
         filterData.anos.forEach(ano => {
-            anoSelect.insertAdjacentHTML("beforeend", `<option value="${ano}">${ano}</option>`);
+            optionsHTML += `<option value="${ano}">${ano}</option>`;
         });
+        anoSelect.innerHTML = optionsHTML;
 
         // Initial filter values
         let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
@@ -7841,10 +7844,11 @@ const setupEstrelasFilters = async () => {
     }
 
     if (anoSelect && filterData.anos) {
-        anoSelect.innerHTML = '<option value="todos">Todos</option>';
+        let optionsHTML = '<option value="todos">Todos</option>';
         filterData.anos.forEach(ano => {
-            anoSelect.insertAdjacentHTML("beforeend", `<option value="${ano}">${ano}</option>`);
+            optionsHTML += `<option value="${ano}">${ano}</option>`;
         });
+        anoSelect.innerHTML = optionsHTML;
 
         let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
         anoSelect.value = hasYear ? currentYear : 'todos';
