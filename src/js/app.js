@@ -215,7 +215,7 @@ window.showToast = function(type, message, title = '') {
             <h4 class="toast-title"></h4>
             <p class="toast-message"></p>
         </div>
-        <button class="toast-close-btn" onclick="
+        <button class="toast-close-btn" aria-label="Fechar notificação" onclick="
             this.parentElement.classList.add('hiding');
             this.parentElement.addEventListener('animationend', () => this.parentElement.remove());
         ">
