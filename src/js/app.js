@@ -165,6 +165,22 @@ function escapeHtml(unsafe) {
          .replace(/'/g, "&#039;");
 }
 
+
+function getDefaultFilterDates(lastSalesDate) {
+    let currentYear = '';
+    let currentMonth = '';
+    if (typeof lastSalesDate !== 'undefined' && lastSalesDate) {
+        const lastDate = new Date(lastSalesDate + 'T12:00:00');
+        currentYear = String(lastDate.getFullYear());
+        currentMonth = String(lastDate.getMonth() + 1).padStart(2, '0');
+    } else {
+        const now = new Date();
+        currentYear = String(now.getFullYear());
+        currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    }
+    return { currentYear, currentMonth };
+}
+
 // --- Logging System ---
 const AppLog = {
     log: (...args) => console.log(...args),
@@ -7004,18 +7020,7 @@ const setupInnovationsFilters = async () => {
     const mesSelect = document.getElementById('innovations-mes-filter');
     
     await fetchLastSalesDate();
-    let currentYear = '';
-    let currentMonth = '';
-
-    if (lastSalesDate) {
-        const lastDate = new Date(lastSalesDate + 'T12:00:00');
-        currentYear = String(lastDate.getFullYear());
-        currentMonth = String(lastDate.getMonth() + 1).padStart(2, '0');
-    } else {
-        const now = new Date();
-        currentYear = String(now.getFullYear());
-        currentMonth = String(now.getMonth() + 1).padStart(2, '0');
-    }
+    const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
 
     if (anoSelect && filterData.anos) {
         let optionsHTML = '<option value="todos">Todos</option>';
@@ -7520,18 +7525,7 @@ window.clearAllFilters = async function(prefix) {
         const mesSelect = document.getElementById('innovations-mes-filter');
 
         await fetchLastSalesDate();
-        let currentYear = '';
-        let currentMonth = '';
-
-        if (lastSalesDate) {
-            const lastDate = new Date(lastSalesDate + 'T12:00:00');
-            currentYear = String(lastDate.getFullYear());
-            currentMonth = String(lastDate.getMonth() + 1).padStart(2, '0');
-        } else {
-            const now = new Date();
-            currentYear = String(now.getFullYear());
-            currentMonth = String(now.getMonth() + 1).padStart(2, '0');
-        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
 
         if (anoSelect) {
             // Check if currentYear is in options, if not default to 'todos'
@@ -7665,18 +7659,7 @@ window.clearAllFilters = async function(prefix) {
         const mesSelect = document.getElementById('estrelas-mes-filter');
 
         if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
-        let currentYear = '';
-        let currentMonth = '';
-
-        if (typeof lastSalesDate !== 'undefined' && lastSalesDate) {
-            const lastDate = new Date(lastSalesDate + 'T12:00:00');
-            currentYear = String(lastDate.getFullYear());
-            currentMonth = String(lastDate.getMonth() + 1).padStart(2, '0');
-        } else {
-            const now = new Date();
-            currentYear = String(now.getFullYear());
-            currentMonth = String(now.getMonth() + 1).padStart(2, '0');
-        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
 
         if (anoSelect) {
             let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
@@ -7906,18 +7889,7 @@ const setupEstrelasFilters = async () => {
 
     // We assume fetchLastSalesDate logic is available globally (it is in app.js)
     if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
-    let currentYear = '';
-    let currentMonth = '';
-
-    if (typeof lastSalesDate !== 'undefined' && lastSalesDate) {
-        const lastDate = new Date(lastSalesDate + 'T12:00:00');
-        currentYear = String(lastDate.getFullYear());
-        currentMonth = String(lastDate.getMonth() + 1).padStart(2, '0');
-    } else {
-        const now = new Date();
-        currentYear = String(now.getFullYear());
-        currentMonth = String(now.getMonth() + 1).padStart(2, '0');
-    }
+    const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
 
     if (anoSelect && filterData.anos) {
         let optionsHTML = '<option value="todos">Todos</option>';
