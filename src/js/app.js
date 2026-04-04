@@ -4298,31 +4298,59 @@ let estrelasSelectedCategorias = [];
             { name: 'Ticket Médio', key: 'ticket_medio', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
             { name: 'BONIFICAÇÃO', key: 'bonificacao', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
             { name: '% Perda', key: 'perc_perda', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
-            { name: 'DEVOLUÇÃO', key: 'devolucao', fmt: v => `<span class="text-red-400">${v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>` },
+            { name: 'DEVOLUÇÃO', key: 'devolucao', isRed: true, fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
             { name: '% Devolução', key: 'perc_devolucao', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
             { name: 'TON VENDIDA', key: 'peso', fmt: v => `${(v/1000).toFixed(2)} Kg` }
         ];
 
-        let allRowsHTML = '';
+        const fragment = document.createDocumentFragment();
         indicators.forEach(ind => {
-            let rowHTML = `<tr class="table-row"><td class="font-bold p-2 text-left">${escapeHtml(ind.name)}</td>`;
-            for(let i=0; i<12; i++) {
+            const tr = document.createElement('tr');
+            tr.className = 'table-row';
+
+            const tdName = document.createElement('td');
+            tdName.className = 'font-bold p-2 text-left';
+            tdName.textContent = ind.name;
+            tr.appendChild(tdName);
+
+            for (let i = 0; i < 12; i++) {
                 const d = currData.find(x => x.month_index === i);
                 let val = d ? d[ind.key] : null;
                 if (val === undefined) val = null;
                 if (val === null && !ind.allowNull) val = 0;
-                rowHTML += `<td class="px-2 py-1.5 text-center">${ind.fmt(val)}</td>`;
+
+                const td = document.createElement('td');
+                td.className = 'px-2 py-1.5 text-center';
+                if (ind.isRed) {
+                    const span = document.createElement('span');
+                    span.className = 'text-red-400';
+                    span.textContent = ind.fmt(val);
+                    td.appendChild(span);
+                } else {
+                    td.textContent = ind.fmt(val);
+                }
+                tr.appendChild(td);
             }
             if (trendData) {
                  let tVal = trendData[ind.key];
                  if (tVal === undefined) tVal = null;
                  if (tVal === null && !ind.allowNull) tVal = 0;
-                 rowHTML += `<td class="px-2 py-1.5 text-center font-bold text-white">${ind.fmt(tVal)}</td>`;
+
+                 const td = document.createElement('td');
+                 td.className = 'px-2 py-1.5 text-center font-bold text-white';
+                 if (ind.isRed) {
+                     const span = document.createElement('span');
+                     span.className = 'text-red-400';
+                     span.textContent = ind.fmt(tVal);
+                     td.appendChild(span);
+                 } else {
+                     td.textContent = ind.fmt(tVal);
+                 }
+                 tr.appendChild(td);
             }
-            rowHTML += '</tr>';
-            allRowsHTML += rowHTML;
+            fragment.appendChild(tr);
         });
-        tableBody.insertAdjacentHTML("beforeend", allRowsHTML);
+        tableBody.appendChild(fragment);
     }
 
 
