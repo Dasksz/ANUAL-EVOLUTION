@@ -717,11 +717,15 @@ self.onmessage = async (event) => {
         const clientLastVendorMap = new Map(); // CODCLI -> CODUSUR
         const vendorCitiesMap = new Map(); // CODUSUR -> Set(MUNICIPIO)
 
+        // Pre-compute timestamps to avoid calling parseDate repeatedly in sort comparator
+        for (let i = 0; i < allSalesRaw.length; i++) {
+            const parsed = parseDate(allSalesRaw[i].DTPED);
+            allSalesRaw[i]._dtped_ts = parsed ? parsed.getTime() : 0;
+        }
+
         // Sort all sales by date for RCA owner determination
         allSalesRaw.sort((a, b) => {
-            const dateA = parseDate(a.DTPED) || new Date(0);
-            const dateB = parseDate(b.DTPED) || new Date(0);
-            return dateA - dateB;
+            return a._dtped_ts - b._dtped_ts;
         });
 
         for (const row of allSalesRaw) {
@@ -1016,12 +1020,20 @@ self.onmessage = async (event) => {
              const chunkKeys = Object.keys(chunks);
              for (const key of chunkKeys) {
                  // Sort rows to ensure deterministic hash (by order ID or composite key if possible, else rely on input order stability + sort)
-                 // Sorting by 'pedido' + 'produto' + 'vlvenda' for determinism
-                 // ⚡ Bolt Optimization: Use standard string comparison instead of localeCompare for ~4x faster sorting of large arrays (10k+ rows)
+                 // Sorting by 'pedido', then 'produto', then 'vlvenda' for determinism
+                 // ⚡ Bolt Optimization: Avoid O(N log N) string concatenation by doing sequential property comparison
                  chunks[key].rows.sort((a, b) => {
-                     const ka = (a.pedido || '') + (a.produto || '') + (a.vlvenda || 0);
-                     const kb = (b.pedido || '') + (b.produto || '') + (b.vlvenda || 0);
-                     return ka < kb ? -1 : (ka > kb ? 1 : 0);
+                     const pa = a.pedido || '';
+                     const pb = b.pedido || '';
+                     if (pa !== pb) return pa < pb ? -1 : 1;
+
+                     const pra = a.produto || '';
+                     const prb = b.produto || '';
+                     if (pra !== prb) return pra < prb ? -1 : 1;
+
+                     const va = a.vlvenda || 0;
+                     const vb = b.vlvenda || 0;
+                     return va < vb ? -1 : (va > vb ? 1 : 0);
                  });
 
                  // Calculate Chunk Hash (SHA-256 of JSON string of sorted rows)
