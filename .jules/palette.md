@@ -31,3 +31,6 @@
 ## 2025-04-03 - Acessibilidade de Botões Sem Texto em Elementos Dinâmicos (Toasts)
 **Learning:** Componentes dinâmicos criados por JavaScript, como notificações (toasts), frequentemente utilizam botões de fechar compostos apenas por ícones SVG (icon-only buttons) sem texto visível. Se não houver um `aria-label` explicitamente definido durante a criação do elemento na string de template (HTML literal), esses botões interativos serão silenciosos ou confusos para leitores de tela.
 **Action:** Ao adicionar ou modificar strings de template HTML dentro do JavaScript para elementos interativos que contêm apenas ícones, sempre adicione um `aria-label` (ex: `aria-label="Fechar notificação"`) para garantir que os usuários de tecnologia assistiva entendam a função do botão.
+## 2025-04-04 - Tooltips on disabled submit buttons
+**Learning:** Users can be confused when a primary action button like "Atualizar Base" is disabled without explanation. Adding a native title attribute and disabled:cursor-not-allowed provides immediate feedback on what is missing (e.g., required files).
+**Action:** Always pair disabled states on forms/uploaders with a title explaining the requirements and use cursor-not-allowed to reinforce the unclickable state.
