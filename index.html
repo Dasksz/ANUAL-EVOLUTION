@@ -1381,14 +1381,14 @@
                             <div class="flex flex-col md:flex-row justify-between items-center mb-4">
                                 <h2 class="text-lg font-semibold text-white">Top Produtos por Caixas</h2>
                                 <div class="relative mt-2 md:mt-0">
-                                    <button id="boxes-export-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
+                                    <button id="boxes-export-btn" aria-haspopup="menu" aria-expanded="false" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
                                         <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                         Exportar
                                     </button>
                                     <!-- Dropdown for export options -->
-                                    <div id="boxes-export-dropdown" class="hidden absolute right-0 mt-2 w-32 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-50">
-                                        <button id="boxes-export-excel" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white rounded-t-lg">Excel (.xlsx)</button>
-                                        <button id="boxes-export-pdf" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white rounded-b-lg">PDF</button>
+                                    <div id="boxes-export-dropdown" role="menu" class="hidden absolute right-0 mt-2 w-32 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-50 overflow-hidden">
+                                        <button id="boxes-export-excel" role="menuitem" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors focus:outline-none focus:bg-slate-700 focus:text-white">Excel (.xlsx)</button>
+                                        <button id="boxes-export-pdf" role="menuitem" class="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors focus:outline-none focus:bg-slate-700 focus:text-white">PDF</button>
                                     </div>
                                 </div>
                             </div>
@@ -2151,7 +2151,7 @@
             <h3 class="text-lg font-bold text-white mb-4 text-center">Calendário de Feriados</h3>
             <div id="calendar-modal-content"></div>
             <div class="mt-4 text-center">
-                <button id="close-calendar-modal-btn" class="text-sm text-slate-400 hover:text-white underline">Fechar</button>
+                <button id="close-calendar-modal-btn" class="text-sm text-slate-400 hover:text-white underline focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:rounded px-2 py-1">Fechar</button>
             </div>
         </div>
     </div>
@@ -2159,7 +2159,7 @@
     <!-- Modal Uploader (Admin) -->
     <div id="uploader-modal" class="modal-overlay hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[3000]">
         <div class="bg-[#151419] rounded-lg shadow-2xl max-w-lg w-full p-8 border border-white/10 relative">
-            <button id="close-uploader-btn" aria-label="Fechar Upload" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl">&times;</button>
+            <button id="close-uploader-btn" aria-label="Fechar Upload" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:rounded">&times;</button>
             <div class="absolute top-4 left-4">
                 <div id="missing-branches-notification" class="hidden relative group cursor-pointer">
                     <svg aria-hidden="true" class="w-6 h-6 text-yellow-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
@@ -2216,7 +2216,7 @@
                 <h2 id="modal-detalhado-title" class="text-xl font-bold text-white">Resultado Detalhado</h2>
                 <p id="modal-detalhado-subtitle" class="text-sm text-slate-400 mt-1 hidden"></p>
             </div>
-            <button onclick="closeDetalhadoModal()" aria-label="Fechar Detalhes" class="text-slate-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 p-2 rounded-lg">
+            <button onclick="closeDetalhadoModal()" aria-label="Fechar Detalhes" class="text-slate-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 p-2 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400">
                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
