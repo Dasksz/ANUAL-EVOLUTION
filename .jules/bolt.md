@@ -22,3 +22,7 @@
 ## 2025-04-03 - Optimize sorting performance in large arrays
 **Learning:** Performing expensive operations like `parseDate` (which involves regex and object instantiation) or string concatenation (`a + b + c`) directly inside an `Array.prototype.sort()` comparator causes severe CPU bottlenecks, as the comparator is called `O(N log N)` times. For large data sets (e.g., hundreds of thousands of rows), this overhead is crippling.
 **Action:** When sorting large arrays by complex or derived fields, pre-compute the sort keys into a simple primitive (e.g., numeric timestamp or mapped value) using a single `O(N)` loop beforehand. For multi-property sorts, avoid string concatenation; use sequential `if` conditions to return early and compare properties directly.
+
+## 2026-04-05 - Optimize repeated DOM element appending
+**Learning:** During UI initialization involving dynamic lists (e.g., `<select>` options, list rendering, or KPI card rendering), looping and appending elements individually directly to a container via `container.appendChild()` or continually constructing and assigning large strings via `innerHTML` causes consecutive synchronous DOM reflows and recalculations, heavily blocking the main thread.
+**Action:** When batch-rendering multiple elements to an existing parent container, always instantiate a `document.createDocumentFragment()`. Append all iteratively created child nodes to the `DocumentFragment` first, and then perform a single `container.appendChild(fragment)` to trigger only one layout calculation.
