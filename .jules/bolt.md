@@ -22,3 +22,7 @@
 ## 2025-04-03 - Optimize sorting performance in large arrays
 **Learning:** Performing expensive operations like `parseDate` (which involves regex and object instantiation) or string concatenation (`a + b + c`) directly inside an `Array.prototype.sort()` comparator causes severe CPU bottlenecks, as the comparator is called `O(N log N)` times. For large data sets (e.g., hundreds of thousands of rows), this overhead is crippling.
 **Action:** When sorting large arrays by complex or derived fields, pre-compute the sort keys into a simple primitive (e.g., numeric timestamp or mapped value) using a single `O(N)` loop beforehand. For multi-property sorts, avoid string concatenation; use sequential `if` conditions to return early and compare properties directly.
+
+## 2024-04-06 - [Parallelize CPU-intensive hashing using Promise.all in Web Workers]
+**Learning:** `crypto.subtle.digest` operations in Web Workers, even though asynchronous, will effectively block or significantly slow down execution if `await`-ed sequentially in a loop, as it limits the browser's ability to offload the hashing to its internal crypto thread pool efficiently.
+**Action:** Convert sequential `for` loops containing `await crypto.subtle.digest` into a two-stage process: first map the payload into an array of Promises, then use `await Promise.all(...)` to allow concurrent execution, followed by a synchronous state update.
