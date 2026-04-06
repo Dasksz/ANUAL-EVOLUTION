@@ -184,7 +184,7 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
-import { formatNumber, escapeHtml } from './utils.js';
+import { formatNumber, escapeHtml, formatCurrency, formatTons } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -2589,8 +2589,8 @@ let estrelasSelectedCategorias = [];
                     r["Código"],
                     r["Descrição"],
                     Math.round(r["Caixas"]).toLocaleString('pt-BR'),
-                    r["Faturamento"].toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-                    (r["Peso (kg)"]/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton',
+                    formatCurrency(r["Faturamento"]),
+                    formatTons(r["Peso (kg)"], 1),
                     r["Última Venda"]
                 ]),
                 theme: 'striped',
@@ -2755,8 +2755,8 @@ let estrelasSelectedCategorias = [];
         
         // Safe access helpers
         const safeVal = (v) => v || 0;
-        const fmtBRL = (v) => safeVal(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        const fmtKg = (v) => (safeVal(v) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
+        const fmtBRL = (v) => formatCurrency(safeVal(v));
+        const fmtKg = (v) => formatTons(safeVal(v), 1);
         const fmtCaixas = (v) => Math.round(safeVal(v)).toLocaleString('pt-BR');
         
         const calcVar = (curr, prev) => {
@@ -2988,12 +2988,12 @@ let estrelasSelectedCategorias = [];
 
                 const tdFat = document.createElement('td');
                 tdFat.className = 'p-2 text-right';
-                tdFat.textContent = safeVal(p.faturamento).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                tdFat.textContent = formatCurrency(safeVal(p.faturamento));
                 tr.appendChild(tdFat);
 
                 const tdPeso = document.createElement('td');
                 tdPeso.className = 'p-2 text-right';
-                tdPeso.textContent = (safeVal(p.peso) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + ' Ton';
+                tdPeso.textContent = formatTons(safeVal(p.peso), 2);
                 tr.appendChild(tdPeso);
 
                 const tdUltimaVenda = document.createElement('td');
@@ -3985,7 +3985,7 @@ let estrelasSelectedCategorias = [];
             const varMix = calcEvo(avgMixCurr, avgMixPrev);
 
             // Render New KPIs
-            const fmtBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const fmtBRL = (v) => formatCurrency(v);
             const fmtPerc = (v) => `${(isNaN(v) ? 0 : v).toFixed(1)}%`;
 
             // 1. Bonification
@@ -4037,7 +4037,7 @@ let estrelasSelectedCategorias = [];
             prefix: 'fat',
             trendVal: currFat,
             prevVal: prevFat,
-            fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+            fmt: (v) => formatCurrency(v),
             calcEvo
         });
         
@@ -4045,7 +4045,7 @@ let estrelasSelectedCategorias = [];
             prefix: 'kg',
             trendVal: currKg,
             prevVal: prevKg,
-            fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Ton`,
+            fmt: (v) => formatTons(v, 1),
             calcEvo
         });
 
@@ -4088,7 +4088,7 @@ let estrelasSelectedCategorias = [];
             prefix: 'tri-fat',
             trendVal: currMonthFatForTri,
             prevVal: triAvgFat,
-            fmt: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+            fmt: (v) => formatCurrency(v),
             calcEvo
         });
 
@@ -4096,7 +4096,7 @@ let estrelasSelectedCategorias = [];
             prefix: 'tri-kg',
             trendVal: currMonthKgForTri,
             prevVal: triAvgPeso,
-            fmt: (v) => `${(v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Ton`,
+            fmt: (v) => formatTons(v, 2),
             calcEvo
         });
 
@@ -4314,12 +4314,12 @@ let estrelasSelectedCategorias = [];
 
         const indicators = [
             { name: 'POSITIVAÇÃO', key: 'positivacao', fmt: v => v.toLocaleString('pt-BR') },
-            { name: 'FATURAMENTO', key: 'faturamento', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
+            { name: 'FATURAMENTO', key: 'faturamento', fmt: v => formatCurrency(v) },
             { name: 'Mix PDV', key: 'mix_pdv', fmt: v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
-            { name: 'Ticket Médio', key: 'ticket_medio', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
-            { name: 'BONIFICAÇÃO', key: 'bonificacao', fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
+            { name: 'Ticket Médio', key: 'ticket_medio', fmt: v => formatCurrency(v) },
+            { name: 'BONIFICAÇÃO', key: 'bonificacao', fmt: v => formatCurrency(v) },
             { name: '% Perda', key: 'perc_perda', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
-            { name: 'DEVOLUÇÃO', key: 'devolucao', isRed: true, fmt: v => v.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) },
+            { name: 'DEVOLUÇÃO', key: 'devolucao', isRed: true, fmt: v => formatCurrency(v) },
             { name: '% Devolução', key: 'perc_devolucao', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
             { name: 'TON VENDIDA', key: 'peso', fmt: v => `${(v/1000).toFixed(2)} Kg` }
         ];
@@ -4698,7 +4698,7 @@ let estrelasSelectedCategorias = [];
                     if (c.totalFaturamento !== undefined) {
                         const tdFat = document.createElement('td');
                         tdFat.className = 'p-2 text-right';
-                        tdFat.textContent = c.totalFaturamento.toLocaleString('pt-BR', {style:'currency', currency: 'BRL'});
+                        tdFat.textContent = formatCurrency(c.totalFaturamento);
                         tr.appendChild(tdFat);
                     }
 
@@ -5258,8 +5258,8 @@ let estrelasSelectedCategorias = [];
 
          const elB1Name = document.getElementById('branch-name-1'); if(elB1Name) elB1Name.textContent = b1;
          const elB2Name = document.getElementById('branch-name-2'); if(elB2Name) elB2Name.textContent = b2;
-         const elVal1Fat = document.getElementById('branch-val-1-fat'); if(elVal1Fat) elVal1Fat.textContent = val1Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-         const elVal2Fat = document.getElementById('branch-val-2-fat'); if(elVal2Fat) elVal2Fat.textContent = val2Fat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+         const elVal1Fat = document.getElementById('branch-val-1-fat'); if(elVal1Fat) elVal1Fat.textContent = formatCurrency(val1Fat);
+         const elVal2Fat = document.getElementById('branch-val-2-fat'); if(elVal2Fat) elVal2Fat.textContent = formatCurrency(val2Fat);
          
          // Variations Logic
          // Share of Total (Val / Total)
@@ -5287,8 +5287,8 @@ let estrelasSelectedCategorias = [];
 
          const elB1NameKg = document.getElementById('branch-name-1-kg'); if(elB1NameKg) elB1NameKg.textContent = b1;
          const elB2NameKg = document.getElementById('branch-name-2-kg'); if(elB2NameKg) elB2NameKg.textContent = b2;
-         const elVal1Kg = document.getElementById('branch-val-1-kg'); if(elVal1Kg) elVal1Kg.textContent = (val1Kg/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
-         const elVal2Kg = document.getElementById('branch-val-2-kg'); if(elVal2Kg) elVal2Kg.textContent = (val2Kg/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
+         const elVal1Kg = document.getElementById('branch-val-1-kg'); if(elVal1Kg) elVal1Kg.textContent = formatTons(val1Kg, 1);
+         const elVal2Kg = document.getElementById('branch-val-2-kg'); if(elVal2Kg) elVal2Kg.textContent = formatTons(val2Kg, 1);
 
          const totalKg = val1Kg + val2Kg;
          const share1Kg = calcShare(val1Kg, totalKg);
@@ -5322,8 +5322,8 @@ let estrelasSelectedCategorias = [];
          const elTotalTitleFat = document.getElementById('branch-total-kpi-title-fat'); if(elTotalTitleFat) elTotalTitleFat.textContent = `Faturamento Total (${kpiContext})`;
          const elTotalTitleKg = document.getElementById('branch-total-kpi-title-kg'); if(elTotalTitleKg) elTotalTitleKg.textContent = `Tonelagem Total (${kpiContext})`;
 
-         const elTotalValFat = document.getElementById('branch-total-fat-val'); if(elTotalValFat) elTotalValFat.textContent = totalFat.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-         const elTotalValKg = document.getElementById('branch-total-kg-val'); if(elTotalValKg) elTotalValKg.textContent = (totalKg/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' Ton';
+         const elTotalValFat = document.getElementById('branch-total-fat-val'); if(elTotalValFat) elTotalValFat.textContent = formatCurrency(totalFat);
+         const elTotalValKg = document.getElementById('branch-total-kg-val'); if(elTotalValKg) elTotalValKg.textContent = formatTons(totalKg, 1);
 
 
          // --- Chart Rendering ---
@@ -6422,7 +6422,7 @@ let estrelasSelectedCategorias = [];
             if (!container) return;
 
             const fmt = (val, format) => {
-                if (format === 'currency') return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                if (format === 'currency') return formatCurrency(val);
                 if (format === 'decimal') return val.toLocaleString('pt-BR', { minimumFractionDigits: 3 });
                 if (format === 'decimal_2') return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 return val.toLocaleString('pt-BR');
@@ -6508,12 +6508,12 @@ let estrelasSelectedCategorias = [];
 
                 const tdHist = document.createElement('td');
                 tdHist.className = 'px-4 py-2 text-right';
-                tdHist.textContent = vals.history.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+                tdHist.textContent = formatCurrency(vals.history);
                 tr.appendChild(tdHist);
 
                 const tdCurr = document.createElement('td');
                 tdCurr.className = 'px-4 py-2 text-right';
-                tdCurr.textContent = vals.current.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+                tdCurr.textContent = formatCurrency(vals.current);
                 tr.appendChild(tdCurr);
 
                 const tdVar = document.createElement('td');
