@@ -7,3 +7,7 @@ This file contains critical learnings from Tidy to avoid making mistakes in this
 ## 2026/04/04 : Extract Duplicated DOM Row Generation Logic
 **Learning:** Found massive duplicated blocks of `innerHTML` row string generation in `src/js/app.js` within `openDetalhadoModal`. In addition to making the code unnecessarily long, it violated memory directives to use safer DOM construction.
 **Action:** Created `createDetalhadoRow(row, index, realizado, realizedUnit, meta, metaUnit, share, shareColorClass)` to safely generate `<tr>` rows using `document.createElement` and `textContent` rather than interpolating data into `innerHTML` strings. Replaced the 3 duplicate iteration blocks within `openDetalhadoModal` to map to this single helper, reducing repetition while adhering to the app's safety constraints.
+
+## 2026/04/06 : Extract Number and Currency Formatting Logic
+**Learning:** Found numerous duplicate instances of `.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })` and `(val / 1000).toLocaleString('pt-BR', ...) + ' Ton'` across the codebase. These inline string manipulations obscure business logic and make UI formatting updates tedious.
+**Action:** Centralized these formatters into `formatCurrency` and `formatTons` in `src/js/utils.js`. Replaced all repetitive string operations to use these standard utility functions to enforce DRY principles and improve code readability.
