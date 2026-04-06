@@ -1,0 +1,738 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -112
+      ],
+      "id": "0dc19474-eaa5-44fe-8032-f2dde816cc93",
+      "name": "Webhook",
+      "webhookId": "0227ff26-68fe-4924-98bd-0ab5535d0500"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f7013d17-e595-4bce-9c6e-e819168e8ed5",
+              "name": "session",
+              "value": "={{ $json.body.session }}",
+              "type": "string"
+            },
+            {
+              "id": "15288603-6faf-4049-a37f-c427b29ae1f2",
+              "name": "chatid",
+              "value": "={{ String($json.body.payload.fromMe ? ($json.body.payload.to || $json.body.payload.from) : $json.body.payload.from) }}",
+              "type": "string"
+            },
+            {
+              "id": "43e55c64-a3df-413c-bd16-f6c610793b0e",
+              "name": "pushname",
+              "value": "={{ $json.body.payload._data.Info.PushName }}",
+              "type": "string"
+            },
+            {
+              "id": "2fb0f29b-1828-4e9a-9b45-3375f579c4ab",
+              "name": "payload_id",
+              "value": "={{ $json.body.payload.id }}",
+              "type": "string"
+            },
+            {
+              "id": "a2295d3d-87a7-48ca-b995-d27c3466c958",
+              "name": "event",
+              "value": "={{ $json.body.event }}",
+              "type": "string"
+            },
+            {
+              "id": "b8fd89d3-9639-41b0-be0d-1a9c1d185b24",
+              "name": "message",
+              "value": "={{ $json.body.payload.body }}",
+              "type": "string"
+            },
+            {
+              "id": "0896a014-f39e-4adb-b6a7-9420d029d5b6",
+              "name": "fromme",
+              "value": "={{ $json.body.payload.fromMe }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        192,
+        -112
+      ],
+      "id": "c40cdb27-4569-42cc-a06f-e44ec44af519",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event }}",
+                    "rightValue": "=message.any",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ee742ab0-1cfd-42d7-a96a-6828d9355892"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        592,
+        -112
+      ],
+      "id": "3b9d5551-9fc3-4a77-8063-86dab16cbf30",
+      "name": "Switch",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "options": {
+          "systemMessage": "Papel e Identidade\n\nVocê é o Dori, Assistente Virtual da PRIME Distribuição 🚀. Sua missão é identificar usuários e fornecer dados do banco Evolution de forma segura e organizada. Seu tom é prestativo, humano e direto.\n\nFluxo de Atendimento e Mensagens Exatas\n\nRecepção e Triagem Inicial (REGRA ABSOLUTA)\nQuando o usuário enviar a PRIMEIRA mensagem (como \"oi\", \"olá\", \"bom dia\", \"boa tarde\") e o histórico estiver vazio, sua ÚNICA função é apresentar o menu de atendimento. Você deve retornar EXATAMENTE o texto abaixo, sem adicionar mais nada:\n\n\"Olá! 👋 Sou o Dori, Assistente Virtual da *PRIME Distribuição*. \n\nPara agilizarmos o seu atendimento, por favor, responda com o número da opção desejada:\n\n1️⃣ Sou Cliente\n2️⃣ Sou Colaborador\"\n\nSe o usuário já enviar o CPF ou CNPJ logo na primeira mensagem, pergunte se ele é um cliente ou colaborador antes de prosseguir com a pesquisa.\n\nFluxo do Cliente (Opção 1)\nSe o usuário responder \"1\" ou disser que é \"cliente\", peça os dados com a seguinte mensagem: \"Informe o CNPJ ou CPF cadastrado na PRIME por favor. 📝\"\n\nREGRA DE OURO: Você nunca deve dizer \"não localizado\" sem antes usar a ferramenta Consultar_Cadastro_Cliente. O uso da ferramenta é obrigatório para qualquer validação de cliente.\n\nSe o CNPJ/CPF não for localizado após o uso da ferramenta, responda: \"Cadastro não localizado ❌. Confirme o CNPJ/CPF e tente novamente ou, se preferir, posso transferir o atendimento para o Setor Comercial.\"\n\nSe o CNPJ/CPF for localizado com sucesso, responda com a mensagem do Layout A e pergunte em seguida se ele deseja falar com um analista.\n\nPROIBIÇÃO MÁXIMA PARA CLIENTES: Um cliente NUNCA deve receber informações de histórico de pedidos, valores financeiros ou metas. Se o cliente solicitar informações de compras ou histórico, você deve negar o acesso imediatamente e responder a seguinte frase exata: \"Por questões de segurança, os detalhes de pedidos e valores são tratados diretamente com o seu vendedor ou com o nosso Setor Comercial. Deseja que eu transfira o seu atendimento?\"\n\nFluxo do Colaborador (Opção 2 - OBRIGATÓRIO SEGUIR ETAPAS)\nSe o usuário responder \"2\" ou disser que é \"colaborador\", você DEVE seguir estritamente estas etapas, uma de cada vez:\n\nETAPA 1: Pergunte APENAS \"Por favor, informe o seu CPF para validação. 📝\" e PARE. Não faça mais nada. Aguarde o usuário digitar o CPF. NUNCA tente pular para a Etapa 2 sem antes receber o CPF do usuário.\n\nETAPA 2: Quando o usuário digitar o CPF, use a ferramenta Validar_RCA para confirmar o cadastro no banco de dados.\n\nETAPA 3: SOMENTE SE a ferramenta Validar_RCA retornar sucesso (encontrar os dados), leia as variáveis de retorno da ferramenta e responda EXATAMENTE neste formato preenchendo os dados reais: \"Olá, {codigo} - {Nome do Vendedor}! 👋 CPF confirmado! Como posso te ajudar agora? Escreva em poucas palavras o que deseja...\"\n\nAcesso a Dados:\n\nPara buscas de vendas, histórico, pedidos e bonificações de clientes, use a ferramenta Master_Busca_PRIME.\n\nSe o vendedor solicitar dados cadastrais, bairro, cidade ou a ficha completa de um cliente, você deve obrigatoriamente acionar a ferramenta Consultar_Cadastro_Cliente.\n\nTransferência e Modo Suspenso\nSempre que precisar transferir o contato para um humano, envie EXATAMENTE esta mensagem: \"Certo! Vou direcionar o seu contato para um de nossos Analistas Comerciais. Em breve alguém da nossa equipe vai falar com você por aqui mesmo. Aguarde um momento! ⏱️\"\n\nRegras do MODO SUSPENSO:\n\nImediatamente após enviar a mensagem de transferência acima, você entra em MODO SUSPENSO.\n\nEnquanto estiver em MODO SUSPENSO, você está proibido de processar pedidos ou usar ferramentas.\n\nResponda apenas e unicamente a palavra IGNORAR para qualquer mensagem recebida do usuário enquanto estiver suspenso.\n\nGATILHO DE SAÍDA OBRIGATÓRIO: Você só deve sair do modo suspenso se o usuário digitar a frase \"Atendimento finalizado\" independente de maiúsculas ou minúsculas. Quando receber essa frase, você deve responder EXATAMENTE com este texto: \"O atendimento humano foi encerrado! Posso te ajudar em algo mais?\". A partir daí volte a agir como assistente normal.\n\nInstruções de Uso das Ferramentas (CRÍTICO)\n\nO que deve ser feito (DO)\n\nLimpeza Obrigatória de Dados: Antes de enviar um CNPJ ou CPF para QUALQUER ferramenta, você OBRIGATORIAMENTE deve remover todos os pontos, traços e barras. Envie sempre apenas a sequência de números puros.\n\nValidação de RCA: Para prosseguir com a consulta de vendedor, você obrigatoriamente precisa enviar o parâmetro de CPF na ferramenta.\n\nUso Obrigatório de Ferramentas: É proibido informar que um registro não existe sem antes executar a ferramenta correspondente.\n\nAnálise Consultiva: Se um vendedor pedir Bonificações e não houver, verifique se há Vendas Normais no mesmo período antes de dar uma resposta negativa.\n\nDatas: Use sempre o intervalo YYYY-MM-DD para buscas de período. Se pedirem um mês, calcule o primeiro e último dia desse mês.\n\nPrevenção de Eco: Se a mensagem recebida for idêntica a uma que você acabou de enviar, ou se for apenas uma confirmação técnica vazia ou sem texto, responda apenas \"IGNORAR\".\n\nO que NÃO deve ser feito (DONT)\n\nSigilo de Cliente: NUNCA use a Master_Busca_PRIME para usuários identificados como Clientes.\n\nProibido Responder ACKs: Não processe eventos de confirmação técnica. Se não houver mensagem útil, ignore.\n\nProibido Listar Itens em Excesso: No resumo inicial de pedidos, informe apenas o Mix quantidade de itens. Só liste os produtos um por um se o vendedor pedir o detalhamento de um pedido específico.\n\nLayouts de Saída\n\nLayout A: Cadastro\nCadastro localizado com sucesso! ✅ Razão social: {razaosocial} Fantasia: {fantasia} CNPJ/CPF: {cnpj} Bairro: {bairro} Cidade: {cidade} Filial: {filial} Status: {bloqueio}\n\nLayout B: Resumo de Pedido para Vendedores\n🏢 Cliente: {fantasia} 📍 Localização: {bairro}, {cidade} 🚦 Status: {bloqueio} 🗓️ Última Compra: {ultimacompra}\n📦 Pedido Analisado: Data: {data_pedido formatada em DD/MM/YYYY} Pedido: {numero_pedido} Valor: R$ {valor total} Mix: {contagem de itens} Tipo: {tipo} 11=Bonif / 5=Perda Salty: {mes_atingiu_mix_salty} | Foods: {mes_atingiu_mix_foods}\n\nLayout C: Detalhamento de Itens para Vendedores\n🛒 Itens Comprados no Pedido {numero_pedido}: 🔹 {quantidade} x {nome_do_produto} un R$ {preço_unitário}. Liste todos os itens retornados seguindo este padrão."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        32,
+        208
+      ],
+      "id": "888b2889-d362-46b5-8bae-0cb2a09f4daf",
+      "name": "AI Agent",
+      "retryOnFail": true,
+      "maxTries": 2
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=chat_V18_{{ $('Edit Fields').item.json.chatid }}",
+        "sessionTTL": 3600,
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "position": [
+        128,
+        400
+      ],
+      "id": "d065ede5-52bc-46dd-869b-b059df162856",
+      "name": "Redis Chat Memory",
+      "credentials": {
+        "redis": {
+          "id": "qtZzXQ6xEqFCpUkv",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "Chatting",
+        "operation": "Send Seen",
+        "session": "={{ $('Edit Fields').item.json.session }}",
+        "chatId": "={{ $('Edit Fields').item.json.chatid }}",
+        "messageId": "={{ $('Edit Fields').item.json.payload_id }}",
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-waha.WAHA",
+      "typeVersion": 202411,
+      "position": [
+        624,
+        208
+      ],
+      "id": "4c9239e2-5757-4047-a77c-71dedcd3970c",
+      "name": "Send Seen",
+      "credentials": {
+        "wahaApi": {
+          "id": "suW7JkJbBGzNzIfF",
+          "name": "WAHA account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "Chatting",
+        "operation": "Send Text",
+        "session": "={{ $('Edit Fields').item.json.session }}",
+        "chatId": "={{ $('Edit Fields').item.json.chatid }}",
+        "text": "={{ $('AI Agent').item.json.output }}",
+        "linkPreview": "",
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-waha.WAHA",
+      "typeVersion": 202411,
+      "position": [
+        800,
+        208
+      ],
+      "id": "5a7484c0-40f9-419a-b529-ca465f4f0ef4",
+      "name": "Send a text message",
+      "credentials": {
+        "wahaApi": {
+          "id": "suW7JkJbBGzNzIfF",
+          "name": "WAHA account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite-preview",
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        400
+      ],
+      "id": "a90a3af4-acd3-4348-b422-76914ba7fa4f",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "WCKfsSmYzaSP1hXN",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4a1a40a9-b494-433b-bb87-3ad2838adc5a",
+              "leftValue": "={{ $json.fromme }}",
+              "rightValue": "false",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "54f1dbbd-8929-4775-990b-5aeccef1abdf",
+              "leftValue": "={{ $json.message.toLowerCase() }}",
+              "rightValue": "atendimento finalizado",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        368,
+        -112
+      ],
+      "id": "606c8527-9541-44c3-87be-0de5cc03eb03",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f91d0906-6351-41e9-b218-608de745620f",
+              "leftValue": "={{ $('AI Agent').item.json.output }}",
+              "rightValue": "IGNORAR",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        368,
+        208
+      ],
+      "id": "ec2689ce-5e6c-403c-8903-a508ee279bd7",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use obrigatoriamente no início do atendimento para identificar o Colaborador. Você DEVE pedir APENAS o CPF do usuário para verificar a identidade. \nREGRA CRÍTICA: Limpe o CPF antes de enviar para o banco de dados, utilizando apenas os números puros, sem pontuações ou símbolos. Não use esta ferramenta para buscar dados de clientes e nunca peça código de RCA.",
+        "operation": "getAll",
+        "tableId": "dim_vendedores",
+        "returnAll": true,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "cpf",
+              "condition": "contains",
+              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions1_Field_Value', `CPF fornecido pelo RCA( formatação em texto).`, 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        432,
+        400
+      ],
+      "id": "ce7fce22-9947-465a-8b79-f1642c87f002",
+      "name": "Validar_RCA",
+      "notesInFlow": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "6fIkFkgf4U4MUpll",
+          "name": "Supabase account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "\"Ferramenta para consultar a ficha cadastral de um cliente. Use para localizar o cadastro básico como Razão Social, Endereço e Status Sefaz através do CNPJ ou CPF informado. Pode ser usada por Clientes para verem seus próprios dados, e também permitida para Vendedores RCAs que precisem ver os dados cadastrais completos de sua carteira.\"",
+        "operation": "getAll",
+        "tableId": "n8n_agent_view",
+        "limit": 8,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "cnpj",
+              "condition": "eq",
+              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions0_Field_Value', `Preencher com o CNPJ ou CPF que o cliente forneceu para pesquisa, usar apenas números sem pontos ou traços.`, 'string') }}"
+            },
+            {
+              "keyName": "codigo_cliente",
+              "condition": "eq",
+              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions2_Field_Value', `Código numérico ( formato \"text\" no banco) exato do cliente. Envia apenas os números. ( que o vendedor fornecer).`, 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        576,
+        400
+      ],
+      "id": "e3d485d3-2f9e-4733-a1d6-999ab42e1221",
+      "name": "Consultar_Cadastro_Cliente",
+      "notesInFlow": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "6fIkFkgf4U4MUpll",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Identificacao do Cliente: Sempre use as colunas codigo_cliente ou cnpj para localizar o cliente antes de qualquer outra acao.\n\nFiltro por Numero do Pedido: Se o vendedor perguntar sobre um pedido especifico ou informar um numero, voce deve filtrar obrigatoriamente pela coluna numero_pedido.\n\nFiltro de Datas: A busca funciona por um intervalo de datas no formato nativo YYYY-MM-DD. Se pedirem um mes especifico como marco de 2026, voce deve preencher as duas variaveis na mesma busca: envie a data de inicio como 2026-03-01 e a data final como 2026-03-31. Nunca use apenas o mes ou barras soltas.\n\nEconomia de Dados e Itens: A coluna lista_itens_comprados e muito pesada. Voce so deve ler o conteudo dessa coluna se o vendedor perguntar explicitamente quais produtos foram comprados ou se ele ja tiver filtrado a busca por um unico numero_pedido. Isso evita erro de excesso de texto.\n\nResumo Geral e Cadastro: Para responder sobre o cadastro e perfil, foque nas colunas cnpj, razaosocial, fantasia, responsavel, cidade, bairro, filial, bloqueio e ultimacompra.\n\nTipos e KPIs: A coluna tipo_venda_pedido identifica a operacao onde 11 e Bonificacao e 5 e Perda. As colunas mes_atingiu_mix_salty e mes_atingiu_mix_foods ja entregam SIM ou NAO sobre as metas.\n\nEquipe: As colunas vendedor_responsavel_pedido e supervisor_responsavel_pedido identificam o atendimento daquela operacao.",
+        "operation": "getAll",
+        "tableId": "n8n_agent_view",
+        "limit": 15,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "codigo_cliente",
+              "condition": "eq",
+              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions0_Field_Value', `Código numérico ( formato \"text\" no banco) exato do cliente. Envia apenas os números. ( que o vendedor fornecer).`, 'string') }}"
+            },
+            {
+              "keyName": "cnpj",
+              "condition": "eq",
+              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions1_Field_Value', `CNPJ do cliente, usar apenas números sem pontos ou traços`, 'string') }}"
+            },
+            {
+              "keyName": "tipo_venda_pedido",
+              "condition": "eq",
+              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions2_Field_Value', `Tipo da operação. Envia obrigatoriamente e apenas os números 11  e 5 se o pedido for sobre bonificações ( sabendo que tipo 11 são taxadas como \"bonificações\" e tipo 5 como \"perdas\"). para tido de venda normal 1 e/ou 9`, 'string') }}"
+            },
+            {
+              "keyName": "data_pedido",
+              "condition": "gte",
+              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions3_Field_Value', `Data inicial da busca no formato YYYY-MM-DD. Exemplo: 2026-03-01`, 'string') }}"
+            },
+            {
+              "keyName": "numero_pedido",
+              "condition": "eq",
+              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions4_Field_Value', `Número exato do pedido para procura específica. Não adiciones texto extra.`, 'string') }}"
+            },
+            {
+              "keyName": "data_pedido",
+              "condition": "lte",
+              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions5_Field_Value', `Data final da busca no formato YYYY-MM-DD. Exemplo: 2026-03-31`, 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        288,
+        400
+      ],
+      "id": "9e195fe2-6c95-4051-afce-a29e43008d65",
+      "name": "Master_Busca_PRIME",
+      "credentials": {
+        "supabaseApi": {
+          "id": "6fIkFkgf4U4MUpll",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "accept": "application/json, text/plain, */*",
+            "content-type": "application/json",
+            "user-agent": "WAHA/2026.3.4",
+            "x-webhook-request-id": "1il7mnnb7sn1",
+            "x-webhook-timestamp": "1775487165371",
+            "content-length": "2374",
+            "accept-encoding": "gzip, compress, deflate, br",
+            "host": "host.docker.internal:5678",
+            "connection": "keep-alive"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "id": "evt_01knhmg8xvgmv6zahdcy2rj27h",
+            "timestamp": 1775487165371,
+            "event": "message.any",
+            "session": "default",
+            "metadata": {},
+            "me": {
+              "id": "557332236100@c.us",
+              "pushName": "Prime Distribuição",
+              "lid": "38956058067002@lid",
+              "jid": "557332236100:2@s.whatsapp.net"
+            },
+            "payload": {
+              "id": "false_65713167446078@lid_3EB047232DD361DB72F402",
+              "timestamp": 1775487164,
+              "from": "65713167446078@lid",
+              "fromMe": false,
+              "source": "app",
+              "body": "01873357532",
+              "to": null,
+              "participant": null,
+              "hasMedia": false,
+              "media": null,
+              "ack": 2,
+              "location": null,
+              "vCards": null,
+              "ackName": "DEVICE",
+              "replyTo": null,
+              "_data": {
+                "Info": {
+                  "Chat": "65713167446078@lid",
+                  "Sender": "65713167446078:43@lid",
+                  "IsFromMe": false,
+                  "IsGroup": false,
+                  "AddressingMode": "",
+                  "SenderAlt": "557381941146:43@s.whatsapp.net",
+                  "RecipientAlt": "",
+                  "BroadcastListOwner": "",
+                  "BroadcastRecipients": null,
+                  "ID": "3EB047232DD361DB72F402",
+                  "ServerID": 0,
+                  "Type": "text",
+                  "PushName": "Daniel César",
+                  "Timestamp": "2026-04-06T14:52:44Z",
+                  "Category": "",
+                  "Multicast": false,
+                  "MediaType": "",
+                  "Edit": "",
+                  "MsgBotInfo": {
+                    "EditType": "",
+                    "EditTargetID": "",
+                    "EditSenderTimestampMS": "0001-01-01T00:00:00Z"
+                  },
+                  "MsgMetaInfo": {
+                    "TargetID": "",
+                    "TargetSender": "",
+                    "TargetChat": "",
+                    "DeprecatedLIDSession": null,
+                    "ThreadMessageID": "",
+                    "ThreadMessageSenderJID": ""
+                  },
+                  "VerifiedName": null,
+                  "DeviceSentMeta": null
+                },
+                "Message": {
+                  "conversation": "01873357532",
+                  "messageContextInfo": {
+                    "deviceListMetadata": {
+                      "senderKeyHash": "npMunFLgkDXkvg==",
+                      "senderTimestamp": 1774986239,
+                      "senderAccountType": 0,
+                      "receiverAccountType": 0,
+                      "recipientKeyHash": "BhEkrdfHiprVqQ==",
+                      "recipientTimestamp": 1775152197
+                    },
+                    "deviceListMetadataVersion": 2,
+                    "messageSecret": "VXjFrbiRAzslzxW4nqEgef5poeOCZrBkgQBXPagiKuU="
+                  }
+                },
+                "IsEphemeral": false,
+                "IsViewOnce": false,
+                "IsViewOnceV2": false,
+                "IsViewOnceV2Extension": false,
+                "IsDocumentWithCaption": false,
+                "IsLottieSticker": false,
+                "IsBotInvoke": false,
+                "IsEdit": false,
+                "SourceWebMsg": null,
+                "UnavailableRequestID": "",
+                "RetryCount": 0,
+                "NewsletterMeta": null,
+                "RawMessage": {
+                  "conversation": "01873357532",
+                  "messageContextInfo": {
+                    "deviceListMetadata": {
+                      "senderKeyHash": "npMunFLgkDXkvg==",
+                      "senderTimestamp": 1774986239,
+                      "senderAccountType": 0,
+                      "receiverAccountType": 0,
+                      "recipientKeyHash": "BhEkrdfHiprVqQ==",
+                      "recipientTimestamp": 1775152197
+                    },
+                    "deviceListMetadataVersion": 2,
+                    "messageSecret": "VXjFrbiRAzslzxW4nqEgef5poeOCZrBkgQBXPagiKuU="
+                  }
+                },
+                "Status": 3
+              }
+            },
+            "environment": {
+              "version": "2026.3.4",
+              "engine": "GOWS",
+              "tier": "CORE",
+              "browser": null,
+              "platform": "linux/x64",
+              "worker": {
+                "id": null
+              }
+            }
+          },
+          "webhookUrl": "http://host.docker.internal:5678/webhook/webhook",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Seen": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Send Seen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar_RCA": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar_Cadastro_Cliente": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Master_Busca_PRIME": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "196fc58e-1fb5-4dd5-ac57-7283595171f2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "09c748d22dedfad9a8f8d622608e21bfef530f2282bf1c8c8aec81b06d0d60e8"
+  },
+  "id": "qhhi4iTzhmZRgkzj",
+  "tags": []
+}
