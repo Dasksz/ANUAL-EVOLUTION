@@ -4910,6 +4910,7 @@ let estrelasSelectedCategorias = [];
         const selectedSet = new Set(selectedArray);
         const renderItems = () => {
             container.innerHTML = '';
+            const fragment = document.createDocumentFragment();
             (items || []).forEach(item => {
                 const val = String(item);
                 const isSelected = selectedSet.has(val);
@@ -4955,8 +4956,9 @@ let estrelasSelectedCategorias = [];
                     renderItems(); // Re-render to update checks visually (e.g. if one was auto-removed)
                     updateBtnLabel();
                 };
-                container.appendChild(div);
+                fragment.appendChild(div);
             });
+            container.appendChild(fragment);
             if (!items || items.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
         };
         
