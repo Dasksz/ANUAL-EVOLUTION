@@ -320,7 +320,7 @@
           "conditions": [
             {
               "keyName": "cpf",
-              "condition": "contains",
+              "condition": "eq",
               "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions1_Field_Value', `CPF fornecido pelo RCA( formatação em texto).`, 'string') }}"
             }
           ]
@@ -340,8 +340,7 @@
           "id": "6fIkFkgf4U4MUpll",
           "name": "Supabase account"
         }
-      },
-      "alwaysOutputData": true
+      }
     },
     {
       "parameters": {
