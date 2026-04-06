@@ -2532,6 +2532,7 @@ let estrelasSelectedCategorias = [];
             "Caixas": row.caixas,
             "Faturamento": row.faturamento,
             "Peso (kg)": row.peso,
+            "Posit.": row.clientes || 0,
             "Última Venda": row.ultima_venda ? new Date(row.ultima_venda).toLocaleDateString('pt-BR') : '-'
         }));
 
@@ -2797,6 +2798,7 @@ let estrelasSelectedCategorias = [];
                         if (key === 'fat') currMonthRealized = currMonthData.faturamento;
                         else if (key === 'peso') currMonthRealized = currMonthData.peso;
                         else if (key === 'caixas') currMonthRealized = currMonthData.caixas;
+                        else if (key === 'clientes') currMonthRealized = currMonthData.clientes || 0;
                     }
                     
                     // Tri Indicator: Trended Current Month vs Tri Avg
@@ -2849,6 +2851,7 @@ let estrelasSelectedCategorias = [];
                              if (key === 'fat') triComparisonVal = currMonthData.faturamento;
                              else if (key === 'peso') triComparisonVal = currMonthData.peso;
                              else if (key === 'caixas') triComparisonVal = currMonthData.caixas;
+                             else if (key === 'clientes') triComparisonVal = currMonthData.clientes || 0;
                          }
                      } else {
                          // If past year, maybe just leave it as average vs average or hide? 
@@ -2863,6 +2866,7 @@ let estrelasSelectedCategorias = [];
                              if (key === 'fat') triComparisonVal = lastM.faturamento;
                              else if (key === 'peso') triComparisonVal = lastM.peso;
                              else if (key === 'caixas') triComparisonVal = lastM.caixas;
+                             else if (key === 'clientes') triComparisonVal = lastM.clientes || 0;
                          }
                      }
                 }
@@ -2892,6 +2896,7 @@ let estrelasSelectedCategorias = [];
         updateBoxKpi('fat', 'fat', fmtBRL);
         updateBoxKpi('peso', 'peso', fmtKg);
         updateBoxKpi('caixas', 'caixas', fmtCaixas);
+        updateBoxKpi('clientes', 'clientes', fmtCaixas);
 
         // Chart (2 datasets: Current vs Previous + Trend if active)
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -2996,6 +3001,11 @@ let estrelasSelectedCategorias = [];
                 tdPeso.textContent = formatTons(safeVal(p.peso), 2);
                 tr.appendChild(tdPeso);
 
+                const tdPosit = document.createElement('td');
+                tdPosit.className = 'p-2 text-right text-slate-300 font-bold';
+                tdPosit.textContent = Math.round(safeVal(p.clientes)).toLocaleString('pt-BR');
+                tr.appendChild(tdPosit);
+
                 const tdUltimaVenda = document.createElement('td');
                 tdUltimaVenda.className = 'p-2 text-center text-slate-400';
                 tdUltimaVenda.textContent = p.ultima_venda ? new Date(p.ultima_venda).toLocaleDateString('pt-BR') : '-';
@@ -3005,7 +3015,7 @@ let estrelasSelectedCategorias = [];
             });
             tableBody.appendChild(fragment);
         } else {
-            tableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Nenhum produto encontrado.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum produto encontrado.</td></tr>';
         }
     }
 

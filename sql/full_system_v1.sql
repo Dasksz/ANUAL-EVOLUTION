@@ -2709,6 +2709,9 @@ DECLARE
     v_specific_redes text[];
     v_use_cache boolean := true;
 
+    -- Tipovenda cond for clients
+    v_tipovenda_client_cond text;
+
     -- Trend Vars
     v_max_sale_date date;
     v_trend_allowed boolean;
@@ -2800,6 +2803,9 @@ BEGIN
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where_raw := v_where_raw || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
         v_where_summary := v_where_summary || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+        v_tipovenda_client_cond := format('tipovenda = ANY(%L)', p_tipovenda);
+    ELSE
+        v_tipovenda_client_cond := 'tipovenda IN (''1'', ''9'')';
     END IF;
     
     -- Category Filter
@@ -2880,7 +2886,8 @@ BEGIN
                     ano as yr,
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
-                    SUM(COALESCE(caixas, 0)) as caixas
+                    SUM(COALESCE(caixas, 0)) as caixas,
+                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) as clientes
                 FROM public.data_summary
                 %s AND ano IN (%L, %L)
                 GROUP BY 1, 2
@@ -2889,7 +2896,8 @@ BEGIN
                 SELECT 
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
-                    SUM(COALESCE(caixas, 0)) as caixas
+                    SUM(COALESCE(caixas, 0)) as caixas,
+                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) as clientes
                 FROM public.data_summary
                 %s AND ano = %L %s
             ),
@@ -2897,7 +2905,8 @@ BEGIN
                 SELECT 
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
-                    SUM(COALESCE(caixas, 0)) as caixas
+                    SUM(COALESCE(caixas, 0)) as caixas,
+                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) as clientes
                 FROM public.data_summary
                 %s AND ano = %L %s
             ),
@@ -2905,18 +2914,19 @@ BEGIN
                 SELECT 
                     SUM(vlvenda) / 3 as fat,
                     SUM(peso) / 3 as peso,
-                    SUM(COALESCE(caixas, 0)) / 3 as caixas
+                    SUM(COALESCE(caixas, 0)) / 3 as caixas,
+                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) / 3 as clientes
                 FROM public.data_summary
                 %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
             ),
             -- Products Table (Updated to JOIN dim_produtos)
             prod_base AS (
-                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master
+                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master, s.codcli, s.tipovenda
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
                 UNION ALL
-                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master
+                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master, s.codcli, s.tipovenda
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
@@ -2928,6 +2938,7 @@ BEGIN
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     SUM(vlvenda) as faturamento,
                     SUM(totpesoliq) as peso,
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
                     MAX(dtped) as ultima_venda
                 FROM prod_base
                 GROUP BY 1
@@ -2935,18 +2946,19 @@ BEGIN
                 LIMIT 50
             )
             SELECT 
-                (SELECT json_agg(json_build_object(''month_index'', m_idx, ''year'', yr, ''faturamento'', fat, ''peso'', peso, ''caixas'', caixas)) FROM chart_agg),
+                (SELECT json_agg(json_build_object(''month_index'', m_idx, ''year'', yr, ''faturamento'', fat, ''peso'', peso, ''caixas'', caixas, ''clientes'', clientes)) FROM chart_agg),
                 (SELECT row_to_json(c) FROM kpi_curr c),
                 (SELECT row_to_json(p) FROM kpi_prev p),
                 (SELECT row_to_json(t) FROM kpi_tri t),
                 (SELECT json_agg(pa) FROM prod_agg pa)
         ', 
-        v_where_summary, v_current_year, v_previous_year, -- Chart
-        v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
-        v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
-        v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
+        v_tipovenda_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
+        v_tipovenda_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
+        v_tipovenda_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
+        v_tipovenda_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
-        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END  -- Prod
+        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
+        v_tipovenda_client_cond -- Prod Agg
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     
@@ -2954,12 +2966,12 @@ BEGIN
         -- SLOW PATH (Full Raw Data with dim_produtos join)
         EXECUTE format('
             WITH base_data AS (
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= make_date(%L, 1, 1)
                 UNION ALL
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= make_date(%L, 1, 1)
@@ -2970,7 +2982,8 @@ BEGIN
                     EXTRACT(YEAR FROM dtped)::int as yr,
                     SUM(vlvenda) as fat,
                     SUM(totpesoliq) as peso,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas
+                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM base_data
                 WHERE EXTRACT(YEAR FROM dtped) IN (%L, %L)
                 GROUP BY 1, 2
@@ -2979,7 +2992,8 @@ BEGIN
                 SELECT 
                     SUM(vlvenda) as fat,
                     SUM(totpesoliq) as peso,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas
+                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM base_data
                 WHERE EXTRACT(YEAR FROM dtped) = %L %s
             ),
@@ -2987,7 +3001,8 @@ BEGIN
                 SELECT 
                     SUM(vlvenda) as fat,
                     SUM(totpesoliq) as peso,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas
+                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM base_data
                 WHERE EXTRACT(YEAR FROM dtped) = %L %s
             ),
@@ -2995,7 +3010,8 @@ BEGIN
                 SELECT 
                     SUM(vlvenda) / 3 as fat,
                     SUM(totpesoliq) / 3 as peso,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) / 3 as caixas
+                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) / 3 as caixas,
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) / 3 as clientes
                 FROM base_data
                 WHERE dtped >= %L AND dtped <= %L
             ),
@@ -3006,6 +3022,7 @@ BEGIN
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     SUM(vlvenda) as faturamento,
                     SUM(totpesoliq) as peso,
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
                     MAX(dtped) as ultima_venda
                 FROM base_data
                 WHERE EXTRACT(YEAR FROM dtped) = %L %s
@@ -3014,7 +3031,7 @@ BEGIN
                 LIMIT 50
             )
             SELECT 
-                (SELECT json_agg(json_build_object(''month_index'', m_idx, ''year'', yr, ''faturamento'', fat, ''peso'', peso, ''caixas'', caixas)) FROM chart_agg),
+                (SELECT json_agg(json_build_object(''month_index'', m_idx, ''year'', yr, ''faturamento'', fat, ''peso'', peso, ''caixas'', caixas, ''clientes'', clientes)) FROM chart_agg),
                 (SELECT row_to_json(c) FROM kpi_curr c),
                 (SELECT row_to_json(p) FROM kpi_prev p),
                 (SELECT row_to_json(t) FROM kpi_tri t),
@@ -3022,20 +3039,20 @@ BEGIN
         ', 
         v_where_raw, v_previous_year,
         v_where_raw, v_previous_year,
-        v_current_year, v_previous_year,
-        v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
-        v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
-        v_tri_start, v_tri_end,
-        v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END
+        v_tipovenda_client_cond, v_current_year, v_previous_year,
+        v_tipovenda_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
+        v_tipovenda_client_cond, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
+        v_tipovenda_client_cond, v_tri_start, v_tri_end,
+        v_tipovenda_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     END IF;
 
     RETURN json_build_object(
         'chart_data', COALESCE(v_chart_data, '[]'::json),
-        'kpi_current', COALESCE(v_kpis_current, '{"fat":0,"peso":0,"caixas":0}'::json),
-        'kpi_previous', COALESCE(v_kpis_previous, '{"fat":0,"peso":0,"caixas":0}'::json),
-        'kpi_tri_avg', COALESCE(v_kpis_tri_avg, '{"fat":0,"peso":0,"caixas":0}'::json),
+        'kpi_current', COALESCE(v_kpis_current, '{"fat":0,"peso":0,"caixas":0,"clientes":0}'::json),
+        'kpi_previous', COALESCE(v_kpis_previous, '{"fat":0,"peso":0,"caixas":0,"clientes":0}'::json),
+        'kpi_tri_avg', COALESCE(v_kpis_tri_avg, '{"fat":0,"peso":0,"caixas":0,"clientes":0}'::json),
         'products_table', COALESCE(v_products_table, '[]'::json),
         'trend_info', json_build_object(
             'allowed', v_trend_allowed,
