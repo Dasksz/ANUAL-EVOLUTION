@@ -494,7 +494,7 @@ let estrelasSelectedCategorias = [];
                 XLSX.writeFile(wb, `${viewName}_${new Date().toISOString().split('T')[0]}.xlsx`);
 
             } catch (err) {
-                console.error("Erro ao gerar Excel:", err);
+                AppLog.error("Erro ao gerar Excel:", err);
                 alert("Ocorreu um erro ao gerar o Excel. Tente novamente.");
             } finally {
                 exportExcelBtn.innerHTML = originalHtml;
@@ -612,7 +612,7 @@ let estrelasSelectedCategorias = [];
                 await html2pdf().set(opt).from(activeView).save();
                 
             } catch (err) {
-                console.error("Erro ao gerar PDF:", err);
+                AppLog.error("Erro ao gerar PDF:", err);
                 alert("Ocorreu um erro ao gerar o PDF. Tente novamente.");
             } finally {
                 // Remover cabeçalho customizado
