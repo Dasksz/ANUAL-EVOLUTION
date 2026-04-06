@@ -1,0 +1,5 @@
+# Supabase Configuration (Secret)
+
+# OS files
+.DS_Store
+Thumbs.db
