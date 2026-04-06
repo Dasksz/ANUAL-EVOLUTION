@@ -34,3 +34,7 @@
 ## 2025-04-04 - Tooltips on disabled submit buttons
 **Learning:** Users can be confused when a primary action button like "Atualizar Base" is disabled without explanation. Adding a native title attribute and disabled:cursor-not-allowed provides immediate feedback on what is missing (e.g., required files).
 **Action:** Always pair disabled states on forms/uploaders with a title explaining the requirements and use cursor-not-allowed to reinforce the unclickable state.
+
+## 2026-04-05 - Focus indicators and ARIA roles for Dropdowns
+**Learning:** Native `focus-visible` states are frequently overlooked on custom dropdown menus and standalone interactive elements (like modal close buttons). For screen-reader users, failing to use `role="menu"` on the dropdown container and `role="menuitem"` on its children, along with `aria-haspopup` and `aria-expanded` on the trigger, strips away the contextual relationship of the menu structure.
+**Action:** Add explicit `focus:outline-none focus-visible:ring-2` to custom interactive components to guarantee visibility during keyboard navigation. Also always pair dropdown triggers and menus with the proper W3C WAI-ARIA role associations (`menu`, `menuitem`, `aria-haspopup`).
