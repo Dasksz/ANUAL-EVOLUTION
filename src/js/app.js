@@ -3,6 +3,67 @@ let estrelasDetailedData = [];
 let estrelasQtdMarcas = 0;
 
 // Modal functions
+
+/**
+ * Creates a table row for the detailed modal safely using DOM API
+ * to prevent XSS and improve performance.
+ * @param {Object} row - The data row object
+ * @param {number} index - The index for alternating row colors
+ * @param {number|string} realizado - The realized amount
+ * @param {string} realizedUnit - The unit string for realized amount
+ * @param {number|string} meta - The target amount
+ * @param {string} metaUnit - The unit string for target amount
+ * @param {number|string} share - The share percentage
+ * @param {string} shareColorClass - The color class for the share text
+ * @returns {HTMLTableRowElement} The constructed table row
+ */
+function createDetalhadoRow(row, index, realizado, realizedUnit, meta, metaUnit, share, shareColorClass) {
+    const tr = document.createElement('tr');
+    tr.className = `border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}`;
+
+    const tdVendedor = document.createElement('td');
+    tdVendedor.className = 'py-3 px-4 whitespace-nowrap text-slate-200';
+    tdVendedor.textContent = row.vendedor_nome || 'N/D';
+    tr.appendChild(tdVendedor);
+
+    const tdFilial = document.createElement('td');
+    tdFilial.className = 'py-3 px-4 whitespace-nowrap';
+    const spanFilial = document.createElement('span');
+    spanFilial.className = 'px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs border border-slate-700';
+    spanFilial.textContent = row.filial || 'N/D';
+    tdFilial.appendChild(spanFilial);
+    tr.appendChild(tdFilial);
+
+    const tdRealizado = document.createElement('td');
+    tdRealizado.className = 'py-3 px-4 text-right font-medium text-white';
+    tdRealizado.textContent = realizado + (realizedUnit ? ' ' : '');
+    if (realizedUnit) {
+        const spanUnit = document.createElement('span');
+        spanUnit.className = 'text-xs text-slate-400';
+        spanUnit.textContent = realizedUnit;
+        tdRealizado.appendChild(spanUnit);
+    }
+    tr.appendChild(tdRealizado);
+
+    const tdMeta = document.createElement('td');
+    tdMeta.className = 'py-3 px-4 text-right text-slate-400';
+    tdMeta.textContent = meta + (metaUnit ? ' ' : '');
+    if (metaUnit) {
+        const spanMetaUnit = document.createElement('span');
+        spanMetaUnit.className = 'text-xs';
+        spanMetaUnit.textContent = metaUnit;
+        tdMeta.appendChild(spanMetaUnit);
+    }
+    tr.appendChild(tdMeta);
+
+    const tdShare = document.createElement('td');
+    tdShare.className = `py-3 px-4 text-right font-bold ${shareColorClass}`;
+    tdShare.textContent = share + '%';
+    tr.appendChild(tdShare);
+
+    return tr;
+}
+
 window.openDetalhadoModal = function(type) {
     const modal = document.getElementById('modal-resultado-detalhado');
     const title = document.getElementById('modal-detalhado-title');
@@ -59,17 +120,7 @@ window.openDetalhadoModal = function(type) {
             const realizado = ((row.sellout_salty || 0) + (row.sellout_foods || 0)) / 1000.0;
             const meta = 0; // Mocked
             const share = totalRealizado > 0 ? ((((row.sellout_salty || 0) + (row.sellout_foods || 0)) / totalRealizado) * 100).toFixed(2) : 0;
-            
-            const tr = document.createElement('tr');
-            tr.className = `border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}`;
-
-            tr.innerHTML = `
-                <td class="py-3 px-4 whitespace-nowrap text-slate-200">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
-                <td class="py-3 px-4 whitespace-nowrap"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs border border-slate-700">${escapeHtml(row.filial || 'N/D')}</span></td>
-                <td class="py-3 px-4 text-right font-medium text-white">${realizado.toFixed(2)} <span class="text-xs text-slate-400">tons</span></td>
-                <td class="py-3 px-4 text-right text-slate-400">${meta.toFixed(2)} <span class="text-xs">tons</span></td>
-                <td class="py-3 px-4 text-right font-bold text-indigo-400">${share}%</td>
-            `;
+            const tr = createDetalhadoRow(row, index, realizado.toFixed(2), 'tons', meta.toFixed(2), 'tons', share, 'text-indigo-400');
             fragment.appendChild(tr);
         });
         tbody.appendChild(fragment);
@@ -91,17 +142,7 @@ window.openDetalhadoModal = function(type) {
             const realizado = (row.pos_salty || 0) + (row.pos_foods || 0);
             const meta = 0; // Mocked
             const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
-            
-            const tr = document.createElement('tr');
-            tr.className = `border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}`;
-
-            tr.innerHTML = `
-                <td class="py-3 px-4 whitespace-nowrap text-slate-200">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
-                <td class="py-3 px-4 whitespace-nowrap"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs border border-slate-700">${escapeHtml(row.filial || 'N/D')}</span></td>
-                <td class="py-3 px-4 text-right font-medium text-white">${realizado} <span class="text-xs text-slate-400">PDV(s)</span></td>
-                <td class="py-3 px-4 text-right text-slate-400">${meta} <span class="text-xs">PDV(s)</span></td>
-                <td class="py-3 px-4 text-right font-bold text-emerald-400">${share}%</td>
-            `;
+            const tr = createDetalhadoRow(row, index, realizado, 'PDV(s)', meta, 'PDV(s)', share, 'text-emerald-400');
             fragment.appendChild(tr);
         });
         tbody.appendChild(fragment);
@@ -127,17 +168,7 @@ window.openDetalhadoModal = function(type) {
             const metaPositivação = 0;
             const meta = metaPositivação * 0.5; 
             const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
-            
-            const tr = document.createElement('tr');
-            tr.className = `border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}`;
-
-            tr.innerHTML = `
-                <td class="py-3 px-4 whitespace-nowrap text-slate-200">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
-                <td class="py-3 px-4 whitespace-nowrap"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs border border-slate-700">${escapeHtml(row.filial || 'N/D')}</span></td>
-                <td class="py-3 px-4 text-right font-medium text-white">${realizado}</td>
-                <td class="py-3 px-4 text-right text-slate-400">${meta}</td>
-                <td class="py-3 px-4 text-right font-bold text-amber-400">${share}%</td>
-            `;
+            const tr = createDetalhadoRow(row, index, realizado, null, meta, null, share, 'text-amber-400');
             fragment.appendChild(tr);
         });
         tbody.appendChild(fragment);
