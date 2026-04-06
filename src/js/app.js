@@ -3391,7 +3391,7 @@ let estrelasSelectedCategorias = [];
             });
 
             if (isHidden) {
-                renderOptions(); // Sync visuals just before opening
+                updateVisualState(); // Sync visuals just before opening
                 dropdown.classList.remove('hidden');
                 initialValueOnOpen = selectElement.value; // Store value when opened
             } else {
