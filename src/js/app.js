@@ -153,17 +153,7 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
-
-// --- Security Utilities ---
-function escapeHtml(unsafe) {
-    if (unsafe == null) return '';
-    return String(unsafe)
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;");
-}
+import { formatNumber, escapeHtml } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -504,7 +494,7 @@ let estrelasSelectedCategorias = [];
                 XLSX.writeFile(wb, `${viewName}_${new Date().toISOString().split('T')[0]}.xlsx`);
 
             } catch (err) {
-                console.error("Erro ao gerar Excel:", err);
+                AppLog.error("Erro ao gerar Excel:", err);
                 alert("Ocorreu um erro ao gerar o Excel. Tente novamente.");
             } finally {
                 exportExcelBtn.innerHTML = originalHtml;
@@ -622,7 +612,7 @@ let estrelasSelectedCategorias = [];
                 await html2pdf().set(opt).from(activeView).save();
                 
             } catch (err) {
-                console.error("Erro ao gerar PDF:", err);
+                AppLog.error("Erro ao gerar PDF:", err);
                 alert("Ocorreu um erro ao gerar o PDF. Tente novamente.");
             } finally {
                 // Remover cabeçalho customizado
@@ -3391,7 +3381,7 @@ let estrelasSelectedCategorias = [];
             });
 
             if (isHidden) {
-                renderOptions(); // Sync visuals just before opening
+                updateVisualState(); // Sync visuals just before opening
                 dropdown.classList.remove('hidden');
                 initialValueOnOpen = selectElement.value; // Store value when opened
             } else {
@@ -7526,10 +7516,6 @@ function renderLpTable(clients) {
     tbody.appendChild(fragment);
 }
 
-function formatNumber(num, decimals = 2) {
-    if (num == null) return '--';
-    return Number(num).toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-}
 
 async function renderInnovationsMonthView() {
     if (!isInnovationsInitialized) {
