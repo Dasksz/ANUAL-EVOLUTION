@@ -1,9 +1,12 @@
 // Supabase Configuration
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 
-const SUPABASE_URL = 'https://vawrdqreibhlfsfvxbpv.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhd3JkcXJlaWJobGZzZnZ4YnB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwNzg1MTAsImV4cCI6MjA4MjY1NDUxMH0.-mAobZK_dc3QOwey3Z8NbrtybWPoPRfBqW_IN0gehl8';
+if (!SUPABASE_URL || !SUPABASE_KEY || SUPABASE_URL.includes('YOUR_SUPABASE_URL_HERE')) {
+    console.error('CRITICAL: Supabase credentials missing or invalid. Please check src/js/config.js');
+}
 
-const supabase = window.supabase.createClient(SUPABASE_URL || '', SUPABASE_KEY || '', {
+// Initialize the Supabase client
+const supabaseClient = window.supabase.createClient(SUPABASE_URL || '', SUPABASE_KEY || '', {
     global: {
         fetch: (url, options) => {
             // Safely merge headers using the Headers constructor
@@ -40,4 +43,7 @@ const supabase = window.supabase.createClient(SUPABASE_URL || '', SUPABASE_KEY |
     }
 });
 
-export default supabase;
+// Attach to window to maintain global 'supabase' variable access for non-module scripts/legacy code
+window.supabase = supabaseClient;
+
+export default supabaseClient;
