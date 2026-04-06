@@ -579,26 +579,23 @@ self.onmessage = async (event) => {
         const clientMap = new Map();
         const clientsToInsert = [];
 
-        for (const client of clientsDataRaw) {
+        // ⚡ Bolt Optimization: Parallelize client hashing to avoid sequential await bottleneck.
+        const processedClients = await Promise.all(clientsDataRaw.map(async (client) => {
             const codCli = String(client['Código'] || '').trim();
-            if (!codCli) continue;
+            if (!codCli) return null;
 
             const rca1 = String(client['RCA 1'] || '');
             const rawCnpj = client['CNPJ/CPF'] || client['Cpf/Cnpj'] || '';
             const cleanedCnpj = rawCnpj ? String(rawCnpj).replace(/[^0-9]/g, '') : null;
-            // RCA 2 Removed
             const ultimaCompraRaw = client['Data da Última Compra'];
             const ultimaCompra = parseDate(ultimaCompraRaw);
 
-            // Use city from sales map
             const salesCity = salesCityMap.get(codCli);
-            // finalCity removed
 
             const clientData = {
                 codigo_cliente: codCli,
                 rca1: rca1,
                 cnpj: cleanedCnpj,
-                // rca2: rca2, -- Removed
                 cidade: salesCity || String(client['Nome da Cidade'] || client['Cidade'] || '').trim().toUpperCase() || null,
                 nomecliente: String(client['Fantasia'] || client['Cliente'] || 'N/A'),
                 bairro: String(client['Bairro'] || 'N/A'),
@@ -609,9 +606,19 @@ self.onmessage = async (event) => {
                 bloqueio: String(client['Bloqueio'] || '').trim().toUpperCase(),
             };
 
-            // Generate Hash for Client Row
             clientData.row_hash = await generateHash(clientData);
 
+            return {
+                codCli,
+                rca1,
+                cleanedCnpj,
+                clientData
+            };
+        }));
+
+        for (const res of processedClients) {
+            if (!res) continue;
+            const { codCli, rca1, cleanedCnpj, clientData } = res;
             clientMap.set(codCli, {
                 nomeCliente: clientData.nomecliente,
                 cidade: clientData.cidade,
