@@ -578,6 +578,9 @@ self.onmessage = async (event) => {
         self.postMessage({ type: 'progress', status: 'Processando clientes...', percentage: 20 });
         const clientMap = new Map();
         const clientsToInsert = [];
+        const clientDataMap = new Map();
+        const clientHashesPromises = [];
+        const validClients = [];
 
         for (const client of clientsDataRaw) {
             const codCli = String(client['Código'] || '').trim();
@@ -586,19 +589,16 @@ self.onmessage = async (event) => {
             const rca1 = String(client['RCA 1'] || '');
             const rawCnpj = client['CNPJ/CPF'] || client['Cpf/Cnpj'] || '';
             const cleanedCnpj = rawCnpj ? String(rawCnpj).replace(/[^0-9]/g, '') : null;
-            // RCA 2 Removed
             const ultimaCompraRaw = client['Data da Última Compra'];
             const ultimaCompra = parseDate(ultimaCompraRaw);
 
             // Use city from sales map
             const salesCity = salesCityMap.get(codCli);
-            // finalCity removed
 
             const clientData = {
                 codigo_cliente: codCli,
                 rca1: rca1,
                 cnpj: cleanedCnpj,
-                // rca2: rca2, -- Removed
                 cidade: salesCity || String(client['Nome da Cidade'] || client['Cidade'] || '').trim().toUpperCase() || null,
                 nomecliente: String(client['Fantasia'] || client['Cliente'] || 'N/A'),
                 bairro: String(client['Bairro'] || 'N/A'),
@@ -609,15 +609,23 @@ self.onmessage = async (event) => {
                 bloqueio: String(client['Bloqueio'] || '').trim().toUpperCase(),
             };
 
-            // Generate Hash for Client Row
-            clientData.row_hash = await generateHash(clientData);
+            validClients.push(clientData);
+            clientHashesPromises.push(generateHash(clientData));
+        }
+
+        const resolvedHashes = await Promise.all(clientHashesPromises);
+
+        for (let i = 0; i < validClients.length; i++) {
+            const clientData = validClients[i];
+            clientData.row_hash = resolvedHashes[i];
+            const codCli = clientData.codigo_cliente;
 
             clientMap.set(codCli, {
                 nomeCliente: clientData.nomecliente,
                 cidade: clientData.cidade,
                 bairro: clientData.bairro,
-                rca1: rca1,
-                cnpj: cleanedCnpj,
+                rca1: clientData.rca1,
+                cnpj: clientData.cnpj,
                 razaosocial: clientData.razaosocial
             });
             clientsToInsert.push(clientData);
@@ -1018,10 +1026,8 @@ self.onmessage = async (event) => {
 
              // Hash Chunks
              const chunkKeys = Object.keys(chunks);
-             for (const key of chunkKeys) {
-                 // Sort rows to ensure deterministic hash (by order ID or composite key if possible, else rely on input order stability + sort)
-                 // Sorting by 'pedido', then 'produto', then 'vlvenda' for determinism
-                 // ⚡ Bolt Optimization: Avoid O(N log N) string concatenation by doing sequential property comparison
+             const chunkHashPromises = chunkKeys.map(async (key) => {
+                 // Sort rows to ensure deterministic hash
                  chunks[key].rows.sort((a, b) => {
                      const pa = a.pedido || '';
                      const pb = b.pedido || '';
@@ -1036,17 +1042,22 @@ self.onmessage = async (event) => {
                      return va < vb ? -1 : (va > vb ? 1 : 0);
                  });
 
-                 // Calculate Chunk Hash (SHA-256 of JSON string of sorted rows)
+                 // Calculate Chunk Hash
                  const jsonStr = JSON.stringify(chunks[key].rows);
-             const data = _hashEncoder.encode(jsonStr);
+                 const data = _hashEncoder.encode(jsonStr);
                  const hashBuffer = await self.crypto.subtle.digest('SHA-256', data);
-             const hashArray = new Uint8Array(hashBuffer);
+                 const hashArray = new Uint8Array(hashBuffer);
 
-             let hex = '';
-             for (let i = 0; i < hashArray.length; i++) {
-                 hex += _hexMap[hashArray[i]];
-             }
-             chunks[key].hash = hex;
+                 let hex = '';
+                 for (let i = 0; i < hashArray.length; i++) {
+                     hex += _hexMap[hashArray[i]];
+                 }
+                 return { key, hash: hex };
+             });
+
+             const resolvedChunkHashes = await Promise.all(chunkHashPromises);
+             for (const { key, hash } of resolvedChunkHashes) {
+                 chunks[key].hash = hash;
              }
 
              return chunks;
