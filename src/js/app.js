@@ -5414,9 +5414,12 @@ let estrelasSelectedCategorias = [];
 
         const prevBtn = document.createElement('button');
         prevBtn.id = 'city-prev-btn';
-        prevBtn.className = 'px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50';
+        prevBtn.className = 'px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed';
         prevBtn.textContent = 'Anterior';
-        if (currentCityPage === 0) prevBtn.disabled = true;
+        if (currentCityPage === 0) {
+            prevBtn.disabled = true;
+            prevBtn.title = 'Primeira página';
+        }
         prevBtn.addEventListener('click', () => {
             if (currentCityPage > 0) { currentCityPage--; loadCityView(); }
         });
@@ -5426,9 +5429,12 @@ let estrelasSelectedCategorias = [];
 
         const nextBtn = document.createElement('button');
         nextBtn.id = 'city-next-btn';
-        nextBtn.className = 'px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50';
+        nextBtn.className = 'px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed';
         nextBtn.textContent = 'Próxima';
-        if (currentCityPage >= totalPages - 1) nextBtn.disabled = true;
+        if (currentCityPage >= totalPages - 1) {
+            nextBtn.disabled = true;
+            nextBtn.title = 'Última página';
+        }
         nextBtn.addEventListener('click', () => {
             if (currentCityPage < totalPages - 1) { currentCityPage++; loadCityView(); }
         });
