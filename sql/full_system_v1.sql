@@ -244,7 +244,14 @@ DECLARE
 
     v_sql text;
     v_result json;
+    v_tipovenda_cond text;
 BEGIN
+
+    IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
+        v_tipovenda_cond := ' = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
+    ELSE
+        v_tipovenda_cond := ' IN (''1'', ''9'') ';
+    END IF;
     SET LOCAL work_mem = '64MB';
     SET LOCAL statement_timeout = '600s';
 
@@ -434,7 +441,7 @@ BEGIN
             s.codusur as vendedor_cod,
             SUM(s.vlvenda) as faturamento_prev
         FROM public.data_summary_frequency s
-        ' || v_where_base_prev || ' AND s.tipovenda NOT IN (''5'', ''11'')
+        ' || v_where_base_prev || ' AND s.tipovenda ' || v_tipovenda_cond || '
         GROUP BY ROLLUP(s.filial, s.cidade, s.codusur)
     ),
     client_base AS (
@@ -456,7 +463,7 @@ BEGIN
         FROM current_data c
         CROSS JOIN LATERAL jsonb_array_elements_text(c.produtos) AS p(produto)
         INNER JOIN public.dim_produtos dp ON dp.codigo = p.produto
-        WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
+        WHERE c.tipovenda ' || v_tipovenda_cond || ' AND c.vlvenda >= 1
         ' || v_where_unnested || '
         GROUP BY c.filial, c.cidade, c.codusur, c.codcli
     ),
@@ -464,8 +471,8 @@ BEGIN
     client_monthly_sales AS (
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
-            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END)::numeric as month_pedidos,
-            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as sum_vlvenda
+            COUNT(DISTINCT CASE WHEN c.tipovenda ' || v_tipovenda_cond || ' THEN c.pedido END)::numeric as month_pedidos,
+            SUM(CASE WHEN c.tipovenda ' || v_tipovenda_cond || ' THEN c.vlvenda ELSE 0 END) as sum_vlvenda
         FROM current_data c
         GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
     ),
@@ -503,8 +510,8 @@ BEGIN
             COALESCE(c.cidade, ''TOTAL_CIDADE'') as cidade,
             c.codusur as vendedor_cod,
             SUM(c.peso) as tons,
-            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
-            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END) as total_pedidos,
+            SUM(CASE WHEN c.tipovenda ' || v_tipovenda_cond || ' THEN c.vlvenda ELSE 0 END) as faturamento,
+            COUNT(DISTINCT CASE WHEN c.tipovenda ' || v_tipovenda_cond || ' THEN c.pedido END) as total_pedidos,
             COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
         GROUP BY ROLLUP(c.filial, c.cidade, c.codusur)
@@ -592,8 +599,8 @@ BEGIN
     ),
     chart_monthly_sales AS (
         SELECT s.ano, s.mes, s.codcli,
-               COUNT(DISTINCT CASE WHEN s.tipovenda NOT IN (''5'', ''11'') THEN s.pedido END) as month_pedidos,
-               SUM(CASE WHEN s.tipovenda NOT IN (''5'', ''11'') THEN s.vlvenda ELSE 0 END) as sum_vlvenda
+               COUNT(DISTINCT CASE WHEN s.tipovenda ' || v_tipovenda_cond || ' THEN s.pedido END) as month_pedidos,
+               SUM(CASE WHEN s.tipovenda ' || v_tipovenda_cond || ' THEN s.vlvenda ELSE 0 END) as sum_vlvenda
         FROM public.data_summary_frequency s
         ' || v_where_chart || '
         GROUP BY s.ano, s.mes, s.codcli
@@ -2493,7 +2500,7 @@ BEGIN
                 ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND tipovenda = ANY($1) )
                 OR
                 ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND
-                  (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1) ELSE tipovenda NOT IN (''5'', ''11'') END)
+                  (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1) ELSE tipovenda IN (''1'', ''9'') END)
                 )
             )
             GROUP BY ano, mes, codcli
@@ -2576,7 +2583,7 @@ BEGIN
                 ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND tipovenda = ANY($1) )
                 OR
                 ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND
-                  (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1) ELSE tipovenda NOT IN (''5'', ''11'') END)
+                  (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1) ELSE tipovenda IN (''1'', ''9'') END)
                 )
             )
             GROUP BY codcli
@@ -2805,7 +2812,7 @@ BEGIN
         v_where_summary := v_where_summary || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
         v_tipovenda_client_cond := format('tipovenda = ANY(%L)', p_tipovenda);
     ELSE
-        v_tipovenda_client_cond := 'tipovenda NOT IN (''5'', ''11'')';
+        v_tipovenda_client_cond := 'tipovenda IN (''1'', ''9'')';
     END IF;
     
     -- Category Filter
