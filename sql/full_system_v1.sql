@@ -2887,17 +2887,21 @@ BEGIN
                 GROUP BY 1, 2, codcli
                 HAVING SUM(vlvenda) >= 1
             ),
-            chart_agg AS (
+            chart_agg_base AS (
                 SELECT 
                     mes - 1 as m_idx,
                     ano as yr,
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
-                    SUM(COALESCE(caixas, 0)) as caixas,
-                    (SELECT COUNT(*) FROM chart_clients c WHERE c.m_idx = mes - 1 AND c.yr = ano) as clientes
+                    SUM(COALESCE(caixas, 0)) as caixas
                 FROM public.data_summary
                 %s AND ano IN (%L, %L)
                 GROUP BY 1, 2
+            ),
+            chart_agg AS (
+                SELECT m_idx, yr, fat, peso, caixas,
+                (SELECT COUNT(*) FROM chart_clients c WHERE c.m_idx = chart_agg_base.m_idx AND c.yr = chart_agg_base.yr) as clientes
+                FROM chart_agg_base
             ),
             kpi_curr_clients AS (
                 SELECT codcli
@@ -2972,17 +2976,21 @@ BEGIN
                 GROUP BY produto, codcli
                 HAVING SUM(vlvenda) >= 1
             ),
-            prod_agg AS (
+            prod_agg_base AS (
                 SELECT
                     p.produto,
                     MAX(p.descricao) as descricao,
                     SUM(COALESCE(p.qtvenda, 0) / COALESCE(NULLIF(p.qtde_embalagem_master, 0), 1)) as caixas,
                     SUM(p.vlvenda) as faturamento,
                     SUM(p.totpesoliq) as peso,
-                    (SELECT COUNT(*) FROM prod_client_agg pc WHERE pc.produto = p.produto) as clientes,
                     MAX(p.dtped) as ultima_venda
                 FROM prod_base p
                 GROUP BY p.produto
+            ),
+            prod_agg AS (
+                SELECT produto, descricao, caixas, faturamento, peso, ultima_venda,
+                (SELECT COUNT(*) FROM prod_client_agg pc WHERE pc.produto = prod_agg_base.produto) as clientes
+                FROM prod_agg_base
                 ORDER BY caixas DESC
                 LIMIT 50
             )
@@ -3024,17 +3032,21 @@ BEGIN
                 GROUP BY 1, 2, codcli
                 HAVING SUM(vlvenda) >= 1
             ),
-            chart_agg AS (
+            chart_agg_base AS (
                 SELECT 
                     EXTRACT(MONTH FROM dtped)::int - 1 as m_idx,
                     EXTRACT(YEAR FROM dtped)::int as yr,
                     SUM(vlvenda) as fat,
                     SUM(totpesoliq) as peso,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    (SELECT COUNT(*) FROM chart_clients c WHERE c.m_idx = EXTRACT(MONTH FROM dtped)::int - 1 AND c.yr = EXTRACT(YEAR FROM dtped)::int) as clientes
+                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas
                 FROM base_data
                 WHERE EXTRACT(YEAR FROM dtped) IN (%L, %L)
                 GROUP BY 1, 2
+            ),
+            chart_agg AS (
+                SELECT m_idx, yr, fat, peso, caixas,
+                (SELECT COUNT(*) FROM chart_clients c WHERE c.m_idx = chart_agg_base.m_idx AND c.yr = chart_agg_base.yr) as clientes
+                FROM chart_agg_base
             ),
             kpi_curr_clients AS (
                 SELECT codcli
@@ -3097,18 +3109,22 @@ BEGIN
                 GROUP BY 1, 2
                 HAVING SUM(vlvenda) >= 1
             ),
-            prod_agg AS (
+            prod_agg_base AS (
                 SELECT
                     b.produto,
                     MAX(b.descricao) as descricao,
                     SUM(COALESCE(b.qtvenda, 0) / COALESCE(NULLIF(b.qtde_embalagem_master, 0), 1)) as caixas,
                     SUM(b.vlvenda) as faturamento,
                     SUM(b.totpesoliq) as peso,
-                    (SELECT COUNT(*) FROM prod_client_agg pc WHERE pc.produto = b.produto) as clientes,
                     MAX(b.dtped) as ultima_venda
                 FROM base_data b
                 WHERE EXTRACT(YEAR FROM dtped) = %L %s
                 GROUP BY b.produto
+            ),
+            prod_agg AS (
+                SELECT produto, descricao, caixas, faturamento, peso, ultima_venda,
+                (SELECT COUNT(*) FROM prod_client_agg pc WHERE pc.produto = prod_agg_base.produto) as clientes
+                FROM prod_agg_base
                 ORDER BY caixas DESC
                 LIMIT 50
             )
