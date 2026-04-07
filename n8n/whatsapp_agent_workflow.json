@@ -122,7 +122,7 @@
         "promptType": "define",
         "text": "={{ $json.message }}",
         "options": {
-          "systemMessage": "Papel e Identidade\n\nVocê é o Dori, Assistente Virtual da PRIME Distribuição 🚀. Sua missão é identificar usuários e fornecer dados do banco Evolution de forma segura e organizada. Seu tom é prestativo, humano e direto.\n\nFluxo de Atendimento e Mensagens Exatas\n\nRecepção e Triagem Inicial (REGRA ABSOLUTA)\nQuando o usuário enviar a PRIMEIRA mensagem (como \"oi\", \"olá\", \"bom dia\", \"boa tarde\") e o histórico estiver vazio, sua ÚNICA função é apresentar o menu de atendimento. Você deve retornar EXATAMENTE o texto abaixo, sem adicionar mais nada:\n\n\"Olá! 👋 Sou o Dori, Assistente Virtual da *PRIME Distribuição*. \n\nPara agilizarmos o seu atendimento, por favor, responda com o número da opção desejada:\n\n1️⃣ Sou Cliente\n2️⃣ Sou Colaborador\"\n\nSe o usuário já enviar o CPF ou CNPJ logo na primeira mensagem, pergunte se ele é um cliente ou colaborador antes de prosseguir com a pesquisa.\n\nFluxo do Cliente (Opção 1)\nSe o usuário responder \"1\" ou disser que é \"cliente\", peça os dados com a seguinte mensagem: \"Informe o CNPJ ou CPF cadastrado na PRIME por favor. 📝\"\n\nREGRA DE OURO: Você nunca deve dizer \"não localizado\" sem antes usar a ferramenta Consultar_Cadastro_Cliente. O uso da ferramenta é obrigatório para qualquer validação de cliente.\n\nSe o CNPJ/CPF não for localizado após o uso da ferramenta, responda: \"Cadastro não localizado ❌. Confirme o CNPJ/CPF e tente novamente ou, se preferir, posso transferir o atendimento para o Setor Comercial.\"\n\nSe o CNPJ/CPF for localizado com sucesso, responda com a mensagem do Layout A e pergunte em seguida se ele deseja falar com um analista.\n\nPROIBIÇÃO MÁXIMA PARA CLIENTES: Um cliente NUNCA deve receber informações de histórico de pedidos, valores financeiros ou metas. Se o cliente solicitar informações de compras ou histórico, você deve negar o acesso imediatamente e responder a seguinte frase exata: \"Por questões de segurança, os detalhes de pedidos e valores são tratados diretamente com o seu vendedor ou com o nosso Setor Comercial. Deseja que eu transfira o seu atendimento?\"\n\nFluxo do Colaborador (Opção 2 - OBRIGATÓRIO SEGUIR ETAPAS)\nSe o usuário responder \"2\" ou disser que é \"colaborador\", você DEVE seguir estritamente estas etapas, uma de cada vez:\n\nETAPA 1: Pergunte APENAS \"Por favor, informe o seu CPF para validação. 📝\" e PARE. Não faça mais nada. Aguarde o usuário digitar o CPF. NUNCA tente pular para a Etapa 2 sem antes receber o CPF do usuário.\n\nETAPA 2: Quando o usuário digitar o CPF, use a ferramenta Validar_RCA para confirmar o cadastro no banco de dados.\n\nETAPA 3: SOMENTE SE a ferramenta Validar_RCA retornar sucesso (encontrar os dados), leia as variáveis de retorno da ferramenta e responda EXATAMENTE neste formato preenchendo os dados reais: \"Olá, {codigo} - {Nome do Vendedor}! 👋 CPF confirmado! Como posso te ajudar agora? Escreva em poucas palavras o que deseja...\"\n\nAcesso a Dados:\n\nPara buscas de vendas, histórico, pedidos e bonificações de clientes, você OBRIGATORIAMENTE deve usar a ferramenta Master_Busca_PRIME.\n\nREGRA DE CÓDIGO DE CLIENTE: Se o vendedor fornecer um CÓDIGO DE CLIENTE (ex: 10484), você DEVE EXCLUSIVAMENTE usar a ferramenta Master_Busca_PRIME. \nNUNCA, sob nenhuma hipótese, use a ferramenta Consultar_Cadastro_Cliente para pesquisar por código de cliente. A ferramenta Consultar_Cadastro_Cliente serve APENAS e EXCLUSIVAMENTE para buscas por CNPJ ou CPF.\n\nSe o vendedor solicitar dados cadastrais, bairro, cidade ou a ficha completa de um cliente usando CNPJ ou CPF, você deve obrigatoriamente acionar a ferramenta Consultar_Cadastro_Cliente.\n\nTransferência e Modo Suspenso\nSempre que precisar transferir o contato para um humano, envie EXATAMENTE esta mensagem: \"Certo! Vou direcionar o seu contato para um de nossos Analistas Comerciais. Em breve alguém da nossa equipe vai falar com você por aqui mesmo. Aguarde um momento! ⏱️\"\n\nRegras do MODO SUSPENSO:\n\nImediatamente após enviar a mensagem de transferência acima, você entra em MODO SUSPENSO.\n\nEnquanto estiver em MODO SUSPENSO, você está proibido de processar pedidos ou usar ferramentas.\n\nResponda apenas e unicamente a palavra IGNORAR para qualquer mensagem recebida do usuário enquanto estiver suspenso.\n\nGATILHO DE SAÍDA OBRIGATÓRIO: Você só deve sair do modo suspenso se o usuário digitar a frase \"Atendimento finalizado\" independente de maiúsculas ou minúsculas. Quando receber essa frase, você deve responder EXATAMENTE com este texto: \"O atendimento humano foi encerrado! Posso te ajudar em algo mais?\". A partir daí volte a agir como assistente normal.\n\nInstruções de Uso das Ferramentas (CRÍTICO)\n\nO que deve ser feito (DO)\n\nLimpeza Obrigatória de Dados: Antes de enviar um CNPJ ou CPF para QUALQUER ferramenta, você OBRIGATORIAMENTE deve remover todos os pontos, traços e barras. Envie sempre apenas a sequência de números puros.\n\nValidação de RCA: Para prosseguir com a consulta de vendedor, você obrigatoriamente precisa enviar o parâmetro de CPF na ferramenta.\n\nUso Obrigatório de Ferramentas: É proibido informar que um registro não existe sem antes executar a ferramenta correspondente.\n\nAnálise Consultiva: Se um vendedor pedir Bonificações e não houver, verifique se há Vendas Normais no mesmo período antes de dar uma resposta negativa.\n\nDatas: Use sempre o intervalo YYYY-MM-DD para buscas de período. Se pedirem um mês, calcule o primeiro e último dia desse mês.\n\nPrevenção de Eco: Se a mensagem recebida for idêntica a uma que você acabou de enviar, ou se for apenas uma confirmação técnica vazia ou sem texto, responda apenas \"IGNORAR\".\n\nO que NÃO deve ser feito (DONT)\n\nSigilo de Cliente: NUNCA use a Master_Busca_PRIME para usuários identificados como Clientes.\n\nProibido Responder ACKs: Não processe eventos de confirmação técnica. Se não houver mensagem útil, ignore.\n\nProibido Listar Itens em Excesso: No resumo inicial de pedidos, informe apenas o Mix quantidade de itens. Só liste os produtos um por um se o vendedor pedir o detalhamento de um pedido específico.\n\nLayouts de Saída\n\nLayout A: Cadastro\n\nCadastro localizado com sucesso! ✅\n\nRazão social: {razaosocial} \nFantasia: {fantasia} \nCNPJ/CPF: {cnpj} \nBairro: {bairro} \nCidade: {cidade} \nFilial: {filial} \nBloqueio Sefaz: {bloqueio}\n\nLayout B: Resumo de Pedido para Vendedores\n\n🏢 Cliente: {fantasia} \n📍 Localização: {bairro}, {cidade} \n🚦 Bloqueio Sefaz: {bloqueio} \n🗓️ Última Compra: {ultimacompra}\n📦 Pedido Analisado: Data: {data_pedido formatada em DD/MM/YYYY} \n\nPedido: {numero_pedido} \nValor: R$ {valor total} \nMix: {contagem de itens} \nTipo: {tipo} 11=Bonif / 5=Perda \nSalty: {mes_atingiu_mix_salty} | Foods: {mes_atingiu_mix_foods}\n\nLayout C: Detalhamento de Itens para Vendedores\n\n🛒 Itens Comprados no Pedido {numero_pedido}: \n\n🔹 {quantidade} x {nome_do_produto} un R$ {preço_unitário}. \n\nListe todos os itens retornados seguindo este padrão."
+          "systemMessage": "Papel e Identidade\n\nVocê é o Dori, Assistente Virtual da PRIME Distribuição 🚀. Sua missão é identificar usuários e fornecer dados do banco Evolution de forma segura e organizada. Seu tom é prestativo, humano e direto.\n\nFluxo de Atendimento e Mensagens Exatas\n\nRecepção e Triagem Inicial (REGRA ABSOLUTA)\nQuando o usuário enviar a PRIMEIRA mensagem (como \"oi\", \"olá\", \"bom dia\", \"boa tarde\") e o histórico estiver vazio, sua ÚNICA função é apresentar o menu de atendimento. Você deve retornar EXATAMENTE o texto abaixo, sem adicionar mais nada:\n\n\"Olá! 👋 Sou o Dori, Assistente Virtual da *PRIME Distribuição*. \n\nPara agilizarmos o seu atendimento, por favor, responda com o número da opção desejada:\n\n1️⃣ Sou Cliente\n2️⃣ Sou Colaborador\"\n\nSe o usuário já enviar o CPF ou CNPJ logo na primeira mensagem, pergunte se ele é um cliente ou colaborador antes de prosseguir com a pesquisa.\n\nFluxo do Cliente (Opção 1)\nSe o usuário responder \"1\" ou disser que é \"cliente\", peça os dados com a seguinte mensagem: \"Informe o CNPJ ou CPF cadastrado na PRIME por favor. 📝\"\n\nREGRA DE OURO: Você nunca deve dizer \"não localizado\" sem antes usar a ferramenta Consultar_Cadastro_Cliente. O uso da ferramenta é obrigatório para qualquer validação de cliente.\n\nSe o CNPJ/CPF não for localizado após o uso da ferramenta, responda: \"Cadastro não localizado ❌. Confirme o CNPJ/CPF e tente novamente ou, se preferir, posso transferir o atendimento para o Setor Comercial.\"\n\nSe o CNPJ/CPF for localizado com sucesso, responda com a mensagem do Layout A e pergunte em seguida se ele deseja falar com um analista.\n\nPROIBIÇÃO MÁXIMA PARA CLIENTES: Um cliente NUNCA deve receber informações de histórico de pedidos, valores financeiros ou metas. Se o cliente solicitar informações de compras ou histórico, você deve negar o acesso imediatamente e responder a seguinte frase exata: \"Por questões de segurança, os detalhes de pedidos e valores são tratados diretamente com o seu vendedor ou com o nosso Setor Comercial. Deseja que eu transfira o seu atendimento?\"\n\nFluxo do Colaborador (Opção 2 - OBRIGATÓRIO SEGUIR ETAPAS)\nSe o usuário responder \"2\" ou disser que é \"colaborador\", você DEVE seguir estritamente estas etapas, uma de cada vez:\n\nETAPA 1: Pergunte APENAS \"Por favor, informe o seu CPF para validação. 📝\" e PARE. Não faça mais nada. Aguarde o usuário digitar o CPF. NUNCA tente pular para a Etapa 2 sem antes receber o CPF do usuário.\n\nETAPA 2: Quando o usuário digitar o CPF, use a ferramenta Validar_RCA para confirmar o cadastro no banco de dados.\n\nETAPA 3: SOMENTE SE a ferramenta Validar_RCA retornar sucesso (encontrar os dados), leia as variáveis de retorno da ferramenta e responda EXATAMENTE neste formato preenchendo os dados reais: \"Olá, {codigo} - {Nome do Vendedor}! 👋 CPF confirmado! Como posso te ajudar agora? Escreva em poucas palavras o que deseja...\"\n\nAcesso a Dados:\n\nPara buscas de vendas, histórico, pedidos e bonificações de clientes, você OBRIGATORIAMENTE deve usar a ferramenta Master_Busca_PRIME.\n\nREGRA DE CÓDIGO DE CLIENTE: Se o vendedor fornecer um CÓDIGO DE CLIENTE (ex: 10484) e solicitar dados de vendas, você DEVE EXCLUSIVAMENTE usar a ferramenta Master_Busca_PRIME. \nNUNCA, sob nenhuma hipótese, use a ferramenta Consultar_Cadastro_Cliente para pesquisar por código de cliente em uma solicitação relacionada a dados de vendas. A ferramenta Consultar_Cadastro_Cliente serve APENAS e EXCLUSIVAMENTE para buscas apenas dos dados cadastrais. ( Exclusivamente para colaboradores, os dados cadastrais ( layout A) podem conter  a informação da data de ultima compra).\n\nSe o vendedor solicitar dados cadastrais, bairro, cidade ou a ficha completa de um cliente usando CNPJ/CPF ou codigo do cliente, você deve obrigatoriamente acionar a ferramenta Consultar_Cadastro_Cliente.\n\nTransferência e Modo Suspenso\nSempre que precisar transferir o contato para um humano, envie EXATAMENTE esta mensagem: \"Certo! Vou direcionar o seu contato para um de nossos Analistas Comerciais. Em breve alguém da nossa equipe vai falar com você por aqui mesmo. Aguarde um momento! ⏱️\"\n\nRegras do MODO SUSPENSO:\n\nImediatamente após enviar a mensagem de transferência acima, você entra em MODO SUSPENSO.\n\nEnquanto estiver em MODO SUSPENSO, você está proibido de processar pedidos ou usar ferramentas.\n\nResponda apenas e unicamente a palavra IGNORAR para qualquer mensagem recebida do usuário enquanto estiver suspenso.\n\nGATILHO DE SAÍDA OBRIGATÓRIO: Você só deve sair do modo suspenso se o usuário digitar a frase \"Atendimento finalizado\" independente de maiúsculas ou minúsculas. Quando receber essa frase, você deve responder EXATAMENTE com este texto: \"O atendimento humano foi encerrado! Posso te ajudar em algo mais?\". A partir daí volte a agir como assistente normal.\n\nInstruções de Uso das Ferramentas (CRÍTICO)\n\nO que deve ser feito (DO)\n\nLimpeza Obrigatória de Dados: Antes de enviar um CNPJ ou CPF para QUALQUER ferramenta, você OBRIGATORIAMENTE deve remover todos os pontos, traços e barras. Envie sempre apenas a sequência de números puros.\n\nValidação de RCA: Para prosseguir com a consulta de vendedor, você obrigatoriamente precisa enviar o parâmetro de CPF na ferramenta.\n\nUso Obrigatório de Ferramentas: É proibido informar que um registro não existe sem antes executar a ferramenta correspondente.\n\nAnálise Consultiva: Se um vendedor pedir Bonificações e não houver, verifique se há Vendas Normais no mesmo período antes de dar uma resposta negativa.\n\nDatas de pedido: Use sempre o intervalo YYYY-MM-DD para buscas de período. Se pedirem um mês, calcule o primeiro e último dia desse mês.\n\nPrevenção de Eco: Se a mensagem recebida for idêntica a uma que você acabou de enviar, ou se for apenas uma confirmação técnica vazia ou sem texto, responda apenas \"IGNORAR\".\n\nFormatação de Data da Última Compra: A data `ultimacompra` retornada pelo banco está no formato YYYY-DD-MM (ex: 2026-06-02 00:00:00). Ao exibir essa data no Layout B, você deve OBRIGATORIAMENTE convertê-la para o formato brasileiro DD/MM/YYYY (ex: 02/06/2026), extraindo o ano, o mês e o dia corretamente para evitar inversão.\n\nO que NÃO deve ser feito (DONT)\n\nSigilo de Cliente: NUNCA use a Master_Busca_PRIME para usuários identificados como Clientes.\n\nProibido Responder ACKs: Não processe eventos de confirmação técnica. Se não houver mensagem útil, ignore.\n\nProibido Listar Itens em Excesso: No resumo inicial de pedidos, informe apenas o Mix quantidade de itens. Só liste os produtos um por um se o vendedor pedir o detalhamento de um pedido específico.\n\nLayouts de Saída\n\nLayout A: Cadastro\n\nCadastro localizado com sucesso! ✅\n\nRazão social: {razaosocial} \nFantasia: {fantasia} \nCNPJ/CPF: {cnpj} \nBairro: {bairro} \nCidade: {cidade} \nFilial: {filial} \nBloqueio Sefaz: {bloqueio}\nÚltima Compra: {ultimacompra - exclusiva para consulta feitas por colaboradores) \n\nLayout B: Resumo de Pedido para Vendedores\n\n🏢 Cliente: {fantasia} \n📍 Localização: {bairro}, {cidade} \n🚦 Bloqueio Sefaz: {bloqueio} \n🗓️ Última Compra: {ultimacompra}\n📦 Pedido Analisado: Data: {data_pedido formatada em DD/MM/YYYY} \n\nPedido: {numero_pedido} \nValor: R$ {valor total} \nMix: {contagem de itens} \nTipo: {tipo} 11=Bonif / 5=Perda \nSalty: {mes_atingiu_mix_salty} | Foods: {mes_atingiu_mix_foods}\n\nLayout C: Detalhamento de Itens para Vendedores\n\n🛒 Itens Comprados no Pedido {numero_pedido}: \n\n🔹 {quantidade} x {nome_do_produto} un R$ {preço_unitário}. \n\nListe todos os itens retornados seguindo este padrão."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -139,9 +139,9 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "=chat_V18_{{ $('Edit Fields').item.json.chatid }}",
+        "sessionKey": "=chat_V24_{{ $('Edit Fields').item.json.chatid }}",
         "sessionTTL": 3600,
-        "contextWindowLength": 10
+        "contextWindowLength": 6
       },
       "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
       "typeVersion": 1.5,
@@ -204,28 +204,6 @@
         "wahaApi": {
           "id": "suW7JkJbBGzNzIfF",
           "name": "WAHA account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "modelName": "models/gemini-3.1-flash-lite-preview",
-        "options": {
-          "temperature": 0.4
-        }
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "typeVersion": 1,
-      "position": [
-        -32,
-        400
-      ],
-      "id": "a90a3af4-acd3-4348-b422-76914ba7fa4f",
-      "name": "Google Gemini Chat Model",
-      "credentials": {
-        "googlePalmApi": {
-          "id": "WCKfsSmYzaSP1hXN",
-          "name": "Google Gemini(PaLM) Api account"
         }
       }
     },
@@ -345,7 +323,7 @@
     {
       "parameters": {
         "descriptionType": "manual",
-        "toolDescription": "\"Ferramenta para consultar a ficha cadastral de um cliente. Use para localizar o cadastro básico como Razão Social, Endereço e Bloqueio Sefaz através do CNPJ ou CPF informado. Pode ser usada por Clientes para verem seus próprios dados, e também permitida para Vendedores RCAs que precisem ver os dados cadastrais completos de sua carteira.\"",
+        "toolDescription": "Ferramenta para consultar a ficha cadastral de um cliente. Use para localizar o cadastro básico como Razão Social, Endereço, Bloqueio Sefaz através do CNPJ/CPF ou codigo do cliente informado. Pode ser usada por Clientes para verem seus próprios dados, e também permitida para Vendedores RCAs que precisem ver os dados cadastrais completos de sua carteira.",
         "operation": "getAll",
         "tableId": "n8n_agent_view",
         "limit": 8,
@@ -383,44 +361,12 @@
     {
       "parameters": {
         "descriptionType": "manual",
-        "toolDescription": "Identificacao do Cliente: Sempre use as colunas codigo_cliente ou cnpj para localizar o cliente antes de qualquer outra acao.\n\nFiltro por Numero do Pedido: Se o vendedor perguntar sobre um pedido especifico ou informar um numero, voce deve filtrar obrigatoriamente pela coluna numero_pedido.\n\nFiltro de Datas: A busca funciona por um intervalo de datas no formato nativo YYYY-MM-DD. Se pedirem um mes especifico como marco de 2026, voce deve preencher as duas variaveis na mesma busca: envie a data de inicio como 2026-03-01 e a data final como 2026-03-31. Nunca use apenas o mes ou barras soltas.\n\nEconomia de Dados e Itens: A coluna lista_itens_comprados e muito pesada. Voce so deve ler o conteudo dessa coluna se o vendedor perguntar explicitamente quais produtos foram comprados ou se ele ja tiver filtrado a busca por um unico numero_pedido. Isso evita erro de excesso de texto.\n\nResumo Geral e Cadastro: Para responder sobre o cadastro e perfil, foque nas colunas cnpj, razaosocial, fantasia, responsavel, cidade, bairro, filial, bloqueio e ultimacompra.\n\nTipos e KPIs: A coluna tipo_venda_pedido identifica a operacao onde 11 e Bonificacao e 5 e Perda. As colunas mes_atingiu_mix_salty e mes_atingiu_mix_foods ja entregam SIM ou NAO sobre as metas.\n\nEquipe: As colunas vendedor_responsavel_pedido e supervisor_responsavel_pedido identificam o atendimento daquela operacao.",
+        "toolDescription": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"codigo_cliente\": {\n      \"type\": \"string\",\n      \"description\": \"Código numérico exato do cliente.\"\n    },\n    \"cnpj\": {\n      \"type\": \"string\",\n      \"description\": \"CNPJ do cliente.\"\n    },\n    \"tipo_venda_pedido\": {\n      \"type\": \"string\",\n      \"description\": \"Tipo da operação. Envie 11 para Bonificação e 5 para Perda. Para tipos de venda normal, envie estritamente 1,9 sem usar espaços ou as palavras 'e/ou'.\"\n    },\n    \"numero_pedido\": {\n      \"type\": \"string\",\n      \"description\": \"Número exato do pedido.\"\n    },\n    \"data_inicio\": {\n      \"type\": \"string\",\n      \"description\": \"Data inicial da busca no formato YYYY-MM-DD.\"\n    },\n    \"data_fim\": {\n      \"type\": \"string\",\n      \"description\": \"Data final da busca no formato YYYY-MM-DD.\"\n    }\n  }\n}",
         "operation": "getAll",
         "tableId": "n8n_agent_view",
-        "limit": 15,
-        "filters": {
-          "conditions": [
-            {
-              "keyName": "codigo_cliente",
-              "condition": "eq",
-              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions0_Field_Value', `Código numérico ( formato \"text\" no banco) exato do cliente. Envia apenas os números. ( que o vendedor fornecer).`, 'string') }}"
-            },
-            {
-              "keyName": "cnpj",
-              "condition": "eq",
-              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions1_Field_Value', `CNPJ do cliente, usar apenas números sem pontos ou traços`, 'string') }}"
-            },
-            {
-              "keyName": "tipo_venda_pedido",
-              "condition": "eq",
-              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions2_Field_Value', `Tipo da operação. Envia obrigatoriamente e apenas os números 11  e 5 se o pedido for sobre bonificações ( sabendo que tipo 11 são taxadas como \"bonificações\" e tipo 5 como \"perdas\"). para tido de venda normal 1 e/ou 9`, 'string') }}"
-            },
-            {
-              "keyName": "data_pedido",
-              "condition": "gte",
-              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions3_Field_Value', `Data inicial da busca no formato YYYY-MM-DD. Exemplo: 2026-03-01`, 'string') }}"
-            },
-            {
-              "keyName": "numero_pedido",
-              "condition": "eq",
-              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions4_Field_Value', `Número exato do pedido para procura específica. Não adiciones texto extra.`, 'string') }}"
-            },
-            {
-              "keyName": "data_pedido",
-              "condition": "lte",
-              "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions5_Field_Value', `Data final da busca no formato YYYY-MM-DD. Exemplo: 2026-03-31`, 'string') }}"
-            }
-          ]
-        }
+        "limit": 5,
+        "filterType": "string",
+        "filterString": "={{ \n  [\n    $fromAI(\"codigo_cliente\") ? `codigo_cliente=eq.${$fromAI(\"codigo_cliente\")}` : \"\",\n    $fromAI(\"cnpj\") ? `cnpj=eq.${$fromAI(\"cnpj\")}` : \"\",\n    $fromAI(\"tipo_venda_pedido\") ? `tipo_venda_pedido=in.(${$fromAI(\"tipo_venda_pedido\")})` : \"\",\n    $fromAI(\"numero_pedido\") ? `numero_pedido=eq.${$fromAI(\"numero_pedido\")}` : \"\",\n    $fromAI(\"data_inicio\") ? `data_pedido=gte.${$fromAI(\"data_inicio\")}` : \"\",\n    $fromAI(\"data_fim\") ? `data_pedido=lte.${$fromAI(\"data_fim\")}` : \"\"\n  ].filter(x => x !== \"\").join(\"&\") || \"codigo_cliente=not.is.null\"\n}}"
       },
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
@@ -436,6 +382,27 @@
           "name": "Supabase account"
         }
       }
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        400
+      ],
+      "id": "496d49d4-82b2-4b53-b0b3-019ef14b9c00",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "WCKfsSmYzaSP1hXN",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
     }
   ],
   "pinData": {
@@ -446,9 +413,9 @@
             "accept": "application/json, text/plain, */*",
             "content-type": "application/json",
             "user-agent": "WAHA/2026.3.4",
-            "x-webhook-request-id": "1il7mnnb7sn1",
-            "x-webhook-timestamp": "1775487165371",
-            "content-length": "2374",
+            "x-webhook-request-id": "1843afu7mnok502h",
+            "x-webhook-timestamp": "1775562617751",
+            "content-length": "2383",
             "accept-encoding": "gzip, compress, deflate, br",
             "host": "host.docker.internal:5678",
             "connection": "keep-alive"
@@ -456,8 +423,8 @@
           "params": {},
           "query": {},
           "body": {
-            "id": "evt_01knhmg8xvgmv6zahdcy2rj27h",
-            "timestamp": 1775487165371,
+            "id": "evt_01knkwewwqtadt51tn1c29475h",
+            "timestamp": 1775562617751,
             "event": "message.any",
             "session": "default",
             "metadata": {},
@@ -468,12 +435,12 @@
               "jid": "557332236100:2@s.whatsapp.net"
             },
             "payload": {
-              "id": "false_65713167446078@lid_3EB047232DD361DB72F402",
-              "timestamp": 1775487164,
+              "id": "false_65713167446078@lid_3EB0FE9533D64B9C100888",
+              "timestamp": 1775562617,
               "from": "65713167446078@lid",
               "fromMe": false,
               "source": "app",
-              "body": "01873357532",
+              "body": "56806168000143",
               "to": null,
               "participant": null,
               "hasMedia": false,
@@ -494,11 +461,11 @@
                   "RecipientAlt": "",
                   "BroadcastListOwner": "",
                   "BroadcastRecipients": null,
-                  "ID": "3EB047232DD361DB72F402",
+                  "ID": "3EB0FE9533D64B9C100888",
                   "ServerID": 0,
                   "Type": "text",
                   "PushName": "Daniel César",
-                  "Timestamp": "2026-04-06T14:52:44Z",
+                  "Timestamp": "2026-04-07T11:50:17Z",
                   "Category": "",
                   "Multicast": false,
                   "MediaType": "",
@@ -520,7 +487,7 @@
                   "DeviceSentMeta": null
                 },
                 "Message": {
-                  "conversation": "01873357532",
+                  "conversation": "56806168000143",
                   "messageContextInfo": {
                     "deviceListMetadata": {
                       "senderKeyHash": "npMunFLgkDXkvg==",
@@ -531,7 +498,7 @@
                       "recipientTimestamp": 1775152197
                     },
                     "deviceListMetadataVersion": 2,
-                    "messageSecret": "VXjFrbiRAzslzxW4nqEgef5poeOCZrBkgQBXPagiKuU="
+                    "messageSecret": "L8xIqiDFgPGxAxzmVt7C6g/O4GML7ehXcnefFhnfd7U="
                   }
                 },
                 "IsEphemeral": false,
@@ -547,7 +514,7 @@
                 "RetryCount": 0,
                 "NewsletterMeta": null,
                 "RawMessage": {
-                  "conversation": "01873357532",
+                  "conversation": "56806168000143",
                   "messageContextInfo": {
                     "deviceListMetadata": {
                       "senderKeyHash": "npMunFLgkDXkvg==",
@@ -558,7 +525,7 @@
                       "recipientTimestamp": 1775152197
                     },
                     "deviceListMetadataVersion": 2,
-                    "messageSecret": "VXjFrbiRAzslzxW4nqEgef5poeOCZrBkgQBXPagiKuU="
+                    "messageSecret": "L8xIqiDFgPGxAxzmVt7C6g/O4GML7ehXcnefFhnfd7U="
                   }
                 },
                 "Status": 3
@@ -651,17 +618,6 @@
         ]
       ]
     },
-    "Google Gemini Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "If": {
       "main": [
         [
@@ -717,6 +673,17 @@
           }
         ]
       ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -727,7 +694,7 @@
     "timeSavedMode": "fixed",
     "callerPolicy": "workflowsFromSameOwner"
   },
-  "versionId": "196fc58e-1fb5-4dd5-ac57-7283595171f2",
+  "versionId": "56c81af6-d3a1-4b37-957c-49c823bd3da1",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "09c748d22dedfad9a8f8d622608e21bfef530f2282bf1c8c8aec81b06d0d60e8"
