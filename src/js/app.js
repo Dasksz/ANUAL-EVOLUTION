@@ -7090,11 +7090,13 @@ const setupInnovationsFilters = async () => {
     const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
 
     if (anoSelect && filterData.anos) {
-        let optionsHTML = '<option value="todos">Todos</option>';
+        anoSelect.innerHTML = '<option value="todos">Todos</option>';
         filterData.anos.forEach(ano => {
-            optionsHTML += `<option value="${ano}">${ano}</option>`;
+            const opt = document.createElement('option');
+            opt.value = ano;
+            opt.textContent = ano;
+            anoSelect.appendChild(opt);
         });
-        anoSelect.innerHTML = optionsHTML;
 
         // Initial filter values
         let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
@@ -7955,11 +7957,13 @@ const setupEstrelasFilters = async () => {
     const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
 
     if (anoSelect && filterData.anos) {
-        let optionsHTML = '<option value="todos">Todos</option>';
+        anoSelect.innerHTML = '<option value="todos">Todos</option>';
         filterData.anos.forEach(ano => {
-            optionsHTML += `<option value="${ano}">${ano}</option>`;
+            const opt = document.createElement('option');
+            opt.value = ano;
+            opt.textContent = ano;
+            anoSelect.appendChild(opt);
         });
-        anoSelect.innerHTML = optionsHTML;
 
         let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
         anoSelect.value = hasYear ? currentYear : 'todos';
