@@ -38,3 +38,7 @@
 ## 2026-04-05 - Focus indicators and ARIA roles for Dropdowns
 **Learning:** Native `focus-visible` states are frequently overlooked on custom dropdown menus and standalone interactive elements (like modal close buttons). For screen-reader users, failing to use `role="menu"` on the dropdown container and `role="menuitem"` on its children, along with `aria-haspopup` and `aria-expanded` on the trigger, strips away the contextual relationship of the menu structure.
 **Action:** Add explicit `focus:outline-none focus-visible:ring-2` to custom interactive components to guarantee visibility during keyboard navigation. Also always pair dropdown triggers and menus with the proper W3C WAI-ARIA role associations (`menu`, `menuitem`, `aria-haspopup`).
+
+## 2026-04-06 - Tooltips and cursor states on disabled pagination
+**Learning:** Pagination buttons created dynamically (like `prevBtn` and `nextBtn` in JavaScript) often lack clear indicators for screen readers and cursor styles for users when they are disabled. While they may have `disabled:opacity-50`, missing `disabled:cursor-not-allowed` and appropriate `title` attributes leaves users guessing why the button is inactive.
+**Action:** When dynamically creating disabled buttons, especially for pagination, always include `disabled:cursor-not-allowed` in the class list and assign a descriptive `title` attribute (e.g., "Primeira página" or "Última página") to explain the inactive state.
