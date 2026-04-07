@@ -26,3 +26,10 @@
 **Vulnerability:** Critical security vulnerability where Supabase URL and Service/Anon Key were hardcoded in plain text in `src/js/supabase.js`. This exposed the project's backend infrastructure to anyone with access to the source code or browser developer tools.
 **Learning:** Hardcoding API keys is a major security risk. Even in client-side applications where keys are eventually public, they should not be committed to version control to allow for easy rotation and environment-specific configuration.
 **Prevention:** Move sensitive configuration to externalized files that are excluded from version control via `.gitignore`. Provide a template file (e.g., `config.js.example`) to guide developers on the required setup without exposing actual secrets.
+## 2026-04-07 - [Fix DOM XSS in Dropdowns]
+**Vulnerability:** Medium severity DOM-based XSS vulnerability where template literals (`optionsHTML += ...`) were used to construct filter dropdowns and assigned directly to `.innerHTML`. Even though the data (years) comes from the database, trusting data without safe DOM methods exposes the app to injection if the database is manipulated.
+**Prevention:** Always use `document.createElement()`, `.value`, `.textContent`, and `.appendChild()` for dynamically generating UI elements based on data inputs, avoiding `innerHTML` concatenation entirely.
+## 2026-04-07 - [Fix DOM XSS in Dropdowns]
+**Vulnerability:** Medium severity DOM-based XSS vulnerability where template literals were used to construct filter dropdown options and assigned directly to `.innerHTML`. Even though the data (years) comes from the database, trusting data without safe DOM methods exposes the app to injection if the database is manipulated.
+**Learning:** Using `.innerHTML` to dynamically create element structures like `<option>` lists with string concatenation is an anti-pattern. Relying on native DOM creation is much safer.
+**Prevention:** Always use `document.createElement()`, `.value`, `.textContent`, and `.appendChild()` for dynamically generating UI elements based on data inputs, avoiding `innerHTML` concatenation entirely.
