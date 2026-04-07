@@ -3657,23 +3657,23 @@ BEGIN
 
     EXECUTE format('
         WITH target_sales AS (
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
             FROM public.data_detailed s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
             UNION ALL
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
             FROM public.data_history s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
         ),
         history_sales AS (
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
             FROM public.data_detailed s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
             UNION ALL
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
             FROM public.data_history s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
@@ -3684,7 +3684,7 @@ BEGIN
             FROM target_sales GROUP BY 1
         ),
         curr_prod_agg AS (
-            SELECT s.codcli, s.produto, MAX(dp.mix_marca) as mix_marca, MAX(dp.mix_categoria) as mix_cat, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val
+            SELECT s.codcli, s.produto, MAX(dp.mix_marca) as mix_marca, MAX(dp.mix_categoria) as mix_cat, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val, MAX(CASE WHEN s.vlvenda >= 1 OR s.tipovenda IN (''5'', ''11'') THEN 1 ELSE 0 END) as is_active_flag
             FROM target_sales s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             GROUP BY 1, 2
@@ -3693,6 +3693,7 @@ BEGIN
             SELECT
                 codcli,
                 SUM(prod_val) as total_val,
+                MAX(is_active_flag) as is_active_client,
                 COUNT(CASE WHEN codfor IN (''707'', ''708'', ''752'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
                 MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
                 MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
@@ -3710,7 +3711,7 @@ BEGIN
             SELECT
                 SUM(ts.vlvenda) as f,
                 SUM(ts.totpesoliq) as p,
-                (SELECT COUNT(*) FROM curr_mix_base WHERE total_val >= 1) as c,
+                (SELECT COUNT(*) FROM curr_mix_base WHERE is_active_client = 1) as c,
                 COALESCE((SELECT SUM(pepsico_skus)::numeric / NULLIF(COUNT(CASE WHEN pepsico_skus > 0 THEN 1 END), 0) FROM curr_mix_base), 0) as mix_pepsico,
                 COALESCE((SELECT COUNT(1) FROM curr_mix_base WHERE has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1), 0) as pos_salty,
                 COALESCE((SELECT COUNT(1) FROM curr_mix_base WHERE has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1), 0) as pos_foods
@@ -3725,7 +3726,7 @@ BEGIN
             FROM history_sales GROUP BY 1
         ),
         hist_prod_agg AS (
-            SELECT date_trunc(''month'', dtped) as m_date, s.codcli, s.produto, MAX(dp.mix_marca) as mix_marca, MAX(dp.mix_categoria) as mix_cat, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val
+            SELECT date_trunc(''month'', dtped) as m_date, s.codcli, s.produto, MAX(dp.mix_marca) as mix_marca, MAX(dp.mix_categoria) as mix_cat, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val, MAX(CASE WHEN s.vlvenda >= 1 OR s.tipovenda IN (''5'', ''11'') THEN 1 ELSE 0 END) as is_active_flag
             FROM history_sales s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             GROUP BY 1, 2, 3
@@ -3735,6 +3736,7 @@ BEGIN
                 m_date,
                 codcli,
                 SUM(prod_val) as total_val,
+                MAX(is_active_flag) as is_active_client,
                 COUNT(CASE WHEN codfor IN (''707'', ''708'', ''752'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
                 MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
                 MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
@@ -3749,6 +3751,16 @@ BEGIN
             GROUP BY 1, 2
         ),
         hist_monthly_sums AS (
+            SELECT
+                m_date,
+                SUM(total_val) as monthly_f,
+                COUNT(CASE WHEN is_active_client = 1 THEN 1 END) as monthly_active_clients,
+                COALESCE(SUM(pepsico_skus)::numeric / NULLIF(COUNT(CASE WHEN pepsico_skus > 0 THEN 1 END), 0), 0) as monthly_mix_pepsico,
+                COUNT(CASE WHEN has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1 THEN 1 END) as monthly_pos_salty,
+                COUNT(CASE WHEN has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1 THEN 1 END) as monthly_pos_foods
+            FROM hist_monthly_mix
+            GROUP BY 1
+        ),
             SELECT
                 m_date,
                 SUM(total_val) as monthly_f,

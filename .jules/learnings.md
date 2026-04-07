@@ -1,1 +1,2 @@
 2024-05-18: Identified that frontend month dropdowns using 0-indexed values require explicit +1 conversion before passing to PostgreSQL, which expects 1-indexed months.
+- 2024-03-30: In PostgreSQL CTEs used for Supabase RPCs, always ensure to check conditions carefully when aggregating logic that may include bonifications `vlvenda >= 1 OR tipovenda IN ('5', '11')` so that active KPI figures correlate accurately across views (Main Dashboard vs Comparison).
