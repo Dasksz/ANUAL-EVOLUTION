@@ -2805,7 +2805,7 @@ BEGIN
         v_where_summary := v_where_summary || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
         v_tipovenda_client_cond := format('tipovenda = ANY(%L)', p_tipovenda);
     ELSE
-        v_tipovenda_client_cond := 'tipovenda IN (''1'', ''9'')';
+        v_tipovenda_client_cond := 'tipovenda NOT IN (''5'', ''11'')';
     END IF;
     
     -- Category Filter
