@@ -244,7 +244,14 @@ DECLARE
 
     v_sql text;
     v_result json;
+    v_tipovenda_cond text;
 BEGIN
+
+    IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
+        v_tipovenda_cond := ' = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
+    ELSE
+        v_tipovenda_cond := ' IN (''1'', ''9'') ';
+    END IF;
     SET LOCAL work_mem = '64MB';
     SET LOCAL statement_timeout = '600s';
 
@@ -434,7 +441,7 @@ BEGIN
             s.codusur as vendedor_cod,
             SUM(s.vlvenda) as faturamento_prev
         FROM public.data_summary_frequency s
-        ' || v_where_base_prev || ' AND s.tipovenda NOT IN (''5'', ''11'')
+        ' || v_where_base_prev || ' AND s.tipovenda ' || v_tipovenda_cond || '
         GROUP BY ROLLUP(s.filial, s.cidade, s.codusur)
     ),
     client_base AS (
@@ -456,7 +463,7 @@ BEGIN
         FROM current_data c
         CROSS JOIN LATERAL jsonb_array_elements_text(c.produtos) AS p(produto)
         INNER JOIN public.dim_produtos dp ON dp.codigo = p.produto
-        WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
+        WHERE c.tipovenda ' || v_tipovenda_cond || ' AND c.vlvenda >= 1
         ' || v_where_unnested || '
         GROUP BY c.filial, c.cidade, c.codusur, c.codcli
     ),
@@ -464,8 +471,8 @@ BEGIN
     client_monthly_sales AS (
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
-            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END)::numeric as month_pedidos,
-            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as sum_vlvenda
+            COUNT(DISTINCT CASE WHEN c.tipovenda ' || v_tipovenda_cond || ' THEN c.pedido END)::numeric as month_pedidos,
+            SUM(CASE WHEN c.tipovenda ' || v_tipovenda_cond || ' THEN c.vlvenda ELSE 0 END) as sum_vlvenda
         FROM current_data c
         GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
     ),
@@ -503,8 +510,8 @@ BEGIN
             COALESCE(c.cidade, ''TOTAL_CIDADE'') as cidade,
             c.codusur as vendedor_cod,
             SUM(c.peso) as tons,
-            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
-            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END) as total_pedidos,
+            SUM(CASE WHEN c.tipovenda ' || v_tipovenda_cond || ' THEN c.vlvenda ELSE 0 END) as faturamento,
+            COUNT(DISTINCT CASE WHEN c.tipovenda ' || v_tipovenda_cond || ' THEN c.pedido END) as total_pedidos,
             COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
         GROUP BY ROLLUP(c.filial, c.cidade, c.codusur)
@@ -592,8 +599,8 @@ BEGIN
     ),
     chart_monthly_sales AS (
         SELECT s.ano, s.mes, s.codcli,
-               COUNT(DISTINCT CASE WHEN s.tipovenda NOT IN (''5'', ''11'') THEN s.pedido END) as month_pedidos,
-               SUM(CASE WHEN s.tipovenda NOT IN (''5'', ''11'') THEN s.vlvenda ELSE 0 END) as sum_vlvenda
+               COUNT(DISTINCT CASE WHEN s.tipovenda ' || v_tipovenda_cond || ' THEN s.pedido END) as month_pedidos,
+               SUM(CASE WHEN s.tipovenda ' || v_tipovenda_cond || ' THEN s.vlvenda ELSE 0 END) as sum_vlvenda
         FROM public.data_summary_frequency s
         ' || v_where_chart || '
         GROUP BY s.ano, s.mes, s.codcli
@@ -2493,7 +2500,7 @@ BEGIN
                 ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND tipovenda = ANY($1) )
                 OR
                 ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND
-                  (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1) ELSE tipovenda NOT IN (''5'', ''11'') END)
+                  (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1) ELSE tipovenda IN (''1'', ''9'') END)
                 )
             )
             GROUP BY ano, mes, codcli
@@ -2576,7 +2583,7 @@ BEGIN
                 ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND tipovenda = ANY($1) )
                 OR
                 ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND
-                  (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1) ELSE tipovenda NOT IN (''5'', ''11'') END)
+                  (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1) ELSE tipovenda IN (''1'', ''9'') END)
                 )
             )
             GROUP BY codcli
@@ -2880,42 +2887,77 @@ BEGIN
         -- FAST PATH (Uses data_summary for totals)
         EXECUTE format('
             WITH 
-            chart_agg AS (
+            chart_clients AS (
+                SELECT mes - 1 as m_idx, ano as yr, codcli
+                FROM public.data_summary
+                %s AND ano IN (%L, %L) AND %s
+                GROUP BY 1, 2, codcli
+                HAVING SUM(vlvenda) >= 1
+            ),
+            chart_agg_base AS (
                 SELECT 
                     mes - 1 as m_idx,
                     ano as yr,
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
-                    SUM(COALESCE(caixas, 0)) as caixas,
-                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) as clientes
+                    SUM(COALESCE(caixas, 0)) as caixas
                 FROM public.data_summary
                 %s AND ano IN (%L, %L)
                 GROUP BY 1, 2
+            ),
+            chart_agg AS (
+                SELECT m_idx, yr, fat, peso, caixas,
+                (SELECT COUNT(*) FROM chart_clients c WHERE c.m_idx = chart_agg_base.m_idx AND c.yr = chart_agg_base.yr) as clientes
+                FROM chart_agg_base
+            ),
+            kpi_curr_clients AS (
+                SELECT codcli
+                FROM public.data_summary
+                %s AND ano = %L %s AND %s
+                GROUP BY codcli
+                HAVING SUM(vlvenda) >= 1
             ),
             kpi_curr AS (
                 SELECT 
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
-                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) as clientes
+                    (SELECT COUNT(*) FROM kpi_curr_clients) as clientes
                 FROM public.data_summary
                 %s AND ano = %L %s
+            ),
+            kpi_prev_clients AS (
+                SELECT codcli
+                FROM public.data_summary
+                %s AND ano = %L %s AND %s
+                GROUP BY codcli
+                HAVING SUM(vlvenda) >= 1
             ),
             kpi_prev AS (
                 SELECT 
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
-                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) as clientes
+                    (SELECT COUNT(*) FROM kpi_prev_clients) as clientes
                 FROM public.data_summary
                 %s AND ano = %L %s
+            ),
+            kpi_tri_clients AS (
+                SELECT ano, mes, codcli
+                FROM public.data_summary
+                %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L AND %s
+                GROUP BY ano, mes, codcli
+                HAVING SUM(vlvenda) >= 1
+            ),
+            kpi_tri_clients_agg AS (
+                SELECT ano, mes, COUNT(*) as clientes FROM kpi_tri_clients GROUP BY ano, mes
             ),
             kpi_tri AS (
                 SELECT 
                     SUM(vlvenda) / 3 as fat,
                     SUM(peso) / 3 as peso,
                     SUM(COALESCE(caixas, 0)) / 3 as caixas,
-                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) / 3 as clientes
+                    (SELECT COALESCE(SUM(clientes), 0) FROM kpi_tri_clients_agg) / 3 as clientes
                 FROM public.data_summary
                 %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
             ),
@@ -2931,17 +2973,31 @@ BEGIN
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
             ),
-            prod_agg AS (
+            prod_client_agg AS (
                 SELECT
                     produto,
-                    MAX(descricao) as descricao,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    SUM(vlvenda) as faturamento,
-                    SUM(totpesoliq) as peso,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    MAX(dtped) as ultima_venda
+                    codcli,
+                    SUM(vlvenda) as vlvenda
                 FROM prod_base
-                GROUP BY 1
+                WHERE %s
+                GROUP BY produto, codcli
+                HAVING SUM(vlvenda) >= 1
+            ),
+            prod_agg_base AS (
+                SELECT
+                    p.produto,
+                    MAX(p.descricao) as descricao,
+                    SUM(COALESCE(p.qtvenda, 0) / COALESCE(NULLIF(p.qtde_embalagem_master, 0), 1)) as caixas,
+                    SUM(p.vlvenda) as faturamento,
+                    SUM(p.totpesoliq) as peso,
+                    MAX(p.dtped) as ultima_venda
+                FROM prod_base p
+                GROUP BY p.produto
+            ),
+            prod_agg AS (
+                SELECT produto, descricao, caixas, faturamento, peso, ultima_venda,
+                (SELECT COUNT(*) FROM prod_client_agg pc WHERE pc.produto = prod_agg_base.produto) as clientes
+                FROM prod_agg_base
                 ORDER BY caixas DESC
                 LIMIT 50
             )
@@ -2952,13 +3008,13 @@ BEGIN
                 (SELECT row_to_json(t) FROM kpi_tri t),
                 (SELECT json_agg(pa) FROM prod_agg pa)
         ', 
-        v_tipovenda_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
-        v_tipovenda_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
-        v_tipovenda_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
-        v_tipovenda_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
-        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
-        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
-        v_tipovenda_client_cond -- Prod Agg
+        v_where_summary, v_current_year, v_previous_year, v_tipovenda_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
+        v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_tipovenda_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
+        v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_tipovenda_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
+        v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_tipovenda_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
+        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod Base Fast Path (2x %s, %L, %L, %s)
+        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,  -- Prod Base Fast Path Union
+        v_tipovenda_client_cond -- Prod Client Agg
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     
@@ -2976,57 +3032,106 @@ BEGIN
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= make_date(%L, 1, 1)
             ),
-            chart_agg AS (
+            chart_clients AS (
+                SELECT EXTRACT(MONTH FROM dtped)::int - 1 as m_idx, EXTRACT(YEAR FROM dtped)::int as yr, codcli
+                FROM base_data
+                WHERE EXTRACT(YEAR FROM dtped) IN (%L, %L) AND %s
+                GROUP BY 1, 2, codcli
+                HAVING SUM(vlvenda) >= 1
+            ),
+            chart_agg_base AS (
                 SELECT 
                     EXTRACT(MONTH FROM dtped)::int - 1 as m_idx,
                     EXTRACT(YEAR FROM dtped)::int as yr,
                     SUM(vlvenda) as fat,
                     SUM(totpesoliq) as peso,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
+                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas
                 FROM base_data
                 WHERE EXTRACT(YEAR FROM dtped) IN (%L, %L)
                 GROUP BY 1, 2
+            ),
+            chart_agg AS (
+                SELECT m_idx, yr, fat, peso, caixas,
+                (SELECT COUNT(*) FROM chart_clients c WHERE c.m_idx = chart_agg_base.m_idx AND c.yr = chart_agg_base.yr) as clientes
+                FROM chart_agg_base
+            ),
+            kpi_curr_clients AS (
+                SELECT codcli
+                FROM base_data
+                WHERE EXTRACT(YEAR FROM dtped) = %L %s AND %s
+                GROUP BY codcli
+                HAVING SUM(vlvenda) >= 1
             ),
             kpi_curr AS (
                 SELECT 
                     SUM(vlvenda) as fat,
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
+                    (SELECT COUNT(*) FROM kpi_curr_clients) as clientes
                 FROM base_data
                 WHERE EXTRACT(YEAR FROM dtped) = %L %s
+            ),
+            kpi_prev_clients AS (
+                SELECT codcli
+                FROM base_data
+                WHERE EXTRACT(YEAR FROM dtped) = %L %s AND %s
+                GROUP BY codcli
+                HAVING SUM(vlvenda) >= 1
             ),
             kpi_prev AS (
                 SELECT 
                     SUM(vlvenda) as fat,
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
+                    (SELECT COUNT(*) FROM kpi_prev_clients) as clientes
                 FROM base_data
                 WHERE EXTRACT(YEAR FROM dtped) = %L %s
+            ),
+            kpi_tri_clients AS (
+                SELECT EXTRACT(YEAR FROM dtped)::int as yr, EXTRACT(MONTH FROM dtped)::int as mo, codcli
+                FROM base_data
+                WHERE dtped >= %L AND dtped <= %L AND %s
+                GROUP BY 1, 2, codcli
+                HAVING SUM(vlvenda) >= 1
+            ),
+            kpi_tri_clients_agg AS (
+                SELECT COUNT(*) as clientes FROM kpi_tri_clients
             ),
             kpi_tri AS (
                 SELECT 
                     SUM(vlvenda) / 3 as fat,
                     SUM(totpesoliq) / 3 as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) / 3 as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) / 3 as clientes
+                    (SELECT COALESCE(clientes, 0) FROM kpi_tri_clients_agg) / 3 as clientes
                 FROM base_data
                 WHERE dtped >= %L AND dtped <= %L
             ),
-            prod_agg AS (
+            prod_client_agg AS (
                 SELECT
                     produto,
-                    MAX(descricao) as descricao,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    SUM(vlvenda) as faturamento,
-                    SUM(totpesoliq) as peso,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    MAX(dtped) as ultima_venda
+                    codcli,
+                    SUM(vlvenda) as vlvenda
                 FROM base_data
+                WHERE EXTRACT(YEAR FROM dtped) = %L %s AND %s
+                GROUP BY 1, 2
+                HAVING SUM(vlvenda) >= 1
+            ),
+            prod_agg_base AS (
+                SELECT
+                    b.produto,
+                    MAX(b.descricao) as descricao,
+                    SUM(COALESCE(b.qtvenda, 0) / COALESCE(NULLIF(b.qtde_embalagem_master, 0), 1)) as caixas,
+                    SUM(b.vlvenda) as faturamento,
+                    SUM(b.totpesoliq) as peso,
+                    MAX(b.dtped) as ultima_venda
+                FROM base_data b
                 WHERE EXTRACT(YEAR FROM dtped) = %L %s
-                GROUP BY 1
+                GROUP BY b.produto
+            ),
+            prod_agg AS (
+                SELECT produto, descricao, caixas, faturamento, peso, ultima_venda,
+                (SELECT COUNT(*) FROM prod_client_agg pc WHERE pc.produto = prod_agg_base.produto) as clientes
+                FROM prod_agg_base
                 ORDER BY caixas DESC
                 LIMIT 50
             )
@@ -3039,11 +3144,11 @@ BEGIN
         ', 
         v_where_raw, v_previous_year,
         v_where_raw, v_previous_year,
-        v_tipovenda_client_cond, v_current_year, v_previous_year,
-        v_tipovenda_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
-        v_tipovenda_client_cond, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
-        v_tipovenda_client_cond, v_tri_start, v_tri_end,
-        v_tipovenda_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END
+        v_current_year, v_previous_year, v_tipovenda_client_cond, v_current_year, v_previous_year,
+        v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, v_tipovenda_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
+        v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, v_tipovenda_client_cond, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
+        v_tri_start, v_tri_end, v_tipovenda_client_cond, v_tri_start, v_tri_end,
+        v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, v_tipovenda_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     END IF;
