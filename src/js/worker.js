@@ -105,7 +105,11 @@ function parseDate(dateString) {
 function parseBrazilianNumber(value) {
     if (typeof value === 'number') return value;
     if (typeof value !== 'string' || !value) return 0;
-    const cleaned = String(value).replace(/R\$\s?/g, '').trim();
+
+    // ⚡ Bolt Optimization: Fast path for pure numbers to avoid expensive regex
+    let cleaned = value.indexOf('R$') !== -1 ? value.replace(/R\$\s?/g, '') : value;
+    cleaned = cleaned.trim();
+
     const lastComma = cleaned.lastIndexOf(',');
     const lastDot = cleaned.lastIndexOf('.');
     let numberString;

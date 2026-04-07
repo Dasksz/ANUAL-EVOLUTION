@@ -26,3 +26,7 @@
 ## 2026-04-05 - Optimize repeated DOM element appending
 **Learning:** During UI initialization involving dynamic lists (e.g., `<select>` options, list rendering, or KPI card rendering), looping and appending elements individually directly to a container via `container.appendChild()` or continually constructing and assigning large strings via `innerHTML` causes consecutive synchronous DOM reflows and recalculations, heavily blocking the main thread.
 **Action:** When batch-rendering multiple elements to an existing parent container, always instantiate a `document.createDocumentFragment()`. Append all iteratively created child nodes to the `DocumentFragment` first, and then perform a single `container.appendChild(fragment)` to trigger only one layout calculation.
+
+## 2026-04-07 - Optimize string replacement in number parsing
+**Learning:** When processing large datasets in Web Workers (e.g., `src/js/worker.js`), functions executing regex replacements repeatedly (like stripping currency symbols via `/R\$\s?/g`) can become a major CPU bottleneck, especially since most data entries might just be raw numbers without formatting.
+**Action:** Always include a fast-path condition (e.g., `value.indexOf('R$') !== -1`) to conditionally skip the expensive regex operation if the string does not contain the target characters. This simple check is significantly faster and measurably reduces parsing time for large CSV/Excel files.
