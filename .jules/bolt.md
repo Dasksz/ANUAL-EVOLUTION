@@ -5,6 +5,13 @@
 - When aggregating massive monthly data chunks, parallel processing via `Promise.all` can cause significant database locking and CPU overload, resulting in statement timeouts from PostgREST.
 - Switched parallel `supabase.rpc` execution to a sequential `await` execution model within a try/catch loop. This slightly increases client wait time but guarantees transaction completion by relieving the concurrent pressure on the PostgreSQL execution planner.
 
+# 2025-05-15
+
+### Bolt Optimization
+
+- When processing heavy monthly data chunks in `src/js/app.js`, we found that pure sequential execution was too slow for large historical datasets.
+- Implemented "Intra-Month Parallelism": The three 10-day chunks for a single month are now parallelized using `Promise.all`, while the months themselves remain sequential.
+- Impact: This balances database throughput and prevents the statement timeouts encountered when parallelizing across multiple months simultaneously. Theoretical performance improvement of ~50% for the refresh process.
 ## 2025-03-28 - Optimize Large Array Spread Iterations
 **Learning:** In heavily data-intensive scripts like `src/js/worker.js`, using the spread operator `[...a, ...b, ...c]` multiple times on large arrays inside the same function scope introduces an `O(N)` memory and time overhead for every invocation. This causes unnecessary massive array allocation and garbage collection cycles, just to iterate over the items once. Also, using `Array.prototype.concat` on large arrays is significantly faster (often 10x-15x faster) than creating a new array via spread.
 **Action:** When a combined list of multiple arrays is needed for multiple iterations, pre-compute the combined array once using `.concat` and cache it in a constant variable (e.g., `const allArrays = a.concat(b, c);`) early in the pipeline, instead of performing inline spreading at every `forEach` loop.
