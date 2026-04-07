@@ -3497,6 +3497,8 @@ DECLARE
     -- Filter Clause
     v_where text := ' WHERE 1=1 ';
     v_where_rede text := '';
+    v_where_mix text := ' WHERE 1=1 ';
+    v_rede_mix text;
 
     -- Trend Vars
     v_max_sale_date date;
@@ -3572,15 +3574,19 @@ BEGIN
     -- 2. Build WHERE Clause
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where := v_where || format(' AND filial = ANY(%L) ', p_filial);
+        v_where_mix := v_where_mix || format(' AND c.filial = ANY(%L) ', p_filial);
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where := v_where || format(' AND cidade = ANY(%L) ', p_cidade);
+        v_where_mix := v_where_mix || format(' AND c.cidade = ANY(%L) ', p_cidade);
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where := v_where || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
+        v_where_mix := v_where_mix || format(' AND c.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
         v_where := v_where || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
+        v_where_mix := v_where_mix || format(' AND c.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
     END IF;
 
     -- FORNECEDOR LOGIC (Modified to check joined dim_produtos for description)
@@ -3613,7 +3619,39 @@ BEGIN
             IF array_length(v_conditions, 1) > 0 THEN
                 v_where := v_where || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
             END IF;
+
+            -- Also build logic for v_where_mix which acts against dim_produtos
+            DECLARE
+                v_mix_conds text[] := '{}';
+                v_mix_simple text[] := '{}';
+                v_mix_code text;
+            BEGIN
+                FOREACH v_mix_code IN ARRAY p_fornecedor LOOP
+                    IF v_mix_code = '1119_TODDYNHO' THEN
+                        v_mix_conds := array_append(v_mix_conds, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
+                    ELSIF v_mix_code = '1119_TODDY' THEN
+                        v_mix_conds := array_append(v_mix_conds, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
+                    ELSIF v_mix_code = '1119_QUAKER' THEN
+                        v_mix_conds := array_append(v_mix_conds, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
+                    ELSIF v_mix_code = '1119_KEROCOCO' THEN
+                        v_mix_conds := array_append(v_mix_conds, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
+                    ELSIF v_mix_code = '1119_OUTROS' THEN
+                        v_mix_conds := array_append(v_mix_conds, '(dp.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
+                    ELSE
+                        v_mix_simple := array_append(v_mix_simple, v_mix_code);
+                    END IF;
+                END LOOP;
+                IF array_length(v_mix_simple, 1) > 0 THEN
+                    v_mix_conds := array_append(v_mix_conds, format('dp.codfor = ANY(ARRAY[''%s''])', array_to_string(v_mix_simple, ''',''')));
+                END IF;
+                IF array_length(v_mix_conds, 1) > 0 THEN
+                    v_where_mix := v_where_mix || ' AND (' || array_to_string(v_mix_conds, ' OR ') || ') ';
+                END IF;
+            END;
+
         END;
+    ELSE
+        v_where_mix := v_where_mix || ' AND dp.codfor IN (''707'', ''708'', ''752'') ';
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
@@ -3621,11 +3659,13 @@ BEGIN
     END IF;
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
         v_where := v_where || format(' AND produto = ANY(%L) ', p_produto);
+        v_where_mix := v_where_mix || format(' AND dp.codigo = ANY(%L) ', p_produto);
     END IF;
     
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where := v_where || format(' AND dp.categoria_produto = ANY(%L) ', p_categoria);
+        v_where_mix := v_where_mix || format(' AND dp.categoria_produto = ANY(%L) ', p_categoria);
     END IF;
 
     -- REDE Logic
@@ -3650,13 +3690,43 @@ BEGIN
 
        IF v_rede_condition != '' THEN
            v_where_rede := ' AND EXISTS (SELECT 1 FROM public.data_clients c WHERE c.codigo_cliente = s.codcli AND (' || v_rede_condition || ')) ';
+           v_rede_mix := replace(v_rede_condition, 'c.ramo', 'dc.ramo');
+           v_where_mix := v_where_mix || ' AND EXISTS (SELECT 1 FROM public.data_clients dc WHERE dc.codigo_cliente = c.codcli AND (' || v_rede_mix || ')) ';
        END IF;
     END IF;
 
     -- 3. Aggregation Queries
 
     EXECUTE format('
-        WITH target_sales AS (
+        WITH curr_true_mix AS (
+            SELECT
+                c.codcli,
+                COUNT(DISTINCT dp.codigo) as dist_skus
+            FROM public.data_summary_frequency c
+            CROSS JOIN LATERAL jsonb_array_elements_text(c.produtos) AS p(produto)
+            INNER JOIN public.dim_produtos dp ON dp.codigo = p.produto
+            ' || v_where_mix || '
+            AND c.ano = EXTRACT(YEAR FROM ''' || v_start_target || '''::date)
+            AND c.mes = EXTRACT(MONTH FROM ''' || v_start_target || '''::date)
+            AND c.vlvenda >= 1
+            ' || CASE WHEN p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN ' AND c.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ' ELSE ' AND c.tipovenda IN (''1'', ''9'') ' END || '
+            GROUP BY c.codcli
+        ),
+        hist_true_mix AS (
+            SELECT
+                c.ano, c.mes, c.codcli,
+                COUNT(DISTINCT dp.codigo) as dist_skus
+            FROM public.data_summary_frequency c
+            CROSS JOIN LATERAL jsonb_array_elements_text(c.produtos) AS p(produto)
+            INNER JOIN public.dim_produtos dp ON dp.codigo = p.produto
+            ' || v_where_mix || '
+            AND (c.ano + c.mes/100.0) >= (EXTRACT(YEAR FROM ''' || v_start_quarter || '''::date) + EXTRACT(MONTH FROM ''' || v_start_quarter || '''::date)/100.0)
+            AND (c.ano + c.mes/100.0) <= (EXTRACT(YEAR FROM ''' || v_end_quarter || '''::date) + EXTRACT(MONTH FROM ''' || v_end_quarter || '''::date)/100.0)
+            AND c.vlvenda >= 1
+            ' || CASE WHEN p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN ' AND c.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ' ELSE ' AND c.tipovenda IN (''1'', ''9'') ' END || '
+            GROUP BY c.ano, c.mes, c.codcli
+        ),
+        target_sales AS (
             SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor
             FROM public.data_detailed s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
@@ -3691,19 +3761,20 @@ BEGIN
         ),
         curr_mix_base AS (
             SELECT
-                codcli,
-                SUM(prod_val) as total_val,
-                COUNT(CASE WHEN codfor IN (''707'', ''708'', ''752'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''RUFFLES'' THEN 1 ELSE 0 END) as has_ruffles,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TORCIDA'' THEN 1 ELSE 0 END) as has_torcida,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDYNHO'' THEN 1 ELSE 0 END) as has_toddynho,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDY'' THEN 1 ELSE 0 END) as has_toddy,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''QUAKER'' THEN 1 ELSE 0 END) as has_quaker,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''KEROCOCO'' THEN 1 ELSE 0 END) as has_kerococo
-            FROM curr_prod_agg
+                c.codcli,
+                SUM(c.prod_val) as total_val,
+                COALESCE(MAX(tm.dist_skus), 0) as pepsico_skus,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''RUFFLES'' THEN 1 ELSE 0 END) as has_ruffles,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''TORCIDA'' THEN 1 ELSE 0 END) as has_torcida,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''TODDYNHO'' THEN 1 ELSE 0 END) as has_toddynho,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''TODDY'' THEN 1 ELSE 0 END) as has_toddy,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''QUAKER'' THEN 1 ELSE 0 END) as has_quaker,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''KEROCOCO'' THEN 1 ELSE 0 END) as has_kerococo
+            FROM curr_prod_agg c
+            LEFT JOIN curr_true_mix tm ON c.codcli = tm.codcli
             GROUP BY 1
         ),
         curr_kpi AS (
@@ -3732,20 +3803,21 @@ BEGIN
         ),
         hist_monthly_mix AS (
             SELECT
-                m_date,
-                codcli,
-                SUM(prod_val) as total_val,
-                COUNT(CASE WHEN codfor IN (''707'', ''708'', ''752'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''RUFFLES'' THEN 1 ELSE 0 END) as has_ruffles,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TORCIDA'' THEN 1 ELSE 0 END) as has_torcida,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDYNHO'' THEN 1 ELSE 0 END) as has_toddynho,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDY'' THEN 1 ELSE 0 END) as has_toddy,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''QUAKER'' THEN 1 ELSE 0 END) as has_quaker,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''KEROCOCO'' THEN 1 ELSE 0 END) as has_kerococo
-            FROM hist_prod_agg
+                c.m_date,
+                c.codcli,
+                SUM(c.prod_val) as total_val,
+                COALESCE(MAX(tm.dist_skus), 0) as pepsico_skus,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''RUFFLES'' THEN 1 ELSE 0 END) as has_ruffles,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''TORCIDA'' THEN 1 ELSE 0 END) as has_torcida,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''TODDYNHO'' THEN 1 ELSE 0 END) as has_toddynho,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''TODDY'' THEN 1 ELSE 0 END) as has_toddy,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''QUAKER'' THEN 1 ELSE 0 END) as has_quaker,
+                MAX(CASE WHEN c.prod_val >= 1 AND c.mix_marca = ''KEROCOCO'' THEN 1 ELSE 0 END) as has_kerococo
+            FROM hist_prod_agg c
+            LEFT JOIN hist_true_mix tm ON c.codcli = tm.codcli AND tm.ano = EXTRACT(YEAR FROM c.m_date) AND tm.mes = EXTRACT(MONTH FROM c.m_date)
             GROUP BY 1, 2
         ),
         hist_monthly_sums AS (
@@ -5187,6 +5259,8 @@ DECLARE
 
     -- Mix Logic Vars
     v_mix_constraint text;
+    v_where_mix text := ' WHERE 1=1 ';
+    v_rede_mix text;
 
     -- New KPI Logic Vars
     v_filial_cities text[];
@@ -5244,24 +5318,59 @@ BEGIN
     -- 3. Construct Dynamic WHERE Clause
 
     v_where_base := v_where_base || format(' AND ano IN (%L, %L) ', v_current_year, v_previous_year);
+    v_where_mix := v_where_mix || format(' AND c.ano IN (%L, %L) ', v_current_year, v_previous_year);
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND filial = ANY(%L) ', p_filial);
+        v_where_mix := v_where_mix || format(' AND c.filial = ANY(%L) ', p_filial);
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND cidade = ANY(%L) ', p_cidade);
+        v_where_mix := v_where_mix || format(' AND c.cidade = ANY(%L) ', p_cidade);
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
+        v_where_mix := v_where_mix || format(' AND c.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
          v_where_base := v_where_base || format(' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
+         v_where_mix := v_where_mix || format(' AND c.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND codfor = ANY(%L) ', p_fornecedor);
+        DECLARE
+            v_code text;
+            v_unnested_conditions text[] := '{}';
+            v_simple_codes text[] := '{}';
+            v_unnested_str text;
+        BEGIN
+            FOREACH v_code IN ARRAY p_fornecedor LOOP
+                IF v_code = '1119_TODDYNHO' THEN
+                    v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
+                ELSIF v_code = '1119_TODDY' THEN
+                    v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
+                ELSIF v_code = '1119_QUAKER' THEN
+                    v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
+                ELSIF v_code = '1119_KEROCOCO' THEN
+                    v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
+                ELSIF v_code = '1119_OUTROS' THEN
+                    v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
+                ELSE
+                    v_simple_codes := array_append(v_simple_codes, v_code);
+                END IF;
+            END LOOP;
+            IF array_length(v_simple_codes, 1) > 0 THEN
+                v_unnested_conditions := array_append(v_unnested_conditions, format('dp.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
+            END IF;
+            IF array_length(v_unnested_conditions, 1) > 0 THEN
+                v_unnested_str := array_to_string(v_unnested_conditions, ' OR ');
+                v_where_mix := v_where_mix || ' AND (' || v_unnested_str || ') ';
+            END IF;
+        END;
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where_mix := v_where_mix || format(' AND dp.categoria_produto = ANY(%L) ', p_categoria);
     END IF;
 
     -- REDE Logic
@@ -5286,6 +5395,8 @@ BEGIN
 
        IF v_rede_condition != '' THEN
            v_where_base := v_where_base || ' AND (' || v_rede_condition || ') ';
+           v_rede_mix := replace(v_rede_condition, 'ramo', 'c.rede');
+           v_where_mix := v_where_mix || ' AND (' || v_rede_mix || ') ';
        END IF;
     END IF;
 
@@ -5294,6 +5405,7 @@ BEGIN
         v_mix_constraint := ' 1=1 ';
     ELSE
         v_mix_constraint := ' codfor IN (''707'', ''708'', ''752'') ';
+        v_where_mix := v_where_mix || ' AND dp.codfor IN (''707'', ''708'', ''752'') ';
     END IF;
 
     -- KPI Base Filter (Table: data_clients)
@@ -5371,7 +5483,23 @@ BEGIN
 
     -- 4. Execute Main Aggregation Query using Single-Pass
     v_sql := '
-    WITH filtered_summary AS (
+    WITH monthly_true_mix AS (
+        SELECT
+            c.ano, c.mes, c.codcli,
+            COUNT(DISTINCT dp.codigo) as dist_skus
+        FROM public.data_summary_frequency c
+        CROSS JOIN LATERAL jsonb_array_elements_text(c.produtos) AS p(produto)
+        INNER JOIN public.dim_produtos dp ON dp.codigo = p.produto
+        ' || v_where_mix || '
+        AND c.vlvenda >= 1
+        AND (
+            ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND c.tipovenda = ANY($1))
+            OR
+            (($1 IS NULL OR COALESCE(array_length($1, 1), 0) = 0) AND c.tipovenda IN (''1'', ''9''))
+        )
+        GROUP BY c.ano, c.mes, c.codcli
+    ),
+    filtered_summary AS (
         SELECT ano, mes, vlvenda, peso, bonificacao, devolucao, pre_positivacao_val, pre_mix_count, codcli, tipovenda, codfor, categoria_produto
         FROM public.data_summary
         ' || v_where_base || '
@@ -5420,13 +5548,8 @@ BEGIN
                 ELSE devolucao
             END) as cli_devolucao,
 
-            -- Mix
-            SUM(CASE
-                WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN
-                    CASE WHEN tipovenda = ANY($1) AND (' || v_mix_constraint || ') THEN pre_mix_count ELSE 0 END
-                WHEN tipovenda IN (''1'', ''9'') AND (' || v_mix_constraint || ') THEN pre_mix_count
-                ELSE 0
-            END) as cli_mix_sum,
+            -- Mix will be joined from monthly_true_mix instead
+            0 as cli_mix_sum,
 
             -- Positivacao eligibility
             CASE WHEN
@@ -5442,18 +5565,19 @@ BEGIN
     ),
     agg_data AS (
         SELECT
-            ano,
-            mes,
-            SUM(cli_faturamento) as faturamento,
-            SUM(cli_total_sold_base) as total_sold_base,
-            SUM(cli_peso) as peso,
-            SUM(cli_bonificacao) as bonificacao,
-            SUM(cli_devolucao) as devolucao,
-            SUM(is_active) as positivacao_count,
-            SUM(cli_mix_sum) as total_mix_sum,
-            SUM(CASE WHEN cli_mix_sum > 0 THEN 1 ELSE 0 END) as mix_client_count
-        FROM client_agg
-        GROUP BY ano, mes
+            c.ano,
+            c.mes,
+            SUM(c.cli_faturamento) as faturamento,
+            SUM(c.cli_total_sold_base) as total_sold_base,
+            SUM(c.cli_peso) as peso,
+            SUM(c.cli_bonificacao) as bonificacao,
+            SUM(c.cli_devolucao) as devolucao,
+            SUM(c.is_active) as positivacao_count,
+            COALESCE(SUM(m.dist_skus), 0) as total_mix_sum,
+            SUM(CASE WHEN m.dist_skus > 0 THEN 1 ELSE 0 END) as mix_client_count
+        FROM client_agg c
+        LEFT JOIN monthly_true_mix m ON c.ano = m.ano AND c.mes = m.mes AND c.codcli = m.codcli
+        GROUP BY c.ano, c.mes
     ),
     kpi_active_count AS (
         SELECT COUNT(DISTINCT codcli) as val
