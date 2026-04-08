@@ -8109,10 +8109,13 @@ async function updateEstrelasView() {
 
         if (error) throw error;
 
-        // --- Mocked Metas ---
-        const metaSellout = 0; // future meta
-        const metaPos = 0; // future meta
-        const metaAcel = 0; // future meta
+        // --- Dynamic Metas ---
+        const metaSelloutSalty = data.sellout_salty_meta || 0;
+        const metaSelloutFoods = data.sellout_foods_meta || 0;
+        const metaSellout = metaSelloutSalty + metaSelloutFoods;
+
+        const metaPos = data.positivacao_meta || 0;
+        const metaAcel = data.aceleradores_meta || 0;
 
         // Helper function to safely update DOM
         const updateEl = (id, val, isStyle = false) => {
@@ -8124,6 +8127,7 @@ async function updateEstrelasView() {
         };
 
         // Update UI
+        updateEl('sellout-meta-val', `${metaSellout.toFixed(2)} tons`);
         updateEl('sellout-realizado-val', `${data.sellout_salty + data.sellout_foods < 0.01 ? '0.00' : (data.sellout_salty + data.sellout_foods).toFixed(2)} tons`);
         updateEl('sellout-salty-val', `${data.sellout_salty < 0.01 ? '0.00' : data.sellout_salty.toFixed(2)} tons`);
         updateEl('sellout-foods-val', `${data.sellout_foods < 0.01 ? '0.00' : data.sellout_foods.toFixed(2)} tons`);
@@ -8136,10 +8140,12 @@ async function updateEstrelasView() {
         estrelasDetailedData = data.detalhes || [];
         estrelasQtdMarcas = data.aceleradores_qtd_marcas || 0;
 
+        updateEl('pos-meta-val', `${metaPos} PDV(s)`);
         updateEl('pos-realizado-salty-val', `${data.positivacao_salty} PDV(s)`);
         updateEl('pos-realizado-foods-val', `${data.positivacao_foods} PDV(s)`);
         updateEl('pontos-possiveis-pos', data.base_clientes);
 
+        updateEl('aceleradores-meta-val', metaAcel);
         updateEl('aceleradores-realizado-val', data.aceleradores_realizado);
         updateEl('aceleradores-parcial-val', data.aceleradores_parcial);
         updateEl('pontos-possiveis-acel', data.base_clientes);

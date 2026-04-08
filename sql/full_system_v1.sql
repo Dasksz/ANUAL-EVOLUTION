@@ -124,7 +124,38 @@ BEGIN
     END IF;
 
 
-    v_sql := format('
+
+    -- 3. Build Metas Where Clause
+    DECLARE
+        v_where_metas text := '';
+    BEGIN
+        IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+            IF NOT ('ambas' = ANY(p_filial)) THEN
+                v_where_metas := v_where_metas || format(' AND m.filial::text = ANY(%L::text[]) ', p_filial);
+            END IF;
+        END IF;
+
+        IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+            v_where_metas := v_where_metas || format(' AND m.cod_rca::text IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        END IF;
+
+        IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
+            v_where_metas := v_where_metas || format(' AND m.cod_rca::text IN (
+                SELECT DISTINCT rs.codusur FROM (
+                    SELECT codusur, codsupervisor, ROW_NUMBER() OVER(PARTITION BY codusur ORDER BY dtped DESC) as rn
+                    FROM (
+                        SELECT codusur, codsupervisor, dtped FROM public.data_detailed
+                        UNION ALL
+                        SELECT codusur, codsupervisor, dtped FROM public.data_history
+                    ) all_sales
+                ) rs
+                JOIN public.dim_supervisores ds ON rs.codsupervisor = ds.codigo
+                WHERE rs.rn = 1 AND ds.nome = ANY(%L::text[])
+            ) ', p_supervisor);
+        END IF;
+
+        v_sql := format('
+
         WITH base_clientes_cte AS (
             SELECT COUNT(codigo_cliente) as total_clientes
             FROM public.data_clients dc
@@ -159,6 +190,15 @@ BEGIN
                 COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) && ARRAY(SELECT jsonb_array_elements_text(s.categorias)) AND NOT ((SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias))) THEN s.codcli END) as aceleradores_parcial
             FROM target_sales s
         ),
+        metas_calc AS (
+            SELECT
+                COALESCE(SUM(calibracao_salty), 0) as meta_salty,
+                COALESCE(SUM(calibracao_foods), 0) as meta_foods,
+                COALESCE(SUM(calibracao_pos), 0) as meta_pos
+            FROM public.meta_estrelas m
+            WHERE m.ano = %s AND m.mes = %s
+            %s
+        ),
         detalhes_calc AS (
             SELECT
                 COALESCE(dv.nome, ''N/D'') AS vendedor_nome,
@@ -186,9 +226,15 @@ BEGIN
             ''aceleradores_realizado'', COALESCE((SELECT aceleradores_realizado FROM aceleradores_calc), 0),
             ''aceleradores_parcial'', COALESCE((SELECT aceleradores_parcial FROM aceleradores_calc), 0),
             ''aceleradores_qtd_marcas'', COALESCE((SELECT array_length(nomes, 1) FROM aceleradores_config), 0),
+            ''sellout_salty_meta'', COALESCE((SELECT meta_salty FROM metas_calc), 0),
+            ''sellout_foods_meta'', COALESCE((SELECT meta_foods FROM metas_calc), 0),
+            ''positivacao_meta'', COALESCE((SELECT meta_pos FROM metas_calc), 0),
+            ''aceleradores_meta'', ROUND(COALESCE((SELECT meta_pos FROM metas_calc), 0) * 0.5),
             ''detalhes'', COALESCE((SELECT detalhes_array FROM detalhes_json), ''[]''::json)
         )
-    ', v_where_clients, v_where_base);
+    ', v_where_clients, v_where_base, v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_where_metas);
+
+    END;
 
     EXECUTE v_sql INTO v_result;
 
@@ -4173,7 +4219,9 @@ BEGIN
         v_where_base := v_where_base || format(' AND cm.filial = ANY(%L::text[])', p_filial);
     END IF;
 
+
     v_sql := format('
+
         WITH latest_sales AS (
             SELECT 
                 codcli, codsupervisor, codusur, filial,
@@ -4327,7 +4375,9 @@ BEGIN
         v_where := v_where || format(' AND cm.filial = ANY(%L::text[])', p_filial);
     END IF;
 
+
     v_sql := format('
+
         WITH latest_sales AS (
             SELECT
                 codcli, codsupervisor, codusur, filial,
