@@ -2798,8 +2798,8 @@ BEGIN
     END IF;
 
     IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_base := v_where_base || format(' AND d.codcli = %L ', p_codcli);
-        v_where_kpi := v_where_kpi || format(' AND d.codcli = %L ', p_codcli);
+        v_where_raw := v_where_raw || format(' AND codcli = %L ', p_codcli);
+        v_where_summary := v_where_summary || format(' AND codcli = %L ', p_codcli);
     END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where_raw := v_where_raw || format(' AND filial = ANY(%L) ', p_filial);
@@ -3156,7 +3156,7 @@ BEGIN
     v_where := v_where || format(' AND ano = %L ', v_current_year);
 
     IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_base := v_where_base || format(' AND codcli = %L ', p_codcli);
+        v_where_chart := v_where_chart || format(' AND s.codcli = %L ', p_codcli);
     END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN v_where := v_where || format(' AND filial = ANY(%L) ', p_filial); END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN v_where := v_where || format(' AND cidade = ANY(%L) ', p_cidade); END IF;
@@ -3298,7 +3298,7 @@ BEGIN
 
     -- Dynamic Filters (Common for current and trend)
     IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_base := v_where_base || format(' AND codcli = %L ', p_codcli);
+        v_where_chart := v_where_chart || format(' AND s.codcli = %L ', p_codcli);
     END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where := v_where || format(' AND filial = ANY(%L) ', p_filial);
@@ -4427,7 +4427,7 @@ BEGIN
 
     -- 2. Build Where Clauses
     IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_base := v_where_base || format(' AND codcli = %L ', p_codcli);
+        v_where_chart := v_where_chart || format(' AND s.codcli = %L ', p_codcli);
     END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_filial)) THEN
