@@ -46,9 +46,6 @@ BEGIN
     END IF;
 
     -- 2. Build Where Clauses
-    IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_base := v_where_base || format(' AND np.codigo_cliente = %L ', p_codcli);
-    END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_filial)) THEN
             v_where_base := v_where_base || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
@@ -56,10 +53,6 @@ BEGIN
         END IF;
     END IF;
 
-    IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_base := v_where_base || format(' AND codcli = %L ', p_codcli);
-        v_where_clients := v_where_clients || format(' AND codigo_cliente = %L ', p_codcli);
-    END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
         v_where_clients := v_where_clients || format(' AND dc.cidade = ANY(%L::text[]) ', p_cidade);
@@ -232,8 +225,7 @@ CREATE OR REPLACE FUNCTION get_frequency_table_data(
     p_rede text[] default null,
     p_produto text[] default null,
     p_categoria text[] default null
-,
-    p_codcli text default null )
+)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1897,7 +1889,7 @@ END;
 $$;
 
 -- 5. Update Get Filters
-DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[],text);
+DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[]);
 
 CREATE TABLE IF NOT EXISTS public.config_aceleradores (
     id SERIAL PRIMARY KEY,
@@ -1931,8 +1923,7 @@ CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_tipovenda text[] default null,
     p_rede text[] default null,
     p_categoria text[] default null
-,
-    p_codcli text default null)
+)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -2259,8 +2250,7 @@ CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_tipovenda text[] default null,
     p_rede text[] default null,
     p_produto text[] default null,
-    p_categoria text[] default null,
-    p_codcli text default null -- Added
+    p_categoria text[] default null -- Added
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -2363,10 +2353,6 @@ BEGIN
     
     v_where_base := v_where_base || format(' AND ano IN (%L, %L) ', v_current_year, v_previous_year);
 
-    IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_base := v_where_base || format(' AND codcli = %L ', p_codcli);
-        v_where_kpi := v_where_kpi || format(' AND codigo_cliente = %L ', p_codcli);
-    END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND filial = ANY(%L) ', p_filial);
     END IF;
@@ -2797,10 +2783,6 @@ BEGIN
         v_where_raw := v_where_raw || format(' AND produto = ANY(%L) ', p_produto);
     END IF;
 
-    IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_base := v_where_base || format(' AND d.codcli = %L ', p_codcli);
-        v_where_kpi := v_where_kpi || format(' AND d.codcli = %L ', p_codcli);
-    END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where_raw := v_where_raw || format(' AND filial = ANY(%L) ', p_filial);
         v_where_summary := v_where_summary || format(' AND filial = ANY(%L) ', p_filial);
@@ -3155,9 +3137,6 @@ BEGIN
     -- 2. Build Where
     v_where := v_where || format(' AND ano = %L ', v_current_year);
 
-    IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_base := v_where_base || format(' AND codcli = %L ', p_codcli);
-    END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN v_where := v_where || format(' AND filial = ANY(%L) ', p_filial); END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN v_where := v_where || format(' AND cidade = ANY(%L) ', p_cidade); END IF;
 
@@ -3297,9 +3276,6 @@ BEGIN
     ELSE v_current_year := p_ano::int; END IF;
 
     -- Dynamic Filters (Common for current and trend)
-    IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_base := v_where_base || format(' AND codcli = %L ', p_codcli);
-    END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where := v_where || format(' AND filial = ANY(%L) ', p_filial);
         v_where_trend := v_where_trend || format(' AND filial = ANY(%L) ', p_filial);
@@ -3504,8 +3480,7 @@ CREATE OR REPLACE FUNCTION get_comparison_view_data(
     p_rede text[] default null,
     p_produto text[] default null,
     p_categoria text[] default null
-,
-    p_codcli text default null )
+)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -3595,10 +3570,6 @@ BEGIN
     END IF;
 
     -- 2. Build WHERE Clause
-    IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_base := v_where_base || format(' AND codcli = %L ', p_codcli);
-        v_where_kpi := v_where_kpi || format(' AND codigo_cliente = %L ', p_codcli);
-    END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where := v_where || format(' AND filial = ANY(%L) ', p_filial);
     END IF;
@@ -4392,8 +4363,7 @@ CREATE OR REPLACE FUNCTION get_mix_salty_foods_data(
     p_rede text[] default null,
     p_produto text[] default null,
     p_categoria text[] default null
-,
-    p_codcli text default null )
+)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -4426,9 +4396,6 @@ BEGIN
     v_where_chart := v_where_chart || ' AND s.dtped >= make_date(' || v_current_year || ', 1, 1) AND s.dtped <= make_date(' || v_current_year || ', 12, 31) ';
 
     -- 2. Build Where Clauses
-    IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_base := v_where_base || format(' AND codcli = %L ', p_codcli);
-    END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_filial)) THEN
             v_where_chart := v_where_chart || ' AND s.filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
@@ -4625,8 +4592,7 @@ CREATE OR REPLACE FUNCTION get_innovations_data(
     p_categoria_inovacao text default null,
     p_ano text default null,
     p_mes text default null
-,
-    p_codcli text default null )
+)
 RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -4695,10 +4661,6 @@ BEGIN
     END IF;
 
     -- 2. Build Where Clauses
-    IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_base := v_where_base || format(' AND codcli = %L ', p_codcli);
-        v_where_client_base := v_where_client_base || format(' AND codigo_cliente = %L ', p_codcli);
-    END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_filial)) THEN
             SELECT array_agg(DISTINCT cidade) INTO v_filial_cities
@@ -5005,8 +4967,7 @@ CREATE OR REPLACE FUNCTION get_mix_salty_foods_data(
     p_rede text[] default null,
     p_produto text[] default null,
     p_categoria text[] default null
-,
-    p_codcli text default null )
+)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -5181,8 +5142,7 @@ CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_tipovenda text[] default null,
     p_rede text[] default null,
     p_produto text[] default null,
-    p_categoria text[] default null,
-    p_codcli text default null -- Added
+    p_categoria text[] default null -- Added
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -5285,10 +5245,6 @@ BEGIN
 
     v_where_base := v_where_base || format(' AND ano IN (%L, %L) ', v_current_year, v_previous_year);
 
-    IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_base := v_where_base || format(' AND codcli = %L ', p_codcli);
-        v_where_kpi := v_where_kpi || format(' AND codigo_cliente = %L ', p_codcli);
-    END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND filial = ANY(%L) ', p_filial);
     END IF;
@@ -5868,4 +5824,3 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 /* Cria o super indice que faz a busca com asteriscos funcionar na hora */
 CREATE INDEX IF NOT EXISTS idx_n8n_agent_view_data_trgm ON public.n8n_agent_view USING GIN (data_pedido gin_trgm_ops);
-
