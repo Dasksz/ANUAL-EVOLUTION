@@ -202,7 +202,7 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
-import { formatNumber, escapeHtml, formatCurrency, formatTons } from './utils.js';
+import { formatNumber, escapeHtml, formatCurrency, formatTons, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -990,9 +990,7 @@ let estrelasSelectedCategorias = [];
         const state = {};
 
         if (view === 'dashboard') {
-
-                        state.ano = anoFilter.value;
-            state.codcli = dashboardSelectedClient ? dashboardSelectedClient.codigo_cliente : null;
+            state.ano = anoFilter.value;
             state.mes = mesFilter.value;
             state.filiais = selectedFiliais;
             state.cidades = selectedCidades;
@@ -1100,20 +1098,9 @@ let estrelasSelectedCategorias = [];
         const getVal = (key) => params.get(key);
 
         if (view === 'dashboard') {
-
             if (getVal('ano')) anoFilter.value = getVal('ano');
             if (getVal('mes')) mesFilter.value = getVal('mes');
 
-            
-            if (getVal('codcli')) {
-                dashboardSelectedClient = { codigo_cliente: getVal('codcli') };
-                const dashInput = document.getElementById('dashboard-cliente-search-input');
-                if (dashInput) {
-                    dashInput.value = getVal('codcli'); // Show ID at least
-                }
-            } else {
-                dashboardSelectedClient = null;
-            }
             selectedFiliais = getList('filiais');
             selectedCidades = getList('cidades');
             selectedSupervisores = getList('supervisores');
@@ -1235,7 +1222,6 @@ let estrelasSelectedCategorias = [];
         renderView(view);
 
         if (view === 'dashboard') {
-
             initDashboard();
         }
     }
@@ -1881,15 +1867,6 @@ let estrelasSelectedCategorias = [];
             if (span) span.textContent = 'Todos';
         }
 
-                // Clear Dashboard Client Filter
-        dashboardSelectedClient = null;
-        const dashClientInput = document.getElementById('dashboard-cliente-search-input');
-        const dashClientClearBtn = document.getElementById('dashboard-cliente-search-clear');
-        const dashClientDropdown = document.getElementById('dashboard-cliente-search-dropdown');
-        if (dashClientInput) dashClientInput.value = '';
-        if (dashClientClearBtn) dashClientClearBtn.classList.add('hidden');
-        if (dashClientDropdown) dashClientDropdown.classList.add('hidden');
-        
         // Reset Multi Select Arrays
         selectedFiliais = [];
         selectedCidades = [];
@@ -2716,7 +2693,7 @@ let estrelasSelectedCategorias = [];
 
         if (boxesMesFilter && boxesMesFilter.options.length <= 1) {
             boxesMesFilter.innerHTML = '<option value="">Todos</option>';
-            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const meses = MONTHS_PT;
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; boxesMesFilter.appendChild(opt); });
             enhanceSelectToCustomDropdown(boxesMesFilter);
         }
@@ -3069,10 +3046,7 @@ let estrelasSelectedCategorias = [];
     const cityPageSize = 50;
     let totalActiveClients = 0;
 
-    
     let selectedFiliais = [];
-    let dashboardSelectedClient = null;
-
     let selectedCidades = [];
     let selectedSupervisores = [];
     let selectedVendedores = [];
@@ -3122,142 +3096,12 @@ let estrelasSelectedCategorias = [];
         if (overlay) overlay.classList.add('hidden');
     }
 
-    
-
-let isDashboardClientSearchInitialized = false;
-function setupDashboardClientSearchAutocomplete() {
-    if (isDashboardClientSearchInitialized) return;
-
-    const input = document.getElementById('dashboard-cliente-search-input');
-    const dropdown = document.getElementById('dashboard-cliente-search-dropdown');
-    const clearBtn = document.getElementById('dashboard-cliente-search-clear');
-
-    if (!input || !dropdown) return;
-
-    let debounceTimer;
-
-    input.addEventListener('input', (e) => {
-        const val = e.target.value;
-        if (val.length > 0) {
-            clearBtn.classList.remove('hidden');
-        } else {
-            clearBtn.classList.add('hidden');
-        }
-
-        clearTimeout(debounceTimer);
-        
-        if (val.length < 3) {
-            dropdown.innerHTML = '';
-            dropdown.classList.add('hidden');
-            return;
-        }
-
-        debounceTimer = setTimeout(async () => {
-            try {
-                // Using general search_clients for dashboard
-                const { data, error } = await supabase.rpc('search_clients', { p_search: val });
-                
-                if (error) throw error;
-
-                dropdown.innerHTML = '';
-                
-                if (!data || data.length === 0) {
-                    dropdown.innerHTML = '<div class="p-3 text-sm text-slate-400 text-center">Nenhum cliente encontrado</div>';
-                    dropdown.classList.remove('hidden');
-                    return;
-                }
-
-                data.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'p-3 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/30 last:border-0 transition-colors';
-                    
-                    const flexContainer = document.createElement('div');
-                    flexContainer.className = 'flex items-start justify-between';
-
-                    const innerContainer = document.createElement('div');
-                    innerContainer.className = 'flex-1 min-w-0';
-
-                    const topRow = document.createElement('div');
-                    topRow.className = 'flex items-center gap-2 mb-1';
-
-                    const codSpan = document.createElement('span');
-                    codSpan.className = 'text-xs font-bold text-slate-300 whitespace-nowrap';
-                    codSpan.textContent = item.codigo_cliente;
-
-                    const nameSpan = document.createElement('span');
-                    nameSpan.className = 'text-sm font-bold text-white truncate';
-                    nameSpan.textContent = item.razaosocial || item.nomecliente || 'S/ NOME';
-
-                    topRow.appendChild(codSpan);
-                    topRow.appendChild(nameSpan);
-
-                    const bottomRow = document.createElement('div');
-                    bottomRow.className = 'flex items-center gap-2 text-xs text-slate-400';
-
-                    const citySpan = document.createElement('span');
-                    citySpan.className = 'truncate uppercase';
-                    citySpan.textContent = item.cidade || 'S/ CIDADE';
-                    
-                    const cnpjSpan = document.createElement('span');
-                    cnpjSpan.className = 'whitespace-nowrap';
-                    cnpjSpan.textContent = item.cnpj || '';
-
-                    bottomRow.appendChild(citySpan);
-                    bottomRow.appendChild(cnpjSpan);
-
-                    innerContainer.appendChild(topRow);
-                    innerContainer.appendChild(bottomRow);
-                    flexContainer.appendChild(innerContainer);
-                    div.appendChild(flexContainer);
-
-                    div.addEventListener('click', () => {
-                        dashboardSelectedClient = item;
-                        input.value = `${item.codigo_cliente} - ${item.razaosocial || item.nomecliente}`;
-                        dropdown.classList.add('hidden');
-                        
-                        // Fetch new dashboard data based on client
-                        
-                        if (typeof handleFilterChange === 'function') handleFilterChange();
-                    });
-
-                    dropdown.appendChild(div);
-                });
-
-                dropdown.classList.remove('hidden');
-            } catch (err) {
-                AppLog.error('Error searching dashboard clients:', err);
-            }
-        }, 300);
-    });
-
-    clearBtn.addEventListener('click', () => {
-        input.value = '';
-        dashboardSelectedClient = null;
-        clearBtn.classList.add('hidden');
-        dropdown.classList.add('hidden');
-        if (typeof handleFilterChange === 'function') handleFilterChange();
-    });
-
-
-    // Close dropdown on outside click
-    document.addEventListener('click', (e) => {
-        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.classList.add('hidden');
-        }
-    });
-
-    isDashboardClientSearchInitialized = true;
-}
-
-
-
     async function initDashboard() {
         showDashboardLoading();
         await checkDataVersion(); // Check for invalidation first
 
         const filters = getCurrentFilters();
         await loadFilters(filters);
-        setupDashboardClientSearchAutocomplete();
         await loadMainDashboardData();
         
         // Trigger background prefetch after main load
@@ -3289,12 +3133,9 @@ function setupDashboardClientSearchAutocomplete() {
         }
     }
 
-
     function getCurrentFilters() {
         return {
             p_filial: selectedFiliais,
-            p_codcli: dashboardSelectedClient ? dashboardSelectedClient.codigo_cliente : null,
-
             p_cidade: selectedCidades,
             p_supervisor: selectedSupervisores,
             p_vendedor: selectedVendedores,
@@ -3678,7 +3519,7 @@ function setupDashboardClientSearchAutocomplete() {
         updateSingleSelect(anoFilter, data.anos);
         if (mesFilter.options.length <= 1) { 
             mesFilter.innerHTML = '<option value="">Todos</option>';
-            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const meses = MONTHS_PT;
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; mesFilter.appendChild(opt); });
         }
         setupMultiSelect(filialFilterBtn, filialFilterDropdown, filialFilterDropdown, data.filiais, selectedFiliais, () => {});
@@ -3738,8 +3579,7 @@ function setupDashboardClientSearchAutocomplete() {
         clearTimeout(filterDebounceTimer);
         filterDebounceTimer = setTimeout(async () => {
             showDashboardLoading();
-            try { await loadFilters(filters);
-         } catch (err) { AppLog.error("Failed to load filters:", err); }
+            try { await loadFilters(filters); } catch (err) { AppLog.error("Failed to load filters:", err); }
             try { await loadMainDashboardData(); } catch (err) { AppLog.error("Failed to load dashboard data:", err); }
             if (!cityView.classList.contains('hidden')) { currentCityPage = 0; await loadCityView(); }
         }, 500);
@@ -4484,7 +4324,7 @@ function setupDashboardClientSearchAutocomplete() {
         const tableHead = document.querySelector('#monthly-summary-table thead tr');
         tableBody.innerHTML = '';
 
-        const monthInitials = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+        const monthInitials = MONTHS_PT_INITIALS;
         let headerHTML = `
             <th class="px-2 py-2 text-left bg-transparent border-b border-white/50 relative">
                 <div class="flex items-center gap-2">
@@ -4803,7 +4643,7 @@ function setupDashboardClientSearchAutocomplete() {
          
          if (cityMesFilter && cityMesFilter.options.length <= 1) {
             cityMesFilter.innerHTML = '<option value="">Todos</option>';
-            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const meses = MONTHS_PT;
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; cityMesFilter.appendChild(opt); });
             enhanceSelectToCustomDropdown(cityMesFilter);
         }
@@ -5089,7 +4929,7 @@ function setupDashboardClientSearchAutocomplete() {
          // Months
          if (branchMesFilter.options.length <= 1) {
             branchMesFilter.innerHTML = '<option value="">Todos</option>';
-            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const meses = MONTHS_PT;
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; branchMesFilter.appendChild(opt); });
             enhanceSelectToCustomDropdown(branchMesFilter);
         }
@@ -5371,7 +5211,7 @@ function setupDashboardClientSearchAutocomplete() {
          const branches = Object.keys(branchDataMap).sort();
          const kpiBranches = {}; 
          const chartBranches = {};
-         const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+         const monthNames = MONTHS_PT;
 
          // Determine Bonification Mode
          const isBonifMode = isBonificationMode(branchSelectedTiposVenda);
@@ -5659,7 +5499,7 @@ function setupDashboardClientSearchAutocomplete() {
         const daysInMonth = lastDay.getDate();
         const startingDay = firstDay.getDay(); // 0 = Sunday
 
-        const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const monthNames = MONTHS_PT;
 
         let html = `<div class="mb-2 font-bold text-slate-300 text-center">${monthNames[month]} ${year}</div>`;
         html += `<div class="grid grid-cols-7 gap-1 text-center">`;
@@ -6007,7 +5847,7 @@ function setupDashboardClientSearchAutocomplete() {
                 const currentMesVal = comparisonMesFilter.value;
 
                 comparisonMesFilter.innerHTML = '';
-                const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                const meses = MONTHS_PT;
                 meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; comparisonMesFilter.appendChild(opt); });
 
                 // If there's an active valid selected month (not empty), keep it
@@ -6941,7 +6781,7 @@ function renderInnovationsChart(data) {
         targetDate = new Date(yearFilter, monthFilter - 1, 1);
     }
 
-    const monthNames = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+    const monthNames = MONTHS_PT_SHORT;
 
     const getMonthName = (date, subtractMonths) => {
         let d = new Date(date);
@@ -7309,7 +7149,7 @@ const setupInnovationsFilters = async () => {
     
     if (mesSelect) {
         mesSelect.innerHTML = '<option value="">Todos</option>';
-        const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const meses = MONTHS_PT;
         meses.forEach((m, i) => { 
             const opt = document.createElement('option'); 
             const val = String(i + 1).padStart(2, '0');
@@ -8175,7 +8015,7 @@ const setupEstrelasFilters = async () => {
 
     if (mesSelect) {
         mesSelect.innerHTML = '<option value="">Todos</option>';
-        const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const meses = MONTHS_PT;
         meses.forEach((m, i) => {
             const opt = document.createElement('option');
             const val = String(i + 1).padStart(2, '0');
@@ -8536,7 +8376,7 @@ function renderFrequencyChart(data) {
     document.getElementById('freq-chart-legend-curr').textContent = currentYear;
     document.getElementById('freq-chart-legend-prev').textContent = previousYear;
 
-    const monthInitials = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+    const monthInitials = MONTHS_PT_INITIALS;
 
     const currDataArray = new Array(12).fill(null);
     const prevDataArray = new Array(12).fill(null);
@@ -8651,7 +8491,7 @@ function renderMixSaltyFoodsChart(data) {
     const chartData = (data && data.chart_data) ? data.chart_data : [];
     AppLog.log("Renderizando Mix Salty & Foods Chart com dados:", chartData);
 
-    const monthInitials = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+    const monthInitials = MONTHS_PT_INITIALS;
     const saltyData = new Array(12).fill(0);
     const foodsData = new Array(12).fill(0);
     const ambasData = new Array(12).fill(0);
