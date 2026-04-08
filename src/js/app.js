@@ -115,8 +115,14 @@ window.openDetalhadoModal = function(type) {
         
         totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + ((curr.sellout_salty || 0) + (curr.sellout_foods || 0)), 0);
         
+        const sortedDataSellout = [...estrelasDetailedData].sort((a, b) => {
+            const valA = (a.sellout_salty || 0) + (a.sellout_foods || 0);
+            const valB = (b.sellout_salty || 0) + (b.sellout_foods || 0);
+            return valB - valA;
+        });
+
         const fragment = document.createDocumentFragment();
-        estrelasDetailedData.forEach((row, index) => {
+        sortedDataSellout.forEach((row, index) => {
             const realizado = ((row.sellout_salty || 0) + (row.sellout_foods || 0)) / 1000.0;
             const meta = 0; // Mocked
             const share = totalRealizado > 0 ? ((((row.sellout_salty || 0) + (row.sellout_foods || 0)) / totalRealizado) * 100).toFixed(2) : 0;
@@ -137,8 +143,14 @@ window.openDetalhadoModal = function(type) {
         
         totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + ((curr.pos_salty || 0) + (curr.pos_foods || 0)), 0);
         
+        const sortedDataPos = [...estrelasDetailedData].sort((a, b) => {
+            const valA = (a.pos_salty || 0) + (a.pos_foods || 0);
+            const valB = (b.pos_salty || 0) + (b.pos_foods || 0);
+            return valB - valA;
+        });
+
         const fragment = document.createDocumentFragment();
-        estrelasDetailedData.forEach((row, index) => {
+        sortedDataPos.forEach((row, index) => {
             const realizado = (row.pos_salty || 0) + (row.pos_foods || 0);
             const meta = 0; // Mocked
             const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
@@ -162,8 +174,14 @@ window.openDetalhadoModal = function(type) {
         
         totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + (curr.acel_realizado || 0), 0);
         
+        const sortedDataAcel = [...estrelasDetailedData].sort((a, b) => {
+            const valA = a.acel_realizado || 0;
+            const valB = b.acel_realizado || 0;
+            return valB - valA;
+        });
+
         const fragment = document.createDocumentFragment();
-        estrelasDetailedData.forEach((row, index) => {
+        sortedDataAcel.forEach((row, index) => {
             const realizado = row.acel_realizado || 0;
             const metaPositivação = 0;
             const meta = metaPositivação * 0.5; 
