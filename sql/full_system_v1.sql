@@ -1891,6 +1891,29 @@ $$;
 -- 5. Update Get Filters
 DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[]);
 
+
+-- ==========================================
+-- TABLE: public.meta_estrelas
+-- Descrição: Metas importadas via painel "Estrelas" (CALIBRAÇÃO DE METAS)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.meta_estrelas (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    filial integer NOT NULL,
+    cod_rca integer NOT NULL,
+    calibracao_salty numeric NOT NULL,
+    calibracao_foods numeric NOT NULL,
+    calibracao_pos integer NOT NULL,
+    mes integer NOT NULL,
+    ano integer NOT NULL,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+    CONSTRAINT unique_meta_estrela UNIQUE (filial, cod_rca, mes, ano)
+);
+
+ALTER TABLE public.meta_estrelas ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow authenticated full access meta_estrelas" ON public.meta_estrelas
+    FOR ALL USING (auth.role() = 'authenticated');
+
 CREATE TABLE IF NOT EXISTS public.config_aceleradores (
     id SERIAL PRIMARY KEY,
     nome_categoria TEXT NOT NULL UNIQUE

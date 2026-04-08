@@ -2206,6 +2206,40 @@
                     <div><label for="products-file-input" class="file-input-label">5. Cadastro de Produtos (Opcional)</label><input type="file" id="products-file-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#151419] rounded-full" accept=".csv, .xls, .xlsx"/></div>
                     <div><label for="innovations-file-input" class="file-input-label">6. Inovações (Opcional)</label><input type="file" id="innovations-file-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#151419] rounded-full" accept=".csv, .xls, .xlsx"/></div>
                     <div><label for="nota-involves-multiple-input" class="file-input-label">7. Notas Involves (Opcional)</label><input type="file" id="nota-involves-multiple-input" multiple class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#151419] rounded-full" accept=".csv, .xls, .xlsx"/></div>
+
+                    <!-- Meta Estrelas -->
+                    <div class="space-y-2 border-t border-white/10 pt-4 mt-2">
+                        <label for="meta-estrelas-input" class="file-input-label text-emerald-400">8. Metas Estrelas (Opcional)</label>
+                        <input type="file" id="meta-estrelas-input" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#151419] rounded-full" accept=".csv, .xls, .xlsx"/>
+
+                        <div id="meta-estrelas-periodo" class="hidden flex gap-4 pt-2">
+                            <div class="flex-1">
+                                <label for="meta-estrelas-mes" class="text-xs text-slate-500 mb-1 block">Mês Referência</label>
+                                <select id="meta-estrelas-mes" class="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-orange-500">
+                                    <option value="1">Janeiro</option>
+                                    <option value="2">Fevereiro</option>
+                                    <option value="3">Março</option>
+                                    <option value="4">Abril</option>
+                                    <option value="5">Maio</option>
+                                    <option value="6">Junho</option>
+                                    <option value="7">Julho</option>
+                                    <option value="8">Agosto</option>
+                                    <option value="9">Setembro</option>
+                                    <option value="10">Outubro</option>
+                                    <option value="11">Novembro</option>
+                                    <option value="12">Dezembro</option>
+                                </select>
+                            </div>
+                            <div class="flex-1">
+                                <label for="meta-estrelas-ano" class="text-xs text-slate-500 mb-1 block">Ano Referência</label>
+                                <select id="meta-estrelas-ano" class="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-orange-500">
+                                    <option value="2024">2024</option>
+                                    <option value="2025" selected>2025</option>
+                                    <option value="2026">2026</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

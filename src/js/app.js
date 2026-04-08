@@ -1929,6 +1929,10 @@ let estrelasSelectedCategorias = [];
 
     const innovationsFileInput = document.getElementById('innovations-file-input');
     const notaInvolvesMultipleInput = document.getElementById('nota-involves-multiple-input');
+    const metaEstrelasInput = document.getElementById('meta-estrelas-input');
+    const metaEstrelasPeriodo = document.getElementById('meta-estrelas-periodo');
+    const metaEstrelasMes = document.getElementById('meta-estrelas-mes');
+    const metaEstrelasAno = document.getElementById('meta-estrelas-ano');
 
     if(salesPrevYearInput) salesPrevYearInput.addEventListener('change', (e) => { files.salesPrevYearFile = e.target.files[0]; checkFiles(); });
     if(salesCurrYearInput) salesCurrYearInput.addEventListener('change', (e) => { files.salesCurrYearFile = e.target.files[0]; checkFiles(); });
@@ -1942,6 +1946,24 @@ let estrelasSelectedCategorias = [];
         files.notaInvolvesFile2 = e.target.files.length > 1 ? e.target.files[1] : null;
         checkFiles();
     });
+
+    if (metaEstrelasInput) {
+        metaEstrelasInput.addEventListener('change', (e) => {
+            files.metaEstrelasFile = e.target.files[0];
+            if (e.target.files[0]) {
+                metaEstrelasPeriodo.classList.remove('hidden');
+                files.metaEstrelasMes = metaEstrelasMes.value;
+                files.metaEstrelasAno = metaEstrelasAno.value;
+            } else {
+                metaEstrelasPeriodo.classList.add('hidden');
+                delete files.metaEstrelasMes;
+                delete files.metaEstrelasAno;
+            }
+            checkFiles();
+        });
+    }
+    if (metaEstrelasMes) metaEstrelasMes.addEventListener('change', (e) => { files.metaEstrelasMes = e.target.value; });
+    if (metaEstrelasAno) metaEstrelasAno.addEventListener('change', (e) => { files.metaEstrelasAno = e.target.value; });
 
     if(optimizeDbBtn) optimizeDbBtn.addEventListener('click', async () => {
         if (window.userRole !== 'adm') {
@@ -2333,6 +2355,12 @@ let estrelasSelectedCategorias = [];
                 updateStatus('Atualizando Nota Involves...', 78);
                 await clearTable('data_nota_perfeita');
                 await uploadBatch('data_nota_perfeita', data.notaPerfeita);
+            }
+
+            if (data.metaEstrelas && data.metaEstrelas.length > 0) {
+                updateStatus('Atualizando Metas Estrelas...', 79);
+                const { error: meErr } = await supabase.from('meta_estrelas').upsert(data.metaEstrelas, { onConflict: 'filial, cod_rca, mes, ano' });
+                if (meErr) throw new Error(`Erro Metas Estrelas: ${meErr.message}`);
             }
 
             // CHUNKED CACHE REFRESH LOGIC
