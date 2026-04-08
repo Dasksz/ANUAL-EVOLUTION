@@ -140,7 +140,7 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "=chat_V33_{{ $('Edit Fields').item.json.chatid }}",
+        "sessionKey": "=chat_V34_{{ $('Edit Fields').item.json.chatid }}",
         "sessionTTL": 3600,
         "contextWindowLength": 6
       },
@@ -689,7 +689,7 @@
     "timeSavedMode": "fixed",
     "callerPolicy": "workflowsFromSameOwner"
   },
-  "versionId": "e8f479f0-086e-42f2-a558-6f9610f88a34",
+  "versionId": "26d4ff7d-431c-4048-b3dd-b674197b9e3d",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "09c748d22dedfad9a8f8d622608e21bfef530f2282bf1c8c8aec81b06d0d60e8"
