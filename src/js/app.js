@@ -108,12 +108,11 @@ window.openDetalhadoModal = function(type) {
         thead.innerHTML = `
             <th class="py-3 px-4 text-left rounded-tl-lg bg-indigo-500/10 text-indigo-200">${iconVendedor}Vendedor</th>
             <th class="py-3 px-4 text-left bg-indigo-500/10 text-indigo-200">${iconFilial}Filial</th>
-            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconChart}Realizado</th>
-            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconTarget}Meta</th>
-            <th class="py-3 px-4 text-right rounded-tr-lg bg-indigo-500/10 text-indigo-200">${iconShare}% Share</th>
+            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconTarget}Meta Salty</th>
+            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconChart}Realizado Salty</th>
+            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconTarget}Meta Foods</th>
+            <th class="py-3 px-4 text-right rounded-tr-lg bg-indigo-500/10 text-indigo-200">${iconChart}Realizado Foods</th>
         `;
-        
-        totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + ((curr.sellout_salty || 0) + (curr.sellout_foods || 0)), 0);
         
         const sortedDataSellout = [...estrelasDetailedData].sort((a, b) => {
             const valA = (a.sellout_salty || 0) + (a.sellout_foods || 0);
@@ -123,10 +122,26 @@ window.openDetalhadoModal = function(type) {
 
         const fragment = document.createDocumentFragment();
         sortedDataSellout.forEach((row, index) => {
-            const realizado = ((row.sellout_salty || 0) + (row.sellout_foods || 0)) / 1000.0;
-            const meta = 0; // Mocked
-            const share = totalRealizado > 0 ? ((((row.sellout_salty || 0) + (row.sellout_foods || 0)) / totalRealizado) * 100).toFixed(2) : 0;
-            const tr = createDetalhadoRow(row, index, realizado.toFixed(2), 'tons', meta.toFixed(2), 'tons', share, 'text-indigo-400');
+            const metaSalty = (row.meta_salty || 0).toFixed(2);
+            const realizadoSalty = ((row.sellout_salty || 0) / 1000.0).toFixed(2);
+            const metaFoods = (row.meta_foods || 0).toFixed(2);
+            const realizadoFoods = ((row.sellout_foods || 0) / 1000.0).toFixed(2);
+
+            const tr = document.createElement('tr');
+            tr.className = `hover:bg-white/5 transition-colors border-b border-white/5 ${index % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.02]'}`;
+            tr.innerHTML = `
+                <td class="py-3 px-4 text-slate-300 font-medium">
+                    <div class="flex items-center">
+                        <span class="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs mr-3 shrink-0">${index + 1}</span>
+                        <span class="truncate max-w-[200px]" title="${row.vendedor_nome}">${row.vendedor_nome}</span>
+                    </div>
+                </td>
+                <td class="py-3 px-4 text-slate-400 font-mono text-sm">${row.filial}</td>
+                <td class="py-3 px-4 text-right font-medium text-slate-400">${metaSalty} tons</td>
+                <td class="py-3 px-4 text-right font-bold text-white">${realizadoSalty} tons</td>
+                <td class="py-3 px-4 text-right font-medium text-slate-400">${metaFoods} tons</td>
+                <td class="py-3 px-4 text-right font-bold text-white">${realizadoFoods} tons</td>
+            `;
             fragment.appendChild(tr);
         });
         tbody.appendChild(fragment);
@@ -152,7 +167,7 @@ window.openDetalhadoModal = function(type) {
         const fragment = document.createDocumentFragment();
         sortedDataPos.forEach((row, index) => {
             const realizado = (row.pos_salty || 0) + (row.pos_foods || 0);
-            const meta = 0; // Mocked
+            const meta = row.meta_pos || 0;
             const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
             const tr = createDetalhadoRow(row, index, realizado, 'PDV(s)', meta, 'PDV(s)', share, 'text-emerald-400');
             fragment.appendChild(tr);
@@ -183,8 +198,8 @@ window.openDetalhadoModal = function(type) {
         const fragment = document.createDocumentFragment();
         sortedDataAcel.forEach((row, index) => {
             const realizado = row.acel_realizado || 0;
-            const metaPositivação = 0;
-            const meta = metaPositivação * 0.5; 
+const metaPositivação = row.meta_pos || 0;
+            const meta = Math.round(metaPositivação * 0.5);
             const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
             const tr = createDetalhadoRow(row, index, realizado, null, meta, null, share, 'text-amber-400');
             fragment.appendChild(tr);
