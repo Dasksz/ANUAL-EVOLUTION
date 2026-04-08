@@ -2759,7 +2759,10 @@ let estrelasSelectedCategorias = [];
         const fmtVar = (v) => {
             const cls = v >= 0 ? 'text-emerald-400' : 'text-red-400';
             const sign = v > 0 ? '+' : '';
-            return `<span class="${cls}">${sign}${v.toFixed(1)}%</span>`;
+            const span = document.createElement('span');
+            span.className = cls;
+            span.textContent = `${sign}${v.toFixed(1)}%`;
+            return span;
         };
 
         // Determine View Mode (Year vs Month)
@@ -2875,14 +2878,20 @@ let estrelasSelectedCategorias = [];
             // If Year View: Realized Year vs Previous Year.
             // If Month View + Trend: Trended Month vs Previous Month (same period prev year).
             // Logic: calcVar(mainDisplayVal, prev).
-            if(elPrevVar) elPrevVar.innerHTML = fmtVar(calcVar(mainDisplayVal, prev));
+            if(elPrevVar) {
+                elPrevVar.innerHTML = '';
+                elPrevVar.appendChild(fmtVar(calcVar(mainDisplayVal, prev)));
+            }
 
             const elTriVal = document.getElementById(`boxes-kpi-${prefix}-tri`);
             const elTriVar = document.getElementById(`boxes-kpi-${prefix}-tri-var`);
             if(elTriVal) elTriVal.textContent = formatFn(tri);
             
             // Tri Variation: Always Monthly (Recent/Trended) vs Tri Avg
-            if(elTriVar) elTriVar.innerHTML = fmtVar(calcVar(triComparisonVal, tri));
+            if(elTriVar) {
+                elTriVar.innerHTML = '';
+                elTriVar.appendChild(fmtVar(calcVar(triComparisonVal, tri)));
+            }
         };
 
         updateBoxKpi('fat', 'fat', fmtBRL);
@@ -6436,7 +6445,9 @@ let estrelasSelectedCategorias = [];
                 return val.toLocaleString('pt-BR');
             };
 
-            container.innerHTML = kpis.map(kpi => {
+            container.innerHTML = '';
+            const frag = document.createDocumentFragment();
+            kpis.forEach(kpi => {
                 const variation = kpi.history > 0 ? ((kpi.current - kpi.history) / kpi.history) * 100 : 0;
                 const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
 
@@ -6446,13 +6457,32 @@ let estrelasSelectedCategorias = [];
                 else if (kpi.title.includes('Peso')) glowClass = 'kpi-glow-blue';
                 else if (kpi.title.includes('Clientes')) glowClass = 'kpi-glow-purple';
 
-                return `<div class="kpi-card p-4 rounded-lg text-center kpi-glow-base ${glowClass}">
-                            <p class="text-slate-300 text-sm">${escapeHtml(kpi.title)}</p>
-                            <p class="text-2xl font-bold text-white my-2">${fmt(kpi.current, kpi.format)}</p>
-                            <p class="text-sm ${colorClass}">${variation > 0 ? '+' : ''}${variation.toFixed(1)}% vs Média</p>
-                            <p class="text-xs text-slate-500">Média: ${fmt(kpi.history, kpi.format)}</p>
-                        </div>`;
-            }).join('');
+                const div = document.createElement('div');
+                div.className = `kpi-card p-4 rounded-lg text-center kpi-glow-base ${glowClass}`;
+
+                const pTitle = document.createElement('p');
+                pTitle.className = 'text-slate-300 text-sm';
+                pTitle.textContent = kpi.title;
+                div.appendChild(pTitle);
+
+                const pCurrent = document.createElement('p');
+                pCurrent.className = 'text-2xl font-bold text-white my-2';
+                pCurrent.textContent = fmt(kpi.current, kpi.format);
+                div.appendChild(pCurrent);
+
+                const pVar = document.createElement('p');
+                pVar.className = `text-sm ${colorClass}`;
+                pVar.textContent = `${variation > 0 ? '+' : ''}${variation.toFixed(1)}% vs Média`;
+                div.appendChild(pVar);
+
+                const pAvg = document.createElement('p');
+                pAvg.className = 'text-xs text-slate-500';
+                pAvg.textContent = `Média: ${fmt(kpi.history, kpi.format)}`;
+                div.appendChild(pAvg);
+
+                frag.appendChild(div);
+            });
+            container.appendChild(frag);
         }
 
         function renderComparisonCharts(chartsData) {
