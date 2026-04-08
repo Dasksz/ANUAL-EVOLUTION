@@ -2250,7 +2250,8 @@ CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_tipovenda text[] default null,
     p_rede text[] default null,
     p_produto text[] default null,
-    p_categoria text[] default null -- Added
+    p_categoria text[] default null,
+    p_codcli text default null -- Added
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -2353,6 +2354,10 @@ BEGIN
     
     v_where_base := v_where_base || format(' AND ano IN (%L, %L) ', v_current_year, v_previous_year);
 
+    IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
+        v_where_base := v_where_base || format(' AND codcli = %L ', p_codcli);
+        v_where_kpi := v_where_kpi || format(' AND codigo_cliente = %L ', p_codcli);
+    END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND filial = ANY(%L) ', p_filial);
     END IF;
@@ -5142,7 +5147,8 @@ CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_tipovenda text[] default null,
     p_rede text[] default null,
     p_produto text[] default null,
-    p_categoria text[] default null -- Added
+    p_categoria text[] default null,
+    p_codcli text default null -- Added
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -5245,6 +5251,10 @@ BEGIN
 
     v_where_base := v_where_base || format(' AND ano IN (%L, %L) ', v_current_year, v_previous_year);
 
+    IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
+        v_where_base := v_where_base || format(' AND codcli = %L ', p_codcli);
+        v_where_kpi := v_where_kpi || format(' AND codigo_cliente = %L ', p_codcli);
+    END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND filial = ANY(%L) ', p_filial);
     END IF;
