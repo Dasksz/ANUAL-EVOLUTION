@@ -22,7 +22,8 @@ function parseDate(dateString) {
 
     if (typeof dateString !== 'string') return null;
 
-    const str = dateString.trim();
+    // Get only the date part before any space/time
+    const str = dateString.trim().split(' ')[0];
     if (str.length === 0) return null;
 
     // Fast path for YYYY-MM-DD or DD/MM/YYYY
