@@ -298,6 +298,51 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
     });
 };
 
+
+        // ------------------------------------------------------------------
+        // METAS ESTRELAS PROCESSING
+        // ------------------------------------------------------------------
+        function processMetasEstrelas(data, mes, ano) {
+            const results = [];
+            for (const row of data) {
+                // Ignore lines that don't have FILIAL or have "Total" in it
+                if (!row['FILIAL']) continue;
+                const filialStr = String(row['FILIAL']).trim().toUpperCase();
+                if (filialStr.includes('TOTAL')) continue;
+
+                // Extract only numbers from FILIAL just in case it still says "FILIAL 5"
+                const filialMatch = filialStr.match(/\d+/);
+                const filial = filialMatch ? parseInt(filialMatch[0], 10) : null;
+
+                const codRca = parseInt(row['Cod'], 10);
+
+                if (!filial || isNaN(codRca)) continue;
+
+                const calcPos = parseInt(row['Calibração Pos'] || row['Calibração Pos '], 10) || 0;
+
+                // Parse float numbers replacing comma with dot
+                const parseDecimal = (val) => {
+                    if (!val) return 0;
+                    if (typeof val === 'number') return val;
+                    return parseFloat(String(val).replace(',', '.')) || 0;
+                };
+
+                const calcFoods = parseDecimal(row['Calibração Foods'] || row['Calibração Foods ']);
+                const calcSalty = parseDecimal(row['Calibração Salty'] || row['Calibração Salty ']);
+
+                results.push({
+                    filial: filial,
+                    cod_rca: codRca,
+                    calibracao_salty: calcSalty,
+                    calibracao_foods: calcFoods,
+                    calibracao_pos: calcPos,
+                    mes: parseInt(mes, 10),
+                    ano: parseInt(ano, 10)
+                });
+            }
+            return results;
+        }
+
         function processLojaPerfeita(filesData, clientCnpjMap) {
             const combined = filesData.flat();
             const grouped = new Map(); // Key: CodCli_Pesquisador
@@ -493,11 +538,11 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
 if (typeof self !== 'undefined') {
 self.onmessage = async (event) => {
     // Removed credential requirements since worker no longer interacts with Supabase
-    const { salesPrevYearFile, salesCurrYearFile, salesCurrMonthFile, clientsFile, productsFile, innovationsFile, notaInvolvesFile1, notaInvolvesFile2, cityBranchMap } = event.data;
+    const { salesPrevYearFile, salesCurrYearFile, salesCurrMonthFile, clientsFile, productsFile, innovationsFile, notaInvolvesFile1, notaInvolvesFile2, cityBranchMap, metaEstrelasFile, metaEstrelasMes, metaEstrelasAno } = event.data;
 
     try {
         self.postMessage({ type: 'progress', status: 'Lendo arquivos...', percentage: 5 });
-        let [salesPrevYearDataRaw, salesCurrYearHistDataRaw, salesCurrMonthDataRaw, clientsDataRaw, productsDataRaw, innovationsDataRaw, nota1DataRaw, nota2DataRaw] = await Promise.all([
+        let [salesPrevYearDataRaw, salesCurrYearHistDataRaw, salesCurrMonthDataRaw, clientsDataRaw, productsDataRaw, innovationsDataRaw, nota1DataRaw, nota2DataRaw, metaEstrelasDataRaw] = await Promise.all([
             readFile(salesPrevYearFile),
             readFile(salesCurrYearFile),
             readFile(salesCurrMonthFile),
@@ -505,7 +550,8 @@ self.onmessage = async (event) => {
             readFile(productsFile),
             readFile(innovationsFile),
             readFile(notaInvolvesFile1),
-            readFile(notaInvolvesFile2)
+            readFile(notaInvolvesFile2),
+            readFile(metaEstrelasFile)
         ]);
 
         self.postMessage({ type: 'progress', status: 'Filtrando vendas Pepsico e linhas inválidas...', percentage: 15 });
@@ -1104,6 +1150,14 @@ self.onmessage = async (event) => {
         }
 
         // Collect all data to return
+
+        // Process Metas Estrelas
+        let finalMetaEstrelas = null;
+        if (metaEstrelasDataRaw && metaEstrelasDataRaw.length > 0) {
+            self.postMessage({ type: 'progress', status: 'Processando Metas Estrelas...', percentage: 95 });
+            finalMetaEstrelas = processMetasEstrelas(metaEstrelasDataRaw, metaEstrelasMes, metaEstrelasAno);
+        }
+
         const resultPayload = {
             historyChunks: finalHistoryChunks,
             detailedChunks: detailedChunks,
@@ -1115,7 +1169,8 @@ self.onmessage = async (event) => {
             newProducts: finalProducts,
             productStock: finalProductStock,
             innovations: finalInnovations,
-            notaPerfeita: finalNotaPerfeita
+            notaPerfeita: finalNotaPerfeita,
+            metaEstrelas: finalMetaEstrelas
         };
 
         self.postMessage({ type: 'result', data: resultPayload });
