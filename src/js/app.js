@@ -202,7 +202,7 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
-import { formatNumber, escapeHtml, formatCurrency, formatTons } from './utils.js';
+import { formatNumber, escapeHtml, formatCurrency, formatTons, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -2693,7 +2693,7 @@ let estrelasSelectedCategorias = [];
 
         if (boxesMesFilter && boxesMesFilter.options.length <= 1) {
             boxesMesFilter.innerHTML = '<option value="">Todos</option>';
-            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const meses = MONTHS_PT;
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; boxesMesFilter.appendChild(opt); });
             enhanceSelectToCustomDropdown(boxesMesFilter);
         }
@@ -3519,7 +3519,7 @@ let estrelasSelectedCategorias = [];
         updateSingleSelect(anoFilter, data.anos);
         if (mesFilter.options.length <= 1) { 
             mesFilter.innerHTML = '<option value="">Todos</option>';
-            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const meses = MONTHS_PT;
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; mesFilter.appendChild(opt); });
         }
         setupMultiSelect(filialFilterBtn, filialFilterDropdown, filialFilterDropdown, data.filiais, selectedFiliais, () => {});
@@ -4324,7 +4324,7 @@ let estrelasSelectedCategorias = [];
         const tableHead = document.querySelector('#monthly-summary-table thead tr');
         tableBody.innerHTML = '';
 
-        const monthInitials = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+        const monthInitials = MONTHS_PT_INITIALS;
         let headerHTML = `
             <th class="px-2 py-2 text-left bg-transparent border-b border-white/50 relative">
                 <div class="flex items-center gap-2">
@@ -4643,7 +4643,7 @@ let estrelasSelectedCategorias = [];
          
          if (cityMesFilter && cityMesFilter.options.length <= 1) {
             cityMesFilter.innerHTML = '<option value="">Todos</option>';
-            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const meses = MONTHS_PT;
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; cityMesFilter.appendChild(opt); });
             enhanceSelectToCustomDropdown(cityMesFilter);
         }
@@ -4929,7 +4929,7 @@ let estrelasSelectedCategorias = [];
          // Months
          if (branchMesFilter.options.length <= 1) {
             branchMesFilter.innerHTML = '<option value="">Todos</option>';
-            const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const meses = MONTHS_PT;
             meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; branchMesFilter.appendChild(opt); });
             enhanceSelectToCustomDropdown(branchMesFilter);
         }
@@ -5211,7 +5211,7 @@ let estrelasSelectedCategorias = [];
          const branches = Object.keys(branchDataMap).sort();
          const kpiBranches = {}; 
          const chartBranches = {};
-         const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+         const monthNames = MONTHS_PT;
 
          // Determine Bonification Mode
          const isBonifMode = isBonificationMode(branchSelectedTiposVenda);
@@ -5499,7 +5499,7 @@ let estrelasSelectedCategorias = [];
         const daysInMonth = lastDay.getDate();
         const startingDay = firstDay.getDay(); // 0 = Sunday
 
-        const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const monthNames = MONTHS_PT;
 
         let html = `<div class="mb-2 font-bold text-slate-300 text-center">${monthNames[month]} ${year}</div>`;
         html += `<div class="grid grid-cols-7 gap-1 text-center">`;
@@ -5847,7 +5847,7 @@ let estrelasSelectedCategorias = [];
                 const currentMesVal = comparisonMesFilter.value;
 
                 comparisonMesFilter.innerHTML = '';
-                const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                const meses = MONTHS_PT;
                 meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; comparisonMesFilter.appendChild(opt); });
 
                 // If there's an active valid selected month (not empty), keep it
@@ -6781,7 +6781,7 @@ function renderInnovationsChart(data) {
         targetDate = new Date(yearFilter, monthFilter - 1, 1);
     }
 
-    const monthNames = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+    const monthNames = MONTHS_PT_SHORT;
 
     const getMonthName = (date, subtractMonths) => {
         let d = new Date(date);
@@ -7149,7 +7149,7 @@ const setupInnovationsFilters = async () => {
     
     if (mesSelect) {
         mesSelect.innerHTML = '<option value="">Todos</option>';
-        const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const meses = MONTHS_PT;
         meses.forEach((m, i) => { 
             const opt = document.createElement('option'); 
             const val = String(i + 1).padStart(2, '0');
@@ -8015,7 +8015,7 @@ const setupEstrelasFilters = async () => {
 
     if (mesSelect) {
         mesSelect.innerHTML = '<option value="">Todos</option>';
-        const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const meses = MONTHS_PT;
         meses.forEach((m, i) => {
             const opt = document.createElement('option');
             const val = String(i + 1).padStart(2, '0');
@@ -8376,7 +8376,7 @@ function renderFrequencyChart(data) {
     document.getElementById('freq-chart-legend-curr').textContent = currentYear;
     document.getElementById('freq-chart-legend-prev').textContent = previousYear;
 
-    const monthInitials = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+    const monthInitials = MONTHS_PT_INITIALS;
 
     const currDataArray = new Array(12).fill(null);
     const prevDataArray = new Array(12).fill(null);
@@ -8491,7 +8491,7 @@ function renderMixSaltyFoodsChart(data) {
     const chartData = (data && data.chart_data) ? data.chart_data : [];
     AppLog.log("Renderizando Mix Salty & Foods Chart com dados:", chartData);
 
-    const monthInitials = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+    const monthInitials = MONTHS_PT_INITIALS;
     const saltyData = new Array(12).fill(0);
     const foodsData = new Array(12).fill(0);
     const ambasData = new Array(12).fill(0);
