@@ -3156,7 +3156,7 @@ BEGIN
     v_where := v_where || format(' AND ano = %L ', v_current_year);
 
     IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_chart := v_where_chart || format(' AND s.codcli = %L ', p_codcli);
+        v_where := v_where || format(' AND codcli = %L ', p_codcli);
     END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN v_where := v_where || format(' AND filial = ANY(%L) ', p_filial); END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN v_where := v_where || format(' AND cidade = ANY(%L) ', p_cidade); END IF;
@@ -3298,7 +3298,7 @@ BEGIN
 
     -- Dynamic Filters (Common for current and trend)
     IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_chart := v_where_chart || format(' AND s.codcli = %L ', p_codcli);
+        v_where := v_where || format(' AND codcli = %L ', p_codcli);
     END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where := v_where || format(' AND filial = ANY(%L) ', p_filial);
@@ -3596,8 +3596,7 @@ BEGIN
 
     -- 2. Build WHERE Clause
     IF p_codcli IS NOT NULL AND p_codcli <> '' THEN
-        v_where_base := v_where_base || format(' AND codcli = %L ', p_codcli);
-        v_where_kpi := v_where_kpi || format(' AND codigo_cliente = %L ', p_codcli);
+        v_where := v_where || format(' AND codcli = %L ', p_codcli);
     END IF;
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where := v_where || format(' AND filial = ANY(%L) ', p_filial);
@@ -4371,7 +4370,7 @@ GRANT EXECUTE ON FUNCTION public.search_loja_perfeita_clients(text, text[], text
 ALTER FUNCTION public.append_to_chunk_v2(p_table_name text, p_rows jsonb) SET search_path = public;
 ALTER FUNCTION public.sync_chunk_v2(p_table_name text, p_chunk_key text, p_rows jsonb, p_hash text) SET search_path = public;
 ALTER FUNCTION public.get_frequency_table_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_fornecedor text[], p_tipovenda text[], p_rede text[], p_produto text[], p_categoria text[]) SET search_path = public;
-ALTER FUNCTION public.get_frequency_table_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_fornecedor text[], p_ano text, p_mes text, p_tipovenda text[], p_rede text[], p_produto text[], p_categoria text[]) SET search_path = public;
+ALTER FUNCTION public.get_frequency_table_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_fornecedor text[], p_ano text, p_mes text, p_tipovenda text[], p_rede text[], p_produto text[], p_categoria text[], p_codcli text) SET search_path = public;
 ALTER FUNCTION public.get_frequency_table_data(p_diretoria text[], p_gerencia text[], p_filial text[], p_vendedor text[], p_supervisor text[], p_ano text, p_mes text, p_fornecedor text[], p_rede text[], p_produto text[], p_categoria text[], p_tipovenda text[]) SET search_path = public;
 ALTER FUNCTION public.update_products_stock(p_stock_data jsonb) SET search_path = public;
 ALTER FUNCTION public.classify_product_mix() SET search_path = public;

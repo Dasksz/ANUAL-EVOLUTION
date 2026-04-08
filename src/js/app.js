@@ -6773,15 +6773,16 @@ async function updateInnovationsMonthView() {
 
     // Replace empty arrays with null to avoid PostgREST overloading resolution issues
     const rpcFilters = {
-        p_ano: filters.p_ano || null,
-        p_mes: filters.p_mes || null,
         p_filial: filters.p_filial.length ? filters.p_filial : null,
         p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
         p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
         p_vendedor: filters.p_vendedor.length ? filters.p_vendedor : null,
         p_rede: filters.p_rede.length ? filters.p_rede : null,
         p_tipovenda: filters.p_tipovenda.length ? filters.p_tipovenda : null,
-        p_categoria_inovacao: filters.p_categoria_inovacao && filters.p_categoria_inovacao.length ? filters.p_categoria_inovacao[0] : null // Categoria Inovacao was a text param
+        p_categoria_inovacao: filters.p_categoria_inovacao && filters.p_categoria_inovacao.length ? filters.p_categoria_inovacao[0] : null,
+        p_ano: filters.p_ano || null,
+        p_mes: filters.p_mes || null,
+        p_codcli: filters.p_codcli || null
     };
 
     const cacheKey = generateCacheKey('innovations_view_data', rpcFilters);
@@ -8313,7 +8314,8 @@ async function loadFrequencyTable(filters) {
         p_tipovenda: (filters.p_tipovenda && filters.p_tipovenda.length) ? filters.p_tipovenda : null,
         p_rede: (filters.p_rede && filters.p_rede.length) ? filters.p_rede : null,
         p_produto: (filters.p_produto && filters.p_produto.length) ? filters.p_produto : null,
-        p_categoria: (filters.p_categoria && filters.p_categoria.length) ? filters.p_categoria : null
+        p_categoria: (filters.p_categoria && filters.p_categoria.length) ? filters.p_categoria : null,
+        p_codcli: filters.p_codcli || null
     };
 
     try {
