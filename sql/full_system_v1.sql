@@ -1957,6 +1957,7 @@ CREATE TABLE IF NOT EXISTS public.meta_estrelas (
 
 ALTER TABLE public.meta_estrelas ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow authenticated full access meta_estrelas" ON public.meta_estrelas;
 CREATE POLICY "Allow authenticated full access meta_estrelas" ON public.meta_estrelas
     FOR ALL USING (auth.role() = 'authenticated');
 
