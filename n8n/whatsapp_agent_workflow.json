@@ -140,7 +140,7 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "=chat_V28_{{ $('Edit Fields').item.json.chatid }}",
+        "sessionKey": "=chat_V32_{{ $('Edit Fields').item.json.chatid }}",
         "sessionTTL": 3600,
         "contextWindowLength": 6
       },
@@ -324,12 +324,12 @@
     {
       "parameters": {
         "descriptionType": "manual",
-        "toolDescription": "Get many rows in Supabas{\n  \"type\": \"object\",\n  \"properties\": {\n    \"codigo_cliente\": {\n      \"type\": \"string\",\n      \"description\": \"Código numérico exato do cliente.\"\n    },\n    \"cnpj\": {\n      \"type\": \"string\",\n      \"description\": \"CNPJ ou CPF do cliente. Use apenas números sem pontos ou traços.\"\n    }\n  }\n}",
+        "toolDescription": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"codigo_cliente\": {\n      \"type\": \"string\",\n      \"description\": \"Código numérico exato do cliente.\"\n    },\n    \"cnpj\": {\n      \"type\": \"string\",\n      \"description\": \"CNPJ ou CPF do cliente. Use apenas números sem pontos ou traços.\"\n    }\n  }\n}",
         "operation": "getAll",
         "tableId": "n8n_agent_view",
         "limit": 8,
         "filterType": "string",
-        "filterString": "=={{   [    $fromAI(\"codigo_cliente\") ? `codigo_cliente=eq.${$fromAI(\"codigo_cliente\")}` : \"\",    $fromAI(\"cnpj\") ? `cnpj=eq.${$fromAI(\"cnpj\")}` : \"\"  ].filter(x => x !== \"\").join(\"&\") || \"codigo_cliente=not.is.null\"}}"
+        "filterString": "={{ [ $fromAI(\"codigo_cliente\") ? `codigo_cliente=eq.${$fromAI(\"codigo_cliente\")}` : \"\", $fromAI(\"cnpj\") ? `cnpj=eq.${$fromAI(\"cnpj\")}` : \"\" ].filter(x => x !== \"\").join(\"&\") \n\n \"codigo_cliente=is.null\" }}"
       },
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
@@ -355,7 +355,7 @@
         "tableId": "n8n_agent_view",
         "limit": 5,
         "filterType": "string",
-        "filterString": "={{ \n  [\n    $fromAI(\"codigo_cliente\") ? `codigo_cliente=eq.${$fromAI(\"codigo_cliente\")}` : \"\",\n    $fromAI(\"cnpj\") ? `cnpj=eq.${$fromAI(\"cnpj\")}` : \"\",\n    $fromAI(\"tipo_venda_pedido\") ? `tipo_venda_pedido=in.(${$fromAI(\"tipo_venda_pedido\")})` : \"\",\n    $fromAI(\"numero_pedido\") ? `numero_pedido=eq.${$fromAI(\"numero_pedido\")}` : \"\",\n    $fromAI(\"data_inicio\") ? `data_pedido=gte.${$fromAI(\"data_inicio\")}` : \"\",\n    $fromAI(\"data_fim\") ? `data_pedido=lte.${$fromAI(\"data_fim\")}` : \"\"\n  ].filter(x => x !== \"\").join(\"&\") || \"codigo_cliente=not.is.null\"\n}}"
+        "filterString": "={{ [ $fromAI(\"codigo_cliente\") ? `codigo_cliente=eq.${$fromAI(\"codigo_cliente\")}` : \"\", $fromAI(\"cnpj\") ? `cnpj=eq.${$fromAI(\"cnpj\")}` : \"\", $fromAI(\"tipo_venda_pedido\") ? `tipo_venda_pedido=in.(${$fromAI(\"tipo_venda_pedido\")})` : \"\", $fromAI(\"numero_pedido\") ? `numero_pedido=eq.${$fromAI(\"numero_pedido\")}` : \"\", $fromAI(\"data_inicio\") ? `data_pedido=gte.${$fromAI(\"data_inicio\")}` : \"\", $fromAI(\"data_fim\") ? `data_pedido=lte.${$fromAI(\"data_fim\")}` : \"\" ].filter(x => x !== \"\").join(\"&\") \n\n \"codigo_cliente=is.null\" }}"
       },
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
@@ -408,8 +408,8 @@
             "accept": "application/json, text/plain, */*",
             "content-type": "application/json",
             "user-agent": "WAHA/2026.3.4",
-            "x-webhook-request-id": "1843afu7mnok502h",
-            "x-webhook-timestamp": "1775562617751",
+            "x-webhook-request-id": "1843afu7mnqabp1e",
+            "x-webhook-timestamp": "1775667066238",
             "content-length": "2383",
             "accept-encoding": "gzip, compress, deflate, br",
             "host": "host.docker.internal:5678",
@@ -418,8 +418,8 @@
           "params": {},
           "query": {},
           "body": {
-            "id": "evt_01knkwewwqtadt51tn1c29475h",
-            "timestamp": 1775562617751,
+            "id": "evt_01knq02dbwsj708s7r364sbcqx",
+            "timestamp": 1775667066238,
             "event": "message.any",
             "session": "default",
             "metadata": {},
@@ -430,12 +430,12 @@
               "jid": "557332236100:2@s.whatsapp.net"
             },
             "payload": {
-              "id": "false_65713167446078@lid_3EB0FE9533D64B9C100888",
-              "timestamp": 1775562617,
+              "id": "false_65713167446078@lid_3EB0EA20EDD27C301F9931",
+              "timestamp": 1775667064,
               "from": "65713167446078@lid",
               "fromMe": false,
               "source": "app",
-              "body": "56806168000143",
+              "body": "55448117000124",
               "to": null,
               "participant": null,
               "hasMedia": false,
@@ -456,11 +456,11 @@
                   "RecipientAlt": "",
                   "BroadcastListOwner": "",
                   "BroadcastRecipients": null,
-                  "ID": "3EB0FE9533D64B9C100888",
+                  "ID": "3EB0EA20EDD27C301F9931",
                   "ServerID": 0,
                   "Type": "text",
                   "PushName": "Daniel César",
-                  "Timestamp": "2026-04-07T11:50:17Z",
+                  "Timestamp": "2026-04-08T16:51:04Z",
                   "Category": "",
                   "Multicast": false,
                   "MediaType": "",
@@ -482,7 +482,7 @@
                   "DeviceSentMeta": null
                 },
                 "Message": {
-                  "conversation": "56806168000143",
+                  "conversation": "55448117000124",
                   "messageContextInfo": {
                     "deviceListMetadata": {
                       "senderKeyHash": "npMunFLgkDXkvg==",
@@ -493,7 +493,7 @@
                       "recipientTimestamp": 1775152197
                     },
                     "deviceListMetadataVersion": 2,
-                    "messageSecret": "L8xIqiDFgPGxAxzmVt7C6g/O4GML7ehXcnefFhnfd7U="
+                    "messageSecret": "f6edJE4/71JsKzgL4ffoNGMeDP0TQ+Fp1CXirzSREwM="
                   }
                 },
                 "IsEphemeral": false,
@@ -509,7 +509,7 @@
                 "RetryCount": 0,
                 "NewsletterMeta": null,
                 "RawMessage": {
-                  "conversation": "56806168000143",
+                  "conversation": "55448117000124",
                   "messageContextInfo": {
                     "deviceListMetadata": {
                       "senderKeyHash": "npMunFLgkDXkvg==",
@@ -520,7 +520,7 @@
                       "recipientTimestamp": 1775152197
                     },
                     "deviceListMetadataVersion": 2,
-                    "messageSecret": "L8xIqiDFgPGxAxzmVt7C6g/O4GML7ehXcnefFhnfd7U="
+                    "messageSecret": "f6edJE4/71JsKzgL4ffoNGMeDP0TQ+Fp1CXirzSREwM="
                   }
                 },
                 "Status": 3
@@ -689,7 +689,7 @@
     "timeSavedMode": "fixed",
     "callerPolicy": "workflowsFromSameOwner"
   },
-  "versionId": "abe38ea6-5e1a-4cd3-af64-bd3aab5f3451",
+  "versionId": "8130fd6a-a367-4699-bdf4-1a2cb915b67b",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "09c748d22dedfad9a8f8d622608e21bfef530f2282bf1c8c8aec81b06d0d60e8"
