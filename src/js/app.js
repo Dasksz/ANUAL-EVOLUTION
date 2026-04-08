@@ -491,9 +491,10 @@ let estrelasSelectedCategorias = [];
                     const thTdElements = clonedTable.querySelectorAll('th, td');
                     thTdElements.forEach(cell => {
                         // Extract plain text to avoid extracting HTML attributes
-                        const text = cell.innerText || cell.textContent;
+                        // ⚡ Bolt Optimization: Use textContent instead of innerText to prevent expensive layout thrashing in cloned nodes
+                        const text = cell.textContent;
                         // For numbers with R$ or formatting, excel might prefer strings that look like numbers
-                        cell.innerText = text.trim();
+                        cell.textContent = text.trim();
                     });
 
                     // Generate worksheet
