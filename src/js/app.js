@@ -990,7 +990,9 @@ let estrelasSelectedCategorias = [];
         const state = {};
 
         if (view === 'dashboard') {
-            state.ano = anoFilter.value;
+
+                        state.ano = anoFilter.value;
+            state.codcli = dashboardSelectedClient ? dashboardSelectedClient.codigo_cliente : null;
             state.mes = mesFilter.value;
             state.filiais = selectedFiliais;
             state.cidades = selectedCidades;
@@ -1098,9 +1100,20 @@ let estrelasSelectedCategorias = [];
         const getVal = (key) => params.get(key);
 
         if (view === 'dashboard') {
+
             if (getVal('ano')) anoFilter.value = getVal('ano');
             if (getVal('mes')) mesFilter.value = getVal('mes');
 
+
+            if (getVal('codcli')) {
+                dashboardSelectedClient = { codigo_cliente: getVal('codcli') };
+                const dashInput = document.getElementById('dashboard-cliente-search-input');
+                if (dashInput) {
+                    dashInput.value = getVal('codcli'); // Show ID at least
+                }
+            } else {
+                dashboardSelectedClient = null;
+            }
             selectedFiliais = getList('filiais');
             selectedCidades = getList('cidades');
             selectedSupervisores = getList('supervisores');
@@ -1222,6 +1235,7 @@ let estrelasSelectedCategorias = [];
         renderView(view);
 
         if (view === 'dashboard') {
+
             initDashboard();
         }
     }
@@ -1866,6 +1880,15 @@ let estrelasSelectedCategorias = [];
             const span = mesFilter.nextElementSibling.querySelector('span');
             if (span) span.textContent = 'Todos';
         }
+
+                // Clear Dashboard Client Filter
+        dashboardSelectedClient = null;
+        const dashClientInput = document.getElementById('dashboard-cliente-search-input');
+        const dashClientClearBtn = document.getElementById('dashboard-cliente-search-clear');
+        const dashClientDropdown = document.getElementById('dashboard-cliente-search-dropdown');
+        if (dashClientInput) dashClientInput.value = '';
+        if (dashClientClearBtn) dashClientClearBtn.classList.add('hidden');
+        if (dashClientDropdown) dashClientDropdown.classList.add('hidden');
 
         // Reset Multi Select Arrays
         selectedFiliais = [];
@@ -3046,7 +3069,10 @@ let estrelasSelectedCategorias = [];
     const cityPageSize = 50;
     let totalActiveClients = 0;
 
+
     let selectedFiliais = [];
+    let dashboardSelectedClient = null;
+
     let selectedCidades = [];
     let selectedSupervisores = [];
     let selectedVendedores = [];
@@ -3096,12 +3122,142 @@ let estrelasSelectedCategorias = [];
         if (overlay) overlay.classList.add('hidden');
     }
 
+
+
+let isDashboardClientSearchInitialized = false;
+function setupDashboardClientSearchAutocomplete() {
+    if (isDashboardClientSearchInitialized) return;
+
+    const input = document.getElementById('dashboard-cliente-search-input');
+    const dropdown = document.getElementById('dashboard-cliente-search-dropdown');
+    const clearBtn = document.getElementById('dashboard-cliente-search-clear');
+
+    if (!input || !dropdown) return;
+
+    let debounceTimer;
+
+    input.addEventListener('input', (e) => {
+        const val = e.target.value;
+        if (val.length > 0) {
+            clearBtn.classList.remove('hidden');
+        } else {
+            clearBtn.classList.add('hidden');
+        }
+
+        clearTimeout(debounceTimer);
+
+        if (val.length < 3) {
+            dropdown.innerHTML = '';
+            dropdown.classList.add('hidden');
+            return;
+        }
+
+        debounceTimer = setTimeout(async () => {
+            try {
+                // Using general search_clients for dashboard
+                const { data, error } = await supabase.rpc('search_clients', { p_search: val });
+
+                if (error) throw error;
+
+                dropdown.innerHTML = '';
+
+                if (!data || data.length === 0) {
+                    dropdown.innerHTML = '<div class="p-3 text-sm text-slate-400 text-center">Nenhum cliente encontrado</div>';
+                    dropdown.classList.remove('hidden');
+                    return;
+                }
+
+                data.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'p-3 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/30 last:border-0 transition-colors';
+
+                    const flexContainer = document.createElement('div');
+                    flexContainer.className = 'flex items-start justify-between';
+
+                    const innerContainer = document.createElement('div');
+                    innerContainer.className = 'flex-1 min-w-0';
+
+                    const topRow = document.createElement('div');
+                    topRow.className = 'flex items-center gap-2 mb-1';
+
+                    const codSpan = document.createElement('span');
+                    codSpan.className = 'text-xs font-bold text-slate-300 whitespace-nowrap';
+                    codSpan.textContent = item.codigo_cliente;
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'text-sm font-bold text-white truncate';
+                    nameSpan.textContent = item.razaosocial || item.nomecliente || 'S/ NOME';
+
+                    topRow.appendChild(codSpan);
+                    topRow.appendChild(nameSpan);
+
+                    const bottomRow = document.createElement('div');
+                    bottomRow.className = 'flex items-center gap-2 text-xs text-slate-400';
+
+                    const citySpan = document.createElement('span');
+                    citySpan.className = 'truncate uppercase';
+                    citySpan.textContent = item.cidade || 'S/ CIDADE';
+
+                    const cnpjSpan = document.createElement('span');
+                    cnpjSpan.className = 'whitespace-nowrap';
+                    cnpjSpan.textContent = item.cnpj || '';
+
+                    bottomRow.appendChild(citySpan);
+                    bottomRow.appendChild(cnpjSpan);
+
+                    innerContainer.appendChild(topRow);
+                    innerContainer.appendChild(bottomRow);
+                    flexContainer.appendChild(innerContainer);
+                    div.appendChild(flexContainer);
+
+                    div.addEventListener('click', () => {
+                        dashboardSelectedClient = item;
+                        input.value = `${item.codigo_cliente} - ${item.razaosocial || item.nomecliente}`;
+                        dropdown.classList.add('hidden');
+
+                        // Fetch new dashboard data based on client
+
+                        if (typeof handleFilterChange === 'function') handleFilterChange();
+                    });
+
+                    dropdown.appendChild(div);
+                });
+
+                dropdown.classList.remove('hidden');
+            } catch (err) {
+                AppLog.error('Error searching dashboard clients:', err);
+            }
+        }, 300);
+    });
+
+    clearBtn.addEventListener('click', () => {
+        input.value = '';
+        dashboardSelectedClient = null;
+        clearBtn.classList.add('hidden');
+        dropdown.classList.add('hidden');
+        if (typeof handleFilterChange === 'function') handleFilterChange();
+    });
+
+
+    // Close dropdown on outside click
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    isDashboardClientSearchInitialized = true;
+}
+
+
+
     async function initDashboard() {
         showDashboardLoading();
         await checkDataVersion(); // Check for invalidation first
 
         const filters = getCurrentFilters();
         await loadFilters(filters);
+        setupDashboardClientSearchAutocomplete();
         await loadMainDashboardData();
         
         // Trigger background prefetch after main load
@@ -3133,9 +3289,12 @@ let estrelasSelectedCategorias = [];
         }
     }
 
+
     function getCurrentFilters() {
         return {
             p_filial: selectedFiliais,
+            p_codcli: dashboardSelectedClient ? dashboardSelectedClient.codigo_cliente : null,
+
             p_cidade: selectedCidades,
             p_supervisor: selectedSupervisores,
             p_vendedor: selectedVendedores,
@@ -3579,7 +3738,8 @@ let estrelasSelectedCategorias = [];
         clearTimeout(filterDebounceTimer);
         filterDebounceTimer = setTimeout(async () => {
             showDashboardLoading();
-            try { await loadFilters(filters); } catch (err) { AppLog.error("Failed to load filters:", err); }
+            try { await loadFilters(filters);
+         } catch (err) { AppLog.error("Failed to load filters:", err); }
             try { await loadMainDashboardData(); } catch (err) { AppLog.error("Failed to load dashboard data:", err); }
             if (!cityView.classList.contains('hidden')) { currentCityPage = 0; await loadCityView(); }
         }, 500);
