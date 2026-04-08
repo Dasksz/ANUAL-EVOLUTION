@@ -22,7 +22,8 @@ function parseDate(dateString) {
 
     if (typeof dateString !== 'string') return null;
 
-    const str = dateString.trim();
+    // Get only the date part before any space/time
+    const str = dateString.trim().split(' ')[0];
     if (str.length === 0) return null;
 
     // Fast path for YYYY-MM-DD or DD/MM/YYYY
@@ -298,7 +299,7 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
     });
 };
 
-
+        
         // ------------------------------------------------------------------
         // METAS ESTRELAS PROCESSING
         // ------------------------------------------------------------------
@@ -309,17 +310,17 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                 if (!row['FILIAL']) continue;
                 const filialStr = String(row['FILIAL']).trim().toUpperCase();
                 if (filialStr.includes('TOTAL')) continue;
-
+                
                 // Extract only numbers from FILIAL just in case it still says "FILIAL 5"
                 const filialMatch = filialStr.match(/\d+/);
                 const filial = filialMatch ? parseInt(filialMatch[0], 10) : null;
-
+                
                 const codRca = parseInt(row['Cod'], 10);
-
+                
                 if (!filial || isNaN(codRca)) continue;
 
                 const calcPos = parseInt(row['Calibração Pos'] || row['Calibração Pos '], 10) || 0;
-
+                
                 // Parse float numbers replacing comma with dot
                 const parseDecimal = (val) => {
                     if (!val) return 0;
@@ -1150,7 +1151,7 @@ self.onmessage = async (event) => {
         }
 
         // Collect all data to return
-
+        
         // Process Metas Estrelas
         let finalMetaEstrelas = null;
         if (metaEstrelasDataRaw && metaEstrelasDataRaw.length > 0) {
