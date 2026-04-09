@@ -905,6 +905,7 @@ let estrelasSelectedCategorias = [];
         toggleSecondaryKpisBtn.addEventListener('click', () => {
             secondaryKpiRow.classList.toggle('hidden');
             const isHidden = secondaryKpiRow.classList.contains('hidden');
+            toggleSecondaryKpisBtn.setAttribute('aria-expanded', (!isHidden).toString());
 
             // Icon Paths
             const plusPath = "M12 4v16m8-8H4"; // Heroicons Plus
