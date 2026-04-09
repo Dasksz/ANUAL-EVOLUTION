@@ -207,10 +207,13 @@ BEGIN
                 COALESCE(SUM(CASE WHEN s.codfor IN (''1119'') THEN s.peso ELSE 0 END), 0) AS sellout_foods,
                 COUNT(DISTINCT CASE WHEN s.codfor IN (''707'', ''708'', ''752'') AND s.vlvenda >= 1 THEN s.codcli END) AS pos_salty,
                 COUNT(DISTINCT CASE WHEN NOT EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor NOT IN (''1119'')) AND EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor IN (''1119'')) AND s.vlvenda >= 1 THEN s.codcli END) AS pos_foods,
-                COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias)) THEN s.codcli END) AS acel_realizado
+                COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias)) THEN s.codcli END) AS acel_realizado,
+                COALESCE((SELECT SUM(m.calibracao_salty) FROM public.meta_estrelas m WHERE m.cod_rca::text = s.codusur AND m.filial = s.filial AND m.ano = %s AND m.mes = %s), 0) AS meta_salty,
+                COALESCE((SELECT SUM(m.calibracao_foods) FROM public.meta_estrelas m WHERE m.cod_rca::text = s.codusur AND m.filial = s.filial AND m.ano = %s AND m.mes = %s), 0) AS meta_foods,
+                COALESCE((SELECT SUM(m.calibracao_pos) FROM public.meta_estrelas m WHERE m.cod_rca::text = s.codusur AND m.filial = s.filial AND m.ano = %s AND m.mes = %s), 0) AS meta_pos
             FROM target_sales s
             LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
-            GROUP BY dv.nome, s.filial
+            GROUP BY dv.nome, s.filial, s.codusur
             ORDER BY COALESCE(SUM(CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.peso ELSE 0 END), 0) + COALESCE(SUM(CASE WHEN s.codfor IN (''1119'') THEN s.peso ELSE 0 END), 0) DESC
         ),
         detalhes_json AS (
@@ -232,7 +235,7 @@ BEGIN
             ''aceleradores_meta'', ROUND(COALESCE((SELECT meta_pos FROM metas_calc), 0) * 0.5),
             ''detalhes'', COALESCE((SELECT detalhes_array FROM detalhes_json), ''[]''::json)
         )
-    ', v_where_clients, v_where_base, v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_where_metas);
+    ', v_where_clients, v_where_base, v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_where_metas, v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)));
 
     END;
 
