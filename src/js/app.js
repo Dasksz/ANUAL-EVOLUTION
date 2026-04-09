@@ -72,8 +72,8 @@ window.openDetalhadoModal = function(type) {
     const tbody = document.getElementById('modal-detalhado-tbody');
     
     // Reset contents
-    thead.innerHTML = '';
-    tbody.innerHTML = '';
+    thead.textContent = '';
+    tbody.textContent = '';
     subtitle.classList.add('hidden');
     
     let totalRealizado = 0;
@@ -86,7 +86,7 @@ window.openDetalhadoModal = function(type) {
 
     if (!estrelasDetailedData || estrelasDetailedData.length === 0) {
         title.textContent = type === 'sellout' ? 'Resultado Detalhado - Sellout' : (type === 'positivacao' ? 'Resultado Detalhado - Positivação' : 'Resultado Detalhado - Aceleradores');
-        thead.innerHTML = '';
+        thead.textContent = '';
         tbody.innerHTML = `
             <tr>
                 <td class="py-12 px-4 text-center text-slate-400" colspan="100%">
@@ -264,19 +264,36 @@ window.showToast = function(type, message, title = '') {
 
     const toast = document.createElement('div');
     toast.className = `toast ${variant.class}`;
-    toast.innerHTML = `
-        <div class="toast-icon">${variant.icon}</div>
-        <div class="flex-1 min-w-0">
-            <h4 class="toast-title"></h4>
-            <p class="toast-message"></p>
-        </div>
-        <button class="toast-close-btn" aria-label="Fechar notificação" onclick="
-            this.parentElement.classList.add('hiding');
-            this.parentElement.addEventListener('animationend', () => this.parentElement.remove());
-        ">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </button>
-    `;
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'toast-icon';
+    iconDiv.innerHTML = variant.icon;
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'flex-1 min-w-0';
+
+    const titleEl = document.createElement('h4');
+    titleEl.className = 'toast-title';
+    titleEl.textContent = title;
+
+    const msgEl = document.createElement('p');
+    msgEl.className = 'toast-message';
+    msgEl.textContent = message;
+
+    contentDiv.appendChild(titleEl);
+    contentDiv.appendChild(msgEl);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'toast-close-btn';
+    closeBtn.setAttribute('aria-label', 'Fechar notificação');
+    closeBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+    closeBtn.onclick = function() {
+        toast.classList.add('hiding');
+        toast.addEventListener('animationend', () => toast.remove());
+    };
+
+    toast.appendChild(iconDiv);
+    toast.appendChild(contentDiv);
+    toast.appendChild(closeBtn);
 
     // Use textContent to prevent XSS
     toast.querySelector('.toast-title').textContent = finalTitle;
@@ -6576,7 +6593,7 @@ let estrelasSelectedCategorias = [];
             const tbody = document.getElementById('supervisorComparisonTableBody');
             if (!tbody) return;
 
-            tbody.innerHTML = '';
+            tbody.textContent = '';
             const fragment = document.createDocumentFragment();
 
             Object.entries(data).forEach(([sup, vals]) => {
@@ -7591,7 +7608,7 @@ function renderLpTable(clients) {
     const tbody = document.getElementById('lp-table-body');
     if (!tbody || !clients) return;
 
-    tbody.innerHTML = '';
+    tbody.textContent = '';
     const fragment = document.createDocumentFragment();
 
     clients.forEach(c => {
