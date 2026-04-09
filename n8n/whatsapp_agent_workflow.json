@@ -141,7 +141,7 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "=chat_V38_{{ $('Edit Fields').item.json.chatid }}",
+        "sessionKey": "=chat_V40_{{ $('Edit Fields').item.json.chatid }}",
         "sessionTTL": 3600,
         "contextWindowLength": 6
       },
@@ -327,7 +327,7 @@
         "descriptionType": "manual",
         "toolDescription": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"codigo_cliente\": {\n      \"type\": \"string\",\n      \"description\": \"Código numérico exato do cliente. NÃO preencha se não fornecido.\"\n    },\n    \"cnpj\": {\n      \"type\": \"string\",\n      \"description\": \"CNPJ ou CPF do cliente. Use apenas números. OMITA esta propriedade se não tiver certeza do valor. NUNCA preencha com zeros (00000).\"\n    }\n  }\n}",
         "operation": "getAll",
-        "tableId": "n8n_agent_view",
+        "tableId": "data_clients",
         "limit": 8,
         "filterType": "string",
         "filterString": "={{   [     $fromAI(\"codigo_cliente\") && !/^0+$/.test($fromAI(\"codigo_cliente\")) ? `codigo_cliente=eq.${$fromAI(\"codigo_cliente\")}` : \"\",     $fromAI(\"cnpj\") && !/^0+$/.test($fromAI(\"cnpj\")) && $fromAI(\"cnpj\").length >= 11 ? `cnpj=eq.${$fromAI(\"cnpj\")}` : \"\"   ].filter(x => x !== \"\").join(\"&\") || \"codigo_cliente=is.null\" }}"
@@ -690,7 +690,7 @@
     "timeSavedMode": "fixed",
     "callerPolicy": "workflowsFromSameOwner"
   },
-  "versionId": "0dfc6dcc-7489-4856-84e3-b69ae8a125a4",
+  "versionId": "10504fea-d7c4-4d27-813f-a0e40a3a934d",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "09c748d22dedfad9a8f8d622608e21bfef530f2282bf1c8c8aec81b06d0d60e8"
