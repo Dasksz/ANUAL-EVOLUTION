@@ -217,7 +217,7 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
-import { formatNumber, escapeHtml, formatCurrency, formatTons, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS } from './utils.js';
+import { formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -2661,7 +2661,7 @@ let estrelasSelectedCategorias = [];
                 body: reportData.map(r => [
                     r["Código"],
                     r["Descrição"],
-                    Math.round(r["Caixas"]).toLocaleString('pt-BR'),
+                    formatInteger(r["Caixas"]),
                     formatCurrency(r["Faturamento"]),
                     formatTons(r["Peso (kg)"], 1),
                     r["Última Venda"]
@@ -2830,7 +2830,7 @@ let estrelasSelectedCategorias = [];
         const safeVal = (v) => v || 0;
         const fmtBRL = (v) => formatCurrency(safeVal(v));
         const fmtKg = (v) => formatTons(safeVal(v), 1);
-        const fmtCaixas = (v) => Math.round(safeVal(v)).toLocaleString('pt-BR');
+        const fmtCaixas = (v) => formatInteger(safeVal(v));
         
         const calcVar = (curr, prev) => {
             if (prev > 0) return ((curr / prev) - 1) * 100;
@@ -3069,7 +3069,7 @@ let estrelasSelectedCategorias = [];
 
                 const tdCaixas = document.createElement('td');
                 tdCaixas.className = 'p-2 text-right font-bold text-emerald-400';
-                tdCaixas.textContent = Math.round(safeVal(p.caixas)).toLocaleString('pt-BR');
+                tdCaixas.textContent = formatInteger(safeVal(p.caixas));
                 tr.appendChild(tdCaixas);
 
                 const tdFat = document.createElement('td');
@@ -3084,7 +3084,7 @@ let estrelasSelectedCategorias = [];
 
                 const tdPosit = document.createElement('td');
                 tdPosit.className = 'p-2 text-right text-slate-300 font-bold';
-                tdPosit.textContent = Math.round(safeVal(p.clientes)).toLocaleString('pt-BR');
+                tdPosit.textContent = formatInteger(safeVal(p.clientes));
                 tr.appendChild(tdPosit);
 
                 const tdUltimaVenda = document.createElement('td');

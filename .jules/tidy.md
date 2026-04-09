@@ -11,3 +11,5 @@ This file contains critical learnings from Tidy to avoid making mistakes in this
 ## 2026/04/06 : Extract Number and Currency Formatting Logic
 **Learning:** Found numerous duplicate instances of `.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })` and `(val / 1000).toLocaleString('pt-BR', ...) + ' Ton'` across the codebase. These inline string manipulations obscure business logic and make UI formatting updates tedious.
 **Action:** Centralized these formatters into `formatCurrency` and `formatTons` in `src/js/utils.js`. Replaced all repetitive string operations to use these standard utility functions to enforce DRY principles and improve code readability.
+
+## 2025/02/25 : (Extract formatInteger Utility) **Aprendizado:** (Formatting boilerplate like `Math.round(val).toLocaleString('pt-BR')` occurs frequently in frontend tables and dashboards, cluttering logic) **Ação:** (Extracted `formatInteger` to `src/js/utils.js` to standardize integer formatting, similar to `formatCurrency` and `formatTons`.)
