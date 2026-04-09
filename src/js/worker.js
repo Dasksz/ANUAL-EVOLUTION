@@ -1076,7 +1076,9 @@ self.onmessage = async (event) => {
 
              // Hash Chunks
              const chunkKeys = Object.keys(chunks);
-             for (const key of chunkKeys) {
+
+             // ⚡ Bolt Optimization: Parallelize chunk hashing to avoid sequential await bottleneck.
+             await Promise.all(chunkKeys.map(async (key) => {
                  // Sort rows to ensure deterministic hash (by order ID or composite key if possible, else rely on input order stability + sort)
                  // Sorting by 'pedido', then 'produto', then 'vlvenda' for determinism
                  // ⚡ Bolt Optimization: Avoid O(N log N) string concatenation by doing sequential property comparison
@@ -1096,16 +1098,16 @@ self.onmessage = async (event) => {
 
                  // Calculate Chunk Hash (SHA-256 of JSON string of sorted rows)
                  const jsonStr = JSON.stringify(chunks[key].rows);
-             const data = _hashEncoder.encode(jsonStr);
+                 const data = _hashEncoder.encode(jsonStr);
                  const hashBuffer = await self.crypto.subtle.digest('SHA-256', data);
-             const hashArray = new Uint8Array(hashBuffer);
+                 const hashArray = new Uint8Array(hashBuffer);
 
-             let hex = '';
-             for (let i = 0; i < hashArray.length; i++) {
-                 hex += _hexMap[hashArray[i]];
-             }
-             chunks[key].hash = hex;
-             }
+                 let hex = '';
+                 for (let i = 0; i < hashArray.length; i++) {
+                     hex += _hexMap[hashArray[i]];
+                 }
+                 chunks[key].hash = hex;
+             }));
 
              return chunks;
         };
