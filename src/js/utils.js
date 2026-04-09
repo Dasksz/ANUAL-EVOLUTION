@@ -36,3 +36,12 @@ export function formatTons(weightInKg, decimals = 1) {
 export const MONTHS_PT = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 export const MONTHS_PT_SHORT = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
 export const MONTHS_PT_INITIALS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+
+/**
+ * Formats a value as an Integer in pt-BR locale.
+ * Improves readability by encapsulating Math.round and toLocaleString.
+ */
+export function formatInteger(value) {
+    if (value == null || isNaN(Number(value))) return '0';
+    return Math.round(Number(value)).toLocaleString('pt-BR');
+}
