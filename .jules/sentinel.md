@@ -37,3 +37,7 @@
 **Vulnerability:** XSS vulnerability where template strings were assigned to `innerHTML` dynamically in `renderComparisonKPIs` (`container.innerHTML = kpis.map(...)`) and in Box KPIs where `fmtVar` returned HTML injected via `.innerHTML`. Although inputs might appear safe, this is a dangerous anti-pattern prone to XSS if data is tampered with.
 **Learning:** `innerHTML` and `insertAdjacentHTML` combined with template literals are common sources of DOM-based XSS in this project.
 **Prevention:** Avoid `innerHTML` entirely for dynamically generated DOM elements. Use `document.createElement()`, `textContent`, and `.appendChild()` combined with a `DocumentFragment` to securely construct UI elements natively. Modify formatters to return text and class names separately rather than raw HTML strings.
+
+## 2024-04-09 - Client-Side Supabase Keys are public
+**Learning:** The user explicitly requested that the Supabase URL and Key remain in the codebase because the page is purely hosted by GitHub Pages (static front-end only) and has no backend. In a static setup like this, Supabase anon keys and URLs are designed to be public. Security relies entirely on Postgres Row Level Security (RLS) policies on the Supabase end, rather than keeping the anon key secret.
+**Prevention:** Do not attempt to hide the Supabase URL or the anonymous key in purely client-side static architectures.
