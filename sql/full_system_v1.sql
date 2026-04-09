@@ -131,17 +131,17 @@ BEGIN
     BEGIN
         IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
             IF NOT ('ambas' = ANY(p_filial)) THEN
-                v_where_metas := v_where_metas || format(' AND m.filial::text = ANY(%L::text[]) ', p_filial);
+                v_where_metas := v_where_metas || format(' AND m.filial::text = ANY(ARRAY(SELECT LTRIM(f, ''0'') FROM unnest(%L::text[]) AS f)) ', p_filial);
             END IF;
         END IF;
 
         IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-            v_where_metas := v_where_metas || format(' AND m.cod_rca::text IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+            v_where_metas := v_where_metas || format(' AND m.cod_rca::text IN (SELECT LTRIM(codigo, ''0'') FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
         END IF;
 
         IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
             v_where_metas := v_where_metas || format(' AND m.cod_rca::text IN (
-                SELECT DISTINCT rs.codusur FROM (
+                SELECT DISTINCT LTRIM(rs.codusur, ''0'') FROM (
                     SELECT codusur, codsupervisor, ROW_NUMBER() OVER(PARTITION BY codusur ORDER BY dtped DESC) as rn
                     FROM (
                         SELECT codusur, codsupervisor, dtped FROM public.data_detailed
@@ -208,9 +208,9 @@ BEGIN
                 COUNT(DISTINCT CASE WHEN s.codfor IN (''707'', ''708'', ''752'') AND s.vlvenda >= 1 THEN s.codcli END) AS pos_salty,
                 COUNT(DISTINCT CASE WHEN NOT EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor NOT IN (''1119'')) AND EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor IN (''1119'')) AND s.vlvenda >= 1 THEN s.codcli END) AS pos_foods,
                 COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias)) THEN s.codcli END) AS acel_realizado,
-                COALESCE((SELECT SUM(m.calibracao_salty) FROM public.meta_estrelas m WHERE m.cod_rca::text = s.codusur AND m.filial::text = s.filial AND m.ano = %s AND m.mes = %s), 0) AS meta_salty,
-                COALESCE((SELECT SUM(m.calibracao_foods) FROM public.meta_estrelas m WHERE m.cod_rca::text = s.codusur AND m.filial::text = s.filial AND m.ano = %s AND m.mes = %s), 0) AS meta_foods,
-                COALESCE((SELECT SUM(m.calibracao_pos) FROM public.meta_estrelas m WHERE m.cod_rca::text = s.codusur AND m.filial::text = s.filial AND m.ano = %s AND m.mes = %s), 0) AS meta_pos
+                COALESCE((SELECT SUM(m.calibracao_salty) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(s.codusur, ''0'') AND m.filial::text = LTRIM(s.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_salty,
+                COALESCE((SELECT SUM(m.calibracao_foods) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(s.codusur, ''0'') AND m.filial::text = LTRIM(s.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_foods,
+                COALESCE((SELECT SUM(m.calibracao_pos) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(s.codusur, ''0'') AND m.filial::text = LTRIM(s.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_pos
             FROM target_sales s
             LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
             GROUP BY dv.nome, s.filial, s.codusur
@@ -232,7 +232,7 @@ BEGIN
             ''sellout_salty_meta'', COALESCE((SELECT meta_salty FROM metas_calc), 0),
             ''sellout_foods_meta'', COALESCE((SELECT meta_foods FROM metas_calc), 0),
             ''positivacao_meta'', COALESCE((SELECT meta_pos FROM metas_calc), 0),
-            ''aceleradores_meta'', ROUND(COALESCE((SELECT meta_pos FROM metas_calc), 0) * 0.5),
+            ''aceleradores_meta'', CEIL(COALESCE((SELECT meta_pos FROM metas_calc), 0) * 0.5),
             ''detalhes'', COALESCE((SELECT detalhes_array FROM detalhes_json), ''[]''::json)
         )
     ', v_where_clients, v_where_base, v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_where_metas, v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)));
