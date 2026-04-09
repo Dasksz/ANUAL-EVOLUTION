@@ -208,9 +208,9 @@ BEGIN
                 COUNT(DISTINCT CASE WHEN s.codfor IN (''707'', ''708'', ''752'') AND s.vlvenda >= 1 THEN s.codcli END) AS pos_salty,
                 COUNT(DISTINCT CASE WHEN NOT EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor NOT IN (''1119'')) AND EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor IN (''1119'')) AND s.vlvenda >= 1 THEN s.codcli END) AS pos_foods,
                 COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias)) THEN s.codcli END) AS acel_realizado,
-                COALESCE((SELECT SUM(m.calibracao_salty) FROM public.meta_estrelas m WHERE m.cod_rca::text = s.codusur AND m.filial = s.filial AND m.ano = %s AND m.mes = %s), 0) AS meta_salty,
-                COALESCE((SELECT SUM(m.calibracao_foods) FROM public.meta_estrelas m WHERE m.cod_rca::text = s.codusur AND m.filial = s.filial AND m.ano = %s AND m.mes = %s), 0) AS meta_foods,
-                COALESCE((SELECT SUM(m.calibracao_pos) FROM public.meta_estrelas m WHERE m.cod_rca::text = s.codusur AND m.filial = s.filial AND m.ano = %s AND m.mes = %s), 0) AS meta_pos
+                COALESCE((SELECT SUM(m.calibracao_salty) FROM public.meta_estrelas m WHERE m.cod_rca::text = s.codusur AND m.filial::text = s.filial AND m.ano = %s AND m.mes = %s), 0) AS meta_salty,
+                COALESCE((SELECT SUM(m.calibracao_foods) FROM public.meta_estrelas m WHERE m.cod_rca::text = s.codusur AND m.filial::text = s.filial AND m.ano = %s AND m.mes = %s), 0) AS meta_foods,
+                COALESCE((SELECT SUM(m.calibracao_pos) FROM public.meta_estrelas m WHERE m.cod_rca::text = s.codusur AND m.filial::text = s.filial AND m.ano = %s AND m.mes = %s), 0) AS meta_pos
             FROM target_sales s
             LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
             GROUP BY dv.nome, s.filial, s.codusur
