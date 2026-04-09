@@ -232,7 +232,7 @@ BEGIN
             ''sellout_salty_meta'', COALESCE((SELECT meta_salty FROM metas_calc), 0),
             ''sellout_foods_meta'', COALESCE((SELECT meta_foods FROM metas_calc), 0),
             ''positivacao_meta'', COALESCE((SELECT meta_pos FROM metas_calc), 0),
-            ''aceleradores_meta'', ROUND(COALESCE((SELECT meta_pos FROM metas_calc), 0) * 0.5),
+            ''aceleradores_meta'', CEIL(COALESCE((SELECT meta_pos FROM metas_calc), 0) * 0.5),
             ''detalhes'', COALESCE((SELECT detalhes_array FROM detalhes_json), ''[]''::json)
         )
     ', v_where_clients, v_where_base, v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_where_metas, v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)));

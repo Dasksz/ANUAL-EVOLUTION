@@ -199,7 +199,7 @@ window.openDetalhadoModal = function(type) {
         sortedDataAcel.forEach((row, index) => {
             const realizado = row.acel_realizado || 0;
 const metaPositivação = row.meta_pos || 0;
-            const meta = Math.round(metaPositivação * 0.5); 
+            const meta = Math.ceil(metaPositivação * 0.5);
             const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
             const tr = createDetalhadoRow(row, index, realizado, null, meta, null, share, 'text-amber-400');
             fragment.appendChild(tr);
@@ -8178,7 +8178,7 @@ async function updateEstrelasView() {
         updateEl('pos-realizado-foods-val', `${data.positivacao_foods} PDV(s)`);
         updateEl('pontos-possiveis-pos', data.base_clientes);
 
-        updateEl('aceleradores-meta-val', metaAcel);
+        updateEl('acel-meta-val', metaAcel);
         updateEl('aceleradores-realizado-val', data.aceleradores_realizado);
         updateEl('aceleradores-parcial-val', data.aceleradores_parcial);
         updateEl('pontos-possiveis-acel', data.base_clientes);
