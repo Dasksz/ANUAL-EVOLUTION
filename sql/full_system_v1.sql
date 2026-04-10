@@ -2784,6 +2784,8 @@ DECLARE
 
     -- Tipovenda cond for clients
     v_tipovenda_client_cond text;
+    v_active_client_cond text;
+    v_active_client_cond_slow text;
 
     -- Trend Vars
     v_max_sale_date date;
@@ -2877,8 +2879,17 @@ BEGIN
         v_where_raw := v_where_raw || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
         v_where_summary := v_where_summary || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
         v_tipovenda_client_cond := format('tipovenda = ANY(%L)', p_tipovenda);
+        IF p_tipovenda <@ ARRAY['5','11'] THEN
+            v_active_client_cond := format('tipovenda = ANY(%L) AND bonificacao > 0', p_tipovenda);
+            v_active_client_cond_slow := format('tipovenda = ANY(%L) AND vlbonific > 0', p_tipovenda);
+        ELSE
+            v_active_client_cond := format('tipovenda = ANY(%L) AND tipovenda NOT IN (''5'', ''11'') AND pre_positivacao_val >= 1', p_tipovenda);
+            v_active_client_cond_slow := format('tipovenda = ANY(%L) AND tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1', p_tipovenda);
+        END IF;
     ELSE
         v_tipovenda_client_cond := 'tipovenda IN (''1'', ''9'')';
+        v_active_client_cond := 'tipovenda NOT IN (''5'', ''11'') AND pre_positivacao_val >= 1';
+        v_active_client_cond_slow := 'tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1';
     END IF;
     
     -- Category Filter
@@ -2960,7 +2971,7 @@ BEGIN
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s AND pre_positivacao_val >= 1 THEN codcli END) as clientes
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM public.data_summary
                 %s AND ano IN (%L, %L)
                 GROUP BY 1, 2
@@ -2970,7 +2981,7 @@ BEGIN
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s AND pre_positivacao_val >= 1 THEN codcli END) as clientes
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM public.data_summary
                 %s AND ano = %L %s
             ),
@@ -2979,7 +2990,7 @@ BEGIN
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s AND pre_positivacao_val >= 1 THEN codcli END) as clientes
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM public.data_summary
                 %s AND ano = %L %s
             ),
@@ -2988,7 +2999,7 @@ BEGIN
                     SUM(vlvenda) / 3 as fat,
                     SUM(peso) / 3 as peso,
                     SUM(COALESCE(caixas, 0)) / 3 as caixas,
-                    COUNT(DISTINCT CASE WHEN %s AND pre_positivacao_val >= 1 THEN codcli END) / 3 as clientes
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) / 3 as clientes
                 FROM public.data_summary
                 %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
             ),
@@ -3025,13 +3036,13 @@ BEGIN
                 (SELECT row_to_json(t) FROM kpi_tri t),
                 (SELECT json_agg(pa) FROM prod_agg pa)
         ', 
-        v_tipovenda_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
-        v_tipovenda_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
-        v_tipovenda_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
-        v_tipovenda_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
+        v_active_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
+        v_active_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
+        v_active_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
+        v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
-        v_tipovenda_client_cond -- Prod Agg
+        v_active_client_cond -- Prod Agg
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     
@@ -3112,11 +3123,11 @@ BEGIN
         ', 
         v_where_raw, v_previous_year,
         v_where_raw, v_previous_year,
-        v_tipovenda_client_cond, v_current_year, v_previous_year,
-        v_tipovenda_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
-        v_tipovenda_client_cond, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
-        v_tipovenda_client_cond, v_tri_start, v_tri_end,
-        v_tipovenda_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END
+        v_active_client_cond_slow, v_current_year, v_previous_year,
+        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
+        v_active_client_cond_slow, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
+        v_active_client_cond_slow, v_tri_start, v_tri_end,
+        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     END IF;
