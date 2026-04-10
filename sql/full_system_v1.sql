@@ -2960,7 +2960,7 @@ BEGIN
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
-                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) as clientes
+                    COUNT(DISTINCT CASE WHEN %s AND pre_positivacao_val >= 1 THEN codcli END) as clientes
                 FROM public.data_summary
                 %s AND ano IN (%L, %L)
                 GROUP BY 1, 2
@@ -2970,7 +2970,7 @@ BEGIN
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
-                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) as clientes
+                    COUNT(DISTINCT CASE WHEN %s AND pre_positivacao_val >= 1 THEN codcli END) as clientes
                 FROM public.data_summary
                 %s AND ano = %L %s
             ),
@@ -2979,7 +2979,7 @@ BEGIN
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
-                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) as clientes
+                    COUNT(DISTINCT CASE WHEN %s AND pre_positivacao_val >= 1 THEN codcli END) as clientes
                 FROM public.data_summary
                 %s AND ano = %L %s
             ),
@@ -2988,7 +2988,7 @@ BEGIN
                     SUM(vlvenda) / 3 as fat,
                     SUM(peso) / 3 as peso,
                     SUM(COALESCE(caixas, 0)) / 3 as caixas,
-                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) / 3 as clientes
+                    COUNT(DISTINCT CASE WHEN %s AND pre_positivacao_val >= 1 THEN codcli END) / 3 as clientes
                 FROM public.data_summary
                 %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
             ),
