@@ -46,3 +46,7 @@
 ## 2026-04-09 - [Toggle Accessibility]
 **Learning:** When adding toggle buttons that reveal/hide sections, adding `aria-expanded`, `aria-controls`, and `focus-visible` ensures proper screen reader and keyboard accessibility state tracking.
 **Action:** Always add and dynamically update `aria-expanded` and add focus ring states when introducing toggle buttons that control other DOM elements.
+
+## 2024-04-10 - Dynamic ARIA Labels and Pressed States on Toggle Buttons
+**Learning:** Icon-only buttons used for toggling states (like a password visibility toggle) can become confusing for screen reader users if their aria-label remains static. Furthermore, standard toggles should indicate their state using `aria-pressed`. When a static label like "Mostrar senha" remains even when the password is shown, it's misleading. Providing dynamic feedback through JS by updating the `aria-label` to "Ocultar senha" and `aria-pressed` to `true`/`false` gives accurate context, and `focus-visible` ensures keyboard navigability.
+**Action:** When implementing icon-only state-toggling buttons, always initialize them with `aria-pressed="false"`. In the event listener that toggles the state, dynamically update both `aria-label` to reflect the next available action and `aria-pressed` to reflect the current state. Ensure `focus-visible` ring classes are applied for keyboard accessibility.
