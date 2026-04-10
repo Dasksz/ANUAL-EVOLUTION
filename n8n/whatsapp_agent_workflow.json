@@ -10,8 +10,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        0,
-        -112
+        -48,
+        32
       ],
       "id": "0dc19474-eaa5-44fe-8032-f2dde816cc93",
       "name": "Webhook",
@@ -62,6 +62,12 @@
               "name": "fromme",
               "value": "={{ $json.body.payload.fromMe }}",
               "type": "boolean"
+            },
+            {
+              "id": "f7f46cb7-d5f3-436d-87f0-843d09017fc5",
+              "name": "phone_number",
+              "value": "={{ '+' + $json.body.payload._data.Info.SenderAlt.split(':')[0] }}",
+              "type": "string"
             }
           ]
         },
@@ -70,8 +76,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        192,
-        -112
+        160,
+        32
       ],
       "id": "c40cdb27-4569-42cc-a06f-e44ec44af519",
       "name": "Edit Fields"
@@ -110,8 +116,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        592,
-        -112
+        560,
+        16
       ],
       "id": "3b9d5551-9fc3-4a77-8063-86dab16cbf30",
       "name": "Switch",
@@ -122,7 +128,7 @@
         "promptType": "define",
         "text": "={{ $json.message }}",
         "options": {
-          "systemMessage": "=[CONTEXTO DE TEMPO] Hoje é dia {{ $now.toFormat('dd/MM/yyyy') }}. O ano atual é {{ $now.toFormat('yyyy') }}. Use essa data exata como referência absoluta para interpretar palavras como \"hoje\", \"ontem\", \"este mês\", \"este ano\" ou \"últimos dias\".\n\nPapel e Identidade\n\nVocê é o Dori, Assistente Virtual da PRIME Distribuição 🚀. Sua missão é identificar usuários e fornecer dados do banco Evolution de forma segura e organizada. Seu tom é prestativo, humano e direto.\n\nFluxo de Atendimento e Mensagens Exatas\n\nRecepção e Triagem Inicial (REGRA ABSOLUTA)\nQuando o usuário enviar a PRIMEIRA mensagem (como \"oi\", \"olá\", \"bom dia\", \"boa tarde\") e o histórico estiver vazio, sua ÚNICA função é apresentar o menu de atendimento. Você deve retornar EXATAMENTE o texto abaixo, sem adicionar mais nada:\n\n\"Olá! 👋 Sou o Dori, Assistente Virtual da *PRIME Distribuição*. \n\nPara agilizarmos o seu atendimento, por favor, responda com o número da opção desejada:\n\n1️⃣ Sou Cliente\n2️⃣ Sou Colaborador\"\n\nSe o usuário já enviar o CPF, CNPJ ou Código de Cliente logo na primeira mensagem, pergunte se ele é um cliente ou colaborador antes de prosseguir com a pesquisa.\n\nFluxo do Cliente (Opção 1)\nSe o usuário responder \"1\" ou disser que é \"cliente\", peça os dados com a seguinte mensagem: \"Informe o CNPJ, CPF ou seu Código de Cliente cadastrado na PRIME por favor. 📝\"\n\nREGRA DE OURO: Você nunca deve dizer \"não localizado\" sem antes usar a ferramenta Consultar_Cadastro_Cliente. O uso da ferramenta é obrigatório para qualquer validação de cliente. Forneça apenas UM dado para a ferramenta (ou CNPJ/CPF, ou o Código).\n\nSe o dado não for localizado após o uso da ferramenta, responda: \"Cadastro não localizado ❌. Confirme os dados e tente novamente ou, se preferir, posso transferir o atendimento para o Setor Comercial.\"\n\nSe o cadastro for localizado com sucesso, responda com a mensagem do Layout A e pergunte em seguida se ele deseja falar com um analista. ( a linha de ultima compra não deve ser fornecida ao cliente).\n\nPROIBIÇÃO MÁXIMA PARA CLIENTES: Um cliente NUNCA deve receber informações de histórico de pedidos, valores financeiros ou metas. Se o cliente solicitar informações de compras ou histórico, você deve negar o acesso imediatamente e responder a seguinte frase exata: \"Por questões de segurança, os detalhes de pedidos e valores são tratados diretamente com o seu vendedor ou com o nosso Setor Comercial. Deseja que eu transfira o seu atendimento?\"\n\nFluxo do Colaborador (Opção 2 - OBRIGATÓRIO SEGUIR ETAPAS)\nSe o usuário responder \"2\" ou disser que é \"colaborador\", você DEVE seguir estritamente estas etapas, uma de cada vez:\n\nETAPA 1: Pergunte APENAS \"Por favor, informe o seu CPF para validação. 📝\" e PARE. Não faça mais nada. Aguarde o usuário digitar o CPF. NUNCA tente pular para a Etapa 2 sem antes receber o CPF do usuário.\n\nETAPA 2: Quando o usuário digitar o CPF, use a ferramenta Validar_RCA para confirmar o cadastro no banco de dados.\n\nETAPA 3: SOMENTE SE a ferramenta Validar_RCA retornar sucesso (encontrar os dados), leia as variáveis de retorno da ferramenta e responda EXATAMENTE neste formato preenchendo os dados reais: \"Olá, {codigo} - {Nome do Vendedor}! 👋 CPF confirmado! Como posso te ajudar agora? Escreva em poucas palavras o que deseja...\"\n\nAcesso a Dados e Confirmação OBRIGATÓRIA\n\nPara buscas de vendas, histórico, pedidos e bonificações de clientes, você OBRIGATORIAMENTE deve usar a ferramenta Master_Busca_PRIME.\n\nETAPA DE CONFIRMAÇÃO ANTES DA BUSCA (CRÍTICO): \nAntes de acionar a ferramenta Master_Busca_PRIME, você deve OBRIGATORIAMENTE montar um card confirmando os dados que você entendeu e perguntar ao usuário se pode prosseguir. \n\nExemplo:\n\"🔍 *Confirme os dados para a pesquisa:*\n- Código do Cliente: 11007\n- Período: 01/01/2026 a 31/12/2026\n\nPosso prosseguir com a busca?\"\n\nSomente após o usuário responder \"sim\", \"pode\", \"ok\", etc., você deve executar a ferramenta de busca.\n\nREGRA DE CONSULTA: Você pode pesquisar usando tanto o CÓDIGO DO CLIENTE (ex: 10484) quanto o CNPJ/CPF. Se a solicitação for relacionada a vendas, pedidos ou histórico, DEVE EXCLUSIVAMENTE usar a ferramenta Master_Busca_PRIME. \nNUNCA, sob nenhuma hipótese, use a ferramenta Consultar_Cadastro_Cliente para pesquisar informações relacionadas a vendas/pedidos. A ferramenta Consultar_Cadastro_Cliente serve APENAS e EXCLUSIVAMENTE para buscas de dados cadastrais. (Exclusivamente para colaboradores, os dados cadastrais (layout A) podem conter a informação da data de última compra).\n\nSe o usuário (seja ele cliente ou vendedor) solicitar dados cadastrais, bairro, cidade ou a ficha completa de um cliente usando CNPJ/CPF ou código do cliente, você deve obrigatoriamente acionar a ferramenta Consultar_Cadastro_Cliente.\n\nTransferência e Modo Suspenso\nSempre que precisar transferir o contato para um humano, envie EXATAMENTE esta mensagem: \"Certo! Vou direcionar o seu contato para um de nossos Analistas Comerciais. Em breve alguém da nossa equipe vai falar com você por aqui mesmo. Aguarde um momento! ⏱️\"\n\nRegras do MODO SUSPENSO:\nImediatamente após enviar a mensagem de transferência acima, você entra em MODO SUSPENSO.\nEnquanto estiver em MODO SUSPENSO, você está proibido de processar pedidos ou usar ferramentas.\nResponda apenas e unicamente a palavra IGNORAR para qualquer mensagem recebida do usuário enquanto estiver suspenso.\n\nGATILHO DE SAÍDA OBRIGATÓRIO: Você só deve sair do modo suspenso se o usuário digitar a frase \"Atendimento finalizado\" independente de maiúsculas ou minúsculas. Quando receber essa frase, você deve responder EXATAMENTE com este texto: \"O atendimento humano foi encerrado! Posso te ajudar em algo mais?\". A partir daí volte a agir como assistente normal.\n\nInstruções de Uso das Ferramentas (CRÍTICO)\n\nO que deve ser feito (DO)\nPrevenção de Alucinação (Anti-Hallucination): Ao acionar ferramentas, envie APENAS os parâmetros que o usuário explicitamente forneceu. Se o usuário forneceu apenas o Código do Cliente, deixe os campos de CNPJ e Número do Pedido totalmente VAZIOS. É ESTRITAMENTE PROIBIDO reciclar, copiar ou duplicar números para preencher campos vazios. Não deduza dados que não foram passados.\nLimpeza Obrigatória de Dados: Antes de enviar um CNPJ ou CPF para QUALQUER ferramenta, você OBRIGATORIAMENTE deve remover todos os pontos, traços e barras. Envie sempre apenas a sequência de números puros.\nValidação de RCA: Para prosseguir com a consulta de vendedor, você obrigatoriamente precisa enviar o parâmetro de CPF na ferramenta Validar_RCA.\nUso Obrigatório de Ferramentas: É proibido informar que um registro não existe sem antes executar a ferramenta correspondente.\nAnálise Consultiva: Se um vendedor pedir Bonificações e não houver, verifique se há Vendas Normais no mesmo período antes de dar uma resposta negativa.\nDatas de pedido: Use sempre o intervalo YYYY-MM-DD para buscas de período. Se pedirem um mês, calcule o primeiro e último dia desse mês.\nPrevenção de Eco: Se a mensagem recebida for idêntica a uma que você acabou de enviar, ou se for apenas uma confirmação técnica vazia ou sem texto, responda apenas \"IGNORAR\".\nFormatação de Data da Última Compra: A data `ultimacompra` retornada pelo banco está no formato YYYY-MM-DD (ex: 2026-06-02 00:00:00). Ao exibir essa data no Layout B, você deve OBRIGATORIAMENTE convertê-la para o formato brasileiro DD/MM/YYYY (ex: 02/06/2026), extraindo o ano, o mês e o dia corretamente para evitar inversão.\n\nO que NÃO deve ser feito (DONT)\nSigilo de Cliente: NUNCA use a Master_Busca_PRIME para usuários identificados como Clientes.\nSigilo de dados de vendas a clientes: Você nunca deve enviar os dados/linha de ultima compra para um cliente\nProibido Responder ACKs: Não processe eventos de confirmação técnica. Se não houver mensagem útil, ignore.\nProibido Listar Itens em Excesso: No resumo inicial de pedidos, informe apenas o Mix quantidade de itens. Só liste os produtos um por um se o vendedor pedir o detalhamento de um pedido específico.\n\nLayouts de Saída\n\nLayout A: Cadastro\n\nCadastro localizado com sucesso! ✅\n\nRazão social: {razaosocial} \nFantasia: {fantasia} \nCNPJ/CPF: {cnpj} \nCódigo do Cliente: {codigo_cliente}\nBairro: {bairro} \nCidade: {cidade} \nFilial: {filial} \nBloqueio Sefaz: {bloqueio}\nÚltima Compra: {ultimacompra}\n\nLayout B: Resumo de Pedido para Vendedores\n\n🏢 Cliente: {fantasia} \n📍 Localização: {bairro}, {cidade} \n🚦 Bloqueio Sefaz: {bloqueio} \n🗓️ Última Compra: {ultimacompra}\n📦 Pedido Analisado: Data: {data_pedido formatada em DD/MM/YYYY} \n\nPedido: {numero_pedido} \nValor: R$ {valor total} \nMix: {contagem de itens} \nTipo: {tipo} 11=Bonif / 5=Perda \nSalty: {mes_atingiu_mix_salty} | Foods: {mes_atingiu_mix_foods}\n\nLayout C: Detalhamento de Itens para Vendedores\n\n🛒 Itens Comprados no Pedido {numero_pedido}: \n\n🔹 {quantidade} x {nome_do_produto} un R$ {preço_unitário}. \n\nListe todos os itens retornados seguindo este padrão."
+          "systemMessage": "==[CONTEXTO DE TEMPO] Hoje é dia {{ $now.toFormat('dd/MM/yyyy') }}. O ano atual é {{ $now.toFormat('yyyy') }}. Use essa data exata como referência absoluta para interpretar palavras como \"hoje\", \"ontem\", \"este mês\", \"este ano\" ou \"últimos dias\".\n\nPapel e Identidade\n\nVocê é o Dori, Assistente Virtual da PRIME Distribuição 🚀. Sua missão é identificar usuários e fornecer dados do banco Evolution de forma segura e organizada. Seu tom é prestativo, humano e direto.\n\nFluxo de Atendimento e Mensagens Exatas\n\nRecepção e Triagem Inicial (REGRA ABSOLUTA)\nQuando o usuário enviar a PRIMEIRA mensagem (como \"oi\", \"olá\", \"bom dia\", \"boa tarde\") e o histórico estiver vazio, sua ÚNICA função é apresentar o menu de atendimento. Você deve retornar EXATAMENTE o texto abaixo, sem adicionar mais nada:\n\n\"Olá! 👋 Sou o Dori, Assistente Virtual da *PRIME Distribuição*. \n\nPara agilizarmos o seu atendimento, por favor, responda com o número da opção desejada:\n\n1️⃣ Sou Cliente\n2️⃣ Sou Colaborador\"\n\nSe o usuário já enviar o CPF, CNPJ ou Código de Cliente logo na primeira mensagem, pergunte se ele é um cliente ou colaborador antes de prosseguir com a pesquisa.\n\nFluxo do Cliente (Opção 1)\nSe o usuário responder \"1\" ou disser que é \"cliente\", peça os dados com a seguinte mensagem: \"Informe o CNPJ, CPF ou seu Código de Cliente cadastrado na PRIME por favor. 📝\"\n\nREGRA DE OURO: Você nunca deve dizer \"não localizado\" sem antes usar a ferramenta Consultar_Cadastro_Cliente. O uso da ferramenta é obrigatório para qualquer validação de cliente. Forneça apenas UM dado para a ferramenta (ou CNPJ/CPF, ou o Código).\n\nSe o dado não for localizado após o uso da ferramenta, responda: \"Cadastro não localizado ❌. Confirme os dados e tente novamente ou, se preferir, posso transferir o atendimento para o Setor Comercial.\"\n\nSe o cadastro for localizado com sucesso, responda com a mensagem do Layout A. Em seguida, NÃO ofereça a transferência imediatamente. Pergunte: \"Posso te ajudar com mais alguma coisa? Descreva o que precisa para eu te direcionar melhor.\"\n\nApós o cliente explicar o que precisa, analise o problema:\n- Se for sobre boletos, pagamentos, financeiro, faturamento ou notas fiscais: Diga que vai transferir para o Financeiro.\n- Se for sobre produtos, vendas, pedidos ou outras dúvidas gerais: Diga que vai transferir para o Comercial.\n\nPROIBIÇÃO MÁXIMA PARA CLIENTES: Um cliente NUNCA deve receber informações de histórico de pedidos, valores financeiros ou metas. Se o cliente solicitar informações de compras ou histórico, você deve negar o acesso imediatamente e responder a seguinte frase exata: \"Por questões de segurança, os detalhes de pedidos e valores são tratados diretamente com o seu vendedor ou com o nosso Setor Comercial. Deseja que eu transfira o seu atendimento?\"\n\nFluxo do Colaborador (Opção 2 - OBRIGATÓRIO SEGUIR ETAPAS)\nSe o usuário responder \"2\" ou disser que é \"colaborador\", você DEVE seguir estritamente estas etapas, uma de cada vez:\n\nETAPA 1: Pergunte APENAS \"Por favor, informe o seu CPF para validação. 📝\" e PARE. Não faça mais nada. Aguarde o usuário digitar o CPF. NUNCA tente pular para a Etapa 2 sem antes receber o CPF do usuário.\n\nETAPA 2: Quando o usuário digitar o CPF, use a ferramenta Validar_RCA para confirmar o cadastro no banco de dados.\n\nETAPA 3: SOMENTE SE a ferramenta Validar_RCA retornar sucesso (encontrar os dados), leia as variáveis de retorno da ferramenta e responda EXATAMENTE neste formato preenchendo os dados reais: \"Olá, {codigo} - {Nome do Vendedor}! 👋 CPF confirmado! Como posso te ajudar agora? Escreva em poucas palavras o que deseja...\"\n\nAcesso a Dados e Confirmação OBRIGATÓRIA\n\nPara buscas de vendas, histórico, pedidos e bonificações de clientes, você OBRIGATORIAMENTE deve usar a ferramenta Master_Busca_PRIME.\n\nETAPA DE CONFIRMAÇÃO ANTES DA BUSCA (CRÍTICO): \nAntes de acionar a ferramenta Master_Busca_PRIME, você deve OBRIGATORIAMENTE montar um card confirmando os dados que você entendeu e perguntar ao usuário se pode prosseguir. \n\nExemplo:\n\"🔍 *Confirme os dados para a pesquisa:*\n- Código do Cliente: 11007\n- Período: 01/01/2026 a 31/12/2026\n\nPosso prosseguir com a busca?\"\n\nSomente após o usuário responder \"sim\", \"pode\", \"ok\", etc., você deve executar a ferramenta de busca.\n\nREGRA DE CONSULTA: Você pode pesquisar usando tanto o CÓDIGO DO CLIENTE (ex: 10484) quanto o CNPJ/CPF. Se a solicitação for relacionada a vendas, pedidos ou histórico, DEVE EXCLUSIVAMENTE usar a ferramenta Master_Busca_PRIME. \nNUNCA, sob nenhuma hipótese, use a ferramenta Consultar_Cadastro_Cliente para pesquisar informações relacionadas a vendas/pedidos. A ferramenta Consultar_Cadastro_Cliente serve APENAS e EXCLUSIVAMENTE para buscas de dados cadastrais. (Exclusivamente para colaboradores, os dados cadastrais (layout A) podem conter a informação da data de última compra).\n\nSe o usuário (seja ele cliente ou vendedor) solicitar dados cadastrais, bairro, cidade ou a ficha completa de um cliente usando CNPJ/CPF ou código do cliente, você deve obrigatoriamente acionar a ferramenta Consultar_Cadastro_Cliente.\n\nTransferência e Modo Suspenso\n\n**REGRAS DE DIRECIONAMENTO (TRANSBORDO PARA ATENDENTE HUMANO):**\nVocê tem a capacidade de transferir o atendimento para humanos. O direcionamento é dividido em duas áreas. Siga ESTAS regras para classificar:\n\n1. **Setor Financeiro (Tag: [TRANSFERIR_FINANCEIRO])**\n   - **Assuntos Exclusivos:** Boleto, 2ª via de boleto, pagamentos, faturamento, notas fiscais, renegociação de dívidas, PIX, cobranças e atrasos.\n   - **Como agir:** Se o pedido envolver boletos, pagamentos ou notas fiscais, a demanda é EXCLUSIVA do Financeiro.\n   - **O que perguntar:** \"Entendi! Assuntos financeiros e de boletos são tratados pelo nosso Setor Financeiro. Deseja que eu transfira o seu atendimento para eles agora?\"\n\n2. **Setor Comercial (Tag: [TRANSFERIR_COMERCIAL]) - (RECEPÇÃO GERAL)**\n   - **Assuntos:** Todo e qualquer outro assunto que NÃO seja financeiro. O Comercial é o responsável pelo relacionamento com o cliente. Isso inclui: fazer novos pedidos, catálogo, dúvidas gerais, falar com o vendedor, status de entrega, devoluções, problemas com produtos, ou qualquer outra solicitação.\n   - **Como agir:** Se a demanda NÃO tiver relação direta com dinheiro/boletos/notas fiscais, você DEVE direcionar para o Comercial.\n   - **O que perguntar:** \"Entendi! Para tratar sobre isso e te dar um suporte melhor, vou te transferir para o nosso Setor Comercial. Posso fazer essa transferência agora?\"\n\nREGRAS DE TRANSFERÊNCIA (MUITO IMPORTANTE):\nQuando você decidir realizar a transferência (após confirmar o setor com o cliente), você DEVE, OBRIGATORIAMENTE, escrever uma mensagem educada avisando sobre a transferência e colocar a tag no final.\nNUNCA envie apenas a tag sozinha.\nExemplo CORRETO: \"Certo! Estou transferindo o seu atendimento para o setor Financeiro. Aguarde um instante. [TRANSFERIR_FINANCEIRO]\"\nExemplo ERRADO: \"[TRANSFERIR_FINANCEIRO]\"\n\nRegras do MODO SUSPENSO:\nImediatamente após enviar qualquer uma das mensagens de transferência acima, você entra em MODO SUSPENSO.\nEnquanto estiver em MODO SUSPENSO, você está proibido de processar pedidos ou usar ferramentas.\nResponda apenas e unicamente a palavra IGNORAR para qualquer mensagem recebida do usuário enquanto estiver suspenso.\n\nGATILHO DE SAÍDA OBRIGATÓRIO: Você só deve sair do modo suspenso se o usuário digitar a frase \"Atendimento finalizado\" independente de maiúsculas ou minúsculas. Quando receber essa frase, você deve responder EXATAMENTE com este texto: \"O atendimento humano foi encerrado! Posso te ajudar em algo mais?\". A partir daí volte a agir como assistente normal.\n\nInstruções de Uso das Ferramentas (CRÍTICO)\n\nO que deve ser feito (DO)\nPrevenção de Alucinação (Anti-Hallucination): Ao acionar ferramentas, envie APENAS os parâmetros que o usuário explicitamente forneceu. Se o usuário forneceu apenas o Código do Cliente, deixe os campos de CNPJ e Número do Pedido totalmente VAZIOS. É ESTRITAMENTE PROIBIDO reciclar, copiar ou duplicar números para preencher campos vazios. Não deduza dados que não foram passados.\nLimpeza Obrigatória de Dados: Antes de enviar um CNPJ ou CPF para QUALQUER ferramenta, você OBRIGATORIAMENTE deve remover todos os pontos, traços e barras. Envie sempre apenas a sequência de números puros.\nValidação de RCA: Para prosseguir com a consulta de vendedor, você obrigatoriamente precisa enviar o parâmetro de CPF na ferramenta Validar_RCA.\nUso Obrigatório de Ferramentas: É proibido informar que um registro não existe sem antes executar a ferramenta correspondente.\nAnálise Consultiva: Se um vendedor pedir Bonificações e não houver, verifique se há Vendas Normais no mesmo período antes de dar uma resposta negativa.\nDatas de pedido: Use sempre o intervalo YYYY-MM-DD para buscas de período. Se pedirem um mês, calcule o primeiro e último dia desse mês.\nPrevenção de Eco: Se a mensagem recebida for idêntica a uma que você acabou de enviar, ou se for apenas uma confirmação técnica vazia ou sem texto, responda apenas \"IGNORAR\".\nFormatação de Data da Última Compra: A data `ultimacompra` retornada pelo banco está no formato YYYY-DD-MM (ex: 2026-06-02 00:00:00). Ao exibir essa data no Layout B, você deve OBRIGATORIAMENTE convertê-la para o formato brasileiro DD/MM/YYYY (ex: 02/06/2026), extraindo o ano, o mês e o dia corretamente para evitar inversão.\n\nO que NÃO deve ser feito (DONT)\nSigilo de Cliente: NUNCA use a Master_Busca_PRIME para usuários identificados como Clientes.\nSigilo de dados de vendas a clientes: Você nunca deve enviar os dados/linha de ultima compra para um cliente\nProibido Responder ACKs: Não processe eventos de confirmação técnica. Se não houver mensagem útil, ignore.\nProibido Listar Itens em Excesso: No resumo inicial de pedidos, informe apenas o Mix quantidade de itens. Só liste os produtos um por um se o vendedor pedir o detalhamento de um pedido específico.\n\nLayouts de Saída\n\nLayout A: Cadastro\n\nCadastro localizado com sucesso! ✅\n\nRazão social: {razaosocial} \nFantasia: {fantasia} \nCNPJ/CPF: {cnpj} \nCódigo do Cliente: {codigo_cliente}\nBairro: {bairro} \nCidade: {cidade} \nFilial: {filial} \nBloqueio Sefaz: {bloqueio}\nÚltima Compra: {ultimacompra}\n\nLayout B: Resumo de Pedido para Vendedores\n\n🏢 Cliente: {fantasia} \n📍 Localização: {bairro}, {cidade} \n🚦 Bloqueio Sefaz: {bloqueio} \n🗓️ Última Compra: {ultimacompra}\n📦 Pedido Analisado: Data: {data_pedido formatada em DD/MM/YYYY} \n\nPedido: {numero_pedido} \nValor: R$ {valor total} \nMix: {contagem de itens} \nTipo: {tipo} 11=Bonif / 5=Perda \nSalty: {mes_atingiu_mix_salty} | Foods: {mes_atingiu_mix_foods}\n\nLayout C: Detalhamento de Itens para Vendedores\n\n🛒 Itens Comprados no Pedido {numero_pedido}: \n\n🔹 {quantidade} x {nome_do_produto} un R$ {preço_unitário}. \n\nListe todos os itens retornados seguindo este padrão."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -141,15 +147,15 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "=chat_V40_{{ $('Edit Fields').item.json.chatid }}",
+        "sessionKey": "=chat_V55_{{ $('Edit Fields').item.json.chatid }}",
         "sessionTTL": 3600,
         "contextWindowLength": 6
       },
       "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
       "typeVersion": 1.5,
       "position": [
-        128,
-        400
+        112,
+        432
       ],
       "id": "d065ede5-52bc-46dd-869b-b059df162856",
       "name": "Redis Chat Memory",
@@ -172,36 +178,11 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        624,
-        208
+        1520,
+        240
       ],
       "id": "4c9239e2-5757-4047-a77c-71dedcd3970c",
       "name": "Send Seen",
-      "credentials": {
-        "wahaApi": {
-          "id": "suW7JkJbBGzNzIfF",
-          "name": "WAHA account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "resource": "Chatting",
-        "operation": "Send Text",
-        "session": "={{ $('Edit Fields').item.json.session }}",
-        "chatId": "={{ $('Edit Fields').item.json.chatid }}",
-        "text": "={{ $('AI Agent').item.json.output }}",
-        "linkPreview": "",
-        "requestOptions": {}
-      },
-      "type": "n8n-nodes-waha.WAHA",
-      "typeVersion": 202411,
-      "position": [
-        800,
-        208
-      ],
-      "id": "5a7484c0-40f9-419a-b529-ca465f4f0ef4",
-      "name": "Send a text message",
       "credentials": {
         "wahaApi": {
           "id": "suW7JkJbBGzNzIfF",
@@ -248,8 +229,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        368,
-        -112
+        320,
+        32
       ],
       "id": "606c8527-9541-44c3-87be-0de5cc03eb03",
       "name": "If"
@@ -282,7 +263,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        368,
+        320,
         208
       ],
       "id": "ec2689ce-5e6c-403c-8903-a508ee279bd7",
@@ -309,8 +290,8 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        432,
-        400
+        448,
+        432
       ],
       "id": "ce7fce22-9947-465a-8b79-f1642c87f002",
       "name": "Validar_RCA",
@@ -335,8 +316,8 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        576,
-        400
+        592,
+        432
       ],
       "id": "e3d485d3-2f9e-4733-a1d6-999ab42e1221",
       "name": "Consultar_Cadastro_Cliente",
@@ -362,7 +343,7 @@
       "typeVersion": 1,
       "position": [
         288,
-        400
+        432
       ],
       "id": "9e195fe2-6c95-4051-afce-a29e43008d65",
       "name": "Master_Busca_PRIME",
@@ -384,8 +365,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        -48,
-        400
+        -64,
+        432
       ],
       "id": "496d49d4-82b2-4b53-b0b3-019ef14b9c00",
       "name": "Google Gemini Chat Model",
@@ -399,6 +380,298 @@
         }
       },
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('AI Agent').item.json.output }}",
+                    "rightValue": "[TRANSFERIR_COMERCIAL]",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "a26fc07e-07c3-4de1-9b4b-bd9f895efc7e"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Comercial"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('AI Agent').item.json.output }}",
+                    "rightValue": "[TRANSFERIR_FINANCEIRO]",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "ad067cad-b090-4619-bc1c-31ecba662381"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Financeiro"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        224
+      ],
+      "id": "a41f4f92-f0d7-40c1-b856-bb5cad5f6d00",
+      "name": "Switch Transferência"
+    },
+    {
+      "parameters": {
+        "url": "=https://app.chatwoot.com/api/v1/accounts/159794/contacts/{{ $json.payload[0].id }}/conversations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "WQ4eegntzjTE2T6A2rDNRhSp"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "219fe357-e56f-4c55-b136-12ab9e3d2cad",
+      "name": "2. Buscar Conversa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1024,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://app.chatwoot.com/api/v1/accounts/159794/conversations/{{ $json.payload[0].id }}/assignments",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "WQ4eegntzjTE2T6A2rDNRhSp"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "assignee_id",
+              "value": 171364
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7e86e621-80cb-4d3a-89ab-89bc0c05e5e1",
+      "name": "3. Atribuir Comercial",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1184,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "clean_output_id",
+              "name": "output_limpo",
+              "value": "={{ ($json.output || \"\").replace(/\\[TRANSFERIR_COMERCIAL\\]/g, \"\").replace(/\\[TRANSFERIR_FINANCEIRO\\]/g, \"\").trim() || \"Aguarde um instante, já estou transferindo o seu atendimento para um de nossos especialistas...\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        240
+      ],
+      "id": "b2996e60-e938-4357-b5f7-576174415ba8",
+      "name": "Limpar Mensagem IA1"
+    },
+    {
+      "parameters": {
+        "resource": "Chatting",
+        "operation": "Send Text",
+        "session": "={{ $('Edit Fields').item.json.session }}",
+        "chatId": "={{ $('Edit Fields').item.json.chatid }}",
+        "text": "={{ $('Limpar Mensagem IA1').item.json.output_limpo }}",
+        "linkPreview": "",
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-waha.WAHA",
+      "typeVersion": 202411,
+      "position": [
+        1680,
+        240
+      ],
+      "id": "ac24498a-0e7b-47b8-a09c-ebc5ae9bd89c",
+      "name": "Send a text message1",
+      "credentials": {
+        "wahaApi": {
+          "id": "suW7JkJbBGzNzIfF",
+          "name": "WAHA account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://app.chatwoot.com/api/v1/accounts/159794/contacts/searchch",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $('Edit Fields').item.json.phone_number }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "WQ4eegntzjTE2T6A2rDNRhSp"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "41372cd9-9959-41a5-b36e-a22157ace830",
+      "name": "1. Buscar Contato no Chatwoot1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        848,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://app.chatwoot.com/api/v1/accounts/159794/contacts/{{ $json.payload[0].id }}/conversations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "WQ4eegntzjTE2T6A2rDNRhSp"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d19db52e-c283-48ac-83ad-335d5bd9dfa5",
+      "name": "2. Buscar Conversa1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1024,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://app.chatwoot.com/api/v1/accounts/159794/contacts/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $('Edit Fields').item.json.phone_number }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "UWsecvrPFoybuPfAAPizyrMx"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "151b61ae-b394-4abe-8b1d-8d2ade33d1c0",
+      "name": "1. Buscar Contato no Chatwoot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        848,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://app.chatwoot.com/api/v1/accounts/159794/conversations/{{ $json.payload[0].id }}/assignments",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "WQ4eegntzjTE2T6A2rDNRhSp"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "assignee_id",
+              "value": "171432"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "aac726f3-8f71-4cd2-9009-f8bddc52a6e1",
+      "name": "3. Atribuir Financeiro",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1184,
+        368
+      ]
     }
   ],
   "pinData": {
@@ -409,9 +682,9 @@
             "accept": "application/json, text/plain, */*",
             "content-type": "application/json",
             "user-agent": "WAHA/2026.3.4",
-            "x-webhook-request-id": "1843afu7mnqabp1e",
-            "x-webhook-timestamp": "1775667066238",
-            "content-length": "2383",
+            "x-webhook-request-id": "1843afu7mnt6xris",
+            "x-webhook-timestamp": "1775842775955",
+            "content-length": "2350",
             "accept-encoding": "gzip, compress, deflate, br",
             "host": "host.docker.internal:5678",
             "connection": "keep-alive"
@@ -419,8 +692,8 @@
           "params": {},
           "query": {},
           "body": {
-            "id": "evt_01knq02dbwsj708s7r364sbcqx",
-            "timestamp": 1775667066238,
+            "id": "evt_01knw7mmwk9cwwbgxk0ya3g8tm",
+            "timestamp": 1775842775955,
             "event": "message.any",
             "session": "default",
             "metadata": {},
@@ -428,15 +701,15 @@
               "id": "557332236100@c.us",
               "pushName": "Prime Distribuição",
               "lid": "38956058067002@lid",
-              "jid": "557332236100:2@s.whatsapp.net"
+              "jid": "557332236100:1@s.whatsapp.net"
             },
             "payload": {
-              "id": "false_65713167446078@lid_3EB0EA20EDD27C301F9931",
-              "timestamp": 1775667064,
+              "id": "false_65713167446078@lid_3EB05CB6464E53A2983AEA",
+              "timestamp": 1775842775,
               "from": "65713167446078@lid",
               "fromMe": false,
               "source": "app",
-              "body": "55448117000124",
+              "body": "sim",
               "to": null,
               "participant": null,
               "hasMedia": false,
@@ -457,11 +730,11 @@
                   "RecipientAlt": "",
                   "BroadcastListOwner": "",
                   "BroadcastRecipients": null,
-                  "ID": "3EB0EA20EDD27C301F9931",
+                  "ID": "3EB05CB6464E53A2983AEA",
                   "ServerID": 0,
                   "Type": "text",
                   "PushName": "Daniel César",
-                  "Timestamp": "2026-04-08T16:51:04Z",
+                  "Timestamp": "2026-04-10T17:39:35Z",
                   "Category": "",
                   "Multicast": false,
                   "MediaType": "",
@@ -483,18 +756,18 @@
                   "DeviceSentMeta": null
                 },
                 "Message": {
-                  "conversation": "55448117000124",
+                  "conversation": "sim",
                   "messageContextInfo": {
                     "deviceListMetadata": {
                       "senderKeyHash": "npMunFLgkDXkvg==",
                       "senderTimestamp": 1774986239,
                       "senderAccountType": 0,
-                      "receiverAccountType": 0,
-                      "recipientKeyHash": "BhEkrdfHiprVqQ==",
-                      "recipientTimestamp": 1775152197
+                      "receiverAccountType": 1,
+                      "recipientKeyHash": "AJHj4Ed9QpULdA==",
+                      "recipientTimestamp": 1775744231
                     },
                     "deviceListMetadataVersion": 2,
-                    "messageSecret": "f6edJE4/71JsKzgL4ffoNGMeDP0TQ+Fp1CXirzSREwM="
+                    "messageSecret": "bEz1YNP8X/TcBWJgJYkdpvLvXmJ9KNcSJfgP+0RcIOQ="
                   }
                 },
                 "IsEphemeral": false,
@@ -510,18 +783,18 @@
                 "RetryCount": 0,
                 "NewsletterMeta": null,
                 "RawMessage": {
-                  "conversation": "55448117000124",
+                  "conversation": "sim",
                   "messageContextInfo": {
                     "deviceListMetadata": {
                       "senderKeyHash": "npMunFLgkDXkvg==",
                       "senderTimestamp": 1774986239,
                       "senderAccountType": 0,
-                      "receiverAccountType": 0,
-                      "recipientKeyHash": "BhEkrdfHiprVqQ==",
-                      "recipientTimestamp": 1775152197
+                      "receiverAccountType": 1,
+                      "recipientKeyHash": "AJHj4Ed9QpULdA==",
+                      "recipientTimestamp": 1775744231
                     },
                     "deviceListMetadataVersion": 2,
-                    "messageSecret": "f6edJE4/71JsKzgL4ffoNGMeDP0TQ+Fp1CXirzSREwM="
+                    "messageSecret": "bEz1YNP8X/TcBWJgJYkdpvLvXmJ9KNcSJfgP+0RcIOQ="
                   }
                 },
                 "Status": 3
@@ -607,7 +880,7 @@
       "main": [
         [
           {
-            "node": "Send a text message",
+            "node": "Send a text message1",
             "type": "main",
             "index": 0
           }
@@ -630,7 +903,7 @@
       "main": [
         [
           {
-            "node": "Send Seen",
+            "node": "Switch Transferência",
             "type": "main",
             "index": 0
           }
@@ -680,6 +953,108 @@
           }
         ]
       ]
+    },
+    "Switch Transferência": {
+      "main": [
+        [
+          {
+            "node": "1. Buscar Contato no Chatwoot1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "1. Buscar Contato no Chatwoot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Limpar Mensagem IA1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Buscar Conversa": {
+      "main": [
+        [
+          {
+            "node": "3. Atribuir Comercial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpar Mensagem IA1": {
+      "main": [
+        [
+          {
+            "node": "Send Seen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Buscar Contato no Chatwoot1": {
+      "main": [
+        [
+          {
+            "node": "2. Buscar Conversa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Buscar Conversa1": {
+      "main": [
+        [
+          {
+            "node": "3. Atribuir Financeiro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Buscar Contato no Chatwoot": {
+      "main": [
+        [
+          {
+            "node": "2. Buscar Conversa1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Atribuir Comercial": {
+      "main": [
+        [
+          {
+            "node": "Limpar Mensagem IA1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Atribuir Financeiro": {
+      "main": [
+        [
+          {
+            "node": "Limpar Mensagem IA1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -690,7 +1065,7 @@
     "timeSavedMode": "fixed",
     "callerPolicy": "workflowsFromSameOwner"
   },
-  "versionId": "10504fea-d7c4-4d27-813f-a0e40a3a934d",
+  "versionId": "ca39e3cf-9894-4ef6-afcb-e8bac6ebaed5",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "09c748d22dedfad9a8f8d622608e21bfef530f2282bf1c8c8aec81b06d0d60e8"
