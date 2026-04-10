@@ -107,17 +107,34 @@ function parseBrazilianNumber(value) {
     if (typeof value === 'number') return value;
     if (typeof value !== 'string' || !value) return 0;
 
-    // ⚡ Bolt Optimization: Fast path for pure numbers to avoid expensive regex
-    let cleaned = value.indexOf('R$') !== -1 ? value.replace(/R\$\s?/g, '') : value;
+    let cleaned = value;
+    if (cleaned.indexOf('R$') !== -1) {
+        cleaned = cleaned.replace(/R\$\s?/g, '');
+    }
     cleaned = cleaned.trim();
 
     const lastComma = cleaned.lastIndexOf(',');
     const lastDot = cleaned.lastIndexOf('.');
+
+    // ⚡ Bolt Optimization: Fast path for pure numbers to avoid expensive regex operations
+    if (lastComma === -1 && lastDot === -1) {
+        const num = parseFloat(cleaned);
+        return isNaN(num) ? 0 : num;
+    }
+
     let numberString;
     if (lastComma > lastDot) {
-        numberString = cleaned.replace(/\./g, '').replace(',', '.');
+        if (lastDot === -1) {
+             numberString = cleaned.replace(',', '.');
+        } else {
+             numberString = cleaned.replace(/\./g, '').replace(',', '.');
+        }
     } else if (lastDot > lastComma) {
-        numberString = cleaned.replace(/,/g, '');
+        if (lastComma === -1) {
+             numberString = cleaned;
+        } else {
+             numberString = cleaned.replace(/,/g, '');
+        }
     } else {
         numberString = cleaned.replace(',', '.');
     }

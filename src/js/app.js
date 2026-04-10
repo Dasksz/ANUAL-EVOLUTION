@@ -2749,22 +2749,17 @@ let estrelasSelectedCategorias = [];
 
         if (filterData.anos && boxesAnoFilter) {
             const currentVal = boxesAnoFilter.value;
-            boxesAnoFilter.innerHTML = '<option value="todos">Todos</option>';
-            filterData.anos.forEach(a => {
-                const opt = document.createElement('option');
-                opt.value = a;
-                opt.textContent = a;
-                boxesAnoFilter.appendChild(opt);
-            });
+            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+            boxesAnoFilter.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(a => `<option value="${a}">${a}</option>`).join('');
             if (currentVal && currentVal !== 'todos') boxesAnoFilter.value = currentVal;
             else if (filterData.anos.length > 0) boxesAnoFilter.value = filterData.anos[0];
             enhanceSelectToCustomDropdown(boxesAnoFilter);
         }
 
         if (boxesMesFilter && boxesMesFilter.options.length <= 1) {
-            boxesMesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = MONTHS_PT;
-            meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; boxesMesFilter.appendChild(opt); });
+            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+            boxesMesFilter.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${i}">${m}</option>`).join('');
             enhanceSelectToCustomDropdown(boxesMesFilter);
         }
 
@@ -3554,22 +3549,14 @@ let estrelasSelectedCategorias = [];
 
     const updateSingleSelect = (element, items) => {
             const currentVal = element.value;
-            element.innerHTML = '';
-        
             // Always add 'Todos' option (value='todos' for year, '' for others)
-            const allOpt = document.createElement('option');
-            allOpt.value = (element.id === 'ano-filter') ? 'todos' : ''; 
-            allOpt.textContent = 'Todos';
-            element.appendChild(allOpt);
-
+            const allVal = (element.id === 'ano-filter') ? 'todos' : '';
+            let html = `<option value="${allVal}">Todos</option>`;
             if (items) {
-                items.forEach(item => {
-                    const opt = document.createElement('option');
-                    opt.value = item;
-                    opt.textContent = item;
-                    element.appendChild(opt);
-                });
+                html += items.map(item => `<option value="${item}">${item}</option>`).join('');
             }
+            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+            element.innerHTML = html;
             // Logic to set default or preserve selection
             if (currentVal && Array.from(element.options).some(o => o.value === currentVal)) {
                 element.value = currentVal;
@@ -3588,9 +3575,9 @@ let estrelasSelectedCategorias = [];
         };
         updateSingleSelect(anoFilter, data.anos);
         if (mesFilter.options.length <= 1) { 
-            mesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = MONTHS_PT;
-            meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; mesFilter.appendChild(opt); });
+            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+            mesFilter.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${i}">${m}</option>`).join('');
         }
         setupMultiSelect(filialFilterBtn, filialFilterDropdown, filialFilterDropdown, data.filiais, selectedFiliais, () => {});
         setupMultiSelect(cidadeFilterBtn, cidadeFilterDropdown, cidadeFilterList, data.cidades, selectedCidades, () => {}, false, cidadeFilterSearch);
@@ -4699,22 +4686,17 @@ let estrelasSelectedCategorias = [];
 
          if (filterData.anos && cityAnoFilter) {
              const currentVal = cityAnoFilter.value;
-             cityAnoFilter.innerHTML = '<option value="todos">Todos</option>';
-             filterData.anos.forEach(a => {
-                 const opt = document.createElement('option');
-                 opt.value = a;
-                 opt.textContent = a;
-                 cityAnoFilter.appendChild(opt);
-             });
+             // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+             cityAnoFilter.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(a => `<option value="${a}">${a}</option>`).join('');
              if (currentVal && currentVal !== 'todos') cityAnoFilter.value = currentVal;
              else if (filterData.anos.length > 0) cityAnoFilter.value = filterData.anos[0];
              enhanceSelectToCustomDropdown(cityAnoFilter);
          }
          
          if (cityMesFilter && cityMesFilter.options.length <= 1) {
-            cityMesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = MONTHS_PT;
-            meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; cityMesFilter.appendChild(opt); });
+            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+            cityMesFilter.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${i}">${m}</option>`).join('');
             enhanceSelectToCustomDropdown(cityMesFilter);
         }
 
@@ -4983,13 +4965,8 @@ let estrelasSelectedCategorias = [];
          // Years
          if (filterData.anos) {
              const currentVal = branchAnoFilter.value;
-             branchAnoFilter.innerHTML = '<option value="todos">Todos</option>';
-             filterData.anos.forEach(a => {
-                 const opt = document.createElement('option');
-                 opt.value = a;
-                 opt.textContent = a;
-                 branchAnoFilter.appendChild(opt);
-             });
+             // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+             branchAnoFilter.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(a => `<option value="${a}">${a}</option>`).join('');
              // Preserve selection or default to current year
              if (currentVal && currentVal !== 'todos') branchAnoFilter.value = currentVal;
              else if (filterData.anos.length > 0) branchAnoFilter.value = filterData.anos[0];
@@ -4998,9 +4975,8 @@ let estrelasSelectedCategorias = [];
          
          // Months
          if (branchMesFilter.options.length <= 1) {
-            branchMesFilter.innerHTML = '<option value="">Todos</option>';
             const meses = MONTHS_PT;
-            meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; branchMesFilter.appendChild(opt); });
+            branchMesFilter.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${i}">${m}</option>`).join('');
             enhanceSelectToCustomDropdown(branchMesFilter);
         }
 
@@ -5892,13 +5868,8 @@ let estrelasSelectedCategorias = [];
 
             if (filterData.anos && comparisonAnoFilter) {
                 const currentVal = comparisonAnoFilter.value;
-                comparisonAnoFilter.innerHTML = '';
-                filterData.anos.forEach(a => {
-                    const opt = document.createElement('option');
-                    opt.value = a;
-                    opt.textContent = a;
-                    comparisonAnoFilter.appendChild(opt);
-                });
+                // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+                comparisonAnoFilter.innerHTML = filterData.anos.map(a => `<option value="${a}">${a}</option>`).join('');
                 await fetchLastSalesDate();
                 if (currentVal && currentVal !== 'todos' && currentVal !== '') {
                     comparisonAnoFilter.value = currentVal;
@@ -5916,9 +5887,9 @@ let estrelasSelectedCategorias = [];
                 // Get the current value BEFORE we wipe the options
                 const currentMesVal = comparisonMesFilter.value;
 
-                comparisonMesFilter.innerHTML = '';
                 const meses = MONTHS_PT;
-                meses.forEach((m, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = m; comparisonMesFilter.appendChild(opt); });
+                // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+                comparisonMesFilter.innerHTML = meses.map((m, i) => `<option value="${i}">${m}</option>`).join('');
 
                 // If there's an active valid selected month (not empty), keep it
                 // Otherwise, default to the last sales date month
@@ -7201,13 +7172,8 @@ const setupInnovationsFilters = async () => {
     const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
 
     if (anoSelect && filterData.anos) {
-        anoSelect.innerHTML = '<option value="todos">Todos</option>';
-        filterData.anos.forEach(ano => {
-            const opt = document.createElement('option');
-            opt.value = ano;
-            opt.textContent = ano;
-            anoSelect.appendChild(opt);
-        });
+        // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+        anoSelect.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(ano => `<option value="${ano}">${ano}</option>`).join('');
 
         // Initial filter values
         let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
@@ -7218,15 +7184,9 @@ const setupInnovationsFilters = async () => {
     }
     
     if (mesSelect) {
-        mesSelect.innerHTML = '<option value="">Todos</option>';
         const meses = MONTHS_PT;
-        meses.forEach((m, i) => { 
-            const opt = document.createElement('option'); 
-            const val = String(i + 1).padStart(2, '0');
-            opt.value = val; 
-            opt.textContent = m; 
-            mesSelect.appendChild(opt); 
-        });
+        // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+        mesSelect.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
 
         // Initial filter value
         mesSelect.value = currentMonth;
@@ -8068,13 +8028,8 @@ const setupEstrelasFilters = async () => {
     const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
 
     if (anoSelect && filterData.anos) {
-        anoSelect.innerHTML = '<option value="todos">Todos</option>';
-        filterData.anos.forEach(ano => {
-            const opt = document.createElement('option');
-            opt.value = ano;
-            opt.textContent = ano;
-            anoSelect.appendChild(opt);
-        });
+        // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+        anoSelect.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(ano => `<option value="${ano}">${ano}</option>`).join('');
 
         let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
         anoSelect.value = hasYear ? currentYear : 'todos';
@@ -8084,15 +8039,9 @@ const setupEstrelasFilters = async () => {
     }
 
     if (mesSelect) {
-        mesSelect.innerHTML = '<option value="">Todos</option>';
         const meses = MONTHS_PT;
-        meses.forEach((m, i) => {
-            const opt = document.createElement('option');
-            const val = String(i + 1).padStart(2, '0');
-            opt.value = val;
-            opt.textContent = m;
-            mesSelect.appendChild(opt);
-        });
+        // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+        mesSelect.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
 
         mesSelect.value = currentMonth;
         mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
