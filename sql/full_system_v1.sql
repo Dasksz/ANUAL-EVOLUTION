@@ -2784,6 +2784,8 @@ DECLARE
 
     -- Tipovenda cond for clients
     v_tipovenda_client_cond text;
+    v_active_client_cond text;
+    v_active_client_cond_slow text;
 
     -- Trend Vars
     v_max_sale_date date;
@@ -2877,8 +2879,17 @@ BEGIN
         v_where_raw := v_where_raw || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
         v_where_summary := v_where_summary || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
         v_tipovenda_client_cond := format('tipovenda = ANY(%L)', p_tipovenda);
+        IF p_tipovenda <@ ARRAY['5','11'] THEN
+            v_active_client_cond := format('tipovenda = ANY(%L) AND bonificacao > 0', p_tipovenda);
+            v_active_client_cond_slow := format('tipovenda = ANY(%L) AND vlbonific > 0', p_tipovenda);
+        ELSE
+            v_active_client_cond := format('tipovenda = ANY(%L) AND tipovenda NOT IN (''5'', ''11'') AND pre_positivacao_val >= 1', p_tipovenda);
+            v_active_client_cond_slow := format('tipovenda = ANY(%L) AND tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1', p_tipovenda);
+        END IF;
     ELSE
         v_tipovenda_client_cond := 'tipovenda IN (''1'', ''9'')';
+        v_active_client_cond := 'tipovenda NOT IN (''5'', ''11'') AND pre_positivacao_val >= 1';
+        v_active_client_cond_slow := 'tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1';
     END IF;
     
     -- Category Filter
@@ -2960,7 +2971,7 @@ BEGIN
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
-                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) as clientes
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM public.data_summary
                 %s AND ano IN (%L, %L)
                 GROUP BY 1, 2
@@ -2970,7 +2981,7 @@ BEGIN
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
-                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) as clientes
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM public.data_summary
                 %s AND ano = %L %s
             ),
@@ -2979,7 +2990,7 @@ BEGIN
                     SUM(vlvenda) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
-                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) as clientes
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM public.data_summary
                 %s AND ano = %L %s
             ),
@@ -2988,7 +2999,7 @@ BEGIN
                     SUM(vlvenda) / 3 as fat,
                     SUM(peso) / 3 as peso,
                     SUM(COALESCE(caixas, 0)) / 3 as caixas,
-                    SUM(CASE WHEN %s THEN pre_positivacao_val ELSE 0 END) / 3 as clientes
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) / 3 as clientes
                 FROM public.data_summary
                 %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
             ),
@@ -3025,13 +3036,13 @@ BEGIN
                 (SELECT row_to_json(t) FROM kpi_tri t),
                 (SELECT json_agg(pa) FROM prod_agg pa)
         ', 
-        v_tipovenda_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
-        v_tipovenda_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
-        v_tipovenda_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
-        v_tipovenda_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
+        v_active_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
+        v_active_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
+        v_active_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
+        v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
-        v_tipovenda_client_cond -- Prod Agg
+        v_active_client_cond -- Prod Agg
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     
@@ -3112,11 +3123,11 @@ BEGIN
         ', 
         v_where_raw, v_previous_year,
         v_where_raw, v_previous_year,
-        v_tipovenda_client_cond, v_current_year, v_previous_year,
-        v_tipovenda_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
-        v_tipovenda_client_cond, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
-        v_tipovenda_client_cond, v_tri_start, v_tri_end,
-        v_tipovenda_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END
+        v_active_client_cond_slow, v_current_year, v_previous_year,
+        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
+        v_active_client_cond_slow, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
+        v_active_client_cond_slow, v_tri_start, v_tri_end,
+        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     END IF;
@@ -5032,182 +5043,6 @@ BEGIN
 END;
 $$;
 ALTER FUNCTION public.get_innovations_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[], p_tipovenda text[], p_categoria_inovacao text, p_ano text, p_mes text) SET search_path = public;
-CREATE OR REPLACE FUNCTION get_mix_salty_foods_data(
-    p_filial text[] default null,
-    p_cidade text[] default null,
-    p_supervisor text[] default null,
-    p_vendedor text[] default null,
-    p_fornecedor text[] default null,
-    p_ano text default null,
-    p_mes text default null,
-    p_tipovenda text[] default null,
-    p_rede text[] default null,
-    p_produto text[] default null,
-    p_categoria text[] default null
-)
-RETURNS JSON
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    v_current_year int;
-    v_target_month int;
-    v_where_chart text := ' WHERE 1=1 ';
-    v_sql text;
-    v_result json;
-
-    -- Rede Logic Vars
-    v_has_com_rede boolean;
-    v_has_sem_rede boolean;
-    v_specific_redes text[];
-    v_rede_condition text := '';
-BEGIN
-    SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '600s';
-
-    -- 1. Date Resolution
-    IF p_ano IS NULL OR p_ano = 'todos' THEN
-        SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary_frequency;
-    ELSE
-        v_current_year := p_ano::int;
-    END IF;
-
-    v_where_chart := v_where_chart || ' AND s.ano = ' || v_current_year || ' AND s.tipovenda NOT IN (''5'', ''11'') AND s.vlvenda >= 1 ';
-
-    -- 2. Build Where Clauses
-    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        IF NOT ('ambas' = ANY(p_filial)) THEN
-            v_where_chart := v_where_chart || ' AND s.filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
-        END IF;
-    END IF;
-
-    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND s.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
-    END IF;
-
-    IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
-    END IF;
-
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
-    END IF;
-
-    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        IF NOT ('ambas' = ANY(p_fornecedor)) THEN
-            DECLARE
-                v_code text;
-                v_conditions text[] := '{}';
-                v_simple_codes text[] := '{}';
-                v_cond_str text;
-            BEGIN
-                FOREACH v_code IN ARRAY p_fornecedor LOOP
-                    IF v_code = '1119_TODDYNHO' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDYNHO'')');
-                    ELSIF v_code = '1119_TODDY' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDY'')');
-                    ELSIF v_code = '1119_QUAKER' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''QUAKER'')');
-                    ELSIF v_code = '1119_KEROCOCO' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''KEROCOCO'')');
-                    ELSIF v_code = '1119_OUTROS' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND NOT (s.categorias ?| ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
-                    ELSE
-                        v_simple_codes := array_append(v_simple_codes, v_code);
-                    END IF;
-                END LOOP;
-
-                IF array_length(v_simple_codes, 1) > 0 THEN
-                    v_conditions := array_append(v_conditions, format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
-                END IF;
-
-                IF array_length(v_conditions, 1) > 0 THEN
-                    v_cond_str := array_to_string(v_conditions, ' OR ');
-                    v_where_chart := v_where_chart || ' AND (' || v_cond_str || ') ';
-                END IF;
-            END;
-        END IF;
-    END IF;
-
-    -- REDE Logic
-    IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-       v_has_com_rede := ('C/ REDE' = ANY(p_rede));
-       v_has_sem_rede := ('S/ REDE' = ANY(p_rede));
-       v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
-
-       IF array_length(v_specific_redes, 1) > 0 THEN
-           v_rede_condition := format('s.rede = ANY(ARRAY[''%s''])', array_to_string(v_specific_redes, ''','''));
-       END IF;
-
-       IF v_has_com_rede THEN
-           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
-           v_rede_condition := v_rede_condition || ' (s.rede IS NOT NULL AND s.rede NOT IN (''N/A'', ''N/D'')) ';
-       END IF;
-
-       IF v_has_sem_rede THEN
-           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
-           v_rede_condition := v_rede_condition || ' (s.rede IS NULL OR s.rede IN (''N/A'', ''N/D'')) ';
-       END IF;
-
-       IF v_rede_condition != '' THEN
-           v_where_chart := v_where_chart || ' AND (' || v_rede_condition || ') ';
-       END IF;
-    END IF;
-
-    IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND s.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
-    END IF;
-
-    -- Dynamic Query using optimized jsonb conditions
-    v_sql := '
-    WITH prod_agg AS (
-        SELECT
-            s.mes,
-            s.codcli,
-            MAX(CASE WHEN s.categorias ? ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
-            MAX(CASE WHEN s.categorias ? ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
-            MAX(CASE WHEN s.categorias ? ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
-            MAX(CASE WHEN s.categorias ? ''RUFFLES'' THEN 1 ELSE 0 END) as has_ruffles,
-            MAX(CASE WHEN s.categorias ? ''TORCIDA'' THEN 1 ELSE 0 END) as has_torcida,
-            MAX(CASE WHEN s.categorias ? ''TODDYNHO'' THEN 1 ELSE 0 END) as has_toddynho,
-            MAX(CASE WHEN s.categorias ? ''TODDY'' THEN 1 ELSE 0 END) as has_toddy,
-            MAX(CASE WHEN s.categorias ? ''QUAKER'' THEN 1 ELSE 0 END) as has_quaker,
-            MAX(CASE WHEN s.categorias ? ''KEROCOCO'' THEN 1 ELSE 0 END) as has_kerococo
-        FROM public.data_summary_frequency s
-        ' || v_where_chart || '
-        GROUP BY s.mes, s.codcli
-    ),
-    monthly_flags AS (
-        SELECT
-            mes,
-            codcli,
-            (has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1) as is_salty,
-            (has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1) as is_foods
-        FROM prod_agg
-    ),
-    chart_data AS (
-        SELECT
-            ' || v_current_year || ' as ano,
-            mes,
-            COUNT(DISTINCT CASE WHEN is_salty THEN codcli END) as total_salty,
-            COUNT(DISTINCT CASE WHEN is_foods THEN codcli END) as total_foods,
-            COUNT(DISTINCT CASE WHEN is_salty AND is_foods THEN codcli END) as total_ambas
-        FROM monthly_flags
-        GROUP BY mes
-        ORDER BY mes
-    )
-    SELECT COALESCE(json_agg(row_to_json(chart_data)), ''[]''::json) FROM chart_data;
-    ';
-
-    EXECUTE v_sql INTO v_result;
-
-    RETURN json_build_object(
-        'chart_data', v_result,
-        'current_year', v_current_year
-    );
-END;
-$$;
 CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_filial text[] default null,
     p_cidade text[] default null,
