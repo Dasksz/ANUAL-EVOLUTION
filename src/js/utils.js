@@ -45,3 +45,32 @@ export function formatInteger(value) {
     if (value == null || isNaN(Number(value))) return '0';
     return Math.round(Number(value)).toLocaleString('pt-BR');
 }
+
+/**
+ * Sets a loading spinner on a button. Replaces the innerHTML of the target element.
+ * Helps reduce duplicated long SVG spinner strings.
+ * @param {HTMLElement} target - The DOM element where the text and spinner will be injected. (Could be the button or a .btn-text span)
+ * @param {HTMLElement} btn - The main button to disable.
+ * @param {string} loadingText - Text to display while loading.
+ * @param {string} extraClasses - Extra CSS classes for the spinner SVG (e.g. 'text-white' for solid colored auth buttons, or empty string for export buttons).
+ * @returns {string} The original HTML string of the target.
+ */
+export function setElementLoading(target, btn, loadingText, extraClasses = '') {
+    if (!target || !btn) return '';
+    const originalHtml = target.innerHTML;
+    btn.disabled = true;
+    target.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 inline-block ${escapeHtml(extraClasses).trim()}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>${escapeHtml(loadingText)}`;
+    return originalHtml;
+}
+
+/**
+ * Restores the element to its original inner HTML state and enables the button.
+ * @param {HTMLElement} target - The element whose HTML should be restored.
+ * @param {HTMLElement} btn - The button to re-enable.
+ * @param {string} originalHtml - The original HTML state.
+ */
+export function restoreElementState(target, btn, originalHtml) {
+    if (!target || !btn) return;
+    target.innerHTML = originalHtml;
+    btn.disabled = false;
+}
