@@ -217,7 +217,7 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
-import { formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS } from './utils.js';
+import { formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -522,9 +522,7 @@ let estrelasSelectedCategorias = [];
             }
 
             // Show loading state
-            const originalHtml = exportExcelBtn.innerHTML;
-            exportExcelBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Gerando...';
-            exportExcelBtn.disabled = true;
+            const originalHtml = setElementLoading(exportExcelBtn, exportExcelBtn, ' Gerando...');
 
             try {
                 // Initialize a new workbook
@@ -579,8 +577,7 @@ let estrelasSelectedCategorias = [];
                 AppLog.error("Erro ao gerar Excel:", err);
                 alert("Ocorreu um erro ao gerar o Excel. Tente novamente.");
             } finally {
-                exportExcelBtn.innerHTML = originalHtml;
-                exportExcelBtn.disabled = false;
+                restoreElementState(exportExcelBtn, exportExcelBtn, originalHtml);
             }
         });
     }
@@ -621,9 +618,7 @@ let estrelasSelectedCategorias = [];
             }
 
             // Show loading state on button
-            const originalHtml = exportPdfBtn.innerHTML;
-            exportPdfBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Gerando...';
-            exportPdfBtn.disabled = true;
+            const originalHtml = setElementLoading(exportPdfBtn, exportPdfBtn, ' Gerando...');
 
             let headerEl = null;
             try {
@@ -703,8 +698,7 @@ let estrelasSelectedCategorias = [];
                 }
                 
                 // Restore button state
-                exportPdfBtn.innerHTML = originalHtml;
-                exportPdfBtn.disabled = false;
+                restoreElementState(exportPdfBtn, exportPdfBtn, originalHtml);
                 if (activeView) activeView.classList.remove('pdf-exporting');
             }
         });
@@ -1523,10 +1517,7 @@ let estrelasSelectedCategorias = [];
             const btn = formSignin.querySelector('button[type="submit"]');
             const btnText = btn.querySelector('.btn-text');
             const svgLoader = btn.querySelector('.loader') || document.createElement('svg');
-            const oldText = btnText ? btnText.innerHTML : btn.innerHTML;
-
-            if(btnText) btnText.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Entrando...';
-            btn.disabled = true;
+            const oldText = btnText ? setElementLoading(btnText, btn, 'Entrando...', 'text-white') : setElementLoading(btn, btn, 'Entrando...', 'text-white');
 
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
@@ -1534,8 +1525,7 @@ let estrelasSelectedCategorias = [];
             });
 
             if (error) {
-                if(btnText) btnText.innerHTML = oldText;
-                btn.disabled = false;
+                btnText ? restoreElementState(btnText, btn, oldText) : restoreElementState(btn, btn, oldText);
                 loginError.textContent = 'Erro ao iniciar login: ' + error.message;
                 loginError.classList.remove('hidden');
             }
@@ -1555,9 +1545,8 @@ let estrelasSelectedCategorias = [];
                 return;
             }
 
-            const btn = formSignup.querySelector('button[type="submit"]');
-            const oldText = btn.innerHTML;
-            btn.disabled = true; btn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Cadastrando...';
+            const btn = formSignup.querySelector('button[type=\"submit\"]');
+            const oldText = setElementLoading(btn, btn, 'Cadastrando...', 'text-white');
 
             const { data, error } = await supabase.auth.signUp({
                 email,
@@ -1573,7 +1562,7 @@ let estrelasSelectedCategorias = [];
 
             if (error) {
                 window.showToast('error', 'Erro ao realizar cadastro: ' + error.message);
-                btn.disabled = false; btn.innerHTML = oldText;
+                restoreElementState(btn, btn, oldText);
                 return;
             }
 
@@ -1589,9 +1578,8 @@ let estrelasSelectedCategorias = [];
             e.preventDefault();
             const email = document.getElementById('forgot-email').value;
 
-            const btn = formForgot.querySelector('button[type="submit"]');
-            const oldText = btn.innerHTML;
-            btn.disabled = true; btn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Enviando...';
+            const btn = formForgot.querySelector('button[type=\"submit\"]');
+            const oldText = setElementLoading(btn, btn, 'Enviando...', 'text-white');
 
             try {
                 const { data: profile, error: profileError } = await supabase
@@ -1602,7 +1590,7 @@ let estrelasSelectedCategorias = [];
 
                 if (profileError || !profile || profile.status !== 'aprovado') {
                     window.showToast('error', 'E-mail não encontrado ou cadastro pendente de aprovação.');
-                    btn.disabled = false; btn.innerHTML = oldText;
+                    restoreElementState(btn, btn, oldText);
                     return;
                 }
 
@@ -1619,7 +1607,7 @@ let estrelasSelectedCategorias = [];
             } catch (err) {
                 window.showToast('error', 'Ocorreu um erro ao processar sua solicitação.');
             } finally {
-                btn.disabled = false; btn.innerHTML = oldText;
+                restoreElementState(btn, btn, oldText);
             }
         });
     }

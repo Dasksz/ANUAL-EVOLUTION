@@ -13,3 +13,7 @@ This file contains critical learnings from Tidy to avoid making mistakes in this
 **Action:** Centralized these formatters into `formatCurrency` and `formatTons` in `src/js/utils.js`. Replaced all repetitive string operations to use these standard utility functions to enforce DRY principles and improve code readability.
 
 ## 2025/02/25 : (Extract formatInteger Utility) **Aprendizado:** (Formatting boilerplate like `Math.round(val).toLocaleString('pt-BR')` occurs frequently in frontend tables and dashboards, cluttering logic) **Ação:** (Extracted `formatInteger` to `src/js/utils.js` to standardize integer formatting, similar to `formatCurrency` and `formatTons`.)
+
+## 2026/04/10 : Extract Button Loading State Logic
+**Learning:** Found repetitive instances of button loading state logic across the codebase (export PDF/Excel, sign-in, sign-up, forgot password). Each instance duplicated a long `<svg class="animate-spin...` string, `btn.disabled = true/false`, and manual `btn.innerHTML` assignment, cluttering business logic.
+**Action:** Created centralized utility functions `setButtonLoading(btn, text)` and `restoreButtonState(btn, originalHtml)` in `src/js/utils.js`. Replaced all repetitive loading spinner injections to use these functions, reducing code duplication and improving readability while ensuring XSS safety via `escapeHtml`.

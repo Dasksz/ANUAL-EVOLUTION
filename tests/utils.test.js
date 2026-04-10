@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { formatNumber, escapeHtml } from '../src/js/utils.js';
+import { formatNumber, escapeHtml, setElementLoading, restoreElementState } from '../src/js/utils.js';
 
 test('formatNumber', async (t) => {
     await t.test('formats numbers correctly with default decimals (2)', () => {
@@ -48,4 +48,44 @@ test('escapeHtml', async (t) => {
     await t.test('handles plain text', () => {
         assert.strictEqual(escapeHtml('Hello World'), 'Hello World');
     });
+});
+
+// A minimal mock for testing DOM functions outside a browser environment
+class MockElement {
+    constructor() {
+        this.innerHTML = '';
+        this.disabled = false;
+    }
+}
+
+test('setElementLoading', () => {
+    const btn = new MockElement();
+    const target = new MockElement();
+    target.innerHTML = 'Original Text';
+
+    const originalHtml = setElementLoading(target, btn, 'Loading...', 'text-white');
+
+    assert.strictEqual(originalHtml, 'Original Text');
+    assert.strictEqual(btn.disabled, true);
+    assert.ok(target.innerHTML.includes('<svg'));
+    assert.ok(target.innerHTML.includes('text-white'));
+    assert.ok(target.innerHTML.includes('Loading...'));
+
+    const result = setElementLoading(null, btn, 'Loading...');
+    assert.strictEqual(result, '');
+});
+
+test('restoreElementState', () => {
+    const btn = new MockElement();
+    const target = new MockElement();
+    target.innerHTML = '<svg>...</svg>';
+    btn.disabled = true;
+
+    restoreElementState(target, btn, 'Original Text');
+
+    assert.strictEqual(target.innerHTML, 'Original Text');
+    assert.strictEqual(btn.disabled, false);
+
+    // Just verify it doesn't throw
+    restoreElementState(null, btn, 'Original Text');
 });
