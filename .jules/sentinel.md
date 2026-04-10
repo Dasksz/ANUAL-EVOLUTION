@@ -41,3 +41,7 @@
 ## 2024-04-09 - Client-Side Supabase Keys are public
 **Learning:** The user explicitly requested that the Supabase URL and Key remain in the codebase because the page is purely hosted by GitHub Pages (static front-end only) and has no backend. In a static setup like this, Supabase anon keys and URLs are designed to be public. Security relies entirely on Postgres Row Level Security (RLS) policies on the Supabase end, rather than keeping the anon key secret.
 **Prevention:** Do not attempt to hide the Supabase URL or the anonymous key in purely client-side static architectures.
+## 2024-04-10 - [Fix XSS in modal rendering]
+**Vulnerability:** XSS vulnerability where raw database strings (`row.vendedor_nome`, `row.filial`) and other data strings (`rootData.varYagoStr`) were directly interpolated into string templates that were then assigned to `innerHTML`. This allowed for arbitrary HTML and Javascript injection if an attacker were to manipulate the database records or other data.
+**Learning:** `innerHTML` used with unescaped string interpolation is an extremely common pattern for XSS in this codebase.
+**Prevention:** Always use `escapeHtml()` when assigning data from strings directly into `innerHTML`, or use native DOM methods like `document.createElement()`, `textContent`, and `appendChild()` which inherently escape content.
