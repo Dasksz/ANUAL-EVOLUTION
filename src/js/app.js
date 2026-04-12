@@ -217,7 +217,7 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
-import { formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState } from './utils.js';
+import {  formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -2675,13 +2675,7 @@ let estrelasSelectedCategorias = [];
     document.addEventListener('click', (e) => {
         const dropdowns = [boxesFilialFilterDropdown, boxesProdutoFilterDropdown, boxesSupervisorFilterDropdown, boxesVendedorFilterDropdown, boxesFornecedorFilterDropdown, boxesCidadeFilterDropdown, boxesTipovendaFilterDropdown, boxesCategoriaFilterDropdown];
         const btns = [boxesFilialFilterBtn, boxesProdutoFilterBtn, boxesSupervisorFilterBtn, boxesVendedorFilterBtn, boxesFornecedorFilterBtn, boxesCidadeFilterBtn, boxesTipovendaFilterBtn, boxesCategoriaFilterBtn];
-        let anyClosed = false;
-        dropdowns.forEach((dd, idx) => {
-            if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
-                dd.classList.add('hidden');
-                anyClosed = true;
-            }
-        });
+        let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
         
         // Close export dropdown if clicked outside
         if (boxesExportDropdown && !boxesExportDropdown.classList.contains('hidden') && !boxesExportDropdown.contains(e.target) && !boxesExportBtn.contains(e.target)) {
@@ -3601,13 +3595,7 @@ let estrelasSelectedCategorias = [];
     document.addEventListener('click', (e) => {
         const dropdowns = [filialFilterDropdown, cidadeFilterDropdown, supervisorFilterDropdown, vendedorFilterDropdown, fornecedorFilterDropdown, tipovendaFilterDropdown, redeFilterDropdown, categoriaFilterDropdown];
         const btns = [filialFilterBtn, cidadeFilterBtn, supervisorFilterBtn, vendedorFilterBtn, fornecedorFilterBtn, tipovendaFilterBtn, redeFilterBtn, categoriaFilterBtn];
-        let anyClosed = false;
-        dropdowns.forEach((dd, idx) => {
-            if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) {
-                dd.classList.add('hidden');
-                anyClosed = true;
-            }
-        });
+        let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
         if (anyClosed && !mainDashboardView.classList.contains('hidden')) {
             handleFilterChange();
         }
@@ -4509,13 +4497,7 @@ let estrelasSelectedCategorias = [];
     document.addEventListener('click', (e) => {
         const dropdowns = [cityFilialFilterDropdown, cityCidadeFilterDropdown, citySupervisorFilterDropdown, cityVendedorFilterDropdown, cityFornecedorFilterDropdown, cityTipovendaFilterDropdown, cityRedeFilterDropdown, cityCategoriaFilterDropdown];
         const btns = [cityFilialFilterBtn, cityCidadeFilterBtn, citySupervisorFilterBtn, cityVendedorFilterBtn, cityFornecedorFilterBtn, cityTipovendaFilterBtn, cityRedeFilterBtn, cityCategoriaFilterBtn];
-        let anyClosed = false;
-        dropdowns.forEach((dd, idx) => {
-            if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
-                dd.classList.add('hidden');
-                anyClosed = true;
-            }
-        });
+        let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
         if (anyClosed && !cityView.classList.contains('hidden')) {
             handleCityFilterChange();
         }
@@ -4903,13 +4885,7 @@ let estrelasSelectedCategorias = [];
     document.addEventListener('click', (e) => {
         const dropdowns = [branchFilialFilterDropdown, branchCidadeFilterDropdown, branchSupervisorFilterDropdown, branchVendedorFilterDropdown, branchFornecedorFilterDropdown, branchTipovendaFilterDropdown, branchRedeFilterDropdown, branchCategoriaFilterDropdown];
         const btns = [branchFilialFilterBtn, branchCidadeFilterBtn, branchSupervisorFilterBtn, branchVendedorFilterBtn, branchFornecedorFilterBtn, branchTipovendaFilterBtn, branchRedeFilterBtn, branchCategoriaFilterBtn];
-        let anyClosed = false;
-        dropdowns.forEach((dd, idx) => {
-            if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx].contains(e.target)) {
-                dd.classList.add('hidden');
-                anyClosed = true;
-            }
-        });
+        let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
         if (anyClosed && !branchView.classList.contains('hidden')) {
             handleBranchFilterChange();
         }
@@ -5782,14 +5758,7 @@ let estrelasSelectedCategorias = [];
         document.addEventListener('click', (e) => {
             const dropdowns = [comparisonFilialFilterDropdown, comparisonSupervisorFilterDropdown, comparisonVendedorFilterDropdown, comparisonSupplierFilterDropdown, comparisonProductFilterDropdown, comparisonTipoVendaFilterDropdown, comparisonRedeFilterDropdown, comparisonCityFilterDropdown, comparisonCategoriaFilterDropdown];
             const btns = [comparisonFilialFilterBtn, comparisonSupervisorFilterBtn, comparisonVendedorFilterBtn, comparisonSupplierFilterBtn, comparisonProductFilterBtn, comparisonTipoVendaFilterBtn, comparisonRedeFilterBtn, comparisonCityFilterBtn, comparisonCategoriaFilterBtn];
-            let anyClosed = false;
-
-            dropdowns.forEach((dd, idx) => {
-                if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
-                    dd.classList.add('hidden');
-                    anyClosed = true;
-                }
-            });
+            let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
 
             if (anyClosed) {
                 handleComparisonFilterChange();
@@ -7097,14 +7066,7 @@ document.addEventListener('click', (e) => {
         innovationsRedeFilterBtn, innovationsFilialFilterBtn,
         innovationsCategoriaFilterBtn
     ];
-    let anyClosed = false;
-
-    dropdowns.forEach((dd, idx) => {
-        if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
-            dd.classList.add('hidden');
-            anyClosed = true;
-        }
-    });
+    let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
 
     if (anyClosed && innovationsMonthView && !innovationsMonthView.classList.contains('hidden')) {
         handleInnovationsFilterChange();
@@ -7374,14 +7336,7 @@ document.addEventListener('click', (e) => {
         document.getElementById('lp-rede-filter-btn'),
         document.getElementById('lp-cidade-filter-btn')
     ];
-    let anyClosed = false;
-
-    dropdowns.forEach((dd, idx) => {
-        if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
-            dd.classList.add('hidden');
-            anyClosed = true;
-        }
-    });
+    let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
 
     if (anyClosed) {
         handleLojaPerfeitaFilterChange();
@@ -7958,14 +7913,7 @@ document.addEventListener('click', (e) => {
         estrelasRedeFilterBtn, estrelasFilialFilterBtn,
         estrelasCategoriaFilterBtn, estrelasFornecedorFilterBtn
     ];
-    let anyClosed = false;
-
-    dropdowns.forEach((dd, idx) => {
-        if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
-            dd.classList.add('hidden');
-            anyClosed = true;
-        }
-    });
+    let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
 
     const view = document.getElementById('estrelas-view');
     if (anyClosed && view && !view.classList.contains('hidden')) {

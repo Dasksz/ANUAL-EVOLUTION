@@ -95,3 +95,22 @@ export function restoreElementState(target, btn, originalHtml) {
     target.innerHTML = originalHtml;
     btn.disabled = false;
 }
+
+/**
+ * Handles clickaway events for dropdowns to close them when clicked outside.
+ * Centralizes repetitive dropdown closing logic.
+ * @param {Event} e - The click event.
+ * @param {HTMLElement[]} dropdowns - Array of dropdown elements.
+ * @param {HTMLElement[]} btns - Array of corresponding toggle buttons.
+ * @returns {boolean} True if any dropdown was closed, false otherwise.
+ */
+export function handleDropdownsClickaway(e, dropdowns, btns) {
+    let anyClosed = false;
+    dropdowns.forEach((dd, idx) => {
+        if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
+            dd.classList.add('hidden');
+            anyClosed = true;
+        }
+    });
+    return anyClosed;
+}
