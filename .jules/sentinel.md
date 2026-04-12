@@ -45,3 +45,8 @@
 **Vulnerability:** XSS vulnerability where raw database strings (`row.vendedor_nome`, `row.filial`) and other data strings (`rootData.varYagoStr`) were directly interpolated into string templates that were then assigned to `innerHTML`. This allowed for arbitrary HTML and Javascript injection if an attacker were to manipulate the database records or other data.
 **Learning:** `innerHTML` used with unescaped string interpolation is an extremely common pattern for XSS in this codebase.
 **Prevention:** Always use `escapeHtml()` when assigning data from strings directly into `innerHTML`, or use native DOM methods like `document.createElement()`, `textContent`, and `appendChild()` which inherently escape content.
+
+## 2025-05-18 - [Fix DOM XSS in Dropdown innerHTML Optimization]
+**Vulnerability:** A previous performance optimization (Bolt Optimization) replaced `document.createElement` loops with a single `.innerHTML = array.map(...).join('')` assignment for dropdown options. However, it interpolated raw, unescaped database values (e.g., `filterData.anos`) directly into the HTML string, creating a DOM-based XSS vulnerability if the database values were manipulated.
+**Learning:** Performance optimizations that switch from safe DOM methods (like `document.createElement`) to raw string concatenation (`innerHTML`) must explicitly re-implement sanitization for all dynamic data.
+**Prevention:** Always wrap dynamically interpolated values in `escapeHtml()` when constructing HTML strings for `.innerHTML`, even if the data appears to be a safe type (like years), as database contents cannot be implicitly trusted.

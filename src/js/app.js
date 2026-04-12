@@ -2738,7 +2738,7 @@ let estrelasSelectedCategorias = [];
         if (filterData.anos && boxesAnoFilter) {
             const currentVal = boxesAnoFilter.value;
             // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-            boxesAnoFilter.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(a => `<option value="${a}">${a}</option>`).join('');
+            boxesAnoFilter.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
             if (currentVal && currentVal !== 'todos') boxesAnoFilter.value = currentVal;
             else if (filterData.anos.length > 0) boxesAnoFilter.value = filterData.anos[0];
             enhanceSelectToCustomDropdown(boxesAnoFilter);
@@ -3541,7 +3541,7 @@ let estrelasSelectedCategorias = [];
             const allVal = (element.id === 'ano-filter') ? 'todos' : '';
             let html = `<option value="${allVal}">Todos</option>`;
             if (items) {
-                html += items.map(item => `<option value="${item}">${item}</option>`).join('');
+                html += items.map(item => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join('');
             }
             // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
             element.innerHTML = html;
@@ -4675,7 +4675,7 @@ let estrelasSelectedCategorias = [];
          if (filterData.anos && cityAnoFilter) {
              const currentVal = cityAnoFilter.value;
              // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-             cityAnoFilter.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(a => `<option value="${a}">${a}</option>`).join('');
+             cityAnoFilter.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
              if (currentVal && currentVal !== 'todos') cityAnoFilter.value = currentVal;
              else if (filterData.anos.length > 0) cityAnoFilter.value = filterData.anos[0];
              enhanceSelectToCustomDropdown(cityAnoFilter);
@@ -4954,7 +4954,7 @@ let estrelasSelectedCategorias = [];
          if (filterData.anos) {
              const currentVal = branchAnoFilter.value;
              // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-             branchAnoFilter.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(a => `<option value="${a}">${a}</option>`).join('');
+             branchAnoFilter.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
              // Preserve selection or default to current year
              if (currentVal && currentVal !== 'todos') branchAnoFilter.value = currentVal;
              else if (filterData.anos.length > 0) branchAnoFilter.value = filterData.anos[0];
@@ -5857,7 +5857,7 @@ let estrelasSelectedCategorias = [];
             if (filterData.anos && comparisonAnoFilter) {
                 const currentVal = comparisonAnoFilter.value;
                 // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-                comparisonAnoFilter.innerHTML = filterData.anos.map(a => `<option value="${a}">${a}</option>`).join('');
+                comparisonAnoFilter.innerHTML = filterData.anos.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
                 await fetchLastSalesDate();
                 if (currentVal && currentVal !== 'todos' && currentVal !== '') {
                     comparisonAnoFilter.value = currentVal;
@@ -7161,7 +7161,7 @@ const setupInnovationsFilters = async () => {
 
     if (anoSelect && filterData.anos) {
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-        anoSelect.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(ano => `<option value="${ano}">${ano}</option>`).join('');
+        anoSelect.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(ano => `<option value="${escapeHtml(ano)}">${escapeHtml(ano)}</option>`).join('');
 
         // Initial filter values
         let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
@@ -8017,7 +8017,7 @@ const setupEstrelasFilters = async () => {
 
     if (anoSelect && filterData.anos) {
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-        anoSelect.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(ano => `<option value="${ano}">${ano}</option>`).join('');
+        anoSelect.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(ano => `<option value="${escapeHtml(ano)}">${escapeHtml(ano)}</option>`).join('');
 
         let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
         anoSelect.value = hasYear ? currentYear : 'todos';
