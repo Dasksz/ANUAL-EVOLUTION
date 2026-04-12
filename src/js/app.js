@@ -3887,10 +3887,10 @@ let estrelasSelectedCategorias = [];
         holidays = data.holidays || [];
         // Calendar is now rendered on modal open
 
-        document.getElementById('kpi-clients-attended').textContent = data.kpi_clients_attended.toLocaleString('pt-BR');
+        document.getElementById('kpi-clients-attended').textContent = formatInteger(data.kpi_clients_attended);
         const baseEl = document.getElementById('kpi-clients-base');
         if (data.kpi_clients_base > 0) {
-            baseEl.textContent = `de ${data.kpi_clients_base.toLocaleString('pt-BR')} na base`;
+            baseEl.textContent = `de ${formatInteger(data.kpi_clients_base)} na base`;
             baseEl.classList.remove('hidden');
         } else { baseEl.classList.add('hidden'); }
 
@@ -4099,11 +4099,11 @@ let estrelasSelectedCategorias = [];
             document.getElementById('kpi-devol-var-sec').textContent = fmtBRL(kpiDevolPrev);
 
             // 5. Mix PDV
-            document.getElementById('kpi-mix-val').textContent = avgMixCurr.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('kpi-mix-val').textContent = formatNumber(avgMixCurr, 2);
             const elMixPerc = document.getElementById('kpi-mix-perc');
             elMixPerc.textContent = `${varMix > 0 ? '+' : ''}${varMix.toFixed(1)}%`;
             elMixPerc.className = `text-lg font-bold ${varMix >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-mix-sec').textContent = avgMixPrev.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('kpi-mix-sec').textContent = formatNumber(avgMixPrev, 2);
         } catch (err) {
             AppLog.error('Error updating new KPIs:', err);
         }
@@ -4264,7 +4264,7 @@ let estrelasSelectedCategorias = [];
     function formatChartLabel(v, suffix = '') {
         if (!v) return '';
         if (v >= 1000000) {
-            return (v / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' M' + suffix;
+            return formatNumber(v / 1000000, 1) + ' M' + suffix;
         } else if (v >= 1000) {
             return (v / 1000).toFixed(0) + 'K' + suffix;
         }
@@ -4324,7 +4324,7 @@ let estrelasSelectedCategorias = [];
                                     label += ': ';
                                 }
                                 if (context.parsed.y !== null) {
-                                    label += context.parsed.y.toLocaleString('pt-BR');
+                                    label += formatInteger(context.parsed.y);
                                 }
                                 return label;
                             }
@@ -4388,9 +4388,9 @@ let estrelasSelectedCategorias = [];
         tableHead.onclick = window.toggleSummaryTable;
 
         const indicators = [
-            { name: 'POSITIVAÇÃO', key: 'positivacao', fmt: v => v.toLocaleString('pt-BR') },
+            { name: 'POSITIVAÇÃO', key: 'positivacao', fmt: v => formatInteger(v) },
             { name: 'FATURAMENTO', key: 'faturamento', fmt: v => formatCurrency(v) },
-            { name: 'Mix PDV', key: 'mix_pdv', fmt: v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+            { name: 'Mix PDV', key: 'mix_pdv', fmt: v => formatNumber(v, 2) },
             { name: 'Ticket Médio', key: 'ticket_medio', fmt: v => formatCurrency(v) },
             { name: 'BONIFICAÇÃO', key: 'bonificacao', fmt: v => formatCurrency(v) },
             { name: '% Perda', key: 'perc_perda', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
@@ -6488,9 +6488,9 @@ let estrelasSelectedCategorias = [];
 
             const fmt = (val, format) => {
                 if (format === 'currency') return formatCurrency(val);
-                if (format === 'decimal') return val.toLocaleString('pt-BR', { minimumFractionDigits: 3 });
-                if (format === 'decimal_2') return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                return val.toLocaleString('pt-BR');
+                if (format === 'decimal') return formatNumber(val, 3);
+                if (format === 'decimal_2') return formatNumber(val, 2);
+                return formatInteger(val);
             };
 
             container.innerHTML = '';

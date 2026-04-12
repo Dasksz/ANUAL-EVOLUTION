@@ -17,3 +17,7 @@ This file contains critical learnings from Tidy to avoid making mistakes in this
 ## 2026/04/10 : Extract Button Loading State Logic
 **Learning:** Found repetitive instances of button loading state logic across the codebase (export PDF/Excel, sign-in, sign-up, forgot password). Each instance duplicated a long `<svg class="animate-spin...` string, `btn.disabled = true/false`, and manual `btn.innerHTML` assignment, cluttering business logic.
 **Action:** Created centralized utility functions `setButtonLoading(btn, text)` and `restoreButtonState(btn, originalHtml)` in `src/js/utils.js`. Replaced all repetitive loading spinner injections to use these functions, reducing code duplication and improving readability while ensuring XSS safety via `escapeHtml`.
+
+## 2026/04/11 : Extract and Standardize Inline Number and Integer Formatting
+**Learning:** Found multiple remaining instances of `.toLocaleString('pt-BR')` applied directly on metrics values, especially for counts (integers) and fractional numbers (like mix_pdv). This clutters the UI rendering logic, makes the code repetitive, and increases the chance of localization inconsistencies.
+**Action:** Substituted all remaining occurrences of inline `.toLocaleString('pt-BR', ...)` formatting for metric outputs with the centralized `formatInteger(value)` and `formatNumber(value, decimals)` utility functions from `src/js/utils.js`. Only `new Date().toLocaleString('pt-BR')` statements were preserved.
