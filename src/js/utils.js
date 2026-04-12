@@ -8,20 +8,31 @@ export function escapeHtml(unsafe) {
          .replace(/'/g, "&#039;");
 }
 
+const _numberFormatters = new Map();
 export function formatNumber(num, decimals = 2) {
     if (num == null) return '--';
     const parsed = Number(num);
     if (isNaN(parsed)) return '--';
-    return parsed.toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+
+    let formatter = _numberFormatters.get(decimals);
+    if (!formatter) {
+        formatter = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+        _numberFormatters.set(decimals, formatter);
+    }
+    return formatter.format(parsed);
 }
 
 /**
  * Formats a value as BRL Currency.
  * Improves readability by encapsulating the lengthy toLocaleString call.
  */
+let _currencyFormatter = null;
 export function formatCurrency(value) {
     if (value == null || isNaN(Number(value))) return 'R$ 0,00';
-    return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (!_currencyFormatter) {
+        _currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+    return _currencyFormatter.format(Number(value));
 }
 
 /**
@@ -30,7 +41,13 @@ export function formatCurrency(value) {
  */
 export function formatTons(weightInKg, decimals = 1) {
     if (weightInKg == null || isNaN(Number(weightInKg))) return '0,0 Ton';
-    return (Number(weightInKg) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + ' Ton';
+
+    let formatter = _numberFormatters.get(decimals);
+    if (!formatter) {
+        formatter = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+        _numberFormatters.set(decimals, formatter);
+    }
+    return formatter.format(Number(weightInKg) / 1000) + ' Ton';
 }
 
 export const MONTHS_PT = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -41,9 +58,13 @@ export const MONTHS_PT_INITIALS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", 
  * Formats a value as an Integer in pt-BR locale.
  * Improves readability by encapsulating Math.round and toLocaleString.
  */
+let _integerFormatter = null;
 export function formatInteger(value) {
     if (value == null || isNaN(Number(value))) return '0';
-    return Math.round(Number(value)).toLocaleString('pt-BR');
+    if (!_integerFormatter) {
+        _integerFormatter = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
+    }
+    return _integerFormatter.format(Math.round(Number(value)));
 }
 
 /**
