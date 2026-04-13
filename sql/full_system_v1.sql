@@ -290,6 +290,7 @@ DECLARE
     v_where_unnested text := ' ';
     v_where_base_prev text := ' WHERE 1=1 ';
     v_where_chart text := ' WHERE 1=1 ';
+    v_pre_agg_skus_sql text;
 
     v_sql text;
     v_result json;
@@ -445,8 +446,35 @@ BEGIN
         v_where_chart := v_where_chart || ' AND tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
     END IF;
 
+
+    IF v_where_unnested = ' ' OR v_where_unnested = '' THEN
+        v_pre_agg_skus_sql := '
+        SELECT
+            c.filial, c.cidade, c.codusur, c.codcli,
+            COUNT(DISTINCT p.produto) as dist_skus_per_cli
+        FROM current_data c
+        CROSS JOIN LATERAL jsonb_array_elements_text(c.produtos) AS p(produto)
+        WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
+        GROUP BY c.filial, c.cidade, c.codusur, c.codcli
+        ';
+    ELSE
+        v_pre_agg_skus_sql := '
+        SELECT
+            c.filial, c.cidade, c.codusur, c.codcli,
+            COUNT(DISTINCT dp.codigo) as dist_skus_per_cli
+        FROM current_data c
+        CROSS JOIN LATERAL jsonb_array_elements_text(c.produtos) AS p(produto)
+        INNER JOIN public.dim_produtos dp ON dp.codigo = p.produto
+        WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
+        ' || v_where_unnested || '
+        GROUP BY c.filial, c.cidade, c.codusur, c.codcli
+        ';
+    END IF;
+
     -- Dynamic Query
     v_sql := '
+
+
     WITH base_clients AS (
         SELECT
             dc.codigo_cliente as codcli,
@@ -499,15 +527,7 @@ BEGIN
         GROUP BY ROLLUP(filial, cidade, vendedor)
     ),
     pre_aggregated_skus AS (
-        SELECT 
-            c.filial, c.cidade, c.codusur, c.codcli,
-            COUNT(DISTINCT dp.codigo) as dist_skus_per_cli
-        FROM current_data c
-        CROSS JOIN LATERAL jsonb_array_elements_text(c.produtos) AS p(produto)
-        INNER JOIN public.dim_produtos dp ON dp.codigo = p.produto
-        WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
-        ' || v_where_unnested || '
-        GROUP BY c.filial, c.cidade, c.codusur, c.codcli
+        ' || v_pre_agg_skus_sql || '
     ),
     
     client_monthly_sales AS (
@@ -4576,9 +4596,15 @@ BEGIN
         v_where_chart := v_where_chart || ' AND s.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
     END IF;
 
+
     -- Dynamic Query using the exact same logic from get_comparison_view_data
     v_sql := '
-    WITH all_sales AS (
+    WITH filtered_products AS (
+        SELECT codigo, mix_marca, mix_categoria, descricao
+        FROM public.dim_produtos
+        WHERE mix_marca IS NOT NULL AND mix_marca != ''''
+    ),
+    all_sales AS (
         SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.mix_marca, dp.mix_categoria,
             CASE
                 WHEN s.codfor = ''1119'' THEN COALESCE(
@@ -4592,7 +4618,7 @@ BEGIN
                 ELSE s.codfor
             END as codfor
         FROM public.data_detailed s
-        LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+        INNER JOIN filtered_products dp ON s.produto = dp.codigo
         ' || v_where_chart || v_where_rede || '
         UNION ALL
         SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.mix_marca, dp.mix_categoria,
@@ -4608,9 +4634,10 @@ BEGIN
                 ELSE s.codfor
             END as codfor
         FROM public.data_history s
-        LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+        INNER JOIN filtered_products dp ON s.produto = dp.codigo
         ' || v_where_chart || v_where_rede || '
     ),
+
     prod_agg AS (
         SELECT
             EXTRACT(MONTH FROM dtped)::int as mes,
