@@ -480,34 +480,40 @@ let estrelasSelectedCategorias = [];
 
     // Handle Window Resize to keep dropdown positioned correctly or hide it
 
+
+    function getActiveExportView() {
+        let activeView = null;
+        let viewName = 'Export';
+        const views = [
+            { id: 'main-dashboard-view', navId: 'nav-dashboard', name: 'Visao Geral' },
+            { id: 'city-view', navId: 'nav-city-analysis', name: 'Share' },
+            { id: 'boxes-view', navId: 'nav-boxes-btn', name: 'Cobertura' },
+            { id: 'branch-view', navId: 'nav-branch-btn', name: 'Filiais' },
+            { id: 'comparison-view', navId: 'nav-comparativo-btn', name: 'Comparativo' },
+            { id: 'innovations-month-view', navId: 'nav-innovations-btn', name: 'Inovacoes' },
+            { id: 'loja-perfeita-view', navId: 'nav-loja-perfeita-btn', name: 'Loja Perfeita' },
+            { id: 'estrelas-view', navId: 'nav-estrelas-btn', name: 'Estrelas' }
+        ];
+
+        for (const view of views) {
+            const navEl = document.getElementById(view.navId);
+            const viewEl = document.getElementById(view.id);
+            if (navEl && navEl.classList.contains('active') && viewEl && !viewEl.classList.contains('hidden')) {
+                activeView = viewEl;
+                viewName = view.name;
+                break;
+            }
+        }
+        return { activeView, viewName };
+    }
+
     // --- EXPORT EXCEL LOGIC ---
     const exportExcelBtn = document.getElementById('export-excel-btn');
     if (exportExcelBtn) {
         exportExcelBtn.addEventListener('click', () => {
             if (exportDropdown) exportDropdown.classList.add('hidden');
             
-            let activeView = null;
-            const views = [
-                { id: 'main-dashboard-view', navId: 'nav-dashboard', name: 'Visao Geral' },
-                { id: 'city-view', navId: 'nav-city-analysis', name: 'Share' },
-                { id: 'boxes-view', navId: 'nav-boxes-btn', name: 'Cobertura' },
-                { id: 'branch-view', navId: 'nav-branch-btn', name: 'Filiais' },
-                { id: 'comparison-view', navId: 'nav-comparativo-btn', name: 'Comparativo' },
-                { id: 'innovations-month-view', navId: 'nav-innovations-btn', name: 'Inovacoes' },
-                { id: 'loja-perfeita-view', navId: 'nav-loja-perfeita-btn', name: 'Loja Perfeita' },
-                { id: 'estrelas-view', navId: 'nav-estrelas-btn', name: 'Estrelas' }
-            ];
-            
-            let viewName = 'Export';
-            for (const view of views) {
-                const navEl = document.getElementById(view.navId);
-                const viewEl = document.getElementById(view.id);
-                if (navEl && navEl.classList.contains('active') && viewEl && !viewEl.classList.contains('hidden')) {
-                    activeView = viewEl;
-                    viewName = view.name;
-                    break;
-                }
-            }
+            const { activeView, viewName } = getActiveExportView();
 
             if (!activeView) {
                 alert('Nenhuma visualização ativa encontrada para exportar.');
@@ -591,26 +597,7 @@ let estrelasSelectedCategorias = [];
             if (exportDropdown) exportDropdown.classList.add('hidden');
             
             // Find currently active view
-            let activeView = null;
-            const views = [
-                { id: 'main-dashboard-view', navId: 'nav-dashboard' },
-                { id: 'city-view', navId: 'nav-city-analysis' },
-                { id: 'boxes-view', navId: 'nav-boxes-btn' },
-                { id: 'branch-view', navId: 'nav-branch-btn' },
-                { id: 'comparison-view', navId: 'nav-comparativo-btn' },
-                { id: 'innovations-month-view', navId: 'nav-innovations-btn' },
-                { id: 'loja-perfeita-view', navId: 'nav-loja-perfeita-btn' },
-                { id: 'estrelas-view', navId: 'nav-estrelas-btn' }
-            ];
-            
-            for (const view of views) {
-                const navEl = document.getElementById(view.navId);
-                const viewEl = document.getElementById(view.id);
-                if (navEl && navEl.classList.contains('active') && viewEl && !viewEl.classList.contains('hidden')) {
-                    activeView = viewEl;
-                    break;
-                }
-            }
+            const { activeView } = getActiveExportView();
 
             if (!activeView) {
                 alert('Nenhuma visualização ativa encontrada para exportar.');

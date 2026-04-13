@@ -25,3 +25,7 @@ This file contains critical learnings from Tidy to avoid making mistakes in this
 ## 2026/04/12 : (Extract Dropdown Clickaway Logic)
 **Aprendizado:** (Found 8 repetitive loops checking if a click event target is outside an array of dropdowns and buttons to close the dropdowns. This repetitive boilerplate cluttering the UI interaction code violates DRY principles and makes the code difficult to read.)
 **Ação:** (Extracted this into a centralized `handleDropdownsClickaway(e, dropdowns, btns)` utility function in `src/js/utils.js`. Replaced all repetitive loops with this single utility call, returning a boolean indicating if any dropdown was closed, allowing further downstream logic to run cleanly.)
+
+## 2026-04-13 : Extract Active View Export Logic
+**Learning:** Found duplicate logic to determine the currently active view and its name for Excel and PDF exports, violating DRY and cluttering the listeners.
+**Action:** Extracted the logic into a `getActiveExportView()` function that returns `{ activeView, viewName }`. Replaced both sets of duplicated view-finding loops with a single call to this helper function.
