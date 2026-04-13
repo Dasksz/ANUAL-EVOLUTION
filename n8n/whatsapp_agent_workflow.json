@@ -557,7 +557,7 @@
     },
     {
       "parameters": {
-        "url": "https://app.chatwoot.com/api/v1/accounts/159794/contacts/searchch",
+        "url": "https://app.chatwoot.com/api/v1/accounts/159794/contacts/search",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
