@@ -11,6 +11,17 @@ function parseExcelDate(serial) {
 
 const isDigit = (code) => code >= 48 && code <= 57;
 
+function createUTCDate(y, m, d) {
+    let finalYear = y;
+    // Fix 2-digit years if they ever appear (e.g., 26 -> 2026, 99 -> 1999, 0026 -> 2026)
+    if (finalYear < 100) {
+        finalYear += (finalYear < 50) ? 2000 : 1900;
+    }
+    // Using Date.UTC to prevent timezone shift issues
+    const dt = new Date(Date.UTC(finalYear, m - 1, d));
+    return isNaN(dt.getTime()) ? null : dt;
+}
+
 function parseDate(dateString) {
     if (!dateString) return null;
     if (dateString instanceof Date) return !isNaN(dateString.getTime()) ? dateString : null;
@@ -42,8 +53,7 @@ function parseDate(dateString) {
                 const y = (str.charCodeAt(0) - 48) * 1000 + (str.charCodeAt(1) - 48) * 100 + (str.charCodeAt(2) - 48) * 10 + (str.charCodeAt(3) - 48);
                 const m = (str.charCodeAt(5) - 48) * 10 + (str.charCodeAt(6) - 48);
                 const d = (str.charCodeAt(8) - 48) * 10 + (str.charCodeAt(9) - 48);
-                const dt = new Date(Date.UTC(y, m - 1, d));
-                return !isNaN(dt.getTime()) ? dt : null;
+                return createUTCDate(y, m, d);
             }
         }
         // dd/mm/yyyy or dd-mm-yyyy ('/' is 47, '-' is 45)
@@ -57,8 +67,7 @@ function parseDate(dateString) {
                 const d = (str.charCodeAt(0) - 48) * 10 + (str.charCodeAt(1) - 48);
                 const m = (str.charCodeAt(3) - 48) * 10 + (str.charCodeAt(4) - 48);
                 const y = (str.charCodeAt(6) - 48) * 1000 + (str.charCodeAt(7) - 48) * 100 + (str.charCodeAt(8) - 48) * 10 + (str.charCodeAt(9) - 48);
-                const dt = new Date(Date.UTC(y, m - 1, d));
-                return !isNaN(dt.getTime()) ? dt : null;
+                return createUTCDate(y, m, d);
             }
         }
     }
@@ -88,14 +97,7 @@ function parseDate(dateString) {
 
         // Validate parts
         if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
-            let finalYear = y;
-            // Fix 2-digit years if they ever appear (e.g., 26 -> 2026, 99 -> 1999)
-            if (finalYear < 100) {
-                finalYear += (finalYear < 50) ? 2000 : 1900;
-            }
-            // Using Date.UTC to prevent timezone shift issues
-            const dt = new Date(Date.UTC(finalYear, m - 1, d));
-            return isNaN(dt.getTime()) ? null : dt;
+            return createUTCDate(y, m, d);
         }
     }
 
