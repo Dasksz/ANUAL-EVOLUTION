@@ -300,7 +300,7 @@ window.showToast = function(type, message, title = '') {
     const closeBtn = document.createElement('button');
     closeBtn.className = 'toast-close-btn';
     closeBtn.setAttribute('aria-label', 'Fechar notificação');
-    closeBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+    closeBtn.innerHTML = '<svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
     closeBtn.onclick = function() {
         toast.classList.add('hiding');
         toast.addEventListener('animationend', () => toast.remove());
