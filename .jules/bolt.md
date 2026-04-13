@@ -13,3 +13,6 @@
 ## 2025-04-10 - Cached Intl.NumberFormat to avoid expensive toLocaleString calls
 **Learning:** Calling `Number.prototype.toLocaleString()` inside a loop (e.g. rendering table rows or generating exports) is extremely slow because it internally instantiates a new `Intl.NumberFormat` object for every single call.
 **Action:** When a formatting function will be called repeatedly, create and cache an `Intl.NumberFormat` instance (keyed by locale and options) and use its `.format()` method instead. This improves performance by ~50x.
+## 2026-04-13 - Optimize Filter Cache Refresh
+**Learning:** In `src/js/app.js`, the data synchronization function `enviarDadosParaSupabase` previously called `supabase.rpc('refresh_cache_filters')` for every month inside a nested loop. This resulted in O(years * 12) sequential API calls during a data sync. The parameterless `refresh_cache_filters` RPC triggers a global server-side rebuild that is significantly more efficient than sequential client-side calls due to reduced network latency and database-side chunking logic.
+**Action:** When performing bulk updates or synchronizations, always move cache refreshing logic outside of processing loops. Call it once after all data loading is complete.
