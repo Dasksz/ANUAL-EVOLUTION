@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { formatNumber, escapeHtml, setElementLoading, restoreElementState } from '../src/js/utils.js';
+import { formatNumber, escapeHtml, setElementLoading, restoreElementState, formatInteger, formatCurrency, formatTons } from '../src/js/utils.js';
 
 test('formatNumber', async (t) => {
     await t.test('formats numbers correctly with default decimals (2)', () => {
@@ -32,6 +32,71 @@ test('formatNumber', async (t) => {
     await t.test('handles numeric string inputs', () => {
         const result = formatNumber('1234.56');
         assert.match(result, /1[.,]234,56/);
+    });
+});
+
+test('formatInteger', async (t) => {
+    await t.test('formats integers correctly with thousand separators', () => {
+        const result = formatInteger(1234.56);
+        // Math.round(1234.56) = 1235
+        assert.match(result, /1[.,]235/);
+    });
+
+    await t.test('rounds correctly', () => {
+        assert.match(formatInteger(1.4), /1/);
+        assert.match(formatInteger(1.5), /2/);
+    });
+
+    await t.test('handles null/undefined inputs', () => {
+        assert.strictEqual(formatInteger(null), '0');
+        assert.strictEqual(formatInteger(undefined), '0');
+    });
+
+    await t.test('handles non-numeric string inputs', () => {
+        assert.strictEqual(formatInteger('not a number'), '0');
+    });
+
+    await t.test('handles numeric string inputs', () => {
+        const result = formatInteger('1234.56');
+        assert.match(result, /1[.,]235/);
+    });
+});
+
+test('formatCurrency', async (t) => {
+    await t.test('formats currency correctly', () => {
+        const result = formatCurrency(1234.56);
+        // BRL format: R$ 1.234,56 (with non-breaking spaces sometimes)
+        assert.match(result, /R\$\s*1[.,]234,56/);
+    });
+
+    await t.test('handles null/undefined inputs', () => {
+        assert.strictEqual(formatCurrency(null), 'R$ 0,00');
+        assert.strictEqual(formatCurrency(undefined), 'R$ 0,00');
+    });
+
+    await t.test('handles non-numeric string inputs', () => {
+        assert.strictEqual(formatCurrency('abc'), 'R$ 0,00');
+    });
+});
+
+test('formatTons', async (t) => {
+    await t.test('converts kg to tons correctly', () => {
+        const result = formatTons(1500);
+        assert.match(result, /1,5 Ton/);
+    });
+
+    await t.test('respects custom decimals', () => {
+        const result = formatTons(1500, 2);
+        assert.match(result, /1,50 Ton/);
+    });
+
+    await t.test('handles null/undefined inputs', () => {
+        assert.match(formatTons(null), /0,0 Ton/);
+        assert.match(formatTons(undefined), /0,0 Ton/);
+    });
+
+    await t.test('handles non-numeric string inputs', () => {
+        assert.match(formatTons('abc'), /0,0 Ton/);
     });
 });
 
