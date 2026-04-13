@@ -1715,6 +1715,7 @@ let estrelasSelectedCategorias = [];
                 break;
             case 'innovations':
                 if (innovationsMonthView && navInnovationsBtn) {
+                    showDashboardLoading('innovations-month-view');
                     innovationsMonthView.classList.remove('hidden');
                     setActiveNavLink(navInnovationsBtn);
                     renderInnovationsMonthView();
@@ -1722,6 +1723,7 @@ let estrelasSelectedCategorias = [];
                 break;
                         case 'estrelas':
                 if (estrelasView && navEstrelasBtn) {
+                    showDashboardLoading('estrelas-view');
                     estrelasView.classList.remove('hidden');
                     setActiveNavLink(navEstrelasBtn);
                     renderEstrelasView();
@@ -1729,6 +1731,7 @@ let estrelasSelectedCategorias = [];
                 break;
             case 'loja-perfeita':
                 if (lojaPerfeitaView && navLojaPerfeitaBtn) {
+                    showDashboardLoading('loja-perfeita-view');
                     lojaPerfeitaView.classList.remove('hidden');
                     setActiveNavLink(navLojaPerfeitaBtn);
                     renderLojaPerfeitaView();
@@ -7872,9 +7875,7 @@ document.addEventListener('click', (e) => {
 const setupEstrelasFilters = async () => {
     if (isEstrelasInitialized) return;
 
-    // We can use the dashboard overlay
-    const overlay = document.getElementById('dashboard-loading-overlay');
-    if (overlay) overlay.classList.remove('hidden');
+
 
     const filters = {
         p_ano: null,
@@ -7952,6 +7953,7 @@ const setupEstrelasFilters = async () => {
 };
 
 async function renderEstrelasView() {
+    showDashboardLoading('estrelas-view');
     if (!isEstrelasInitialized) {
         await setupEstrelasFilters();
     }
@@ -7961,9 +7963,8 @@ async function renderEstrelasView() {
 async function updateEstrelasView() {
     AppLog.log("Estrelas view updating...");
     
-    // Show overlay
-    const overlay = document.getElementById('dashboard-loading-overlay');
-    if (overlay) overlay.classList.remove('hidden');
+    // Show overlay handled by showDashboardLoading
+    showDashboardLoading('estrelas-view');
 
     try {
         const filters = {
@@ -8028,6 +8029,12 @@ async function updateEstrelasView() {
         let pctPos = data.base_clientes > 0 ? (data.positivacao_salty / data.base_clientes) * 100 : 0;
         let pctAcel = data.base_clientes > 0 ? (data.aceleradores_realizado / data.base_clientes) * 100 : 0;
         
+        let realizedSellout = data.sellout_salty + data.sellout_foods;
+        let pctSellout = metaSellout > 0 ? (realizedSellout / metaSellout) * 100 : (realizedSellout > 0 ? 100 : 0);
+
+        updateEl('sellout-pdb-bar', `${Math.min(pctSellout, 100).toFixed(0)}%`, true);
+        updateEl('sellout-pdb-pct', `${pctSellout.toFixed(0)}%`);
+
         updateEl('pos-salty-bar', `${Math.min(pctPos, 100).toFixed(0)}%`, true);
         updateEl('pos-salty-pct', `${pctPos.toFixed(0)}%`);
 
@@ -8038,7 +8045,7 @@ async function updateEstrelasView() {
         AppLog.error("Erro ao carregar dados de KPIs Estrelas:", err);
         // Optionally show a toast error
     } finally {
-        if (overlay) overlay.classList.add('hidden');
+        hideDashboardLoading();
     }
 }
 
