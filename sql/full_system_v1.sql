@@ -5610,7 +5610,8 @@ LEFT JOIN mix_mensal mm ON pa.codcli = mm.codcli AND pa.ano = mm.ano AND pa.mes 
 LEFT JOIN public.dim_vendedores v ON pa.vendedor_cod = v.codigo
 LEFT JOIN public.dim_supervisores s ON pa.supervisor_cod = s.codigo;
 
-GRANT SELECT ON public.n8n_agent_view TO authenticated, anon;
+REVOKE ALL ON public.n8n_agent_view FROM anon, authenticated;
+GRANT SELECT ON public.n8n_agent_view TO service_role;
 
 -- ==========================================
 -- Materialized View: n8n_agent_view
@@ -5756,7 +5757,8 @@ CREATE INDEX IF NOT EXISTS idx_n8n_agent_view_pedido ON public.n8n_agent_view (n
 CREATE INDEX IF NOT EXISTS idx_n8n_agent_view_tipo ON public.n8n_agent_view (tipo_venda_pedido);
 
 /* Permissoes */
-GRANT SELECT ON public.n8n_agent_view TO authenticated, anon;
+REVOKE ALL ON public.n8n_agent_view FROM anon, authenticated;
+GRANT SELECT ON public.n8n_agent_view TO service_role;
 
 /* Ativa a extensao que permite ler pedacos de texto rapidamente */
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
