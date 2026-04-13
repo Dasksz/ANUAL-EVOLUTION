@@ -21,3 +21,7 @@ This file contains critical learnings from Tidy to avoid making mistakes in this
 ## 2026/04/11 : Extract and Standardize Inline Number and Integer Formatting
 **Learning:** Found multiple remaining instances of `.toLocaleString('pt-BR')` applied directly on metrics values, especially for counts (integers) and fractional numbers (like mix_pdv). This clutters the UI rendering logic, makes the code repetitive, and increases the chance of localization inconsistencies.
 **Action:** Substituted all remaining occurrences of inline `.toLocaleString('pt-BR', ...)` formatting for metric outputs with the centralized `formatInteger(value)` and `formatNumber(value, decimals)` utility functions from `src/js/utils.js`. Only `new Date().toLocaleString('pt-BR')` statements were preserved.
+
+## 2026/04/12 : (Extract Dropdown Clickaway Logic)
+**Aprendizado:** (Found 8 repetitive loops checking if a click event target is outside an array of dropdowns and buttons to close the dropdowns. This repetitive boilerplate cluttering the UI interaction code violates DRY principles and makes the code difficult to read.)
+**Ação:** (Extracted this into a centralized `handleDropdownsClickaway(e, dropdowns, btns)` utility function in `src/js/utils.js`. Replaced all repetitive loops with this single utility call, returning a boolean indicating if any dropdown was closed, allowing further downstream logic to run cleanly.)
