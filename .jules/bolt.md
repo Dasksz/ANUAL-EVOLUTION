@@ -13,3 +13,7 @@
 ## 2025-04-10 - Cached Intl.NumberFormat to avoid expensive toLocaleString calls
 **Learning:** Calling `Number.prototype.toLocaleString()` inside a loop (e.g. rendering table rows or generating exports) is extremely slow because it internally instantiates a new `Intl.NumberFormat` object for every single call.
 **Action:** When a formatting function will be called repeatedly, create and cache an `Intl.NumberFormat` instance (keyed by locale and options) and use its `.format()` method instead. This improves performance by ~50x.
+
+## 2026-04-12 - Deferring RPC-based cache refreshes to a single batch call
+**Learning:** Sequential network-bound RPC calls inside nested loops (e.g., refreshing filter caches per month/year) create significant O(N*M) latency bottlenecks.
+**Action:** When a process involves multiple data-loading steps that require a subsequent cache refresh, defer the refresh until the end of the loop and trigger a single, parameterless global refresh RPC. This reduces network overhead and allows the database to perform the rebuild in a single, more efficient operation.
