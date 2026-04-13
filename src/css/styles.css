@@ -374,6 +374,11 @@ th {
     transition: all 0.2s;
     background: transparent;
     border: none;
+    outline: none;
+}
+
+.toast-close-btn:focus-visible {
+    box-shadow: 0 0 0 2px #f97316; /* Tailwind orange-500 */
 }
 
 .toast-close-btn:hover {
