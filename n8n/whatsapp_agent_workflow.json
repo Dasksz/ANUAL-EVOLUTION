@@ -147,8 +147,8 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "=chat_V59_{{ $('Edit Fields').item.json.chatid }}",
-        "sessionTTL": 3600,
+        "sessionKey": "=chat_V60_{{ $('Edit Fields').item.json.chatid }}",
+        "sessionTTL": 1800,
         "contextWindowLength": 6
       },
       "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
@@ -555,7 +555,7 @@
     },
     {
       "parameters": {
-        "url": "https://app.chatwoot.com/api/v1/accounts/159794/contacts/searchch",
+        "url": "https://app.chatwoot.com/api/v1/accounts/159794/contacts/search",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -682,9 +682,9 @@
             "accept": "application/json, text/plain, */*",
             "content-type": "application/json",
             "user-agent": "WAHA/2026.3.4",
-            "x-webhook-request-id": "28ygy8mnx6d684",
-            "x-webhook-timestamp": "1776083679938",
-            "content-length": "2320",
+            "x-webhook-request-id": "2l7jdn16mnxmjwpg",
+            "x-webhook-timestamp": "1776110868048",
+            "content-length": "2350",
             "accept-encoding": "gzip, compress, deflate, br",
             "host": "host.docker.internal:5678",
             "connection": "keep-alive"
@@ -692,8 +692,8 @@
           "params": {},
           "query": {},
           "body": {
-            "id": "evt_01kp3dcep25tcd6s0t2djgxfma",
-            "timestamp": 1776083679938,
+            "id": "evt_01kp47a5jge83tng2xgbzvepbc",
+            "timestamp": 1776110868048,
             "event": "message.any",
             "session": "default",
             "metadata": {},
@@ -704,12 +704,12 @@
               "jid": "557332236100:2@s.whatsapp.net"
             },
             "payload": {
-              "id": "false_65713167446078@lid_AC6EC01FC7727D51F39DFB169EB5D835",
-              "timestamp": 1776083680,
+              "id": "false_65713167446078@lid_3EB07DC2F906F89FC01834",
+              "timestamp": 1776110871,
               "from": "65713167446078@lid",
               "fromMe": false,
               "source": "app",
-              "body": "Sim",
+              "body": "sim",
               "to": null,
               "participant": null,
               "hasMedia": false,
@@ -722,19 +722,19 @@
               "_data": {
                 "Info": {
                   "Chat": "65713167446078@lid",
-                  "Sender": "65713167446078@lid",
+                  "Sender": "65713167446078:43@lid",
                   "IsFromMe": false,
                   "IsGroup": false,
                   "AddressingMode": "",
-                  "SenderAlt": "557381941146@s.whatsapp.net",
+                  "SenderAlt": "557381941146:43@s.whatsapp.net",
                   "RecipientAlt": "",
                   "BroadcastListOwner": "",
                   "BroadcastRecipients": null,
-                  "ID": "AC6EC01FC7727D51F39DFB169EB5D835",
+                  "ID": "3EB07DC2F906F89FC01834",
                   "ServerID": 0,
                   "Type": "text",
                   "PushName": "Daniel César",
-                  "Timestamp": "2026-04-13T12:34:40Z",
+                  "Timestamp": "2026-04-13T20:07:51Z",
                   "Category": "",
                   "Multicast": false,
                   "MediaType": "",
@@ -756,17 +756,18 @@
                   "DeviceSentMeta": null
                 },
                 "Message": {
-                  "conversation": "Sim",
+                  "conversation": "sim",
                   "messageContextInfo": {
                     "deviceListMetadata": {
                       "senderKeyHash": "npMunFLgkDXkvg==",
                       "senderTimestamp": 1774986239,
+                      "senderAccountType": 0,
                       "receiverAccountType": 1,
                       "recipientKeyHash": "XFgMPB7ej702ng==",
-                      "recipientTimestamp": 1776081471
+                      "recipientTimestamp": 1776082522
                     },
                     "deviceListMetadataVersion": 2,
-                    "messageSecret": "gFf+DM2M58GDXduT+dQw4I+NLFWlZhI/hNzszUsVdaI="
+                    "messageSecret": "VnPg2BzDqiUE4yRLL6nYINcglN+D6imWORvnfB9G4V8="
                   }
                 },
                 "IsEphemeral": false,
@@ -782,17 +783,18 @@
                 "RetryCount": 0,
                 "NewsletterMeta": null,
                 "RawMessage": {
-                  "conversation": "Sim",
+                  "conversation": "sim",
                   "messageContextInfo": {
                     "deviceListMetadata": {
                       "senderKeyHash": "npMunFLgkDXkvg==",
                       "senderTimestamp": 1774986239,
+                      "senderAccountType": 0,
                       "receiverAccountType": 1,
                       "recipientKeyHash": "XFgMPB7ej702ng==",
-                      "recipientTimestamp": 1776081471
+                      "recipientTimestamp": 1776082522
                     },
                     "deviceListMetadataVersion": 2,
-                    "messageSecret": "gFf+DM2M58GDXduT+dQw4I+NLFWlZhI/hNzszUsVdaI="
+                    "messageSecret": "VnPg2BzDqiUE4yRLL6nYINcglN+D6imWORvnfB9G4V8="
                   }
                 },
                 "Status": 3
@@ -1059,7 +1061,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "051f266e-9ba6-4fe4-9b83-4427dc6605db",
+  "versionId": "feabfee3-c64b-4257-b5ec-2079e9c6589c",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "30ebc79fa17c8c247630f2c60a2ce65275ba18ea39202d11baafdeec3fac67f8"
