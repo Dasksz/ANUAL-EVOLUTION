@@ -2446,11 +2446,13 @@ let estrelasSelectedCategorias = [];
                             const res3 = await supabase.rpc('refresh_summary_chunk', { p_start_date: chunk2EndDate, p_end_date: endDate });
                             if (res3.error) throw new Error(`Erro processando ${m}/${year} (Parte 3): ${res3.error.message}`);
                         }, 3, 2000);
-                        updateStatus(`Atualizando filtros ${m}/${year}...`, progress + Math.round(monthStep / 2));
-                        const { error: filterErr } = await supabase.rpc('refresh_cache_filters', { p_ano: year, p_mes: m });
-                        if (filterErr) throw new Error(`Erro atualizando filtros para ${m}/${year}: ${filterErr.message}`);
                     }
                 }
+
+                // ⚡ Bolt Optimization: Call refresh_cache_filters once globally instead of inside the month loop
+                updateStatus(`Atualizando filtros globais...`, 100);
+                const { error: globalFilterErr } = await supabase.rpc('refresh_cache_filters');
+                if (globalFilterErr) throw new Error(`Erro atualizando filtros globais: ${globalFilterErr.message}`);
             }
 
 
