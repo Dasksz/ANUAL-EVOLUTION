@@ -5766,47 +5766,6 @@ let estrelasSelectedCategorias = [];
             }
         });
 
-        function setupAutocomplete(input, suggestionsContainer, items) {
-            if (!input || !suggestionsContainer) return;
-
-            input.addEventListener('input', () => {
-                const val = input.value.toLowerCase();
-                suggestionsContainer.innerHTML = '';
-                if (!val) {
-                    suggestionsContainer.classList.add('hidden');
-                    return;
-                }
-
-                const filtered = items.filter(i => i.toLowerCase().includes(val));
-                if (filtered.length > 0) {
-                    suggestionsContainer.classList.remove('hidden');
-                    filtered.slice(0, 50).forEach(item => {
-                        const div = document.createElement('div');
-                        div.className = 'p-2 hover:bg-slate-700 cursor-pointer text-sm text-slate-200';
-                        div.textContent = item;
-                        div.addEventListener('click', () => {
-                            input.value = item;
-                            suggestionsContainer.classList.add('hidden');
-                            handleComparisonFilterChange();
-                        });
-                        suggestionsContainer.appendChild(div);
-                    });
-                } else {
-                    suggestionsContainer.classList.add('hidden');
-                }
-            });
-
-            // Hide on outside click
-            document.addEventListener('click', (e) => {
-                if (e.target !== input && e.target !== suggestionsContainer) {
-                    suggestionsContainer.classList.add('hidden');
-                }
-            });
-
-            // Trigger filter change on manual input (debounce handled in handler)
-            input.addEventListener('input', handleComparisonFilterChange);
-        }
-
         async function initComparisonFilters() {
             const filters = {
                 p_ano: null,
