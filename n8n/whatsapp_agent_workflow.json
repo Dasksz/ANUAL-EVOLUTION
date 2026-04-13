@@ -10,10 +10,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -48,
+        -672,
         32
       ],
-      "id": "0dc19474-eaa5-44fe-8032-f2dde816cc93",
+      "id": "d2eb75d4-9fee-4f21-b81e-b9b2ea012024",
       "name": "Webhook",
       "webhookId": "0227ff26-68fe-4924-98bd-0ab5535d0500"
     },
@@ -66,7 +66,7 @@
             {
               "id": "f7f46cb7-d5f3-436d-87f0-843d09017fc5",
               "name": "phone_number",
-              "value": "={{ '+' + $json.body.payload._data.Info.SenderAlt.split(':')[0] }}",
+              "value": "={{ '+' + $json.body.payload._data.Info.SenderAlt.split(/[:@]/)[0] }}",
               "type": "string"
             }
           ]
@@ -76,10 +76,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        160,
+        -464,
         32
       ],
-      "id": "c40cdb27-4569-42cc-a06f-e44ec44af519",
+      "id": "99aa7ddb-1984-4ed3-ba0c-4728136619a0",
       "name": "Edit Fields"
     },
     {
@@ -116,10 +116,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        560,
+        -64,
         16
       ],
-      "id": "3b9d5551-9fc3-4a77-8063-86dab16cbf30",
+      "id": "8532606b-e1c9-4a4e-af01-55ebeb8033ab",
       "name": "Switch",
       "alwaysOutputData": false
     },
@@ -134,10 +134,10 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        32,
+        -592,
         208
       ],
-      "id": "888b2889-d362-46b5-8bae-0cb2a09f4daf",
+      "id": "7c85d743-c9d0-434a-a390-bbde6d071fbc",
       "name": "AI Agent",
       "retryOnFail": true,
       "maxTries": 2,
@@ -147,21 +147,21 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "=chat_V55_{{ $('Edit Fields').item.json.chatid }}",
+        "sessionKey": "=chat_V58_{{ $('Edit Fields').item.json.chatid }}",
         "sessionTTL": 3600,
         "contextWindowLength": 6
       },
       "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
       "typeVersion": 1.5,
       "position": [
-        112,
+        -512,
         432
       ],
-      "id": "d065ede5-52bc-46dd-869b-b059df162856",
+      "id": "91845a26-4ffa-48f0-89a2-601f36be7edb",
       "name": "Redis Chat Memory",
       "credentials": {
         "redis": {
-          "id": "qtZzXQ6xEqFCpUkv",
+          "id": "n9ZbwQC0bFIzr41K",
           "name": "Redis account"
         }
       }
@@ -178,14 +178,14 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        1520,
+        896,
         240
       ],
-      "id": "4c9239e2-5757-4047-a77c-71dedcd3970c",
+      "id": "71e36748-d918-4b88-bb31-54315eb90ea4",
       "name": "Send Seen",
       "credentials": {
         "wahaApi": {
-          "id": "suW7JkJbBGzNzIfF",
+          "id": "4fYhjZ68W0BhN58H",
           "name": "WAHA account"
         }
       }
@@ -229,10 +229,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        320,
+        -304,
         32
       ],
-      "id": "606c8527-9541-44c3-87be-0de5cc03eb03",
+      "id": "dfa265c8-60a5-4b08-a1ce-0a16af04d37f",
       "name": "If"
     },
     {
@@ -263,10 +263,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        320,
+        -304,
         208
       ],
-      "id": "ec2689ce-5e6c-403c-8903-a508ee279bd7",
+      "id": "5588ab16-558c-433a-a24a-35b027f1caea",
       "name": "If1"
     },
     {
@@ -290,15 +290,15 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        448,
+        -176,
         432
       ],
-      "id": "ce7fce22-9947-465a-8b79-f1642c87f002",
+      "id": "474285ff-3ad0-47cb-a58e-70433352c3c9",
       "name": "Validar_RCA",
       "notesInFlow": false,
       "credentials": {
         "supabaseApi": {
-          "id": "6fIkFkgf4U4MUpll",
+          "id": "rbnyvNtPSprEnTcx",
           "name": "Supabase account"
         }
       }
@@ -316,15 +316,15 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        592,
+        -32,
         432
       ],
-      "id": "e3d485d3-2f9e-4733-a1d6-999ab42e1221",
+      "id": "d0a5fcc9-8e82-4359-b18a-2da377475742",
       "name": "Consultar_Cadastro_Cliente",
       "notesInFlow": false,
       "credentials": {
         "supabaseApi": {
-          "id": "6fIkFkgf4U4MUpll",
+          "id": "rbnyvNtPSprEnTcx",
           "name": "Supabase account"
         }
       }
@@ -342,14 +342,14 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        288,
+        -336,
         432
       ],
-      "id": "9e195fe2-6c95-4051-afce-a29e43008d65",
+      "id": "d2ccf8f1-ba59-4423-a696-6771eaf853d8",
       "name": "Master_Busca_PRIME",
       "credentials": {
         "supabaseApi": {
-          "id": "6fIkFkgf4U4MUpll",
+          "id": "rbnyvNtPSprEnTcx",
           "name": "Supabase account"
         }
       }
@@ -365,17 +365,17 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        -64,
+        -688,
         432
       ],
-      "id": "496d49d4-82b2-4b53-b0b3-019ef14b9c00",
+      "id": "674ded8f-3063-495b-a60d-ef2c003a00d7",
       "name": "Google Gemini Chat Model",
       "retryOnFail": true,
       "waitBetweenTries": 1000,
       "maxTries": 3,
       "credentials": {
         "googlePalmApi": {
-          "id": "WCKfsSmYzaSP1hXN",
+          "id": "jbJyQhdDbioKhIQY",
           "name": "Google Gemini(PaLM) Api account"
         }
       },
@@ -443,10 +443,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        640,
+        16,
         224
       ],
-      "id": "a41f4f92-f0d7-40c1-b856-bb5cad5f6d00",
+      "id": "dfdf7511-8c83-4e9d-91d6-b37302a47b71",
       "name": "Switch Transferência"
     },
     {
@@ -463,12 +463,12 @@
         },
         "options": {}
       },
-      "id": "219fe357-e56f-4c55-b136-12ab9e3d2cad",
+      "id": "e3a16e18-13b9-41d3-906f-e4f44c9280b0",
       "name": "2. Buscar Conversa",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1024,
+        400,
         128
       ]
     },
@@ -496,12 +496,12 @@
         },
         "options": {}
       },
-      "id": "7e86e621-80cb-4d3a-89ab-89bc0c05e5e1",
+      "id": "17f7ce31-462b-41dc-acd1-c77bc19c7116",
       "name": "3. Atribuir Comercial",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1184,
+        560,
         128
       ]
     },
@@ -522,10 +522,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1360,
+        736,
         240
       ],
-      "id": "b2996e60-e938-4357-b5f7-576174415ba8",
+      "id": "3984610f-0833-4cbb-832b-a7a2fcaaaed3",
       "name": "Limpar Mensagem IA1"
     },
     {
@@ -541,14 +541,14 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        1680,
+        1056,
         240
       ],
-      "id": "ac24498a-0e7b-47b8-a09c-ebc5ae9bd89c",
+      "id": "533e57a0-6a11-494e-a729-a94fde84e1a5",
       "name": "Send a text message1",
       "credentials": {
         "wahaApi": {
-          "id": "suW7JkJbBGzNzIfF",
+          "id": "4fYhjZ68W0BhN58H",
           "name": "WAHA account"
         }
       }
@@ -576,12 +576,12 @@
         },
         "options": {}
       },
-      "id": "41372cd9-9959-41a5-b36e-a22157ace830",
+      "id": "89773bd7-89bc-4f5e-b6b6-086853d9e0b1",
       "name": "1. Buscar Contato no Chatwoot1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        848,
+        224,
         128
       ]
     },
@@ -599,12 +599,12 @@
         },
         "options": {}
       },
-      "id": "d19db52e-c283-48ac-83ad-335d5bd9dfa5",
+      "id": "10ee1e62-6c3c-457e-b5b9-dc110278c79f",
       "name": "2. Buscar Conversa1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1024,
+        400,
         368
       ]
     },
@@ -631,12 +631,12 @@
         },
         "options": {}
       },
-      "id": "151b61ae-b394-4abe-8b1d-8d2ade33d1c0",
+      "id": "434e2b1d-4454-451a-bf90-dd953e775393",
       "name": "1. Buscar Contato no Chatwoot",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        848,
+        224,
         368
       ]
     },
@@ -664,12 +664,12 @@
         },
         "options": {}
       },
-      "id": "aac726f3-8f71-4cd2-9009-f8bddc52a6e1",
+      "id": "834d6cf1-1029-40e0-b253-8fa7c3ce3a62",
       "name": "3. Atribuir Financeiro",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1184,
+        560,
         368
       ]
     }
@@ -682,9 +682,9 @@
             "accept": "application/json, text/plain, */*",
             "content-type": "application/json",
             "user-agent": "WAHA/2026.3.4",
-            "x-webhook-request-id": "1843afu7mnt6xris",
-            "x-webhook-timestamp": "1775842775955",
-            "content-length": "2350",
+            "x-webhook-request-id": "28ygy8mnx6d684",
+            "x-webhook-timestamp": "1776083679938",
+            "content-length": "2320",
             "accept-encoding": "gzip, compress, deflate, br",
             "host": "host.docker.internal:5678",
             "connection": "keep-alive"
@@ -692,8 +692,8 @@
           "params": {},
           "query": {},
           "body": {
-            "id": "evt_01knw7mmwk9cwwbgxk0ya3g8tm",
-            "timestamp": 1775842775955,
+            "id": "evt_01kp3dcep25tcd6s0t2djgxfma",
+            "timestamp": 1776083679938,
             "event": "message.any",
             "session": "default",
             "metadata": {},
@@ -701,15 +701,15 @@
               "id": "557332236100@c.us",
               "pushName": "Prime Distribuição",
               "lid": "38956058067002@lid",
-              "jid": "557332236100:1@s.whatsapp.net"
+              "jid": "557332236100:2@s.whatsapp.net"
             },
             "payload": {
-              "id": "false_65713167446078@lid_3EB05CB6464E53A2983AEA",
-              "timestamp": 1775842775,
+              "id": "false_65713167446078@lid_AC6EC01FC7727D51F39DFB169EB5D835",
+              "timestamp": 1776083680,
               "from": "65713167446078@lid",
               "fromMe": false,
               "source": "app",
-              "body": "sim",
+              "body": "Sim",
               "to": null,
               "participant": null,
               "hasMedia": false,
@@ -722,19 +722,19 @@
               "_data": {
                 "Info": {
                   "Chat": "65713167446078@lid",
-                  "Sender": "65713167446078:43@lid",
+                  "Sender": "65713167446078@lid",
                   "IsFromMe": false,
                   "IsGroup": false,
                   "AddressingMode": "",
-                  "SenderAlt": "557381941146:43@s.whatsapp.net",
+                  "SenderAlt": "557381941146@s.whatsapp.net",
                   "RecipientAlt": "",
                   "BroadcastListOwner": "",
                   "BroadcastRecipients": null,
-                  "ID": "3EB05CB6464E53A2983AEA",
+                  "ID": "AC6EC01FC7727D51F39DFB169EB5D835",
                   "ServerID": 0,
                   "Type": "text",
                   "PushName": "Daniel César",
-                  "Timestamp": "2026-04-10T17:39:35Z",
+                  "Timestamp": "2026-04-13T12:34:40Z",
                   "Category": "",
                   "Multicast": false,
                   "MediaType": "",
@@ -756,18 +756,17 @@
                   "DeviceSentMeta": null
                 },
                 "Message": {
-                  "conversation": "sim",
+                  "conversation": "Sim",
                   "messageContextInfo": {
                     "deviceListMetadata": {
                       "senderKeyHash": "npMunFLgkDXkvg==",
                       "senderTimestamp": 1774986239,
-                      "senderAccountType": 0,
                       "receiverAccountType": 1,
-                      "recipientKeyHash": "AJHj4Ed9QpULdA==",
-                      "recipientTimestamp": 1775744231
+                      "recipientKeyHash": "XFgMPB7ej702ng==",
+                      "recipientTimestamp": 1776081471
                     },
                     "deviceListMetadataVersion": 2,
-                    "messageSecret": "bEz1YNP8X/TcBWJgJYkdpvLvXmJ9KNcSJfgP+0RcIOQ="
+                    "messageSecret": "gFf+DM2M58GDXduT+dQw4I+NLFWlZhI/hNzszUsVdaI="
                   }
                 },
                 "IsEphemeral": false,
@@ -783,18 +782,17 @@
                 "RetryCount": 0,
                 "NewsletterMeta": null,
                 "RawMessage": {
-                  "conversation": "sim",
+                  "conversation": "Sim",
                   "messageContextInfo": {
                     "deviceListMetadata": {
                       "senderKeyHash": "npMunFLgkDXkvg==",
                       "senderTimestamp": 1774986239,
-                      "senderAccountType": 0,
                       "receiverAccountType": 1,
-                      "recipientKeyHash": "AJHj4Ed9QpULdA==",
-                      "recipientTimestamp": 1775744231
+                      "recipientKeyHash": "XFgMPB7ej702ng==",
+                      "recipientTimestamp": 1776081471
                     },
                     "deviceListMetadataVersion": 2,
-                    "messageSecret": "bEz1YNP8X/TcBWJgJYkdpvLvXmJ9KNcSJfgP+0RcIOQ="
+                    "messageSecret": "gFf+DM2M58GDXduT+dQw4I+NLFWlZhI/hNzszUsVdaI="
                   }
                 },
                 "Status": 3
@@ -854,23 +852,23 @@
         ]
       ]
     },
-    "Redis Chat Memory": {
-      "ai_memory": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "ai_memory",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "AI Agent": {
       "main": [
         [
           {
             "node": "If1",
             "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
             "index": 0
           }
         ]
@@ -895,8 +893,7 @@
             "type": "main",
             "index": 0
           }
-        ],
-        []
+        ]
       ]
     },
     "If1": {
@@ -990,6 +987,17 @@
         ]
       ]
     },
+    "3. Atribuir Comercial": {
+      "main": [
+        [
+          {
+            "node": "Limpar Mensagem IA1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Limpar Mensagem IA1": {
       "main": [
         [
@@ -1034,17 +1042,6 @@
         ]
       ]
     },
-    "3. Atribuir Comercial": {
-      "main": [
-        [
-          {
-            "node": "Limpar Mensagem IA1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "3. Atribuir Financeiro": {
       "main": [
         [
@@ -1060,16 +1057,13 @@
   "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate",
-    "availableInMCP": false,
-    "timeSavedMode": "fixed",
-    "callerPolicy": "workflowsFromSameOwner"
+    "binaryMode": "separate"
   },
-  "versionId": "ca39e3cf-9894-4ef6-afcb-e8bac6ebaed5",
+  "versionId": "02f5d9ae-6bc7-45e6-88ec-7d33376937fa",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "09c748d22dedfad9a8f8d622608e21bfef530f2282bf1c8c8aec81b06d0d60e8"
+    "instanceId": "30ebc79fa17c8c247630f2c60a2ce65275ba18ea39202d11baafdeec3fac67f8"
   },
-  "id": "qhhi4iTzhmZRgkzj",
+  "id": "AeEGcnRTtFpLr1z4",
   "tags": []
 }
