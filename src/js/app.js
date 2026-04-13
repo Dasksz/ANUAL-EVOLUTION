@@ -7876,6 +7876,7 @@ const setupEstrelasFilters = async () => {
     if (isEstrelasInitialized) return;
 
 
+    const overlay = document.getElementById("dashboard-loading-overlay");
 
     const filters = {
         p_ano: null,
