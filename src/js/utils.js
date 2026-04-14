@@ -109,6 +109,9 @@ export function handleDropdownsClickaway(e, dropdowns, btns) {
     dropdowns.forEach((dd, idx) => {
         if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btns[idx]?.contains(e.target)) {
             dd.classList.add('hidden');
+            if (btns[idx]) {
+                btns[idx].setAttribute('aria-expanded', 'false');
+            }
             anyClosed = true;
         }
     });
