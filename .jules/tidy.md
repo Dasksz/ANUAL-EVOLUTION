@@ -29,3 +29,7 @@ This file contains critical learnings from Tidy to avoid making mistakes in this
 ## 2026-04-13 : Extract Active View Export Logic
 **Learning:** Found duplicate logic to determine the currently active view and its name for Excel and PDF exports, violating DRY and cluttering the listeners.
 **Action:** Extracted the logic into a `getActiveExportView()` function that returns `{ activeView, viewName }`. Replaced both sets of duplicated view-finding loops with a single call to this helper function.
+
+## 2026/04/14 : Extract Dropdown Closing Logic
+**Aprendizado:** Found 5 repetitive occurrences of DOM querying and loops (`document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(...)`) to close absolute dropdown menus. This duplication clutters the UI interaction code and makes it harder to maintain or modify the dropdown closing behavior.
+**Ação:** Extracted this logic into a centralized `closeAllDropdowns` function in `src/js/utils.js`. Replaced all repetitive occurrences in `src/js/app.js` with this simple function call, significantly improving readability and code maintainability.
