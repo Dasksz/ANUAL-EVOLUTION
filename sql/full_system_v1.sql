@@ -2505,14 +2505,16 @@ BEGIN
 
     -- FILIAL LOGIC FOR KPI
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        SELECT array_agg(DISTINCT cidade) INTO v_filial_cities
-        FROM public.config_city_branches
-        WHERE filial = ANY(p_filial);
+        IF NOT ('ambas' = ANY(p_filial)) THEN
+            SELECT array_agg(DISTINCT cidade) INTO v_filial_cities
+            FROM public.config_city_branches
+            WHERE filial = ANY(p_filial);
 
-        IF v_filial_cities IS NOT NULL THEN
-             v_where_kpi := v_where_kpi || format(' AND cidade = ANY(%L) ', v_filial_cities);
-        ELSE
-             v_where_kpi := v_where_kpi || ' AND 1=0 ';
+            IF v_filial_cities IS NOT NULL THEN
+                 v_where_kpi := v_where_kpi || format(' AND cidade = ANY(%L) ', v_filial_cities);
+            ELSE
+                 v_where_kpi := v_where_kpi || ' AND 1=0 ';
+            END IF;
         END IF;
     END IF;
 
@@ -5243,14 +5245,16 @@ BEGIN
 
     -- FILIAL LOGIC FOR KPI
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        SELECT array_agg(DISTINCT cidade) INTO v_filial_cities
-        FROM public.config_city_branches
-        WHERE filial = ANY(p_filial);
+        IF NOT ('ambas' = ANY(p_filial)) THEN
+            SELECT array_agg(DISTINCT cidade) INTO v_filial_cities
+            FROM public.config_city_branches
+            WHERE filial = ANY(p_filial);
 
-        IF v_filial_cities IS NOT NULL THEN
-             v_where_kpi := v_where_kpi || format(' AND cidade = ANY(%L) ', v_filial_cities);
-        ELSE
-             v_where_kpi := v_where_kpi || ' AND 1=0 ';
+            IF v_filial_cities IS NOT NULL THEN
+                 v_where_kpi := v_where_kpi || format(' AND cidade = ANY(%L) ', v_filial_cities);
+            ELSE
+                 v_where_kpi := v_where_kpi || ' AND 1=0 ';
+            END IF;
         END IF;
     END IF;
 

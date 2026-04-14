@@ -301,7 +301,7 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
             codusur: codUsur,
             codcli: String(rawRow['CODCLI'] || '').trim(),
             cliente_nome: clientInfo.nomeCliente || String(rawRow['CLIENTE'] || rawRow['NOMECLIENTE'] || rawRow['RAZAOSOCIAL'] || 'N/A').toUpperCase(),
-            cidade: clientInfo.cidade || (rawRow['MUNICIPIO'] ? String(rawRow['MUNICIPIO']).trim().toUpperCase() : null),
+            cidade: clientInfo.cidade || (rawRow['MUNICIPIO'] ? normalizeCityName(rawRow['MUNICIPIO']) : null),
             bairro: clientInfo.bairro || String(rawRow['BAIRRO'] || 'N/A').toUpperCase(),
             qtvenda: qtVenda,
             vlvenda: parseBrazilianNumber(rawRow['VLVENDA']),
@@ -638,7 +638,7 @@ self.onmessage = async (event) => {
         // Use sequential order: PrevYear -> CurrHist -> CurrMonth so latest wins if diff
         allSalesRaw.forEach(row => {
             const codCli = String(row['CODCLI'] || '').trim();
-            const municipio = String(row['MUNICIPIO'] || '').trim().toUpperCase();
+            const municipio = normalizeCityName(row['MUNICIPIO']);
             if (codCli && municipio) {
                 salesCityMap.set(codCli, municipio);
             }
@@ -740,7 +740,7 @@ self.onmessage = async (event) => {
 
         // Helper to check and collect new cities
         const checkCity = (row) => {
-            const cidade = String(row['MUNICIPIO'] || '').trim().toUpperCase();
+            const cidade = normalizeCityName(row['MUNICIPIO']);
             if (cidade && !existingCityMap.hasOwnProperty(cidade)) {
                 newCitiesSet.add(cidade);
             }
@@ -756,7 +756,7 @@ self.onmessage = async (event) => {
              const codCli = String(row['CODCLI'] || '').trim();
              if (!clientMap.has(codCli)) return;
 
-             const cidade = String(row['MUNICIPIO'] || '').trim().toUpperCase();
+             const cidade = normalizeCityName(row['MUNICIPIO']);
              let supervisor = String(row['SUPERV'] || '').trim();
 
              if (!cidade || !supervisor) return;
@@ -808,7 +808,7 @@ self.onmessage = async (event) => {
         for (const row of allSalesRaw) {
             const codusur = String(row['CODUSUR'] || '').trim();
             const codcli = String(row['CODCLI'] || '').trim();
-            const municipio = String(row['MUNICIPIO'] || '').trim().toUpperCase();
+            const municipio = normalizeCityName(row['MUNICIPIO']);
 
             if (!codusur) continue;
             let supervisor = String(row['SUPERV'] || '').trim();
@@ -856,7 +856,7 @@ self.onmessage = async (event) => {
                 const newSale = { ...sale };
 
                 // 1. Strict Branch Force Logic (No exceptions)
-                const municipio = String(newSale['MUNICIPIO'] || '').trim().toUpperCase();
+                const municipio = normalizeCityName(newSale['MUNICIPIO']);
                 const configuredFilial = existingCityMap[municipio];
                 if (configuredFilial) {
                     newSale['FILIAL'] = configuredFilial;
