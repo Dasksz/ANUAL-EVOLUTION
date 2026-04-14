@@ -4,6 +4,65 @@ let estrelasQtdMarcas = 0;
 
 // Modal functions
 
+/**
+ * Creates a table row for the detailed modal safely using DOM API
+ * to prevent XSS and improve performance.
+ * @param {Object} row - The data row object
+ * @param {number} index - The index for alternating row colors
+ * @param {number|string} realizado - The realized amount
+ * @param {string} realizedUnit - The unit string for realized amount
+ * @param {number|string} meta - The target amount
+ * @param {string} metaUnit - The unit string for target amount
+ * @param {number|string} share - The share percentage
+ * @param {string} shareColorClass - The color class for the share text
+ * @returns {HTMLTableRowElement} The constructed table row
+ */
+function createDetalhadoRow(row, index, realizado, realizedUnit, meta, metaUnit, share, shareColorClass) {
+    const tr = document.createElement('tr');
+    tr.className = `border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}`;
+
+    const tdVendedor = document.createElement('td');
+    tdVendedor.className = 'py-3 px-4 whitespace-nowrap text-slate-200';
+    tdVendedor.textContent = row.vendedor_nome || 'N/D';
+    tr.appendChild(tdVendedor);
+
+    const tdFilial = document.createElement('td');
+    tdFilial.className = 'py-3 px-4 whitespace-nowrap';
+    const spanFilial = document.createElement('span');
+    spanFilial.className = 'px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs border border-slate-700';
+    spanFilial.textContent = row.filial || 'N/D';
+    tdFilial.appendChild(spanFilial);
+    tr.appendChild(tdFilial);
+
+    const tdRealizado = document.createElement('td');
+    tdRealizado.className = 'py-3 px-4 text-right font-medium text-white';
+    tdRealizado.textContent = realizado + (realizedUnit ? ' ' : '');
+    if (realizedUnit) {
+        const spanUnit = document.createElement('span');
+        spanUnit.className = 'text-xs text-slate-400';
+        spanUnit.textContent = realizedUnit;
+        tdRealizado.appendChild(spanUnit);
+    }
+    tr.appendChild(tdRealizado);
+
+    const tdMeta = document.createElement('td');
+    tdMeta.className = 'py-3 px-4 text-right text-slate-400';
+    tdMeta.textContent = meta + (metaUnit ? ' ' : '');
+    if (metaUnit) {
+        const spanMetaUnit = document.createElement('span');
+        spanMetaUnit.className = 'text-xs';
+        spanMetaUnit.textContent = metaUnit;
+        tdMeta.appendChild(spanMetaUnit);
+    }
+    tr.appendChild(tdMeta);
+
+    const tdShare = document.createElement('td');
+    tdShare.className = `py-3 px-4 text-right font-bold ${shareColorClass}`;
+    tdShare.textContent = share + '%';
+    tr.appendChild(tdShare);
+
+    return tr;
+}
 
 window.openDetalhadoModal = function(type) {
     const modal = document.getElementById('modal-resultado-detalhado');
@@ -47,32 +106,30 @@ window.openDetalhadoModal = function(type) {
     if (type === 'sellout') {
         title.innerHTML = `<span class="flex items-center text-indigo-400">${iconChart} Resultado Detalhado - Sellout</span>`;
         thead.innerHTML = `
-            <tr>
-                <th class="py-3 px-4 text-left font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconVendedor} Vendedor</th>
-                <th class="py-3 px-4 text-left font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconFilial} Filial</th>
-                <th class="py-3 px-4 text-right font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconTarget} Meta Salty</th>
-                <th class="py-3 px-4 text-right font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconChart} Real Salty</th>
-                <th class="py-3 px-4 text-right font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconTarget} Meta Foods</th>
-                <th class="py-3 px-4 text-right font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconChart} Real Foods</th>
-            </tr>
+            <th class="py-3 px-4 text-left rounded-tl-lg bg-indigo-500/10 text-indigo-200">${iconVendedor}Vendedor</th>
+            <th class="py-3 px-4 text-left bg-indigo-500/10 text-indigo-200">${iconFilial}Filial</th>
+            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconTarget}Meta Salty</th>
+            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconChart}Realizado Salty</th>
+            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconTarget}Meta Foods</th>
+            <th class="py-3 px-4 text-right rounded-tr-lg bg-indigo-500/10 text-indigo-200">${iconChart}Realizado Foods</th>
         `;
-
-        const sortedData = [...estrelasDetailedData].sort((a, b) => {
-            const sumA = (a.sellout_salty || 0) + (a.sellout_foods || 0);
-            const sumB = (b.sellout_salty || 0) + (b.sellout_foods || 0);
-            return sumB - sumA;
+        
+        const sortedDataSellout = [...estrelasDetailedData].sort((a, b) => {
+            const valA = (a.sellout_salty || 0) + (a.sellout_foods || 0);
+            const valB = (b.sellout_salty || 0) + (b.sellout_foods || 0);
+            return valB - valA;
         });
 
-        // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-        tbody.innerHTML = sortedData.map((row, index) => {
-            const realizadoSalty = row.sellout_salty || 0;
-            const metaSalty = row.meta_salty || 0;
-            const realizadoFoods = row.sellout_foods || 0;
-            const metaFoods = row.meta_foods || 0;
-
-            const trClass = `hover:bg-white/5 transition-colors border-b border-white/5 ${index % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.02]'}`;
-            return `
-            <tr class="${trClass}">
+        const fragment = document.createDocumentFragment();
+        sortedDataSellout.forEach((row, index) => {
+            const metaSalty = (row.meta_salty || 0).toFixed(2);
+            const realizadoSalty = ((row.sellout_salty || 0) / 1000.0).toFixed(2);
+            const metaFoods = (row.meta_foods || 0).toFixed(2);
+            const realizadoFoods = ((row.sellout_foods || 0) / 1000.0).toFixed(2);
+            
+            const tr = document.createElement('tr');
+            tr.className = `hover:bg-white/5 transition-colors border-b border-white/5 ${index % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.02]'}`;
+            tr.innerHTML = `
                 <td class="py-3 px-4 text-slate-300 font-medium">
                     <div class="flex items-center">
                         <span class="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs mr-3 shrink-0">${index + 1}</span>
@@ -80,91 +137,74 @@ window.openDetalhadoModal = function(type) {
                     </div>
                 </td>
                 <td class="py-3 px-4 text-slate-400 font-mono text-sm">${escapeHtml(row.filial)}</td>
-                <td class="py-3 px-4 text-right font-medium text-slate-400">${escapeHtml(metaSalty)} tons</td>
-                <td class="py-3 px-4 text-right font-bold text-white">${escapeHtml(realizadoSalty)} tons</td>
-                <td class="py-3 px-4 text-right font-medium text-slate-400">${escapeHtml(metaFoods)} tons</td>
-                <td class="py-3 px-4 text-right font-bold text-white">${escapeHtml(realizadoFoods)} tons</td>
-            </tr>
+                <td class="py-3 px-4 text-right font-medium text-slate-400">${metaSalty} tons</td>
+                <td class="py-3 px-4 text-right font-bold text-white">${realizadoSalty} tons</td>
+                <td class="py-3 px-4 text-right font-medium text-slate-400">${metaFoods} tons</td>
+                <td class="py-3 px-4 text-right font-bold text-white">${realizadoFoods} tons</td>
             `;
-        }).join('');
+            fragment.appendChild(tr);
+        });
+        tbody.appendChild(fragment);
         
     } else if (type === 'positivacao') {
         title.innerHTML = `<span class="flex items-center text-emerald-400">${iconChart} Resultado Detalhado - Positivação</span>`;
         thead.innerHTML = `
-            <tr>
-                <th class="py-3 px-4 text-left font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconVendedor} Vendedor</th>
-                <th class="py-3 px-4 text-left font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconFilial} Filial</th>
-                <th class="py-3 px-4 text-right font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconChart} Realizado</th>
-                <th class="py-3 px-4 text-right font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconTarget} Meta</th>
-                <th class="py-3 px-4 text-right font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconShare} Share</th>
-            </tr>
+            <th class="py-3 px-4 text-left rounded-tl-lg bg-emerald-500/10 text-emerald-200">${iconVendedor}Vendedor</th>
+            <th class="py-3 px-4 text-left bg-emerald-500/10 text-emerald-200">${iconFilial}Filial</th>
+            <th class="py-3 px-4 text-right bg-emerald-500/10 text-emerald-200">${iconChart}Realizado</th>
+            <th class="py-3 px-4 text-right bg-emerald-500/10 text-emerald-200">${iconTarget}Meta</th>
+            <th class="py-3 px-4 text-right rounded-tr-lg bg-emerald-500/10 text-emerald-200">${iconShare}% Share</th>
         `;
-
-        totalRealizado = estrelasDetailedData.reduce((sum, row) => sum + (row.pos_salty || 0) + (row.pos_foods || 0), 0);
-
+        
+        totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + ((curr.pos_salty || 0) + (curr.pos_foods || 0)), 0);
+        
         const sortedDataPos = [...estrelasDetailedData].sort((a, b) => {
-            const sumA = (a.pos_salty || 0) + (a.pos_foods || 0);
-            const sumB = (b.pos_salty || 0) + (b.pos_foods || 0);
-            return sumB - sumA;
+            const valA = (a.pos_salty || 0) + (a.pos_foods || 0);
+            const valB = (b.pos_salty || 0) + (b.pos_foods || 0);
+            return valB - valA;
         });
 
-        // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose createDetalhadoRow in loop
-        tbody.innerHTML = sortedDataPos.map((row, index) => {
+        const fragment = document.createDocumentFragment();
+        sortedDataPos.forEach((row, index) => {
             const realizado = (row.pos_salty || 0) + (row.pos_foods || 0);
             const meta = row.meta_pos || 0;
             const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
-
-            const trClass = `border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}`;
-            return `
-            <tr class="${trClass}">
-                <td class="py-3 px-4 whitespace-nowrap text-slate-200">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
-                <td class="py-3 px-4 whitespace-nowrap"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs border border-slate-700">${escapeHtml(row.filial || 'N/D')}</span></td>
-                <td class="py-3 px-4 text-right font-medium text-white">${escapeHtml(realizado)} <span class="text-xs text-slate-400">PDV(s)</span></td>
-                <td class="py-3 px-4 text-right text-slate-400">${escapeHtml(meta)} <span class="text-xs">PDV(s)</span></td>
-                <td class="py-3 px-4 text-right font-bold text-emerald-400">${escapeHtml(share)}%</td>
-            </tr>
-            `;
-        }).join('');
+            const tr = createDetalhadoRow(row, index, realizado, 'PDV(s)', meta, 'PDV(s)', share, 'text-emerald-400');
+            fragment.appendChild(tr);
+        });
+        tbody.appendChild(fragment);
         
     } else if (type === 'aceleradores') {
         title.innerHTML = `<span class="flex items-center text-amber-400">${iconTarget} Resultado Detalhado - Aceleradores</span>`;
+        subtitle.textContent = `Total de Marcas Cadastradas: ${estrelasQtdMarcas}`;
         subtitle.classList.remove('hidden');
-        document.getElementById('modal-detalhado-qtd-marcas').textContent = estrelasQtdMarcas;
         
         thead.innerHTML = `
-            <tr>
-                <th class="py-3 px-4 text-left font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconVendedor} Vendedor</th>
-                <th class="py-3 px-4 text-left font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconFilial} Filial</th>
-                <th class="py-3 px-4 text-right font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconChart} Realizado</th>
-                <th class="py-3 px-4 text-right font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconTarget} Meta</th>
-                <th class="py-3 px-4 text-right font-semibold text-slate-400 uppercase tracking-wider text-xs">${iconShare} Share</th>
-            </tr>
+            <th class="py-3 px-4 text-left rounded-tl-lg bg-amber-500/10 text-amber-200">${iconVendedor}Vendedor</th>
+            <th class="py-3 px-4 text-left bg-amber-500/10 text-amber-200">${iconFilial}Filial</th>
+            <th class="py-3 px-4 text-right bg-amber-500/10 text-amber-200">${iconChart}Aceleradores (Realizado)</th>
+            <th class="py-3 px-4 text-right bg-amber-500/10 text-amber-200">${iconTarget}Meta (50% da Pos.)</th>
+            <th class="py-3 px-4 text-right rounded-tr-lg bg-amber-500/10 text-amber-200">${iconShare}% Share</th>
         `;
-
-        totalRealizado = estrelasDetailedData.reduce((sum, row) => sum + (row.acel_realizado || 0), 0);
-
+        
+        totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + (curr.acel_realizado || 0), 0);
+        
         const sortedDataAcel = [...estrelasDetailedData].sort((a, b) => {
-            return (b.acel_realizado || 0) - (a.acel_realizado || 0);
+            const valA = a.acel_realizado || 0;
+            const valB = b.acel_realizado || 0;
+            return valB - valA;
         });
 
-        // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose createDetalhadoRow in loop
-        tbody.innerHTML = sortedDataAcel.map((row, index) => {
+        const fragment = document.createDocumentFragment();
+        sortedDataAcel.forEach((row, index) => {
             const realizado = row.acel_realizado || 0;
-            const metaPositivação = row.meta_pos || 0;
+const metaPositivação = row.meta_pos || 0;
             const meta = Math.ceil(metaPositivação * 0.5); 
             const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
-
-            const trClass = `border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}`;
-            return `
-            <tr class="${trClass}">
-                <td class="py-3 px-4 whitespace-nowrap text-slate-200">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
-                <td class="py-3 px-4 whitespace-nowrap"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs border border-slate-700">${escapeHtml(row.filial || 'N/D')}</span></td>
-                <td class="py-3 px-4 text-right font-medium text-white">${escapeHtml(realizado)}</td>
-                <td class="py-3 px-4 text-right text-slate-400">${escapeHtml(meta)}</td>
-                <td class="py-3 px-4 text-right font-bold text-amber-400">${escapeHtml(share)}%</td>
-            </tr>
-            `;
-        }).join('');
+            const tr = createDetalhadoRow(row, index, realizado, null, meta, null, share, 'text-amber-400');
+            fragment.appendChild(tr);
+        });
+        tbody.appendChild(fragment);
     }
 
     modal.classList.remove('hidden');
@@ -177,7 +217,7 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
-import {  formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns } from './utils.js';
+import {  formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -667,14 +707,11 @@ let estrelasSelectedCategorias = [];
         profileMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             profileDropdown.classList.toggle('hidden');
-            const isHidden = profileDropdown.classList.contains('hidden');
-            profileMenuBtn.setAttribute('aria-expanded', (!isHidden).toString());
         });
 
         document.addEventListener('click', (e) => {
             if (!profileDropdown.contains(e.target) && !profileMenuBtn.contains(e.target)) {
                 profileDropdown.classList.add('hidden');
-                profileMenuBtn.setAttribute('aria-expanded', 'false');
             }
         });
     }
@@ -2991,18 +3028,50 @@ let estrelasSelectedCategorias = [];
 
         const tableBody = document.getElementById('boxesProductTableBody');
         if (products.length > 0) {
-            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-            tableBody.innerHTML = products.map(p => `
-                <tr class="table-row">
-                    <td class="p-2">${escapeHtml(p.produto)}</td>
-                    <td class="p-2">${escapeHtml(p.descricao)}</td>
-                    <td class="p-2 text-right font-bold text-emerald-400">${escapeHtml(formatInteger(safeVal(p.caixas)))}</td>
-                    <td class="p-2 text-right">${escapeHtml(formatCurrency(safeVal(p.faturamento)))}</td>
-                    <td class="p-2 text-right">${escapeHtml(formatTons(safeVal(p.peso), 2))}</td>
-                    <td class="p-2 text-right text-slate-300 font-bold">${escapeHtml(formatInteger(safeVal(p.clientes)))}</td>
-                    <td class="p-2 text-center text-slate-400">${escapeHtml(p.ultima_venda ? new Date(p.ultima_venda).toLocaleDateString('pt-BR') : '-')}</td>
-                </tr>
-            `).join('');
+            tableBody.innerHTML = '';
+            const fragment = document.createDocumentFragment();
+            products.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = 'table-row';
+
+                const tdProd = document.createElement('td');
+                tdProd.className = 'p-2';
+                tdProd.textContent = p.produto;
+                tr.appendChild(tdProd);
+
+                const tdDesc = document.createElement('td');
+                tdDesc.className = 'p-2';
+                tdDesc.textContent = p.descricao;
+                tr.appendChild(tdDesc);
+
+                const tdCaixas = document.createElement('td');
+                tdCaixas.className = 'p-2 text-right font-bold text-emerald-400';
+                tdCaixas.textContent = formatInteger(safeVal(p.caixas));
+                tr.appendChild(tdCaixas);
+
+                const tdFat = document.createElement('td');
+                tdFat.className = 'p-2 text-right';
+                tdFat.textContent = formatCurrency(safeVal(p.faturamento));
+                tr.appendChild(tdFat);
+
+                const tdPeso = document.createElement('td');
+                tdPeso.className = 'p-2 text-right';
+                tdPeso.textContent = formatTons(safeVal(p.peso), 2);
+                tr.appendChild(tdPeso);
+
+                const tdPosit = document.createElement('td');
+                tdPosit.className = 'p-2 text-right text-slate-300 font-bold';
+                tdPosit.textContent = formatInteger(safeVal(p.clientes));
+                tr.appendChild(tdPosit);
+
+                const tdUltimaVenda = document.createElement('td');
+                tdUltimaVenda.className = 'p-2 text-center text-slate-400';
+                tdUltimaVenda.textContent = p.ultima_venda ? new Date(p.ultima_venda).toLocaleDateString('pt-BR') : '-';
+                tr.appendChild(tdUltimaVenda);
+
+                fragment.appendChild(tr);
+            });
+            tableBody.appendChild(fragment);
         } else {
             tableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum produto encontrado.</td></tr>';
         }
@@ -3153,7 +3222,9 @@ let estrelasSelectedCategorias = [];
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        closeAllDropdowns();
+        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
+            if (!el.classList.contains('hidden')) el.classList.add('hidden');
+        });
         // Restore this one if it was hidden
         if (isHidden) {
             dropdown.classList.remove('hidden');
@@ -3401,7 +3472,12 @@ let estrelasSelectedCategorias = [];
             const isHidden = dropdown.classList.contains('hidden');
 
             // Close all dropdowns
-            closeAllDropdowns();
+            document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
+                if (!el.classList.contains('hidden')) {
+                    el.classList.add('hidden');
+                    // We can't cleanly trigger change here for other elements easily, but they have their own handlers.
+                }
+            });
 
             if (isHidden) {
                 updateVisualState(); // Sync visuals just before opening
@@ -4302,58 +4378,54 @@ let estrelasSelectedCategorias = [];
             { name: 'TON VENDIDA', key: 'peso', fmt: v => `${(v/1000).toFixed(2)} Kg` }
         ];
 
-        // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-        tableBody.innerHTML = indicators.map(ind => {
-            let cellsHtml = '';
+        const fragment = document.createDocumentFragment();
+        indicators.forEach(ind => {
+            const tr = document.createElement('tr');
+            tr.className = 'table-row';
+
+            const tdName = document.createElement('td');
+            tdName.className = 'font-bold p-2 text-left';
+            tdName.textContent = ind.name;
+            tr.appendChild(tdName);
+
             for (let i = 0; i < 12; i++) {
-                // Find data for this month (month_index i goes from 0 to 11)
-                const prev = prevData.find(d => d.month_index === i);
-                const curr = currData.find(d => d.month_index === i);
+                const d = currData.find(x => x.month_index === i);
+                let val = d ? d[ind.key] : null;
+                if (val === undefined) val = null;
+                if (val === null && !ind.allowNull) val = 0;
 
-                let prevVal = prev ? prev[ind.key] : null;
-                let currVal = curr ? curr[ind.key] : null;
-
-                if (prevVal === undefined) prevVal = null;
-                if (currVal === undefined) currVal = null;
-
-                if (prevVal === null && !ind.allowNull) prevVal = 0;
-                if (currVal === null && !ind.allowNull) currVal = 0;
-
-                // Priority to current year, then previous year
-                let valToDisplay = currVal !== null ? currVal : prevVal;
-
-                let innerContent = '-';
-                if (valToDisplay !== null) {
-                    innerContent = escapeHtml(ind.fmt(valToDisplay));
-                    if (ind.isRed) {
-                        innerContent = `<span class="text-red-400">${innerContent}</span>`;
-                    }
-                }
-
-                cellsHtml += `<td class="px-2 py-1.5 text-center text-slate-400 border-r border-white/5 font-mono summary-col-cell transition-opacity duration-300 opacity-0">${innerContent}</td>`;
-            }
-
-            let trendHtml = '';
-            if (trendData) {
-                let tVal = trendData[ind.key];
-                if (tVal === undefined) tVal = null;
-                if (tVal === null && !ind.allowNull) tVal = 0;
-
-                let innerContent = escapeHtml(ind.fmt(tVal));
+                const td = document.createElement('td');
+                td.className = 'px-2 py-1.5 text-center';
                 if (ind.isRed) {
-                    innerContent = `<span class="text-red-400">${innerContent}</span>`;
+                    const span = document.createElement('span');
+                    span.className = 'text-red-400';
+                    span.textContent = ind.fmt(val);
+                    td.appendChild(span);
+                } else {
+                    td.textContent = ind.fmt(val);
                 }
-                trendHtml = `<td class="px-2 py-1.5 text-center font-bold text-white summary-col-cell transition-opacity duration-300 opacity-0">${innerContent}</td>`;
+                tr.appendChild(td);
             }
+            if (trendData) {
+                 let tVal = trendData[ind.key];
+                 if (tVal === undefined) tVal = null;
+                 if (tVal === null && !ind.allowNull) tVal = 0;
 
-            return `
-                <tr class="table-row hover:bg-white/5 transition-colors border-b border-white/5">
-                    <td class="px-2 py-1.5 font-medium text-slate-300 border-r border-white/5 whitespace-nowrap">${escapeHtml(ind.name)}</td>
-                    ${cellsHtml}
-                    ${trendHtml}
-                </tr>
-            `;
-        }).join('');
+                 const td = document.createElement('td');
+                 td.className = 'px-2 py-1.5 text-center font-bold text-white';
+                 if (ind.isRed) {
+                     const span = document.createElement('span');
+                     span.className = 'text-red-400';
+                     span.textContent = ind.fmt(tVal);
+                     td.appendChild(span);
+                 } else {
+                     td.textContent = ind.fmt(tVal);
+                 }
+                 tr.appendChild(td);
+            }
+            fragment.appendChild(tr);
+        });
+        tableBody.appendChild(fragment);
     }
 
 
@@ -4437,7 +4509,9 @@ let estrelasSelectedCategorias = [];
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        closeAllDropdowns();
+        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
+            if (!el.classList.contains('hidden')) el.classList.add('hidden');
+        });
         // Restore this one if it was hidden
         if (isHidden) {
             dropdown.classList.remove('hidden');
@@ -4647,19 +4721,55 @@ let estrelasSelectedCategorias = [];
 
         const renderTable = (bodyId, items) => {
             const body = document.getElementById(bodyId);
+            body.innerHTML = '';
             if (items && items.length > 0) {
-                // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-                body.innerHTML = items.map(c => `
-                    <tr class="table-row">
-                        <td class="p-2">${escapeHtml(c['Código'] || '')}</td>
-                        <td class="p-2">${escapeHtml(c.fantasia || c.razaoSocial || '')}</td>
-                        ${c.totalFaturamento !== undefined ? `<td class="p-2 text-right">${escapeHtml(formatCurrency(c.totalFaturamento))}</td>` : ''}
-                        <td class="p-2">${escapeHtml(c.cidade || '')}</td>
-                        <td class="p-2">${escapeHtml(c.bairro || '')}</td>
-                        ${c.ultimaCompra ? `<td class="p-2 text-center">${escapeHtml(new Date(c.ultimaCompra).toLocaleDateString('pt-BR'))}</td>` : ''}
-                        <td class="p-2">${escapeHtml(c.rca1 || '-')}</td>
-                    </tr>
-                `).join('');
+                const fragment = document.createDocumentFragment();
+                items.forEach(c => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'table-row';
+
+                    const tdCode = document.createElement('td');
+                    tdCode.className = 'p-2';
+                    tdCode.textContent = c['Código'] || '';
+                    tr.appendChild(tdCode);
+
+                    const tdName = document.createElement('td');
+                    tdName.className = 'p-2';
+                    tdName.textContent = c.fantasia || c.razaoSocial || '';
+                    tr.appendChild(tdName);
+
+                    if (c.totalFaturamento !== undefined) {
+                        const tdFat = document.createElement('td');
+                        tdFat.className = 'p-2 text-right';
+                        tdFat.textContent = formatCurrency(c.totalFaturamento);
+                        tr.appendChild(tdFat);
+                    }
+
+                    const tdCity = document.createElement('td');
+                    tdCity.className = 'p-2';
+                    tdCity.textContent = c.cidade || '';
+                    tr.appendChild(tdCity);
+
+                    const tdBairro = document.createElement('td');
+                    tdBairro.className = 'p-2';
+                    tdBairro.textContent = c.bairro || '';
+                    tr.appendChild(tdBairro);
+
+                    if (c.ultimaCompra) {
+                        const tdUlt = document.createElement('td');
+                        tdUlt.className = 'p-2 text-center';
+                        tdUlt.textContent = new Date(c.ultimaCompra).toLocaleDateString('pt-BR');
+                        tr.appendChild(tdUlt);
+                    }
+
+                    const tdRca = document.createElement('td');
+                    tdRca.className = 'p-2';
+                    tdRca.textContent = c.rca1 || '-';
+                    tr.appendChild(tdRca);
+
+                    fragment.appendChild(tr);
+                });
+                body.appendChild(fragment);
             } else {
                 const tr = document.createElement('tr');
                 const td = document.createElement('td');
@@ -4673,19 +4783,34 @@ let estrelasSelectedCategorias = [];
 
         const renderRankingTable = (bodyId, items) => {
             const body = document.getElementById(bodyId);
+            body.innerHTML = '';
             if (items && items.length > 0) {
-                // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-                body.innerHTML = items.map(c => {
+                const fragment = document.createDocumentFragment();
+                items.forEach(c => {
                     const varClass = c['Variação'] > 0 ? 'text-emerald-400' : (c['Variação'] < 0 ? 'text-red-400' : 'text-slate-400');
                     const varArrow = c['Variação'] > 0 ? '▲' : (c['Variação'] < 0 ? '▼' : '-');
-                    return `
-                        <tr class="table-row">
-                            <td class="p-2 font-semibold">${escapeHtml(c['Cidade'] || '')}</td>
-                            <td class="p-2 text-right text-cyan-400 font-bold">${escapeHtml(parseFloat(c['% Share']).toFixed(2))}%</td>
-                            <td class="p-2 text-right font-bold ${varClass}">${varArrow} ${escapeHtml(Math.abs(c['Variação']).toFixed(2))}%</td>
-                        </tr>
-                    `;
-                }).join('');
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'table-row';
+
+                    const tdCity = document.createElement('td');
+                    tdCity.className = 'p-2 font-semibold';
+                    tdCity.textContent = c['Cidade'] || '';
+                    tr.appendChild(tdCity);
+
+                    const tdShare = document.createElement('td');
+                    tdShare.className = 'p-2 text-right text-cyan-400 font-bold';
+                    tdShare.textContent = parseFloat(c['% Share']).toFixed(2) + '%';
+                    tr.appendChild(tdShare);
+
+                    const tdVar = document.createElement('td');
+                    tdVar.className = `p-2 text-right font-bold ${varClass}`;
+                    tdVar.textContent = `${varArrow} ${Math.abs(c['Variação']).toFixed(2)}%`;
+                    tr.appendChild(tdVar);
+
+                    fragment.appendChild(tr);
+                });
+                body.appendChild(fragment);
             } else {
                 const tr = document.createElement('tr');
                 const td = document.createElement('td');
@@ -4835,7 +4960,9 @@ let estrelasSelectedCategorias = [];
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        closeAllDropdowns();
+        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
+            if (!el.classList.contains('hidden')) el.classList.add('hidden');
+        });
         // Restore this one if it was hidden
         if (isHidden) {
             dropdown.classList.remove('hidden');
@@ -4915,7 +5042,9 @@ let estrelasSelectedCategorias = [];
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        closeAllDropdowns();
+        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
+            if (!el.classList.contains('hidden')) el.classList.add('hidden');
+        });
         // Restore this one if it was hidden
         if (isHidden) {
             dropdown.classList.remove('hidden');
@@ -6367,19 +6496,40 @@ let estrelasSelectedCategorias = [];
             const tbody = document.getElementById('supervisorComparisonTableBody');
             if (!tbody) return;
 
-            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-            tbody.innerHTML = Object.entries(data).map(([sup, vals]) => {
+            tbody.textContent = '';
+            const fragment = document.createDocumentFragment();
+
+            Object.entries(data).forEach(([sup, vals]) => {
                 const variation = vals.history > 0 ? ((vals.current - vals.history) / vals.history) * 100 : 0;
                 const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
-                return `
-                    <tr class="hover:bg-slate-700">
-                        <td class="px-4 py-2">${escapeHtml(sup)}</td>
-                        <td class="px-4 py-2 text-right">${escapeHtml(formatCurrency(vals.history))}</td>
-                        <td class="px-4 py-2 text-right">${escapeHtml(formatCurrency(vals.current))}</td>
-                        <td class="px-4 py-2 text-right ${colorClass}">${escapeHtml(variation.toFixed(2))}%</td>
-                    </tr>
-                `;
-            }).join('');
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-700';
+
+                const tdSup = document.createElement('td');
+                tdSup.className = 'px-4 py-2';
+                tdSup.textContent = sup;
+                tr.appendChild(tdSup);
+
+                const tdHist = document.createElement('td');
+                tdHist.className = 'px-4 py-2 text-right';
+                tdHist.textContent = formatCurrency(vals.history);
+                tr.appendChild(tdHist);
+
+                const tdCurr = document.createElement('td');
+                tdCurr.className = 'px-4 py-2 text-right';
+                tdCurr.textContent = formatCurrency(vals.current);
+                tr.appendChild(tdCurr);
+
+                const tdVar = document.createElement('td');
+                tdVar.className = `px-4 py-2 text-right ${colorClass}`;
+                tdVar.textContent = variation.toFixed(2) + '%';
+                tr.appendChild(tdVar);
+
+                fragment.appendChild(tr);
+            });
+
+            tbody.appendChild(fragment);
         }
 // --- INOVACOES VIEW LOGIC ---
 let innovationsChart = null;
@@ -7336,19 +7486,47 @@ function renderLpTable(clients) {
     const tbody = document.getElementById('lp-table-body');
     if (!tbody || !clients) return;
 
-    // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-    tbody.innerHTML = clients.map(c => {
+    tbody.textContent = '';
+    const fragment = document.createDocumentFragment();
+
+    clients.forEach(c => {
         let colorClass = c.score >= 80 ? 'text-green-400' : c.score >= 50 ? 'text-yellow-400' : 'text-red-400';
-        return `
-            <tr class="hover:bg-slate-700/30 transition-colors">
-                <td class="px-6 py-4 text-slate-400 text-xs">${escapeHtml(c.codcli)}</td>
-                <td class="px-6 py-4 font-bold text-slate-200">${escapeHtml(c.client_name)}</td>
-                <td class="px-6 py-4"><span class="font-bold text-white block">${escapeHtml(c.researcher)}</span></td>
-                <td class="px-6 py-4 text-slate-400">${escapeHtml(c.city || '--')}</td>
-                <td class="px-6 py-4 text-center font-bold ${colorClass} text-base">${escapeHtml(formatNumber(c.score, 1))}</td>
-            </tr>
-        `;
-    }).join('');
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-700/30 transition-colors';
+
+        const tdCod = document.createElement('td');
+        tdCod.className = 'px-6 py-4 text-slate-400 text-xs';
+        tdCod.textContent = c.codcli;
+        tr.appendChild(tdCod);
+
+        const tdName = document.createElement('td');
+        tdName.className = 'px-6 py-4 font-bold text-slate-200';
+        tdName.textContent = c.client_name;
+        tr.appendChild(tdName);
+
+        const tdRes = document.createElement('td');
+        tdRes.className = 'px-6 py-4';
+        const spanRes = document.createElement('span');
+        spanRes.className = 'font-bold text-white block';
+        spanRes.textContent = c.researcher;
+        tdRes.appendChild(spanRes);
+        tr.appendChild(tdRes);
+
+        const tdCity = document.createElement('td');
+        tdCity.className = 'px-6 py-4 text-slate-400';
+        tdCity.textContent = c.city || '--';
+        tr.appendChild(tdCity);
+
+        const tdScore = document.createElement('td');
+        tdScore.className = `px-6 py-4 text-center font-bold ${colorClass} text-base`;
+        tdScore.textContent = formatNumber(c.score, 1);
+        tr.appendChild(tdScore);
+
+        fragment.appendChild(tr);
+    });
+
+    tbody.appendChild(fragment);
 }
 
 
