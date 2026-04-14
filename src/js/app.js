@@ -4304,15 +4304,36 @@ let estrelasSelectedCategorias = [];
 
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
         tableBody.innerHTML = indicators.map(ind => {
-            let histHtml = '';
-            let trendHtml = '';
+            let cellsHtml = '';
+            for (let i = 0; i < 12; i++) {
+                // Find data for this month (month_index i goes from 0 to 11)
+                const prev = prevData.find(d => d.month_index === i);
+                const curr = currData.find(d => d.month_index === i);
 
-            if (histData) {
-                let hVal = histData[ind.key];
-                if (hVal === undefined) hVal = null;
-                if (hVal === null && !ind.allowNull) hVal = 0;
-                histHtml = `<td class="px-2 py-1.5 text-center text-slate-400 border-r border-white/5 font-mono">${escapeHtml(ind.fmt(hVal))}</td>`;
+                let prevVal = prev ? prev[ind.key] : null;
+                let currVal = curr ? curr[ind.key] : null;
+
+                if (prevVal === undefined) prevVal = null;
+                if (currVal === undefined) currVal = null;
+
+                if (prevVal === null && !ind.allowNull) prevVal = 0;
+                if (currVal === null && !ind.allowNull) currVal = 0;
+
+                // Priority to current year, then previous year
+                let valToDisplay = currVal !== null ? currVal : prevVal;
+
+                let innerContent = '-';
+                if (valToDisplay !== null) {
+                    innerContent = escapeHtml(ind.fmt(valToDisplay));
+                    if (ind.isRed) {
+                        innerContent = `<span class="text-red-400">${innerContent}</span>`;
+                    }
+                }
+
+                cellsHtml += `<td class="px-2 py-1.5 text-center text-slate-400 border-r border-white/5 font-mono summary-col-cell transition-opacity duration-300 opacity-0">${innerContent}</td>`;
             }
+
+            let trendHtml = '';
             if (trendData) {
                 let tVal = trendData[ind.key];
                 if (tVal === undefined) tVal = null;
@@ -4322,13 +4343,13 @@ let estrelasSelectedCategorias = [];
                 if (ind.isRed) {
                     innerContent = `<span class="text-red-400">${innerContent}</span>`;
                 }
-                trendHtml = `<td class="px-2 py-1.5 text-center font-bold text-white">${innerContent}</td>`;
+                trendHtml = `<td class="px-2 py-1.5 text-center font-bold text-white summary-col-cell transition-opacity duration-300 opacity-0">${innerContent}</td>`;
             }
 
             return `
-                <tr class="table-row">
-                    <td class="px-2 py-1.5 font-medium text-slate-300 border-r border-white/5">${escapeHtml(ind.name)}</td>
-                    ${histHtml}
+                <tr class="table-row hover:bg-white/5 transition-colors border-b border-white/5">
+                    <td class="px-2 py-1.5 font-medium text-slate-300 border-r border-white/5 whitespace-nowrap">${escapeHtml(ind.name)}</td>
+                    ${cellsHtml}
                     ${trendHtml}
                 </tr>
             `;
