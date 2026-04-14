@@ -117,3 +117,13 @@ export function handleDropdownsClickaway(e, dropdowns, btns) {
     });
     return anyClosed;
 }
+
+/**
+ * Closes all absolute dropdowns (z-[50] and z-[999]) by adding the 'hidden' class.
+ * Centralizes repetitive logic to clear UI state before opening a new dropdown.
+ */
+export function closeAllDropdowns() {
+    document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
+        if (!el.classList.contains('hidden')) el.classList.add('hidden');
+    });
+}
