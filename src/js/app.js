@@ -707,11 +707,14 @@ let estrelasSelectedCategorias = [];
         profileMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             profileDropdown.classList.toggle('hidden');
+            const isHidden = profileDropdown.classList.contains('hidden');
+            profileMenuBtn.setAttribute('aria-expanded', (!isHidden).toString());
         });
 
         document.addEventListener('click', (e) => {
             if (!profileDropdown.contains(e.target) && !profileMenuBtn.contains(e.target)) {
                 profileDropdown.classList.add('hidden');
+                profileMenuBtn.setAttribute('aria-expanded', 'false');
             }
         });
     }
