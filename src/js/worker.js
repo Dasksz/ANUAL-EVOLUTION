@@ -3,6 +3,16 @@ if (typeof self !== 'undefined' && typeof self.importScripts === 'function') {
 }
 
 
+
+function normalizeCityName(name) {
+    if (!name) return '';
+    return String(name)
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase();
+}
+
 function parseExcelDate(serial) {
     let days = serial;
     if (days > 60) days -= 1;
