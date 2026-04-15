@@ -1897,11 +1897,54 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
     
     IF p_ano IS NULL OR p_mes IS NULL THEN
-        -- Rebuild entire cache chunk by chunk to avoid timeout
+        -- Instead of loop, use a single fast aggregated query for the full rebuild.
         TRUNCATE TABLE public.cache_filters;
-        FOR r IN SELECT DISTINCT ano, mes FROM public.data_summary LOOP
-            PERFORM refresh_cache_filters(r.ano, r.mes);
-        END LOOP;
+
+        INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes, rede, categoria_produto)
+        WITH distinct_codes AS (
+            SELECT
+                filial,
+                cidade,
+                codsupervisor,
+                codusur,
+                codfor,
+                tipovenda,
+                ano,
+                mes,
+                ramo,
+                categoria_produto
+            FROM public.data_summary
+            GROUP BY
+                filial, cidade, codsupervisor, codusur, codfor, tipovenda, ano, mes, ramo, categoria_produto
+        )
+        SELECT
+            dc.filial,
+            dc.cidade,
+            ds.nome as superv,
+            dv.nome as nome,
+            dc.codfor,
+            CASE
+                WHEN dc.codfor = '707' THEN 'EXTRUSADOS'
+                WHEN dc.codfor = '708' THEN 'Ñ EXTRUSADOS'
+                WHEN dc.codfor = '752' THEN 'TORCIDA'
+                WHEN dc.codfor = '1119_TODDYNHO' THEN 'TODDYNHO'
+                WHEN dc.codfor = '1119_TODDY' THEN 'TODDY'
+                WHEN dc.codfor = '1119_QUAKER' THEN 'QUAKER'
+                WHEN dc.codfor = '1119_KEROCOCO' THEN 'KEROCOCO'
+                WHEN dc.codfor = '1119_OUTROS' THEN 'FOODS (Outros)'
+                WHEN dc.codfor = '1119' THEN 'FOODS (Outros)'
+                ELSE df.nome
+            END as fornecedor,
+            dc.tipovenda,
+            dc.ano,
+            dc.mes,
+            dc.ramo as rede,
+            dc.categoria_produto
+        FROM distinct_codes dc
+        LEFT JOIN public.dim_supervisores ds ON dc.codsupervisor = ds.codigo
+        LEFT JOIN public.dim_vendedores dv ON dc.codusur = dv.codigo
+        LEFT JOIN public.dim_fornecedores df ON dc.codfor = df.codigo;
+
         RETURN;
     END IF;
 
