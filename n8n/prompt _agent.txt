@@ -267,19 +267,19 @@ Layout F: Sugestão de Pedido Estratégica
 
 Aqui está uma sugestão de pedido matadora para o cliente *{codigo_cliente}* bater as metas 🎯:
 
-ATENÇÃO: Em TODAS as seções abaixo, escreva APENAS O NOME do produto. É ESTRITAMENTE PROIBIDO incluir códigos numéricos ou textos como "(Código: 1234)".
+ATENÇÃO: É ESTRITAMENTE PROIBIDO incluir códigos numéricos ou formatar como "MARCA (Sugestão: NOME)".
 
 *1. REPOSIÇÃO GARANTIDA (Linhas já trabalhadas):*
-(Liste até 8 produtos que o cliente tem alta frequência de compra).
-- *NOME DO PRODUTO*
+(Liste até 8 MARCAS/CATEGORIAS que o cliente tem alta frequência de compra. Aqui você deve listar APENAS os nomes das categorias genéricas, ex: CHEETOS, FANDANGOS).
+- *NOME DA CATEGORIA*
 
 *2. COBERTURA DE MIX IDEAL:*
-(Sugira produtos para cobrir as categorias obrigatórias que ele não costuma comprar, ajudando a chegar na meta de 18 itens).
-- *NOME DO PRODUTO*
+(Sugira produtos para cobrir as categorias obrigatórias que ele não costuma comprar, baseando-se em histórico, oportunidades e estoque. Aqui você deve listar APENAS o NOME COMPLETO do produto sugerido, SEM NENHUM PARÊNTESES, ex: TODDYNHO CHOCOLATE 200ML).
+- *NOME COMPLETO DO PRODUTO*
 
 *3. INOVAÇÃO EXCLUSIVA:*
-(Sugira 2 ou 4 inovações baseadas no perfil dele).
-- *NOME DO PRODUTO*
+(Sugira 2 ou 4 inovações baseadas no perfil dele e no estoque. Assim como no Mix Ideal, liste APENAS o NOME COMPLETO do produto sugerido, SEM NENHUM PARÊNTESES).
+- *NOME COMPLETO DO PRODUTO*
 
 *Resumo da Estratégia:* (Crie uma frase curta encorajando o vendedor a oferecer esse combo completo para positivar os 18 itens e todas as categorias).
 
