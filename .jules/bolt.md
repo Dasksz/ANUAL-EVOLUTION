@@ -11,3 +11,7 @@ Heavy analytical queries with `COUNT(DISTINCT)` over large datasets (like `data_
 ## 2024-05-18 - Memoize Expensive String Normalizations in Web Workers
 **Learning:** In the Web Worker (`src/js/worker.js`), `normalizeCityName` processes hundreds of thousands of rows containing repetitive city names. Using `.normalize("NFD")` and regex replacements on strings repeatedly is extremely CPU-intensive and blocks the worker thread unnecessarily. A simple test showed normal operations taking ~385ms while memoized operations dropped to ~14ms for the same dataset.
 **Action:** Always implement a simple `Map`-based caching mechanism (`memoization`) for functions performing heavy string normalizations or regular expression replacements when the domain of inputs (like city names or statuses) is small and repetitive.
+
+## 2024-04-15 - Incremental Cache Refreshes to Prevent Timeouts
+**Learning:** Calling heavy global SQL RPCs (like refreshing the entire global cache table from scratch) via `supabase.rpc` at the end of a bulk upload loop easily triggers `canceling statement due to statement timeout` errors when historical data sizes increase.
+**Action:** Transitioned from a single parameterless `refresh_cache_filters()` call at the end of the upload process to a sequential, parameterized `refresh_cache_filters(year, month)` call executing directly inside the data chunking loop in `src/js/app.js`. Also replaced the `FOR` loop in the fallback SQL logic inside `sql/full_system_v1.sql` with a fast, single-pass `INSERT INTO ... SELECT ... GROUP BY` aggregation query.
