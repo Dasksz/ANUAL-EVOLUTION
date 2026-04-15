@@ -4,13 +4,20 @@ if (typeof self !== 'undefined' && typeof self.importScripts === 'function') {
 
 
 
+// ⚡ Bolt Optimization: Memoize city name normalization to avoid expensive NFD and regex operations on repeated cities
+const _cityCache = new Map();
 function normalizeCityName(name) {
     if (!name) return '';
-    return String(name)
+    const key = String(name);
+    let val = _cityCache.get(key);
+    if (val !== undefined) return val;
+    val = key
         .trim()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
         .toUpperCase();
+    _cityCache.set(key, val);
+    return val;
 }
 
 function parseExcelDate(serial) {
