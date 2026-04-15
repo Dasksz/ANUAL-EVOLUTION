@@ -114,3 +114,15 @@ export function handleDropdownsClickaway(e, dropdowns, btns) {
     });
     return anyClosed;
 }
+
+/**
+ * Closes all absolute dropdown menus.
+ * Centralizes the repetitive DOM query and loop logic for absolute dropdowns.
+ */
+export function closeAllDropdowns() {
+    document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
+        if (!el.classList.contains('hidden')) {
+            el.classList.add('hidden');
+        }
+    });
+}

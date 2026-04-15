@@ -217,7 +217,7 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
-import {  formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway } from './utils.js';
+import {  formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -3222,9 +3222,7 @@ let estrelasSelectedCategorias = [];
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
-            if (!el.classList.contains('hidden')) el.classList.add('hidden');
-        });
+        closeAllDropdowns();
         // Restore this one if it was hidden
         if (isHidden) {
             dropdown.classList.remove('hidden');
@@ -3472,12 +3470,7 @@ let estrelasSelectedCategorias = [];
             const isHidden = dropdown.classList.contains('hidden');
 
             // Close all dropdowns
-            document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
-                if (!el.classList.contains('hidden')) {
-                    el.classList.add('hidden');
-                    // We can't cleanly trigger change here for other elements easily, but they have their own handlers.
-                }
-            });
+            closeAllDropdowns();
 
             if (isHidden) {
                 updateVisualState(); // Sync visuals just before opening
@@ -4509,9 +4502,7 @@ let estrelasSelectedCategorias = [];
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
-            if (!el.classList.contains('hidden')) el.classList.add('hidden');
-        });
+        closeAllDropdowns();
         // Restore this one if it was hidden
         if (isHidden) {
             dropdown.classList.remove('hidden');
@@ -4960,9 +4951,7 @@ let estrelasSelectedCategorias = [];
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
-            if (!el.classList.contains('hidden')) el.classList.add('hidden');
-        });
+        closeAllDropdowns();
         // Restore this one if it was hidden
         if (isHidden) {
             dropdown.classList.remove('hidden');
@@ -5042,9 +5031,7 @@ let estrelasSelectedCategorias = [];
         e.stopPropagation();
         const isHidden = dropdown.classList.contains('hidden');
         // Close all dropdowns
-        document.querySelectorAll('.absolute.z-\\[50\\], .absolute.z-\\[999\\]').forEach(el => {
-            if (!el.classList.contains('hidden')) el.classList.add('hidden');
-        });
+        closeAllDropdowns();
         // Restore this one if it was hidden
         if (isHidden) {
             dropdown.classList.remove('hidden');
