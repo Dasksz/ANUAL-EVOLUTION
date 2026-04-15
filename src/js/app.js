@@ -2021,9 +2021,20 @@ let estrelasSelectedCategorias = [];
             AppLog.error("Erro ao buscar mapa de cidades:", error);
             return {};
         }
+
+        function normalizeCityName(name) {
+            if (!name) return '';
+            return String(name).trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        }
+
         const map = {};
         data.forEach(item => {
-            if (item.cidade) map[item.cidade.toUpperCase()] = item.filial;
+            if (item.cidade) {
+                const normalized = normalizeCityName(item.cidade);
+                if (!map[normalized] || map[normalized] === null) {
+                    map[normalized] = item.filial;
+                }
+            }
         });
         return map;
     }
