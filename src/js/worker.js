@@ -428,8 +428,8 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                 // 2. Cached actual keys match
                 let matched = matchedKeysCache.get(keyPart);
                 if (matched) {
-                    for (let i = 0; i < matched.length; i++) {
-                        if (row[matched[i]] !== undefined) return row[matched[i]];
+                    for (const m of matched) {
+                        if (row[m] !== undefined) return row[m];
                     }
                 }
 
@@ -474,12 +474,10 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
 
                 if (match) {
                     if (!matched) {
-                        matched = [];
+                        matched = new Set();
                         matchedKeysCache.set(keyPart, matched);
                     }
-                    if (!matched.includes(match)) {
-                        matched.push(match);
-                    }
+                    matched.add(match);
                     return row[match];
                 }
 
