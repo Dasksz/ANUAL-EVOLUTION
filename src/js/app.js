@@ -2394,6 +2394,22 @@ let estrelasSelectedCategorias = [];
             if (yearErr) throw new Error(`Erro ao buscar anos: ${yearErr.message}`);
 
             if (years && years.length > 0) {
+                // 2.5 Batch clear all months concurrently to improve throughput
+                updateStatus('Limpando dados antigos...', 80);
+                const clearPromises = [];
+                for (let i = 0; i < years.length; i++) {
+                    const year = years[i];
+                    for (let m = 1; m <= 12; m++) {
+                        clearPromises.push(
+                            supabase.rpc('clear_summary_month', { p_year: year, p_month: m })
+                                .then(({ error }) => {
+                                    if (error) throw new Error(`Erro limpando ${m}/${year}: ${error.message}`);
+                                })
+                        );
+                    }
+                }
+                await Promise.all(clearPromises);
+
                 // 3. Loop and Process Each Year and Month (Granular to avoid timeout)
                 for (let i = 0; i < years.length; i++) {
                     const year = years[i];
@@ -2402,10 +2418,6 @@ let estrelasSelectedCategorias = [];
                         const yearStep = 15 / years.length;
                         const monthStep = yearStep / 12;
                         const progress = 80 + Math.round((i * yearStep) + (m * monthStep));
-                        
-                        updateStatus(`Limpando dados ${m}/${year}...`, progress);
-                        const { error: clearErr } = await supabase.rpc('clear_summary_month', { p_year: year, p_month: m });
-                        if (clearErr) throw new Error(`Erro limpando ${m}/${year}: ${clearErr.message}`);
 
                         // Calculate date boundaries
                         const startDate = `${year}-${String(m).padStart(2, '0')}-01`;
