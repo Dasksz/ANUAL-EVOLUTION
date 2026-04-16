@@ -2233,20 +2233,37 @@ let estrelasSelectedCategorias = [];
 
                     // 2. Batch Append (e.g. 2000 rows per request to avoid Gateway Timeouts)
                     const ROWS_PER_REQUEST = 2000;
+                    const CONCURRENCY_LIMIT = 3;
                     const totalRows = localChunk.rows.length;
                     
+                    let activePromises = [];
                     for (let i = 0; i < totalRows; i += ROWS_PER_REQUEST) {
                         const batch = localChunk.rows.slice(i, i + ROWS_PER_REQUEST);
-                        const progress = Math.round(((i + batch.length) / totalRows) * 100);
-                        updateStatus(`Enviando ${tableName} (${key}): ${progress}%`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
 
-                        await retryOperation(async () => {
+                        const uploadTask = retryOperation(async () => {
                             const { error: appendErr } = await supabase.rpc('append_sync_chunk', {
                                 p_table_name: tableName,
                                 p_rows: batch
                             });
                             if (appendErr) throw new Error(`Erro APPEND chunk ${key} batch ${i}: ${appendErr.message}`);
                         });
+
+                        activePromises.push(uploadTask);
+
+                        // Wait if we hit concurrency limit
+                        if (activePromises.length >= CONCURRENCY_LIMIT) {
+                            await Promise.all(activePromises);
+                            activePromises = [];
+                            // Update progress after batch completes
+                            const progress = Math.round((Math.min(i + ROWS_PER_REQUEST, totalRows) / totalRows) * 100);
+                            updateStatus(`Enviando ${tableName} (${key}): ${progress}%`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
+                        }
+                    }
+
+                    // Await any remaining promises
+                    if (activePromises.length > 0) {
+                        await Promise.all(activePromises);
+                        updateStatus(`Enviando ${tableName} (${key}): 100%`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
                     }
 
                     // 3. Commit/Finalize
