@@ -3033,50 +3033,18 @@ let estrelasSelectedCategorias = [];
 
         const tableBody = document.getElementById('boxesProductTableBody');
         if (products.length > 0) {
-            tableBody.innerHTML = '';
-            const fragment = document.createDocumentFragment();
-            products.forEach(p => {
-                const tr = document.createElement('tr');
-                tr.className = 'table-row';
-
-                const tdProd = document.createElement('td');
-                tdProd.className = 'p-2';
-                tdProd.textContent = p.produto;
-                tr.appendChild(tdProd);
-
-                const tdDesc = document.createElement('td');
-                tdDesc.className = 'p-2';
-                tdDesc.textContent = p.descricao;
-                tr.appendChild(tdDesc);
-
-                const tdCaixas = document.createElement('td');
-                tdCaixas.className = 'p-2 text-right font-bold text-emerald-400';
-                tdCaixas.textContent = formatInteger(safeVal(p.caixas));
-                tr.appendChild(tdCaixas);
-
-                const tdFat = document.createElement('td');
-                tdFat.className = 'p-2 text-right';
-                tdFat.textContent = formatCurrency(safeVal(p.faturamento));
-                tr.appendChild(tdFat);
-
-                const tdPeso = document.createElement('td');
-                tdPeso.className = 'p-2 text-right';
-                tdPeso.textContent = formatTons(safeVal(p.peso), 2);
-                tr.appendChild(tdPeso);
-
-                const tdPosit = document.createElement('td');
-                tdPosit.className = 'p-2 text-right text-slate-300 font-bold';
-                tdPosit.textContent = formatInteger(safeVal(p.clientes));
-                tr.appendChild(tdPosit);
-
-                const tdUltimaVenda = document.createElement('td');
-                tdUltimaVenda.className = 'p-2 text-center text-slate-400';
-                tdUltimaVenda.textContent = p.ultima_venda ? new Date(p.ultima_venda).toLocaleDateString('pt-BR') : '-';
-                tr.appendChild(tdUltimaVenda);
-
-                fragment.appendChild(tr);
-            });
-            tableBody.appendChild(fragment);
+            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+            tableBody.innerHTML = products.map(p => `
+                <tr class="table-row">
+                    <td class="p-2">${escapeHtml(p.produto)}</td>
+                    <td class="p-2">${escapeHtml(p.descricao)}</td>
+                    <td class="p-2 text-right font-bold text-emerald-400">${escapeHtml(formatInteger(safeVal(p.caixas)))}</td>
+                    <td class="p-2 text-right">${escapeHtml(formatCurrency(safeVal(p.faturamento)))}</td>
+                    <td class="p-2 text-right">${escapeHtml(formatTons(safeVal(p.peso), 2))}</td>
+                    <td class="p-2 text-right text-slate-300 font-bold">${escapeHtml(formatInteger(safeVal(p.clientes)))}</td>
+                    <td class="p-2 text-center text-slate-400">${escapeHtml(p.ultima_venda ? new Date(p.ultima_venda).toLocaleDateString('pt-BR') : '-')}</td>
+                </tr>
+            `).join('');
         } else {
             tableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum produto encontrado.</td></tr>';
         }
