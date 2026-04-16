@@ -2431,23 +2431,21 @@ let estrelasSelectedCategorias = [];
                         }
                         const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
 
-                        updateStatus(`Processando ${m}/${year} (Parte 1/3)...`, progress + Math.round(monthStep * 0.10));
-                        await retryOperation(async () => {
-                            const res1 = await supabase.rpc('refresh_summary_chunk', { p_start_date: startDate, p_end_date: chunk1EndDate });
-                            if (res1.error) throw new Error(`Erro processando ${m}/${year} (Parte 1): ${res1.error.message}`);
-                        }, 3, 2000);
-
-                        updateStatus(`Processando ${m}/${year} (Parte 2/3)...`, progress + Math.round(monthStep * 0.20));
-                        await retryOperation(async () => {
-                            const res2 = await supabase.rpc('refresh_summary_chunk', { p_start_date: chunk1EndDate, p_end_date: chunk2EndDate });
-                            if (res2.error) throw new Error(`Erro processando ${m}/${year} (Parte 2): ${res2.error.message}`);
-                        }, 3, 2000);
-
-                        updateStatus(`Processando ${m}/${year} (Parte 3/3)...`, progress + Math.round(monthStep * 0.30));
-                        await retryOperation(async () => {
-                            const res3 = await supabase.rpc('refresh_summary_chunk', { p_start_date: chunk2EndDate, p_end_date: endDate });
-                            if (res3.error) throw new Error(`Erro processando ${m}/${year} (Parte 3): ${res3.error.message}`);
-                        }, 3, 2000);
+                        updateStatus(`Processando ${m}/${year} (Partes 1-3)...`, progress + Math.round(monthStep * 0.20));
+                        await Promise.all([
+                            retryOperation(async () => {
+                                const res1 = await supabase.rpc('refresh_summary_chunk', { p_start_date: startDate, p_end_date: chunk1EndDate });
+                                if (res1.error) throw new Error(`Erro processando ${m}/${year} (Parte 1): ${res1.error.message}`);
+                            }, 3, 2000),
+                            retryOperation(async () => {
+                                const res2 = await supabase.rpc('refresh_summary_chunk', { p_start_date: chunk1EndDate, p_end_date: chunk2EndDate });
+                                if (res2.error) throw new Error(`Erro processando ${m}/${year} (Parte 2): ${res2.error.message}`);
+                            }, 3, 2000),
+                            retryOperation(async () => {
+                                const res3 = await supabase.rpc('refresh_summary_chunk', { p_start_date: chunk2EndDate, p_end_date: endDate });
+                                if (res3.error) throw new Error(`Erro processando ${m}/${year} (Parte 3): ${res3.error.message}`);
+                            }, 3, 2000)
+                        ]);
 
                         // Atualiza o cache de filtros apenas para o mês que acabou de ser processado para evitar timeout
                         updateStatus(`Atualizando filtros ${m}/${year}...`, progress + Math.round(monthStep * 0.90));
