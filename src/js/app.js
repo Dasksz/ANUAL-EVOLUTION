@@ -77,12 +77,6 @@ window.openDetalhadoModal = function(type) {
     subtitle.classList.add('hidden');
     
     let totalRealizado = 0;
-    
-    const iconVendedor = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 inline text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>`;
-    const iconFilial = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 inline text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1v1H9V7zm5 0h1v1h-1V7zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1z" /></svg>`;
-    const iconChart = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 inline text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>`;
-    const iconTarget = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 inline text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
-    const iconShare = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 inline text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>`;
 
     if (!estrelasDetailedData || estrelasDetailedData.length === 0) {
         title.textContent = type === 'sellout' ? 'Resultado Detalhado - Sellout' : (type === 'positivacao' ? 'Resultado Detalhado - Positivação' : 'Resultado Detalhado - Aceleradores');
@@ -104,14 +98,14 @@ window.openDetalhadoModal = function(type) {
     }
 
     if (type === 'sellout') {
-        title.innerHTML = `<span class="flex items-center text-indigo-400">${iconChart} Resultado Detalhado - Sellout</span>`;
+        title.innerHTML = `<span class="flex items-center text-indigo-400">${TABLE_ICONS.chart} Resultado Detalhado - Sellout</span>`;
         thead.innerHTML = `
-            <th class="py-3 px-4 text-left rounded-tl-lg bg-indigo-500/10 text-indigo-200">${iconVendedor}Vendedor</th>
-            <th class="py-3 px-4 text-left bg-indigo-500/10 text-indigo-200">${iconFilial}Filial</th>
-            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconTarget}Meta Salty</th>
-            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconChart}Realizado Salty</th>
-            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${iconTarget}Meta Foods</th>
-            <th class="py-3 px-4 text-right rounded-tr-lg bg-indigo-500/10 text-indigo-200">${iconChart}Realizado Foods</th>
+            <th class="py-3 px-4 text-left rounded-tl-lg bg-indigo-500/10 text-indigo-200">${TABLE_ICONS.vendedor}Vendedor</th>
+            <th class="py-3 px-4 text-left bg-indigo-500/10 text-indigo-200">${TABLE_ICONS.filial}Filial</th>
+            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${TABLE_ICONS.target}Meta Salty</th>
+            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${TABLE_ICONS.chart}Realizado Salty</th>
+            <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${TABLE_ICONS.target}Meta Foods</th>
+            <th class="py-3 px-4 text-right rounded-tr-lg bg-indigo-500/10 text-indigo-200">${TABLE_ICONS.chart}Realizado Foods</th>
         `;
         
         const sortedDataSellout = [...estrelasDetailedData].sort((a, b) => {
@@ -147,13 +141,13 @@ window.openDetalhadoModal = function(type) {
         tbody.appendChild(fragment);
         
     } else if (type === 'positivacao') {
-        title.innerHTML = `<span class="flex items-center text-emerald-400">${iconChart} Resultado Detalhado - Positivação</span>`;
+        title.innerHTML = `<span class="flex items-center text-emerald-400">${TABLE_ICONS.chart} Resultado Detalhado - Positivação</span>`;
         thead.innerHTML = `
-            <th class="py-3 px-4 text-left rounded-tl-lg bg-emerald-500/10 text-emerald-200">${iconVendedor}Vendedor</th>
-            <th class="py-3 px-4 text-left bg-emerald-500/10 text-emerald-200">${iconFilial}Filial</th>
-            <th class="py-3 px-4 text-right bg-emerald-500/10 text-emerald-200">${iconChart}Realizado</th>
-            <th class="py-3 px-4 text-right bg-emerald-500/10 text-emerald-200">${iconTarget}Meta</th>
-            <th class="py-3 px-4 text-right rounded-tr-lg bg-emerald-500/10 text-emerald-200">${iconShare}% Share</th>
+            <th class="py-3 px-4 text-left rounded-tl-lg bg-emerald-500/10 text-emerald-200">${TABLE_ICONS.vendedor}Vendedor</th>
+            <th class="py-3 px-4 text-left bg-emerald-500/10 text-emerald-200">${TABLE_ICONS.filial}Filial</th>
+            <th class="py-3 px-4 text-right bg-emerald-500/10 text-emerald-200">${TABLE_ICONS.chart}Realizado</th>
+            <th class="py-3 px-4 text-right bg-emerald-500/10 text-emerald-200">${TABLE_ICONS.target}Meta</th>
+            <th class="py-3 px-4 text-right rounded-tr-lg bg-emerald-500/10 text-emerald-200">${TABLE_ICONS.share}% Share</th>
         `;
         
         totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + ((curr.pos_salty || 0) + (curr.pos_foods || 0)), 0);
@@ -175,16 +169,16 @@ window.openDetalhadoModal = function(type) {
         tbody.appendChild(fragment);
         
     } else if (type === 'aceleradores') {
-        title.innerHTML = `<span class="flex items-center text-amber-400">${iconTarget} Resultado Detalhado - Aceleradores</span>`;
+        title.innerHTML = `<span class="flex items-center text-amber-400">${TABLE_ICONS.target} Resultado Detalhado - Aceleradores</span>`;
         subtitle.textContent = `Total de Marcas Cadastradas: ${estrelasQtdMarcas}`;
         subtitle.classList.remove('hidden');
         
         thead.innerHTML = `
-            <th class="py-3 px-4 text-left rounded-tl-lg bg-amber-500/10 text-amber-200">${iconVendedor}Vendedor</th>
-            <th class="py-3 px-4 text-left bg-amber-500/10 text-amber-200">${iconFilial}Filial</th>
-            <th class="py-3 px-4 text-right bg-amber-500/10 text-amber-200">${iconChart}Aceleradores (Realizado)</th>
-            <th class="py-3 px-4 text-right bg-amber-500/10 text-amber-200">${iconTarget}Meta (50% da Pos.)</th>
-            <th class="py-3 px-4 text-right rounded-tr-lg bg-amber-500/10 text-amber-200">${iconShare}% Share</th>
+            <th class="py-3 px-4 text-left rounded-tl-lg bg-amber-500/10 text-amber-200">${TABLE_ICONS.vendedor}Vendedor</th>
+            <th class="py-3 px-4 text-left bg-amber-500/10 text-amber-200">${TABLE_ICONS.filial}Filial</th>
+            <th class="py-3 px-4 text-right bg-amber-500/10 text-amber-200">${TABLE_ICONS.chart}Aceleradores (Realizado)</th>
+            <th class="py-3 px-4 text-right bg-amber-500/10 text-amber-200">${TABLE_ICONS.target}Meta (50% da Pos.)</th>
+            <th class="py-3 px-4 text-right rounded-tr-lg bg-amber-500/10 text-amber-200">${TABLE_ICONS.share}% Share</th>
         `;
         
         totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + (curr.acel_realizado || 0), 0);
@@ -217,7 +211,7 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
-import {  formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns } from './utils.js';
+import {  formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
