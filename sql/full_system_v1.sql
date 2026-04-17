@@ -3064,7 +3064,15 @@ BEGIN
                     SUM(vlvenda) / 3 as fat,
                     SUM(peso) / 3 as peso,
                     SUM(COALESCE(caixas, 0)) / 3 as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) / 3 as clientes
+                    COALESCE((
+                        SELECT SUM(monthly_clients) / 3
+                        FROM (
+                            SELECT COUNT(DISTINCT CASE WHEN %s THEN codcli END) as monthly_clients
+                            FROM public.data_summary
+                            %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
+                            GROUP BY ano, mes
+                        ) sub
+                    ), 0) as clientes
                 FROM public.data_summary
                 %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
             ),
@@ -3160,7 +3168,15 @@ BEGIN
                     SUM(vlvenda) / 3 as fat,
                     SUM(totpesoliq) / 3 as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) / 3 as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) / 3 as clientes
+                    COALESCE((
+                        SELECT SUM(monthly_clients) / 3
+                        FROM (
+                            SELECT COUNT(DISTINCT CASE WHEN %s THEN codcli END) as monthly_clients
+                            FROM base_data
+                            WHERE dtped >= %L AND dtped <= %L
+                            GROUP BY EXTRACT(YEAR FROM dtped), EXTRACT(MONTH FROM dtped)
+                        ) sub
+                    ), 0) as clientes
                 FROM base_data
                 WHERE dtped >= %L AND dtped <= %L
             ),

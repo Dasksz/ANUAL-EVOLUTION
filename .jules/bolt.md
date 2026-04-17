@@ -16,3 +16,7 @@
 ## 2024-04-17 - [DOM Optimization in Table Rendering]
 **Learning:** In large frontend tables (like the 12-month summary view), using `document.createElement` inside loops causes overhead from JavaScript object instantiation. While `DocumentFragment` prevents layout thrashing, the sheer number of objects created and method calls can still cause performance issues.
 **Action:** Always prefer constructing a single HTML string (e.g. using array `.map().join('')` or string concatenation) and using a single `.innerHTML` assignment when rendering dense, data-heavy tables. Be sure to use `escapeHtml` for any dynamic data interpolation to maintain security against DOM-based XSS.
+## 2025-04-17 - Fix KPI Tri calculation for Clients in Boxes View
+**Vulnerability:** Incorrect calculation of distinct clients over a quarter instead of monthly average.
+**Learning:** When calculating the average distinct users over multiple time periods, using a global `COUNT(DISTINCT)` will deduplicate users across the entire range, drastically shrinking the result. Instead, `COUNT(DISTINCT)` must be executed within each sub-period (e.g. month), summed, and then averaged.
+**Prevention:** Ensure time-based averages of unique counts use subqueries grouped by the time dimension (e.g., `GROUP BY month`).
