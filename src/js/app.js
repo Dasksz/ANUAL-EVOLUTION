@@ -4365,15 +4365,11 @@ let estrelasSelectedCategorias = [];
             { name: 'TON VENDIDA', key: 'peso', fmt: v => `${(v/1000).toFixed(2)} Kg` }
         ];
 
-        const fragment = document.createDocumentFragment();
+        // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+        let tableHTML = '';
         indicators.forEach(ind => {
-            const tr = document.createElement('tr');
-            tr.className = 'table-row';
-
-            const tdName = document.createElement('td');
-            tdName.className = 'font-bold p-2 text-left';
-            tdName.textContent = ind.name;
-            tr.appendChild(tdName);
+            tableHTML += `<tr class="table-row">`;
+            tableHTML += `<td class="font-bold p-2 text-left">${escapeHtml(ind.name)}</td>`;
 
             for (let i = 0; i < 12; i++) {
                 const d = currData.find(x => x.month_index === i);
@@ -4381,38 +4377,30 @@ let estrelasSelectedCategorias = [];
                 if (val === undefined) val = null;
                 if (val === null && !ind.allowNull) val = 0;
 
-                const td = document.createElement('td');
-                td.className = 'px-2 py-1.5 text-center';
+                tableHTML += `<td class="px-2 py-1.5 text-center">`;
                 if (ind.isRed) {
-                    const span = document.createElement('span');
-                    span.className = 'text-red-400';
-                    span.textContent = ind.fmt(val);
-                    td.appendChild(span);
+                    tableHTML += `<span class="text-red-400">${escapeHtml(ind.fmt(val))}</span>`;
                 } else {
-                    td.textContent = ind.fmt(val);
+                    tableHTML += `${escapeHtml(ind.fmt(val))}`;
                 }
-                tr.appendChild(td);
+                tableHTML += `</td>`;
             }
             if (trendData) {
                  let tVal = trendData[ind.key];
                  if (tVal === undefined) tVal = null;
                  if (tVal === null && !ind.allowNull) tVal = 0;
 
-                 const td = document.createElement('td');
-                 td.className = 'px-2 py-1.5 text-center font-bold text-white';
+                 tableHTML += `<td class="px-2 py-1.5 text-center font-bold text-white">`;
                  if (ind.isRed) {
-                     const span = document.createElement('span');
-                     span.className = 'text-red-400';
-                     span.textContent = ind.fmt(tVal);
-                     td.appendChild(span);
+                     tableHTML += `<span class="text-red-400">${escapeHtml(ind.fmt(tVal))}</span>`;
                  } else {
-                     td.textContent = ind.fmt(tVal);
+                     tableHTML += `${escapeHtml(ind.fmt(tVal))}`;
                  }
-                 tr.appendChild(td);
+                 tableHTML += `</td>`;
             }
-            fragment.appendChild(tr);
+            tableHTML += `</tr>`;
         });
-        tableBody.appendChild(fragment);
+        tableBody.innerHTML = tableHTML;
     }
 
 

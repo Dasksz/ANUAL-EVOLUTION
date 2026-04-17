@@ -12,3 +12,7 @@
 **Details:** Previously, chunk appends inside `src/js/app.js` were processed sequentially in a loop using `await`, causing each API request to block the next. This underutilized network throughput and increased overall upload time.
 
 **Action:** Refactored the loop to use an `activePromises` array and `Promise.all` with a concurrency limit of 3. This allows up to 3 chunks to be uploaded in parallel, yielding a measured ~60% improvement in simulated benchmarks, without risking API timeouts or database overload.
+
+## 2024-04-17 - [DOM Optimization in Table Rendering]
+**Learning:** In large frontend tables (like the 12-month summary view), using `document.createElement` inside loops causes overhead from JavaScript object instantiation. While `DocumentFragment` prevents layout thrashing, the sheer number of objects created and method calls can still cause performance issues.
+**Action:** Always prefer constructing a single HTML string (e.g. using array `.map().join('')` or string concatenation) and using a single `.innerHTML` assignment when rendering dense, data-heavy tables. Be sure to use `escapeHtml` for any dynamic data interpolation to maintain security against DOM-based XSS.
