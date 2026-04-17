@@ -3211,6 +3211,11 @@ let estrelasSelectedCategorias = [];
     }
 
     function setupMultiSelect(btn, dropdown, container, items, selectedArray, labelCallback, isObject = false, searchInput = null) {
+        if(!btn || !dropdown) return;
+        if (!container) {
+            AppLog.warn('Container not found for filter', btn?.id);
+            return;
+        }
         const MAX_ITEMS = 100;
         btn.onclick = (e) => {
         e.stopPropagation();
@@ -3309,6 +3314,10 @@ let estrelasSelectedCategorias = [];
         };
         const updateBtnLabel = () => {
             const span = btn.querySelector('span');
+            if (!span) {
+                // Fallback if no span, to prevent crash
+                return;
+            }
             if (selectedArray.length === 0) {
                 span.textContent = 'Todas';
                 if(btn.id.includes('vendedor') || btn.id.includes('fornecedor') || btn.id.includes('supervisor') || btn.id.includes('tipovenda')) span.textContent = 'Todos';
@@ -4470,136 +4479,8 @@ let estrelasSelectedCategorias = [];
     });
 
     function setupCityMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
-        if(!btn || !dropdown) return;
-        // Safety check for container
-        if (!container) {
-            AppLog.warn('Container not found for filter', btn.id);
-            return;
-        }
-        
-        const MAX_ITEMS = 100;
-        let debounceTimer;
-
-        btn.onclick = (e) => {
-        e.stopPropagation();
-        const isHidden = dropdown.classList.contains('hidden');
-        // Close all dropdowns
-        closeAllDropdowns();
-        // Restore this one if it was hidden
-        if (isHidden) {
-            dropdown.classList.remove('hidden');
-        }
-    };
-        const renderItems = (filterText = '') => {
-            container.innerHTML = '';
-            let filteredItems = items || [];
-            if (filterText) {
-                const lower = filterText.toLowerCase();
-                filteredItems = filteredItems.filter(item => {
-                    const nameVal = isObject ? item.name : item;
-                    const codVal = isObject ? item.cod : '';
-                    return String(nameVal).toLowerCase().includes(lower) || (isObject && String(codVal).toLowerCase().includes(lower));
-                });
-            }
-            
-                        // Sort items so selected ones appear first
-            // ⚡ Bolt Optimization: Use a Set for O(1) lookups during sorting instead of O(N) array.includes()
-            const selectedSet = new Set(selectedArray);
-            filteredItems.sort((a, b) => {
-                const valA = String(isObject ? a.cod : a);
-                const valB = String(isObject ? b.cod : b);
-                const isSelectedA = selectedSet.has(valA);
-                const isSelectedB = selectedSet.has(valB);
-
-                if (isSelectedA && !isSelectedB) return -1;
-                if (!isSelectedA && isSelectedB) return 1;
-                return 0;
-            });
-
-            const displayItems = filteredItems.slice(0, MAX_ITEMS);
-            // ⚡ Bolt Optimization: Use DocumentFragment to batch DOM insertions and prevent layout thrashing
-            const fragment = document.createDocumentFragment();
-
-            displayItems.forEach(item => {
-                const value = isObject ? item.cod : item;
-                const label = isObject ? item.name : item;
-                const isSelected = selectedSet.has(String(value));
-                const div = document.createElement('div');
-                div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
-
-                const input = document.createElement('input');
-                input.type = 'checkbox';
-                input.value = value;
-                input.className = 'w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2';
-                if (isSelected) input.checked = true;
-
-                const labelEl = document.createElement('label');
-                labelEl.className = 'ml-2 text-sm text-slate-200 cursor-pointer flex-1';
-                labelEl.textContent = label;
-
-                div.appendChild(input);
-                div.appendChild(labelEl);
-                div.onclick = (e) => {
-                    e.stopPropagation();
-                    const checkbox = div.querySelector('input');
-                    if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
-                    const val = String(value);
-
-                    if (checkbox.checked) {
-                        if (!selectedSet.has(val)) {
-                            selectedSet.add(val);
-                            selectedArray.push(val);
-                        }
-                    } else {
-                        if (selectedSet.has(val)) {
-                            selectedSet.delete(val);
-                            const idx = selectedArray.indexOf(val);
-                            if (idx > -1) selectedArray.splice(idx, 1);
-                        }
-                    }
-
-                    updateBtnLabel();
-                };
-                fragment.appendChild(div);
-            });
-            container.appendChild(fragment);
-
-            if (filteredItems.length > MAX_ITEMS) {
-                const limitMsg = document.createElement('div');
-                limitMsg.className = 'p-2 text-xs text-slate-500 text-center border-t border-slate-700 mt-1';
-                limitMsg.textContent = `Exibindo ${MAX_ITEMS} de ${filteredItems.length}. Use a busca.`;
-                container.appendChild(limitMsg);
-            }
-
-            if (filteredItems.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
-        };
-        const updateBtnLabel = () => {
-            const span = btn.querySelector('span');
-            if (!span) {
-                // Fallback if no span, to prevent crash
-                return; 
-            }
-
-            if (selectedArray.length === 0) {
-                span.textContent = 'Todas';
-                 if(btn.id.includes('vendedor') || btn.id.includes('fornecedor') || btn.id.includes('supervisor') || btn.id.includes('tipovenda')) span.textContent = 'Todos';
-            } else if (selectedArray.length === 1) {
-                const val = selectedArray[0];
-                let found;
-                if (isObject) found = (items || []).find(i => String(i.cod) === val); else found = (items || []).find(i => String(i) === val);
-                if (found) span.textContent = isObject ? found.name : found; else span.textContent = val;
-            } else { span.textContent = `${selectedArray.length} selecionados`; }
-        };
-        renderItems();
-        updateBtnLabel();
-        if (searchInput) { 
-            searchInput.oninput = (e) => {
-                clearTimeout(debounceTimer);
-                debounceTimer = setTimeout(() => renderItems(e.target.value), 300);
-            }; 
-            searchInput.onclick = (e) => e.stopPropagation(); 
-        }
-    }
+    return setupMultiSelect(btn, dropdown, container, items, selectedArray, () => {}, isObject, searchInput);
+}
 
     async function initCityFilters() {
         const filters = {
@@ -5006,122 +4887,8 @@ let estrelasSelectedCategorias = [];
     }
 
     function setupBranchMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
-        const MAX_ITEMS = 100;
-        let debounceTimer;
-
-        btn.onclick = (e) => {
-        e.stopPropagation();
-        const isHidden = dropdown.classList.contains('hidden');
-        // Close all dropdowns
-        closeAllDropdowns();
-        // Restore this one if it was hidden
-        if (isHidden) {
-            dropdown.classList.remove('hidden');
-        }
-    };
-        const renderItems = (filterText = '') => {
-            container.innerHTML = '';
-            let filteredItems = items || [];
-            if (filterText) {
-                const lower = filterText.toLowerCase();
-                filteredItems = filteredItems.filter(item => {
-                    const nameVal = isObject ? item.name : item;
-                    const codVal = isObject ? item.cod : '';
-                    return String(nameVal).toLowerCase().includes(lower) || (isObject && String(codVal).toLowerCase().includes(lower));
-                });
-            }
-            
-                        // Sort items so selected ones appear first
-            const selectedSet = new Set(selectedArray);
-            filteredItems.sort((a, b) => {
-                const valA = String(isObject ? a.cod : a);
-                const valB = String(isObject ? b.cod : b);
-                const isSelectedA = selectedSet.has(valA);
-                const isSelectedB = selectedSet.has(valB);
-
-                if (isSelectedA && !isSelectedB) return -1;
-                if (!isSelectedA && isSelectedB) return 1;
-                return 0;
-            });
-
-            const displayItems = filteredItems.slice(0, MAX_ITEMS);
-            const fragment = document.createDocumentFragment();
-
-            displayItems.forEach(item => {
-                const value = isObject ? item.cod : item;
-                const label = isObject ? item.name : item;
-                const isSelected = selectedSet.has(String(value));
-                const div = document.createElement('div');
-                div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
-
-                const input = document.createElement('input');
-                input.type = 'checkbox';
-                input.value = value;
-                input.className = 'w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2';
-                if (isSelected) input.checked = true;
-
-                const labelEl = document.createElement('label');
-                labelEl.className = 'ml-2 text-sm text-slate-200 cursor-pointer flex-1';
-                labelEl.textContent = label;
-
-                div.appendChild(input);
-                div.appendChild(labelEl);
-                div.onclick = (e) => {
-                    e.stopPropagation();
-                    const checkbox = div.querySelector('input');
-                    if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
-                    const val = String(value);
-
-                    if (checkbox.checked) {
-                        if (!selectedSet.has(val)) {
-                            selectedSet.add(val);
-                            selectedArray.push(val);
-                        }
-                    } else {
-                        if (selectedSet.has(val)) {
-                            selectedSet.delete(val);
-                            const idx = selectedArray.indexOf(val);
-                            if (idx > -1) selectedArray.splice(idx, 1);
-                        }
-                    }
-
-                    updateBtnLabel();
-                };
-                fragment.appendChild(div);
-            });
-            container.appendChild(fragment);
-
-            if (filteredItems.length > MAX_ITEMS) {
-                const limitMsg = document.createElement('div');
-                limitMsg.className = 'p-2 text-xs text-slate-500 text-center border-t border-slate-700 mt-1';
-                limitMsg.textContent = `Exibindo ${MAX_ITEMS} de ${filteredItems.length}. Use a busca.`;
-                container.appendChild(limitMsg);
-            }
-
-            if (filteredItems.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
-        };
-        const updateBtnLabel = () => {
-            const span = btn.querySelector('span');
-            if (selectedArray.length === 0) {
-                span.textContent = 'Todas';
-                if(btn.id.includes('vendedor') || btn.id.includes('fornecedor') || btn.id.includes('supervisor') || btn.id.includes('tipovenda')) span.textContent = 'Todos';
-            } else if (selectedArray.length === 1) {
-                const val = selectedArray[0];
-                let found;
-                if (isObject) found = (items || []).find(i => String(i.cod) === val); else found = (items || []).find(i => String(i) === val);
-                if (found) span.textContent = isObject ? found.name : found; else span.textContent = val;
-            } else { span.textContent = `${selectedArray.length} selecionados`; }
-        };
-        renderItems();
-        updateBtnLabel();
-        if (searchInput) { 
-            searchInput.oninput = (e) => {
-                clearTimeout(debounceTimer);
-                debounceTimer = setTimeout(() => renderItems(e.target.value), 300);
-            }; 
-            searchInput.onclick = (e) => e.stopPropagation(); 
-        }
-    }
+    return setupMultiSelect(btn, dropdown, container, items, selectedArray, () => {}, isObject, searchInput);
+}
 
     async function loadBranchView() {
         showDashboardLoading('branch-view');

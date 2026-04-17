@@ -4,3 +4,6 @@
 ## 2024-05-25 : (Extração de lógica de Dropdowns Absolutos)
 **Aprendizado:** A lógica de iterar sobre `.absolute.z-[50], .absolute.z-[999]` para esconder dropdowns (via remoção da classe `hidden`) estava duplicada 5 vezes e era difícil de manter ou extender se novas classes de z-index fossem adicionadas.
 **Ação:** Foi criada uma função utilitária `closeAllDropdowns()` em `src/js/utils.js` que centraliza essa query e fechamento, evitando repetição de código em `src/js/app.js`.
+## 2024-05-26 : (Consolidação de Múltiplos Selects)
+**Aprendizado:** Haviam três funções praticamente idênticas para a criação de menus de seleção múltipla no frontend (`setupMultiSelect`, `setupCityMultiSelect`, `setupBranchMultiSelect`). Isso resultava em mais de 300 linhas de código duplicadas, difíceis de manter.
+**Ação:** Refatorei substituindo as implementações específicas (`setupCityMultiSelect` e `setupBranchMultiSelect`) por chamadas repassadas à função base `setupMultiSelect`. A função base recebeu validações extras de segurança contra elementos nulos, absorvendo o que havia de único nas outras implementações.
