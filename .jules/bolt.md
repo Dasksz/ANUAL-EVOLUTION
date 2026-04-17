@@ -20,3 +20,7 @@
 ## 2024-04-17 - Resilient Concurrent Promises for Data Fetching
 **Learning:** Using `Promise.all` directly with heavy API/RPC calls (like `supabase.rpc`) means a single timeout or failure will immediately reject the entire batch, causing complete UI component failure even if other concurrent requests succeeded. In this case, an ambiguous function resolution error triggering a quick abort broke a completely separate chart.
 **Action:** Append `.catch(err => ({ error: err }))` to each individual promise within the `Promise.all` array (or use `Promise.allSettled`). This decouples their failure states, allowing successful API responses to be rendered independently while gracefully isolating errors to their respective UI components.
+## 2025-04-17 - Fix KPI Tri calculation for Clients in Boxes View
+**Vulnerability:** Incorrect calculation of distinct clients over a quarter instead of monthly average.
+**Learning:** When calculating the average distinct users over multiple time periods, using a global `COUNT(DISTINCT)` will deduplicate users across the entire range, drastically shrinking the result. Instead, `COUNT(DISTINCT)` must be executed within each sub-period (e.g. month), summed, and then averaged.
+**Prevention:** Ensure time-based averages of unique counts use subqueries grouped by the time dimension (e.g., `GROUP BY month`).
