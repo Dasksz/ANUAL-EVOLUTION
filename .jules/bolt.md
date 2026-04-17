@@ -16,3 +16,7 @@
 ## 2024-04-17 - [DOM Optimization in Table Rendering]
 **Learning:** In large frontend tables (like the 12-month summary view), using `document.createElement` inside loops causes overhead from JavaScript object instantiation. While `DocumentFragment` prevents layout thrashing, the sheer number of objects created and method calls can still cause performance issues.
 **Action:** Always prefer constructing a single HTML string (e.g. using array `.map().join('')` or string concatenation) and using a single `.innerHTML` assignment when rendering dense, data-heavy tables. Be sure to use `escapeHtml` for any dynamic data interpolation to maintain security against DOM-based XSS.
+
+## 2024-04-17 - Resilient Concurrent Promises for Data Fetching
+**Learning:** Using `Promise.all` directly with heavy API/RPC calls (like `supabase.rpc`) means a single timeout or failure will immediately reject the entire batch, causing complete UI component failure even if other concurrent requests succeeded. In this case, an ambiguous function resolution error triggering a quick abort broke a completely separate chart.
+**Action:** Append `.catch(err => ({ error: err }))` to each individual promise within the `Promise.all` array (or use `Promise.allSettled`). This decouples their failure states, allowing successful API responses to be rendered independently while gracefully isolating errors to their respective UI components.

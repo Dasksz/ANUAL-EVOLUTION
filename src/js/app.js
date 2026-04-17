@@ -7810,19 +7810,26 @@ async function loadFrequencyTable(filters) {
 
     try {
         const [freqResponse, mixResponse] = await Promise.all([
-            supabase.rpc("get_frequency_table_data", reqFilters),
-            supabase.rpc("get_mix_salty_foods_data", reqFilters)
+            supabase.rpc("get_frequency_table_data", reqFilters).catch(err => ({ error: err })),
+            supabase.rpc("get_mix_salty_foods_data", reqFilters).catch(err => ({ error: err }))
         ]);
 
-        if (freqResponse.error) throw freqResponse.error;
-        if (mixResponse.error) throw mixResponse.error;
+        if (freqResponse.error) {
+            AppLog.error("Erro ao carregar tabela de frequência:", freqResponse.error);
+            tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500 text-xs">Erro ao carregar tabela de frequência.</td></tr>';
+        } else {
+            renderFrequencyTable(freqResponse.data, tableBody, tableFooter);
+            renderFrequencyChart(freqResponse.data);
+        }
 
-        renderFrequencyTable(freqResponse.data, tableBody, tableFooter);
-        renderFrequencyChart(freqResponse.data);
-        renderMixSaltyFoodsChart(mixResponse.data);
+        if (mixResponse.error) {
+            AppLog.error("Erro ao carregar mix salty vs foods:", mixResponse.error);
+        } else {
+            renderMixSaltyFoodsChart(mixResponse.data);
+        }
 
     } catch (err) {
-        AppLog.error("Erro ao carregar tabela de frequência ou mix:", err);
+        AppLog.error("Erro inesperado ao carregar dados:", err);
         tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500 text-xs">Erro ao carregar dados.</td></tr>';
     }
 }
