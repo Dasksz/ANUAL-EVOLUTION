@@ -6232,40 +6232,20 @@ let estrelasSelectedCategorias = [];
             const tbody = document.getElementById('supervisorComparisonTableBody');
             if (!tbody) return;
 
-            tbody.textContent = '';
-            const fragment = document.createDocumentFragment();
-
-            Object.entries(data).forEach(([sup, vals]) => {
+            // ⚡ Bolt Optimization: Single innerHTML assignment instead of looping createElement
+            tbody.innerHTML = Object.entries(data).map(([sup, vals]) => {
                 const variation = vals.history > 0 ? ((vals.current - vals.history) / vals.history) * 100 : 0;
                 const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
 
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-700';
-
-                const tdSup = document.createElement('td');
-                tdSup.className = 'px-4 py-2';
-                tdSup.textContent = sup;
-                tr.appendChild(tdSup);
-
-                const tdHist = document.createElement('td');
-                tdHist.className = 'px-4 py-2 text-right';
-                tdHist.textContent = formatCurrency(vals.history);
-                tr.appendChild(tdHist);
-
-                const tdCurr = document.createElement('td');
-                tdCurr.className = 'px-4 py-2 text-right';
-                tdCurr.textContent = formatCurrency(vals.current);
-                tr.appendChild(tdCurr);
-
-                const tdVar = document.createElement('td');
-                tdVar.className = `px-4 py-2 text-right ${colorClass}`;
-                tdVar.textContent = variation.toFixed(2) + '%';
-                tr.appendChild(tdVar);
-
-                fragment.appendChild(tr);
-            });
-
-            tbody.appendChild(fragment);
+                return `
+                    <tr class="hover:bg-slate-700">
+                        <td class="px-4 py-2">${escapeHtml(sup)}</td>
+                        <td class="px-4 py-2 text-right">${escapeHtml(formatCurrency(vals.history))}</td>
+                        <td class="px-4 py-2 text-right">${escapeHtml(formatCurrency(vals.current))}</td>
+                        <td class="px-4 py-2 text-right ${colorClass}">${escapeHtml(variation.toFixed(2) + '%')}</td>
+                    </tr>
+                `;
+            }).join('');
         }
 // --- INOVACOES VIEW LOGIC ---
 let innovationsChart = null;
@@ -7222,47 +7202,20 @@ function renderLpTable(clients) {
     const tbody = document.getElementById('lp-table-body');
     if (!tbody || !clients) return;
 
-    tbody.textContent = '';
-    const fragment = document.createDocumentFragment();
-
-    clients.forEach(c => {
+    // ⚡ Bolt Optimization: Single innerHTML assignment instead of looping createElement
+    tbody.innerHTML = clients.map(c => {
         let colorClass = c.score >= 80 ? 'text-green-400' : c.score >= 50 ? 'text-yellow-400' : 'text-red-400';
 
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-700/30 transition-colors';
-
-        const tdCod = document.createElement('td');
-        tdCod.className = 'px-6 py-4 text-slate-400 text-xs';
-        tdCod.textContent = c.codcli;
-        tr.appendChild(tdCod);
-
-        const tdName = document.createElement('td');
-        tdName.className = 'px-6 py-4 font-bold text-slate-200';
-        tdName.textContent = c.client_name;
-        tr.appendChild(tdName);
-
-        const tdRes = document.createElement('td');
-        tdRes.className = 'px-6 py-4';
-        const spanRes = document.createElement('span');
-        spanRes.className = 'font-bold text-white block';
-        spanRes.textContent = c.researcher;
-        tdRes.appendChild(spanRes);
-        tr.appendChild(tdRes);
-
-        const tdCity = document.createElement('td');
-        tdCity.className = 'px-6 py-4 text-slate-400';
-        tdCity.textContent = c.city || '--';
-        tr.appendChild(tdCity);
-
-        const tdScore = document.createElement('td');
-        tdScore.className = `px-6 py-4 text-center font-bold ${colorClass} text-base`;
-        tdScore.textContent = formatNumber(c.score, 1);
-        tr.appendChild(tdScore);
-
-        fragment.appendChild(tr);
-    });
-
-    tbody.appendChild(fragment);
+        return `
+            <tr class="hover:bg-slate-700/30 transition-colors">
+                <td class="px-6 py-4 text-slate-400 text-xs">${escapeHtml(c.codcli)}</td>
+                <td class="px-6 py-4 font-bold text-slate-200">${escapeHtml(c.client_name)}</td>
+                <td class="px-6 py-4"><span class="font-bold text-white block">${escapeHtml(c.researcher)}</span></td>
+                <td class="px-6 py-4 text-slate-400">${escapeHtml(c.city || '--')}</td>
+                <td class="px-6 py-4 text-center font-bold ${colorClass} text-base">${escapeHtml(formatNumber(c.score, 1))}</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 

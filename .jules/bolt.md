@@ -20,3 +20,6 @@
 **Vulnerability:** Incorrect calculation of distinct clients over a quarter instead of monthly average.
 **Learning:** When calculating the average distinct users over multiple time periods, using a global `COUNT(DISTINCT)` will deduplicate users across the entire range, drastically shrinking the result. Instead, `COUNT(DISTINCT)` must be executed within each sub-period (e.g. month), summed, and then averaged.
 **Prevention:** Ensure time-based averages of unique counts use subqueries grouped by the time dimension (e.g., `GROUP BY month`).
+## 2024-05-18 - DOM Rendering Optimization for Large Tables
+**Learning:** In large frontend tables, iteratively calling `document.createElement` inside loops causes significant overhead due to object instantiation and consecutive DOM manipulation, even when using DocumentFragment. Using a single `element.innerHTML = data.map(...).join('')` assignment provides a measurable performance improvement for massive bulk insertions.
+**Action:** When updating or rendering tables with high row counts, structure the code to build a single HTML string with template literals and `Array.map().join('')`, then execute a single `.innerHTML` assignment. Ensure that `escapeHtml()` is used to mitigate DOM-based XSS vulnerabilities since we are bypassing the text context provided by `textContent`.
