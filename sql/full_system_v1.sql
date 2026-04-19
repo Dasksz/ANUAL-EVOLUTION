@@ -29,6 +29,7 @@ DECLARE
 
     v_sql text;
     v_result json;
+    v_sql text;
 BEGIN
     SET LOCAL work_mem = '64MB';
 
@@ -298,6 +299,7 @@ DECLARE
 
     v_sql text;
     v_result json;
+    v_sql text;
 BEGIN
     SET LOCAL work_mem = '64MB';
     SET LOCAL statement_timeout = '600s';
@@ -2078,6 +2080,7 @@ DECLARE
     v_where_cat text := ' WHERE 1=1 ';
     v_where_prod text := ' WHERE 1=1 ';
     v_result json;
+    v_sql text;
 BEGIN
     -- Base logic: each where clause gets all filters EXCEPT its own.
 
@@ -2195,7 +2198,7 @@ BEGIN
     END IF;
 
     -- Execute with dynamic JSON construction
-    EXECUTE '
+    v_sql := '
     SELECT json_build_object(
         ''anos'', (SELECT array_agg(DISTINCT ano ORDER BY ano DESC) FROM public.cache_filters),
         ''filiais'', (SELECT array_agg(DISTINCT filial ORDER BY filial) FROM public.cache_filters ' || v_where_filial || '),
@@ -2218,7 +2221,8 @@ BEGIN
                 ORDER BY descricao
             ) p
         )
-    )' INTO v_result;
+    )';
+    EXECUTE v_sql INTO v_result;
 
     RETURN v_result;
 END;
