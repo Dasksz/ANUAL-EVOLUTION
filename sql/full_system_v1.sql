@@ -21,6 +21,7 @@ AS $$
 DECLARE
     v_current_year int;
     v_target_month int;
+    v_eval_target_month int;
 
     v_where_base text := ' WHERE 1=1 ';
     v_where_clients text := ' WHERE 1=1 ';
@@ -33,7 +34,7 @@ BEGIN
 
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = 'todos' THEN
-        SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary_frequency;
+        v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary_frequency);
     ELSE
         v_current_year := p_ano::int;
     END IF;
@@ -44,6 +45,8 @@ BEGIN
     ELSE
         v_where_base := v_where_base || format(' AND s.ano = %L ', v_current_year);
     END IF;
+
+    v_eval_target_month := COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year));
 
     -- 2. Build Where Clauses
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
@@ -235,7 +238,7 @@ BEGIN
             ''aceleradores_meta'', CEIL(COALESCE((SELECT meta_pos FROM metas_calc), 0) * 0.5),
             ''detalhes'', COALESCE((SELECT detalhes_array FROM detalhes_json), ''[]''::json)
         )
-    ', v_where_clients, v_where_base, v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_where_metas, v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)));
+    ', v_where_clients, v_where_base, v_current_year, v_eval_target_month, v_where_metas, v_current_year, v_eval_target_month, v_current_year, v_eval_target_month, v_current_year, v_eval_target_month);
 
     END;
 
@@ -284,6 +287,7 @@ DECLARE
     v_current_year int;
     v_previous_year int;
     v_target_month int;
+    v_eval_target_month int;
 
     v_where_base text := ' WHERE 1=1 ';
     v_where_clients text := ' WHERE 1=1 ';
@@ -300,7 +304,7 @@ BEGIN
 
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = 'todos' THEN
-        SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary_frequency;
+        v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary_frequency);
     ELSE
         v_current_year := p_ano::int;
     END IF;
@@ -1520,8 +1524,7 @@ BEGIN
     END IF;
 
     -- Generate series
-    SELECT array_agg(y ORDER BY y DESC) INTO years
-    FROM generate_series(min_year, max_year) as y;
+    years := (SELECT array_agg(y ORDER BY y DESC) FROM generate_series(min_year, max_year) as y);
     
     RETURN years;
 END;
@@ -2352,7 +2355,7 @@ AS $$
 DECLARE
     v_last_update timestamp with time zone;
 BEGIN
-    SELECT MAX(created_at) INTO v_last_update FROM public.data_summary;
+    v_last_update := (SELECT MAX(created_at) FROM public.data_summary);
     IF v_last_update IS NULL THEN RETURN '1970-01-01 00:00:00+00'; END IF;
     RETURN v_last_update::text;
 END;
@@ -2396,6 +2399,7 @@ DECLARE
     v_current_year int;
     v_previous_year int;
     v_target_month int;
+    v_eval_target_month int;
     
     -- Trend Vars
     v_max_sale_date date;
@@ -2443,7 +2447,7 @@ BEGIN
 
     -- 1. Determine Date Ranges
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
-        SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
+        v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE
         v_current_year := p_ano::int;
     END IF;
@@ -2453,12 +2457,12 @@ BEGIN
         v_target_month := p_mes::int + 1;
         v_is_month_filtered := true;
     ELSE
-         SELECT COALESCE(MAX(mes), 12) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year;
+         v_target_month := (SELECT COALESCE(MAX(mes), 12) FROM public.data_summary WHERE ano = v_current_year);
          v_is_month_filtered := false;
     END IF;
 
     -- 2. Trend Logic Calculation
-    SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
+    v_max_sale_date := (SELECT MAX(dtped)::date FROM public.data_detailed);
     IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
 
     v_trend_allowed := (v_current_year = EXTRACT(YEAR FROM v_max_sale_date)::int);
@@ -2786,7 +2790,7 @@ BEGIN
         END;
     END IF;
 
-    SELECT json_agg(date) INTO v_holidays FROM public.data_holidays;
+    v_holidays := (SELECT json_agg(date) FROM public.data_holidays);
 
     v_result := json_build_object(
         'current_year', v_current_year,
@@ -2827,6 +2831,7 @@ DECLARE
     v_current_year int;
     v_previous_year int;
     v_target_month int;
+    v_eval_target_month int;
     v_ref_date date;
     v_tri_start date;
     v_tri_end date;
@@ -2867,7 +2872,7 @@ BEGIN
 
     -- 1. Date Logic
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
-        SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
+        v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE
         v_current_year := p_ano::int;
     END IF;
@@ -2888,7 +2893,7 @@ BEGIN
     v_tri_start := (v_ref_date - interval '3 months')::date;
 
     -- Trend Logic Calculation
-    SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
+    v_max_sale_date := (SELECT MAX(dtped)::date FROM public.data_detailed);
     IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
 
     v_trend_allowed := (v_current_year = EXTRACT(YEAR FROM v_max_sale_date)::int);
@@ -3249,6 +3254,7 @@ AS $$
 DECLARE
     v_current_year int;
     v_target_month int;
+    v_eval_target_month int;
 
     -- Trend
     v_max_sale_date date;
@@ -3273,13 +3279,13 @@ BEGIN
 
     -- 1. Date & Trend Setup
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
-        SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
+        v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE v_current_year := p_ano::int; END IF;
 
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN v_target_month := p_mes::int + 1;
-    ELSE SELECT COALESCE(MAX(mes), 12) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year; END IF;
+    ELSE v_target_month := (SELECT COALESCE(MAX(mes), 12) FROM public.data_summary WHERE ano = v_current_year); END IF;
 
-    SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
+    v_max_sale_date := (SELECT MAX(dtped)::date FROM public.data_detailed);
     IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
     v_trend_allowed := (v_current_year = EXTRACT(YEAR FROM v_max_sale_date)::int);
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
@@ -3410,6 +3416,7 @@ AS $$
 DECLARE
     v_current_year int;
     v_target_month int;
+    v_eval_target_month int;
     v_where text := ' WHERE 1=1 ';
     v_where_clients text := ' WHERE bloqueio != ''S'' ';
     v_sql text;
@@ -3436,7 +3443,7 @@ BEGIN
 
     -- Date Logic
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
-         SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
+         v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE v_current_year := p_ano::int; END IF;
 
     -- Dynamic Filters (Common for current and trend)
@@ -3704,7 +3711,7 @@ BEGIN
             v_end_target := (v_ref_date + interval '1 day' - interval '1 second');
         END IF;
     ELSE
-        SELECT MAX(dtped) INTO v_end_target FROM public.data_detailed;
+        v_end_target := (SELECT MAX(dtped) FROM public.data_detailed);
         IF v_end_target IS NULL THEN v_end_target := now(); END IF;
         v_ref_date := v_end_target::date;
     END IF;
@@ -3716,7 +3723,7 @@ BEGIN
     v_start_quarter := date_trunc('month', v_end_quarter - interval '2 months');
 
     -- Trend Calculation
-    SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
+    v_max_sale_date := (SELECT MAX(dtped)::date FROM public.data_detailed);
     IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
 
     v_trend_allowed := (EXTRACT(YEAR FROM v_end_target) = EXTRACT(YEAR FROM v_max_sale_date) AND EXTRACT(MONTH FROM v_end_target) = EXTRACT(MONTH FROM v_max_sale_date));
@@ -4543,6 +4550,7 @@ AS $$
 DECLARE
     v_current_year int;
     v_target_month int;
+    v_eval_target_month int;
     v_where_chart text := ' WHERE 1=1 ';
     v_where_rede text := '';
     v_sql text;
@@ -4559,7 +4567,7 @@ BEGIN
 
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = 'todos' THEN
-        SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary_frequency;
+        v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary_frequency);
     ELSE
         v_current_year := p_ano::int;
     END IF;
@@ -4809,7 +4817,7 @@ BEGIN
 
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = '' OR p_ano = 'todos' THEN
-        SELECT EXTRACT(YEAR FROM MAX(dtped)) INTO v_current_year FROM public.data_detailed;
+        v_current_year := (SELECT EXTRACT(YEAR FROM MAX(dtped)) FROM public.data_detailed);
         IF v_current_year IS NULL THEN
             v_current_year := EXTRACT(YEAR FROM CURRENT_DATE);
         END IF;
