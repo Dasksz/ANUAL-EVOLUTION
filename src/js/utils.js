@@ -1,6 +1,9 @@
+const matchHtmlRegExp = /["'&<>]/;
 export function escapeHtml(unsafe) {
     if (unsafe == null) return '';
-    return String(unsafe)
+    const str = String(unsafe);
+    if (!matchHtmlRegExp.test(str)) return str;
+    return str
          .replace(/&/g, "&amp;")
          .replace(/</g, "&lt;")
          .replace(/>/g, "&gt;")
