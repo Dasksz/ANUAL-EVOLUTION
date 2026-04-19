@@ -622,7 +622,7 @@ let estrelasSelectedCategorias = [];
                     </div>
                     <div class="text-right">
                         <p class="text-sm text-slate-300 font-medium">PRIME | Distribuição</p>
-                        <p class="text-xs text-slate-500">Gerado em: ${currentDate}</p>
+                        <p class="text-xs text-slate-500">Gerado em: ${escapeHtml(currentDate)}</p>
                     </div>
                 `;
                 
@@ -5241,11 +5241,11 @@ let estrelasSelectedCategorias = [];
 
         const monthNames = MONTHS_PT;
 
-        let html = `<div class="mb-2 font-bold text-slate-300 text-center">${monthNames[month]} ${year}</div>`;
+        let html = `<div class="mb-2 font-bold text-slate-300 text-center">${escapeHtml(monthNames[month])} ${escapeHtml(year)}</div>`;
         html += `<div class="grid grid-cols-7 gap-1 text-center">`;
         
         const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-        weekDays.forEach(day => html += `<div class="w-8 h-8 flex items-center justify-center text-xs font-bold text-slate-500 cursor-default">${day}</div>`);
+        weekDays.forEach(day => html += `<div class="w-8 h-8 flex items-center justify-center text-xs font-bold text-slate-500 cursor-default">${escapeHtml(day)}</div>`);
 
         // Empty cells for starting day
         for (let i = 0; i < startingDay; i++) {
@@ -5270,7 +5270,7 @@ let estrelasSelectedCategorias = [];
             if (isToday) classes += ' ring-1 ring-inset ring-cyan-500';
             if (isLastSalesDay) classes += ' border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 font-bold';
             
-            html += `<div class="${classes}" data-date="${dateStr}" title="${isLastSalesDay ? 'Última Venda' : ''}">${day}</div>`;
+            html += `<div class="${classes}" data-date="${escapeHtml(dateStr)}" title="${isLastSalesDay ? 'Última Venda' : ''}">${escapeHtml(day)}</div>`;
         }
         
         html += `</div>`;
@@ -6625,12 +6625,12 @@ window.renderInnovationsTable = function(data) {
                     ${escapeHtml(cat.name)}
                 </td>
                 <td class="px-4 py-4 text-slate-400 text-xs italic"></td>
-                <td class="px-4 py-4 text-center font-bold text-white">${catEstoque} cx</td>
-                <td class="px-4 py-4 text-center text-slate-400">${catPosAvg12m}</td>
-                <td class="px-4 py-4 text-center text-slate-400">${catPosPrevYear}</td>
-                <td class="px-4 py-4 text-center text-slate-400">${catPosPrevM1}</td>
-                <td class="px-4 py-4 text-center font-bold text-white">${catPosAtual}</td>
-                <td class="px-4 py-4 text-center ${varColor} font-bold">${varPercent}%</td>
+                <td class="px-4 py-4 text-center font-bold text-white">${escapeHtml(catEstoque)} cx</td>
+                <td class="px-4 py-4 text-center text-slate-400">${escapeHtml(catPosAvg12m)}</td>
+                <td class="px-4 py-4 text-center text-slate-400">${escapeHtml(catPosPrevYear)}</td>
+                <td class="px-4 py-4 text-center text-slate-400">${escapeHtml(catPosPrevM1)}</td>
+                <td class="px-4 py-4 text-center font-bold text-white">${escapeHtml(catPosAtual)}</td>
+                <td class="px-4 py-4 text-center ${escapeHtml(varColor)} font-bold">${escapeHtml(varPercent)}%</td>
             </tr>
         `;
 
@@ -6652,12 +6652,12 @@ window.renderInnovationsTable = function(data) {
                         <svg class="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </td>
                     <td class="px-4 py-4 text-slate-300 text-xs">${escapeHtml(p.code)} - ${escapeHtml(p.name)}</td>
-                    <td class="px-4 py-4 text-center font-medium text-slate-300">${pEstoque} cx</td>
-                    <td class="px-4 py-4 text-center text-slate-500">${posAvg12m}</td>
-                    <td class="px-4 py-4 text-center text-slate-500">${posPrevYear}</td>
-                    <td class="px-4 py-4 text-center text-slate-500">${posPrevM1}</td>
-                    <td class="px-4 py-4 text-center font-medium text-slate-300">${posAtual}</td>
-                    <td class="px-4 py-4 text-center ${pVarColor} text-xs font-bold">${pVarPercent}%</td>
+                    <td class="px-4 py-4 text-center font-medium text-slate-300">${escapeHtml(pEstoque)} cx</td>
+                    <td class="px-4 py-4 text-center text-slate-500">${escapeHtml(posAvg12m)}</td>
+                    <td class="px-4 py-4 text-center text-slate-500">${escapeHtml(posPrevYear)}</td>
+                    <td class="px-4 py-4 text-center text-slate-500">${escapeHtml(posPrevM1)}</td>
+                    <td class="px-4 py-4 text-center font-medium text-slate-300">${escapeHtml(posAtual)}</td>
+                    <td class="px-4 py-4 text-center ${escapeHtml(pVarColor)} text-xs font-bold">${escapeHtml(pVarPercent)}%</td>
                 </tr>
             `;
         });
@@ -7939,12 +7939,12 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         <tr>
             <td class="px-2 py-3 border-t border-white/20 w-8"></td>
             <td class="px-2 py-3 border-t border-white/20">Total</td>
-            <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.tons.toFixed(1)}</td>
+            <td class="px-2 py-3 border-t border-white/20 text-right">${escapeHtml(rootData.tons.toFixed(1))}</td>
             <td class="px-2 py-3 border-t border-white/20 text-right ${rootData.varYagoColor}">${rootData.varYagoIcon} ${escapeHtml(rootData.varYagoStr)}</td>
-            <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.skuPdv.toFixed(2)}</td>
-            <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.freq.toFixed(2)}</td>
-            <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.positivacao}</td>
-            <td class="px-2 py-3 border-t border-white/20 text-right">${rootData.percPosit.toFixed(1)}%</td>
+            <td class="px-2 py-3 border-t border-white/20 text-right">${escapeHtml(rootData.skuPdv.toFixed(2))}</td>
+            <td class="px-2 py-3 border-t border-white/20 text-right">${escapeHtml(rootData.freq.toFixed(2))}</td>
+            <td class="px-2 py-3 border-t border-white/20 text-right">${escapeHtml(rootData.positivacao)}</td>
+            <td class="px-2 py-3 border-t border-white/20 text-right">${escapeHtml(rootData.percPosit.toFixed(1))}%</td>
         </tr>
     `;
 }
