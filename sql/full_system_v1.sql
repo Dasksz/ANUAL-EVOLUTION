@@ -27,7 +27,6 @@ DECLARE
     v_where_clients text := ' WHERE 1=1 ';
     v_where_acel text := '';
 
-    v_sql text;
     v_result json;
     v_sql text;
 BEGIN
@@ -126,8 +125,6 @@ BEGIN
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.categorias) c WHERE c = ANY(%L::text[])) ', p_categoria);
     END IF;
-
-
 
     -- 3. Build Metas Where Clause
     DECLARE
@@ -297,7 +294,6 @@ DECLARE
     v_where_chart text := ' WHERE 1=1 ';
     v_pre_agg_skus_sql text;
 
-    v_sql text;
     v_result json;
     v_sql text;
 BEGIN
@@ -452,7 +448,6 @@ BEGIN
         v_where_chart := v_where_chart || ' AND tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
     END IF;
 
-
     IF v_where_unnested = ' ' OR v_where_unnested = '' THEN
         v_pre_agg_skus_sql := '
         SELECT
@@ -479,7 +474,6 @@ BEGIN
 
     -- Dynamic Query
     v_sql := '
-
 
     WITH base_clients AS (
         SELECT
@@ -2417,10 +2411,11 @@ DECLARE
     v_holidays json;
     
     -- Dynamic SQL
-    v_sql text;
+
     v_where_base text := ' WHERE 1=1 ';
     v_where_kpi text := ' WHERE 1=1 ';
     v_result json;
+    v_sql text;
     
     -- Execution Context
     v_kpi_clients_attended int;
@@ -3268,8 +3263,9 @@ DECLARE
 
     -- Dynamic SQL
     v_where text := ' WHERE 1=1 ';
-    v_sql text;
+
     v_result json;
+    v_sql text;
     
     -- Rede Logic
     v_has_com_rede boolean;
@@ -4296,6 +4292,7 @@ SECURITY DEFINER
 AS $$
 DECLARE
     v_result json;
+
     v_where_base text := '1=1';
     v_sql text;
 BEGIN
@@ -4327,7 +4324,6 @@ BEGIN
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND cm.filial = ANY(%L::text[])', p_filial);
     END IF;
-
 
     v_sql := format('
 
@@ -4388,9 +4384,6 @@ BEGIN
     RETURN v_result;
 END;
 $$;
-
-
-
 
 -- ==========================================
 -- Add search_clients RPC
@@ -4557,8 +4550,9 @@ DECLARE
     v_eval_target_month int;
     v_where_chart text := ' WHERE 1=1 ';
     v_where_rede text := '';
-    v_sql text;
+
     v_result json;
+    v_sql text;
 
     -- Rede Logic Vars
     v_has_com_rede boolean;
@@ -4632,8 +4626,6 @@ BEGIN
         END IF;
     END IF;
 
-
-
     -- REDE Logic (same as comparativo)
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
        v_has_com_rede := ('C/ REDE' = ANY(p_rede));
@@ -4670,7 +4662,6 @@ BEGIN
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where_chart := v_where_chart || ' AND s.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
     END IF;
-
 
     -- Dynamic Query using the exact same logic from get_comparison_view_data
     v_sql := '
@@ -4797,8 +4788,9 @@ DECLARE
     v_12m_end date;
     v_current_year integer;
     v_current_month integer;
-    v_sql text;
+
     v_result json;
+    v_sql text;
     v_where_base text := ' WHERE 1=1 ';
     v_where_client_base text := ' WHERE bloqueio != ''S'' ';
     v_where_client_tipo text := '';
