@@ -730,6 +730,7 @@ create table if not exists public.data_detailed (
   filial text
   -- created_at timestamp with time zone default now() -- REMOVED
 );
+ALTER TABLE public.data_detailed ENABLE ROW LEVEL SECURITY;
 
 -- Sales History
 create table if not exists public.data_history (
@@ -758,6 +759,7 @@ create table if not exists public.data_history (
   filial text
   -- created_at timestamp with time zone default now() -- REMOVED
 );
+ALTER TABLE public.data_history ENABLE ROW LEVEL SECURITY;
 
 -- Migration Helper: Drop columns if they exist (for existing databases)
 DO $$
@@ -807,6 +809,7 @@ create table if not exists public.data_clients (
   bloqueio text,
   created_at timestamp with time zone default now()
 );
+ALTER TABLE public.data_clients ENABLE ROW LEVEL SECURITY;
 
 -- Remove RCA 2 Column if it exists (for migration support)
 DO $$
@@ -829,6 +832,7 @@ create table if not exists public.data_holidays (
     date date PRIMARY KEY,
     description text
 );
+ALTER TABLE public.data_holidays ENABLE ROW LEVEL SECURITY;
 
 -- Profiles
 create table if not exists public.profiles (
@@ -841,6 +845,7 @@ create table if not exists public.profiles (
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
@@ -877,6 +882,7 @@ CREATE TABLE IF NOT EXISTS public.data_summary (
     categoria_produto text,
     created_at timestamp with time zone DEFAULT now()
 );
+ALTER TABLE public.data_summary ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS idx_summary_composite_main ON public.data_summary USING btree (ano, mes, filial, cidade);
 CREATE INDEX IF NOT EXISTS idx_summary_codes ON public.data_summary USING btree (codsupervisor, codusur, filial);
@@ -911,6 +917,7 @@ CREATE TABLE IF NOT EXISTS public.data_summary_frequency (
     rede text,
     created_at timestamp with time zone DEFAULT now()
 );
+ALTER TABLE public.data_summary_frequency ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes ON public.data_summary_frequency USING btree (ano, mes);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_filial_cidade ON public.data_summary_frequency USING btree (filial, cidade);
@@ -938,6 +945,7 @@ CREATE TABLE IF NOT EXISTS public.config_city_branches (
     updated_at timestamp with time zone DEFAULT now(),
     created_at timestamp with time zone DEFAULT now()
 );
+ALTER TABLE public.config_city_branches ENABLE ROW LEVEL SECURITY;
 
 -- Dimension Tables
 CREATE TABLE IF NOT EXISTS public.dim_supervisores (
@@ -1068,6 +1076,7 @@ create table if not exists public.data_summary (
     categoria_produto text, -- NEW: Brand/Category Filter
     created_at timestamp with time zone default now()
 );
+ALTER TABLE public.data_summary ENABLE ROW LEVEL SECURITY;
 
 -- Frequency Summary Table (Optimized for distinct order counts & mix)
 DROP TABLE IF EXISTS public.data_summary_frequency CASCADE;
@@ -1091,6 +1100,7 @@ create table if not exists public.data_summary_frequency (
   created_at timestamp with time zone null default now(),
   constraint dat_summary_frequency_pkey primary key (id)
 );
+ALTER TABLE public.data_summary_frequency ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes on public.data_summary_frequency using btree (ano, mes);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_filial_cidade on public.data_summary_frequency using btree (filial, cidade);
@@ -1132,6 +1142,7 @@ create table if not exists public.cache_filters (
     categoria_produto text, -- NEW: Brand/Category Filter
     created_at timestamp with time zone default now()
 );
+ALTER TABLE public.cache_filters ENABLE ROW LEVEL SECURITY;
 
 -- ==============================================================================
 -- 2. OPTIMIZED INDEXES (Targeted Partial Indexes)
@@ -1212,18 +1223,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Enable RLS
-ALTER TABLE public.data_detailed ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.data_history ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.data_clients ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.data_summary ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.data_summary_frequency ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.data_innovations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.data_nota_perfeita ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.relacao_rota_involves ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.cache_filters ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.data_holidays ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.config_city_branches ENABLE ROW LEVEL SECURITY;
 
 -- Clean up Insecure Policies
 DO $$
@@ -2020,8 +2019,8 @@ CREATE TABLE IF NOT EXISTS public.meta_estrelas (
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
     CONSTRAINT unique_meta_estrela UNIQUE (filial, cod_rca, mes, ano)
 );
-
 ALTER TABLE public.meta_estrelas ENABLE ROW LEVEL SECURITY;
+
 
 DROP POLICY IF EXISTS "Allow authenticated full access meta_estrelas" ON public.meta_estrelas;
 CREATE POLICY "Allow authenticated full access meta_estrelas" ON public.meta_estrelas
@@ -2031,8 +2030,8 @@ CREATE TABLE IF NOT EXISTS public.config_aceleradores (
     id SERIAL PRIMARY KEY,
     nome_categoria TEXT NOT NULL UNIQUE
 );
-
 ALTER TABLE public.config_aceleradores ENABLE ROW LEVEL SECURITY;
+
 
 DROP POLICY IF EXISTS "Acesso publico de leitura para categorias aceleradoras" ON public.config_aceleradores;
 CREATE POLICY "Acesso publico de leitura para categorias aceleradoras"
@@ -3987,6 +3986,7 @@ create table if not exists public.data_innovations (
   codigo text,
   inovacoes text
 );
+ALTER TABLE public.data_innovations ENABLE ROW LEVEL SECURITY;
 
 -- Tabela Nota Perfeita (Loja Perfeita)
 create table if not exists public.data_nota_perfeita (
@@ -4003,6 +4003,7 @@ create table if not exists public.data_nota_perfeita (
   auditorias_perfeitas integer,
   updated_at timestamp with time zone default now()
 );
+ALTER TABLE public.data_nota_perfeita ENABLE ROW LEVEL SECURITY;
 
 -- Index for fast client lookup in Loja Perfeita
 create index if not exists idx_nota_perfeita_codcli on public.data_nota_perfeita (codigo_cliente);
@@ -4014,6 +4015,7 @@ create table if not exists public.relacao_rota_involves (
   involves_code text, -- Código na tabela de notas
   created_at timestamp with time zone default now()
 );
+ALTER TABLE public.relacao_rota_involves ENABLE ROW LEVEL SECURITY;
 
 -- Index for fast lookup
 create index if not exists idx_relacao_rota_involves_seller on public.relacao_rota_involves (seller_code);
