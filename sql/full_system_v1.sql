@@ -21,6 +21,7 @@ AS $$
 DECLARE
     v_current_year int;
     v_target_month int;
+    v_eval_target_month int;
 
     v_where_base text := ' WHERE 1=1 ';
     v_where_clients text := ' WHERE 1=1 ';
@@ -33,7 +34,7 @@ BEGIN
 
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = 'todos' THEN
-        SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary_frequency;
+        v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary_frequency);
     ELSE
         v_current_year := p_ano::int;
     END IF;
@@ -44,6 +45,8 @@ BEGIN
     ELSE
         v_where_base := v_where_base || format(' AND s.ano = %L ', v_current_year);
     END IF;
+
+    v_eval_target_month := COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year));
 
     -- 2. Build Where Clauses
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
@@ -235,7 +238,7 @@ BEGIN
             ''aceleradores_meta'', CEIL(COALESCE((SELECT meta_pos FROM metas_calc), 0) * 0.5),
             ''detalhes'', COALESCE((SELECT detalhes_array FROM detalhes_json), ''[]''::json)
         )
-    ', v_where_clients, v_where_base, v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_where_metas, v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)), v_current_year, COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year)));
+    ', v_where_clients, v_where_base, v_current_year, v_eval_target_month, v_where_metas, v_current_year, v_eval_target_month, v_current_year, v_eval_target_month, v_current_year, v_eval_target_month);
 
     END;
 
@@ -284,6 +287,7 @@ DECLARE
     v_current_year int;
     v_previous_year int;
     v_target_month int;
+    v_eval_target_month int;
 
     v_where_base text := ' WHERE 1=1 ';
     v_where_clients text := ' WHERE 1=1 ';
@@ -300,7 +304,7 @@ BEGIN
 
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = 'todos' THEN
-        SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary_frequency;
+        v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary_frequency);
     ELSE
         v_current_year := p_ano::int;
     END IF;
@@ -730,6 +734,7 @@ create table if not exists public.data_detailed (
   filial text
   -- created_at timestamp with time zone default now() -- REMOVED
 );
+ALTER TABLE public.data_detailed ENABLE ROW LEVEL SECURITY;
 
 -- Sales History
 create table if not exists public.data_history (
@@ -758,6 +763,7 @@ create table if not exists public.data_history (
   filial text
   -- created_at timestamp with time zone default now() -- REMOVED
 );
+ALTER TABLE public.data_history ENABLE ROW LEVEL SECURITY;
 
 -- Migration Helper: Drop columns if they exist (for existing databases)
 DO $$
@@ -807,6 +813,7 @@ create table if not exists public.data_clients (
   bloqueio text,
   created_at timestamp with time zone default now()
 );
+ALTER TABLE public.data_clients ENABLE ROW LEVEL SECURITY;
 
 -- Remove RCA 2 Column if it exists (for migration support)
 DO $$
@@ -829,6 +836,7 @@ create table if not exists public.data_holidays (
     date date PRIMARY KEY,
     description text
 );
+ALTER TABLE public.data_holidays ENABLE ROW LEVEL SECURITY;
 
 -- Profiles
 create table if not exists public.profiles (
@@ -841,6 +849,7 @@ create table if not exists public.profiles (
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
@@ -877,6 +886,7 @@ CREATE TABLE IF NOT EXISTS public.data_summary (
     categoria_produto text,
     created_at timestamp with time zone DEFAULT now()
 );
+ALTER TABLE public.data_summary ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS idx_summary_composite_main ON public.data_summary USING btree (ano, mes, filial, cidade);
 CREATE INDEX IF NOT EXISTS idx_summary_codes ON public.data_summary USING btree (codsupervisor, codusur, filial);
@@ -911,6 +921,7 @@ CREATE TABLE IF NOT EXISTS public.data_summary_frequency (
     rede text,
     created_at timestamp with time zone DEFAULT now()
 );
+ALTER TABLE public.data_summary_frequency ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes ON public.data_summary_frequency USING btree (ano, mes);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_filial_cidade ON public.data_summary_frequency USING btree (filial, cidade);
@@ -938,6 +949,7 @@ CREATE TABLE IF NOT EXISTS public.config_city_branches (
     updated_at timestamp with time zone DEFAULT now(),
     created_at timestamp with time zone DEFAULT now()
 );
+ALTER TABLE public.config_city_branches ENABLE ROW LEVEL SECURITY;
 
 -- Dimension Tables
 CREATE TABLE IF NOT EXISTS public.dim_supervisores (
@@ -1068,6 +1080,7 @@ create table if not exists public.data_summary (
     categoria_produto text, -- NEW: Brand/Category Filter
     created_at timestamp with time zone default now()
 );
+ALTER TABLE public.data_summary ENABLE ROW LEVEL SECURITY;
 
 -- Frequency Summary Table (Optimized for distinct order counts & mix)
 DROP TABLE IF EXISTS public.data_summary_frequency CASCADE;
@@ -1091,6 +1104,7 @@ create table if not exists public.data_summary_frequency (
   created_at timestamp with time zone null default now(),
   constraint dat_summary_frequency_pkey primary key (id)
 );
+ALTER TABLE public.data_summary_frequency ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes on public.data_summary_frequency using btree (ano, mes);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_filial_cidade on public.data_summary_frequency using btree (filial, cidade);
@@ -1132,6 +1146,7 @@ create table if not exists public.cache_filters (
     categoria_produto text, -- NEW: Brand/Category Filter
     created_at timestamp with time zone default now()
 );
+ALTER TABLE public.cache_filters ENABLE ROW LEVEL SECURITY;
 
 -- ==============================================================================
 -- 2. OPTIMIZED INDEXES (Targeted Partial Indexes)
@@ -1212,18 +1227,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Enable RLS
-ALTER TABLE public.data_detailed ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.data_history ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.data_clients ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.data_summary ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.data_summary_frequency ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.data_innovations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.data_nota_perfeita ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.relacao_rota_involves ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.cache_filters ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.data_holidays ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.config_city_branches ENABLE ROW LEVEL SECURITY;
 
 -- Clean up Insecure Policies
 DO $$
@@ -1521,8 +1524,7 @@ BEGIN
     END IF;
 
     -- Generate series
-    SELECT array_agg(y ORDER BY y DESC) INTO years
-    FROM generate_series(min_year, max_year) as y;
+    years := (SELECT array_agg(y ORDER BY y DESC) FROM generate_series(min_year, max_year) as y);
     
     RETURN years;
 END;
@@ -2020,8 +2022,8 @@ CREATE TABLE IF NOT EXISTS public.meta_estrelas (
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
     CONSTRAINT unique_meta_estrela UNIQUE (filial, cod_rca, mes, ano)
 );
-
 ALTER TABLE public.meta_estrelas ENABLE ROW LEVEL SECURITY;
+
 
 DROP POLICY IF EXISTS "Allow authenticated full access meta_estrelas" ON public.meta_estrelas;
 CREATE POLICY "Allow authenticated full access meta_estrelas" ON public.meta_estrelas
@@ -2031,8 +2033,8 @@ CREATE TABLE IF NOT EXISTS public.config_aceleradores (
     id SERIAL PRIMARY KEY,
     nome_categoria TEXT NOT NULL UNIQUE
 );
-
 ALTER TABLE public.config_aceleradores ENABLE ROW LEVEL SECURITY;
+
 
 DROP POLICY IF EXISTS "Acesso publico de leitura para categorias aceleradoras" ON public.config_aceleradores;
 CREATE POLICY "Acesso publico de leitura para categorias aceleradoras"
@@ -2353,7 +2355,7 @@ AS $$
 DECLARE
     v_last_update timestamp with time zone;
 BEGIN
-    SELECT MAX(created_at) INTO v_last_update FROM public.data_summary;
+    v_last_update := (SELECT MAX(created_at) FROM public.data_summary);
     IF v_last_update IS NULL THEN RETURN '1970-01-01 00:00:00+00'; END IF;
     RETURN v_last_update::text;
 END;
@@ -2397,6 +2399,7 @@ DECLARE
     v_current_year int;
     v_previous_year int;
     v_target_month int;
+    v_eval_target_month int;
     
     -- Trend Vars
     v_max_sale_date date;
@@ -2444,7 +2447,7 @@ BEGIN
 
     -- 1. Determine Date Ranges
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
-        SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
+        v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE
         v_current_year := p_ano::int;
     END IF;
@@ -2454,12 +2457,12 @@ BEGIN
         v_target_month := p_mes::int + 1;
         v_is_month_filtered := true;
     ELSE
-         SELECT COALESCE(MAX(mes), 12) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year;
+         v_target_month := (SELECT COALESCE(MAX(mes), 12) FROM public.data_summary WHERE ano = v_current_year);
          v_is_month_filtered := false;
     END IF;
 
     -- 2. Trend Logic Calculation
-    SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
+    v_max_sale_date := (SELECT MAX(dtped)::date FROM public.data_detailed);
     IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
 
     v_trend_allowed := (v_current_year = EXTRACT(YEAR FROM v_max_sale_date)::int);
@@ -2787,7 +2790,7 @@ BEGIN
         END;
     END IF;
 
-    SELECT json_agg(date) INTO v_holidays FROM public.data_holidays;
+    v_holidays := (SELECT json_agg(date) FROM public.data_holidays);
 
     v_result := json_build_object(
         'current_year', v_current_year,
@@ -2828,6 +2831,7 @@ DECLARE
     v_current_year int;
     v_previous_year int;
     v_target_month int;
+    v_eval_target_month int;
     v_ref_date date;
     v_tri_start date;
     v_tri_end date;
@@ -2868,7 +2872,7 @@ BEGIN
 
     -- 1. Date Logic
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
-        SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
+        v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE
         v_current_year := p_ano::int;
     END IF;
@@ -2889,7 +2893,7 @@ BEGIN
     v_tri_start := (v_ref_date - interval '3 months')::date;
 
     -- Trend Logic Calculation
-    SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
+    v_max_sale_date := (SELECT MAX(dtped)::date FROM public.data_detailed);
     IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
 
     v_trend_allowed := (v_current_year = EXTRACT(YEAR FROM v_max_sale_date)::int);
@@ -3250,6 +3254,7 @@ AS $$
 DECLARE
     v_current_year int;
     v_target_month int;
+    v_eval_target_month int;
 
     -- Trend
     v_max_sale_date date;
@@ -3274,13 +3279,13 @@ BEGIN
 
     -- 1. Date & Trend Setup
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
-        SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
+        v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE v_current_year := p_ano::int; END IF;
 
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN v_target_month := p_mes::int + 1;
-    ELSE SELECT COALESCE(MAX(mes), 12) INTO v_target_month FROM public.data_summary WHERE ano = v_current_year; END IF;
+    ELSE v_target_month := (SELECT COALESCE(MAX(mes), 12) FROM public.data_summary WHERE ano = v_current_year); END IF;
 
-    SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
+    v_max_sale_date := (SELECT MAX(dtped)::date FROM public.data_detailed);
     IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
     v_trend_allowed := (v_current_year = EXTRACT(YEAR FROM v_max_sale_date)::int);
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
@@ -3411,6 +3416,7 @@ AS $$
 DECLARE
     v_current_year int;
     v_target_month int;
+    v_eval_target_month int;
     v_where text := ' WHERE 1=1 ';
     v_where_clients text := ' WHERE bloqueio != ''S'' ';
     v_sql text;
@@ -3437,7 +3443,7 @@ BEGIN
 
     -- Date Logic
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
-         SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary;
+         v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE v_current_year := p_ano::int; END IF;
 
     -- Dynamic Filters (Common for current and trend)
@@ -3705,7 +3711,7 @@ BEGIN
             v_end_target := (v_ref_date + interval '1 day' - interval '1 second');
         END IF;
     ELSE
-        SELECT MAX(dtped) INTO v_end_target FROM public.data_detailed;
+        v_end_target := (SELECT MAX(dtped) FROM public.data_detailed);
         IF v_end_target IS NULL THEN v_end_target := now(); END IF;
         v_ref_date := v_end_target::date;
     END IF;
@@ -3717,7 +3723,7 @@ BEGIN
     v_start_quarter := date_trunc('month', v_end_quarter - interval '2 months');
 
     -- Trend Calculation
-    SELECT MAX(dtped)::date INTO v_max_sale_date FROM public.data_detailed;
+    v_max_sale_date := (SELECT MAX(dtped)::date FROM public.data_detailed);
     IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
 
     v_trend_allowed := (EXTRACT(YEAR FROM v_end_target) = EXTRACT(YEAR FROM v_max_sale_date) AND EXTRACT(MONTH FROM v_end_target) = EXTRACT(MONTH FROM v_max_sale_date));
@@ -3987,6 +3993,7 @@ create table if not exists public.data_innovations (
   codigo text,
   inovacoes text
 );
+ALTER TABLE public.data_innovations ENABLE ROW LEVEL SECURITY;
 
 -- Tabela Nota Perfeita (Loja Perfeita)
 create table if not exists public.data_nota_perfeita (
@@ -4003,6 +4010,7 @@ create table if not exists public.data_nota_perfeita (
   auditorias_perfeitas integer,
   updated_at timestamp with time zone default now()
 );
+ALTER TABLE public.data_nota_perfeita ENABLE ROW LEVEL SECURITY;
 
 -- Index for fast client lookup in Loja Perfeita
 create index if not exists idx_nota_perfeita_codcli on public.data_nota_perfeita (codigo_cliente);
@@ -4014,6 +4022,7 @@ create table if not exists public.relacao_rota_involves (
   involves_code text, -- Código na tabela de notas
   created_at timestamp with time zone default now()
 );
+ALTER TABLE public.relacao_rota_involves ENABLE ROW LEVEL SECURITY;
 
 -- Index for fast lookup
 create index if not exists idx_relacao_rota_involves_seller on public.relacao_rota_involves (seller_code);
@@ -4541,6 +4550,7 @@ AS $$
 DECLARE
     v_current_year int;
     v_target_month int;
+    v_eval_target_month int;
     v_where_chart text := ' WHERE 1=1 ';
     v_where_rede text := '';
     v_sql text;
@@ -4557,7 +4567,7 @@ BEGIN
 
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = 'todos' THEN
-        SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_current_year FROM public.data_summary_frequency;
+        v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary_frequency);
     ELSE
         v_current_year := p_ano::int;
     END IF;
@@ -4807,7 +4817,7 @@ BEGIN
 
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = '' OR p_ano = 'todos' THEN
-        SELECT EXTRACT(YEAR FROM MAX(dtped)) INTO v_current_year FROM public.data_detailed;
+        v_current_year := (SELECT EXTRACT(YEAR FROM MAX(dtped)) FROM public.data_detailed);
         IF v_current_year IS NULL THEN
             v_current_year := EXTRACT(YEAR FROM CURRENT_DATE);
         END IF;
