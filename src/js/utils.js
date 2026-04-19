@@ -90,6 +90,7 @@ export function formatInteger(value) {
  * @returns {string} The original HTML string of the target.
  */
 export function setElementLoading(target, btn, loadingText, extraClasses = '') {
+    // Ensure loadingText is escaped to prevent DOM XSS
     if (!target || !btn) return '';
     const originalHtml = target.innerHTML;
     btn.disabled = true;
