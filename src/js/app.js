@@ -701,11 +701,14 @@ let estrelasSelectedCategorias = [];
         profileMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             profileDropdown.classList.toggle('hidden');
+            const isHidden = profileDropdown.classList.contains('hidden');
+            profileMenuBtn.setAttribute('aria-expanded', (!isHidden).toString());
         });
 
         document.addEventListener('click', (e) => {
             if (!profileDropdown.contains(e.target) && !profileMenuBtn.contains(e.target)) {
                 profileDropdown.classList.add('hidden');
+                profileMenuBtn.setAttribute('aria-expanded', 'false');
             }
         });
     }
@@ -7222,47 +7225,20 @@ function renderLpTable(clients) {
     const tbody = document.getElementById('lp-table-body');
     if (!tbody || !clients) return;
 
-    tbody.textContent = '';
-    const fragment = document.createDocumentFragment();
-
-    clients.forEach(c => {
-        let colorClass = c.score >= 80 ? 'text-green-400' : c.score >= 50 ? 'text-yellow-400' : 'text-red-400';
-
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-700/30 transition-colors';
-
-        const tdCod = document.createElement('td');
-        tdCod.className = 'px-6 py-4 text-slate-400 text-xs';
-        tdCod.textContent = c.codcli;
-        tr.appendChild(tdCod);
-
-        const tdName = document.createElement('td');
-        tdName.className = 'px-6 py-4 font-bold text-slate-200';
-        tdName.textContent = c.client_name;
-        tr.appendChild(tdName);
-
-        const tdRes = document.createElement('td');
-        tdRes.className = 'px-6 py-4';
-        const spanRes = document.createElement('span');
-        spanRes.className = 'font-bold text-white block';
-        spanRes.textContent = c.researcher;
-        tdRes.appendChild(spanRes);
-        tr.appendChild(tdRes);
-
-        const tdCity = document.createElement('td');
-        tdCity.className = 'px-6 py-4 text-slate-400';
-        tdCity.textContent = c.city || '--';
-        tr.appendChild(tdCity);
-
-        const tdScore = document.createElement('td');
-        tdScore.className = `px-6 py-4 text-center font-bold ${colorClass} text-base`;
-        tdScore.textContent = formatNumber(c.score, 1);
-        tr.appendChild(tdScore);
-
-        fragment.appendChild(tr);
-    });
-
-    tbody.appendChild(fragment);
+    tbody.innerHTML = clients.map(c => {
+        const colorClass = c.score >= 80 ? 'text-green-400' : c.score >= 50 ? 'text-yellow-400' : 'text-red-400';
+        return `
+            <tr class="hover:bg-slate-700/30 transition-colors">
+                <td class="px-6 py-4 text-slate-400 text-xs">${escapeHtml(c.codcli)}</td>
+                <td class="px-6 py-4 font-bold text-slate-200">${escapeHtml(c.client_name)}</td>
+                <td class="px-6 py-4">
+                    <span class="font-bold text-white block">${escapeHtml(c.researcher)}</span>
+                </td>
+                <td class="px-6 py-4 text-slate-400">${escapeHtml(c.city || '--')}</td>
+                <td class="px-6 py-4 text-center font-bold ${colorClass} text-base">${escapeHtml(formatNumber(c.score, 1))}</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 
