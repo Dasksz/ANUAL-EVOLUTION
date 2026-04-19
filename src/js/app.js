@@ -3259,33 +3259,27 @@ let estrelasSelectedCategorias = [];
             });
 
             const displayItems = filteredItems.slice(0, MAX_ITEMS);
-            // ⚡ Bolt Optimization: Use DocumentFragment to batch DOM insertions and prevent layout thrashing
-            const fragment = document.createDocumentFragment();
 
-            displayItems.forEach(item => {
-                const value = isObject ? item.cod : item;
+            // 🧹 Tidy Optimization: Batch DOM creation using template strings for better readability and performance
+            container.innerHTML = displayItems.map(item => {
+                const value = String(isObject ? item.cod : item);
                 const label = isObject ? item.name : item;
-                const isSelected = selectedSet.has(String(value));
-                const div = document.createElement('div');
-                div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
+                const isSelected = selectedSet.has(value);
+                return `
+                    <div class="flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded filter-item-row" data-value="${escapeHtml(value)}">
+                        <input type="checkbox" value="${escapeHtml(value)}" class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2" ${isSelected ? 'checked' : ''}>
+                        <label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${escapeHtml(label)}</label>
+                    </div>
+                `;
+            }).join('');
 
-                const input = document.createElement('input');
-                input.type = 'checkbox';
-                input.value = value;
-                input.className = 'w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2';
-                if (isSelected) input.checked = true;
-
-                const labelEl = document.createElement('label');
-                labelEl.className = 'ml-2 text-sm text-slate-200 cursor-pointer flex-1';
-                labelEl.textContent = label;
-
-                div.appendChild(input);
-                div.appendChild(labelEl);
+            // Attach event listeners after rendering
+            container.querySelectorAll('.filter-item-row').forEach(div => {
                 div.onclick = (e) => {
                     e.stopPropagation();
                     const checkbox = div.querySelector('input');
                     if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
-                    const val = String(value);
+                    const val = checkbox.value;
 
                     if (checkbox.checked) {
                         if (!selectedSet.has(val)) {
@@ -3299,12 +3293,9 @@ let estrelasSelectedCategorias = [];
                             if (idx > -1) selectedArray.splice(idx, 1);
                         }
                     }
-
                     updateBtnLabel();
                 };
-                fragment.appendChild(div);
             });
-            container.appendChild(fragment);
 
             if (filteredItems.length > MAX_ITEMS) {
                 const limitMsg = document.createElement('div');
@@ -3381,33 +3372,32 @@ let estrelasSelectedCategorias = [];
         selectElement.parentNode.insertBefore(dropdown, btn.nextSibling);
 
         const renderOptions = () => {
-            dropdown.innerHTML = '';
-            Array.from(selectElement.options).forEach(opt => {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
+            // 🧹 Tidy Optimization: Batch DOM creation for options
+            dropdown.innerHTML = Array.from(selectElement.options).map(opt => {
                 const isSelected = selectElement.value === opt.value;
+                const labelClasses = isSelected ? 'text-orange-500 font-bold' : 'text-slate-200';
+                return `
+                    <div class="flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded custom-dropdown-item" data-value="${escapeHtml(opt.value)}">
+                        <input type="checkbox" class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2 pointer-events-none" readonly ${isSelected ? 'checked' : ''}>
+                        <label class="ml-2 text-sm cursor-pointer flex-1 ${labelClasses}">${escapeHtml(opt.text)}</label>
+                    </div>
+                `;
+            }).join('');
 
-                const input = document.createElement('input');
-                input.type = 'checkbox';
-                input.className = 'w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2 pointer-events-none';
-                input.readOnly = true;
-                if (isSelected) input.checked = true;
-
-                const labelEl = document.createElement('label');
-                labelEl.className = 'ml-2 text-sm cursor-pointer flex-1 ' + (isSelected ? 'text-orange-500 font-bold' : 'text-slate-200');
-                labelEl.textContent = opt.text;
-
-                itemDiv.appendChild(input);
-                itemDiv.appendChild(labelEl);
-
+            // Attach event listeners
+            dropdown.querySelectorAll('.custom-dropdown-item').forEach(itemDiv => {
                 itemDiv.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    selectElement.value = opt.value;
-                    span.textContent = opt.text;
-                    // Removed dropdown.classList.add('hidden');
-                    // Removed immediate selectElement.dispatchEvent(new Event('change', { bubbles: true }));
-                    // Find all items and uncheck them
-                    Array.from(dropdown.children).forEach(child => {
+                    const val = itemDiv.getAttribute('data-value');
+                    const opt = Array.from(selectElement.options).find(o => o.value === val);
+
+                    if (opt) {
+                        selectElement.value = opt.value;
+                        span.textContent = opt.text;
+                    }
+
+                    // Update visual state of all items
+                    dropdown.querySelectorAll('.custom-dropdown-item').forEach(child => {
                         const cb = child.querySelector('input');
                         if (cb) cb.checked = false;
                         const lbl = child.querySelector('label');
@@ -3416,6 +3406,7 @@ let estrelasSelectedCategorias = [];
                             lbl.classList.add('text-slate-200');
                         }
                     });
+
                     // Check the clicked one
                     const clickedCb = itemDiv.querySelector('input');
                     if (clickedCb) clickedCb.checked = true;
@@ -3425,7 +3416,6 @@ let estrelasSelectedCategorias = [];
                         clickedLbl.classList.add('text-orange-500', 'font-bold');
                     }
                 });
-                dropdown.appendChild(itemDiv);
             });
 
             // Update span text just in case value changed
