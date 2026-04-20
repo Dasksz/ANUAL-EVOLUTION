@@ -5423,3 +5423,45 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 /* Cria o super indice que faz a busca com asteriscos funcionar na hora */
 CREATE INDEX IF NOT EXISTS idx_n8n_agent_view_data_trgm ON public.n8n_agent_view USING GIN (data_pedido gin_trgm_ops);
+
+
+-- ==========================================
+-- SUPERVISORS ROUTES (GOOGLE SHEETS INTEGRATION)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS supervisors_routes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    cargo TEXT,
+    data_rota DATE,
+    dia_semana TEXT,
+    supervisor TEXT,
+    rota_dia TEXT,
+    clientes_roteirizados INTEGER,
+    acompanhado_dia_codigo TEXT,
+    foco_dia TEXT,
+    clientes_visitados INTEGER,
+    clientes_com_venda INTEGER,
+    observacao_rota TEXT,
+    eficiencia_visita TEXT,
+    eficiencia_rota TEXT,
+    eficiencia_saida TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(data_rota, supervisor)
+);
+ALTER TABLE supervisors_routes ENABLE ROW LEVEL SECURITY;
+
+-- ==========================================
+-- PG_CRON CONFIGURATION FOR EDGE FUNCTION
+-- ==========================================
+-- To schedule the Edge Function 'sync-sheets' to run daily at 3 AM:
+--
+-- SELECT cron.schedule(
+--   'sync-sheets-daily',
+--   '0 3 * * *',
+--   $$
+--   SELECT net.http_post(
+--       url:='https://YOUR_PROJECT_REF.supabase.co/functions/v1/sync-sheets',
+--       headers:='{"Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb
+--   ) as request_id;
+--   $$
+-- );
