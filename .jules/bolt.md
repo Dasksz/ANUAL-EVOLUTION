@@ -29,3 +29,6 @@
 ## 2026-04-19 - Pre-grouping with Map for O(N+M) Filtering
 **Learning:** Inefficient O(N*M) nested filtering (e.g., filtering a product list by category inside a category loop) can be optimized to O(N+M) by pre-grouping the child list into a Map or Object indexed by the common key.
 **Action:** Optimized `window.renderInnovationsTable` in `src/js/app.js` by replacing `data.products.filter()` inside the category loop with a pre-computed `Map` lookup.
+## 2024-04-20 - Sequential database chunks to avoid timeouts
+**Learning:** Running multiple heavy database aggregations simultaneously (e.g. using `Promise.all` for `refresh_summary_chunk` chunks) can overwhelm the database CPU/Memory, leading to `canceling statement due to statement timeout` errors, especially on larger datasets.
+**Action:** Replaced `Promise.all` with sequential `await` statements in the data synchronization chunk processing loop inside `src/js/app.js` to ensure only one heavy aggregation query runs at a time.
