@@ -1,6 +1,60 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { formatNumber, escapeHtml, setElementLoading, restoreElementState, formatInteger, formatCurrency, formatTons } from '../src/js/utils.js';
+import { formatNumber, escapeHtml, setElementLoading, restoreElementState, formatInteger, formatCurrency, formatTons, updateSvgPaths } from '../src/js/utils.js';
+
+test('updateSvgPaths', () => {
+    // Mock SVG structure
+    class MockSVG {
+        constructor() {
+            this.paths = [];
+            this.children = [];
+        }
+        querySelectorAll(selector) {
+            if (selector === 'path') return this.paths;
+            return [];
+        }
+        appendChild(child) {
+            this.paths.push(child);
+            this.children.push(child);
+        }
+    }
+    class MockPath {
+        constructor() {
+            this.attributes = {};
+        }
+        setAttribute(name, value) {
+            this.attributes[name] = value;
+        }
+        getAttribute(name) {
+            return this.attributes[name];
+        }
+    }
+
+    // Mock document.createElementNS
+    global.document = {
+        createElementNS: (ns, name) => {
+            if (name === 'path') return new MockPath();
+        }
+    };
+
+    const svg = new MockSVG();
+
+    // Test: creating paths
+    updateSvgPaths(svg, ['M1', 'M2']);
+    assert.strictEqual(svg.paths.length, 2);
+    assert.strictEqual(svg.paths[0].getAttribute('d'), 'M1');
+    assert.strictEqual(svg.paths[1].getAttribute('d'), 'M2');
+    assert.strictEqual(svg.paths[0].getAttribute('stroke-width'), '2');
+
+    // Test: hiding extra paths
+    updateSvgPaths(svg, ['M3']);
+    assert.strictEqual(svg.paths.length, 2);
+    assert.strictEqual(svg.paths[0].getAttribute('d'), 'M3');
+    assert.strictEqual(svg.paths[1].getAttribute('d'), '');
+
+    // Cleanup global
+    delete global.document;
+});
 
 test('formatNumber', async (t) => {
     await t.test('formats numbers correctly with default decimals (2)', () => {

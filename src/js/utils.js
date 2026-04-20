@@ -26,6 +26,36 @@ export function formatNumber(num, decimals = 2) {
 }
 
 /**
+ * Safely updates the paths of an SVG element without using innerHTML.
+ * @param {SVGElement} svgElement - The SVG element to update.
+ * @param {string[]} pathDataArray - An array of path 'd' attribute strings.
+ */
+export function updateSvgPaths(svgElement, pathDataArray) {
+    if (!svgElement) return;
+    let paths = svgElement.querySelectorAll('path');
+
+    // Ensure we have enough path elements
+    while (paths.length < pathDataArray.length) {
+        const newPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        // Default attributes based on project style
+        newPath.setAttribute('stroke-linecap', 'round');
+        newPath.setAttribute('stroke-linejoin', 'round');
+        newPath.setAttribute('stroke-width', '2');
+        svgElement.appendChild(newPath);
+        paths = svgElement.querySelectorAll('path');
+    }
+
+    pathDataArray.forEach((d, i) => {
+        paths[i].setAttribute('d', d);
+    });
+
+    // Hide extra paths by clearing their 'd' attribute
+    for (let i = pathDataArray.length; i < paths.length; i++) {
+        paths[i].setAttribute('d', '');
+    }
+}
+
+/**
  * Formats a value as BRL Currency.
  * Improves readability by encapsulating the lengthy toLocaleString call.
  */

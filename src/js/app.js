@@ -181,7 +181,7 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
-import {  formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS } from './utils.js';
+import {  formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -893,7 +893,7 @@ let estrelasSelectedCategorias = [];
 
             // Update Icon
             if(toggleKpiIcon) {
-                toggleKpiIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${isHidden ? plusPath : minusPath}"></path>`;
+                updateSvgPaths(toggleKpiIcon, [isHidden ? plusPath : minusPath]);
             }
         });
     }
@@ -1453,9 +1453,12 @@ let estrelasSelectedCategorias = [];
 
             if (icon) {
                 if (type === 'text') {
-                    icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>`;
+                    updateSvgPaths(icon, ["M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"]);
                 } else {
-                    icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />`;
+                    updateSvgPaths(icon, [
+                        "M15 12a3 3 0 11-6 0 3 3 0 016 0z",
+                        "M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    ]);
                 }
             }
         });
@@ -7922,14 +7925,16 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
 // Attach toggle function to window so onclick works
 window.toggleFreqNode = function(id) {
     const icon = document.getElementById(`icon-${id}`);
-    const isExpanded = icon.innerHTML.includes('M20 12H4'); // minus icon
+    if (!icon) return;
+    const path = icon.querySelector('path');
+    const isExpanded = path && path.getAttribute('d') === 'M20 12H4'; // minus icon
 
     // Toggle icon
     if (isExpanded) {
-        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>';
+        updateSvgPaths(icon, ['M12 6v6m0 0v6m0-6h6m-6 0H6']);
         hideChildren(id);
     } else {
-        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>';
+        updateSvgPaths(icon, ['M20 12H4']);
         showDirectChildren(id);
     }
 };
@@ -7946,9 +7951,12 @@ function hideChildren(parentId) {
     rows.forEach(row => {
         row.classList.add('hidden');
         const childIcon = document.getElementById(`icon-${row.id}`);
-        if (childIcon && childIcon.innerHTML.includes('M20 12H4')) {
-            // Collapse recursive
-            childIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>';
+        if (childIcon) {
+            const path = childIcon.querySelector('path');
+            if (path && path.getAttribute('d') === 'M20 12H4') {
+                // Collapse recursive
+                updateSvgPaths(childIcon, ['M12 6v6m0 0v6m0-6h6m-6 0H6']);
+            }
         }
         hideChildren(row.id);
     });
