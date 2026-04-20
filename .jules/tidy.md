@@ -14,3 +14,6 @@
 ## 2024-05-28 : (Simplificação de Renderização de Múltiplas Tabelas)
 **Aprendizado:** A base de código contém outras tabelas (`renderTable`, `renderRankingTable` e `renderSupervisorTable`) que utilizavam forte acoplamento com manipulações manuais de DOM (`document.createElement`).
 **Ação:** Refatorei e apliquei o padrão de `innerHTML` batcheado com template literals e `.map().join('')` nestas tabelas. Sempre adicionar a proteção XSS com `escapeHtml()` nas renderizações de dados dinâmicos. Adicionei também os comentários requiridos pelo Tidy sobre essas extrações.
+## 2025-04-20 - Organização de Arquivos de Integração
+**Aprendizado:** Quando criamos integrações que dependem do Supabase Edge Functions e rotinas no banco (pg_cron), documentar a arquitetura com instruções diretas de deploy é essencial para que a equipe saiba lidar com esse código. A criação de um README na raiz (`README_sheets_integration.md`) ajuda nisso sem poluir os scripts principais.
+**Ação:** Mantivemos o código Deno encapsulado na sua pasta local adequada (`supabase/functions/sync-sheets`) separada do frontend, atualizamos o arquivo SQL base (`sql/full_system_v1.sql`) e documentamos como o frontend deve consumir isso numa nova página sem criar dívida técnica.
