@@ -5260,7 +5260,6 @@ let estrelasSelectedCategorias = [];
             el.addEventListener('click', async () => {
                 AppLog.log("Calendar day clicked:", el.getAttribute('data-date'));
                 
-                // Allow click even if role is unknown for debugging, but ideally check permissions
                 if (window.userRole !== 'adm') {
                     AppLog.warn("User role not adm:", window.userRole);
                     window.showToast('error', "Apenas administradores podem alterar feriados.");
