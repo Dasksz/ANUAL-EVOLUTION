@@ -4539,106 +4539,49 @@ let estrelasSelectedCategorias = [];
         const activeClients = Array.isArray(data.active_clients) ? data.active_clients : mapRows(data.active_clients);
         const cityRanking = data.city_ranking ? (Array.isArray(data.city_ranking) ? data.city_ranking : mapRows(data.city_ranking)) : [];
 
+        // Refactored to use declarative template literals and innerHTML instead of verbose document.createElement logic.
+        // This improves readability, maintainability, and significantly reduces code size while preserving XSS safety via escapeHtml.
         const renderTable = (bodyId, items) => {
             const body = document.getElementById(bodyId);
-            body.innerHTML = '';
+            if (!body) return;
+
             if (items && items.length > 0) {
-                const fragment = document.createDocumentFragment();
-                items.forEach(c => {
-                    const tr = document.createElement('tr');
-                    tr.className = 'table-row';
-
-                    const tdCode = document.createElement('td');
-                    tdCode.className = 'p-2';
-                    tdCode.textContent = c['Código'] || '';
-                    tr.appendChild(tdCode);
-
-                    const tdName = document.createElement('td');
-                    tdName.className = 'p-2';
-                    tdName.textContent = c.fantasia || c.razaoSocial || '';
-                    tr.appendChild(tdName);
-
-                    if (c.totalFaturamento !== undefined) {
-                        const tdFat = document.createElement('td');
-                        tdFat.className = 'p-2 text-right';
-                        tdFat.textContent = formatCurrency(c.totalFaturamento);
-                        tr.appendChild(tdFat);
-                    }
-
-                    const tdCity = document.createElement('td');
-                    tdCity.className = 'p-2';
-                    tdCity.textContent = c.cidade || '';
-                    tr.appendChild(tdCity);
-
-                    const tdBairro = document.createElement('td');
-                    tdBairro.className = 'p-2';
-                    tdBairro.textContent = c.bairro || '';
-                    tr.appendChild(tdBairro);
-
-                    if (c.ultimaCompra) {
-                        const tdUlt = document.createElement('td');
-                        tdUlt.className = 'p-2 text-center';
-                        tdUlt.textContent = new Date(c.ultimaCompra).toLocaleDateString('pt-BR');
-                        tr.appendChild(tdUlt);
-                    }
-
-                    const tdRca = document.createElement('td');
-                    tdRca.className = 'p-2';
-                    tdRca.textContent = c.rca1 || '-';
-                    tr.appendChild(tdRca);
-
-                    fragment.appendChild(tr);
-                });
-                body.appendChild(fragment);
+                body.innerHTML = items.map(c => `
+                    <tr class="table-row">
+                        <td class="p-2">${escapeHtml(c['Código'] || '')}</td>
+                        <td class="p-2">${escapeHtml(c.fantasia || c.razaoSocial || '')}</td>
+                        ${c.totalFaturamento !== undefined ? `<td class="p-2 text-right">${escapeHtml(formatCurrency(c.totalFaturamento))}</td>` : ''}
+                        <td class="p-2">${escapeHtml(c.cidade || '')}</td>
+                        <td class="p-2">${escapeHtml(c.bairro || '')}</td>
+                        ${c.ultimaCompra ? `<td class="p-2 text-center">${escapeHtml(new Date(c.ultimaCompra).toLocaleDateString('pt-BR'))}</td>` : ''}
+                        <td class="p-2">${escapeHtml(c.rca1 || '-')}</td>
+                    </tr>
+                `).join('');
             } else {
-                const tr = document.createElement('tr');
-                const td = document.createElement('td');
-                td.colSpan = 7;
-                td.className = 'p-4 text-center text-slate-500';
-                td.textContent = 'Nenhum registro encontrado.';
-                tr.appendChild(td);
-                body.appendChild(tr);
+                body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>`;
             }
         };
 
+        // Refactored to use declarative template literals and innerHTML instead of verbose document.createElement logic.
+        // This improves readability, maintainability, and significantly reduces code size while preserving XSS safety via escapeHtml.
         const renderRankingTable = (bodyId, items) => {
             const body = document.getElementById(bodyId);
-            body.innerHTML = '';
+            if (!body) return;
+
             if (items && items.length > 0) {
-                const fragment = document.createDocumentFragment();
-                items.forEach(c => {
+                body.innerHTML = items.map(c => {
                     const varClass = c['Variação'] > 0 ? 'text-emerald-400' : (c['Variação'] < 0 ? 'text-red-400' : 'text-slate-400');
                     const varArrow = c['Variação'] > 0 ? '▲' : (c['Variação'] < 0 ? '▼' : '-');
-
-                    const tr = document.createElement('tr');
-                    tr.className = 'table-row';
-
-                    const tdCity = document.createElement('td');
-                    tdCity.className = 'p-2 font-semibold';
-                    tdCity.textContent = c['Cidade'] || '';
-                    tr.appendChild(tdCity);
-
-                    const tdShare = document.createElement('td');
-                    tdShare.className = 'p-2 text-right text-cyan-400 font-bold';
-                    tdShare.textContent = parseFloat(c['% Share']).toFixed(2) + '%';
-                    tr.appendChild(tdShare);
-
-                    const tdVar = document.createElement('td');
-                    tdVar.className = `p-2 text-right font-bold ${varClass}`;
-                    tdVar.textContent = `${varArrow} ${Math.abs(c['Variação']).toFixed(2)}%`;
-                    tr.appendChild(tdVar);
-
-                    fragment.appendChild(tr);
-                });
-                body.appendChild(fragment);
+                    return `
+                        <tr class="table-row">
+                            <td class="p-2 font-semibold">${escapeHtml(c['Cidade'] || '')}</td>
+                            <td class="p-2 text-right text-cyan-400 font-bold">${escapeHtml(parseFloat(c['% Share']).toFixed(2))}%</td>
+                            <td class="p-2 text-right font-bold ${varClass}">${varArrow} ${escapeHtml(Math.abs(c['Variação']).toFixed(2))}%</td>
+                        </tr>
+                    `;
+                }).join('');
             } else {
-                const tr = document.createElement('tr');
-                const td = document.createElement('td');
-                td.colSpan = 3;
-                td.className = 'p-4 text-center text-slate-500';
-                td.textContent = 'Nenhum registro encontrado.';
-                tr.appendChild(td);
-                body.appendChild(tr);
+                body.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>`;
             }
         };
 
@@ -6193,44 +6136,24 @@ let estrelasSelectedCategorias = [];
             }
         }
 
+        // Refactored to use declarative template literals and innerHTML instead of verbose document.createElement logic.
+        // This improves readability, maintainability, and significantly reduces code size while preserving XSS safety via escapeHtml.
         function renderSupervisorTable(data) {
             const tbody = document.getElementById('supervisorComparisonTableBody');
             if (!tbody) return;
 
-            tbody.textContent = '';
-            const fragment = document.createDocumentFragment();
-
-            Object.entries(data).forEach(([sup, vals]) => {
+            tbody.innerHTML = Object.entries(data).map(([sup, vals]) => {
                 const variation = vals.history > 0 ? ((vals.current - vals.history) / vals.history) * 100 : 0;
                 const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
-
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-700';
-
-                const tdSup = document.createElement('td');
-                tdSup.className = 'px-4 py-2';
-                tdSup.textContent = sup;
-                tr.appendChild(tdSup);
-
-                const tdHist = document.createElement('td');
-                tdHist.className = 'px-4 py-2 text-right';
-                tdHist.textContent = formatCurrency(vals.history);
-                tr.appendChild(tdHist);
-
-                const tdCurr = document.createElement('td');
-                tdCurr.className = 'px-4 py-2 text-right';
-                tdCurr.textContent = formatCurrency(vals.current);
-                tr.appendChild(tdCurr);
-
-                const tdVar = document.createElement('td');
-                tdVar.className = `px-4 py-2 text-right ${colorClass}`;
-                tdVar.textContent = variation.toFixed(2) + '%';
-                tr.appendChild(tdVar);
-
-                fragment.appendChild(tr);
-            });
-
-            tbody.appendChild(fragment);
+                return `
+                    <tr class="hover:bg-slate-700">
+                        <td class="px-4 py-2">${escapeHtml(sup)}</td>
+                        <td class="px-4 py-2 text-right">${escapeHtml(formatCurrency(vals.history))}</td>
+                        <td class="px-4 py-2 text-right">${escapeHtml(formatCurrency(vals.current))}</td>
+                        <td class="px-4 py-2 text-right ${colorClass}">${escapeHtml(variation.toFixed(2))}%</td>
+                    </tr>
+                `;
+            }).join('');
         }
 // --- INOVACOES VIEW LOGIC ---
 let innovationsChart = null;
