@@ -1225,6 +1225,7 @@ if (typeof module !== 'undefined' && module.exports) {
         parseExcelDate,
         parseBrazilianNumber,
         isIbgeCode,
-        generateHash
+        generateHash,
+        normalizeCityName
     };
 }
