@@ -97,15 +97,15 @@ BEGIN
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
                 IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDYNHO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''TODDYNHO''])');
                 ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDY'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''TODDY''])');
                 ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''QUAKER'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''QUAKER''])');
                 ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''KEROCOCO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''KEROCOCO''])');
                 ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND NOT (s.categorias ?| ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND NOT (s.categorias_arr && ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
                 ELSE
                     v_simple_codes := array_append(v_simple_codes, v_code);
                 END IF;
@@ -364,19 +364,19 @@ BEGIN
             BEGIN
                 FOREACH v_code IN ARRAY p_fornecedor LOOP
                     IF v_code = '1119_TODDYNHO' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDYNHO'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''TODDYNHO''])');
                         v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
                     ELSIF v_code = '1119_TODDY' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDY'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''TODDY''])');
                         v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
                     ELSIF v_code = '1119_QUAKER' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''QUAKER'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''QUAKER''])');
                         v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
                     ELSIF v_code = '1119_KEROCOCO' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''KEROCOCO'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''KEROCOCO''])');
                         v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
                     ELSIF v_code = '1119_OUTROS' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND NOT (s.categorias ?| ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND NOT (s.categorias_arr && ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
                         v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                     ELSE
                         v_simple_codes := array_append(v_simple_codes, v_code);
@@ -429,16 +429,16 @@ BEGIN
     END IF;
 
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND s.produtos ?| ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
-        v_where_base_prev := v_where_base_prev || ' AND s.produtos ?| ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
-        v_where_chart := v_where_chart || ' AND produtos ?| ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
+        v_where_base := v_where_base || ' AND s.produtos_arr && ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
+        v_where_base_prev := v_where_base_prev || ' AND s.produtos_arr && ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
+        v_where_chart := v_where_chart || ' AND produtos_arr && ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
         v_where_unnested := v_where_unnested || ' AND dp.descricao = ANY(ARRAY[''' || array_to_string(p_produto, ''',''') || ''']) ';
     END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND s.categorias ?| ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
-        v_where_base_prev := v_where_base_prev || ' AND s.categorias ?| ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
-        v_where_chart := v_where_chart || ' AND categorias ?| ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
+        v_where_base := v_where_base || ' AND s.categorias_arr && ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
+        v_where_base_prev := v_where_base_prev || ' AND s.categorias_arr && ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
+        v_where_chart := v_where_chart || ' AND categorias_arr && ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
         v_where_unnested := v_where_unnested || ' AND dp.categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || ''']) ';
     END IF;
 
@@ -454,7 +454,7 @@ BEGIN
             c.filial, c.cidade, c.codusur, c.codcli,
             COUNT(DISTINCT p.produto) as dist_skus_per_cli
         FROM current_data c
-        CROSS JOIN LATERAL jsonb_array_elements_text(c.produtos) AS p(produto)
+        CROSS JOIN LATERAL unnest(c.produtos_arr) AS p(produto)
         WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
         GROUP BY c.filial, c.cidade, c.codusur, c.codcli
         ';
@@ -464,7 +464,7 @@ BEGIN
             c.filial, c.cidade, c.codusur, c.codcli,
             COUNT(DISTINCT dp.codigo) as dist_skus_per_cli
         FROM current_data c
-        CROSS JOIN LATERAL jsonb_array_elements_text(c.produtos) AS p(produto)
+        CROSS JOIN LATERAL unnest(c.produtos_arr) AS p(produto)
         INNER JOIN public.dim_produtos dp ON dp.codigo = p.produto
         WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
         ' || v_where_unnested || '
@@ -486,7 +486,7 @@ BEGIN
         LEFT JOIN public.dim_vendedores dv ON dc.rca1 = dv.codigo
         ' || v_where_clients || '
     ),
-    current_data AS (
+    current_data AS MATERIALIZED (
         SELECT
             s.filial,
             s.cidade,
@@ -530,7 +530,7 @@ BEGIN
         ' || v_pre_agg_skus_sql || '
     ),
     
-    client_monthly_sales AS (
+    client_monthly_sales AS MATERIALIZED (
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
             COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END)::numeric as month_pedidos,
@@ -1097,6 +1097,17 @@ create table if not exists public.data_summary_frequency (
   produtos jsonb null,
   categorias jsonb null,
   rede text null,
+  produtos_arr text[] null,
+  categorias_arr text[] null,
+  has_cheetos integer default 0,
+  has_doritos integer default 0,
+  has_fandangos integer default 0,
+  has_ruffles integer default 0,
+  has_torcida integer default 0,
+  has_toddynho integer default 0,
+  has_toddy integer default 0,
+  has_quaker integer default 0,
+  has_kerococo integer default 0,
   created_at timestamp with time zone null default now(),
   constraint dat_summary_frequency_pkey primary key (id)
 );
@@ -1619,12 +1630,14 @@ BEGIN
 
     -- Update data_summary_frequency for the year
     INSERT INTO public.data_summary_frequency (
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede,
+        produtos_arr, categorias_arr, has_cheetos, has_doritos, has_fandangos, has_ruffles, has_torcida, has_toddynho, has_toddy, has_quaker, has_kerococo
     )
     WITH dim_prod_enhanced AS (
         SELECT
             codigo,
             categoria_produto,
+            mix_marca,
             CASE
                 WHEN descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
                 WHEN descricao ILIKE '%TODDY %' THEN '1119_TODDY'
@@ -1652,7 +1665,18 @@ BEGIN
         SUM(s.totpesoliq) as peso,
         jsonb_agg(DISTINCT s.produto) as produtos,
         jsonb_agg(DISTINCT dp.categoria_produto) as categorias,
-        c.ramo as rede
+        c.ramo as rede,
+        array_agg(DISTINCT s.produto) as produtos_arr,
+        array_agg(DISTINCT dp.categoria_produto) as categorias_arr,
+        MAX(CASE WHEN dp.mix_marca = 'CHEETOS' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_cheetos,
+        MAX(CASE WHEN dp.mix_marca = 'DORITOS' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_doritos,
+        MAX(CASE WHEN dp.mix_marca = 'FANDANGOS' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_fandangos,
+        MAX(CASE WHEN dp.mix_marca = 'RUFFLES' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_ruffles,
+        MAX(CASE WHEN dp.mix_marca = 'TORCIDA' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_torcida,
+        MAX(CASE WHEN dp.mix_marca = 'TODDYNHO' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_toddynho,
+        MAX(CASE WHEN dp.mix_marca = 'TODDY' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_toddy,
+        MAX(CASE WHEN dp.mix_marca = 'QUAKER' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_quaker,
+        MAX(CASE WHEN dp.mix_marca = 'KEROCOCO' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_kerococo
     FROM (
         SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto FROM public.data_detailed WHERE EXTRACT(YEAR FROM dtped)::int = p_year
         UNION ALL
@@ -1805,12 +1829,14 @@ BEGIN
 
     -- STEP C: Insert into data_summary_frequency using the temporary table
     INSERT INTO public.data_summary_frequency (
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede,
+        produtos_arr, categorias_arr, has_cheetos, has_doritos, has_fandangos, has_ruffles, has_torcida, has_toddynho, has_toddy, has_quaker, has_kerococo
     )
     WITH dim_prod_enhanced AS (
         SELECT
             codigo,
             categoria_produto,
+            mix_marca,
             CASE
                 WHEN descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
                 WHEN descricao ILIKE '%TODDY %' THEN '1119_TODDY'
@@ -1838,7 +1864,18 @@ BEGIN
             SUM(t.vlvenda) as vlvenda,
             SUM(t.totpesoliq) as peso,
             jsonb_agg(DISTINCT t.produto) as produtos,
-            jsonb_agg(DISTINCT dp.categoria_produto) FILTER (WHERE dp.categoria_produto IS NOT NULL) as categorias
+            jsonb_agg(DISTINCT dp.categoria_produto) FILTER (WHERE dp.categoria_produto IS NOT NULL) as categorias,
+            array_agg(DISTINCT t.produto) as produtos_arr,
+            array_agg(DISTINCT dp.categoria_produto) FILTER (WHERE dp.categoria_produto IS NOT NULL) as categorias_arr,
+            MAX(CASE WHEN dp.mix_marca = 'CHEETOS' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_cheetos,
+            MAX(CASE WHEN dp.mix_marca = 'DORITOS' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_doritos,
+            MAX(CASE WHEN dp.mix_marca = 'FANDANGOS' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_fandangos,
+            MAX(CASE WHEN dp.mix_marca = 'RUFFLES' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_ruffles,
+            MAX(CASE WHEN dp.mix_marca = 'TORCIDA' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_torcida,
+            MAX(CASE WHEN dp.mix_marca = 'TODDYNHO' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_toddynho,
+            MAX(CASE WHEN dp.mix_marca = 'TODDY' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_toddy,
+            MAX(CASE WHEN dp.mix_marca = 'QUAKER' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_quaker,
+            MAX(CASE WHEN dp.mix_marca = 'KEROCOCO' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_kerococo
         FROM tmp_raw_data t
         LEFT JOIN dim_prod_enhanced dp ON t.produto = dp.codigo
         GROUP BY
@@ -1869,7 +1906,18 @@ BEGIN
         f.peso,
         f.produtos,
         COALESCE(f.categorias, '[]'::jsonb) as categorias,
-        c.ramo as rede
+        c.ramo as rede,
+        f.produtos_arr,
+        f.categorias_arr,
+        f.has_cheetos,
+        f.has_doritos,
+        f.has_fandangos,
+        f.has_ruffles,
+        f.has_torcida,
+        f.has_toddynho,
+        f.has_toddy,
+        f.has_quaker,
+        f.has_kerococo
     FROM freq_agg_base f
     LEFT JOIN public.data_clients c ON f.codcli = c.codigo_cliente;
 
@@ -4549,16 +4597,10 @@ DECLARE
     v_target_month int;
     v_eval_target_month int;
     v_where_chart text := ' WHERE 1=1 ';
-    v_where_rede text := '';
     
     v_result json;
     v_sql text;
 
-    -- Rede Logic Vars
-    v_has_com_rede boolean;
-    v_has_sem_rede boolean;
-    v_specific_redes text[];
-    v_rede_condition text := '';
 BEGIN
     SET LOCAL work_mem = '64MB';
     SET LOCAL statement_timeout = '120s';
@@ -4570,9 +4612,9 @@ BEGIN
         v_current_year := p_ano::int;
     END IF;
 
-    v_where_chart := v_where_chart || ' AND s.dtped >= make_date(' || v_current_year || ', 1, 1) AND s.dtped <= make_date(' || v_current_year || ', 12, 31) ';
+    v_where_chart := v_where_chart || ' AND s.ano = ' || v_current_year || ' ';
 
-    -- 2. Build Where Clauses
+    -- 2. Build Where Clauses (Using data_summary_frequency columns directly)
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_filial)) THEN
             v_where_chart := v_where_chart || ' AND s.filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
@@ -4580,7 +4622,7 @@ BEGIN
     END IF;
 
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND s.codcli IN (SELECT codigo_cliente FROM public.data_clients WHERE cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND s.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
@@ -4590,6 +4632,7 @@ BEGIN
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
         v_where_chart := v_where_chart || ' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
     END IF;
+
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_fornecedor)) THEN
             DECLARE
@@ -4600,15 +4643,15 @@ BEGIN
             BEGIN
                 FOREACH v_code IN ARRAY p_fornecedor LOOP
                     IF v_code = '1119_TODDYNHO' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDYNHO'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''TODDYNHO''])');
                     ELSIF v_code = '1119_TODDY' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''TODDY'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''TODDY''])');
                     ELSIF v_code = '1119_QUAKER' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''QUAKER'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''QUAKER''])');
                     ELSIF v_code = '1119_KEROCOCO' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias ? ''KEROCOCO'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''KEROCOCO''])');
                     ELSIF v_code = '1119_OUTROS' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND NOT (s.categorias ?| ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND NOT (s.categorias_arr && ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
                     ELSE
                         v_simple_codes := array_append(v_simple_codes, v_code);
                     END IF;
@@ -4626,111 +4669,47 @@ BEGIN
         END IF;
     END IF;
 
-    -- REDE Logic (same as comparativo)
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-       v_has_com_rede := ('C/ REDE' = ANY(p_rede));
-       v_has_sem_rede := ('S/ REDE' = ANY(p_rede));
-       v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
-
-       IF array_length(v_specific_redes, 1) > 0 THEN
-           v_rede_condition := format('c.ramo = ANY(ARRAY[''%s''])', array_to_string(v_specific_redes, ''','''));
-       END IF;
-
-       IF v_has_com_rede THEN
-           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
-           v_rede_condition := v_rede_condition || ' (c.ramo IS NOT NULL AND c.ramo NOT IN (''N/A'', ''N/D'')) ';
-       END IF;
-
-       IF v_has_sem_rede THEN
-           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
-           v_rede_condition := v_rede_condition || ' (c.ramo IS NULL OR c.ramo IN (''N/A'', ''N/D'')) ';
-       END IF;
-
-       IF v_rede_condition != '' THEN
-           v_where_rede := ' AND EXISTS (SELECT 1 FROM public.data_clients c WHERE c.codigo_cliente = s.codcli AND (' || v_rede_condition || ')) ';
-       END IF;
+        IF ('com_ramo' = ANY(p_rede) OR 'C/ REDE' = ANY(p_rede)) AND ('sem_ramo' = ANY(p_rede) OR 'S/ REDE' = ANY(p_rede)) THEN
+            -- Do nothing
+        ELSIF 'com_ramo' = ANY(p_rede) OR 'C/ REDE' = ANY(p_rede) THEN
+            v_where_chart := v_where_chart || ' AND s.rede IS NOT NULL AND s.rede != '''' AND s.rede NOT IN (''N/A'', ''N/D'') ';
+        ELSIF 'sem_ramo' = ANY(p_rede) OR 'S/ REDE' = ANY(p_rede) THEN
+            v_where_chart := v_where_chart || ' AND (s.rede IS NULL OR s.rede = '''' OR s.rede IN (''N/A'', ''N/D'')) ';
+        ELSE
+            v_where_chart := v_where_chart || ' AND s.rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+        END IF;
     END IF;
 
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND s.produto = ANY(ARRAY[''' || array_to_string(p_produto, ''',''') || ''']) ';
+        v_where_chart := v_where_chart || ' AND s.produtos_arr && ARRAY[''' || array_to_string(p_produto, ''',''') || '''] ';
     END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND dp.categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || ''']) ';
+        v_where_chart := v_where_chart || ' AND s.categorias_arr && ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where_chart := v_where_chart || ' AND s.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
     END IF;
 
-    -- Dynamic Query using the exact same logic from get_comparison_view_data
+    -- Dynamic Query hitting data_summary_frequency
     v_sql := '
-    WITH filtered_products AS (
-        SELECT codigo, mix_marca, mix_categoria, descricao
-        FROM public.dim_produtos
-        WHERE mix_marca IS NOT NULL AND mix_marca != ''''
-    ),
-    all_sales AS (
-        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.mix_marca, dp.mix_categoria,
-            CASE
-                WHEN s.codfor = ''1119'' THEN COALESCE(
-                    CASE
-                        WHEN dp.descricao ILIKE ''%TODDYNHO%'' THEN ''1119_TODDYNHO''
-                        WHEN dp.descricao ILIKE ''%TODDY%'' AND dp.descricao NOT ILIKE ''%TODDYNHO%'' THEN ''1119_TODDY''
-                        WHEN dp.descricao ILIKE ''%QUAKER%'' THEN ''1119_QUAKER''
-                        WHEN dp.descricao ILIKE ''%KEROCOCO%'' THEN ''1119_KEROCOCO''
-                        ELSE ''1119_OUTROS''
-                    END, ''1119_OUTROS'')
-                ELSE s.codfor
-            END as codfor
-        FROM public.data_detailed s
-        INNER JOIN filtered_products dp ON s.produto = dp.codigo
-        ' || v_where_chart || v_where_rede || '
-        UNION ALL
-        SELECT s.dtped, s.vlvenda, s.codcli, s.produto, dp.mix_marca, dp.mix_categoria,
-            CASE
-                WHEN s.codfor = ''1119'' THEN COALESCE(
-                    CASE
-                        WHEN dp.descricao ILIKE ''%TODDYNHO%'' THEN ''1119_TODDYNHO''
-                        WHEN dp.descricao ILIKE ''%TODDY%'' AND dp.descricao NOT ILIKE ''%TODDYNHO%'' THEN ''1119_TODDY''
-                        WHEN dp.descricao ILIKE ''%QUAKER%'' THEN ''1119_QUAKER''
-                        WHEN dp.descricao ILIKE ''%KEROCOCO%'' THEN ''1119_KEROCOCO''
-                        ELSE ''1119_OUTROS''
-                    END, ''1119_OUTROS'')
-                ELSE s.codfor
-            END as codfor
-        FROM public.data_history s
-        INNER JOIN filtered_products dp ON s.produto = dp.codigo
-        ' || v_where_chart || v_where_rede || '
-    ),
-
-    prod_agg AS (
-        SELECT
-            EXTRACT(MONTH FROM dtped)::int as mes,
-            codcli,
-            produto,
-            MAX(mix_marca) as mix_marca,
-            MAX(mix_categoria) as mix_cat,
-            MAX(codfor) as codfor,
-            SUM(vlvenda) as prod_val
-        FROM all_sales
-        GROUP BY 1, 2, 3
-    ),
-    monthly_mix AS (
+    WITH monthly_mix AS (
         SELECT
             mes,
             codcli,
-            SUM(prod_val) as total_val,
-            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
-            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
-            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
-            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''RUFFLES'' THEN 1 ELSE 0 END) as has_ruffles,
-            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TORCIDA'' THEN 1 ELSE 0 END) as has_torcida,
-            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDYNHO'' THEN 1 ELSE 0 END) as has_toddynho,
-            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDY'' THEN 1 ELSE 0 END) as has_toddy,
-            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''QUAKER'' THEN 1 ELSE 0 END) as has_quaker,
-            MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''KEROCOCO'' THEN 1 ELSE 0 END) as has_kerococo
-        FROM prod_agg
+            MAX(has_cheetos) as has_cheetos,
+            MAX(has_doritos) as has_doritos,
+            MAX(has_fandangos) as has_fandangos,
+            MAX(has_ruffles) as has_ruffles,
+            MAX(has_torcida) as has_torcida,
+            MAX(has_toddynho) as has_toddynho,
+            MAX(has_toddy) as has_toddy,
+            MAX(has_quaker) as has_quaker,
+            MAX(has_kerococo) as has_kerococo
+        FROM public.data_summary_frequency s
+        ' || v_where_chart || ' AND s.tipovenda NOT IN (''5'', ''11'')
         GROUP BY 1, 2
     ),
     monthly_flags AS (
