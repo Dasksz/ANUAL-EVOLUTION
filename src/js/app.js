@@ -15,53 +15,25 @@ let estrelasQtdMarcas = 0;
  * @param {string} metaUnit - The unit string for target amount
  * @param {number|string} share - The share percentage
  * @param {string} shareColorClass - The color class for the share text
- * @returns {HTMLTableRowElement} The constructed table row
+ * @returns {string} The constructed HTML string for the table row
  */
 function createDetalhadoRow(row, index, realizado, realizedUnit, meta, metaUnit, share, shareColorClass) {
-    const tr = document.createElement('tr');
-    tr.className = `border-b border-white/5 hover:bg-white/5 transition-colors ${index % 2 === 0 ? '' : 'bg-white/[0.02]'}`;
+    const bgClass = index % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.02]';
+    const realizedUnitHtml = realizedUnit ? `<span class="text-xs text-slate-400">${escapeHtml(realizedUnit)}</span>` : '';
+    const metaUnitHtml = metaUnit ? `<span class="text-xs">${escapeHtml(metaUnit)}</span>` : '';
 
-    const tdVendedor = document.createElement('td');
-    tdVendedor.className = 'py-3 px-4 whitespace-nowrap text-slate-200';
-    tdVendedor.textContent = row.vendedor_nome || 'N/D';
-    tr.appendChild(tdVendedor);
-
-    const tdFilial = document.createElement('td');
-    tdFilial.className = 'py-3 px-4 whitespace-nowrap';
-    const spanFilial = document.createElement('span');
-    spanFilial.className = 'px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs border border-slate-700';
-    spanFilial.textContent = row.filial || 'N/D';
-    tdFilial.appendChild(spanFilial);
-    tr.appendChild(tdFilial);
-
-    const tdRealizado = document.createElement('td');
-    tdRealizado.className = 'py-3 px-4 text-right font-medium text-white';
-    tdRealizado.textContent = realizado + (realizedUnit ? ' ' : '');
-    if (realizedUnit) {
-        const spanUnit = document.createElement('span');
-        spanUnit.className = 'text-xs text-slate-400';
-        spanUnit.textContent = realizedUnit;
-        tdRealizado.appendChild(spanUnit);
-    }
-    tr.appendChild(tdRealizado);
-
-    const tdMeta = document.createElement('td');
-    tdMeta.className = 'py-3 px-4 text-right text-slate-400';
-    tdMeta.textContent = meta + (metaUnit ? ' ' : '');
-    if (metaUnit) {
-        const spanMetaUnit = document.createElement('span');
-        spanMetaUnit.className = 'text-xs';
-        spanMetaUnit.textContent = metaUnit;
-        tdMeta.appendChild(spanMetaUnit);
-    }
-    tr.appendChild(tdMeta);
-
-    const tdShare = document.createElement('td');
-    tdShare.className = `py-3 px-4 text-right font-bold ${shareColorClass}`;
-    tdShare.textContent = share + '%';
-    tr.appendChild(tdShare);
-
-    return tr;
+    // ⚡ Bolt Optimization: Return a formatted HTML string instead of using document.createElement for every cell
+    return `
+        <tr class="border-b border-white/5 hover:bg-white/5 transition-colors ${bgClass}">
+            <td class="py-3 px-4 whitespace-nowrap text-slate-200">${escapeHtml(row.vendedor_nome || 'N/D')}</td>
+            <td class="py-3 px-4 whitespace-nowrap">
+                <span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs border border-slate-700">${escapeHtml(row.filial || 'N/D')}</span>
+            </td>
+            <td class="py-3 px-4 text-right font-medium text-white">${escapeHtml(realizado)}${realizedUnit ? ' ' : ''}${realizedUnitHtml}</td>
+            <td class="py-3 px-4 text-right text-slate-400">${escapeHtml(meta)}${metaUnit ? ' ' : ''}${metaUnitHtml}</td>
+            <td class="py-3 px-4 text-right font-bold ${escapeHtml(shareColorClass)}">${escapeHtml(share)}%</td>
+        </tr>
+    `;
 }
 
 window.openDetalhadoModal = function(type) {
@@ -114,31 +86,31 @@ window.openDetalhadoModal = function(type) {
             return valB - valA;
         });
 
-        const fragment = document.createDocumentFragment();
-        sortedDataSellout.forEach((row, index) => {
+        // ⚡ Bolt Optimization: Replace document.createElement with innerHTML array join
+        const htmlArray = sortedDataSellout.map((row, index) => {
             const metaSalty = (row.meta_salty || 0).toFixed(2);
             const realizadoSalty = ((row.sellout_salty || 0) / 1000.0).toFixed(2);
             const metaFoods = (row.meta_foods || 0).toFixed(2);
             const realizadoFoods = ((row.sellout_foods || 0) / 1000.0).toFixed(2);
             
-            const tr = document.createElement('tr');
-            tr.className = `hover:bg-white/5 transition-colors border-b border-white/5 ${index % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.02]'}`;
-            tr.innerHTML = `
-                <td class="py-3 px-4 text-slate-300 font-medium">
-                    <div class="flex items-center">
-                        <span class="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs mr-3 shrink-0">${index + 1}</span>
-                        <span class="truncate max-w-[200px]" title="${escapeHtml(row.vendedor_nome)}">${escapeHtml(row.vendedor_nome)}</span>
-                    </div>
-                </td>
-                <td class="py-3 px-4 text-slate-400 font-mono text-sm">${escapeHtml(row.filial)}</td>
-                <td class="py-3 px-4 text-right font-medium text-slate-400">${metaSalty} tons</td>
-                <td class="py-3 px-4 text-right font-bold text-white">${realizadoSalty} tons</td>
-                <td class="py-3 px-4 text-right font-medium text-slate-400">${metaFoods} tons</td>
-                <td class="py-3 px-4 text-right font-bold text-white">${realizadoFoods} tons</td>
+            const bgClass = index % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.02]';
+            return `
+                <tr class="hover:bg-white/5 transition-colors border-b border-white/5 ${bgClass}">
+                    <td class="py-3 px-4 text-slate-300 font-medium">
+                        <div class="flex items-center">
+                            <span class="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs mr-3 shrink-0">${index + 1}</span>
+                            <span class="truncate max-w-[200px]" title="${escapeHtml(row.vendedor_nome)}">${escapeHtml(row.vendedor_nome)}</span>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 text-slate-400 font-mono text-sm">${escapeHtml(row.filial)}</td>
+                    <td class="py-3 px-4 text-right font-medium text-slate-400">${escapeHtml(metaSalty)} tons</td>
+                    <td class="py-3 px-4 text-right font-bold text-white">${escapeHtml(realizadoSalty)} tons</td>
+                    <td class="py-3 px-4 text-right font-medium text-slate-400">${escapeHtml(metaFoods)} tons</td>
+                    <td class="py-3 px-4 text-right font-bold text-white">${escapeHtml(realizadoFoods)} tons</td>
+                </tr>
             `;
-            fragment.appendChild(tr);
         });
-        tbody.appendChild(fragment);
+        tbody.innerHTML = htmlArray.join('');
         
     } else if (type === 'positivacao') {
         title.innerHTML = `<span class="flex items-center text-emerald-400">${TABLE_ICONS.chart} Resultado Detalhado - Positivação</span>`;
@@ -158,15 +130,14 @@ window.openDetalhadoModal = function(type) {
             return valB - valA;
         });
 
-        const fragment = document.createDocumentFragment();
-        sortedDataPos.forEach((row, index) => {
+        // ⚡ Bolt Optimization: Replace document.createElement with innerHTML array join
+        const htmlArray = sortedDataPos.map((row, index) => {
             const realizado = (row.pos_salty || 0) + (row.pos_foods || 0);
             const meta = row.meta_pos || 0;
             const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
-            const tr = createDetalhadoRow(row, index, realizado, 'PDV(s)', meta, 'PDV(s)', share, 'text-emerald-400');
-            fragment.appendChild(tr);
+            return createDetalhadoRow(row, index, realizado, 'PDV(s)', meta, 'PDV(s)', share, 'text-emerald-400');
         });
-        tbody.appendChild(fragment);
+        tbody.innerHTML = htmlArray.join('');
         
     } else if (type === 'aceleradores') {
         title.innerHTML = `<span class="flex items-center text-amber-400">${TABLE_ICONS.target} Resultado Detalhado - Aceleradores</span>`;
@@ -189,16 +160,15 @@ window.openDetalhadoModal = function(type) {
             return valB - valA;
         });
 
-        const fragment = document.createDocumentFragment();
-        sortedDataAcel.forEach((row, index) => {
+        // ⚡ Bolt Optimization: Replace document.createElement with innerHTML array join
+        const htmlArray = sortedDataAcel.map((row, index) => {
             const realizado = row.acel_realizado || 0;
-const metaPositivação = row.meta_pos || 0;
+            const metaPositivação = row.meta_pos || 0;
             const meta = Math.ceil(metaPositivação * 0.5); 
             const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
-            const tr = createDetalhadoRow(row, index, realizado, null, meta, null, share, 'text-amber-400');
-            fragment.appendChild(tr);
+            return createDetalhadoRow(row, index, realizado, null, meta, null, share, 'text-amber-400');
         });
-        tbody.appendChild(fragment);
+        tbody.innerHTML = htmlArray.join('');
     }
 
     modal.classList.remove('hidden');

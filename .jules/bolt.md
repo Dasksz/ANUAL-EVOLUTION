@@ -23,6 +23,9 @@
 ## 2024-10-25 - [escapeHtml Fast Path Optimization]
 **Learning:** Functions like `escapeHtml` are called thousands of times during frontend rendering (especially in large tables), running `.replace()` with regex on every single string. However, the vast majority of string values (like numbers, standard names, or statuses) don't actually contain any HTML characters (`<`, `>`, `&`, `'`, `"`).
 **Action:** Introduced a fast path early return (`const matchHtmlRegExp = /["'&<>]/; if (!matchHtmlRegExp.test(str)) return str;`) before the `.replace()` chain. This acts as an O(N) pre-filter that skips unnecessary string replacements and object instantiations, resulting in a ~3-4x speedup for normal strings without compromising XSS safety.
+## 2024-05-01 - Replace document.createDocumentFragment with innerHTML for fast table rendering
+**Learning:** Even when utilizing `document.createDocumentFragment`, creating many `document.createElement` nodes inside intensive frontend rendering loops (such as displaying hundreds of modal rows) causes observable browser overhead and sluggishness.
+**Action:** Replaced `.appendChild` and `document.createElement` loops with `.map(...).join('')` array processing and a single `.innerHTML` assignment. Refactored helper functions to return sanitized template string HTML instead of HTML elements, optimizing large table displays like `openDetalhadoModal`.
 ## 2026-04-19 - Pre-grouping with Map for O(N+M) Filtering
 **Learning:** Inefficient O(N*M) nested filtering (e.g., filtering a product list by category inside a category loop) can be optimized to O(N+M) by pre-grouping the child list into a Map or Object indexed by the common key.
 **Action:** Optimized `window.renderInnovationsTable` in `src/js/app.js` by replacing `data.products.filter()` inside the category loop with a pre-computed `Map` lookup.
