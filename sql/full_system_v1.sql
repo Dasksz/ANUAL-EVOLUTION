@@ -263,6 +263,9 @@ DROP FUNCTION IF EXISTS get_frequency_table_data();
 DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text[], text[], text[], text[], text[], text[]);
 DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
 DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
+-- Adicionado para limpar antigas assinaturas ambíguas ou incorretas
+DROP FUNCTION IF EXISTS get_frequency_table_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_fornecedor text[], p_tipovenda text[], p_rede text[], p_produto text[], p_categoria text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(p_diretoria text[], p_gerencia text[], p_filial text[], p_vendedor text[], p_supervisor text[], p_ano text, p_mes text, p_fornecedor text[], p_rede text[], p_produto text[], p_categoria text[], p_tipovenda text[]);
 
 
 CREATE OR REPLACE FUNCTION get_frequency_table_data(
