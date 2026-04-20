@@ -6595,6 +6595,17 @@ window.renderInnovationsTable = function(data) {
     const attPrevM1 = data.attended_prev_m1 || 1;
     const attAvg12m = data.attended_12m > 0 ? (data.attended_12m / 3.0) : 1; 
 
+    // Pre-group products by category for O(N+M) performance
+    const productsByCategory = new Map();
+    if (data.products && Array.isArray(data.products)) {
+        for (const p of data.products) {
+            if (!productsByCategory.has(p.category)) {
+                productsByCategory.set(p.category, []);
+            }
+            productsByCategory.get(p.category).push(p);
+        }
+    }
+
     data.categories.forEach((cat, idx) => {
         let catPosAtual = Math.round(cat.pos_current || 0);
         let catPosPrevYear = Math.round(cat.pos_prev_year || 0);
@@ -6625,7 +6636,7 @@ window.renderInnovationsTable = function(data) {
         `;
 
         // Product Rows (Children)
-        const productsInCat = data.products.filter(p => p.category === cat.name);
+        const productsInCat = productsByCategory.get(cat.name) || [];
         productsInCat.forEach(p => {
             let posAtual = Math.round(p.pos_current || 0);
             let posPrevYear = Math.round(p.pos_prev_year || 0);
