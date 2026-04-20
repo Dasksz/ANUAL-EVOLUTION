@@ -26,3 +26,6 @@
 ## 2024-05-01 - Replace document.createDocumentFragment with innerHTML for fast table rendering
 **Learning:** Even when utilizing `document.createDocumentFragment`, creating many `document.createElement` nodes inside intensive frontend rendering loops (such as displaying hundreds of modal rows) causes observable browser overhead and sluggishness.
 **Action:** Replaced `.appendChild` and `document.createElement` loops with `.map(...).join('')` array processing and a single `.innerHTML` assignment. Refactored helper functions to return sanitized template string HTML instead of HTML elements, optimizing large table displays like `openDetalhadoModal`.
+## 2026-04-19 - Pre-grouping with Map for O(N+M) Filtering
+**Learning:** Inefficient O(N*M) nested filtering (e.g., filtering a product list by category inside a category loop) can be optimized to O(N+M) by pre-grouping the child list into a Map or Object indexed by the common key.
+**Action:** Optimized `window.renderInnovationsTable` in `src/js/app.js` by replacing `data.products.filter()` inside the category loop with a pre-computed `Map` lookup.
