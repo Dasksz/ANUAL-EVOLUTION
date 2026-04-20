@@ -494,7 +494,10 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                 if (typeof cnpjRaw === 'number' && cnpjStr.includes('e')) {
                     try {
                        cnpjStr = cnpjRaw.toLocaleString('fullwide', { useGrouping: false });
-                    } catch(e) {}
+                    } catch (e) {
+                        // Fallback if toLocaleString fails; cnpjStr remains as String(cnpjRaw)
+                        console.warn('Error formatting CNPJ/CPF from scientific notation:', e);
+                    }
                 }
 
                 const cnpjClean = cnpjStr.replace(/[^0-9]/g, '');
