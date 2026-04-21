@@ -181,7 +181,7 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
-import {  formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths } from './utils.js';
+import {  formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -7199,14 +7199,13 @@ window.clearAllFilters = async function(prefix) {
         }
         const lpCodcliDropdown = document.getElementById("lp-codcli-filter-dropdown");
         if(lpCodcliDropdown) {
-            const checkboxes = lpCodcliDropdown.querySelectorAll("input[type=\"checkbox\"]");
-            checkboxes.forEach(cb => cb.checked = false);
+            uncheckAllCheckboxes(lpCodcliDropdown);
         }
 
         wrappers.forEach(id => {
             const dropdown = document.getElementById(id);
             if (dropdown) {
-                dropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                uncheckAllCheckboxes(dropdown);
             }
         });
 
@@ -7327,7 +7326,7 @@ window.clearAllFilters = async function(prefix) {
         wrappers.forEach(id => {
             const dropdown = document.getElementById(id);
             if (dropdown) {
-                dropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                uncheckAllCheckboxes(dropdown);
             }
         });
 
@@ -7401,7 +7400,7 @@ window.clearAllFilters = async function(prefix) {
             }
             const dropdown = document.getElementById(`${prefix}-filter-dropdown`);
             if (dropdown) {
-                dropdown.querySelectorAll("input[type=\"checkbox\"]").forEach(cb => cb.checked = false);
+                uncheckAllCheckboxes(dropdown);
             }
 
             // clear search inputs if they exist
