@@ -2822,7 +2822,7 @@ BEGIN
             ''bonificacao'', a.bonificacao, 
             ''devolucao'', a.devolucao, 
             ''positivacao'', a.positivacao_count, 
-            ''mix_pdv'', CASE WHEN a.positivacao_count > 0 THEN a.total_mix_sum::numeric / a.positivacao_count ELSE 0 END, 
+            ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END,
             ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
         ) ORDER BY a.mes) FILTER (WHERE a.ano = $2), ''[]''::json),
         
@@ -2834,7 +2834,7 @@ BEGIN
             ''bonificacao'', a.bonificacao, 
             ''devolucao'', a.devolucao, 
             ''positivacao'', a.positivacao_count, 
-            ''mix_pdv'', CASE WHEN a.positivacao_count > 0 THEN a.total_mix_sum::numeric / a.positivacao_count ELSE 0 END, 
+            ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END,
             ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
         ) ORDER BY a.mes) FILTER (WHERE a.ano = $4), ''[]''::json)
     FROM agg_data a
