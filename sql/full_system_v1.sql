@@ -1101,15 +1101,15 @@ create table if not exists public.data_summary_frequency (
   rede text null,
   produtos_arr text[] null,
   categorias_arr text[] null,
-  has_cheetos integer default 0,
-  has_doritos integer default 0,
-  has_fandangos integer default 0,
-  has_ruffles integer default 0,
-  has_torcida integer default 0,
-  has_toddynho integer default 0,
-  has_toddy integer default 0,
-  has_quaker integer default 0,
-  has_kerococo integer default 0,
+  has_cheetos integer default null,
+  has_doritos integer default null,
+  has_fandangos integer default null,
+  has_ruffles integer default null,
+  has_torcida integer default null,
+  has_toddynho integer default null,
+  has_toddy integer default null,
+  has_quaker integer default null,
+  has_kerococo integer default null,
   created_at timestamp with time zone null default now(),
   constraint dat_summary_frequency_pkey primary key (id)
 );
@@ -1670,15 +1670,15 @@ BEGIN
         c.ramo as rede,
         array_agg(DISTINCT s.produto) as produtos_arr,
         array_agg(DISTINCT dp.categoria_produto) as categorias_arr,
-        MAX(CASE WHEN dp.mix_marca = 'CHEETOS' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_cheetos,
-        MAX(CASE WHEN dp.mix_marca = 'DORITOS' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_doritos,
-        MAX(CASE WHEN dp.mix_marca = 'FANDANGOS' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_fandangos,
-        MAX(CASE WHEN dp.mix_marca = 'RUFFLES' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_ruffles,
-        MAX(CASE WHEN dp.mix_marca = 'TORCIDA' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_torcida,
-        MAX(CASE WHEN dp.mix_marca = 'TODDYNHO' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_toddynho,
-        MAX(CASE WHEN dp.mix_marca = 'TODDY' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_toddy,
-        MAX(CASE WHEN dp.mix_marca = 'QUAKER' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_quaker,
-        MAX(CASE WHEN dp.mix_marca = 'KEROCOCO' AND s.vlvenda >= 1 THEN 1 ELSE 0 END) as has_kerococo
+        MAX(CASE WHEN dp.mix_marca = 'CHEETOS' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_cheetos,
+        MAX(CASE WHEN dp.mix_marca = 'DORITOS' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_doritos,
+        MAX(CASE WHEN dp.mix_marca = 'FANDANGOS' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_fandangos,
+        MAX(CASE WHEN dp.mix_marca = 'RUFFLES' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_ruffles,
+        MAX(CASE WHEN dp.mix_marca = 'TORCIDA' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_torcida,
+        MAX(CASE WHEN dp.mix_marca = 'TODDYNHO' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddynho,
+        MAX(CASE WHEN dp.mix_marca = 'TODDY' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddy,
+        MAX(CASE WHEN dp.mix_marca = 'QUAKER' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_quaker,
+        MAX(CASE WHEN dp.mix_marca = 'KEROCOCO' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_kerococo
     FROM (
         SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto FROM public.data_detailed WHERE EXTRACT(YEAR FROM dtped)::int = p_year
         UNION ALL
@@ -1869,15 +1869,15 @@ BEGIN
             jsonb_agg(DISTINCT dp.categoria_produto) FILTER (WHERE dp.categoria_produto IS NOT NULL) as categorias,
             array_agg(DISTINCT t.produto) as produtos_arr,
             array_agg(DISTINCT dp.categoria_produto) FILTER (WHERE dp.categoria_produto IS NOT NULL) as categorias_arr,
-            MAX(CASE WHEN dp.mix_marca = 'CHEETOS' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_cheetos,
-            MAX(CASE WHEN dp.mix_marca = 'DORITOS' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_doritos,
-            MAX(CASE WHEN dp.mix_marca = 'FANDANGOS' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_fandangos,
-            MAX(CASE WHEN dp.mix_marca = 'RUFFLES' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_ruffles,
-            MAX(CASE WHEN dp.mix_marca = 'TORCIDA' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_torcida,
-            MAX(CASE WHEN dp.mix_marca = 'TODDYNHO' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_toddynho,
-            MAX(CASE WHEN dp.mix_marca = 'TODDY' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_toddy,
-            MAX(CASE WHEN dp.mix_marca = 'QUAKER' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_quaker,
-            MAX(CASE WHEN dp.mix_marca = 'KEROCOCO' AND t.vlvenda >= 1 THEN 1 ELSE 0 END) as has_kerococo
+            MAX(CASE WHEN dp.mix_marca = 'CHEETOS' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_cheetos,
+            MAX(CASE WHEN dp.mix_marca = 'DORITOS' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_doritos,
+            MAX(CASE WHEN dp.mix_marca = 'FANDANGOS' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_fandangos,
+            MAX(CASE WHEN dp.mix_marca = 'RUFFLES' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_ruffles,
+            MAX(CASE WHEN dp.mix_marca = 'TORCIDA' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_torcida,
+            MAX(CASE WHEN dp.mix_marca = 'TODDYNHO' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddynho,
+            MAX(CASE WHEN dp.mix_marca = 'TODDY' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddy,
+            MAX(CASE WHEN dp.mix_marca = 'QUAKER' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_quaker,
+            MAX(CASE WHEN dp.mix_marca = 'KEROCOCO' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_kerococo
         FROM tmp_raw_data t
         LEFT JOIN dim_prod_enhanced dp ON t.produto = dp.codigo
         GROUP BY
@@ -4718,8 +4718,8 @@ BEGIN
         SELECT
             mes,
             codcli,
-            (has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1) as is_salty,
-            (has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1) as is_foods
+            (COALESCE(has_cheetos,0)=1 AND COALESCE(has_doritos,0)=1 AND COALESCE(has_fandangos,0)=1 AND COALESCE(has_ruffles,0)=1 AND COALESCE(has_torcida,0)=1) as is_salty,
+            (COALESCE(has_toddynho,0)=1 AND COALESCE(has_toddy,0)=1 AND COALESCE(has_quaker,0)=1 AND COALESCE(has_kerococo,0)=1) as is_foods
         FROM monthly_mix
     ),
     chart_data AS (

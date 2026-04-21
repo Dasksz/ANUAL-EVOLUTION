@@ -6,15 +6,15 @@
 ALTER TABLE public.data_summary_frequency
     ADD COLUMN IF NOT EXISTS produtos_arr text[] null,
     ADD COLUMN IF NOT EXISTS categorias_arr text[] null,
-    ADD COLUMN IF NOT EXISTS has_cheetos integer default 0,
-    ADD COLUMN IF NOT EXISTS has_doritos integer default 0,
-    ADD COLUMN IF NOT EXISTS has_fandangos integer default 0,
-    ADD COLUMN IF NOT EXISTS has_ruffles integer default 0,
-    ADD COLUMN IF NOT EXISTS has_torcida integer default 0,
-    ADD COLUMN IF NOT EXISTS has_toddynho integer default 0,
-    ADD COLUMN IF NOT EXISTS has_toddy integer default 0,
-    ADD COLUMN IF NOT EXISTS has_quaker integer default 0,
-    ADD COLUMN IF NOT EXISTS has_kerococo integer default 0;
+    ADD COLUMN IF NOT EXISTS has_cheetos integer default null,
+    ADD COLUMN IF NOT EXISTS has_doritos integer default null,
+    ADD COLUMN IF NOT EXISTS has_fandangos integer default null,
+    ADD COLUMN IF NOT EXISTS has_ruffles integer default null,
+    ADD COLUMN IF NOT EXISTS has_torcida integer default null,
+    ADD COLUMN IF NOT EXISTS has_toddynho integer default null,
+    ADD COLUMN IF NOT EXISTS has_toddy integer default null,
+    ADD COLUMN IF NOT EXISTS has_quaker integer default null,
+    ADD COLUMN IF NOT EXISTS has_kerococo integer default null;
 
 -- 2. Safely backfill array data
 UPDATE public.data_summary_frequency f
@@ -28,16 +28,30 @@ WHERE f.produtos_arr IS NULL
 -- 3. Backfill mix flags using existing data
 UPDATE public.data_summary_frequency s
 SET
-    has_cheetos = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'CHEETOS') THEN 1 ELSE 0 END,
-    has_doritos = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'DORITOS') THEN 1 ELSE 0 END,
-    has_fandangos = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'FANDANGOS') THEN 1 ELSE 0 END,
-    has_ruffles = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'RUFFLES') THEN 1 ELSE 0 END,
-    has_torcida = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'TORCIDA') THEN 1 ELSE 0 END,
-    has_toddynho = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'TODDYNHO') THEN 1 ELSE 0 END,
-    has_toddy = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'TODDY') THEN 1 ELSE 0 END,
-    has_quaker = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'QUAKER') THEN 1 ELSE 0 END,
-    has_kerococo = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'KEROCOCO') THEN 1 ELSE 0 END
+    has_cheetos = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'CHEETOS') THEN 1 ELSE NULL END,
+    has_doritos = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'DORITOS') THEN 1 ELSE NULL END,
+    has_fandangos = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'FANDANGOS') THEN 1 ELSE NULL END,
+    has_ruffles = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'RUFFLES') THEN 1 ELSE NULL END,
+    has_torcida = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'TORCIDA') THEN 1 ELSE NULL END,
+    has_toddynho = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'TODDYNHO') THEN 1 ELSE NULL END,
+    has_toddy = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'TODDY') THEN 1 ELSE NULL END,
+    has_quaker = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'QUAKER') THEN 1 ELSE NULL END,
+    has_kerococo = CASE WHEN EXISTS (SELECT 1 FROM public.dim_produtos dp WHERE dp.codigo = ANY(s.produtos_arr) AND dp.mix_marca = 'KEROCOCO') THEN 1 ELSE NULL END
 WHERE s.produtos_arr IS NOT NULL;
+
+
+-- Set existing 0 to NULL
+UPDATE public.data_summary_frequency
+SET
+    has_cheetos = NULLIF(has_cheetos, 0),
+    has_doritos = NULLIF(has_doritos, 0),
+    has_fandangos = NULLIF(has_fandangos, 0),
+    has_ruffles = NULLIF(has_ruffles, 0),
+    has_torcida = NULLIF(has_torcida, 0),
+    has_toddynho = NULLIF(has_toddynho, 0),
+    has_toddy = NULLIF(has_toddy, 0),
+    has_quaker = NULLIF(has_quaker, 0),
+    has_kerococo = NULLIF(has_kerococo, 0);
 
 -- 4. Create composite indexes for array intersection and optimized filtering
 CREATE INDEX IF NOT EXISTS idx_freq_opt_produtos_arr ON public.data_summary_frequency USING GIN (produtos_arr);
@@ -188,8 +202,8 @@ BEGIN
         SELECT
             mes,
             codcli,
-            (has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1) as is_salty,
-            (has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1) as is_foods
+            (COALESCE(has_cheetos,0)=1 AND COALESCE(has_doritos,0)=1 AND COALESCE(has_fandangos,0)=1 AND COALESCE(has_ruffles,0)=1 AND COALESCE(has_torcida,0)=1) as is_salty,
+            (COALESCE(has_toddynho,0)=1 AND COALESCE(has_toddy,0)=1 AND COALESCE(has_quaker,0)=1 AND COALESCE(has_kerococo,0)=1) as is_foods
         FROM monthly_mix
     ),
     chart_data AS (
