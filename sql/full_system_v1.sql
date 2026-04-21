@@ -497,7 +497,9 @@ BEGIN
             s.tipovenda,
             s.vlvenda,
             s.peso,
-            s.produtos
+            s.produtos,
+            s.produtos_arr,
+            s.categorias_arr
         FROM public.data_summary_frequency s
         ' || v_where_base || '
     ),
