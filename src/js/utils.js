@@ -173,3 +173,13 @@ export function closeAllDropdowns() {
         }
     });
 }
+
+/**
+ * Unchecks all checkbox inputs within a given container element.
+ * Centralizes repetitive DOM queries and state resets.
+ * @param {HTMLElement} element - The container element (e.g. a dropdown).
+ */
+export function uncheckAllCheckboxes(element) {
+    if (!element) return;
+    element.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+}
