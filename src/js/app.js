@@ -2375,6 +2375,7 @@ let estrelasSelectedCategorias = [];
             
             // 1. Explicitly clear Summary Table
             await clearTable('data_summary');
+            await clearTable('data_summary_frequency');
 
             // 2. Get Years
             const { data: years, error: yearErr } = await supabase.rpc('get_available_years');
