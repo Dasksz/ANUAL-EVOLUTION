@@ -1648,58 +1648,80 @@ BEGIN
                 ELSE '1119_OUTROS'
             END as codfor_enhanced
         FROM public.dim_produtos
+    ),
+    raw_data AS (
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto 
+        FROM public.data_detailed 
+        WHERE EXTRACT(YEAR FROM dtped)::int = p_year
+        UNION ALL
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto 
+        FROM public.data_history 
+        WHERE EXTRACT(YEAR FROM dtped)::int = p_year
+    ),
+    order_prod_agg AS (
+        SELECT
+            EXTRACT(YEAR FROM s.dtped)::int as ano,
+            EXTRACT(MONTH FROM s.dtped)::int as mes,
+            s.filial,
+            s.cidade,
+            s.codsupervisor,
+            s.codusur,
+            CASE
+                WHEN s.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS')
+                ELSE s.codfor
+            END as codfor,
+            s.codcli,
+            s.tipovenda,
+            s.pedido,
+            s.produto,
+            dp.categoria_produto,
+            dp.mix_marca,
+            SUM(s.vlvenda) as prod_vlvenda,
+            SUM(s.totpesoliq) as prod_peso
+        FROM raw_data s
+        LEFT JOIN dim_prod_enhanced dp ON s.produto = dp.codigo
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
     )
     SELECT
-        EXTRACT(YEAR FROM s.dtped)::int as ano,
-        EXTRACT(MONTH FROM s.dtped)::int as mes,
-        s.filial,
-        s.cidade,
-        s.codsupervisor,
-        s.codusur,
-        CASE
-            WHEN s.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS')
-            ELSE s.codfor
-        END as codfor,
-        s.codcli,
-        s.tipovenda,
-        s.pedido,
-        SUM(s.vlvenda) as vlvenda,
-        SUM(s.totpesoliq) as peso,
-        jsonb_agg(DISTINCT s.produto) as produtos,
-        jsonb_agg(DISTINCT dp.categoria_produto) as categorias,
+        op.ano,
+        op.mes,
+        op.filial,
+        op.cidade,
+        op.codsupervisor,
+        op.codusur,
+        op.codfor,
+        op.codcli,
+        op.tipovenda,
+        op.pedido,
+        SUM(op.prod_vlvenda) as vlvenda,
+        SUM(op.prod_peso) as peso,
+        jsonb_agg(DISTINCT op.produto) as produtos,
+        jsonb_agg(DISTINCT op.categoria_produto) as categorias,
         c.ramo as rede,
-        array_agg(DISTINCT s.produto) as produtos_arr,
-        array_agg(DISTINCT dp.categoria_produto) as categorias_arr,
-        MAX(CASE WHEN dp.mix_marca = 'CHEETOS' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_cheetos,
-        MAX(CASE WHEN dp.mix_marca = 'DORITOS' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_doritos,
-        MAX(CASE WHEN dp.mix_marca = 'FANDANGOS' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_fandangos,
-        MAX(CASE WHEN dp.mix_marca = 'RUFFLES' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_ruffles,
-        MAX(CASE WHEN dp.mix_marca = 'TORCIDA' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_torcida,
-        MAX(CASE WHEN dp.mix_marca = 'TODDYNHO' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddynho,
-        MAX(CASE WHEN dp.mix_marca = 'TODDY' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddy,
-        MAX(CASE WHEN dp.mix_marca = 'QUAKER' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_quaker,
-        MAX(CASE WHEN dp.mix_marca = 'KEROCOCO' AND s.vlvenda >= 1 THEN 1 ELSE NULL END) as has_kerococo
-    FROM (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto FROM public.data_detailed WHERE EXTRACT(YEAR FROM dtped)::int = p_year
-        UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto FROM public.data_history WHERE EXTRACT(YEAR FROM dtped)::int = p_year
-    ) s
-    LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
-    LEFT JOIN dim_prod_enhanced dp ON s.produto = dp.codigo
+        array_agg(DISTINCT op.produto) as produtos_arr,
+        array_agg(DISTINCT op.categoria_produto) as categorias_arr,
+        MAX(CASE WHEN op.mix_marca = 'CHEETOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_cheetos,
+        MAX(CASE WHEN op.mix_marca = 'DORITOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_doritos,
+        MAX(CASE WHEN op.mix_marca = 'FANDANGOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_fandangos,
+        MAX(CASE WHEN op.mix_marca = 'RUFFLES' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_ruffles,
+        MAX(CASE WHEN op.mix_marca = 'TORCIDA' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_torcida,
+        MAX(CASE WHEN op.mix_marca = 'TODDYNHO' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddynho,
+        MAX(CASE WHEN op.mix_marca = 'TODDY' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddy,
+        MAX(CASE WHEN op.mix_marca = 'QUAKER' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_quaker,
+        MAX(CASE WHEN op.mix_marca = 'KEROCOCO' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_kerococo
+    FROM order_prod_agg op
+    LEFT JOIN public.data_clients c ON op.codcli = c.codigo_cliente
     GROUP BY
-        EXTRACT(YEAR FROM s.dtped)::int,
-        EXTRACT(MONTH FROM s.dtped)::int,
-        s.filial,
-        s.cidade,
-        s.codsupervisor,
-        s.codusur,
-        CASE
-            WHEN s.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS')
-            ELSE s.codfor
-        END,
-        s.codcli,
-        s.tipovenda,
-        s.pedido,
+        op.ano,
+        op.mes,
+        op.filial,
+        op.cidade,
+        op.codsupervisor,
+        op.codusur,
+        op.codfor,
+        op.codcli,
+        op.tipovenda,
+        op.pedido,
         c.ramo;
     -- ANALYZE public.data_summary;
 END;
@@ -1848,7 +1870,7 @@ BEGIN
             END as codfor_enhanced
         FROM public.dim_produtos
     ),
-    freq_agg_base AS (
+    order_prod_agg AS (
         SELECT
             v_year as ano,
             v_month as mes,
@@ -1863,35 +1885,54 @@ BEGIN
             t.codcli,
             t.tipovenda,
             t.pedido,
-            SUM(t.vlvenda) as vlvenda,
-            SUM(t.totpesoliq) as peso,
-            jsonb_agg(DISTINCT t.produto) as produtos,
-            jsonb_agg(DISTINCT dp.categoria_produto) FILTER (WHERE dp.categoria_produto IS NOT NULL) as categorias,
-            array_agg(DISTINCT t.produto) as produtos_arr,
-            array_agg(DISTINCT dp.categoria_produto) FILTER (WHERE dp.categoria_produto IS NOT NULL) as categorias_arr,
-            MAX(CASE WHEN dp.mix_marca = 'CHEETOS' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_cheetos,
-            MAX(CASE WHEN dp.mix_marca = 'DORITOS' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_doritos,
-            MAX(CASE WHEN dp.mix_marca = 'FANDANGOS' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_fandangos,
-            MAX(CASE WHEN dp.mix_marca = 'RUFFLES' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_ruffles,
-            MAX(CASE WHEN dp.mix_marca = 'TORCIDA' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_torcida,
-            MAX(CASE WHEN dp.mix_marca = 'TODDYNHO' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddynho,
-            MAX(CASE WHEN dp.mix_marca = 'TODDY' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddy,
-            MAX(CASE WHEN dp.mix_marca = 'QUAKER' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_quaker,
-            MAX(CASE WHEN dp.mix_marca = 'KEROCOCO' AND t.vlvenda >= 1 THEN 1 ELSE NULL END) as has_kerococo
+            t.produto,
+            dp.categoria_produto,
+            dp.mix_marca,
+            SUM(t.vlvenda) as prod_vlvenda,
+            SUM(t.totpesoliq) as prod_peso
         FROM tmp_raw_data t
         LEFT JOIN dim_prod_enhanced dp ON t.produto = dp.codigo
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
+    ),
+    freq_agg_base AS (
+        SELECT
+            op.ano,
+            op.mes,
+            op.filial,
+            op.cidade,
+            op.codsupervisor,
+            op.codusur,
+            op.codfor,
+            op.codcli,
+            op.tipovenda,
+            op.pedido,
+            SUM(op.prod_vlvenda) as vlvenda,
+            SUM(op.prod_peso) as peso,
+            jsonb_agg(DISTINCT op.produto) as produtos,
+            jsonb_agg(DISTINCT op.categoria_produto) FILTER (WHERE op.categoria_produto IS NOT NULL) as categorias,
+            array_agg(DISTINCT op.produto) as produtos_arr,
+            array_agg(DISTINCT op.categoria_produto) FILTER (WHERE op.categoria_produto IS NOT NULL) as categorias_arr,
+            MAX(CASE WHEN op.mix_marca = 'CHEETOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_cheetos,
+            MAX(CASE WHEN op.mix_marca = 'DORITOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_doritos,
+            MAX(CASE WHEN op.mix_marca = 'FANDANGOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_fandangos,
+            MAX(CASE WHEN op.mix_marca = 'RUFFLES' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_ruffles,
+            MAX(CASE WHEN op.mix_marca = 'TORCIDA' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_torcida,
+            MAX(CASE WHEN op.mix_marca = 'TODDYNHO' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddynho,
+            MAX(CASE WHEN op.mix_marca = 'TODDY' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddy,
+            MAX(CASE WHEN op.mix_marca = 'QUAKER' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_quaker,
+            MAX(CASE WHEN op.mix_marca = 'KEROCOCO' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_kerococo
+        FROM order_prod_agg op
         GROUP BY
-            t.filial,
-            t.cidade,
-            t.codsupervisor,
-            t.codusur,
-            CASE
-                WHEN t.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS')
-                ELSE t.codfor
-            END,
-            t.codcli,
-            t.tipovenda,
-            t.pedido
+            op.ano,
+            op.mes,
+            op.filial,
+            op.cidade,
+            op.codsupervisor,
+            op.codusur,
+            op.codfor,
+            op.codcli,
+            op.tipovenda,
+            op.pedido
     )
     SELECT
         f.ano,
@@ -2281,19 +2322,15 @@ SET search_path = public
 AS $$
 DECLARE
     r_year int;
-    r_month int;
 BEGIN
     -- 1. Truncate Main
     TRUNCATE TABLE public.data_summary;
     TRUNCATE TABLE public.data_summary_frequency;
     
-    -- 2. Loop Years and Months
+    -- 2. Loop Years
     FOR r_year IN SELECT y FROM unnest(get_available_years()) as y
     LOOP
-        FOR r_month IN 1..12
-        LOOP
-            PERFORM refresh_summary_month(r_year, r_month);
-        END LOOP;
+        PERFORM refresh_summary_year(r_year);
     END LOOP;
 
     -- 3. Refresh Filters
