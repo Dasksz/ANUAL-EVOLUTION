@@ -7612,6 +7612,8 @@ async function updateEstrelasView() {
 
         // Update UI
         updateEl('sellout-meta-val', `${metaSellout.toFixed(2)} tons`);
+        updateEl('sellout-meta-salty-val', `${metaSelloutSalty.toFixed(2)} tons`);
+        updateEl('sellout-meta-foods-val', `${metaSelloutFoods.toFixed(2)} tons`);
         updateEl('sellout-realizado-val', `${data.sellout_salty + data.sellout_foods < 0.01 ? '0.00' : (data.sellout_salty + data.sellout_foods).toFixed(2)} tons`);
         updateEl('sellout-salty-val', `${data.sellout_salty < 0.01 ? '0.00' : data.sellout_salty.toFixed(2)} tons`);
         updateEl('sellout-foods-val', `${data.sellout_foods < 0.01 ? '0.00' : data.sellout_foods.toFixed(2)} tons`);
