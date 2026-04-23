@@ -137,6 +137,7 @@ BEGIN
                 END IF;
             END;
         END IF;
+    END;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.categorias) c WHERE c = ANY(%L::text[])) ', p_categoria);
