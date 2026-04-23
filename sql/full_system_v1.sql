@@ -86,41 +86,57 @@ BEGIN
         END IF;
     END IF;
 
-    -- Note: Since we are calculating specific suppliers (707, 708, 752, 1119), p_fornecedor filter might override this if provided.
-    -- If p_fornecedor is passed, we apply it. But usually, this view is specifically for Pepsico (707, 708, 752, 1119).
-    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        DECLARE
-            v_code text;
-            v_conditions text[] := '{}';
-            v_simple_codes text[] := '{}';
-            v_cond_str text;
-        BEGIN
-            FOREACH v_code IN ARRAY p_fornecedor LOOP
-                IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''TODDYNHO''])');
-                ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''TODDY''])');
-                ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''QUAKER''])');
-                ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''KEROCOCO''])');
-                ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND NOT (s.categorias_arr && ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
+    -- Note: This view specifically calculates KPIs for Salty (707, 708, 752) and Foods (1119).
+    -- If p_fornecedor is passed, we apply it inside the CTE calculation specifically for those blocks,
+    -- or we use it to construct a base filter that ALWAYS includes the unselected block so that the
+    -- dashboard doesn't blank out.
+    -- E.g. If they filter Salty, we still need to load Foods to show 0/Realizado properly, OR we
+    -- apply the filters directly on the SELECT metrics below.
+    -- To ensure both KPIs always function properly independently, we will NOT filter out the base
+    -- CTE by p_fornecedor here. We'll handle the p_fornecedor condition dynamically in the metrics calculation!
+
+    DECLARE
+        v_fornecedor_salty_cond text := 's.codfor IN (''707'', ''708'', ''752'')';
+        v_fornecedor_foods_cond text := 's.codfor = ''1119''';
+    BEGIN
+        IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
+            DECLARE
+                v_code text;
+                v_salty_codes text[] := '{}';
+                v_foods_conds text[] := '{}';
+            BEGIN
+                FOREACH v_code IN ARRAY p_fornecedor LOOP
+                    IF v_code IN ('707', '708', '752') THEN
+                        v_salty_codes := array_append(v_salty_codes, v_code);
+                    ELSIF v_code = '1119_TODDYNHO' THEN
+                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''TODDYNHO''])');
+                    ELSIF v_code = '1119_TODDY' THEN
+                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''TODDY''])');
+                    ELSIF v_code = '1119_QUAKER' THEN
+                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''QUAKER''])');
+                    ELSIF v_code = '1119_KEROCOCO' THEN
+                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''KEROCOCO''])');
+                    ELSIF v_code = '1119_OUTROS' THEN
+                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND NOT (s.categorias_arr && ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
+                    END IF;
+                END LOOP;
+
+                IF array_length(v_salty_codes, 1) > 0 THEN
+                    v_fornecedor_salty_cond := format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_salty_codes, ''','''));
                 ELSE
-                    v_simple_codes := array_append(v_simple_codes, v_code);
+                    -- If filtering and NO salty codes were selected, salty metrics should be strictly zeroed out
+                    -- ONLY if we are actually filtering suppliers.
+                    v_fornecedor_salty_cond := 'FALSE';
                 END IF;
-            END LOOP;
 
-            IF array_length(v_simple_codes, 1) > 0 THEN
-                v_conditions := array_append(v_conditions, format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
-            END IF;
-
-            IF array_length(v_conditions, 1) > 0 THEN
-                v_cond_str := array_to_string(v_conditions, ' OR ');
-                v_where_base := v_where_base || ' AND (' || v_cond_str || ') ';
-            END IF;
-        END;
-    END IF;
+                IF array_length(v_foods_conds, 1) > 0 THEN
+                    v_fornecedor_foods_cond := '(' || array_to_string(v_foods_conds, ' OR ') || ')';
+                ELSE
+                    -- If filtering and NO foods codes were selected, foods metrics should be strictly zeroed out
+                    v_fornecedor_foods_cond := 'FALSE';
+                END IF;
+            END;
+        END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.categorias) c WHERE c = ANY(%L::text[])) ', p_categoria);
@@ -172,14 +188,14 @@ BEGIN
             SELECT
                 SUM(s.peso) as total_tonnage,
                 -- Salty Tonnage
-                SUM(CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.peso ELSE 0 END) as salty_tonnage,
+                SUM(CASE WHEN %s THEN s.peso ELSE 0 END) as salty_tonnage,
                 -- Foods Tonnage
-                SUM(CASE WHEN s.codfor IN (''1119'') THEN s.peso ELSE 0 END) as foods_tonnage,
+                SUM(CASE WHEN %s THEN s.peso ELSE 0 END) as foods_tonnage,
 
                 -- Salty Positivacao
-                COUNT(DISTINCT CASE WHEN s.codfor IN (''707'', ''708'', ''752'') AND s.vlvenda >= 1 THEN s.codcli END) as positivacao_salty,
-                -- Foods Positivacao
-                COUNT(DISTINCT CASE WHEN NOT EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor NOT IN (''1119'')) AND EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor IN (''1119'')) AND s.vlvenda >= 1 THEN s.codcli END) as positivacao_foods
+                COUNT(DISTINCT CASE WHEN %s AND s.vlvenda >= 1 THEN s.codcli END) as positivacao_salty,
+                -- Foods Positivacao (Strict logic: Bought Foods AND bought nothing else in the target table)
+                COUNT(DISTINCT CASE WHEN NOT EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor NOT IN (''1119'')) AND EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND %s) AND s.vlvenda >= 1 THEN s.codcli END) as positivacao_foods
             FROM target_sales s
         ),
         aceleradores_config AS (
@@ -204,10 +220,10 @@ BEGIN
             SELECT
                 COALESCE(dv.nome, ''N/D'') AS vendedor_nome,
                 s.filial,
-                COALESCE(SUM(CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.peso ELSE 0 END), 0) AS sellout_salty,
-                COALESCE(SUM(CASE WHEN s.codfor IN (''1119'') THEN s.peso ELSE 0 END), 0) AS sellout_foods,
-                COUNT(DISTINCT CASE WHEN s.codfor IN (''707'', ''708'', ''752'') AND s.vlvenda >= 1 THEN s.codcli END) AS pos_salty,
-                COUNT(DISTINCT CASE WHEN NOT EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor NOT IN (''1119'')) AND EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor IN (''1119'')) AND s.vlvenda >= 1 THEN s.codcli END) AS pos_foods,
+                COALESCE(SUM(CASE WHEN %s THEN s.peso ELSE 0 END), 0) AS sellout_salty,
+                COALESCE(SUM(CASE WHEN %s THEN s.peso ELSE 0 END), 0) AS sellout_foods,
+                COUNT(DISTINCT CASE WHEN %s AND s.vlvenda >= 1 THEN s.codcli END) AS pos_salty,
+                COUNT(DISTINCT CASE WHEN NOT EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor NOT IN (''1119'')) AND EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND %s) AND s.vlvenda >= 1 THEN s.codcli END) AS pos_foods,
                 COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias)) THEN s.codcli END) AS acel_realizado,
                 COALESCE((SELECT SUM(m.calibracao_salty) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(s.codusur, ''0'') AND m.filial::text = LTRIM(s.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_salty,
                 COALESCE((SELECT SUM(m.calibracao_foods) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(s.codusur, ''0'') AND m.filial::text = LTRIM(s.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_foods,
@@ -236,7 +252,7 @@ BEGIN
             ''aceleradores_meta'', CEIL(COALESCE((SELECT meta_pos FROM metas_calc), 0) * 0.5),
             ''detalhes'', COALESCE((SELECT detalhes_array FROM detalhes_json), ''[]''::json)
         )
-    ', v_where_clients, v_where_base, v_current_year, v_eval_target_month, v_where_metas, v_current_year, v_eval_target_month, v_current_year, v_eval_target_month, v_current_year, v_eval_target_month);
+    ', v_where_clients, v_where_base, v_fornecedor_salty_cond, v_fornecedor_foods_cond, v_fornecedor_salty_cond, v_fornecedor_foods_cond, v_current_year, v_eval_target_month, v_where_metas, v_fornecedor_salty_cond, v_fornecedor_foods_cond, v_fornecedor_salty_cond, v_fornecedor_foods_cond, v_current_year, v_eval_target_month, v_current_year, v_eval_target_month, v_current_year, v_eval_target_month);
 
     END;
 
