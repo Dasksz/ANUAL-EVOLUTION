@@ -27,6 +27,9 @@ DECLARE
     v_where_clients text := ' WHERE 1=1 ';
     v_where_acel text := '';
 
+    v_fornecedor_salty_cond text := 's.codfor IN (''707'', ''708'', ''752'')';
+    v_fornecedor_foods_cond text := 's.codfor = ''1119''';
+
     v_result json;
     v_sql text;
 BEGIN
@@ -94,10 +97,7 @@ BEGIN
     -- apply the filters directly on the SELECT metrics below.
     -- To ensure both KPIs always function properly independently, we will NOT filter out the base
     -- CTE by p_fornecedor here. We'll handle the p_fornecedor condition dynamically in the metrics calculation!
-
-    DECLARE
-        v_fornecedor_salty_cond text := 's.codfor IN (''707'', ''708'', ''752'')';
-        v_fornecedor_foods_cond text := 's.codfor = ''1119''';
+    
     BEGIN
         IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
             DECLARE
@@ -120,7 +120,7 @@ BEGIN
                         v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND NOT (s.categorias_arr && ARRAY[''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'']))');
                     END IF;
                 END LOOP;
-
+                
                 IF array_length(v_salty_codes, 1) > 0 THEN
                     v_fornecedor_salty_cond := format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_salty_codes, ''','''));
                 ELSE
@@ -128,7 +128,7 @@ BEGIN
                     -- ONLY if we are actually filtering suppliers.
                     v_fornecedor_salty_cond := 'FALSE';
                 END IF;
-
+                
                 IF array_length(v_foods_conds, 1) > 0 THEN
                     v_fornecedor_foods_cond := '(' || array_to_string(v_foods_conds, ' OR ') || ')';
                 ELSE
