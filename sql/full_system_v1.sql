@@ -251,3 +251,36 @@ BEGIN
     RETURN v_result;
 END;
 $$;
+
+-- =========================================================================================
+-- SUPERVISORS ROUTES TABLE
+-- =========================================================================================
+CREATE TABLE IF NOT EXISTS public.supervisors_routes (
+    id uuid DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+    cargo text,
+    data_rota date,
+    dia_semana text,
+    supervisor text,
+    rota_dia text,
+    clientes_roteirizados integer,
+    acompanhado_dia_codigo text,
+    acompanhado_dia_nome text,
+    foco_dia text,
+    clientes_visitados integer,
+    clientes_com_venda integer,
+    observacao_rota text,
+    eficiencia_visita text,
+    eficiencia_rota text,
+    eficiencia_saida text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT supervisors_routes_data_rota_supervisor_key UNIQUE (data_rota, supervisor)
+);
+
+ALTER TABLE public.supervisors_routes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Enable read access for all users" ON public.supervisors_routes
+    FOR SELECT USING (true);
+
+CREATE POLICY "Enable update/insert for authenticated users" ON public.supervisors_routes
+    FOR ALL USING (auth.role() = 'authenticated');

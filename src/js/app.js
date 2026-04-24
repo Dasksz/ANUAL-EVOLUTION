@@ -456,7 +456,8 @@ let estrelasSelectedCategorias = [];
             { id: 'comparison-view', navId: 'nav-comparativo-btn', name: 'Comparativo' },
             { id: 'innovations-month-view', navId: 'nav-innovations-btn', name: 'Inovacoes' },
             { id: 'loja-perfeita-view', navId: 'nav-loja-perfeita-btn', name: 'Loja Perfeita' },
-            { id: 'estrelas-view', navId: 'nav-estrelas-btn', name: 'Estrelas' }
+            { id: 'estrelas-view', navId: 'nav-estrelas-btn', name: 'Estrelas' },
+            { id: 'agenda-view', navId: 'nav-agenda-btn', name: 'Agenda' }
         ];
 
         for (const view of views) {
@@ -689,6 +690,8 @@ let estrelasSelectedCategorias = [];
     const innovationsMonthView = document.getElementById('innovations-month-view');
     const lojaPerfeitaView = document.getElementById('loja-perfeita-view');
     const estrelasView = document.getElementById('estrelas-view');
+    const agendaView = document.getElementById('agenda-view');
+    const navAgendaBtn = document.getElementById('nav-agenda-btn');
     const closeUploaderBtn = document.getElementById('close-uploader-btn');
 
     // Dashboard Internal Views
@@ -1697,6 +1700,14 @@ let estrelasSelectedCategorias = [];
                     estrelasView.classList.remove('hidden');
                     setActiveNavLink(navEstrelasBtn);
                     renderEstrelasView();
+                }
+                break;
+            case 'agenda':
+                if (agendaView && navAgendaBtn) {
+                    showDashboardLoading('agenda-view');
+                    agendaView.classList.remove('hidden');
+                    setActiveNavLink(navAgendaBtn);
+                    renderAgendaView();
                 }
                 break;
             case 'loja-perfeita':
@@ -8107,4 +8118,214 @@ function renderMixSaltyFoodsChart(data) {
             }
         }
     });
+}
+
+// ==========================================
+// AGENDA VIEW LOGIC
+// ==========================================
+let isAgendaInitialized = false;
+let agendaSelectedSupervisors = [];
+let agendaSelectedRotas = [];
+
+const handleAgendaFilterChange = () => {
+    updateAgendaView();
+};
+
+const loadAgendaFilters = async () => {
+    try {
+        const { data: routeData, error } = await supabase
+            .from('supervisors_routes')
+            .select('supervisor, rota_dia, data_rota');
+
+        if (error) throw error;
+
+        // Populate Year
+        const years = [...new Set(routeData.map(r => r.data_rota ? r.data_rota.substring(0,4) : null).filter(Boolean))].sort().reverse();
+        const anoSelect = document.getElementById('agenda-ano-filter');
+        if (anoSelect) {
+            anoSelect.innerHTML = '<option value="todos">Todos</option>';
+            years.forEach(y => {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y;
+                // Set default to current year if exists
+                if (y === new Date().getFullYear().toString()) {
+                    opt.selected = true;
+                }
+                anoSelect.appendChild(opt);
+            });
+            anoSelect.addEventListener('change', handleAgendaFilterChange);
+        }
+
+        // Select current month by default
+        const mesSelect = document.getElementById('agenda-mes-filter');
+        if (mesSelect) {
+            mesSelect.value = (new Date().getMonth() + 1).toString();
+            mesSelect.addEventListener('change', handleAgendaFilterChange);
+        }
+
+        const supervisors = [...new Set(routeData.map(r => r.supervisor).filter(Boolean))].sort();
+        setupMultiSelect('agenda-supervisor-filter', supervisors, agendaSelectedSupervisors, handleAgendaFilterChange);
+
+        const rotas = [...new Set(routeData.map(r => r.rota_dia).filter(Boolean))].sort();
+        setupMultiSelect('agenda-rota-filter', rotas, agendaSelectedRotas, handleAgendaFilterChange);
+
+    } catch (err) {
+        AppLog.error("Erro ao carregar filtros da Agenda:", err);
+    }
+};
+
+const setupAgendaFilters = async () => {
+    if (isAgendaInitialized) return;
+
+    await loadAgendaFilters();
+
+    // Clickaway setup
+    const container = document.getElementById('agenda-filters-container');
+    if (container) {
+        container.addEventListener('click', (e) => {
+            const dropdowns = [
+                document.getElementById('agenda-supervisor-filter-dropdown'),
+                document.getElementById('agenda-rota-filter-dropdown')
+            ];
+            const btns = [
+                document.getElementById('agenda-supervisor-filter-btn'),
+                document.getElementById('agenda-rota-filter-btn')
+            ];
+
+            let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
+            const view = document.getElementById('agenda-view');
+            if (anyClosed && view && !view.classList.contains('hidden')) {
+                handleAgendaFilterChange();
+            }
+        });
+    }
+
+    isAgendaInitialized = true;
+};
+
+async function renderAgendaView() {
+    showDashboardLoading('agenda-view');
+    if (!isAgendaInitialized) {
+        await setupAgendaFilters();
+    }
+    updateAgendaView();
+}
+
+async function updateAgendaView() {
+    showDashboardLoading('agenda-view');
+
+    try {
+        let query = supabase.from('supervisors_routes').select('*').order('data_rota', { ascending: false });
+
+        const ano = document.getElementById('agenda-ano-filter')?.value;
+        if (ano && ano !== 'todos') {
+            query = query.gte('data_rota', `${ano}-01-01`).lte('data_rota', `${ano}-12-31`);
+        }
+
+        const mesStr = document.getElementById('agenda-mes-filter')?.value;
+        if (mesStr && mesStr !== 'todos') {
+            const mesNum = parseInt(mesStr, 10);
+            if (ano && ano !== 'todos') {
+                const startDate = `${ano}-${mesNum.toString().padStart(2, '0')}-01`;
+                const endDate = new Date(parseInt(ano), mesNum, 0).toISOString().split('T')[0];
+                query = query.gte('data_rota', startDate).lte('data_rota', endDate);
+            }
+        }
+
+        if (agendaSelectedSupervisors.length > 0) {
+            query = query.in('supervisor', agendaSelectedSupervisors);
+        }
+        if (agendaSelectedRotas.length > 0) {
+            query = query.in('rota_dia', agendaSelectedRotas);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        // Calculate KPIs
+        const totalDias = data.length;
+        let preenchidos = 0;
+        let foco = 0;
+
+        data.forEach(r => {
+            // Considerado preenchido se tiver rota_dia ou foco_dia preenchidos
+            if ((r.rota_dia && r.rota_dia.trim() !== '') || (r.foco_dia && r.foco_dia.trim() !== '')) {
+                preenchidos++;
+            }
+            if (r.foco_dia && r.foco_dia.trim() !== '') {
+                foco++;
+            }
+        });
+
+        const pendentes = totalDias - preenchidos;
+
+        const calcPct = (val, total) => total > 0 ? Math.round((val / total) * 100) : 0;
+
+        document.getElementById('agenda-kpi-total-dias').textContent = formatInteger(totalDias);
+        document.getElementById('agenda-kpi-preenchidos').textContent = formatInteger(preenchidos);
+        document.getElementById('agenda-kpi-preenchidos-pct').textContent = `${calcPct(preenchidos, totalDias)}%`;
+
+        document.getElementById('agenda-kpi-pendentes').textContent = formatInteger(pendentes);
+        document.getElementById('agenda-kpi-pendentes-pct').textContent = `${calcPct(pendentes, totalDias)}%`;
+
+        document.getElementById('agenda-kpi-foco').textContent = formatInteger(foco);
+        document.getElementById('agenda-kpi-foco-pct').textContent = `${calcPct(foco, totalDias)}%`;
+
+        // Render Table
+        const tbody = document.getElementById('agenda-table-body');
+        if (!tbody) return;
+
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-500">Nenhum dado encontrado para os filtros selecionados.</td></tr>`;
+        } else {
+            const getIconStatus = (isPreenchido) => {
+                if (isPreenchido) {
+                    return `<div class="flex items-center gap-1.5"><svg aria-hidden="true" class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span class="text-emerald-400 text-xs font-medium">OK</span></div>`;
+                } else {
+                    return `<div class="flex items-center gap-1.5"><svg aria-hidden="true" class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg><span class="text-red-400 text-xs font-medium">Pendente</span></div>`;
+                }
+            };
+
+            const formatDate = (dateStr) => {
+                if (!dateStr) return '-';
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                }
+                return dateStr;
+            };
+
+            tbody.innerHTML = data.map(r => {
+                const isPreenchido = (r.rota_dia && r.rota_dia.trim() !== '') || (r.foco_dia && r.foco_dia.trim() !== '');
+                const eficiencias = [
+                    r.eficiencia_visita ? `Visita: ${r.eficiencia_visita}` : null,
+                    r.eficiencia_rota ? `Rota: ${r.eficiencia_rota}` : null,
+                    r.eficiencia_saida ? `Saída: ${r.eficiencia_saida}` : null
+                ].filter(Boolean).join(' | ');
+
+                return `
+                    <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <td class="p-3 text-sm text-slate-300 whitespace-nowrap">${escapeHtml(formatDate(r.data_rota))}</td>
+                        <td class="p-3 text-sm text-slate-400 capitalize">${escapeHtml(r.dia_semana || '-')}</td>
+                        <td class="p-3">${getIconStatus(isPreenchido)}</td>
+                        <td class="p-3 text-sm font-medium text-white">${escapeHtml(r.supervisor || '-')}</td>
+                        <td class="p-3 text-sm text-slate-300">
+                            ${escapeHtml(r.acompanhado_dia_nome || '-')}
+                            ${r.acompanhado_dia_codigo ? `<span class="text-xs text-slate-500 block">Cod: ${escapeHtml(r.acompanhado_dia_codigo)}</span>` : ''}
+                        </td>
+                        <td class="p-3 text-sm text-blue-400 font-medium">${escapeHtml(r.rota_dia || '-')}</td>
+                        <td class="p-3 text-sm text-purple-400 line-clamp-2 max-w-xs" title="${escapeHtml(r.foco_dia || '')}">${escapeHtml(r.foco_dia || '-')}</td>
+                        <td class="p-3 text-xs text-slate-400 text-right max-w-[200px] truncate" title="${escapeHtml(eficiencias)}">${escapeHtml(eficiencias || '-')}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+    } catch (err) {
+        AppLog.error("Erro ao carregar dados da Agenda:", err);
+    } finally {
+        const overlay = document.getElementById('dashboard-loading-overlay');
+        if (overlay) overlay.classList.add('hidden');
+    }
 }

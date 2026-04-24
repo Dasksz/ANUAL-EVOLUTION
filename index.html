@@ -426,6 +426,7 @@
             <button type="button" id="nav-innovations-btn" aria-label="Inovações" class="nav-link flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-orange-500 focus:outline-none"><svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>Inovações</button>
             <button type="button" id="nav-loja-perfeita-btn" aria-label="Loja Perfeita" class="nav-link flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-orange-500 focus:outline-none"><svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Loja Perfeita</button>
             <button type="button" id="nav-estrelas-btn" aria-label="Estrelas" class="nav-link flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-orange-500 focus:outline-none"><svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>Estrelas</button>
+            <button type="button" id="nav-agenda-btn" aria-label="Agenda" class="nav-link flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-orange-500 focus:outline-none"><svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>Agenda</button>
         </nav>
         <div class="top-nav-actions relative">
             <button class="user-avatar cursor-pointer hover:ring-2 hover:ring-orange-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 transition-all" id="profile-menu-btn" title="Perfil" aria-label="Menu do usuário" aria-haspopup="menu" aria-expanded="false" aria-controls="profile-dropdown">
@@ -2179,7 +2180,166 @@
         </div>
     </div>
 
-    <!-- Modal Uploader (Admin) -->
+
+<!-- AGENDA VIEW PLACEHOLDER -->
+<div id="agenda-view" class="hidden container mx-auto p-4 max-w-7xl animate-fade-in-up">
+    <header class="mb-8 border-b border-slate-700/50 pb-4 flex justify-between items-end">
+        <div>
+            <h1 class="text-3xl font-bold text-white mb-1">Agenda</h1>
+            <p class="text-slate-400">Acompanhamento e Cobrança de Rotas</p>
+        </div>
+    </header>
+
+    <!-- Filters Section -->
+    <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-4 rounded-xl mb-6 shadow-lg relative z-[100]">
+        <div class="flex flex-wrap items-end gap-3 mb-2" id="agenda-filters-container">
+
+            <div class="flex-1 min-w-[140px] relative">
+                <label for="agenda-ano-filter" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ano</label>
+                <div class="relative w-full">
+                    <select id="agenda-ano-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none">
+                        <!-- Options populated via JS -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex-1 min-w-[140px] relative">
+                <label for="agenda-mes-filter" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Mês</label>
+                <div class="relative w-full">
+                    <select id="agenda-mes-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none">
+                        <option value="1">Janeiro</option>
+                        <option value="2">Fevereiro</option>
+                        <option value="3">Março</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Maio</option>
+                        <option value="6">Junho</option>
+                        <option value="7">Julho</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Setembro</option>
+                        <option value="10">Outubro</option>
+                        <option value="11">Novembro</option>
+                        <option value="12">Dezembro</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Supervisor Filter (Multi-select) -->
+            <div class="flex-1 min-w-[180px] relative">
+                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Supervisor</label>
+                <button type="button" id="agenda-supervisor-filter-btn" aria-haspopup="listbox" aria-expanded="false" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 flex justify-between items-center">
+                    <span class="truncate pr-2">Todos</span>
+                    <svg aria-hidden="true" class="w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div id="agenda-supervisor-filter-dropdown" class="hidden absolute z-[999] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+            </div>
+
+            <!-- Rota Filter (Multi-select) -->
+            <div class="flex-1 min-w-[180px] relative">
+                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Rota</label>
+                <button type="button" id="agenda-rota-filter-btn" aria-haspopup="listbox" aria-expanded="false" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 flex justify-between items-center">
+                    <span class="truncate pr-2">Todas</span>
+                    <svg aria-hidden="true" class="w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div id="agenda-rota-filter-dropdown" class="hidden absolute z-[999] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+            </div>
+
+            <div class="ml-auto flex justify-end items-end gap-3">
+                <button aria-label="Limpar Filtros Agenda" onclick="clearAllFilters('agenda')" class="bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-lg transition-colors flex items-center justify-center h-[38px] w-[38px] focus-visible:ring-2 focus-visible:ring-orange-500 focus:outline-none" title="Limpar Filtros">
+                    <svg aria-hidden="true" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path><line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs Section -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-5 rounded-xl shadow-lg relative overflow-hidden group">
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider z-10">Total de Dias</h3>
+                <div class="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center z-10">
+                    <svg aria-hidden="true" class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                </div>
+            </div>
+            <div class="flex items-end gap-3 z-10 relative">
+                <span id="agenda-kpi-total-dias" class="text-3xl font-bold text-white tracking-tight">0</span>
+            </div>
+        </div>
+
+        <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-5 rounded-xl shadow-lg relative overflow-hidden group">
+            <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider z-10">Dias Preenchidos</h3>
+                <div class="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center z-10">
+                    <svg aria-hidden="true" class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+            </div>
+            <div class="flex items-end gap-3 z-10 relative">
+                <span id="agenda-kpi-preenchidos" class="text-3xl font-bold text-emerald-400 tracking-tight">0</span>
+                <span id="agenda-kpi-preenchidos-pct" class="text-sm font-bold text-emerald-500/80 mb-1 bg-emerald-500/10 px-2 py-0.5 rounded-full">0%</span>
+            </div>
+        </div>
+
+        <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-5 rounded-xl shadow-lg relative overflow-hidden group">
+            <div class="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider z-10">Dias Pendentes</h3>
+                <div class="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center z-10">
+                    <svg aria-hidden="true" class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+            </div>
+            <div class="flex items-end gap-3 z-10 relative">
+                <span id="agenda-kpi-pendentes" class="text-3xl font-bold text-red-400 tracking-tight">0</span>
+                <span id="agenda-kpi-pendentes-pct" class="text-sm font-bold text-red-500/80 mb-1 bg-red-500/10 px-2 py-0.5 rounded-full">0%</span>
+            </div>
+        </div>
+
+        <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-5 rounded-xl shadow-lg relative overflow-hidden group">
+            <div class="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider z-10">Dias com Foco</h3>
+                <div class="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center z-10">
+                    <svg aria-hidden="true" class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                </div>
+            </div>
+            <div class="flex items-end gap-3 z-10 relative">
+                <span id="agenda-kpi-foco" class="text-3xl font-bold text-purple-400 tracking-tight">0</span>
+                <span id="agenda-kpi-foco-pct" class="text-sm font-bold text-purple-500/80 mb-1 bg-purple-500/10 px-2 py-0.5 rounded-full">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela Resumo -->
+    <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 rounded-xl shadow-lg overflow-hidden flex flex-col">
+        <div class="p-4 border-b border-white/10 flex justify-between items-center">
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <svg aria-hidden="true" class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                Detalhamento Diário
+            </h2>
+        </div>
+        <div class="overflow-x-auto custom-scrollbar flex-1">
+            <table class="w-full text-left border-collapse min-w-[800px]">
+                <thead>
+                    <tr class="bg-white/5 border-b border-white/10">
+                        <th class="p-3 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Data</th>
+                        <th class="p-3 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Dia Semana</th>
+                        <th class="p-3 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Status</th>
+                        <th class="p-3 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Supervisor</th>
+                        <th class="p-3 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Vendedor Dia</th>
+                        <th class="p-3 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Rota</th>
+                        <th class="p-3 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Foco Dia</th>
+                        <th class="p-3 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap text-right">Eficiências</th>
+                    </tr>
+                </thead>
+                <tbody id="agenda-table-body" class="divide-y divide-white/5">
+                    <!-- Rows populated via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Uploader (Admin) -->
     <div id="uploader-modal" class="modal-overlay hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[3000]">
         <div class="bg-[#151419] rounded-lg shadow-2xl max-w-lg w-full p-8 border border-white/10 relative">
             <button id="close-uploader-btn" aria-label="Fechar Upload" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400">&times;</button>
