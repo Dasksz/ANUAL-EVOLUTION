@@ -3,12 +3,24 @@ export function escapeHtml(unsafe) {
     if (unsafe == null) return '';
     const str = String(unsafe);
     if (!matchHtmlRegExp.test(str)) return str;
-    return str
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;");
+
+    // ⚡ Bolt Optimization: Single-pass iteration instead of multiple chained `.replace` calls
+    let escaped = '';
+    let lastIndex = 0;
+    for (let i = 0; i < str.length; i++) {
+        let match = '';
+        switch (str.charCodeAt(i)) {
+            case 38: match = '&amp;'; break; // &
+            case 60: match = '&lt;'; break; // <
+            case 62: match = '&gt;'; break; // >
+            case 34: match = '&quot;'; break; // "
+            case 39: match = '&#039;'; break; // '
+            default: continue;
+        }
+        escaped += str.substring(lastIndex, i) + match;
+        lastIndex = i + 1;
+    }
+    return escaped + str.substring(lastIndex);
 }
 
 const _numberFormatters = new Map();
