@@ -1690,7 +1690,7 @@ let estrelasSelectedCategorias = [];
                 break;
             case 'innovations':
                 if (innovationsMonthView && navInnovationsBtn) {
-                    showDashboardLoading('innovations-month-view');
+                    window.showDashboardLoading('innovations-month-view');
                     innovationsMonthView.classList.remove('hidden');
                     setActiveNavLink(navInnovationsBtn);
                     renderInnovationsMonthView();
@@ -1698,7 +1698,7 @@ let estrelasSelectedCategorias = [];
                 break;
                         case 'estrelas':
                 if (estrelasView && navEstrelasBtn) {
-                    showDashboardLoading('estrelas-view');
+                    window.showDashboardLoading('estrelas-view');
                     estrelasView.classList.remove('hidden');
                     setActiveNavLink(navEstrelasBtn);
                     renderEstrelasView();
@@ -1706,7 +1706,7 @@ let estrelasSelectedCategorias = [];
                 break;
             case 'agenda':
                 if (agendaView && navAgendaBtn) {
-                    showDashboardLoading('agenda-view');
+                    window.showDashboardLoading('agenda-view');
                     agendaView.classList.remove('hidden');
                     setActiveNavLink(navAgendaBtn);
                     renderAgendaView();
@@ -1714,7 +1714,7 @@ let estrelasSelectedCategorias = [];
                 break;
             case 'loja-perfeita':
                 if (lojaPerfeitaView && navLojaPerfeitaBtn) {
-                    showDashboardLoading('loja-perfeita-view');
+                    window.showDashboardLoading('loja-perfeita-view');
                     lojaPerfeitaView.classList.remove('hidden');
                     setActiveNavLink(navLojaPerfeitaBtn);
                     renderLojaPerfeitaView();
@@ -2773,7 +2773,7 @@ let estrelasSelectedCategorias = [];
     }
 
     async function loadBoxesView() {
-        showDashboardLoading('boxes-view');
+        window.showDashboardLoading('boxes-view');
 
         if (typeof initBoxesFilters === 'function' && boxesAnoFilter && boxesAnoFilter.options.length <= 1) {
              await initBoxesFilters();
@@ -2808,7 +2808,7 @@ let estrelasSelectedCategorias = [];
             
             if (error) {
                 AppLog.error(error);
-                hideDashboardLoading();
+                window.hideDashboardLoading();
                 if (error.message.includes('function get_boxes_dashboard_data') && error.message.includes('does not exist')) {
                     window.showToast('error', "Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
                 }
@@ -2818,7 +2818,7 @@ let estrelasSelectedCategorias = [];
             saveToCache(cacheKey, data);
         }
 
-        hideDashboardLoading();
+        window.hideDashboardLoading();
         renderBoxesDashboard(data);
     }
 
@@ -3096,7 +3096,7 @@ let estrelasSelectedCategorias = [];
     let isPrefetching = false;
 
     // --- Loading Helpers ---
-    function showDashboardLoading(targetId = 'main-dashboard-view') {
+    window.showDashboardLoading = function(targetId = 'main-dashboard-view') {
         const container = document.getElementById(targetId);
         let overlay = document.getElementById('dashboard-loading-overlay');
 
@@ -3121,13 +3121,13 @@ let estrelasSelectedCategorias = [];
         }
     }
 
-    function hideDashboardLoading() {
+    window.hideDashboardLoading = function() {
         const overlay = document.getElementById('dashboard-loading-overlay');
         if (overlay) overlay.classList.add('hidden');
     }
 
     async function initDashboard() {
-        showDashboardLoading();
+        window.showDashboardLoading();
         await checkDataVersion(); // Check for invalidation first
 
         const filters = getCurrentFilters();
@@ -3586,7 +3586,7 @@ let estrelasSelectedCategorias = [];
         
         clearTimeout(filterDebounceTimer);
         filterDebounceTimer = setTimeout(async () => {
-            showDashboardLoading();
+            window.showDashboardLoading();
             try { await loadFilters(filters); } catch (err) { AppLog.error("Failed to load filters:", err); }
             try { await loadMainDashboardData(); } catch (err) { AppLog.error("Failed to load dashboard data:", err); }
             if (!cityView.classList.contains('hidden')) { currentCityPage = 0; await loadCityView(); }
@@ -3652,22 +3652,22 @@ let estrelasSelectedCategorias = [];
                     if (age < 60 * 1000) { // Fresh enough (1 min)
                          AppLog.log('SWR: Cache is fresh (<1min), skipping background fetch.');
                          await fetchLastSalesDate();
-                         hideDashboardLoading();
+                         window.hideDashboardLoading();
                          prefetchViews(filters);
                          return;
                     } else {
                         AppLog.log('SWR: Cache is stale, fetching update in background...');
-                        showDashboardLoading(); // Optional: show loading indicator non-intrusively
+                        window.showDashboardLoading(); // Optional: show loading indicator non-intrusively
                     }
                 } else {
-                    showDashboardLoading();
+                    window.showDashboardLoading();
                 }
             } catch (e) {
                 AppLog.warn('SWR Cache Error:', e);
-                showDashboardLoading();
+                window.showDashboardLoading();
             }
         } else {
-            showDashboardLoading();
+            window.showDashboardLoading();
         }
 
         // 2. Network Fetch (Background or Foreground)
@@ -3688,7 +3688,7 @@ let estrelasSelectedCategorias = [];
             prefetchViews(filters);
         }
         
-        hideDashboardLoading();
+        window.hideDashboardLoading();
     }
 
     // Prefetch Background Logic
@@ -4516,7 +4516,7 @@ let estrelasSelectedCategorias = [];
     }
 
     async function loadCityView() {
-        showDashboardLoading('city-view');
+        window.showDashboardLoading('city-view');
 
         if (typeof initCityFilters === 'function' && cityAnoFilter && cityAnoFilter.options.length <= 1) {
              await initCityFilters();
@@ -4539,7 +4539,7 @@ let estrelasSelectedCategorias = [];
 
         const { data, error } = await supabase.rpc('get_city_view_data', filters);
         
-        hideDashboardLoading();
+        window.hideDashboardLoading();
 
         if(error) { AppLog.error(error); return; }
 
@@ -4822,7 +4822,7 @@ let estrelasSelectedCategorias = [];
 }
 
     async function loadBranchView() {
-        showDashboardLoading('branch-view');
+        window.showDashboardLoading('branch-view');
 
         // Populate Dropdowns if needed
         if (branchAnoFilter.options.length <= 1) {
@@ -4868,7 +4868,7 @@ let estrelasSelectedCategorias = [];
             AppLog.error("Erro geral no fetch de filiais:", e);
         }
         
-        hideDashboardLoading();
+        window.hideDashboardLoading();
         if (branchDataMap) {
             renderBranchDashboard(branchDataMap, selectedYear, selectedMonth);
         }
@@ -5529,7 +5529,7 @@ let estrelasSelectedCategorias = [];
         }
 
         async function loadComparisonView() {
-            showDashboardLoading('comparison-view');
+            window.showDashboardLoading('comparison-view');
 
             if (typeof initComparisonFilters === 'function' && (!comparisonSupervisorFilterDropdown.children.length || comparisonSupervisorFilterDropdown.children.length === 0)) {
                 await initComparisonFilters();
@@ -5577,7 +5577,7 @@ let estrelasSelectedCategorias = [];
 
                 if (error) {
                     AppLog.error("RPC Error:", error);
-                    hideDashboardLoading();
+                    window.hideDashboardLoading();
                     if (error.message.includes('function get_comparison_view_data') && error.message.includes('does not exist')) {
                         window.showToast('error', "A função 'get_comparison_view_data' não foi encontrada no banco de dados. \n\nPor favor, execute o script 'sql/comparison_view_rpc.sql' no Supabase SQL Editor para corrigir isso.");
                     }
@@ -5599,7 +5599,7 @@ let estrelasSelectedCategorias = [];
             // Render Table
             renderSupervisorTable(metrics.supervisorData);
 
-            hideDashboardLoading();
+            window.hideDashboardLoading();
         }
 
         function mapRpcDataToMetrics(data) {
@@ -6182,7 +6182,7 @@ let innovationsChart = null;
 let currentInnovationsFilters = {};
 
 async function updateInnovationsMonthView() {
-    showDashboardLoading('innovations-month-view');
+    window.showDashboardLoading('innovations-month-view');
 
     const anoSelect = document.getElementById('innovations-ano-filter');
     const mesSelect = document.getElementById('innovations-mes-filter');
@@ -6235,14 +6235,14 @@ async function updateInnovationsMonthView() {
 
             if (error) {
                 AppLog.error('Error fetching innovations:', error);
-                hideDashboardLoading();
+                window.hideDashboardLoading();
                 return;
             }
             data = rpcData;
             saveToCache(cacheKey, data);
         } catch (err) {
             AppLog.error('Exception fetching innovations:', err);
-            hideDashboardLoading();
+            window.hideDashboardLoading();
             return;
         }
     }
@@ -6260,13 +6260,13 @@ async function updateInnovationsMonthView() {
                 } catch(e) {
                     AppLog.error('Error in table:', e);
                 } finally {
-                    hideDashboardLoading();
+                    window.hideDashboardLoading();
                 }
             }, 10);
         });
     } catch (err) {
         AppLog.error('Error rendering innovations:', err);
-        hideDashboardLoading();
+        window.hideDashboardLoading();
     }
 }
 
@@ -6684,7 +6684,7 @@ document.addEventListener('click', (e) => {
 const setupInnovationsFilters = async () => {
     if (isInnovationsInitialized) return;
 
-    showDashboardLoading('innovations-month-view');
+    window.showDashboardLoading('innovations-month-view');
 
     const filters = {
         p_ano: null,
@@ -6717,7 +6717,7 @@ const setupInnovationsFilters = async () => {
     }
 
     if (!filterData) {
-        hideDashboardLoading();
+        window.hideDashboardLoading();
         return;
     }
 
@@ -6775,7 +6775,7 @@ const setupInnovationsFilters = async () => {
         AppLog.error("Error loading inovacoes categories", e);
     }
     
-    hideDashboardLoading();
+    window.hideDashboardLoading();
 
     
     const lpSupervisorBtn = document.getElementById("lp-supervisor-filter-btn");
@@ -7082,7 +7082,7 @@ function setupLpClientSearchAutocomplete() {
 
 
 async function updateLojaPerfeitaView() {
-    showDashboardLoading('loja-perfeita-view');
+    window.showDashboardLoading('loja-perfeita-view');
 
     const filters = {
         p_cidade: lpSelectedCidades,
@@ -7106,7 +7106,7 @@ async function updateLojaPerfeitaView() {
 
         if (error) {
             AppLog.error('Error fetching Loja Perfeita data:', error);
-            hideDashboardLoading();
+            window.hideDashboardLoading();
             return;
         }
 
@@ -7116,7 +7116,7 @@ async function updateLojaPerfeitaView() {
     } catch (err) {
         AppLog.error('Exception fetching Loja Perfeita data:', err);
     } finally {
-        hideDashboardLoading();
+        window.hideDashboardLoading();
     }
 }
 
@@ -7168,7 +7168,7 @@ async function renderInnovationsMonthView() {
 }
 
 async function renderLojaPerfeitaView() {
-    showDashboardLoading('loja-perfeita-view');
+    window.showDashboardLoading('loja-perfeita-view');
     if (!isLojaPerfeitaInitialized) {
         await setupInnovationsFilters();
         await loadLojaPerfeitaFilters();
@@ -7583,7 +7583,7 @@ const setupEstrelasFilters = async () => {
 };
 
 async function renderEstrelasView() {
-    showDashboardLoading('estrelas-view');
+    window.showDashboardLoading('estrelas-view');
     if (!isEstrelasInitialized) {
         await setupEstrelasFilters();
     }
@@ -7594,7 +7594,7 @@ async function updateEstrelasView() {
     AppLog.log("Estrelas view updating...");
     
     // Show overlay handled by showDashboardLoading
-    showDashboardLoading('estrelas-view');
+    window.showDashboardLoading('estrelas-view');
 
     try {
         const filters = {
@@ -7677,7 +7677,7 @@ async function updateEstrelasView() {
         AppLog.error("Erro ao carregar dados de KPIs Estrelas:", err);
         // Optionally show a toast error
     } finally {
-        hideDashboardLoading();
+        window.hideDashboardLoading();
     }
 }
 
@@ -8237,7 +8237,7 @@ const setupAgendaFilters = async () => {
 };
 
 async function renderAgendaView() {
-    showDashboardLoading('agenda-view');
+    window.showDashboardLoading('agenda-view');
     if (!isAgendaInitialized) {
         await setupAgendaFilters();
     }
@@ -8245,7 +8245,7 @@ async function renderAgendaView() {
 }
 
 async function updateAgendaView() {
-    showDashboardLoading('agenda-view');
+    window.showDashboardLoading('agenda-view');
     
     try {
         let query = supabase.from('supervisors_routes').select('*').order('data_rota', { ascending: false });
