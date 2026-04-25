@@ -23,3 +23,6 @@
 ## 2025-04-24 : (Simplificação de Renderização de KPI Cards)
 **Aprendizado:** A renderização iterativa de múltiplos elementos de UI (como os kpi-cards em `renderKpiCards`) utilizando `document.createElement` e `appendChild` para cada elemento e parágrafo produz um código muito verboso.
 **Ação:** Refatorei o loop `kpis.forEach` para usar `innerHTML` com um `array.map().join('')` e literais de template, incluindo proteção via `escapeHtml()`. Essa abordagem melhora muito a legibilidade e mantém a segurança.
+## 2025-04-25 : (Simplificação de Renderização de Toast)
+**Aprendizado:** A criação de elementos repetitivos de UI que não requerem listeners complexos durante a renderização (como o componente de Toast) torna o código extremamente inflado quando feita inteiramente via `document.createElement()` e `.appendChild()`.
+**Ação:** Refatorei a construção do Toast em `src/js/app.js` usando `innerHTML` com template strings para criar a árvore do elemento em uma única atribuição. Isso melhora drasticamente a legibilidade do código, mantendo a segurança utilizando `escapeHtml()` nas interpolações dinâmicas de texto.
