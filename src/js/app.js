@@ -3208,7 +3208,7 @@ let estrelasSelectedCategorias = [];
         applyFiltersData(data);
     }
 
-    function setupMultiSelect(btn, dropdown, container, items, selectedArray, labelCallback, isObject = false, searchInput = null) {
+    window.setupMultiSelect = function(btn, dropdown, container, items, selectedArray, labelCallback, isObject = false, searchInput = null) {
         if(!btn || !dropdown) return;
         if (!container) {
             AppLog.warn('Container not found for filter', btn?.id);
@@ -3536,12 +3536,12 @@ let estrelasSelectedCategorias = [];
             // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
             mesFilter.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${i}">${m}</option>`).join('');
         }
-        setupMultiSelect(filialFilterBtn, filialFilterDropdown, filialFilterDropdown, data.filiais, selectedFiliais, () => {});
-        setupMultiSelect(cidadeFilterBtn, cidadeFilterDropdown, cidadeFilterList, data.cidades, selectedCidades, () => {}, false, cidadeFilterSearch);
-        setupMultiSelect(supervisorFilterBtn, supervisorFilterDropdown, supervisorFilterDropdown, data.supervisors, selectedSupervisores, () => {});
-        setupMultiSelect(vendedorFilterBtn, vendedorFilterDropdown, vendedorFilterList, data.vendedores, selectedVendedores, () => {}, false, vendedorFilterSearch);
-        setupMultiSelect(fornecedorFilterBtn, fornecedorFilterDropdown, fornecedorFilterList, data.fornecedores, selectedFornecedores, () => {}, true, fornecedorFilterSearch);
-        setupMultiSelect(tipovendaFilterBtn, tipovendaFilterDropdown, tipovendaFilterDropdown, data.tipos_venda, selectedTiposVenda, () => {});
+        window.setupMultiSelect(filialFilterBtn, filialFilterDropdown, filialFilterDropdown, data.filiais, selectedFiliais, () => {});
+        window.setupMultiSelect(cidadeFilterBtn, cidadeFilterDropdown, cidadeFilterList, data.cidades, selectedCidades, () => {}, false, cidadeFilterSearch);
+        window.setupMultiSelect(supervisorFilterBtn, supervisorFilterDropdown, supervisorFilterDropdown, data.supervisors, selectedSupervisores, () => {});
+        window.setupMultiSelect(vendedorFilterBtn, vendedorFilterDropdown, vendedorFilterList, data.vendedores, selectedVendedores, () => {}, false, vendedorFilterSearch);
+        window.setupMultiSelect(fornecedorFilterBtn, fornecedorFilterDropdown, fornecedorFilterList, data.fornecedores, selectedFornecedores, () => {}, true, fornecedorFilterSearch);
+        window.setupMultiSelect(tipovendaFilterBtn, tipovendaFilterDropdown, tipovendaFilterDropdown, data.tipos_venda, selectedTiposVenda, () => {});
         // Enhance select filters to match multi-select appearance
         const selectsToEnhance = [
             document.getElementById('ano-filter'),
@@ -3560,11 +3560,11 @@ let estrelasSelectedCategorias = [];
             if (el) enhanceSelectToCustomDropdown(el);
         });
 
-        setupMultiSelect(categoriaFilterBtn, categoriaFilterDropdown, categoriaFilterList, data.categorias, selectedCategorias, () => {}, false, categoriaFilterSearch);
+        window.setupMultiSelect(categoriaFilterBtn, categoriaFilterDropdown, categoriaFilterList, data.categorias, selectedCategorias, () => {}, false, categoriaFilterSearch);
 
         // Rede Logic with "Com Rede" and "Sem Rede"
         const redes = ['C/ REDE', 'S/ REDE', ...(data.redes || [])];
-        setupMultiSelect(redeFilterBtn, redeFilterDropdown, redeFilterList, redes, selectedRedes, () => {}, false, redeFilterSearch);
+        window.setupMultiSelect(redeFilterBtn, redeFilterDropdown, redeFilterList, redes, selectedRedes, () => {}, false, redeFilterSearch);
     }
 
     document.addEventListener('click', (e) => {
@@ -4467,7 +4467,7 @@ let estrelasSelectedCategorias = [];
     });
 
     function setupCityMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
-    return setupMultiSelect(btn, dropdown, container, items, selectedArray, () => {}, isObject, searchInput);
+    return window.setupMultiSelect(btn, dropdown, container, items, selectedArray, () => {}, isObject, searchInput);
 }
 
     async function initCityFilters() {
@@ -4818,7 +4818,7 @@ let estrelasSelectedCategorias = [];
     }
 
     function setupBranchMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
-    return setupMultiSelect(btn, dropdown, container, items, selectedArray, () => {}, isObject, searchInput);
+    return window.setupMultiSelect(btn, dropdown, container, items, selectedArray, () => {}, isObject, searchInput);
 }
 
     async function loadBranchView() {
@@ -8195,12 +8195,12 @@ const loadAgendaFilters = async () => {
         const supervisors = [...new Set(routeData.map(r => r.supervisor).filter(Boolean))].sort();
         const supBtn = document.getElementById('agenda-supervisor-filter-btn');
         const supDd = document.getElementById('agenda-supervisor-filter-dropdown');
-        setupMultiSelect(supBtn, supDd, supDd, supervisors, agendaSelectedSupervisors, handleAgendaFilterChange);
+        window.setupMultiSelect(supBtn, supDd, supDd, supervisors, agendaSelectedSupervisors, handleAgendaFilterChange);
         
         const rotas = [...new Set(routeData.map(r => r.rota_dia).filter(Boolean))].sort();
         const rotasBtn = document.getElementById('agenda-rota-filter-btn');
         const rotasDd = document.getElementById('agenda-rota-filter-dropdown');
-        setupMultiSelect(rotasBtn, rotasDd, rotasDd, rotas, agendaSelectedRotas, handleAgendaFilterChange);
+        window.setupMultiSelect(rotasBtn, rotasDd, rotasDd, rotas, agendaSelectedRotas, handleAgendaFilterChange);
 
     } catch (err) {
         AppLog.error("Erro ao carregar filtros da Agenda:", err);
