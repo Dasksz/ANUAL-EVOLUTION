@@ -7406,6 +7406,39 @@ window.clearAllFilters = async function(prefix) {
             }
         });
 
+    } else if (prefix === 'agenda') {
+        const anoSelect = document.getElementById('agenda-ano-filter');
+        const mesSelect = document.getElementById('agenda-mes-filter');
+
+        const currentYear = new Date().getFullYear().toString();
+        const currentMonth = (new Date().getMonth() + 1).toString();
+
+        if (anoSelect) {
+            let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
+            anoSelect.value = hasYear ? currentYear : 'todos';
+            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (mesSelect) {
+            mesSelect.value = currentMonth;
+            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        agendaSelectedSupervisors = [];
+        agendaSelectedRotas = [];
+
+        ['agenda-supervisor', 'agenda-rota'].forEach(pref => {
+            const btn = document.getElementById(`${pref}-filter-btn`);
+            if (btn) {
+                const label = pref.includes('supervisor') ? 'Todos' : 'Todas';
+                btn.innerHTML = `<span class="truncate pr-2">${label}</span><svg aria-hidden="true" class="w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
+            }
+            const dropdown = document.getElementById(`${pref}-filter-dropdown`);
+            if (dropdown) {
+                uncheckAllCheckboxes(dropdown);
+            }
+        });
+
+        updateAgendaView();
     } else if (prefix === 'lp') {
         lpSelectedCidades.length = 0;
         lpSelectedFiliais.length = 0;
@@ -8176,6 +8209,7 @@ const loadAgendaFilters = async () => {
                 const opt = document.createElement('option');
                 opt.value = y;
                 opt.textContent = y;
+                opt.className = 'bg-slate-800 text-slate-200';
                 // Set default to current year if exists
                 if (y === new Date().getFullYear().toString()) {
                     opt.selected = true;
@@ -8337,17 +8371,21 @@ async function updateAgendaView() {
 
                 return `
                     <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
-                        <td class="p-3 text-sm text-slate-300 whitespace-nowrap">${escapeHtml(formatDate(r.data_rota))}</td>
-                        <td class="p-3 text-sm text-slate-400 capitalize">${escapeHtml(r.dia_semana || '-')}</td>
-                        <td class="p-3">${getIconStatus(isPreenchido)}</td>
-                        <td class="p-3 text-sm font-medium text-white">${escapeHtml(r.supervisor || '-')}</td>
-                        <td class="p-3 text-sm text-slate-300">
+                        <td class="p-3 align-middle text-sm text-slate-300 whitespace-nowrap">${escapeHtml(formatDate(r.data_rota))}</td>
+                        <td class="p-3 align-middle text-sm text-slate-400 capitalize">${escapeHtml(r.dia_semana || '-')}</td>
+                        <td class="p-3 align-middle">${getIconStatus(isPreenchido)}</td>
+                        <td class="p-3 align-middle text-sm font-medium text-white">${escapeHtml(r.supervisor || '-')}</td>
+                        <td class="p-3 align-middle text-sm text-slate-300">
                             ${escapeHtml(r.acompanhado_dia_nome || '-')}
                             ${r.acompanhado_dia_codigo ? `<span class="text-xs text-slate-500 block">Cod: ${escapeHtml(r.acompanhado_dia_codigo)}</span>` : ''}
                         </td>
-                        <td class="p-3 text-sm text-blue-400 font-medium">${escapeHtml(r.rota_dia || '-')}</td>
-                        <td class="p-3 text-sm text-purple-400 line-clamp-2 max-w-xs" title="${escapeHtml(r.foco_dia || '')}">${escapeHtml(r.foco_dia || '-')}</td>
-                        <td class="p-3 text-xs text-slate-400 text-right max-w-[200px] truncate" title="${escapeHtml(eficiencias)}">${escapeHtml(eficiencias || '-')}</td>
+                        <td class="p-3 align-middle text-sm text-blue-400 font-medium">${escapeHtml(r.rota_dia || '-')}</td>
+                        <td class="p-3 align-middle text-sm text-purple-400 max-w-xs" title="${escapeHtml(r.foco_dia || '')}">
+                            <div class="line-clamp-2">${escapeHtml(r.foco_dia || '-')}</div>
+                        </td>
+                        <td class="p-3 align-middle text-xs text-slate-400 text-right max-w-[200px]" title="${escapeHtml(eficiencias)}">
+                            <div class="truncate">${escapeHtml(eficiencias || '-')}</div>
+                        </td>
                     </tr>
                 `;
             }).join('');

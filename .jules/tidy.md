@@ -23,3 +23,6 @@
 ## 2025-04-24 : (Simplificação de Renderização de KPI Cards)
 **Aprendizado:** A renderização iterativa de múltiplos elementos de UI (como os kpi-cards em `renderKpiCards`) utilizando `document.createElement` e `appendChild` para cada elemento e parágrafo produz um código muito verboso.
 **Ação:** Refatorei o loop `kpis.forEach` para usar `innerHTML` com um `array.map().join('')` e literais de template, incluindo proteção via `escapeHtml()`. Essa abordagem melhora muito a legibilidade e mantém a segurança.
+## 2025-04-25 : (Extração e Padronização de Cores de Filtros em Dropdowns)
+**Aprendizado:** Tabelas mais novas tendem a usar variações de cor hardcoded nos arquivos HTML (`bg-slate-800` vs `bg-white/5`). É essencial padronizar isso para garantir consistência visual no projeto. Adicionalmente, lógicas complexas de reset de filtros (como `clearAllFilters`) são vulneráveis a erros e duplicação de lógicas de queries (Ano atual/Mês atual).
+**Ação:** Refatorado `clearAllFilters` em `src/js/app.js` para suportar o prefixo 'agenda' mantendo o padrão já definido pelos outros componentes e fixado classes de CSS desalinhadas na tabela de agenda.
