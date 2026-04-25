@@ -410,6 +410,7 @@ let estrelasSelectedCategorias = [];
     const navInnovationsBtn = document.getElementById('nav-innovations-btn');
     const navLojaPerfeitaBtn = document.getElementById('nav-loja-perfeita-btn');
     const navEstrelasBtn = document.getElementById('nav-estrelas-btn');
+    const navAgendaBtn = document.getElementById('nav-agenda-btn');
     // Export UI Logic
     const exportDropdown = document.getElementById('export-dropdown');
     let currentActiveNavId = 'nav-dashboard'; // keep track
@@ -691,7 +692,7 @@ let estrelasSelectedCategorias = [];
     const lojaPerfeitaView = document.getElementById('loja-perfeita-view');
     const estrelasView = document.getElementById('estrelas-view');
     const agendaView = document.getElementById('agenda-view');
-    const navAgendaBtn = document.getElementById('nav-agenda-btn');
+
     const closeUploaderBtn = document.getElementById('close-uploader-btn');
 
     // Dashboard Internal Views
@@ -1639,6 +1640,7 @@ let estrelasSelectedCategorias = [];
         if (innovationsMonthView) innovationsMonthView.classList.add('hidden');
         if (lojaPerfeitaView) lojaPerfeitaView.classList.add('hidden');
         if (estrelasView) estrelasView.classList.add('hidden');
+        if (agendaView) agendaView.classList.add('hidden');
     };
 
     async function renderView(view, options = {}) {
@@ -1784,6 +1786,14 @@ let estrelasSelectedCategorias = [];
             if (handleActiveLinkClick(e, navEstrelasBtn, 'estrelas')) return;
             if (navigateWithCtrl(e, 'estrelas')) return;
             renderView('estrelas');
+        });
+    }
+
+    if (navAgendaBtn) {
+        navAgendaBtn.addEventListener('click', (e) => {
+            if (handleActiveLinkClick(e, navAgendaBtn, 'agenda')) return;
+            if (navigateWithCtrl(e, 'agenda')) return;
+            renderView('agenda');
         });
     }
 
@@ -8183,10 +8193,14 @@ const loadAgendaFilters = async () => {
         }
 
         const supervisors = [...new Set(routeData.map(r => r.supervisor).filter(Boolean))].sort();
-        setupMultiSelect('agenda-supervisor-filter', supervisors, agendaSelectedSupervisors, handleAgendaFilterChange);
+        const supBtn = document.getElementById('agenda-supervisor-filter-btn');
+        const supDd = document.getElementById('agenda-supervisor-filter-dropdown');
+        setupMultiSelect(supBtn, supDd, supDd, supervisors, agendaSelectedSupervisors, handleAgendaFilterChange);
 
         const rotas = [...new Set(routeData.map(r => r.rota_dia).filter(Boolean))].sort();
-        setupMultiSelect('agenda-rota-filter', rotas, agendaSelectedRotas, handleAgendaFilterChange);
+        const rotasBtn = document.getElementById('agenda-rota-filter-btn');
+        const rotasDd = document.getElementById('agenda-rota-filter-dropdown');
+        setupMultiSelect(rotasBtn, rotasDd, rotasDd, rotas, agendaSelectedRotas, handleAgendaFilterChange);
 
     } catch (err) {
         AppLog.error("Erro ao carregar filtros da Agenda:", err);

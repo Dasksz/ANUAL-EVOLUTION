@@ -1,0 +1,1 @@
+console.log('Everything looks exactly correct in app.js for the agenda button! The only reason it might not work is if the user is getting a cached version of the JS or if the button is behind some other Z-index layer, or if there is a syntax error elsewhere.');
