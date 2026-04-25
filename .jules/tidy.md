@@ -26,3 +26,6 @@
 ## 2025-04-25 : (Extração e Padronização de Cores de Filtros em Dropdowns)
 **Aprendizado:** Tabelas mais novas tendem a usar variações de cor hardcoded nos arquivos HTML (`bg-slate-800` vs `bg-white/5`). É essencial padronizar isso para garantir consistência visual no projeto. Adicionalmente, lógicas complexas de reset de filtros (como `clearAllFilters`) são vulneráveis a erros e duplicação de lógicas de queries (Ano atual/Mês atual).
 **Ação:** Refatorado `clearAllFilters` em `src/js/app.js` para suportar o prefixo 'agenda' mantendo o padrão já definido pelos outros componentes e fixado classes de CSS desalinhadas na tabela de agenda.
+## 2025-04-25 : (Simplificação de Renderização de Toast)
+**Aprendizado:** A criação de elementos repetitivos de UI que não requerem listeners complexos durante a renderização (como o componente de Toast) torna o código extremamente inflado quando feita inteiramente via `document.createElement()` e `.appendChild()`.
+**Ação:** Refatorei a construção do Toast em `src/js/app.js` usando `innerHTML` com template strings para criar a árvore do elemento em uma única atribuição. Isso melhora drasticamente a legibilidade do código, mantendo a segurança utilizando `escapeHtml()` nas interpolações dinâmicas de texto.
