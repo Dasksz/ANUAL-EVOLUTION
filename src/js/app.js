@@ -1199,7 +1199,7 @@ let estrelasSelectedCategorias = [];
         showScreen('app-layout');
 
         // Provide a default if the view wasn't set or is invalid
-        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison', 'innovations', 'loja-perfeita', 'estrelas'];
+        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison', 'innovations', 'loja-perfeita', 'estrelas', 'agenda'];
         if (!view || !validViews.includes(view)) {
             view = 'dashboard';
         }
@@ -8212,26 +8212,25 @@ const setupAgendaFilters = async () => {
     
     await loadAgendaFilters();
 
-    // Clickaway setup
-    const container = document.getElementById('agenda-filters-container');
-    if (container) {
-        container.addEventListener('click', (e) => {
-            const dropdowns = [
-                document.getElementById('agenda-supervisor-filter-dropdown'),
-                document.getElementById('agenda-rota-filter-dropdown')
-            ];
-            const btns = [
-                document.getElementById('agenda-supervisor-filter-btn'),
-                document.getElementById('agenda-rota-filter-btn')
-            ];
-            
-            let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
-            const view = document.getElementById('agenda-view');
-            if (anyClosed && view && !view.classList.contains('hidden')) {
-                handleAgendaFilterChange();
-            }
-        });
-    }
+    // Clickaway setup - attach to document to capture outside clicks
+    document.addEventListener('click', (e) => {
+        const view = document.getElementById('agenda-view');
+        if (!view || view.classList.contains('hidden')) return;
+
+        const dropdowns = [
+            document.getElementById('agenda-supervisor-filter-dropdown'),
+            document.getElementById('agenda-rota-filter-dropdown')
+        ];
+        const btns = [
+            document.getElementById('agenda-supervisor-filter-btn'),
+            document.getElementById('agenda-rota-filter-btn')
+        ];
+        
+        let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
+        if (anyClosed) {
+            handleAgendaFilterChange();
+        }
+    });
 
     isAgendaInitialized = true;
 };
