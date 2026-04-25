@@ -5828,7 +5828,8 @@ DECLARE
 BEGIN
     -- Just verify logic to find the exact line
     RETURN 'ok';
-END $function$
+END;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.append_to_chunk_v2(p_table_name text, p_rows jsonb)
  RETURNS void
@@ -5850,7 +5851,7 @@ BEGIN
         FROM jsonb_populate_recordset(null::public.%I, $1)
     ', p_table_name, p_table_name) USING p_rows;
 END;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.execute_sync_sheets()
  RETURNS json
@@ -5877,7 +5878,7 @@ BEGIN
 
   RETURN v_result;
 END;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.get_dashboard_filters_optimized(p_filial text[] DEFAULT NULL::text[], p_cidade text[] DEFAULT NULL::text[], p_supervisor text[] DEFAULT NULL::text[], p_vendedor text[] DEFAULT NULL::text[], p_fornecedor text[] DEFAULT NULL::text[], p_ano text DEFAULT NULL::text, p_mes text DEFAULT NULL::text, p_tipovenda text[] DEFAULT NULL::text[], p_rede text[] DEFAULT NULL::text[])
  RETURNS json
@@ -5941,7 +5942,7 @@ BEGIN
 
     RETURN v_result;
 END;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.get_estrelas_kpis_data_test()
  RETURNS json
@@ -5971,7 +5972,7 @@ BEGIN
     EXECUTE v_sql INTO v_result;
     RETURN v_result;
 END;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.refresh_cache_summary()
  RETURNS void
@@ -6058,7 +6059,7 @@ BEGIN
 
     ANALYZE public.data_summary;
 END;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.refresh_cache_summary_detailed()
  RETURNS void
@@ -6140,7 +6141,7 @@ BEGIN
 
     ANALYZE public.data_summary;
 END;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.refresh_cache_summary_history()
  RETURNS void
@@ -6222,7 +6223,7 @@ BEGIN
         total_caixas
     FROM client_agg;
 END;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.refresh_data_financials()
  RETURNS void
@@ -6248,7 +6249,7 @@ BEGIN
     FROM public.data_summary
     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8;
 END;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.refresh_summary_month(p_year integer, p_month integer)
  RETURNS void
@@ -6417,7 +6418,7 @@ BEGIN
     -- STEP D: Cleanup
     DROP TABLE IF EXISTS tmp_raw_data;
 END;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.sync_chunk_v2(p_table_name text, p_chunk_key text, p_rows jsonb, p_hash text)
  RETURNS void
@@ -6452,7 +6453,7 @@ BEGIN
     ON CONFLICT (table_name, chunk_key)
     DO UPDATE SET chunk_hash = EXCLUDED.chunk_hash, updated_at = now();
 END;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.sync_sheets_manually()
  RETURNS json
@@ -6468,4 +6469,4 @@ BEGIN
   -- But we CAN temporarily disable RLS, do the insert locally using our previous bash script, then re-enable RLS.
   RETURN '{"status":"ok"}'::json;
 END;
-$function$
+$function$;
