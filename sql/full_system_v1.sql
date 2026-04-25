@@ -5500,3 +5500,972 @@ ALTER TABLE supervisors_routes ENABLE ROW LEVEL SECURITY;
 --   ) as request_id;
 --   $$
 -- );
+CREATE OR REPLACE FUNCTION get_estrelas_kpis_data(
+    p_filial text[] default null,
+    p_cidade text[] default null,
+    p_supervisor text[] default null,
+    p_vendedor text[] default null,
+    p_fornecedor text[] default null,
+    p_ano text default null,
+    p_mes text default null,
+    p_tipovenda text[] default null,
+    p_rede text[] default null,
+    p_categoria text[] default null
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_current_year int;
+    v_target_month int;
+    v_eval_target_month int;
+
+    v_where_base text := ' WHERE 1=1 ';
+    v_where_clients text := ' WHERE 1=1 ';
+    v_where_acel text := '';
+
+    v_fornecedor_salty_cond text := 's.codfor IN (''707'', ''708'', ''752'')';
+    v_fornecedor_foods_cond text := 's.codfor LIKE ''1119_%''';
+
+    v_result json;
+    v_sql text;
+BEGIN
+    SET LOCAL work_mem = '64MB';
+
+    -- 1. Date Resolution
+    IF p_ano IS NULL OR p_ano = 'todos' THEN
+        v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary_frequency);
+    ELSE
+        v_current_year := p_ano::int;
+    END IF;
+
+    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
+        v_target_month := p_mes::int;
+        v_where_base := v_where_base || format(' AND s.ano = %L AND s.mes = %L ', v_current_year, v_target_month);
+    ELSE
+        v_where_base := v_where_base || format(' AND s.ano = %L ', v_current_year);
+    END IF;
+
+    v_eval_target_month := COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year));
+
+    -- 2. Build Where Clauses
+    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+        IF NOT ('ambas' = ANY(p_filial)) THEN
+            v_where_base := v_where_base || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
+            v_where_clients := v_where_clients || format(' AND dc.cidade IN (SELECT cidade FROM public.config_city_branches WHERE filial = ANY(%L::text[])) ', p_filial);
+        END IF;
+    END IF;
+
+    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
+        v_where_base := v_where_base || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_clients := v_where_clients || format(' AND dc.cidade = ANY(%L::text[]) ', p_cidade);
+    END IF;
+
+    IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
+        v_where_base := v_where_base || format(' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where_clients := v_where_clients || format(' AND EXISTS (SELECT 1 FROM public.data_summary_frequency sf WHERE sf.codcli = dc.codigo_cliente AND sf.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[]))) ', p_supervisor);
+    END IF;
+
+    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+        v_where_base := v_where_base || format(' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        -- Client filtering logic simplified for exact matching where possible
+        v_where_clients := v_where_clients || format(' AND EXISTS (SELECT 1 FROM public.data_summary_frequency sf WHERE sf.codcli = dc.codigo_cliente AND sf.codusur IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[]))) ', p_vendedor);
+    END IF;
+
+    IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
+        v_where_base := v_where_base || format(' AND s.tipovenda = ANY(%L::text[]) ', p_tipovenda);
+    END IF;
+
+    IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
+        IF 'S/ REDE' = ANY(p_rede) THEN
+            v_where_base := v_where_base || format(' AND (UPPER(c.ramo) = ANY(ARRAY(SELECT UPPER(x) FROM unnest(%L::text[]) x)) OR c.ramo IS NULL OR c.ramo IN (''N/A'', ''N/D'')) ', p_rede);
+            v_where_clients := v_where_clients || format(' AND (UPPER(dc.ramo) = ANY(ARRAY(SELECT UPPER(x) FROM unnest(%L::text[]) x)) OR dc.ramo IS NULL OR dc.ramo IN (''N/A'', ''N/D'')) ', p_rede);
+        ELSE
+            v_where_base := v_where_base || format(' AND UPPER(c.ramo) = ANY(ARRAY(SELECT UPPER(x) FROM unnest(%L::text[]) x)) ', p_rede);
+            v_where_clients := v_where_clients || format(' AND UPPER(dc.ramo) = ANY(ARRAY(SELECT UPPER(x) FROM unnest(%L::text[]) x)) ', p_rede);
+        END IF;
+    END IF;
+
+    -- Note: This view specifically calculates KPIs for Salty (707, 708, 752) and Foods (1119).
+    -- If p_fornecedor is passed, we apply it inside the CTE calculation specifically for those blocks,
+    -- or we use it to construct a base filter that ALWAYS includes the unselected block so that the
+    -- dashboard doesn't blank out.
+    -- E.g. If they filter Salty, we still need to load Foods to show 0/Realizado properly, OR we
+    -- apply the filters directly on the SELECT metrics below.
+    -- To ensure both KPIs always function properly independently, we will NOT filter out the base
+    -- CTE by p_fornecedor here. We'll handle the p_fornecedor condition dynamically in the metrics calculation!
+
+    BEGIN
+        IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
+            DECLARE
+                v_code text;
+                v_salty_codes text[] := '{}';
+                v_foods_conds text[] := '{}';
+            BEGIN
+                FOREACH v_code IN ARRAY p_fornecedor LOOP
+                    IF v_code IN ('707', '708', '752') THEN
+                        v_salty_codes := array_append(v_salty_codes, v_code);
+                    ELSIF v_code LIKE '1119_%' THEN
+                        v_foods_conds := array_append(v_foods_conds, format('s.codfor = %L', v_code));
+                    END IF;
+                END LOOP;
+
+                IF array_length(v_salty_codes, 1) > 0 THEN
+                    v_fornecedor_salty_cond := format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_salty_codes, ''','''));
+                ELSE
+                    -- If filtering and NO salty codes were selected, salty metrics should be strictly zeroed out
+                    -- ONLY if we are actually filtering suppliers.
+                    v_fornecedor_salty_cond := 'FALSE';
+                END IF;
+
+                IF array_length(v_foods_conds, 1) > 0 THEN
+                    v_fornecedor_foods_cond := '(' || array_to_string(v_foods_conds, ' OR ') || ')';
+                ELSE
+                    -- If filtering and NO foods codes were selected, foods metrics should be strictly zeroed out
+                    v_fornecedor_foods_cond := 'FALSE';
+                END IF;
+            END;
+        END IF;
+    END;
+
+    IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
+        v_where_base := v_where_base || format(' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.categorias) c WHERE c = ANY(%L::text[])) ', p_categoria);
+    END IF;
+
+    -- 3. Build Metas Where Clause
+    DECLARE
+        v_where_metas text := '';
+    BEGIN
+        IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+            IF NOT ('ambas' = ANY(p_filial)) THEN
+                v_where_metas := v_where_metas || format(' AND m.filial::text = ANY(ARRAY(SELECT LTRIM(f, ''0'') FROM unnest(%L::text[]) AS f)) ', p_filial);
+            END IF;
+        END IF;
+
+        IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+            v_where_metas := v_where_metas || format(' AND m.cod_rca::text IN (SELECT LTRIM(codigo, ''0'') FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        END IF;
+
+        IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
+            v_where_metas := v_where_metas || format(' AND m.cod_rca::text IN (
+                SELECT DISTINCT LTRIM(rs.codusur, ''0'') FROM (
+                    SELECT codusur, codsupervisor, ROW_NUMBER() OVER(PARTITION BY codusur ORDER BY dtped DESC) as rn
+                    FROM (
+                        SELECT codusur, codsupervisor, dtped FROM public.data_detailed
+                        UNION ALL
+                        SELECT codusur, codsupervisor, dtped FROM public.data_history
+                    ) all_sales
+                ) rs
+                JOIN public.dim_supervisores ds ON rs.codsupervisor = ds.codigo
+                WHERE rs.rn = 1 AND ds.nome = ANY(%L::text[])
+            ) ', p_supervisor);
+        END IF;
+
+        v_sql := format('
+
+        WITH base_clientes_cte AS (
+            SELECT COUNT(codigo_cliente) as total_clientes
+            FROM public.data_clients dc
+            %s
+        ),
+        target_sales AS (
+            SELECT s.*
+            FROM public.data_summary_frequency s
+            LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
+            %s
+        ),
+        sales_data AS (
+            SELECT
+                SUM(s.peso) as total_tonnage,
+                -- Salty Tonnage
+                SUM(CASE WHEN %s THEN s.peso ELSE 0 END) as salty_tonnage,
+                -- Foods Tonnage
+                SUM(CASE WHEN %s THEN s.peso ELSE 0 END) as foods_tonnage,
+
+                -- Salty Positivacao
+                COUNT(DISTINCT CASE WHEN %s AND s.vlvenda >= 1 THEN s.codcli END) as positivacao_salty,
+                -- Foods Positivacao (Strict logic: Bought Foods AND bought nothing else in the target table)
+                COUNT(DISTINCT CASE WHEN NOT EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor NOT LIKE ''1119_%%'') AND EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND %s) AND s.vlvenda >= 1 THEN s.codcli END) as positivacao_foods
+            FROM target_sales s
+        ),
+        aceleradores_config AS (
+            SELECT array_agg(nome_categoria) as nomes FROM public.config_aceleradores
+        ),
+        aceleradores_calc AS (
+            SELECT
+                COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias)) THEN s.codcli END) as aceleradores_realizado,
+                COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) && ARRAY(SELECT jsonb_array_elements_text(s.categorias)) AND NOT ((SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias))) THEN s.codcli END) as aceleradores_parcial
+            FROM target_sales s
+        ),
+        metas_calc AS (
+            SELECT
+                COALESCE(SUM(calibracao_salty), 0) as meta_salty,
+                COALESCE(SUM(calibracao_foods), 0) as meta_foods,
+                COALESCE(SUM(calibracao_pos), 0) as meta_pos
+            FROM public.meta_estrelas m
+            WHERE m.ano = %s AND m.mes = %s
+            %s
+        ),
+        detalhes_calc AS (
+            SELECT
+                COALESCE(dv.nome, ''N/D'') AS vendedor_nome,
+                s.filial,
+                COALESCE(SUM(CASE WHEN %s THEN s.peso ELSE 0 END), 0) AS sellout_salty,
+                COALESCE(SUM(CASE WHEN %s THEN s.peso ELSE 0 END), 0) AS sellout_foods,
+                COUNT(DISTINCT CASE WHEN %s AND s.vlvenda >= 1 THEN s.codcli END) AS pos_salty,
+                COUNT(DISTINCT CASE WHEN NOT EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND c.codfor NOT LIKE ''1119_%%'') AND EXISTS (SELECT 1 FROM target_sales c WHERE c.codcli = s.codcli AND c.vlvenda >= 1 AND %s) AND s.vlvenda >= 1 THEN s.codcli END) AS pos_foods,
+                COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias)) THEN s.codcli END) AS acel_realizado,
+                COALESCE((SELECT SUM(m.calibracao_salty) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(s.codusur, ''0'') AND m.filial::text = LTRIM(s.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_salty,
+                COALESCE((SELECT SUM(m.calibracao_foods) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(s.codusur, ''0'') AND m.filial::text = LTRIM(s.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_foods,
+                COALESCE((SELECT SUM(m.calibracao_pos) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(s.codusur, ''0'') AND m.filial::text = LTRIM(s.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_pos
+            FROM target_sales s
+            LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
+            GROUP BY dv.nome, s.filial, s.codusur
+            ORDER BY COALESCE(SUM(CASE WHEN %s THEN s.peso ELSE 0 END), 0) + COALESCE(SUM(CASE WHEN %s THEN s.peso ELSE 0 END), 0) DESC
+        ),
+        detalhes_json AS (
+            SELECT COALESCE(json_agg(row_to_json(d)), ''[]''::json) as detalhes_array
+            FROM detalhes_calc d
+        )
+        SELECT json_build_object(
+            ''base_clientes'', COALESCE((SELECT total_clientes FROM base_clientes_cte), 0),
+            ''sellout_salty'', COALESCE((SELECT salty_tonnage / 1000.0 FROM sales_data), 0),
+            ''sellout_foods'', COALESCE((SELECT foods_tonnage / 1000.0 FROM sales_data), 0),
+            ''positivacao_salty'', COALESCE((SELECT positivacao_salty FROM sales_data), 0),
+            ''positivacao_foods'', COALESCE((SELECT positivacao_foods FROM sales_data), 0),
+            ''aceleradores_realizado'', COALESCE((SELECT aceleradores_realizado FROM aceleradores_calc), 0),
+            ''aceleradores_parcial'', COALESCE((SELECT aceleradores_parcial FROM aceleradores_calc), 0),
+            ''aceleradores_qtd_marcas'', COALESCE((SELECT array_length(nomes, 1) FROM aceleradores_config), 0),
+            ''sellout_salty_meta'', COALESCE((SELECT meta_salty FROM metas_calc), 0),
+            ''sellout_foods_meta'', COALESCE((SELECT meta_foods FROM metas_calc), 0),
+            ''positivacao_meta'', COALESCE((SELECT meta_pos FROM metas_calc), 0),
+            ''aceleradores_meta'', CEIL(COALESCE((SELECT meta_pos FROM metas_calc), 0) * 0.5),
+            ''detalhes'', COALESCE((SELECT detalhes_array FROM detalhes_json), ''[]''::json)
+        )
+    ', v_where_clients, v_where_base, v_fornecedor_salty_cond, v_fornecedor_foods_cond, v_fornecedor_salty_cond, v_fornecedor_foods_cond, v_current_year, v_eval_target_month, v_where_metas, v_fornecedor_salty_cond, v_fornecedor_foods_cond, v_fornecedor_salty_cond, v_fornecedor_foods_cond, v_current_year, v_eval_target_month, v_current_year, v_eval_target_month, v_current_year, v_eval_target_month, v_fornecedor_salty_cond, v_fornecedor_foods_cond);
+
+    END;
+
+    EXECUTE v_sql INTO v_result;
+
+    RETURN v_result;
+END;
+$$;
+
+-- =========================================================================================
+-- SUPERVISORS ROUTES TABLE
+-- =========================================================================================
+CREATE TABLE IF NOT EXISTS public.supervisors_routes (
+    id uuid DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+    cargo text,
+    data_rota date,
+    dia_semana text,
+    supervisor text,
+    rota_dia text,
+    clientes_roteirizados integer,
+    acompanhado_dia_codigo text,
+    acompanhado_dia_nome text,
+    foco_dia text,
+    clientes_visitados integer,
+    clientes_com_venda integer,
+    observacao_rota text,
+    eficiencia_visita text,
+    eficiencia_rota text,
+    eficiencia_saida text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT supervisors_routes_data_rota_supervisor_key UNIQUE (data_rota, supervisor)
+);
+
+ALTER TABLE public.supervisors_routes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Enable read access for all users" ON public.supervisors_routes
+    FOR SELECT USING (true);
+
+CREATE POLICY "Enable update/insert for authenticated users" ON public.supervisors_routes
+    FOR ALL USING (auth.role() = 'authenticated');
+
+
+-- =========================================================================
+-- Missing Tables and Functions Extracted from Database
+-- =========================================================================
+
+
+CREATE TABLE IF NOT EXISTS public.n8n_auth_colaboradores (
+    id bigint NOT NULL,
+    codigo text,
+    nome text,
+    cpf text
+);
+
+ALTER TABLE public.n8n_auth_colaboradores ADD PRIMARY KEY (id);
+
+ALTER TABLE public.n8n_auth_colaboradores ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.n8n_auth_colaboradores_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+ALTER TABLE public.n8n_auth_colaboradores ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Enable read access for all users" ON public.n8n_auth_colaboradores
+    FOR SELECT USING (true);
+
+CREATE POLICY "Enable update/insert for authenticated users" ON public.n8n_auth_colaboradores
+    FOR ALL USING (auth.role() = 'authenticated');
+
+
+CREATE OR REPLACE FUNCTION public._run_full_system()
+ RETURNS text
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+BEGIN
+    -- Just verify logic to find the exact line
+    RETURN 'ok';
+END $function$
+
+CREATE OR REPLACE FUNCTION public.append_to_chunk_v2(p_table_name text, p_rows jsonb)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+    EXECUTE format('
+        INSERT INTO public.%I (
+            pedido, codusur, codsupervisor, produto, codfor, codcli, cidade,
+            qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq,
+            dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
+        )
+        SELECT
+            pedido, codusur, codsupervisor, produto, codfor, codcli, cidade,
+            qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq,
+            dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
+        FROM jsonb_populate_recordset(null::public.%I, $1)
+    ', p_table_name, p_table_name) USING p_rows;
+END;
+$function$
+
+CREATE OR REPLACE FUNCTION public.execute_sync_sheets()
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+  v_result json;
+  v_url text;
+  v_key text;
+  v_req text;
+BEGIN
+  v_url := current_setting('custom.project_url', true) || '/functions/v1/sync-sheets';
+  v_key := current_setting('custom.anon_key', true);
+
+  SELECT content::json INTO v_result
+  FROM extensions.http((
+    'POST',
+    v_url,
+    ARRAY[extensions.http_header('Authorization', 'Bearer ' || v_key)],
+    'application/json',
+    '{}'
+  )::extensions.http_request);
+
+  RETURN v_result;
+END;
+$function$
+
+CREATE OR REPLACE FUNCTION public.get_dashboard_filters_optimized(p_filial text[] DEFAULT NULL::text[], p_cidade text[] DEFAULT NULL::text[], p_supervisor text[] DEFAULT NULL::text[], p_vendedor text[] DEFAULT NULL::text[], p_fornecedor text[] DEFAULT NULL::text[], p_ano text DEFAULT NULL::text, p_mes text DEFAULT NULL::text, p_tipovenda text[] DEFAULT NULL::text[], p_rede text[] DEFAULT NULL::text[])
+ RETURNS json
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+    v_filter_year int;
+    v_filter_month int;
+    v_result JSON;
+BEGIN
+    -- Configuração de performance
+    SET LOCAL statement_timeout = '500s';
+
+    -- Lógica de Ano/Mês (igual à tua original)
+    IF p_ano IS NOT NULL AND p_ano != '' AND p_ano != 'todos' THEN
+        v_filter_year := p_ano::int;
+    ELSE
+        IF p_ano = 'todos' THEN v_filter_year := NULL;
+        ELSE
+            SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_filter_year FROM public.cache_filters;
+        END IF;
+    END IF;
+    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN v_filter_month := p_mes::int + 1; END IF;
+
+    -- TÉCNICA AVANÇADA: Agregação Única
+    -- Varre a tabela uma única vez e constrói todos os arrays JSON simultaneamente
+    SELECT json_build_object(
+        'supervisors', COALESCE(array_agg(DISTINCT superv) FILTER (WHERE superv IS NOT NULL), '{}'),
+        'vendedores', COALESCE(array_agg(DISTINCT nome) FILTER (WHERE nome IS NOT NULL), '{}'),
+        'cidades', COALESCE(array_agg(DISTINCT cidade) FILTER (WHERE cidade IS NOT NULL), '{}'),
+        'filiais', COALESCE(array_agg(DISTINCT filial) FILTER (WHERE filial IS NOT NULL), '{}'),
+        'redes', COALESCE(array_agg(DISTINCT rede) FILTER (WHERE rede IS NOT NULL AND rede NOT IN ('N/A', 'N/D')), '{}'),
+        'anos', COALESCE(array_agg(DISTINCT ano) FILTER (WHERE ano IS NOT NULL), '{}'),
+        'tipos_venda', COALESCE(array_agg(DISTINCT tipovenda) FILTER (WHERE tipovenda IS NOT NULL), '{}'),
+        'fornecedores', (
+            SELECT json_agg(json_build_object('cod', cod, 'name', nome) ORDER BY nome)
+            FROM (
+                SELECT DISTINCT codfor as cod, fornecedor as nome
+                FROM public.cache_filters f2
+                WHERE
+                   (v_filter_year IS NULL OR f2.ano = v_filter_year)
+                   AND (p_filial IS NULL OR f2.filial = ANY(p_filial))
+                   -- ... (aplica mesmos filtros da query principal, ou simplifica para performance)
+                   -- Nota: Para performance máxima, podemos simplificar a lista de fornecedores ou incluí-la no agg principal se não precisarmos do objeto {cod, name} complexo.
+                   -- Mantendo compatibilidade com teu código atual:
+                   AND f2.codfor IS NOT NULL
+            ) sub
+        )
+    ) INTO v_result
+    FROM public.cache_filters
+    WHERE
+        (v_filter_year IS NULL OR ano = v_filter_year)
+        AND (v_filter_month IS NULL OR mes = v_filter_month)
+        AND (p_filial IS NULL OR filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR cidade = ANY(p_cidade))
+        AND (p_supervisor IS NULL OR superv = ANY(p_supervisor))
+        AND (p_vendedor IS NULL OR nome = ANY(p_vendedor))
+        AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda));
+
+    RETURN v_result;
+END;
+$function$
+
+CREATE OR REPLACE FUNCTION public.get_estrelas_kpis_data_test()
+ RETURNS json
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+v_sql text;
+v_result json;
+BEGIN
+    v_sql := '
+        WITH target_sales AS (
+            SELECT 1 as codcli, 10 as peso, ''707'' as codfor, ''nome'' as nome, ''filial'' as filial, 1 as vlvenda
+        ),
+        detalhes_calc AS (
+            SELECT
+                s.nome AS vendedor_nome,
+                s.filial,
+                COALESCE(SUM(CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.peso ELSE 0 END), 0) AS sellout_salty,
+                COALESCE(SUM(CASE WHEN s.codfor IN (''1119'') THEN s.peso ELSE 0 END), 0) AS sellout_foods
+            FROM target_sales s
+            GROUP BY s.nome, s.filial
+            ORDER BY COALESCE(SUM(CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.peso ELSE 0 END), 0) + COALESCE(SUM(CASE WHEN s.codfor IN (''1119'') THEN s.peso ELSE 0 END), 0) DESC
+        )
+        SELECT COALESCE(json_agg(row_to_json(d)), ''[]''::json) as detalhes_array
+        FROM detalhes_calc d
+    ';
+    EXECUTE v_sql INTO v_result;
+    RETURN v_result;
+END;
+$function$
+
+CREATE OR REPLACE FUNCTION public.refresh_cache_summary()
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+    SET LOCAL statement_timeout = '600s';
+
+    TRUNCATE TABLE public.data_summary;
+
+    INSERT INTO public.data_summary (
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        vlvenda, peso, bonificacao, devolucao,
+        pre_mix_count, pre_positivacao_val,
+        ramo, caixas
+    )
+    WITH raw_data AS (
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        FROM public.data_detailed
+        UNION ALL
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        FROM public.data_history
+    ),
+    augmented_data AS (
+        SELECT
+            EXTRACT(YEAR FROM s.dtped)::int as ano,
+            EXTRACT(MONTH FROM s.dtped)::int as mes,
+            CASE
+                WHEN s.codcli = '11625' AND EXTRACT(YEAR FROM s.dtped) = 2025 AND EXTRACT(MONTH FROM s.dtped) = 12 THEN '05'
+                ELSE s.filial
+            END as filial,
+            COALESCE(s.cidade, c.cidade) as cidade,
+            s.codsupervisor,
+            s.codusur,
+            CASE
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDY %' THEN '1119_TODDY'
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
+                WHEN s.codfor = '1119' THEN '1119_OUTROS'
+                ELSE s.codfor
+            END as codfor,
+            s.tipovenda,
+            s.codcli,
+            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
+            c.ramo
+        FROM raw_data s
+        LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
+        LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+    ),
+    product_agg AS (
+        SELECT
+            ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, produto,
+            SUM(vlvenda) as prod_val,
+            SUM(totpesoliq) as prod_peso,
+            SUM(vlbonific) as prod_bonific,
+            SUM(COALESCE(vldevolucao, 0)) as prod_devol,
+            SUM(COALESCE(qtvenda_embalagem_master, 0)) as prod_caixas
+        FROM augmented_data
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+    ),
+    client_agg AS (
+        SELECT
+            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo,
+            SUM(pa.prod_val) as total_val,
+            SUM(pa.prod_peso) as total_peso,
+            SUM(pa.prod_bonific) as total_bonific,
+            SUM(pa.prod_devol) as total_devol,
+            SUM(pa.prod_caixas) as total_caixas,
+            COUNT(CASE WHEN pa.prod_val >= 1 THEN 1 END) as mix_calc
+        FROM product_agg pa
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+    )
+    SELECT
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        total_val, total_peso, total_bonific, total_devol,
+        mix_calc,
+        CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
+        ramo,
+        total_caixas
+    FROM client_agg;
+
+    ANALYZE public.data_summary;
+END;
+$function$
+
+CREATE OR REPLACE FUNCTION public.refresh_cache_summary_detailed()
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+    SET LOCAL statement_timeout = '600s';
+
+    INSERT INTO public.data_summary (
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        vlvenda, peso, bonificacao, devolucao,
+        pre_mix_count, pre_positivacao_val,
+        ramo, caixas
+    )
+    WITH raw_data AS (
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        FROM public.data_detailed
+    ),
+    augmented_data AS (
+        SELECT
+            EXTRACT(YEAR FROM s.dtped)::int as ano,
+            EXTRACT(MONTH FROM s.dtped)::int as mes,
+            CASE
+                WHEN s.codcli = '11625' AND EXTRACT(YEAR FROM s.dtped) = 2025 AND EXTRACT(MONTH FROM s.dtped) = 12 THEN '05'
+                ELSE s.filial
+            END as filial,
+            COALESCE(s.cidade, c.cidade) as cidade,
+            s.codsupervisor,
+            s.codusur,
+            CASE
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDY %' THEN '1119_TODDY'
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
+                WHEN s.codfor = '1119' THEN '1119_OUTROS'
+                ELSE s.codfor
+            END as codfor,
+            s.tipovenda,
+            s.codcli,
+            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
+            c.ramo
+        FROM raw_data s
+        LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
+        LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+    ),
+    product_agg AS (
+        SELECT
+            ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, produto,
+            SUM(vlvenda) as prod_val,
+            SUM(totpesoliq) as prod_peso,
+            SUM(vlbonific) as prod_bonific,
+            SUM(COALESCE(vldevolucao, 0)) as prod_devol,
+            SUM(COALESCE(qtvenda_embalagem_master, 0)) as prod_caixas
+        FROM augmented_data
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+    ),
+    client_agg AS (
+        SELECT
+            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo,
+            SUM(pa.prod_val) as total_val,
+            SUM(pa.prod_peso) as total_peso,
+            SUM(pa.prod_bonific) as total_bonific,
+            SUM(pa.prod_devol) as total_devol,
+            SUM(pa.prod_caixas) as total_caixas,
+            COUNT(CASE WHEN pa.prod_val >= 1 THEN 1 END) as mix_calc
+        FROM product_agg pa
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+    )
+    SELECT
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        total_val, total_peso, total_bonific, total_devol,
+        mix_calc,
+        CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
+        ramo,
+        total_caixas
+    FROM client_agg;
+
+    ANALYZE public.data_summary;
+END;
+$function$
+
+CREATE OR REPLACE FUNCTION public.refresh_cache_summary_history()
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+    SET LOCAL statement_timeout = '600s';
+
+    TRUNCATE TABLE public.data_summary;
+
+    INSERT INTO public.data_summary (
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        vlvenda, peso, bonificacao, devolucao,
+        pre_mix_count, pre_positivacao_val,
+        ramo, caixas
+    )
+    WITH raw_data AS (
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        FROM public.data_history
+    ),
+    augmented_data AS (
+        SELECT
+            EXTRACT(YEAR FROM s.dtped)::int as ano,
+            EXTRACT(MONTH FROM s.dtped)::int as mes,
+            CASE
+                WHEN s.codcli = '11625' AND EXTRACT(YEAR FROM s.dtped) = 2025 AND EXTRACT(MONTH FROM s.dtped) = 12 THEN '05'
+                ELSE s.filial
+            END as filial,
+            COALESCE(s.cidade, c.cidade) as cidade,
+            s.codsupervisor,
+            s.codusur,
+            CASE
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDY %' THEN '1119_TODDY'
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
+                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
+                WHEN s.codfor = '1119' THEN '1119_OUTROS'
+                ELSE s.codfor
+            END as codfor,
+            s.tipovenda,
+            s.codcli,
+            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
+            c.ramo
+        FROM raw_data s
+        LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
+        LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+    ),
+    product_agg AS (
+        SELECT
+            ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, produto,
+            SUM(vlvenda) as prod_val,
+            SUM(totpesoliq) as prod_peso,
+            SUM(vlbonific) as prod_bonific,
+            SUM(COALESCE(vldevolucao, 0)) as prod_devol,
+            SUM(COALESCE(qtvenda_embalagem_master, 0)) as prod_caixas
+        FROM augmented_data
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+    ),
+    client_agg AS (
+        SELECT
+            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo,
+            SUM(pa.prod_val) as total_val,
+            SUM(pa.prod_peso) as total_peso,
+            SUM(pa.prod_bonific) as total_bonific,
+            SUM(pa.prod_devol) as total_devol,
+            SUM(pa.prod_caixas) as total_caixas,
+            COUNT(CASE WHEN pa.prod_val >= 1 THEN 1 END) as mix_calc
+        FROM product_agg pa
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+    )
+    SELECT
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        total_val, total_peso, total_bonific, total_devol,
+        mix_calc,
+        CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
+        ramo,
+        total_caixas
+    FROM client_agg;
+END;
+$function$
+
+CREATE OR REPLACE FUNCTION public.refresh_data_financials()
+ RETURNS void
+ LANGUAGE plpgsql
+ SET search_path TO 'public', 'extensions', 'temp'
+AS $function$
+BEGIN
+    -- Limpa a tabela antes de popular
+    TRUNCATE TABLE public.data_financials;
+
+    -- Insere os dados agregados
+    INSERT INTO public.data_financials (
+        ano, mes, filial, cidade, superv, nome, codfor, tipovenda,
+        vlvenda, peso, bonificacao, devolucao, positivacao_count
+    )
+    SELECT
+        ano, mes, filial, cidade, superv, nome, codfor, tipovenda,
+        SUM(vlvenda) as vlvenda,
+        SUM(peso) as peso,
+        SUM(bonificacao) as bonificacao,
+        SUM(devolucao) as devolucao,
+        SUM(pre_positivacao_val) as positivacao_count
+    FROM public.data_summary
+    GROUP BY 1, 2, 3, 4, 5, 6, 7, 8;
+END;
+$function$
+
+CREATE OR REPLACE FUNCTION public.refresh_summary_month(p_year integer, p_month integer)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+    SET LOCAL statement_timeout = '1800s'; -- Increased to 30 mins to avoid immediate API cutoff
+    SET LOCAL work_mem = '128MB'; -- More memory for internal hashing during grouped inserts
+
+    -- Clear data for this year/month first (avoid duplicates)
+    DELETE FROM public.data_summary WHERE ano = p_year AND mes = p_month;
+    DELETE FROM public.data_summary_frequency WHERE ano = p_year AND mes = p_month;
+
+    -- STEP A: Create a temporary table for the raw data of the month to avoid massive UNION ALL memory plans
+    CREATE TEMP TABLE tmp_raw_data ON COMMIT DROP AS
+    SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+    FROM public.data_detailed
+    WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
+    UNION ALL
+    SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+    FROM public.data_history
+    WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month');
+
+    CREATE INDEX idx_tmp_raw_produto ON tmp_raw_data(produto);
+    CREATE INDEX idx_tmp_raw_codcli ON tmp_raw_data(codcli);
+    CREATE INDEX idx_tmp_raw_pedido ON tmp_raw_data(pedido);
+
+    -- STEP B: Insert into data_summary using the temporary table
+    INSERT INTO public.data_summary (
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        vlvenda, peso, bonificacao, devolucao,
+        pre_mix_count, pre_positivacao_val,
+        ramo, caixas, categoria_produto
+    )
+    WITH dim_prod_enhanced AS (
+        SELECT
+            codigo,
+            categoria_produto,
+            qtde_embalagem_master,
+            CASE
+                WHEN '1119' = '1119' AND descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
+                WHEN '1119' = '1119' AND descricao ILIKE '%TODDY %' THEN '1119_TODDY'
+                WHEN '1119' = '1119' AND descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
+                WHEN '1119' = '1119' AND descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
+                ELSE '1119_OUTROS'
+            END as codfor_enhanced
+        FROM public.dim_produtos
+    ),
+    augmented_data AS (
+        SELECT
+            p_year as ano,
+            p_month as mes,
+            CASE
+                WHEN s.codcli = '11625' AND p_year = 2025 AND p_month = 12 THEN '05'
+                ELSE s.filial
+            END as filial,
+            COALESCE(s.cidade, c.cidade) as cidade,
+            s.codsupervisor,
+            s.codusur,
+            CASE
+                WHEN s.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS')
+                ELSE s.codfor
+            END as codfor,
+            s.tipovenda,
+            s.codcli,
+            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
+            c.ramo,
+            dp.categoria_produto
+        FROM tmp_raw_data s
+        LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
+        LEFT JOIN dim_prod_enhanced dp ON s.produto = dp.codigo
+    ),
+    product_agg AS (
+        SELECT
+            ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, categoria_produto, produto,
+            SUM(vlvenda) as prod_val,
+            SUM(totpesoliq) as prod_peso,
+            SUM(vlbonific) as prod_bonific,
+            SUM(COALESCE(vldevolucao, 0)) as prod_devol,
+            SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as prod_caixas
+        FROM augmented_data
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+    ),
+    client_agg AS (
+        SELECT
+            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo, pa.categoria_produto,
+            SUM(pa.prod_val) as total_val,
+            SUM(pa.prod_peso) as total_peso,
+            SUM(pa.prod_bonific) as total_bonific,
+            SUM(pa.prod_devol) as total_devol,
+            SUM(pa.prod_caixas) as total_caixas,
+            COUNT(CASE WHEN pa.prod_val >= 1 THEN 1 END) as mix_calc
+        FROM product_agg pa
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+    )
+    SELECT
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        total_val, total_peso, total_bonific, total_devol,
+        mix_calc,
+        CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
+        ramo,
+        total_caixas,
+        categoria_produto
+    FROM client_agg;
+
+
+    -- STEP C: Insert into data_summary_frequency using the temporary table
+    INSERT INTO public.data_summary_frequency (
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede
+    )
+    WITH freq_agg_base AS (
+        SELECT
+            p_year as ano,
+            p_month as mes,
+            filial,
+            cidade,
+            codsupervisor,
+            codusur,
+            codfor,
+            codcli,
+            tipovenda,
+            pedido,
+            SUM(vlvenda) as vlvenda,
+            SUM(totpesoliq) as peso,
+            jsonb_agg(DISTINCT produto) as produtos
+        FROM tmp_raw_data
+        GROUP BY
+            filial,
+            cidade,
+            codsupervisor,
+            codusur,
+            codfor,
+            codcli,
+            tipovenda,
+            pedido
+    ),
+    dim_prod_mapping AS (
+        SELECT codigo, categoria_produto FROM public.dim_produtos
+    )
+    SELECT
+        f.ano,
+        f.mes,
+        f.filial,
+        f.cidade,
+        f.codsupervisor,
+        f.codusur,
+        f.codfor,
+        f.codcli,
+        f.tipovenda,
+        f.pedido,
+        f.vlvenda,
+        f.peso,
+        f.produtos,
+        (
+            SELECT jsonb_agg(DISTINCT dp.categoria_produto)
+            FROM jsonb_array_elements_text(f.produtos) as p_code
+            LEFT JOIN dim_prod_mapping dp ON p_code = dp.codigo
+            WHERE dp.categoria_produto IS NOT NULL
+        ) as categorias,
+        c.ramo as rede
+    FROM freq_agg_base f
+    LEFT JOIN public.data_clients c ON f.codcli = c.codigo_cliente;
+
+    -- STEP D: Cleanup
+    DROP TABLE IF EXISTS tmp_raw_data;
+END;
+$function$
+
+CREATE OR REPLACE FUNCTION public.sync_chunk_v2(p_table_name text, p_chunk_key text, p_rows jsonb, p_hash text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+    -- 1. Delete existing rows for this chunk key (YYYY-MM)
+    EXECUTE format('
+        DELETE FROM public.%I
+        WHERE TO_CHAR(dtped, ''YYYY-MM'') = $1
+    ', p_table_name) USING p_chunk_key;
+
+    -- 2. Insert new rows without the dropped column
+    EXECUTE format('
+        INSERT INTO public.%I (
+            pedido, codusur, codsupervisor, produto, codfor, codcli, cidade,
+            qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq,
+            dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
+        )
+        SELECT
+            pedido, codusur, codsupervisor, produto, codfor, codcli, cidade,
+            qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq,
+            dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
+        FROM jsonb_populate_recordset(null::public.%I, $2)
+    ', p_table_name, p_table_name) USING p_chunk_key, p_rows;
+
+    -- 3. Update metadata
+    INSERT INTO public.data_metadata (table_name, chunk_key, chunk_hash, updated_at)
+    VALUES (p_table_name, p_chunk_key, p_hash, now())
+    ON CONFLICT (table_name, chunk_key)
+    DO UPDATE SET chunk_hash = EXCLUDED.chunk_hash, updated_at = now();
+END;
+$function$
+
+CREATE OR REPLACE FUNCTION public.sync_sheets_manually()
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+  v_result json;
+  v_url text := 'https://docs.google.com/spreadsheets/d/1NcS5wBwNwp8_32wZAots2L1LxZ0dTW_kL7S7TyM6ZbM/export?format=csv&gid=0';
+  v_csv text;
+BEGIN
+  -- We don't have python or javascript inside here, and pg_http returns raw CSV.
+  -- But we CAN temporarily disable RLS, do the insert locally using our previous bash script, then re-enable RLS.
+  RETURN '{"status":"ok"}'::json;
+END;
+$function$
