@@ -243,6 +243,8 @@ window.showToast = function(type, message, title = '') {
 
     const toast = document.createElement('div');
     toast.className = `toast ${variant.class}`;
+    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
     toast.innerHTML = `
         <div class="toast-icon">${variant.icon}</div>
         <div class="flex-1 min-w-0">

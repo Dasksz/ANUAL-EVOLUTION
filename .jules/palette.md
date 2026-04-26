@@ -8,3 +8,7 @@
 ## 2025-04-18 - Ensure aria-expanded accurately reflects dropdown states
 **Learning:** Dropdowns (like the profile menu) using Tailwind's `hidden` class to toggle visibility must dynamically update the `aria-expanded` attribute on their trigger buttons to properly inform screen readers of state changes.
 **Action:** When implementing dropdown clickaway or toggle logic via Javascript, explicitly update `.setAttribute('aria-expanded', 'true'/'false')` on the controlling button concurrently with adding/removing the `hidden` class.
+
+## 2025-05-18 - Missing Screen Reader Announcer for Dynamic Toasts
+**Learning:** Toast notifications dynamically appended to a container (like `#toast-container`) via Javascript are not automatically announced by screen readers. A `toast-container` without an `aria-live` attribute or toasts without `role="status"`/`role="alert"` are completely missed by assistive technologies.
+**Action:** Always add `role="alert"` and `aria-live="assertive"` for error toasts, and `role="status"` and `aria-live="polite"` for success/info toasts when dynamically creating them.
