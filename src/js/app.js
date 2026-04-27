@@ -6829,6 +6829,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 // --- LOJA PERFEITA VIEW LOGIC ---
 let lpSelectedClient = null; // To hold the specific selected client code
+let lpTableData = []; // Store data for pagination
+let lpCurrentPage = 1;
+const lpRowsPerPage = 50;
 
 let lpFilterDebounce;
 
@@ -7155,11 +7158,43 @@ function renderLpKPIs(kpis) {
     }
 }
 
-function renderLpTable(clients) {
-    const tbody = document.getElementById('lp-table-body');
-    if (!tbody || !clients) return;
+window.prevLpPage = function() {
+    if (lpCurrentPage > 1) {
+        lpCurrentPage--;
+        renderLpTable();
+    }
+};
 
-    tbody.innerHTML = clients.map(c => {
+window.nextLpPage = function() {
+    const totalPages = Math.ceil(lpTableData.length / lpRowsPerPage);
+    if (lpCurrentPage < totalPages) {
+        lpCurrentPage++;
+        renderLpTable();
+    }
+};
+
+function renderLpTable(clients) {
+    if (clients) {
+        lpTableData = clients;
+        lpCurrentPage = 1;
+    }
+
+    const tbody = document.getElementById('lp-table-body');
+    if (!tbody) return;
+
+    const totalRows = lpTableData.length;
+    const totalPages = Math.ceil(totalRows / lpRowsPerPage) || 1;
+
+    // Safety check for current page
+    if (lpCurrentPage > totalPages) lpCurrentPage = totalPages;
+    if (lpCurrentPage < 1) lpCurrentPage = 1;
+
+    const startIndex = (lpCurrentPage - 1) * lpRowsPerPage;
+    const endIndex = Math.min(startIndex + lpRowsPerPage, totalRows);
+
+    const paginatedData = lpTableData.slice(startIndex, endIndex);
+
+    tbody.innerHTML = paginatedData.map(c => {
         const colorClass = c.score >= 80 ? 'text-green-400' : c.score >= 50 ? 'text-yellow-400' : 'text-red-400';
         return `
             <tr class="hover:bg-slate-700/30 transition-colors">
@@ -7173,6 +7208,27 @@ function renderLpTable(clients) {
             </tr>
         `;
     }).join('');
+
+    // Update Pagination UI
+    const pageInfoEl = document.getElementById('lp-page-info');
+    const prevBtn = document.getElementById('lp-prev-page');
+    const nextBtn = document.getElementById('lp-next-page');
+
+    if (pageInfoEl) {
+        if (totalRows === 0) {
+            pageInfoEl.textContent = '0 de 0';
+        } else {
+            pageInfoEl.textContent = `${startIndex + 1}-${endIndex} de ${totalRows} (Pág. ${lpCurrentPage}/${totalPages})`;
+        }
+    }
+
+    if (prevBtn) {
+        prevBtn.disabled = lpCurrentPage === 1 || totalRows === 0;
+    }
+
+    if (nextBtn) {
+        nextBtn.disabled = lpCurrentPage === totalPages || totalRows === 0;
+    }
 }
 
 
