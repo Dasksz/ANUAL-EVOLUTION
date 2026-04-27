@@ -3294,7 +3294,8 @@ let estrelasSelectedCategorias = [];
             } else if (selectedArray.length === 1) {
                 const val = selectedArray[0];
                 let found;
-                if (isObject) found = (items || []).find(i => String(i.cod) === val); else found = (items || []).find(i => String(i) === val);
+                // ⚡ Bolt Optimization: Use loose equality '==' to avoid unnecessary String() conversions and allocations in O(N) search
+                if (isObject) found = (items || []).find(i => i.cod == val); else found = (items || []).find(i => i == val);
                 if (found) span.textContent = isObject ? found.name : found; else span.textContent = val;
             } else { span.textContent = `${selectedArray.length} selecionados`; }
         };
