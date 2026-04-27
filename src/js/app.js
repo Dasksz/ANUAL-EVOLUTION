@@ -3284,7 +3284,9 @@ let estrelasSelectedCategorias = [];
                         }
                     } else {
                         const idx = selectedArray.indexOf(val);
-                        if (idx > -1) selectedArray.splice(idx, 1);
+                        if (idx > -1) {
+                            selectedArray.splice(idx, 1);
+                        }
                     }
                     updateBtnLabel();
                     if (labelCallback) labelCallback();
