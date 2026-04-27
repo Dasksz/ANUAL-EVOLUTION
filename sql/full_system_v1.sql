@@ -4461,8 +4461,8 @@ BEGIN
         kpis AS (
             SELECT 
                 COALESCE(AVG(score), 0) as avg_score,
-                COALESCE(SUM(auditorias), 0) as total_audits,
-                COALESCE(SUM(auditorias_perfeitas), 0) as perfect_stores
+                COUNT(DISTINCT codcli) as total_audits,
+                COUNT(DISTINCT CASE WHEN score >= 80 THEN codcli END) as perfect_stores
             FROM filtered_data
         ),
         clients_json AS (
