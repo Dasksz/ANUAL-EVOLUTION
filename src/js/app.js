@@ -3243,12 +3243,12 @@ let estrelasSelectedCategorias = [];
             
                         // Sort items so selected ones appear first
             // ⚡ Bolt Optimization: Use a Set for O(1) lookups during sorting instead of O(N) array.includes()
-            const selectedSet = new Set(selectedArray);
+            const currentSelectedSet = new Set(selectedArray);
             filteredItems.sort((a, b) => {
                 const valA = String(isObject ? a.cod : a);
                 const valB = String(isObject ? b.cod : b);
-                const isSelectedA = selectedSet.has(valA);
-                const isSelectedB = selectedSet.has(valB);
+                const isSelectedA = currentSelectedSet.has(valA);
+                const isSelectedB = currentSelectedSet.has(valB);
 
                 if (isSelectedA && !isSelectedB) return -1;
                 if (!isSelectedA && isSelectedB) return 1;
@@ -3261,7 +3261,7 @@ let estrelasSelectedCategorias = [];
             container.innerHTML = displayItems.map(item => {
                 const value = String(isObject ? item.cod : item);
                 const label = isObject ? item.name : item;
-                const isSelected = selectedSet.has(value);
+                const isSelected = currentSelectedSet.has(value);
                 return `
                     <div class="flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded filter-item-row" data-value="${escapeHtml(value)}">
                         <input type="checkbox" value="${escapeHtml(value)}" class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2" ${isSelected ? 'checked' : ''}>
@@ -3279,18 +3279,15 @@ let estrelasSelectedCategorias = [];
                     const val = checkbox.value;
 
                     if (checkbox.checked) {
-                        if (!selectedSet.has(val)) {
-                            selectedSet.add(val);
+                        if (!selectedArray.includes(val)) {
                             selectedArray.push(val);
                         }
                     } else {
-                        if (selectedSet.has(val)) {
-                            selectedSet.delete(val);
-                            const idx = selectedArray.indexOf(val);
-                            if (idx > -1) selectedArray.splice(idx, 1);
-                        }
+                        const idx = selectedArray.indexOf(val);
+                        if (idx > -1) selectedArray.splice(idx, 1);
                     }
                     updateBtnLabel();
+                    if (labelCallback) labelCallback();
                 };
             });
 
@@ -7439,8 +7436,8 @@ window.clearAllFilters = async function(prefix) {
             mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
-        agendaSelectedSupervisors = [];
-        agendaSelectedRotas = [];
+        agendaSelectedSupervisors.length = 0;
+        agendaSelectedRotas.length = 0;
 
         ['agenda-supervisor', 'agenda-rota'].forEach(pref => {
             const btn = document.getElementById(`${pref}-filter-btn`);
