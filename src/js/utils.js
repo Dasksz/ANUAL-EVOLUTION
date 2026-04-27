@@ -3,12 +3,47 @@ export function escapeHtml(unsafe) {
     if (unsafe == null) return '';
     const str = String(unsafe);
     if (!matchHtmlRegExp.test(str)) return str;
-    return str
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;");
+
+    // Performance Optimization: single-pass character iteration
+    // instead of chained .replace() which creates multiple intermediate strings
+    let html = '';
+    let lastIndex = 0;
+
+    for (let i = 0; i < str.length; i++) {
+        let escaped;
+        switch (str.charCodeAt(i)) {
+            case 38: // &
+                escaped = '&amp;';
+                break;
+            case 60: // <
+                escaped = '&lt;';
+                break;
+            case 62: // >
+                escaped = '&gt;';
+                break;
+            case 34: // "
+                escaped = '&quot;';
+                break;
+            case 39: // '
+                escaped = '&#039;';
+                break;
+            default:
+                continue;
+        }
+
+        if (lastIndex !== i) {
+            html += str.substring(lastIndex, i);
+        }
+
+        lastIndex = i + 1;
+        html += escaped;
+    }
+
+    if (lastIndex !== str.length) {
+        html += str.substring(lastIndex);
+    }
+
+    return html;
 }
 
 const _numberFormatters = new Map();
