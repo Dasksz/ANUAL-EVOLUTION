@@ -2710,14 +2710,14 @@ let estrelasSelectedCategorias = [];
             boxesAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
             boxesMesFilter.value = '';
             boxesMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
-            boxesSelectedFiliais = [];
-            boxesSelectedProducts = [];
-            boxesSelectedSupervisores = [];
-            boxesSelectedVendedores = [];
-            boxesSelectedFornecedores = [];
-            boxesSelectedCidades = [];
-            boxesSelectedTiposVenda = [];
-            boxesSelectedCategorias = [];
+            boxesSelectedFiliais.length = 0;
+            boxesSelectedProducts.length = 0;
+            boxesSelectedSupervisores.length = 0;
+            boxesSelectedVendedores.length = 0;
+            boxesSelectedFornecedores.length = 0;
+            boxesSelectedCidades.length = 0;
+            boxesSelectedTiposVenda.length = 0;
+            boxesSelectedCategorias.length = 0;
             boxesTrendActive = false; // Reset Trend
             const span = document.getElementById('boxes-trend-text');
             if(span) span.textContent = 'Calcular Tendência';
@@ -3279,15 +3279,13 @@ let estrelasSelectedCategorias = [];
                     const val = checkbox.value;
 
                     if (checkbox.checked) {
-                        if (!selectedSet.has(val)) {
-                            selectedSet.add(val);
+                        if (!selectedArray.includes(val)) {
                             selectedArray.push(val);
                         }
                     } else {
-                        if (selectedSet.has(val)) {
-                            selectedSet.delete(val);
-                            const idx = selectedArray.indexOf(val);
-                            if (idx > -1) selectedArray.splice(idx, 1);
+                        const idx = selectedArray.indexOf(val);
+                        if (idx > -1) {
+                            selectedArray.splice(idx, 1);
                         }
                     }
                     updateBtnLabel();
@@ -4456,14 +4454,14 @@ let estrelasSelectedCategorias = [];
              cityAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
              cityMesFilter.value = '';
              cityMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
-             citySelectedFiliais = [];
-             citySelectedCidades = [];
-             citySelectedSupervisores = [];
-             citySelectedVendedores = [];
-             citySelectedFornecedores = [];
-             citySelectedTiposVenda = [];
-             citySelectedRedes = [];
-             citySelectedCategorias = [];
+             citySelectedFiliais.length = 0;
+             citySelectedCidades.length = 0;
+             citySelectedSupervisores.length = 0;
+             citySelectedVendedores.length = 0;
+             citySelectedFornecedores.length = 0;
+             citySelectedTiposVenda.length = 0;
+             citySelectedRedes.length = 0;
+             citySelectedCategorias.length = 0;
              initCityFilters().then(loadCityView);
         });
     }
@@ -4683,14 +4681,14 @@ let estrelasSelectedCategorias = [];
          branchAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
          branchMesFilter.value = '';
          branchMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
-         branchSelectedFiliais = []; // Reset but re-init will likely pick first 2
-         branchSelectedCidades = [];
-         branchSelectedSupervisores = [];
-         branchSelectedVendedores = [];
-         branchSelectedFornecedores = [];
-         branchSelectedTiposVenda = [];
-         branchSelectedRedes = [];
-         branchSelectedCategorias = [];
+         branchSelectedFiliais.length = 0; // Reset but re-init will likely pick first 2
+         branchSelectedCidades.length = 0;
+         branchSelectedSupervisores.length = 0;
+         branchSelectedVendedores.length = 0;
+         branchSelectedFornecedores.length = 0;
+         branchSelectedTiposVenda.length = 0;
+         branchSelectedRedes.length = 0;
+         branchSelectedCategorias.length = 0;
          // Re-init filters to update UI
          initBranchFilters().then(loadBranchView);
     });
@@ -7269,13 +7267,13 @@ window.clearAllFilters = async function(prefix) {
             mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
         
-        innovationsSelectedSupervisors = [];
-        innovationsSelectedVendedores = [];
-        innovationsSelectedCidades = [];
-        innovationsSelectedTiposVenda = [];
-        innovationsSelectedRedes = [];
-        innovationsSelectedFiliais = [];
-        innovationsSelectedCategorias = [];
+        innovationsSelectedSupervisors.length = 0;
+        innovationsSelectedVendedores.length = 0;
+        innovationsSelectedCidades.length = 0;
+        innovationsSelectedTiposVenda.length = 0;
+        innovationsSelectedRedes.length = 0;
+        innovationsSelectedFiliais.length = 0;
+        innovationsSelectedCategorias.length = 0;
         
         // Uncheck all custom select items visually
         const wrappers = [
@@ -7284,7 +7282,7 @@ window.clearAllFilters = async function(prefix) {
             'innovations-rede-filter-dropdown', 'innovations-filial-filter-dropdown',
             'innovations-categoria-filter-dropdown'
         ];
-        lpSelectedCidades = [];
+        lpSelectedCidades.length = 0;
         const lpCodcliBtn = document.getElementById("lp-codcli-filter-btn");
         if (lpCodcliBtn) {
             lpCodcliBtn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
@@ -7401,14 +7399,14 @@ window.clearAllFilters = async function(prefix) {
             mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
-        estrelasSelectedSupervisors = [];
-        estrelasSelectedVendedores = [];
-        estrelasSelectedCidades = [];
-        estrelasSelectedTiposVenda = [];
-        estrelasSelectedRedes = [];
-        estrelasSelectedFiliais = [];
-        estrelasSelectedCategorias = [];
-        estrelasSelectedFornecedores = [];
+        estrelasSelectedSupervisors.length = 0;
+        estrelasSelectedVendedores.length = 0;
+        estrelasSelectedCidades.length = 0;
+        estrelasSelectedTiposVenda.length = 0;
+        estrelasSelectedRedes.length = 0;
+        estrelasSelectedFiliais.length = 0;
+        estrelasSelectedCategorias.length = 0;
+        estrelasSelectedFornecedores.length = 0;
 
         const wrappers = [
             'estrelas-supervisor-filter-dropdown', 'estrelas-vendedor-filter-dropdown',
@@ -7495,8 +7493,8 @@ window.clearAllFilters = async function(prefix) {
             mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
-        agendaSelectedSupervisors = [];
-        agendaSelectedRotas = [];
+        agendaSelectedSupervisors.length = 0;
+        agendaSelectedRotas.length = 0;
 
         ['agenda-supervisor', 'agenda-rota'].forEach(pref => {
             const btn = document.getElementById(`${pref}-filter-btn`);
