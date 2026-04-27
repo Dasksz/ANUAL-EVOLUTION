@@ -4426,7 +4426,7 @@ BEGIN
     END IF;
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND cm.filial = ANY(%L::text[])', p_filial);
+        v_where_base := v_where_base || format(' AND cb.filial = ANY(%L::text[])', p_filial);
     END IF;
 
     v_sql := format('
@@ -4453,6 +4453,7 @@ BEGIN
                 np.auditorias_perfeitas
             FROM public.data_nota_perfeita np
             LEFT JOIN public.data_clients dc ON np.codigo_cliente = dc.codigo_cliente
+            LEFT JOIN public.config_city_branches cb ON dc.cidade = cb.cidade
             LEFT JOIN client_mapping cm ON np.codigo_cliente = cm.codcli
             LEFT JOIN public.dim_vendedores dv ON cm.codusur = dv.codigo
             LEFT JOIN public.dim_supervisores ds ON cm.codsupervisor = ds.codigo
