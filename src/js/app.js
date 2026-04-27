@@ -6361,13 +6361,16 @@ function renderInnovationsChart(data) {
 
     const labels = categories.map(c => c.name);
 
-    // Calcular %
-    const active = data.active_clients || 1; // Reverted back to the consistent 12-month active base for all historical charts
+    // Calcular % usando a Base Atendida (positivação geral) dinâmica de cada mês específico
+    const baseCurrent = data.attended_current || 1;
+    const baseM1 = data.attended_prev_m1 || 1;
+    const baseM2 = data.attended_prev_m2 || 1;
+    const baseM3 = data.attended_prev_m3 || 1;
 
-    const currentData = categories.map(c => ((c.pos_current / active) * 100).toFixed(1));
-    const prevM1Data = categories.map(c => ((c.pos_prev_m1 / active) * 100).toFixed(1));
-    const prevM2Data = categories.map(c => ((c.pos_prev_m2 / active) * 100).toFixed(1));
-    const prevM3Data = categories.map(c => ((c.pos_prev_m3 / active) * 100).toFixed(1));
+    const currentData = categories.map(c => ((c.pos_current / baseCurrent) * 100).toFixed(1));
+    const prevM1Data = categories.map(c => ((c.pos_prev_m1 / baseM1) * 100).toFixed(1));
+    const prevM2Data = categories.map(c => ((c.pos_prev_m2 / baseM2) * 100).toFixed(1));
+    const prevM3Data = categories.map(c => ((c.pos_prev_m3 / baseM3) * 100).toFixed(1));
 
     // Get month labels based on the selected target date in the filters
     const yearFilter = document.getElementById('innovations-ano-filter')?.value;
