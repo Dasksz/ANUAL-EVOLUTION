@@ -1449,9 +1449,11 @@ let estrelasSelectedCategorias = [];
 
             if (type === 'text') {
                 btn.setAttribute('aria-label', 'Ocultar senha');
+                btn.setAttribute('title', 'Ocultar senha');
                 btn.setAttribute('aria-pressed', 'true');
             } else {
                 btn.setAttribute('aria-label', 'Mostrar senha');
+                btn.setAttribute('title', 'Mostrar senha');
                 btn.setAttribute('aria-pressed', 'false');
             }
 
