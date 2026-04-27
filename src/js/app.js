@@ -8216,6 +8216,7 @@ const loadAgendaFilters = async () => {
                 }
                 anoSelect.appendChild(opt);
             });
+            if(typeof enhanceSelectToCustomDropdown === 'function') enhanceSelectToCustomDropdown(anoSelect);
             anoSelect.addEventListener('change', handleAgendaFilterChange);
         }
         
@@ -8223,6 +8224,7 @@ const loadAgendaFilters = async () => {
         const mesSelect = document.getElementById('agenda-mes-filter');
         if (mesSelect) {
             mesSelect.value = (new Date().getMonth() + 1).toString();
+            if(typeof enhanceSelectToCustomDropdown === 'function') enhanceSelectToCustomDropdown(mesSelect);
             mesSelect.addEventListener('change', handleAgendaFilterChange);
         }
 
