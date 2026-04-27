@@ -29,3 +29,4 @@
 ## 2025-04-25 : (Simplificação de Renderização de Toast)
 **Aprendizado:** A criação de elementos repetitivos de UI que não requerem listeners complexos durante a renderização (como o componente de Toast) torna o código extremamente inflado quando feita inteiramente via `document.createElement()` e `.appendChild()`.
 **Ação:** Refatorei a construção do Toast em `src/js/app.js` usando `innerHTML` com template strings para criar a árvore do elemento em uma única atribuição. Isso melhora drasticamente a legibilidade do código, mantendo a segurança utilizando `escapeHtml()` nas interpolações dinâmicas de texto.
+## 2026/04/27 : (Lojas Perfeitas Calc) **Aprendizado:** Calculation of 'perfect stores' requires dynamic thresholding on 'score >= 80' when source data lacks the derived column. **Ação:** Replaced static property extraction with dynamic inline evaluation in worker payload assembly.
