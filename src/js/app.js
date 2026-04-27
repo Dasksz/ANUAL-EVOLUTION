@@ -6946,12 +6946,14 @@ const handleLojaPerfeitaFilterChange = () => {
 
 document.addEventListener('click', (e) => {
     const dropdowns = [
+        document.getElementById('lp-filial-filter-dropdown'),
         document.getElementById('lp-supervisor-filter-dropdown'),
         document.getElementById('lp-vendedor-filter-dropdown'),
         document.getElementById('lp-rede-filter-dropdown'),
         document.getElementById('lp-cidade-filter-dropdown')
     ];
     const btns = [
+        document.getElementById('lp-filial-filter-btn'),
         document.getElementById('lp-supervisor-filter-btn'),
         document.getElementById('lp-vendedor-filter-btn'),
         document.getElementById('lp-rede-filter-btn'),
@@ -7100,14 +7102,14 @@ async function updateLojaPerfeitaView() {
 
     const filters = {
         p_cidade: lpSelectedCidades,
-        p_filial: [],
+        p_filial: lpSelectedFiliais,
         p_supervisor: lpSelectedSupervisors,
         p_vendedor: lpSelectedVendedores,
         p_rede: lpSelectedRedes
     };
 
     const rpcFilters = {
-        p_filial: null,
+        p_filial: filters.p_filial.length ? filters.p_filial : null,
         p_codcli: lpSelectedClient ? lpSelectedClient : null,
         p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
         p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
@@ -7143,13 +7145,13 @@ function renderLpKPIs(kpis) {
     const avgScoreCircle = document.getElementById('lp-avg-score-circle'); // Pode precisar do chart
 
     if (avgScoreEl) avgScoreEl.textContent = formatNumber(kpis.avg_score, 1);
-    if (totalAuditsEl) totalAuditsEl.textContent = formatNumber(kpis.total_audits);
+    if (totalAuditsEl) totalAuditsEl.textContent = formatNumber(kpis.total_audits, 0);
 
     if (perfStoresEl) {
         let pct = kpis.total_audits > 0 ? (kpis.perfect_stores / kpis.total_audits) * 100 : 0;
         perfStoresEl.textContent = pct.toFixed(1) + '%';
         const sub = document.getElementById('lp-kpi-perfect-stores-sub');
-        if (sub) sub.textContent = formatNumber(kpis.perfect_stores) + ' Auditorias';
+        if (sub) sub.textContent = formatNumber(kpis.perfect_stores, 0) + ' Auditorias';
     }
 }
 
