@@ -3331,7 +3331,7 @@ let estrelasSelectedCategorias = [];
         }
     }
 
-    function enhanceSelectToCustomDropdown(selectElement) {
+    window.enhanceSelectToCustomDropdown = function(selectElement) {
         if (!selectElement) return;
 
         // Return if already enhanced
@@ -3483,7 +3483,15 @@ let estrelasSelectedCategorias = [];
         document.addEventListener('click', (e) => {
             if (!dropdown.classList.contains('hidden') && !dropdown.contains(e.target) && !btn.contains(e.target)) {
                 dropdown.classList.add('hidden');
+                // We dispatch change if the actual selectElement.value changed since we opened it.
+                // However, clicking an option inside the dropdown *already* dispatches a change event?
+                // NO, the option click inside `renderOptions` just does `selectElement.value = opt.value` but doesn't dispatch change.
+                // It only dispatches change on close!
+                // Wait! If it dispatches change on close, and we open another one, it triggers click outside, closing the first, and dispatching change!
+                // But why would it flash if value DID NOT change?
+                // Let's ensure `initialValueOnOpen` is kept strictly updated!
                 if (selectElement.value !== initialValueOnOpen) {
+                    initialValueOnOpen = selectElement.value; // Prevent multiple dispatches
                     selectElement.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             }
@@ -7436,7 +7444,12 @@ window.clearAllFilters = async function(prefix) {
             const btn = document.getElementById(`${pref}-filter-btn`);
             if (btn) {
                 const label = pref.includes('supervisor') ? 'Todos' : 'Todas';
-                btn.innerHTML = `<span class="truncate pr-2">${label}</span><svg aria-hidden="true" class="w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
+                const span = btn.querySelector('span.truncate');
+                if (span) {
+                    span.textContent = label;
+                } else {
+                    btn.innerHTML = `<span class="truncate pr-2">${label}</span><svg aria-hidden="true" class="w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
+                }
             }
             const dropdown = document.getElementById(`${pref}-filter-dropdown`);
             if (dropdown) {
@@ -7587,7 +7600,7 @@ const setupEstrelasFilters = async () => {
         let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
         anoSelect.value = hasYear ? currentYear : 'todos';
 
-        if(typeof enhanceSelectToCustomDropdown === 'function') enhanceSelectToCustomDropdown(anoSelect);
+        if(typeof window.enhanceSelectToCustomDropdown === 'function') window.enhanceSelectToCustomDropdown(anoSelect);
         anoSelect.addEventListener('change', handleEstrelasFilterChange);
     }
 
@@ -7599,7 +7612,7 @@ const setupEstrelasFilters = async () => {
         mesSelect.value = currentMonth;
         mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
 
-        if(typeof enhanceSelectToCustomDropdown === 'function') enhanceSelectToCustomDropdown(mesSelect);
+        if(typeof window.enhanceSelectToCustomDropdown === 'function') window.enhanceSelectToCustomDropdown(mesSelect);
         mesSelect.addEventListener('change', handleEstrelasFilterChange);
     }
 
@@ -8222,7 +8235,7 @@ const loadAgendaFilters = async () => {
                 }
                 anoSelect.appendChild(opt);
             });
-            if(typeof enhanceSelectToCustomDropdown === 'function') enhanceSelectToCustomDropdown(anoSelect);
+            if(typeof window.enhanceSelectToCustomDropdown === 'function') window.enhanceSelectToCustomDropdown(anoSelect);
             anoSelect.addEventListener('change', handleAgendaFilterChange);
         }
         
@@ -8230,7 +8243,7 @@ const loadAgendaFilters = async () => {
         const mesSelect = document.getElementById('agenda-mes-filter');
         if (mesSelect) {
             mesSelect.value = (new Date().getMonth() + 1).toString();
-            if(typeof enhanceSelectToCustomDropdown === 'function') enhanceSelectToCustomDropdown(mesSelect);
+            if(typeof window.enhanceSelectToCustomDropdown === 'function') window.enhanceSelectToCustomDropdown(mesSelect);
             mesSelect.addEventListener('change', handleAgendaFilterChange);
         }
 
@@ -8269,9 +8282,14 @@ const setupAgendaFilters = async () => {
         ];
         
         let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
-        if (anyClosed) {
-            handleAgendaFilterChange();
-        }
+        // Only update if something actually changed. But checkboxes fire their own change logic,
+        // or rather the 'click' on the checkbox already mutates the selection array.
+        // If we want to wait until the dropdown closes to apply filters, we'd need to compare
+        // previous vs current state. But currently it causes flashes when clicking other inputs.
+        // We will remove this automatic unconditional trigger. The filters should be applied
+        // when actual selections change, or we can just let it be. Wait, the setupMultiSelect
+        // already calls the callback (handleAgendaFilterChange) when a checkbox is clicked!
+        // No need to trigger it on close.
     });
 
     isAgendaInitialized = true;
