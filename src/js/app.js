@@ -3243,12 +3243,12 @@ let estrelasSelectedCategorias = [];
             
                         // Sort items so selected ones appear first
             // ⚡ Bolt Optimization: Use a Set for O(1) lookups during sorting instead of O(N) array.includes()
-            const selectedSet = new Set(selectedArray);
+            const currentSelectedSet = new Set(selectedArray);
             filteredItems.sort((a, b) => {
                 const valA = String(isObject ? a.cod : a);
                 const valB = String(isObject ? b.cod : b);
-                const isSelectedA = selectedSet.has(valA);
-                const isSelectedB = selectedSet.has(valB);
+                const isSelectedA = currentSelectedSet.has(valA);
+                const isSelectedB = currentSelectedSet.has(valB);
 
                 if (isSelectedA && !isSelectedB) return -1;
                 if (!isSelectedA && isSelectedB) return 1;
@@ -3261,7 +3261,7 @@ let estrelasSelectedCategorias = [];
             container.innerHTML = displayItems.map(item => {
                 const value = String(isObject ? item.cod : item);
                 const label = isObject ? item.name : item;
-                const isSelected = selectedSet.has(value);
+                const isSelected = currentSelectedSet.has(value);
                 return `
                     <div class="flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded filter-item-row" data-value="${escapeHtml(value)}">
                         <input type="checkbox" value="${escapeHtml(value)}" class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2" ${isSelected ? 'checked' : ''}>
@@ -3289,6 +3289,7 @@ let estrelasSelectedCategorias = [];
                         }
                     }
                     updateBtnLabel();
+                    if (labelCallback) labelCallback();
                 };
             });
 
