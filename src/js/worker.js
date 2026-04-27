@@ -542,7 +542,8 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                 const canal = getVal(row, 'Canal');
                 const subcanal = getVal(row, 'Subcanal');
                 const audits = parseInt(getVal(row, 'Auditorias Distintas') || 0);
-                const perfectAudits = parseInt(getVal(row, 'Auditorias Distintas Perfeitas') || 0);
+                // Calculate dynamically based on score since column is removed
+                const perfectAudits = nota >= 80 ? audits : 0;
 
                 if (!current) {
                     grouped.set(key, {
