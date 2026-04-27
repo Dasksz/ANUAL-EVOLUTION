@@ -9,3 +9,6 @@ Improved logic around querying metrics which are conditionally tied to specific 
 - **Where:** `src/js/app.js:3297` (`updateBtnLabel` function)
 - **What:** Replaced explicit `String()` conversion inside a `.find()` loop with loose equality `==`.
 - **Benefit:** Avoids thousands of temporary string allocations during O(N) array searches, resulting in ~40% faster execution for large filter lists.
+## 2026-04-26 - [Optimize escapeHtml string replacements]
+**Learning:** In frontend utility functions called frequently during rendering loops, chained regex `.replace()` operations (like those used for HTML escaping) create a massive performance bottleneck due to multiple intermediate memory allocations and string copies.
+**Action:** Use a single-pass character iteration loop (e.g., using `charCodeAt`) rather than chained `.replace()` calls to construct strings efficiently when modifying text.

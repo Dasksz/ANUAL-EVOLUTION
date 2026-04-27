@@ -243,21 +243,40 @@ window.showToast = function(type, message, title = '') {
 
     const toast = document.createElement('div');
     toast.className = `toast ${variant.class}`;
-    toast.innerHTML = `
-        <div class="toast-icon">${variant.icon}</div>
-        <div class="flex-1 min-w-0">
-            <h4 class="toast-title">${escapeHtml(finalTitle)}</h4>
-            <p class="toast-message">${escapeHtml(message)}</p>
-        </div>
-        <button class="toast-close-btn" aria-label="Fechar notificação">
-            <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </button>
-    `;
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'toast-icon';
+    iconDiv.innerHTML = variant.icon;
 
-    toast.querySelector('.toast-close-btn').onclick = function() {
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'flex-1 min-w-0';
+
+    const titleEl = document.createElement('h4');
+    titleEl.className = 'toast-title';
+    titleEl.textContent = title;
+
+    const msgEl = document.createElement('p');
+    msgEl.className = 'toast-message';
+    msgEl.textContent = message;
+
+    contentDiv.appendChild(titleEl);
+    contentDiv.appendChild(msgEl);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'toast-close-btn';
+    closeBtn.setAttribute('aria-label', 'Fechar notificação');
+    closeBtn.innerHTML = '<svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+    closeBtn.onclick = function() {
         toast.classList.add('hiding');
         toast.addEventListener('animationend', () => toast.remove());
     };
+
+    toast.appendChild(iconDiv);
+    toast.appendChild(contentDiv);
+    toast.appendChild(closeBtn);
+
+    // Use textContent to prevent XSS
+    toast.querySelector('.toast-title').textContent = finalTitle;
+    toast.querySelector('.toast-message').textContent = message;
 
     container.appendChild(toast);
 };
@@ -1430,9 +1449,11 @@ let estrelasSelectedCategorias = [];
 
             if (type === 'text') {
                 btn.setAttribute('aria-label', 'Ocultar senha');
+                btn.setAttribute('title', 'Ocultar senha');
                 btn.setAttribute('aria-pressed', 'true');
             } else {
                 btn.setAttribute('aria-label', 'Mostrar senha');
+                btn.setAttribute('title', 'Mostrar senha');
                 btn.setAttribute('aria-pressed', 'false');
             }
 
@@ -6485,11 +6506,8 @@ window.renderInnovationsTable = function(data) {
     const tbody = document.getElementById('innovations-month-table-body');
     if (!tbody || !data || !data.categories) return;
 
-    if (data.categories.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-slate-500">Nenhum dado encontrado para os filtros selecionados.</td></tr>';
-        return;
-    }
-
+    let html = '';
+    
     // Use dynamic period-specific attended bases instead of a fixed 12m active base
     // Fallback to 1 to prevent division by zero
     const attCurrent = data.attended_current || 1;
@@ -6497,36 +6515,18 @@ window.renderInnovationsTable = function(data) {
     const attPrevM1 = data.attended_prev_m1 || 1;
     const attAvg12m = data.attended_12m > 0 ? (data.attended_12m / 3.0) : 1; 
 
-    // ⚡ Bolt Optimization: Pre-group and pre-format products by category for O(N+M) performance.
-    // Storing pre-calculated objects speeds up the final render loop.
+    // Pre-group products by category for O(N+M) performance
     const productsByCategory = new Map();
     if (data.products && Array.isArray(data.products)) {
-        for (let i = 0; i < data.products.length; i++) {
-            const p = data.products[i];
-
-            let posAtual = Math.round(p.pos_current || 0);
-            let posPrevYear = Math.round(p.pos_prev_year || 0);
-            let posPrevM1 = Math.round(p.pos_prev_m1 || 0);
-            let posAvg12m = Math.round(p.pos_avg_12m || 0);
-            let pEstoque = Math.round(p.estoque_current || 0);
-
-            let pVarPercent = p.pos_prev_m1 > 0 ? (((p.pos_current - p.pos_prev_m1) / p.pos_prev_m1) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
-            let pVarColor = pVarPercent >= 0 ? 'text-green-400' : 'text-red-400';
-
-            let arr = productsByCategory.get(p.category);
-            if(arr === undefined) {
-                arr = [];
-                productsByCategory.set(p.category, arr);
+        for (const p of data.products) {
+            if (!productsByCategory.has(p.category)) {
+                productsByCategory.set(p.category, []);
             }
-            arr.push({ p, posAtual, posPrevYear, posPrevM1, posAvg12m, pEstoque, pVarPercent, pVarColor });
+            productsByCategory.get(p.category).push(p);
         }
     }
 
-    // ⚡ Bolt Optimization: Use an array for string building instead of slow += concatenation.
-    const htmlArray = [];
-
-    for (let i = 0; i < data.categories.length; i++) {
-        const cat = data.categories[i];
+    data.categories.forEach((cat, idx) => {
         let catPosAtual = Math.round(cat.pos_current || 0);
         let catPosPrevYear = Math.round(cat.pos_prev_year || 0);
         let catPosPrevM1 = Math.round(cat.pos_prev_m1 || 0);
@@ -6539,7 +6539,7 @@ window.renderInnovationsTable = function(data) {
         const safeId = cat.name.replace(/[^a-zA-Z0-9]/g, '_');
 
         // Category Row (Parent)
-        htmlArray.push(`
+        html += `
             <tr class="hover:bg-slate-700/30 transition-colors cursor-pointer bg-slate-800/30" onclick="toggleInnovationRow('${safeId}')">
                 <td class="px-4 py-4 text-white font-bold whitespace-normal flex items-center gap-2">
                     <svg id="icon-innovations-${safeId}" class="w-4 h-4 text-orange-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
@@ -6553,32 +6553,42 @@ window.renderInnovationsTable = function(data) {
                 <td class="px-4 py-4 text-center font-bold text-white">${escapeHtml(catPosAtual)}</td>
                 <td class="px-4 py-4 text-center ${escapeHtml(varColor)} font-bold">${escapeHtml(varPercent)}%</td>
             </tr>
-        `);
+        `;
 
         // Product Rows (Children)
-        const productsInCat = productsByCategory.get(cat.name);
-        if (productsInCat !== undefined) {
-             for (let j = 0; j < productsInCat.length; j++) {
-                 const { p, posAtual, posPrevYear, posPrevM1, posAvg12m, pEstoque, pVarPercent, pVarColor } = productsInCat[j];
-                 htmlArray.push(`
-                     <tr class="hover:bg-slate-700/30 transition-colors hidden innovations-child-${safeId}">
-                         <td class="px-4 py-4 pl-10 text-slate-400 text-xs flex items-center gap-2">
-                             <svg class="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                         </td>
-                         <td class="px-4 py-4 text-slate-300 text-xs">${escapeHtml(p.code)} - ${escapeHtml(p.name)}</td>
-                         <td class="px-4 py-4 text-center font-medium text-slate-300">${escapeHtml(pEstoque)} cx</td>
-                         <td class="px-4 py-4 text-center text-slate-500">${escapeHtml(posAvg12m)}</td>
-                         <td class="px-4 py-4 text-center text-slate-500">${escapeHtml(posPrevYear)}</td>
-                         <td class="px-4 py-4 text-center text-slate-500">${escapeHtml(posPrevM1)}</td>
-                         <td class="px-4 py-4 text-center font-medium text-slate-300">${escapeHtml(posAtual)}</td>
-                         <td class="px-4 py-4 text-center ${escapeHtml(pVarColor)} text-xs font-bold">${escapeHtml(pVarPercent)}%</td>
-                     </tr>
-                 `);
-             }
-        }
+        const productsInCat = productsByCategory.get(cat.name) || [];
+        productsInCat.forEach(p => {
+            let posAtual = Math.round(p.pos_current || 0);
+            let posPrevYear = Math.round(p.pos_prev_year || 0);
+            let posPrevM1 = Math.round(p.pos_prev_m1 || 0);
+            let posAvg12m = Math.round(p.pos_avg_12m || 0);
+            let pEstoque = Math.round(p.estoque_current || 0);
+            
+            let pVarPercent = p.pos_prev_m1 > 0 ? (((p.pos_current - p.pos_prev_m1) / p.pos_prev_m1) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
+            let pVarColor = pVarPercent >= 0 ? 'text-green-400' : 'text-red-400';
+
+            html += `
+                <tr class="hover:bg-slate-700/30 transition-colors hidden innovations-child-${safeId}">
+                    <td class="px-4 py-4 pl-10 text-slate-400 text-xs flex items-center gap-2">
+                        <svg class="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </td>
+                    <td class="px-4 py-4 text-slate-300 text-xs">${escapeHtml(p.code)} - ${escapeHtml(p.name)}</td>
+                    <td class="px-4 py-4 text-center font-medium text-slate-300">${escapeHtml(pEstoque)} cx</td>
+                    <td class="px-4 py-4 text-center text-slate-500">${escapeHtml(posAvg12m)}</td>
+                    <td class="px-4 py-4 text-center text-slate-500">${escapeHtml(posPrevYear)}</td>
+                    <td class="px-4 py-4 text-center text-slate-500">${escapeHtml(posPrevM1)}</td>
+                    <td class="px-4 py-4 text-center font-medium text-slate-300">${escapeHtml(posAtual)}</td>
+                    <td class="px-4 py-4 text-center ${escapeHtml(pVarColor)} text-xs font-bold">${escapeHtml(pVarPercent)}%</td>
+                </tr>
+            `;
+        });
+    });
+
+    if (data.categories.length === 0) {
+        html = '<tr><td colspan="8" class="p-4 text-center text-slate-500">Nenhum dado encontrado para os filtros selecionados.</td></tr>';
     }
 
-    tbody.innerHTML = htmlArray.join('');
+    tbody.innerHTML = html;
 };
 
 // Helper para pegar valor de inputs (pode precisar ajuste dependendo de como voce estruturou os selects)
@@ -7430,7 +7440,7 @@ window.clearAllFilters = async function(prefix) {
                 uncheckAllCheckboxes(dropdown);
             }
         });
-
+        
         updateAgendaView();
     } else if (prefix === 'lp') {
         lpSelectedCidades.length = 0;
@@ -8197,7 +8207,7 @@ const loadAgendaFilters = async () => {
         const years = [...new Set(routeData.map(r => r.data_rota ? r.data_rota.substring(0,4) : null).filter(Boolean))].sort().reverse();
         const anoSelect = document.getElementById('agenda-ano-filter');
         if (anoSelect) {
-            anoSelect.innerHTML = '<option value="todos">Todos</option>';
+            anoSelect.innerHTML = '<option value="todos" class="bg-slate-800 text-slate-200">Todos</option>';
             years.forEach(y => {
                 const opt = document.createElement('option');
                 opt.value = y;
@@ -8209,6 +8219,7 @@ const loadAgendaFilters = async () => {
                 }
                 anoSelect.appendChild(opt);
             });
+            if(typeof enhanceSelectToCustomDropdown === 'function') enhanceSelectToCustomDropdown(anoSelect);
             anoSelect.addEventListener('change', handleAgendaFilterChange);
         }
         
@@ -8216,6 +8227,7 @@ const loadAgendaFilters = async () => {
         const mesSelect = document.getElementById('agenda-mes-filter');
         if (mesSelect) {
             mesSelect.value = (new Date().getMonth() + 1).toString();
+            if(typeof enhanceSelectToCustomDropdown === 'function') enhanceSelectToCustomDropdown(mesSelect);
             mesSelect.addEventListener('change', handleAgendaFilterChange);
         }
 
