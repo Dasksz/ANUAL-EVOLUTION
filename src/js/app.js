@@ -243,40 +243,25 @@ window.showToast = function(type, message, title = '') {
 
     const toast = document.createElement('div');
     toast.className = `toast ${variant.class}`;
-    const iconDiv = document.createElement('div');
-    iconDiv.className = 'toast-icon';
-    iconDiv.innerHTML = variant.icon;
 
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'flex-1 min-w-0';
+    // 🧹 Tidy Optimization: Usado innerHTML literal para criar o toast substituindo o documento.createElement excessivo
+    toast.innerHTML = `
+        <div class="toast-icon">${variant.icon}</div>
+        <div class="flex-1 min-w-0">
+            <h4 class="toast-title">${escapeHtml(finalTitle)}</h4>
+            <p class="toast-message">${escapeHtml(message)}</p>
+        </div>
+        <button class="toast-close-btn" aria-label="Fechar notificação">
+            <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    `;
 
-    const titleEl = document.createElement('h4');
-    titleEl.className = 'toast-title';
-    titleEl.textContent = title;
-
-    const msgEl = document.createElement('p');
-    msgEl.className = 'toast-message';
-    msgEl.textContent = message;
-
-    contentDiv.appendChild(titleEl);
-    contentDiv.appendChild(msgEl);
-
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'toast-close-btn';
-    closeBtn.setAttribute('aria-label', 'Fechar notificação');
-    closeBtn.innerHTML = '<svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
-    closeBtn.onclick = function() {
+    toast.querySelector('.toast-close-btn').onclick = function() {
         toast.classList.add('hiding');
         toast.addEventListener('animationend', () => toast.remove());
     };
-
-    toast.appendChild(iconDiv);
-    toast.appendChild(contentDiv);
-    toast.appendChild(closeBtn);
-
-    // Use textContent to prevent XSS
-    toast.querySelector('.toast-title').textContent = finalTitle;
-    toast.querySelector('.toast-message').textContent = message;
 
     container.appendChild(toast);
 };
