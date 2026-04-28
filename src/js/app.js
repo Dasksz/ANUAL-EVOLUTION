@@ -7478,22 +7478,6 @@ window.clearAllFilters = async function(prefix) {
         });
 
     } else if (prefix === 'agenda') {
-        const anoSelect = document.getElementById('agenda-ano-filter');
-        const mesSelect = document.getElementById('agenda-mes-filter');
-
-        const currentYear = new Date().getFullYear().toString();
-        const currentMonth = (new Date().getMonth() + 1).toString();
-
-        if (anoSelect) {
-            let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
-            anoSelect.value = hasYear ? currentYear : 'todos';
-            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        if (mesSelect) {
-            mesSelect.value = currentMonth;
-            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-
         agendaSelectedSupervisors.length = 0;
         agendaSelectedRotas.length = 0;
 
@@ -7513,8 +7497,27 @@ window.clearAllFilters = async function(prefix) {
                 uncheckAllCheckboxes(dropdown);
             }
         });
+
+        const anoSelect = document.getElementById('agenda-ano-filter');
+        const mesSelect = document.getElementById('agenda-mes-filter');
+
+        const currentYear = new Date().getFullYear().toString();
+        const currentMonth = (new Date().getMonth() + 1).toString();
+
+        if (anoSelect) {
+            let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
+            anoSelect.value = hasYear ? currentYear : 'todos';
+            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (mesSelect) {
+            mesSelect.value = currentMonth;
+            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
         
-        updateAgendaView();
+        // No need to call updateAgendaView directly, as the dispatchEvent('change') on ano/mes selects will trigger handleAgendaFilterChange if they are attached, OR the user might not have them.
+        // Actually, let's call it just to be safe, but wait, if dispatchEvent triggers debounce, and we call it, it might trigger twice.
+        // Let's just call it directly to ensure update, as debounce will protect us.
+        handleAgendaFilterChange();
     } else if (prefix === 'lp') {
         lpSelectedCidades.length = 0;
         lpSelectedFiliais.length = 0;
@@ -8264,8 +8267,12 @@ let isAgendaInitialized = false;
 let agendaSelectedSupervisors = [];
 let agendaSelectedRotas = [];
 
+let agendaFilterDebounceTimer;
 const handleAgendaFilterChange = () => {
-    updateAgendaView();
+    clearTimeout(agendaFilterDebounceTimer);
+    agendaFilterDebounceTimer = setTimeout(() => {
+        updateAgendaView();
+    }, 500);
 };
 
 const loadAgendaFilters = async () => {
@@ -8307,12 +8314,12 @@ const loadAgendaFilters = async () => {
         const supervisors = [...new Set(routeData.map(r => r.supervisor).filter(Boolean))].sort();
         const supBtn = document.getElementById('agenda-supervisor-filter-btn');
         const supDd = document.getElementById('agenda-supervisor-filter-dropdown');
-        window.setupMultiSelect(supBtn, supDd, supDd, supervisors, agendaSelectedSupervisors, handleAgendaFilterChange);
+        window.setupMultiSelect(supBtn, supDd, supDd, supervisors, agendaSelectedSupervisors, () => {});
         
         const rotas = [...new Set(routeData.map(r => r.rota_dia).filter(Boolean))].sort();
         const rotasBtn = document.getElementById('agenda-rota-filter-btn');
         const rotasDd = document.getElementById('agenda-rota-filter-dropdown');
-        window.setupMultiSelect(rotasBtn, rotasDd, rotasDd, rotas, agendaSelectedRotas, handleAgendaFilterChange);
+        window.setupMultiSelect(rotasBtn, rotasDd, rotasDd, rotas, agendaSelectedRotas, () => {});
 
     } catch (err) {
         AppLog.error("Erro ao carregar filtros da Agenda:", err);
@@ -8339,14 +8346,10 @@ const setupAgendaFilters = async () => {
         ];
         
         let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
-        // Only update if something actually changed. But checkboxes fire their own change logic,
-        // or rather the 'click' on the checkbox already mutates the selection array.
-        // If we want to wait until the dropdown closes to apply filters, we'd need to compare
-        // previous vs current state. But currently it causes flashes when clicking other inputs.
-        // We will remove this automatic unconditional trigger. The filters should be applied
-        // when actual selections change, or we can just let it be. Wait, the setupMultiSelect
-        // already calls the callback (handleAgendaFilterChange) when a checkbox is clicked!
-        // No need to trigger it on close.
+
+        if (anyClosed) {
+            handleAgendaFilterChange();
+        }
     });
 
     isAgendaInitialized = true;
