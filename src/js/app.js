@@ -1518,7 +1518,8 @@ let estrelasSelectedCategorias = [];
             }
 
             const btn = formSignup.querySelector('button[type=\"submit\"]');
-            const oldText = setElementLoading(btn, btn, 'Cadastrando...', 'text-white');
+            const btnText = btn.querySelector('.btn-text');
+            const oldText = btnText ? setElementLoading(btnText, btn, 'Cadastrando...', 'text-white') : setElementLoading(btn, btn, 'Cadastrando...', 'text-white');
 
             const { data, error } = await supabase.auth.signUp({
                 email,
@@ -1534,7 +1535,7 @@ let estrelasSelectedCategorias = [];
 
             if (error) {
                 window.showToast('error', 'Erro ao realizar cadastro: ' + error.message);
-                restoreElementState(btn, btn, oldText);
+                btnText ? restoreElementState(btnText, btn, oldText) : restoreElementState(btn, btn, oldText);
                 return;
             }
 
@@ -1551,7 +1552,8 @@ let estrelasSelectedCategorias = [];
             const email = document.getElementById('forgot-email').value;
 
             const btn = formForgot.querySelector('button[type=\"submit\"]');
-            const oldText = setElementLoading(btn, btn, 'Enviando...', 'text-white');
+            const btnText = btn.querySelector('.btn-text');
+            const oldText = btnText ? setElementLoading(btnText, btn, 'Enviando...', 'text-white') : setElementLoading(btn, btn, 'Enviando...', 'text-white');
 
             try {
                 const { data: profile, error: profileError } = await supabase
@@ -1562,7 +1564,7 @@ let estrelasSelectedCategorias = [];
 
                 if (profileError || !profile || profile.status !== 'aprovado') {
                     window.showToast('error', 'E-mail não encontrado ou cadastro pendente de aprovação.');
-                    restoreElementState(btn, btn, oldText);
+                    btnText ? restoreElementState(btnText, btn, oldText) : restoreElementState(btn, btn, oldText);
                     return;
                 }
 
@@ -1579,7 +1581,7 @@ let estrelasSelectedCategorias = [];
             } catch (err) {
                 window.showToast('error', 'Ocorreu um erro ao processar sua solicitação.');
             } finally {
-                restoreElementState(btn, btn, oldText);
+                btnText ? restoreElementState(btnText, btn, oldText) : restoreElementState(btn, btn, oldText);
             }
         });
     }
@@ -1918,6 +1920,11 @@ let estrelasSelectedCategorias = [];
     const checkFiles = () => {
         const hasFiles = files.salesCurrMonthFile && files.clientsFile;
         generateBtn.disabled = !hasFiles;
+        if (generateBtn.disabled) {
+            generateBtn.setAttribute('title', 'Selecione os arquivos obrigatórios (Vendas e Clientes) para habilitar');
+        } else {
+            generateBtn.setAttribute('title', 'Iniciar upload dos arquivos');
+        }
     };
 
     const toggleOptionalFilesBtn = document.getElementById('toggle-optional-files-btn');
@@ -7223,10 +7230,20 @@ function renderLpTable(clients) {
 
     if (prevBtn) {
         prevBtn.disabled = lpCurrentPage === 1 || totalRows === 0;
+        if (prevBtn.disabled) {
+            prevBtn.setAttribute('title', 'Primeira página');
+        } else {
+            prevBtn.removeAttribute('title');
+        }
     }
 
     if (nextBtn) {
         nextBtn.disabled = lpCurrentPage === totalPages || totalRows === 0;
+        if (nextBtn.disabled) {
+            nextBtn.setAttribute('title', 'Última página');
+        } else {
+            nextBtn.removeAttribute('title');
+        }
     }
 }
 
