@@ -12,3 +12,6 @@ Improved logic around querying metrics which are conditionally tied to specific 
 ## 2026-04-26 - [Optimize escapeHtml string replacements]
 **Learning:** In frontend utility functions called frequently during rendering loops, chained regex `.replace()` operations (like those used for HTML escaping) create a massive performance bottleneck due to multiple intermediate memory allocations and string copies.
 **Action:** Use a single-pass character iteration loop (e.g., using `charCodeAt`) rather than chained `.replace()` calls to construct strings efficiently when modifying text.
+## 2025-05-18 - [Optimize Autocomplete List DOM Operations]
+**Learning:** Generating dropdown list items using multiple `document.createElement` calls and `appendChild` within a `.forEach` loop causes layout thrashing and slows down typing responsiveness during autocomplete. Attaching individual event listeners inside the loop compounds memory usage.
+**Action:** Always replace item-by-item DOM creation loops with a single `innerHTML` assignment using `.map().join('')`. Use event delegation on the container parent to handle child clicks rather than creating individual listeners, maintaining `O(1)` listener overhead.
