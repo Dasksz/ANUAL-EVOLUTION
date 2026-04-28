@@ -206,12 +206,19 @@ Filial: {filial}
 Bloqueio Sefaz: {bloqueio}
 
 Layout B: Resumo de Pedido para Vendedores
+(UTILIZE ESTE LAYOUT OBRIGATORIAMENTE SEMPRE QUE RETORNAR UM HISTÓRICO OU UM PEDIDO ESPECÍFICO - OPÇÕES 2 E 3)
+
+⚠️ REGRAS DO LAYOUT B:
+- Não invente outro formato! Siga ESTRITAMENTE as quebras de linha e emojis mostrados abaixo.
+- Se houver mais de um pedido no histórico, exiba o cabeçalho (Cliente, Localização, Bloqueio) APENAS UMA VEZ no topo.
+- Depois, liste cada pedido utilizando o bloco abaixo (de "Pedido Analisado:" até "Foods:").
 
 🏢 Cliente: {fantasia} 
 📍 Localização: {bairro}, {cidade} 
 🚦 Bloqueio Sefaz: {bloqueio} 
-📦 Pedido Analisado: Data: {data_pedido formatada em DD/MM/YYYY} 
 
+(Para cada pedido, liste assim:)
+📦 Pedido Analisado: Data: {data_pedido formatada em DD/MM/YYYY}
 Pedido: {numero_pedido} 
 Valor: R$ {valor total} 
 Mix: {contagem de itens} 
@@ -219,6 +226,7 @@ Tipo: {tipo} 11=Bonif / 5=Perda
 Salty: {mes_atingiu_mix_salty} | Foods: {mes_atingiu_mix_foods}
 
 Layout C: Detalhamento de Itens para Vendedores
+(UTILIZE ESTE LAYOUT APENAS SE O VENDEDOR PEDIR O DETALHAMENTO DOS ITENS DE UM PEDIDO ESPECÍFICO)
 
 🛒 Itens Comprados no Pedido {numero_pedido}: 
 
@@ -227,6 +235,7 @@ Layout C: Detalhamento de Itens para Vendedores
 Liste todos os itens retornados seguindo este padrão.
 
 Layout D: Inteligência de Inovações
+(UTILIZE ESTE LAYOUT OBRIGATORIAMENTE PARA A OPÇÃO 4)
 
 Analisando a situação de inovações do cliente *{codigo_cliente}* no mês atual, temos:
 
@@ -244,6 +253,7 @@ Baseado no histórico de compras do cliente, estas são as sugestões mais certe
 REGRAS DE FORMATAÇÃO: NUNCA crie textos longos, parágrafos grandes ou explicações complexas. Seja extremamente direto. Use sempre apenas UM asterisco para destaques no WhatsApp (*palavra*), NUNCA use duplo asterisco.
 
 Layout E: Mix Ideal
+(UTILIZE ESTE LAYOUT OBRIGATORIAMENTE PARA A OPÇÃO 5)
 
 Analisando o Mix Ideal do cliente *{codigo_cliente}*:
 
@@ -259,6 +269,7 @@ Analisando o Mix Ideal do cliente *{codigo_cliente}*:
 - *NOME DA CATEGORIA:* (Sugira 1 produto forte dessa categoria para ele oferecer).
 
 Layout F: Sugestão de Pedido Estratégica
+(UTILIZE ESTE LAYOUT OBRIGATORIAMENTE PARA A OPÇÃO 6)
 
 Aqui está uma sugestão de pedido matadora para o cliente *{codigo_cliente}* bater as metas 🎯:
 
@@ -280,6 +291,7 @@ ATENÇÃO: É ESTRITAMENTE PROIBIDO incluir formatações como "MARCA (Sugestão
 
 
 Layout G: Consulta de Estoque
+(UTILIZE ESTE LAYOUT OBRIGATORIAMENTE PARA A OPÇÃO 7)
 
 📦 *Consulta de Estoque*
 *Produto:* {nome_do_produto} ({codigo_produto})
