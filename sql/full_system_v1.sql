@@ -2546,7 +2546,7 @@ BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
 
     SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+    SET LOCAL statement_timeout = '600s';
 
     -- 1. Determine Date Ranges
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
@@ -2971,7 +2971,7 @@ DECLARE
 BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
     SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+    SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Logic
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
@@ -3543,7 +3543,7 @@ BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
 
     SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+    SET LOCAL statement_timeout = '600s';
 
     -- Date Logic
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
@@ -3799,7 +3799,7 @@ BEGIN
     -- Security Check
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
 
-    SET LOCAL statement_timeout = '120s'; -- Explicitly increased for heavy agg
+    SET LOCAL statement_timeout = '600s'; -- Explicitly increased for heavy agg
 
     -- 1. Date Logic
     IF p_ano IS NOT NULL AND p_ano != 'todos' AND p_ano != '' THEN
@@ -4660,7 +4660,7 @@ DECLARE
 
 BEGIN
     SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+    SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = 'todos' THEN
@@ -4845,7 +4845,7 @@ DECLARE
     v_filial_cities text[];
 BEGIN
     SET LOCAL work_mem = '64MB';
-    SET LOCAL statement_timeout = '120s';
+    SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = '' OR p_ano = 'todos' THEN
@@ -6500,3 +6500,6 @@ END;
 $function$;
 
 
+
+-- Performance Index for Dashboard RPCs
+CREATE INDEX IF NOT EXISTS idx_summary_dash_perf ON public.data_summary USING btree (ano, mes, codcli, tipovenda, vlvenda);
