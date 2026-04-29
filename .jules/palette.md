@@ -4,3 +4,6 @@
 ## 2026-04-28 - Dynamic Title Tooltips for Disabled Buttons
 **Learning:** Adding dynamic `title` tooltips to disabled buttons significantly improves UX/accessibility, allowing screen readers and mouse-users to understand *why* an action cannot be performed (e.g., 'Primeira página' for disabled 'Anterior'). However, when the state changes to enabled, these titles must be removed dynamically to avoid redundant hover tooltips when the action is obvious.
 **Action:** When implementing disabled states for pagination or form buttons in `app.js`, use `setAttribute('title', 'reason')` when disabled and `removeAttribute('title')` when enabled.
+## 2024-05-19 - Dropdown Options Truncation & Tooltips
+**Learning:** Custom multi-select dropdown options with long names can break container layouts and become unreadable.
+**Action:** Always apply text truncation (e.g., Tailwind's `truncate` class) and a native `title` attribute reflecting the full text to custom dropdown items. Additionally, propagate the selected text to the dropdown toggle button's `title` attribute for immediate context on hover.
