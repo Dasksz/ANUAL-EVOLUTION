@@ -4756,29 +4756,24 @@ let estrelasSelectedCategorias = [];
         
         const selectedSet = new Set(selectedArray);
         const renderItems = () => {
-            container.innerHTML = '';
-            const fragment = document.createDocumentFragment();
-            (items || []).forEach(item => {
+            // ⚡ Bolt Optimization: Use template strings instead of multiple document.createElement calls
+            container.innerHTML = (items || []).map(item => {
                 const val = String(item);
                 const isSelected = selectedSet.has(val);
-                const div = document.createElement('div');
-                div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
+                return `
+                    <div class="flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded filter-item-row" data-value="${escapeHtml(val)}">
+                        <input type="checkbox" value="${escapeHtml(val)}" class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2" ${isSelected ? 'checked' : ''}>
+                        <label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${escapeHtml(val)}</label>
+                    </div>
+                `;
+            }).join('');
 
-                const input = document.createElement('input');
-                input.type = 'checkbox';
-                input.value = val;
-                input.className = 'w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2';
-                if (isSelected) input.checked = true;
-
-                const labelEl = document.createElement('label');
-                labelEl.className = 'ml-2 text-sm text-slate-200 cursor-pointer flex-1';
-                labelEl.textContent = val;
-
-                div.appendChild(input);
-                div.appendChild(labelEl);
+            container.querySelectorAll('.filter-item-row').forEach(div => {
                 div.onclick = (e) => {
                     e.stopPropagation();
                     const checkbox = div.querySelector('input');
+                    const val = div.getAttribute('data-value');
+
                     // Toggle logic
                     if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
                     
@@ -4803,9 +4798,8 @@ let estrelasSelectedCategorias = [];
                     renderItems(); // Re-render to update checks visually (e.g. if one was auto-removed)
                     updateBtnLabel();
                 };
-                fragment.appendChild(div);
             });
-            container.appendChild(fragment);
+
             if (!items || items.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
         };
         
@@ -5091,52 +5085,34 @@ let estrelasSelectedCategorias = [];
         const startItem = (currentCityPage * cityPageSize) + 1;
         const endItem = Math.min((currentCityPage + 1) * cityPageSize, totalActiveClients);
 
-        container.innerHTML = '';
+        // ⚡ Bolt Optimization: Replace multiple document.createElement calls with innerHTML for pagination controls
+        container.innerHTML = `
+            <div class="flex justify-between items-center mt-4 px-4 text-sm text-slate-400">
+                <div>Mostrando ${totalActiveClients > 0 ? startItem : 0} a ${endItem} de ${totalActiveClients}</div>
+                <div class="flex gap-2 items-center">
+                    <button id="city-prev-btn" class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        ${currentCityPage === 0 ? 'disabled title="Primeira página"' : ''}>Anterior</button>
+                    <span>${currentCityPage + 1} / ${totalPages || 1}</span>
+                    <button id="city-next-btn" class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        ${currentCityPage >= totalPages - 1 ? 'disabled title="Última página"' : ''}>Próxima</button>
+                </div>
+            </div>
+        `;
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'flex justify-between items-center mt-4 px-4 text-sm text-slate-400';
-
-        const infoDiv = document.createElement('div');
-        infoDiv.textContent = `Mostrando ${totalActiveClients > 0 ? startItem : 0} a ${endItem} de ${totalActiveClients}`;
-
-        const controlsDiv = document.createElement('div');
-        controlsDiv.className = 'flex gap-2';
-
-        const prevBtn = document.createElement('button');
-        prevBtn.id = 'city-prev-btn';
-        prevBtn.className = 'px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed';
-        prevBtn.textContent = 'Anterior';
-        if (currentCityPage === 0) {
-            prevBtn.disabled = true;
-            prevBtn.title = 'Primeira página';
+        // Attach event listeners to the newly created buttons
+        const prevBtn = document.getElementById('city-prev-btn');
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (currentCityPage > 0) { currentCityPage--; loadCityView(); }
+            });
         }
-        prevBtn.addEventListener('click', () => {
-            if (currentCityPage > 0) { currentCityPage--; loadCityView(); }
-        });
 
-        const pageSpan = document.createElement('span');
-        pageSpan.textContent = `${currentCityPage + 1} / ${totalPages || 1}`;
-
-        const nextBtn = document.createElement('button');
-        nextBtn.id = 'city-next-btn';
-        nextBtn.className = 'px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed';
-        nextBtn.textContent = 'Próxima';
-        if (currentCityPage >= totalPages - 1) {
-            nextBtn.disabled = true;
-            nextBtn.title = 'Última página';
+        const nextBtn = document.getElementById('city-next-btn');
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                if (currentCityPage < totalPages - 1) { currentCityPage++; loadCityView(); }
+            });
         }
-        nextBtn.addEventListener('click', () => {
-            if (currentCityPage < totalPages - 1) { currentCityPage++; loadCityView(); }
-        });
-
-        controlsDiv.appendChild(prevBtn);
-        controlsDiv.appendChild(pageSpan);
-        controlsDiv.appendChild(nextBtn);
-
-        wrapper.appendChild(infoDiv);
-        wrapper.appendChild(controlsDiv);
-
-        container.appendChild(wrapper);
     }
 
     // --- Calendar Logic ---
@@ -6080,9 +6056,8 @@ let estrelasSelectedCategorias = [];
                 return formatInteger(val);
             };
 
-            container.innerHTML = '';
-            const frag = document.createDocumentFragment();
-            kpis.forEach(kpi => {
+            // ⚡ Bolt Optimization: Use template strings instead of multiple document.createElement calls
+            container.innerHTML = kpis.map(kpi => {
                 const variation = kpi.history > 0 ? ((kpi.current - kpi.history) / kpi.history) * 100 : 0;
                 const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
 
@@ -6092,32 +6067,15 @@ let estrelasSelectedCategorias = [];
                 else if (kpi.title.includes('Peso')) glowClass = 'kpi-glow-blue';
                 else if (kpi.title.includes('Clientes')) glowClass = 'kpi-glow-purple';
 
-                const div = document.createElement('div');
-                div.className = `kpi-card p-4 rounded-lg text-center kpi-glow-base ${glowClass}`;
-
-                const pTitle = document.createElement('p');
-                pTitle.className = 'text-slate-300 text-sm';
-                pTitle.textContent = kpi.title;
-                div.appendChild(pTitle);
-
-                const pCurrent = document.createElement('p');
-                pCurrent.className = 'text-2xl font-bold text-white my-2';
-                pCurrent.textContent = fmt(kpi.current, kpi.format);
-                div.appendChild(pCurrent);
-
-                const pVar = document.createElement('p');
-                pVar.className = `text-sm ${colorClass}`;
-                pVar.textContent = `${variation > 0 ? '+' : ''}${variation.toFixed(1)}% vs Média`;
-                div.appendChild(pVar);
-
-                const pAvg = document.createElement('p');
-                pAvg.className = 'text-xs text-slate-500';
-                pAvg.textContent = `Média: ${fmt(kpi.history, kpi.format)}`;
-                div.appendChild(pAvg);
-
-                frag.appendChild(div);
-            });
-            container.appendChild(frag);
+                return `
+                    <div class="kpi-card p-4 rounded-lg text-center kpi-glow-base ${glowClass}">
+                        <p class="text-slate-300 text-sm">${escapeHtml(kpi.title)}</p>
+                        <p class="text-2xl font-bold text-white my-2">${escapeHtml(fmt(kpi.current, kpi.format))}</p>
+                        <p class="text-sm ${colorClass}">${variation > 0 ? '+' : ''}${escapeHtml(variation.toFixed(1))}% vs Média</p>
+                        <p class="text-xs text-slate-500">Média: ${escapeHtml(fmt(kpi.history, kpi.format))}</p>
+                    </div>
+                `;
+            }).join('');
         }
 
         function renderComparisonCharts(chartsData) {

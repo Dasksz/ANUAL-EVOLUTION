@@ -15,3 +15,6 @@ Improved logic around querying metrics which are conditionally tied to specific 
 ## 2025-05-18 - [Optimize Autocomplete List DOM Operations]
 **Learning:** Generating dropdown list items using multiple `document.createElement` calls and `appendChild` within a `.forEach` loop causes layout thrashing and slows down typing responsiveness during autocomplete. Attaching individual event listeners inside the loop compounds memory usage.
 **Action:** Always replace item-by-item DOM creation loops with a single `innerHTML` assignment using `.map().join('')`. Use event delegation on the container parent to handle child clicks rather than creating individual listeners, maintaining `O(1)` listener overhead.
+## 2024-04-29 - [Optimize document.createElement inside render loops]
+**Learning:** Generating elements with `document.createElement()` and appending them one by one in loops causes slow rendering times. Combining strings to set `innerHTML` is much faster because the browser only has to do the layout processing once.
+**Action:** Replace verbose `document.createElement` loops with `.map(...).join('')` and template literals where rendering large sets of DOM elements, ensuring `escapeHtml` is used to prevent XSS.

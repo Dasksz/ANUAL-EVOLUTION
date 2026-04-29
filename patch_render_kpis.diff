@@ -1,0 +1,85 @@
+<<<<<<< SEARCH
+        function renderKpiCards(kpis) {
+            const container = document.getElementById('comparison-kpi-container');
+            if (!container) return;
+
+            const fmt = (val, format) => {
+                if (format === 'currency') return formatCurrency(val);
+                if (format === 'decimal') return formatNumber(val, 3);
+                if (format === 'decimal_2') return formatNumber(val, 2);
+                return formatInteger(val);
+            };
+
+            container.innerHTML = '';
+            const frag = document.createDocumentFragment();
+            kpis.forEach(kpi => {
+                const variation = kpi.history > 0 ? ((kpi.current - kpi.history) / kpi.history) * 100 : 0;
+                const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
+
+                // Determine glow color
+                let glowClass = 'kpi-glow-blue';
+                if (kpi.title.includes('Faturamento')) glowClass = 'kpi-glow-green';
+                else if (kpi.title.includes('Peso')) glowClass = 'kpi-glow-blue';
+                else if (kpi.title.includes('Clientes')) glowClass = 'kpi-glow-purple';
+
+                const div = document.createElement('div');
+                div.className = `kpi-card p-4 rounded-lg text-center kpi-glow-base ${glowClass}`;
+
+                const pTitle = document.createElement('p');
+                pTitle.className = 'text-slate-300 text-sm';
+                pTitle.textContent = kpi.title;
+                div.appendChild(pTitle);
+
+                const pCurrent = document.createElement('p');
+                pCurrent.className = 'text-2xl font-bold text-white my-2';
+                pCurrent.textContent = fmt(kpi.current, kpi.format);
+                div.appendChild(pCurrent);
+
+                const pVar = document.createElement('p');
+                pVar.className = `text-sm ${colorClass}`;
+                pVar.textContent = `${variation > 0 ? '+' : ''}${variation.toFixed(1)}% vs Média`;
+                div.appendChild(pVar);
+
+                const pAvg = document.createElement('p');
+                pAvg.className = 'text-xs text-slate-500';
+                pAvg.textContent = `Média: ${fmt(kpi.history, kpi.format)}`;
+                div.appendChild(pAvg);
+
+                frag.appendChild(div);
+            });
+            container.appendChild(frag);
+        }
+=======
+        function renderKpiCards(kpis) {
+            const container = document.getElementById('comparison-kpi-container');
+            if (!container) return;
+
+            const fmt = (val, format) => {
+                if (format === 'currency') return formatCurrency(val);
+                if (format === 'decimal') return formatNumber(val, 3);
+                if (format === 'decimal_2') return formatNumber(val, 2);
+                return formatInteger(val);
+            };
+
+            // ⚡ Bolt Optimization: Use template literals instead of document.createElement calls
+            container.innerHTML = kpis.map(kpi => {
+                const variation = kpi.history > 0 ? ((kpi.current - kpi.history) / kpi.history) * 100 : 0;
+                const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
+
+                // Determine glow color
+                let glowClass = 'kpi-glow-blue';
+                if (kpi.title.includes('Faturamento')) glowClass = 'kpi-glow-green';
+                else if (kpi.title.includes('Peso')) glowClass = 'kpi-glow-blue';
+                else if (kpi.title.includes('Clientes')) glowClass = 'kpi-glow-purple';
+
+                return `
+                    <div class="kpi-card p-4 rounded-lg text-center kpi-glow-base ${glowClass}">
+                        <p class="text-slate-300 text-sm">${escapeHtml(kpi.title)}</p>
+                        <p class="text-2xl font-bold text-white my-2">${escapeHtml(fmt(kpi.current, kpi.format))}</p>
+                        <p class="text-sm ${colorClass}">${variation > 0 ? '+' : ''}${escapeHtml(variation.toFixed(1))}% vs Média</p>
+                        <p class="text-xs text-slate-500">Média: ${escapeHtml(fmt(kpi.history, kpi.format))}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+>>>>>>> REPLACE
