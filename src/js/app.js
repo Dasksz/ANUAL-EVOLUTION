@@ -3257,7 +3257,7 @@ let estrelasSelectedCategorias = [];
                 return `
                     <div class="flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded filter-item-row" data-value="${escapeHtml(value)}">
                         <input type="checkbox" value="${escapeHtml(value)}" class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2" ${isSelected ? 'checked' : ''}>
-                        <label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${escapeHtml(label)}</label>
+                        <label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1 truncate" title="${escapeHtml(label)}">${escapeHtml(label)}</label>
                     </div>
                 `;
             }).join('');
@@ -3310,6 +3310,7 @@ let estrelasSelectedCategorias = [];
                 if (isObject) found = (items || []).find(i => i.cod == val); else found = (items || []).find(i => i == val);
                 if (found) span.textContent = isObject ? found.name : found; else span.textContent = val;
             } else { span.textContent = `${selectedArray.length} selecionados`; }
+            btn.setAttribute('title', span.textContent);
         };
         renderItems();
         updateBtnLabel();
@@ -3368,7 +3369,7 @@ let estrelasSelectedCategorias = [];
                 return `
                     <div class="flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded custom-dropdown-item" data-value="${escapeHtml(opt.value)}">
                         <input type="checkbox" class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2 pointer-events-none" readonly ${isSelected ? 'checked' : ''}>
-                        <label class="ml-2 text-sm cursor-pointer flex-1 ${labelClasses}">${escapeHtml(opt.text)}</label>
+                        <label class="ml-2 text-sm cursor-pointer flex-1 truncate ${labelClasses}" title="${escapeHtml(opt.text)}">${escapeHtml(opt.text)}</label>
                     </div>
                 `;
             }).join('');
@@ -3383,6 +3384,7 @@ let estrelasSelectedCategorias = [];
                     if (opt) {
                         selectElement.value = opt.value;
                         span.textContent = opt.text;
+                        btn.setAttribute('title', span.textContent);
                     }
 
                     // Update visual state of all items
@@ -3409,7 +3411,10 @@ let estrelasSelectedCategorias = [];
 
             // Update span text just in case value changed
             const selectedOpt = selectElement.options[selectElement.selectedIndex];
-            if (selectedOpt) span.textContent = selectedOpt.text;
+            if (selectedOpt) {
+                span.textContent = selectedOpt.text;
+                btn.setAttribute('title', span.textContent);
+            }
         };
 
         renderOptions();
@@ -3417,7 +3422,10 @@ let estrelasSelectedCategorias = [];
         // Force update visual state without recreating DOM to fix unselected bug on reopen
         const updateVisualState = () => {
             const selectedOpt = selectElement.options[selectElement.selectedIndex];
-            if (selectedOpt) span.textContent = selectedOpt.text;
+            if (selectedOpt) {
+                span.textContent = selectedOpt.text;
+                btn.setAttribute('title', span.textContent);
+            }
 
             Array.from(dropdown.children).forEach((child, index) => {
                 const opt = selectElement.options[index];
