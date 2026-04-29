@@ -1,0 +1,104 @@
+<<<<<<< SEARCH
+        const selectedSet = new Set(selectedArray);
+        const renderItems = () => {
+            container.innerHTML = '';
+            const fragment = document.createDocumentFragment();
+            (items || []).forEach(item => {
+                const val = String(item);
+                const isSelected = selectedSet.has(val);
+                const div = document.createElement('div');
+                div.className = 'flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded';
+
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.value = val;
+                input.className = 'w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2';
+                if (isSelected) input.checked = true;
+
+                const labelEl = document.createElement('label');
+                labelEl.className = 'ml-2 text-sm text-slate-200 cursor-pointer flex-1';
+                labelEl.textContent = val;
+
+                div.appendChild(input);
+                div.appendChild(labelEl);
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    const checkbox = div.querySelector('input');
+                    // Toggle logic
+                    if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
+
+                    if (checkbox.checked) {
+                        if (!selectedSet.has(val)) {
+                            selectedSet.add(val);
+                            selectedArray.push(val);
+                            // Enforce max 2: remove first added
+                            if (selectedArray.length > 2) {
+                                const removed = selectedArray.shift();
+                                selectedSet.delete(removed);
+                            }
+                        }
+                    } else {
+                        if (selectedSet.has(val)) {
+                            selectedSet.delete(val);
+                            const idx = selectedArray.indexOf(val);
+                            if (idx > -1) selectedArray.splice(idx, 1);
+                        }
+                    }
+
+                    renderItems(); // Re-render to update checks visually (e.g. if one was auto-removed)
+                    updateBtnLabel();
+                };
+                fragment.appendChild(div);
+            });
+            container.appendChild(fragment);
+            if (!items || items.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
+        };
+=======
+        const selectedSet = new Set(selectedArray);
+        const renderItems = () => {
+            container.innerHTML = (items || []).map(item => {
+                const val = String(item);
+                const isSelected = selectedSet.has(val);
+                return `
+                    <div class="flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded filter-item-row" data-value="${escapeHtml(val)}">
+                        <input type="checkbox" value="${escapeHtml(val)}" class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2" ${isSelected ? 'checked' : ''}>
+                        <label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${escapeHtml(val)}</label>
+                    </div>
+                `;
+            }).join('');
+
+            container.querySelectorAll('.filter-item-row').forEach(div => {
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    const checkbox = div.querySelector('input');
+                    const val = div.getAttribute('data-value');
+
+                    // Toggle logic
+                    if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
+
+                    if (checkbox.checked) {
+                        if (!selectedSet.has(val)) {
+                            selectedSet.add(val);
+                            selectedArray.push(val);
+                            // Enforce max 2: remove first added
+                            if (selectedArray.length > 2) {
+                                const removed = selectedArray.shift();
+                                selectedSet.delete(removed);
+                            }
+                        }
+                    } else {
+                        if (selectedSet.has(val)) {
+                            selectedSet.delete(val);
+                            const idx = selectedArray.indexOf(val);
+                            if (idx > -1) selectedArray.splice(idx, 1);
+                        }
+                    }
+
+                    renderItems(); // Re-render to update checks visually (e.g. if one was auto-removed)
+                    updateBtnLabel();
+                };
+            });
+
+            if (!items || items.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
+        };
+>>>>>>> REPLACE
