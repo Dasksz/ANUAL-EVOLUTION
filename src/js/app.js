@@ -272,21 +272,21 @@ document.addEventListener('DOMContentLoaded', () => {
     let isInnovationsInitialized = false;
     let isLojaPerfeitaInitialized = false;
     let isEstrelasInitialized = false;
-let lpSelectedFiliais = [];
-let lpSelectedSupervisors = [];
-let lpSelectedVendedores = [];
-let lpSelectedRedes = [];
+    let lpSelectedFiliais = [];
+    let lpSelectedSupervisors = [];
+    let lpSelectedVendedores = [];
+    let lpSelectedRedes = [];
 
-let lpSelectedCidades = [];
+    let lpSelectedCidades = [];
 
-let estrelasSelectedFiliais = [];
-let estrelasSelectedCidades = [];
-let estrelasSelectedSupervisors = [];
-let estrelasSelectedVendedores = [];
-let estrelasSelectedFornecedores = [];
-let estrelasSelectedTiposVenda = [];
-let estrelasSelectedRedes = [];
-let estrelasSelectedCategorias = [];
+    let estrelasSelectedFiliais = [];
+    let estrelasSelectedCidades = [];
+    let estrelasSelectedSupervisors = [];
+    let estrelasSelectedVendedores = [];
+    let estrelasSelectedFornecedores = [];
+    let estrelasSelectedTiposVenda = [];
+    let estrelasSelectedRedes = [];
+    let estrelasSelectedCategorias = [];
 
     // --- GLOBAL NAVIGATION HISTORY ---
     let currentActiveView = 'dashboard';
@@ -677,7 +677,7 @@ let estrelasSelectedCategorias = [];
     const lojaPerfeitaView = document.getElementById('loja-perfeita-view');
     const estrelasView = document.getElementById('estrelas-view');
     const agendaView = document.getElementById('agenda-view');
-    
+
     const closeUploaderBtn = document.getElementById('close-uploader-btn');
 
     // Dashboard Internal Views
@@ -1945,7 +1945,7 @@ let estrelasSelectedCategorias = [];
     if(clientsFileInput) clientsFileInput.addEventListener('change', (e) => { files.clientsFile = e.target.files[0]; checkFiles(); });
     if(productsFileInput) productsFileInput.addEventListener('change', (e) => { files.productsFile = e.target.files[0]; checkFiles(); });
     if(innovationsFileInput) innovationsFileInput.addEventListener('change', (e) => { files.innovationsFile = e.target.files[0]; checkFiles(); });
-    
+
     if(notaInvolvesMultipleInput) notaInvolvesMultipleInput.addEventListener('change', (e) => {
         files.notaInvolvesFile1 = e.target.files.length > 0 ? e.target.files[0] : null;
         files.notaInvolvesFile2 = e.target.files.length > 1 ? e.target.files[1] : null;
@@ -2524,17 +2524,89 @@ let estrelasSelectedCategorias = [];
         if (data) {
              // Update Dropdowns (Re-render options)
              // Note: We do NOT reset the selected arrays here, we just re-render the available options.
-             // If a selected item is no longer in the returned data, it remains in the selected array (logic in setupCityMultiSelect handles check status based on array)
+             // If a selected item is no longer in the returned data, it remains in the selected array (logic in window.setupMultiSelect handles check status based on array)
              // However, visually it won't be in the list.
 
-             setupCityMultiSelect(boxesFilialFilterBtn, boxesFilialFilterDropdown, boxesFilialFilterDropdown, data.filiais, boxesSelectedFiliais);
-             setupCityMultiSelect(boxesSupervisorFilterBtn, boxesSupervisorFilterDropdown, boxesSupervisorFilterDropdown, data.supervisors, boxesSelectedSupervisores);
-             setupCityMultiSelect(boxesVendedorFilterBtn, boxesVendedorFilterDropdown, boxesVendedorFilterList, data.vendedores, boxesSelectedVendedores, boxesVendedorFilterSearch);
-             setupCityMultiSelect(boxesFornecedorFilterBtn, boxesFornecedorFilterDropdown, boxesFornecedorFilterList, data.fornecedores, boxesSelectedFornecedores, boxesFornecedorFilterSearch, true);
-             setupCityMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, data.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
-             setupCityMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, data.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
-             setupCityMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, data.tipos_venda || [], boxesSelectedTiposVenda);
-             setupCityMultiSelect(boxesCategoriaFilterBtn, boxesCategoriaFilterDropdown, boxesCategoriaFilterList, data.categorias || [], boxesSelectedCategorias, boxesCategoriaFilterSearch);
+             window.setupMultiSelect(
+                 boxesFilialFilterBtn,
+                 boxesFilialFilterDropdown,
+                 boxesFilialFilterDropdown,
+                 data.filiais,
+                 boxesSelectedFiliais,
+                 () => {},
+                 false,
+                 null
+             );
+             window.setupMultiSelect(
+                 boxesSupervisorFilterBtn,
+                 boxesSupervisorFilterDropdown,
+                 boxesSupervisorFilterDropdown,
+                 data.supervisors,
+                 boxesSelectedSupervisores,
+                 () => {},
+                 false,
+                 null
+             );
+             window.setupMultiSelect(
+                 boxesVendedorFilterBtn,
+                 boxesVendedorFilterDropdown,
+                 boxesVendedorFilterList,
+                 data.vendedores,
+                 boxesSelectedVendedores,
+                 () => {},
+                 false,
+                 boxesVendedorFilterSearch
+             );
+             window.setupMultiSelect(
+                 boxesFornecedorFilterBtn,
+                 boxesFornecedorFilterDropdown,
+                 boxesFornecedorFilterList,
+                 data.fornecedores,
+                 boxesSelectedFornecedores,
+                 () => {},
+                 true,
+                 boxesFornecedorFilterSearch
+             );
+             window.setupMultiSelect(
+                 boxesCidadeFilterBtn,
+                 boxesCidadeFilterDropdown,
+                 boxesCidadeFilterList,
+                 data.cidades,
+                 boxesSelectedCidades,
+                 () => {},
+                 false,
+                 boxesCidadeFilterSearch
+             );
+             window.setupMultiSelect(
+                 boxesProdutoFilterBtn,
+                 boxesProdutoFilterDropdown,
+                 boxesProdutoFilterList,
+                 data.produtos || [],
+                 boxesSelectedProducts,
+                 () => {},
+                 true,
+                 boxesProdutoFilterSearch
+             );
+             window.setupMultiSelect(
+                 boxesTipovendaFilterBtn,
+                 boxesTipovendaFilterDropdown,
+                 boxesTipovendaFilterDropdown,
+                 data.tipos_venda || [],
+                 boxesSelectedTiposVenda,
+                 () => {},
+                 false,
+                 null
+             );
+             window.setupMultiSelect(
+                 boxesCategoriaFilterBtn,
+                 boxesCategoriaFilterDropdown,
+                 boxesCategoriaFilterList,
+                 data.categorias || [],
+                 boxesSelectedCategorias,
+                 () => {},
+                 false,
+                 boxesCategoriaFilterSearch
+             );
         }
     }
 
@@ -2754,16 +2826,88 @@ let estrelasSelectedCategorias = [];
             enhanceSelectToCustomDropdown(boxesMesFilter);
         }
 
-        setupCityMultiSelect(boxesFilialFilterBtn, boxesFilialFilterDropdown, boxesFilialFilterDropdown, filterData.filiais, boxesSelectedFiliais);
-        setupCityMultiSelect(boxesSupervisorFilterBtn, boxesSupervisorFilterDropdown, boxesSupervisorFilterDropdown, filterData.supervisors, boxesSelectedSupervisores);
-        setupCityMultiSelect(boxesVendedorFilterBtn, boxesVendedorFilterDropdown, boxesVendedorFilterList, filterData.vendedores, boxesSelectedVendedores, boxesVendedorFilterSearch);
-        setupCityMultiSelect(boxesFornecedorFilterBtn, boxesFornecedorFilterDropdown, boxesFornecedorFilterList, filterData.fornecedores, boxesSelectedFornecedores, boxesFornecedorFilterSearch, true);
-        setupCityMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, filterData.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
-        setupCityMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, filterData.tipos_venda || [], boxesSelectedTiposVenda);
-        setupCityMultiSelect(boxesCategoriaFilterBtn, boxesCategoriaFilterDropdown, boxesCategoriaFilterList, filterData.categorias || [], boxesSelectedCategorias, boxesCategoriaFilterSearch);
+        window.setupMultiSelect(
+            boxesFilialFilterBtn,
+            boxesFilialFilterDropdown,
+            boxesFilialFilterDropdown,
+            filterData.filiais,
+            boxesSelectedFiliais,
+            () => {},
+            false,
+            null
+        );
+        window.setupMultiSelect(
+            boxesSupervisorFilterBtn,
+            boxesSupervisorFilterDropdown,
+            boxesSupervisorFilterDropdown,
+            filterData.supervisors,
+            boxesSelectedSupervisores,
+            () => {},
+            false,
+            null
+        );
+        window.setupMultiSelect(
+            boxesVendedorFilterBtn,
+            boxesVendedorFilterDropdown,
+            boxesVendedorFilterList,
+            filterData.vendedores,
+            boxesSelectedVendedores,
+            () => {},
+            false,
+            boxesVendedorFilterSearch
+        );
+        window.setupMultiSelect(
+            boxesFornecedorFilterBtn,
+            boxesFornecedorFilterDropdown,
+            boxesFornecedorFilterList,
+            filterData.fornecedores,
+            boxesSelectedFornecedores,
+            () => {},
+            true,
+            boxesFornecedorFilterSearch
+        );
+        window.setupMultiSelect(
+            boxesCidadeFilterBtn,
+            boxesCidadeFilterDropdown,
+            boxesCidadeFilterList,
+            filterData.cidades,
+            boxesSelectedCidades,
+            () => {},
+            false,
+            boxesCidadeFilterSearch
+        );
+        window.setupMultiSelect(
+            boxesTipovendaFilterBtn,
+            boxesTipovendaFilterDropdown,
+            boxesTipovendaFilterDropdown,
+            filterData.tipos_venda || [],
+            boxesSelectedTiposVenda,
+            () => {},
+            false,
+            null
+        );
+        window.setupMultiSelect(
+            boxesCategoriaFilterBtn,
+            boxesCategoriaFilterDropdown,
+            boxesCategoriaFilterList,
+            filterData.categorias || [],
+            boxesSelectedCategorias,
+            () => {},
+            false,
+            boxesCategoriaFilterSearch
+        );
         
         // Products - filterData.produtos
-        setupCityMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, filterData.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
+        window.setupMultiSelect(
+            boxesProdutoFilterBtn,
+            boxesProdutoFilterDropdown,
+            boxesProdutoFilterList,
+            filterData.produtos || [],
+            boxesSelectedProducts,
+            () => {},
+            true,
+            boxesProdutoFilterSearch
+        );
     }
 
     async function loadBoxesView() {
@@ -4488,10 +4632,6 @@ let estrelasSelectedCategorias = [];
         }
     });
 
-    function setupCityMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
-    return window.setupMultiSelect(btn, dropdown, container, items, selectedArray, () => {}, isObject, searchInput);
-}
-
     async function initCityFilters() {
         const filters = {
             p_ano: null,
@@ -4525,16 +4665,88 @@ let estrelasSelectedCategorias = [];
             enhanceSelectToCustomDropdown(cityMesFilter);
         }
 
-        setupCityMultiSelect(cityFilialFilterBtn, cityFilialFilterDropdown, cityFilialFilterDropdown, filterData.filiais, citySelectedFiliais);
-        setupCityMultiSelect(cityCidadeFilterBtn, cityCidadeFilterDropdown, cityCidadeFilterList, filterData.cidades, citySelectedCidades, cityCidadeFilterSearch);
-        setupCityMultiSelect(citySupervisorFilterBtn, citySupervisorFilterDropdown, citySupervisorFilterDropdown, filterData.supervisors, citySelectedSupervisores);
-        setupCityMultiSelect(cityVendedorFilterBtn, cityVendedorFilterDropdown, cityVendedorFilterList, filterData.vendedores, citySelectedVendedores, cityVendedorFilterSearch);
-        setupCityMultiSelect(cityFornecedorFilterBtn, cityFornecedorFilterDropdown, cityFornecedorFilterList, filterData.fornecedores, citySelectedFornecedores, cityFornecedorFilterSearch, true);
-        setupCityMultiSelect(cityTipovendaFilterBtn, cityTipovendaFilterDropdown, cityTipovendaFilterDropdown, filterData.tipos_venda, citySelectedTiposVenda);
-        setupCityMultiSelect(cityCategoriaFilterBtn, cityCategoriaFilterDropdown, cityCategoriaFilterList, filterData.categorias || [], citySelectedCategorias, cityCategoriaFilterSearch);
+        window.setupMultiSelect(
+            cityFilialFilterBtn,
+            cityFilialFilterDropdown,
+            cityFilialFilterDropdown,
+            filterData.filiais,
+            citySelectedFiliais,
+            () => {},
+            false,
+            null
+        );
+        window.setupMultiSelect(
+            cityCidadeFilterBtn,
+            cityCidadeFilterDropdown,
+            cityCidadeFilterList,
+            filterData.cidades,
+            citySelectedCidades,
+            () => {},
+            false,
+            cityCidadeFilterSearch
+        );
+        window.setupMultiSelect(
+            citySupervisorFilterBtn,
+            citySupervisorFilterDropdown,
+            citySupervisorFilterDropdown,
+            filterData.supervisors,
+            citySelectedSupervisores,
+            () => {},
+            false,
+            null
+        );
+        window.setupMultiSelect(
+            cityVendedorFilterBtn,
+            cityVendedorFilterDropdown,
+            cityVendedorFilterList,
+            filterData.vendedores,
+            citySelectedVendedores,
+            () => {},
+            false,
+            cityVendedorFilterSearch
+        );
+        window.setupMultiSelect(
+            cityFornecedorFilterBtn,
+            cityFornecedorFilterDropdown,
+            cityFornecedorFilterList,
+            filterData.fornecedores,
+            citySelectedFornecedores,
+            () => {},
+            true,
+            cityFornecedorFilterSearch
+        );
+        window.setupMultiSelect(
+            cityTipovendaFilterBtn,
+            cityTipovendaFilterDropdown,
+            cityTipovendaFilterDropdown,
+            filterData.tipos_venda,
+            citySelectedTiposVenda,
+            () => {},
+            false,
+            null
+        );
+        window.setupMultiSelect(
+            cityCategoriaFilterBtn,
+            cityCategoriaFilterDropdown,
+            cityCategoriaFilterList,
+            filterData.categorias || [],
+            citySelectedCategorias,
+            () => {},
+            false,
+            cityCategoriaFilterSearch
+        );
 
         const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-        setupCityMultiSelect(cityRedeFilterBtn, cityRedeFilterDropdown, cityRedeFilterList, redes, citySelectedRedes, cityRedeFilterSearch);
+        window.setupMultiSelect(
+            cityRedeFilterBtn,
+            cityRedeFilterDropdown,
+            cityRedeFilterList,
+            redes,
+            citySelectedRedes,
+            () => {},
+            false,
+            cityRedeFilterSearch
+        );
     }
 
     async function loadCityView() {
@@ -4688,7 +4900,7 @@ let estrelasSelectedCategorias = [];
             handleBranchFilterChange();
         }
     });
-    
+
     branchClearFiltersBtn?.addEventListener('click', () => {
          branchAnoFilter.value = 'todos';
          branchAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
@@ -4744,17 +4956,80 @@ let estrelasSelectedCategorias = [];
 
         // Multi Selects
         setupBranchFilialSelect(branchFilialFilterBtn, branchFilialFilterDropdown, branchFilialFilterDropdown, filterData.filiais, branchSelectedFiliais);
-        setupBranchMultiSelect(branchCidadeFilterBtn, branchCidadeFilterDropdown, branchCidadeFilterList, filterData.cidades, branchSelectedCidades, branchCidadeFilterSearch);
-        setupBranchMultiSelect(branchSupervisorFilterBtn, branchSupervisorFilterDropdown, branchSupervisorFilterDropdown, filterData.supervisors, branchSelectedSupervisores);
-        setupBranchMultiSelect(branchVendedorFilterBtn, branchVendedorFilterDropdown, branchVendedorFilterList, filterData.vendedores, branchSelectedVendedores, branchVendedorFilterSearch);
-        setupBranchMultiSelect(branchFornecedorFilterBtn, branchFornecedorFilterDropdown, branchFornecedorFilterList, filterData.fornecedores, branchSelectedFornecedores, branchFornecedorFilterSearch, true);
-        setupBranchMultiSelect(branchTipovendaFilterBtn, branchTipovendaFilterDropdown, branchTipovendaFilterDropdown, filterData.tipos_venda, branchSelectedTiposVenda);
-        setupBranchMultiSelect(branchCategoriaFilterBtn, branchCategoriaFilterDropdown, branchCategoriaFilterList, filterData.categorias || [], branchSelectedCategorias, branchCategoriaFilterSearch);
+        window.setupMultiSelect(
+            branchCidadeFilterBtn,
+            branchCidadeFilterDropdown,
+            branchCidadeFilterList,
+            filterData.cidades,
+            branchSelectedCidades,
+            () => {},
+            false,
+            branchCidadeFilterSearch
+        );
+        window.setupMultiSelect(
+            branchSupervisorFilterBtn,
+            branchSupervisorFilterDropdown,
+            branchSupervisorFilterDropdown,
+            filterData.supervisors,
+            branchSelectedSupervisores,
+            () => {},
+            false,
+            null
+        );
+        window.setupMultiSelect(
+            branchVendedorFilterBtn,
+            branchVendedorFilterDropdown,
+            branchVendedorFilterList,
+            filterData.vendedores,
+            branchSelectedVendedores,
+            () => {},
+            false,
+            branchVendedorFilterSearch
+        );
+        window.setupMultiSelect(
+            branchFornecedorFilterBtn,
+            branchFornecedorFilterDropdown,
+            branchFornecedorFilterList,
+            filterData.fornecedores,
+            branchSelectedFornecedores,
+            () => {},
+            true,
+            branchFornecedorFilterSearch
+        );
+        window.setupMultiSelect(
+            branchTipovendaFilterBtn,
+            branchTipovendaFilterDropdown,
+            branchTipovendaFilterDropdown,
+            filterData.tipos_venda,
+            branchSelectedTiposVenda,
+            () => {},
+            false,
+            null
+        );
+        window.setupMultiSelect(
+            branchCategoriaFilterBtn,
+            branchCategoriaFilterDropdown,
+            branchCategoriaFilterList,
+            filterData.categorias || [],
+            branchSelectedCategorias,
+            () => {},
+            false,
+            branchCategoriaFilterSearch
+        );
 
         const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-        setupBranchMultiSelect(branchRedeFilterBtn, branchRedeFilterDropdown, branchRedeFilterList, redes, branchSelectedRedes, branchRedeFilterSearch);
+        window.setupMultiSelect(
+            branchRedeFilterBtn,
+            branchRedeFilterDropdown,
+            branchRedeFilterList,
+            redes,
+            branchSelectedRedes,
+            () => {},
+            false,
+            branchRedeFilterSearch
+        );
     }
-    
+
     // Specific setup for Branch Filter to enforce 2 selections
     function setupBranchFilialSelect(btn, dropdown, container, items, selectedArray) {
         // If nothing selected, default to first 2
@@ -4838,10 +5113,6 @@ let estrelasSelectedCategorias = [];
         renderItems();
         updateBtnLabel();
     }
-
-    function setupBranchMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
-    return window.setupMultiSelect(btn, dropdown, container, items, selectedArray, () => {}, isObject, searchInput);
-}
 
     async function loadBranchView() {
         window.showDashboardLoading('branch-view');
@@ -5275,2488 +5546,2919 @@ let estrelasSelectedCategorias = [];
             });
         });
     }
- 
 
-        let selectedComparisonSupervisors = [];
-        let selectedComparisonSellers = [];
-        let selectedComparisonSuppliers = [];
-        let selectedComparisonProducts = [];
-        let selectedComparisonTiposVenda = [];
-        let selectedComparisonRedes = [];
-        let selectedComparisonFiliais = [];
+
+    let selectedComparisonSupervisors = [];
+    let selectedComparisonSellers = [];
+    let selectedComparisonSuppliers = [];
+    let selectedComparisonProducts = [];
+    let selectedComparisonTiposVenda = [];
+    let selectedComparisonRedes = [];
+    let selectedComparisonFiliais = [];
     let selectedComparisonCities = [];
-        let selectedComparisonCategorias = [];
-        let useTendencyComparison = false;
-        let comparisonChartType = 'weekly';
-        let comparisonMonthlyMetric = 'faturamento';
+    let selectedComparisonCategorias = [];
+    let useTendencyComparison = false;
+    let comparisonChartType = 'weekly';
+    let comparisonMonthlyMetric = 'faturamento';
 
-        let comparisonFilterDebounceTimer;
-        let lastComparisonFiltersStr = "";
-        const handleComparisonFilterChange = () => {
-            let pFornecedorValue = selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null;
-            
-            // Apply "Pasta" filter logic on top of existing fornecedor if 'ambas' is not selected
-            // "Pasta" is conceptually a macro-fornecedor. 
-            if (comparisonPastaFilter && comparisonPastaFilter.value !== 'ambas') {
-                const pastaSuppliers = comparisonPastaFilter.value === 'ELMA' ? ['707', '708', '752'] : ['1119'];
-                if (!pFornecedorValue) {
-                    pFornecedorValue = [...pastaSuppliers];
-                } else {
-                    const combined = new Set([...pFornecedorValue, ...pastaSuppliers]);
-                    pFornecedorValue = Array.from(combined);
-                }
+    let comparisonFilterDebounceTimer;
+    let lastComparisonFiltersStr = "";
+    const handleComparisonFilterChange = () => {
+        let pFornecedorValue = selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null;
+
+        // Apply "Pasta" filter logic on top of existing fornecedor if 'ambas' is not selected
+        // "Pasta" is conceptually a macro-fornecedor.
+        if (comparisonPastaFilter && comparisonPastaFilter.value !== 'ambas') {
+            const pastaSuppliers = comparisonPastaFilter.value === 'ELMA' ? ['707', '708', '752'] : ['1119'];
+            if (!pFornecedorValue) {
+                pFornecedorValue = [...pastaSuppliers];
+            } else {
+                const combined = new Set([...pFornecedorValue, ...pastaSuppliers]);
+                pFornecedorValue = Array.from(combined);
             }
+        }
 
-            const filters = {
-                p_filial: selectedComparisonFiliais.length > 0 ? selectedComparisonFiliais : null,
-                p_cidade: selectedComparisonCities.length > 0 ? selectedComparisonCities : null,
-                p_supervisor: selectedComparisonSupervisors.length > 0 ? selectedComparisonSupervisors : null,
-                p_vendedor: selectedComparisonSellers.length > 0 ? selectedComparisonSellers : null,
-                p_fornecedor: pFornecedorValue,
-                p_produto: selectedComparisonProducts.length > 0 ? selectedComparisonProducts : null,
-                p_tipovenda: selectedComparisonTiposVenda.length > 0 ? selectedComparisonTiposVenda : null,
-                p_rede: selectedComparisonRedes.length > 0 ? selectedComparisonRedes : null,
-                p_categoria: selectedComparisonCategorias.length > 0 ? selectedComparisonCategorias : null,
-                p_ano: comparisonAnoFilter.value,
-                p_mes: comparisonMesFilter.value
-            };
-            const currentFiltersStr = JSON.stringify(filters);
-            if (currentFiltersStr === lastComparisonFiltersStr) return;
-            lastComparisonFiltersStr = currentFiltersStr;
-            
-            clearTimeout(comparisonFilterDebounceTimer);
-            comparisonFilterDebounceTimer = setTimeout(() => {
-                loadComparisonView();
-            }, 500);
+        const filters = {
+            p_filial: selectedComparisonFiliais.length > 0 ? selectedComparisonFiliais : null,
+            p_cidade: selectedComparisonCities.length > 0 ? selectedComparisonCities : null,
+            p_supervisor: selectedComparisonSupervisors.length > 0 ? selectedComparisonSupervisors : null,
+            p_vendedor: selectedComparisonSellers.length > 0 ? selectedComparisonSellers : null,
+            p_fornecedor: pFornecedorValue,
+            p_produto: selectedComparisonProducts.length > 0 ? selectedComparisonProducts : null,
+            p_tipovenda: selectedComparisonTiposVenda.length > 0 ? selectedComparisonTiposVenda : null,
+            p_rede: selectedComparisonRedes.length > 0 ? selectedComparisonRedes : null,
+            p_categoria: selectedComparisonCategorias.length > 0 ? selectedComparisonCategorias : null,
+            p_ano: comparisonAnoFilter.value,
+            p_mes: comparisonMesFilter.value
         };
+        const currentFiltersStr = JSON.stringify(filters);
+        if (currentFiltersStr === lastComparisonFiltersStr) return;
+        lastComparisonFiltersStr = currentFiltersStr;
 
-        if (comparisonAnoFilter) comparisonAnoFilter.addEventListener('change', handleComparisonFilterChange);
-        if (comparisonMesFilter) comparisonMesFilter.addEventListener('change', handleComparisonFilterChange);
+        clearTimeout(comparisonFilterDebounceTimer);
+        comparisonFilterDebounceTimer = setTimeout(() => {
+            loadComparisonView();
+        }, 500);
+    };
+
+    if (comparisonAnoFilter) comparisonAnoFilter.addEventListener('change', handleComparisonFilterChange);
+    if (comparisonMesFilter) comparisonMesFilter.addEventListener('change', handleComparisonFilterChange);
 
 
-        if (comparisonPastaFilter) comparisonPastaFilter.addEventListener('change', handleComparisonFilterChange);
+    if (comparisonPastaFilter) comparisonPastaFilter.addEventListener('change', handleComparisonFilterChange);
 
 
-        if (comparisonTendencyToggle) {
-            comparisonTendencyToggle.addEventListener('click', () => {
-                useTendencyComparison = !useTendencyComparison;
-                comparisonTendencyToggle.textContent = useTendencyComparison ? 'Ver Dados Reais' : 'Calcular Tendência';
-                comparisonTendencyToggle.classList.toggle('bg-orange-600');
-                comparisonTendencyToggle.classList.toggle('hover:bg-orange-500');
-                comparisonTendencyToggle.classList.toggle('bg-purple-600');
-                comparisonTendencyToggle.classList.toggle('hover:bg-purple-500');
-                loadComparisonView(); // Re-render
-            });
-        }
+    if (comparisonTendencyToggle) {
+        comparisonTendencyToggle.addEventListener('click', () => {
+            useTendencyComparison = !useTendencyComparison;
+            comparisonTendencyToggle.textContent = useTendencyComparison ? 'Ver Dados Reais' : 'Calcular Tendência';
+            comparisonTendencyToggle.classList.toggle('bg-orange-600');
+            comparisonTendencyToggle.classList.toggle('hover:bg-orange-500');
+            comparisonTendencyToggle.classList.toggle('bg-purple-600');
+            comparisonTendencyToggle.classList.toggle('hover:bg-purple-500');
+            loadComparisonView(); // Re-render
+        });
+    }
 
-        if (toggleWeeklyBtn) {
-            toggleWeeklyBtn.addEventListener('click', () => {
-                comparisonChartType = 'weekly';
-                toggleWeeklyBtn.classList.add('active');
-                toggleMonthlyBtn.classList.remove('active');
-                document.getElementById('comparison-monthly-metric-container').classList.add('hidden');
-                loadComparisonView(); // Re-render charts
-            });
-        }
+    if (toggleWeeklyBtn) {
+        toggleWeeklyBtn.addEventListener('click', () => {
+            comparisonChartType = 'weekly';
+            toggleWeeklyBtn.classList.add('active');
+            toggleMonthlyBtn.classList.remove('active');
+            document.getElementById('comparison-monthly-metric-container').classList.add('hidden');
+            loadComparisonView(); // Re-render charts
+        });
+    }
 
-        if (toggleMonthlyBtn) {
-            toggleMonthlyBtn.addEventListener('click', () => {
-                comparisonChartType = 'monthly';
-                toggleMonthlyBtn.classList.add('active');
-                toggleWeeklyBtn.classList.remove('active');
-                loadComparisonView(); // Re-render charts
-            });
-        }
+    if (toggleMonthlyBtn) {
+        toggleMonthlyBtn.addEventListener('click', () => {
+            comparisonChartType = 'monthly';
+            toggleMonthlyBtn.classList.add('active');
+            toggleWeeklyBtn.classList.remove('active');
+            loadComparisonView(); // Re-render charts
+        });
+    }
 
-        if (toggleMonthlyFatBtn && toggleMonthlyClientsBtn) {
-            toggleMonthlyFatBtn.addEventListener('click', () => {
-                comparisonMonthlyMetric = 'faturamento';
-                toggleMonthlyFatBtn.classList.add('active');
-                toggleMonthlyClientsBtn.classList.remove('active');
-                loadComparisonView();
-            });
-
-            toggleMonthlyClientsBtn.addEventListener('click', () => {
-                comparisonMonthlyMetric = 'clientes';
-                toggleMonthlyClientsBtn.classList.add('active');
-                toggleMonthlyFatBtn.classList.remove('active');
-                loadComparisonView();
-            });
-        }
-
-        if (clearComparisonFiltersBtn) {
-            clearComparisonFiltersBtn.addEventListener('click', async () => {
-                await fetchLastSalesDate();
-                if (lastSalesDate) {
-                    const lastDate = new Date(lastSalesDate + 'T12:00:00');
-                    comparisonAnoFilter.value = String(lastDate.getFullYear());
-                    comparisonAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
-                    comparisonMesFilter.value = String(lastDate.getMonth());
-                    comparisonMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
-                } else {
-                    const now = new Date();
-                    comparisonAnoFilter.value = String(now.getFullYear());
-                    comparisonAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
-                    comparisonMesFilter.value = String(now.getMonth());
-                    comparisonMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-
-                selectedComparisonSupervisors = [];
-                selectedComparisonSellers = [];
-                selectedComparisonSuppliers = [];
-                selectedComparisonProducts = [];
-                selectedComparisonTiposVenda = [];
-                selectedComparisonRedes = [];
-                selectedComparisonCategorias = [];
-                selectedComparisonCities = [];
-                selectedComparisonFiliais = [];
-                if (comparisonPastaFilter) comparisonPastaFilter.value = 'ambas';
-
-                initComparisonFilters().then(loadComparisonView);
-            });
-        }
-
-        document.addEventListener('click', (e) => {
-            const dropdowns = [comparisonFilialFilterDropdown, comparisonSupervisorFilterDropdown, comparisonVendedorFilterDropdown, comparisonSupplierFilterDropdown, comparisonProductFilterDropdown, comparisonTipoVendaFilterDropdown, comparisonRedeFilterDropdown, comparisonCityFilterDropdown, comparisonCategoriaFilterDropdown];
-            const btns = [comparisonFilialFilterBtn, comparisonSupervisorFilterBtn, comparisonVendedorFilterBtn, comparisonSupplierFilterBtn, comparisonProductFilterBtn, comparisonTipoVendaFilterBtn, comparisonRedeFilterBtn, comparisonCityFilterBtn, comparisonCategoriaFilterBtn];
-            let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
-
-            if (anyClosed) {
-                handleComparisonFilterChange();
-            }
+    if (toggleMonthlyFatBtn && toggleMonthlyClientsBtn) {
+        toggleMonthlyFatBtn.addEventListener('click', () => {
+            comparisonMonthlyMetric = 'faturamento';
+            toggleMonthlyFatBtn.classList.add('active');
+            toggleMonthlyClientsBtn.classList.remove('active');
+            loadComparisonView();
         });
 
-        async function initComparisonFilters() {
-            const filters = {
-                p_ano: null,
-                p_mes: null,
-                p_filial: [],
-                p_cidade: [],
-                p_supervisor: [],
-                p_vendedor: [],
-                p_fornecedor: [],
-                p_tipovenda: [],
-                p_rede: [],
-                p_categoria: []
-            };
-            const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
-            if (error) AppLog.error('Error fetching comparison filters:', error);
-            if (!filterData) return;
-
-            if (filterData.anos && comparisonAnoFilter) {
-                const currentVal = comparisonAnoFilter.value;
-                // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-                comparisonAnoFilter.innerHTML = filterData.anos.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
-                await fetchLastSalesDate();
-                if (currentVal && currentVal !== 'todos' && currentVal !== '') {
-                    comparisonAnoFilter.value = currentVal;
-                } else if (lastSalesDate) {
-                    const lastDate = new Date(lastSalesDate + 'T12:00:00');
-                    comparisonAnoFilter.value = String(lastDate.getFullYear());
-                    comparisonAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
-                } else if (filterData.anos.length > 0) {
-                    comparisonAnoFilter.value = filterData.anos[0];
-                }
-                enhanceSelectToCustomDropdown(comparisonAnoFilter);
-            }
-
-            if (comparisonMesFilter && comparisonMesFilter.options.length <= 1) {
-                // Get the current value BEFORE we wipe the options
-                const currentMesVal = comparisonMesFilter.value;
-
-                const meses = MONTHS_PT;
-                // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-                comparisonMesFilter.innerHTML = meses.map((m, i) => `<option value="${i}">${m}</option>`).join('');
-
-                // If there's an active valid selected month (not empty), keep it
-                // Otherwise, default to the last sales date month
-                if (currentMesVal && currentMesVal !== '') {
-                    comparisonMesFilter.value = currentMesVal;
-                } else {
-                    if (lastSalesDate) {
-                        const lastDate = new Date(lastSalesDate + 'T12:00:00');
-                        comparisonMesFilter.value = String(lastDate.getMonth());
-                    } else {
-                        const now = new Date();
-                        comparisonMesFilter.value = String(now.getMonth());
-                    }
-                    comparisonMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-                enhanceSelectToCustomDropdown(comparisonMesFilter);
-            }
-
-                        if (comparisonPastaFilter) enhanceSelectToCustomDropdown(comparisonPastaFilter);
-
-            try {
-        // Helper
-                const getList = (id) => document.getElementById(id);
-                
-                // Filiais
-                setupCityMultiSelect(comparisonFilialFilterBtn, comparisonFilialFilterDropdown, comparisonFilialFilterDropdown, filterData.filiais, selectedComparisonFiliais);
-
-                // Supervisors
-                const supList = getList('comparison-supervisor-filter-list') || comparisonSupervisorFilterDropdown;
-                setupCityMultiSelect(comparisonSupervisorFilterBtn, comparisonSupervisorFilterDropdown, supList, filterData.supervisors, selectedComparisonSupervisors);
-                
-                // Vendedores
-                const vendList = getList('comparison-vendedor-filter-list') || comparisonVendedorFilterDropdown;
-                setupCityMultiSelect(comparisonVendedorFilterBtn, comparisonVendedorFilterDropdown, vendList, filterData.vendedores, selectedComparisonSellers);
-                
-                // Suppliers
-                const suppList = getList('comparison-supplier-filter-list') || comparisonSupplierFilterDropdown;
-                setupCityMultiSelect(comparisonSupplierFilterBtn, comparisonSupplierFilterDropdown, suppList, filterData.fornecedores, selectedComparisonSuppliers, null, true);
-                
-                // Tipos Venda
-                const tipoList = getList('comparison-tipo-venda-filter-list') || comparisonTipoVendaFilterDropdown;
-                setupCityMultiSelect(comparisonTipoVendaFilterBtn, comparisonTipoVendaFilterDropdown, tipoList, filterData.tipos_venda, selectedComparisonTiposVenda);
-
-                // Products (Using same structure as boxes if available, assuming filterData.produtos is present or empty)
-                const prodList = getList('comparison-product-list') || comparisonProductFilterDropdown;
-                const prodSearch = document.getElementById('comparison-product-search-input');
-                setupCityMultiSelect(comparisonProductFilterBtn, comparisonProductFilterDropdown, prodList, filterData.produtos || [], selectedComparisonProducts, prodSearch, true);
-
-                // Cities (Multi Select)
-                setupCityMultiSelect(comparisonCityFilterBtn, comparisonCityFilterDropdown, comparisonCityFilterList, filterData.cidades || [], selectedComparisonCities, comparisonCityFilterSearch);
-
-                // Categories
-                const catList = getList('comparison-categoria-filter-list') || comparisonCategoriaFilterDropdown;
-                const catSearch = document.getElementById('comparison-categoria-filter-search');
-                setupCityMultiSelect(comparisonCategoriaFilterBtn, comparisonCategoriaFilterDropdown, catList, filterData.categorias || [], selectedComparisonCategorias, catSearch);
-
-                // Redes
-                const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-                const redeList = getList('comparison-rede-filter-list') || comparisonRedeFilterDropdown;
-                setupCityMultiSelect(comparisonRedeFilterBtn, comparisonRedeFilterDropdown, redeList, redes, selectedComparisonRedes, document.getElementById('comparison-rede-filter-search'));
-            } catch (e) {
-                AppLog.error('Error setting up comparison filters:', e);
-            }
-        }
-
-        async function loadComparisonView() {
-            window.showDashboardLoading('comparison-view');
-
-            if (typeof initComparisonFilters === 'function' && (!comparisonSupervisorFilterDropdown.children.length || comparisonSupervisorFilterDropdown.children.length === 0)) {
-                await initComparisonFilters();
-            }
-
-            let pFornecedorValue = selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null;
-            if (comparisonPastaFilter && comparisonPastaFilter.value !== 'ambas') {
-                const pastaSuppliers = comparisonPastaFilter.value === 'ELMA' ? ['707', '708', '752'] : ['1119'];
-                if (!pFornecedorValue) {
-                    pFornecedorValue = [...pastaSuppliers];
-                } else {
-                    const combined = new Set([...pFornecedorValue, ...pastaSuppliers]);
-                    pFornecedorValue = Array.from(combined);
-                }
-            }
-
-            const filters = {
-                p_filial: selectedComparisonFiliais.length > 0 ? selectedComparisonFiliais : null,
-                p_cidade: selectedComparisonCities.length > 0 ? selectedComparisonCities : null,
-                p_supervisor: selectedComparisonSupervisors.length > 0 ? selectedComparisonSupervisors : null,
-                p_vendedor: selectedComparisonSellers.length > 0 ? selectedComparisonSellers : null,
-                p_fornecedor: pFornecedorValue,
-                p_produto: selectedComparisonProducts.length > 0 ? selectedComparisonProducts : null,
-                p_tipovenda: selectedComparisonTiposVenda.length > 0 ? selectedComparisonTiposVenda : null,
-                p_rede: selectedComparisonRedes.length > 0 ? selectedComparisonRedes : null,
-                p_categoria: selectedComparisonCategorias.length > 0 ? selectedComparisonCategorias : null,
-                p_ano: comparisonAnoFilter.value,
-                p_mes: comparisonMesFilter.value
-            };
-
-
-            const cacheKey = generateCacheKey('comparison_view_data', filters);
-            let data = null;
-
-            try {
-                const cachedEntry = await getFromCache(cacheKey);
-                if (cachedEntry && cachedEntry.data) {
-                    AppLog.log('Serving Comparison View from Cache');
-                    data = cachedEntry.data;
-                }
-            } catch (e) { AppLog.warn('Cache error:', e); }
-
-            if (!data) {
-                const { data: rpcData, error } = await supabase.rpc('get_comparison_view_data', filters);
-
-                if (error) {
-                    AppLog.error("RPC Error:", error);
-                    window.hideDashboardLoading();
-                    if (error.message.includes('function get_comparison_view_data') && error.message.includes('does not exist')) {
-                        window.showToast('error', "A função 'get_comparison_view_data' não foi encontrada no banco de dados. \n\nPor favor, execute o script 'sql/comparison_view_rpc.sql' no Supabase SQL Editor para corrigir isso.");
-                    }
-                    return;
-                }
-                data = rpcData;
-                saveToCache(cacheKey, data);
-            }
-
-            // Map RPC Data to UI format
-            const metrics = mapRpcDataToMetrics(data);
-
-            // Render KPIs
-            renderKpiCards(metrics.kpis);
-
-            // Render Charts
-            renderComparisonCharts(metrics.charts);
-
-            // Render Table
-            renderSupervisorTable(metrics.supervisorData);
-
-            window.hideDashboardLoading();
-        }
-
-        function mapRpcDataToMetrics(data) {
-            if (!data) return { kpis: [], charts: {}, supervisorData: {} };
-
-            // Trend Factor
-            const trendFactor = (useTendencyComparison && data.trend_info && data.trend_info.allowed) ? data.trend_info.factor : 1;
-
-            // Apply Trend to Current Base Values
-            const curF = data.current_kpi.f * trendFactor;
-            const curP = data.current_kpi.p * trendFactor;
-            const curC = Math.round(data.current_kpi.c * trendFactor);
-
-            // 1. Process KPIs
-            const kpis = [
-                { title: 'Faturamento Total', current: curF, history: data.history_kpi.f / 3, format: 'currency' },
-                { title: 'Peso Total (Ton)', current: curP/1000, history: (data.history_kpi.p/3)/1000, format: 'decimal' },
-                { title: 'Clientes Atendidos', current: curC, history: data.history_kpi.c / 3, format: 'integer' },
-                { title: 'Ticket Médio', 
-                  current: curC > 0 ? curF / curC : 0, 
-                  history: data.history_kpi.c > 0 ? (data.history_kpi.f/3) / (data.history_kpi.c/3) : 0, 
-                  format: 'currency' 
-                },
-                { title: 'Mix por PDV (Pepsico)', current: Number(data.current_kpi.mix_pepsico.toFixed(2)), history: Number((data.history_kpi.sum_mix_pepsico / 3).toFixed(2)), format: 'decimal_2' },
-                { title: 'Mix Salty', current: Math.round(data.current_kpi.pos_salty * trendFactor), history: Math.round(data.history_kpi.sum_pos_salty / 3), format: 'integer' },
-                { title: 'Mix Foods', current: Math.round(data.current_kpi.pos_foods * trendFactor), history: Math.round(data.history_kpi.sum_pos_foods / 3), format: 'integer' }
-            ];
-
-            // 2. Weekly Chart Logic
-            const currentDaily = data.current_daily || [];
-            const historyDaily = data.history_daily || [];
-            
-            const getWeekIdx = (dateStr) => {
-                const d = new Date(dateStr);
-                const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
-                const offset = firstDay.getDay(); 
-                const dayOfMonth = d.getDate();
-                return Math.floor((dayOfMonth + offset - 1) / 7);
-            };
-
-            const weeklyCurrent = new Array(6).fill(0);
-            const weeklyHistory = new Array(6).fill(0);
-
-            // 4. Daily Chart Init (moved up for shared logic)
-            const dailyDataByWeek = new Array(6).fill(0).map(() => new Array(7).fill(0)); // 6 weeks, 7 days
-
-            // --- Trend Logic Implementation ---
-            // 1. Calculate Actuals & Find Last Sales Date
-            let maxDateStr = '0000-00-00';
-            let currentActualTotal = 0;
-
-            currentDaily.forEach(item => {
-                if (item.d > maxDateStr) maxDateStr = item.d;
-                currentActualTotal += item.f;
-                
-                const idx = getWeekIdx(item.d + 'T12:00:00');
-                if (idx >= 0 && idx < 6) {
-                    weeklyCurrent[idx] += item.f;
-                    
-                    // Fill Daily Actuals
-                    const d = new Date(item.d + 'T12:00:00');
-                    const dayIdx = d.getDay();
-                    dailyDataByWeek[idx][dayIdx] += item.f;
-                }
-            });
-
-            // 2. Apply Trend Projection (if enabled and applicable)
-            if (useTendencyComparison && data.trend_info && data.trend_info.allowed && maxDateStr !== '0000-00-00') {
-                const lastSalesDate = new Date(maxDateStr + 'T12:00:00');
-                const year = lastSalesDate.getFullYear();
-                const month = lastSalesDate.getMonth();
-                const monthStart = new Date(year, month, 1);
-                const monthEnd = new Date(year, month + 1, 0);
-
-                const isWorkingDay = (d) => {
-                    const day = d.getDay();
-                    const dateStr = d.toISOString().split('T')[0];
-                    // Access global holidays if available
-                    const hols = (typeof holidays !== 'undefined') ? holidays : []; 
-                    return day !== 0 && day !== 6 && !hols.includes(dateStr);
-                };
-
-                // A. Process History to build Weights Matrix [Week][Day]
-                const historySums = new Array(6).fill(0).map(() => new Array(7).fill(0));
-                const historyCounts = new Array(6).fill(0).map(() => new Array(7).fill(0));
-
-                historyDaily.forEach(item => {
-                    const idx = getWeekIdx(item.d + 'T12:00:00');
-                    if (idx >= 0 && idx < 6) {
-                        const d = new Date(item.d + 'T12:00:00');
-                        const dayIdx = d.getDay();
-                        historySums[idx][dayIdx] += item.f;
-                        historyCounts[idx][dayIdx]++;
-                    }
-                });
-
-                const historyWeights = historySums.map((week, wIdx) => 
-                    week.map((sum, dIdx) => {
-                        const count = historyCounts[wIdx][dIdx];
-                        return count > 0 ? sum / count : 0;
-                    })
-                );
-
-                // B. Calculate Run Rate and Total Projected Pot
-                let passedWorkingDays = 0;
-                let curr = new Date(monthStart);
-                while (curr <= lastSalesDate) {
-                    if (isWorkingDay(curr)) passedWorkingDays++;
-                    curr.setDate(curr.getDate() + 1);
-                }
-
-                const dailyRunRate = passedWorkingDays > 0 ? currentActualTotal / passedWorkingDays : 0;
-                
-                // Identify Future Working Days
-                const futureDays = []; 
-                let iter = new Date(lastSalesDate);
-                iter.setDate(iter.getDate() + 1); // Start from next day
-
-                while (iter <= monthEnd) {
-                    if (isWorkingDay(iter)) {
-                        const idx = getWeekIdx(iter.toISOString());
-                        const dayIdx = iter.getDay();
-                        if (idx >= 0 && idx < 6) {
-                            futureDays.push({ weekIdx: idx, dayIdx: dayIdx });
-                        }
-                    }
-                    iter.setDate(iter.getDate() + 1);
-                }
-
-                const totalProjectedPot = dailyRunRate * futureDays.length;
-
-                // C. Distribute Pot
-                let totalWeightDenominator = 0;
-                futureDays.forEach(day => {
-                    totalWeightDenominator += historyWeights[day.weekIdx][day.dayIdx];
-                });
-
-                futureDays.forEach(day => {
-                    let allocation = 0;
-                    if (totalWeightDenominator > 0) {
-                        const weight = historyWeights[day.weekIdx][day.dayIdx];
-                        allocation = totalProjectedPot * (weight / totalWeightDenominator);
-                    } else {
-                        // Fallback to equal distribution if no history for these specific slots
-                        allocation = dailyRunRate; 
-                    }
-                    
-                    weeklyCurrent[day.weekIdx] += allocation;
-                    dailyDataByWeek[day.weekIdx][day.dayIdx] += allocation;
-                });
-            }
-
-            historyDaily.forEach(item => {
-                const idx = getWeekIdx(item.d + 'T12:00:00'); // Safe Timezone
-                if (idx >= 0 && idx < 6) weeklyHistory[idx] += item.f;
-            });
-
-            // Normalize History (Quarter Sum -> Average Month)
-            for(let i=0; i<6; i++) weeklyHistory[i] = weeklyHistory[i] / 3;
-
-            // Trim empty tail weeks dynamically
-            let lastActiveIndex = -1;
-            for (let i = 5; i >= 0; i--) {
-                if (weeklyCurrent[i] > 0 || weeklyHistory[i] > 0) {
-                    lastActiveIndex = i;
-                    break;
-                }
-            }
-            const numWeeksToKeep = Math.max(4, lastActiveIndex + 1);
-
-            const trimmedWeeklyCurrent = weeklyCurrent.slice(0, numWeeksToKeep);
-            const trimmedWeeklyHistory = weeklyHistory.slice(0, numWeeksToKeep);
-            const trimmedDailyDataByWeek = dailyDataByWeek.slice(0, numWeeksToKeep);
-
-            const weeklyLabels = Array.from({ length: numWeeksToKeep }, (_, i) => `Semana ${i + 1}`);
-
-            // 3. Monthly Chart (History Months + Current)
-            const monthlyData = (data.history_monthly || []).map(m => ({
-                label: m.m, // YYYY-MM
-                fat: m.f,
-                clients: m.c
-            }));
-            
-            monthlyData.push({ label: 'Atual', fat: curF, clients: curC });
-
-            // 4. Daily Chart Datasets
-            const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-            const dailyColors = [
-                '#94a3b8', // Domingo (Slate)
-                '#60a5fa', // Segunda (Blue)
-                '#379fae', // Terca (Powder Blue - new palette)
-                '#eaf7f8', // Quarta (Light Blue - new palette)
-                '#ffaa4d', // Quinta (Orange - alternative)
-                '#316a9a', // Sexta (Dark Blue - new palette)
-                '#a78bfa'  // Sabado (Purple)
-            ];
-
-            const datasetsDaily = dayNames.map((name, i) => ({
-                label: name,
-                data: trimmedDailyDataByWeek.map(weekData => weekData[i]),
-                backgroundColor: dailyColors[i],
-                borderColor: dailyColors[i]
-            }));
-
-            // 5. Supervisor Table
-            const supervisorData = {};
-            (data.supervisor_data || []).forEach(s => {
-                supervisorData[s.name] = { current: s.current * trendFactor, history: s.history / 3 };
-            });
-
-            return {
-                kpis,
-                charts: {
-                    weeklyCurrent: trimmedWeeklyCurrent,
-                    weeklyHistory: trimmedWeeklyHistory,
-                    monthlyData,
-                    dailyData: {
-                        labels: weeklyLabels,
-                        datasets: datasetsDaily
-                    }
-                },
-                supervisorData
-            };
-        }
-
-        function getMonthWeeksDistribution(date) {
-            const year = date.getFullYear(); // Local time for simplicity
-            const month = date.getMonth();
-
-            const startOfMonth = new Date(year, month, 1);
-            const endOfMonth = new Date(year, month + 1, 0);
-
-            const weeks = [];
-            let currentStart = new Date(startOfMonth);
-
-            while (currentStart <= endOfMonth) {
-                // Find end of week (Saturday or end of month)
-                const dayOfWeek = currentStart.getDay(); // 0 (Sun) -> 6 (Sat)
-                const daysToSaturday = 6 - dayOfWeek;
-
-                let currentEnd = new Date(currentStart);
-                currentEnd.setDate(currentStart.getDate() + daysToSaturday);
-
-                if (currentEnd > endOfMonth) currentEnd = new Date(endOfMonth);
-
-                // Count working days (Mon-Fri)
-                let workingDays = 0;
-                const temp = new Date(currentStart);
-                while(temp <= currentEnd) {
-                    const d = temp.getDay();
-                    if (d >= 1 && d <= 5) workingDays++;
-                    temp.setDate(temp.getDate() + 1);
-                }
-
-                weeks.push({ start: new Date(currentStart), end: new Date(currentEnd), workingDays });
-
-                // Next week starts Sunday (or day after currentEnd)
-                currentStart = new Date(currentEnd);
-                currentStart.setDate(currentStart.getDate() + 1);
-            }
-
-            return { weeks };
-        }
-
-        function calculateUnifiedMetrics(currentSales, historySales) {
-            // Determine Reference Date (Target Month)
-            // Re-using logic from fetchComparisonData or inferring from currentSales
-            // Ideally we pass refDate, but we can infer from currentSales[0] or default
-            let refDate;
-            if (currentSales && currentSales.length > 0 && currentSales[0].dtped) {
-                refDate = new Date(currentSales[0].dtped);
+        toggleMonthlyClientsBtn.addEventListener('click', () => {
+            comparisonMonthlyMetric = 'clientes';
+            toggleMonthlyClientsBtn.classList.add('active');
+            toggleMonthlyFatBtn.classList.remove('active');
+            loadComparisonView();
+        });
+    }
+
+    if (clearComparisonFiltersBtn) {
+        clearComparisonFiltersBtn.addEventListener('click', async () => {
+            await fetchLastSalesDate();
+            if (lastSalesDate) {
+                const lastDate = new Date(lastSalesDate + 'T12:00:00');
+                comparisonAnoFilter.value = String(lastDate.getFullYear());
+                comparisonAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
+                comparisonMesFilter.value = String(lastDate.getMonth());
+                comparisonMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
             } else {
-                // Fallback: If no current sales, use filter logic or lastSalesDate
-                const selectedYear = comparisonAnoFilter.value;
-                const selectedMonth = comparisonMesFilter.value;
-                const defaultRefDate = lastSalesDate ? new Date(lastSalesDate) : new Date();
-
-                if (selectedYear && selectedYear !== 'todos' && selectedYear !== '') {
-                    const year = parseInt(selectedYear);
-                    if (selectedMonth && selectedMonth !== '') {
-                        refDate = new Date(Date.UTC(year, parseInt(selectedMonth), 15));
-                    } else {
-                        const currentYear = defaultRefDate.getFullYear();
-                        if (year === currentYear) refDate = defaultRefDate;
-                        else refDate = new Date(Date.UTC(year, 11, 15));
-                    }
-                } else {
-                    refDate = defaultRefDate;
-                }
+                const now = new Date();
+                comparisonAnoFilter.value = String(now.getFullYear());
+                comparisonAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
+                comparisonMesFilter.value = String(now.getMonth());
+                comparisonMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
             }
 
-            const currentYear = refDate.getFullYear();
-            const currentMonth = refDate.getMonth(); // 0-11 local or UTC depending on how we handle
+            selectedComparisonSupervisors = [];
+            selectedComparisonSellers = [];
+            selectedComparisonSuppliers = [];
+            selectedComparisonProducts = [];
+            selectedComparisonTiposVenda = [];
+            selectedComparisonRedes = [];
+            selectedComparisonCategorias = [];
+            selectedComparisonCities = [];
+            selectedComparisonFiliais = [];
+            if (comparisonPastaFilter) comparisonPastaFilter.value = 'ambas';
 
-            // Generate weeks structure for current (target) month
-            // Ensure refDate is handled correctly as UTC or Local.
-            // The getMonthWeeksDistribution uses local Date methods (getFullYear, getMonth).
-            // We should ensure consistency.
-            const { weeks } = getMonthWeeksDistribution(refDate);
-            const currentMonthWeeks = weeks;
+            initComparisonFilters().then(loadComparisonView);
+        });
+    }
 
-            const metrics = {
-                current: { fat: 0, peso: 0, clients: 0, mixPepsico: 0, positivacaoSalty: 0, positivacaoFoods: 0 },
-                history: { fat: 0, peso: 0, avgFat: 0, avgPeso: 0, avgClients: 0, avgMixPepsico: 0, avgPositivacaoSalty: 0, avgPositivacaoFoods: 0 },
-                charts: {
-                    weeklyCurrent: new Array(currentMonthWeeks.length).fill(0),
-                    weeklyHistory: new Array(currentMonthWeeks.length).fill(0),
-                    monthlyData: [], // { label, fat, clients }
-                    dailyData: { datasets: [], labels: [] }
-                },
-                supervisorData: {} // { sup: { current, history } }
-            };
+    document.addEventListener('click', (e) => {
+        const dropdowns = [comparisonFilialFilterDropdown, comparisonSupervisorFilterDropdown, comparisonVendedorFilterDropdown, comparisonSupplierFilterDropdown, comparisonProductFilterDropdown, comparisonTipoVendaFilterDropdown, comparisonRedeFilterDropdown, comparisonCityFilterDropdown, comparisonCategoriaFilterDropdown];
+        const btns = [comparisonFilialFilterBtn, comparisonSupervisorFilterBtn, comparisonVendedorFilterBtn, comparisonSupplierFilterBtn, comparisonProductFilterBtn, comparisonTipoVendaFilterBtn, comparisonRedeFilterBtn, comparisonCityFilterBtn, comparisonCategoriaFilterBtn];
+        let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
 
-            // Helper to get week index
-            const getWeekIndex = (date) => {
-                const d = typeof date === 'number' ? new Date(date) : new Date(date);
-                if (!d || isNaN(d.getTime())) return -1;
-                for(let i=0; i<currentMonthWeeks.length; i++) {
-                    if (d >= currentMonthWeeks[i].start && d <= currentMonthWeeks[i].end) return i;
-                }
-                return -1;
-            };
-
-            // 1. Process Current Sales
-            const currentClientsSet = new Set();
-
-            currentSales.forEach(s => {
-                const val = Number(s.vlvenda) || 0;
-                const peso = Number(s.totpesoliq) || 0;
-
-                metrics.current.fat += val;
-                metrics.current.peso += peso;
-
-                if (s.codcli) currentClientsSet.add(s.codcli);
-
-                // Supervisor
-                if (s.superv) {
-                    if (!metrics.supervisorData[s.superv]) metrics.supervisorData[s.superv] = { current: 0, history: 0 };
-                    metrics.supervisorData[s.superv].current += val;
-                }
-
-                // Weekly Chart
-                const d = s.dtped ? new Date(s.dtped) : null;
-                if (d) {
-                    const wIdx = getWeekIndex(d);
-                    if (wIdx !== -1) metrics.charts.weeklyCurrent[wIdx] += val;
-                }
-            });
-            metrics.current.clients = currentClientsSet.size;
-
-            // 2. Process History Sales
-            const historyMonths = new Map(); // monthKey -> { fat, clients: Set }
-
-            historySales.forEach(s => {
-                const val = Number(s.vlvenda) || 0;
-                const d = s.dtped ? new Date(s.dtped) : null;
-
-                metrics.history.fat += val;
-                metrics.history.peso += (Number(s.totpesoliq) || 0);
-
-                // Supervisor
-                if (s.superv) {
-                    if (!metrics.supervisorData[s.superv]) metrics.supervisorData[s.superv] = { current: 0, history: 0 };
-                    metrics.supervisorData[s.superv].history += val;
-                }
-
-                if (d) {
-                    // Weekly History (Approximate mapping: map day of month to week index)
-                    // If we want rigorous average per week number, we should map based on day 1-7, 8-14, etc?
-                    // Or match week index of the historical month?
-                    // Let's use getWeekIndex concept applied to the historical date's day-of-month projected to current month structure?
-                    // Simple approach: Map by day of month to current week ranges
-                    // This aligns "Start of month" behavior.
-
-                    // Project date to current month/year for bucket finding
-                    const projectedDate = new Date(Date.UTC(currentYear, currentMonth, d.getUTCDate()));
-                    const wIdx = getWeekIndex(projectedDate);
-                    if (wIdx !== -1) metrics.charts.weeklyHistory[wIdx] += val;
-
-                    // Monthly Data Aggregation
-                    const monthKey = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
-                    if (!historyMonths.has(monthKey)) historyMonths.set(monthKey, { fat: 0, clients: new Set() });
-                    const mData = historyMonths.get(monthKey);
-                    mData.fat += val;
-                    if(s.codcli) mData.clients.add(s.codcli);
-                }
-            });
-
-            // 3. Averages
-            const historyMonthCount = historyMonths.size || 1;
-            metrics.history.avgFat = metrics.history.fat / historyMonthCount;
-            metrics.history.avgPeso = metrics.history.peso / historyMonthCount;
-
-            let totalHistoryClients = 0;
-            historyMonths.forEach(m => totalHistoryClients += m.clients.size);
-            metrics.history.avgClients = totalHistoryClients / historyMonthCount;
-
-            // Normalize Weekly History
-            metrics.charts.weeklyHistory = metrics.charts.weeklyHistory.map(v => v / historyMonthCount);
-            // Normalize Supervisor History
-            Object.values(metrics.supervisorData).forEach(d => d.history /= historyMonthCount);
-
-            // Prepare Monthly Chart Data (History Months + Current Month)
-            // Sort history months
-            const sortedMonths = Array.from(historyMonths.keys()).sort();
-            sortedMonths.forEach(key => {
-                const [y, m] = key.split('-');
-                const label = new Date(Date.UTC(y, m, 1)).toLocaleDateString('pt-BR', { month: 'short' });
-                const mData = historyMonths.get(key);
-                metrics.charts.monthlyData.push({ label, fat: mData.fat, clients: mData.clients.size });
-            });
-            // Add Current
-            metrics.charts.monthlyData.push({
-                label: 'Atual',
-                fat: metrics.current.fat,
-                clients: metrics.current.clients
-            });
-
-            // Prepare Daily Chart (Current Month Day-by-Day or Week-Day breakdown?)
-            // External app shows "Faturamento por Dia da Semana" (Daily Breakdown by Week)
-            // It maps Mon-Sun for each week.
-            const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-            const dailyDataByWeek = currentMonthWeeks.map(() => new Array(7).fill(0));
-
-            currentSales.forEach(s => {
-                const d = s.dtped ? new Date(s.dtped) : null;
-                if(d) {
-                    const wIdx = getWeekIndex(d);
-                    if(wIdx !== -1) {
-                        dailyDataByWeek[wIdx][d.getUTCDay()] += (Number(s.vlvenda) || 0);
-                    }
-                }
-            });
-
-            const dailyColors = [
-                '#94a3b8', // Domingo (Slate)
-                '#60a5fa', // Segunda (Blue)
-                '#379fae', // Terca (Powder Blue - new palette)
-                '#eaf7f8', // Quarta (Light Blue - new palette)
-                '#ffaa4d', // Quinta (Orange - alternative)
-                '#316a9a', // Sexta (Dark Blue - new palette)
-                '#a78bfa'  // Sabado (Purple)
-            ];
-
-            const datasetsDaily = dayNames.map((name, i) => ({
-                label: name,
-                data: dailyDataByWeek.map(weekData => weekData[i]),
-                backgroundColor: dailyColors[i],
-                borderColor: dailyColors[i]
-            }));
-
-            metrics.charts.dailyData = {
-                labels: currentMonthWeeks.map((_, i) => `Semana ${i+1}`),
-                datasets: datasetsDaily
-            };
-
-            const kpis = [
-                { title: 'Faturamento Total', current: metrics.current.fat, history: metrics.history.avgFat, format: 'currency' },
-                { title: 'Peso Total (Ton)', current: metrics.current.peso/1000, history: metrics.history.avgPeso/1000, format: 'decimal' },
-                { title: 'Clientes Atendidos', current: metrics.current.clients, history: metrics.history.avgClients, format: 'integer' },
-                // Placeholder for Mix (requires product details logic not fully implemented in simplified version)
-                { title: 'Ticket Médio', current: metrics.current.clients ? metrics.current.fat/metrics.current.clients : 0, history: metrics.history.avgClients ? metrics.history.avgFat/metrics.history.avgClients : 0, format: 'currency' }
-            ];
-
-            return { kpis, charts: metrics.charts, supervisorData: metrics.supervisorData };
+        if (anyClosed) {
+            handleComparisonFilterChange();
         }
-
-        function renderKpiCards(kpis) {
-            const container = document.getElementById('comparison-kpi-container');
-            if (!container) return;
-
-            const fmt = (val, format) => {
-                if (format === 'currency') return formatCurrency(val);
-                if (format === 'decimal') return formatNumber(val, 3);
-                if (format === 'decimal_2') return formatNumber(val, 2);
-                return formatInteger(val);
-            };
-
-            // ⚡ Bolt Optimization: Use template strings instead of multiple document.createElement calls
-            container.innerHTML = kpis.map(kpi => {
-                const variation = kpi.history > 0 ? ((kpi.current - kpi.history) / kpi.history) * 100 : 0;
-                const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
-
-                // Determine glow color
-                let glowClass = 'kpi-glow-blue';
-                if (kpi.title.includes('Faturamento')) glowClass = 'kpi-glow-green';
-                else if (kpi.title.includes('Peso')) glowClass = 'kpi-glow-blue';
-                else if (kpi.title.includes('Clientes')) glowClass = 'kpi-glow-purple';
-
-                return `
-                    <div class="kpi-card p-4 rounded-lg text-center kpi-glow-base ${glowClass}">
-                        <p class="text-slate-300 text-sm">${escapeHtml(kpi.title)}</p>
-                        <p class="text-2xl font-bold text-white my-2">${escapeHtml(fmt(kpi.current, kpi.format))}</p>
-                        <p class="text-sm ${colorClass}">${variation > 0 ? '+' : ''}${escapeHtml(variation.toFixed(1))}% vs Média</p>
-                        <p class="text-xs text-slate-500">Média: ${escapeHtml(fmt(kpi.history, kpi.format))}</p>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function renderComparisonCharts(chartsData) {
-            // Weekly Chart
-            if (comparisonChartType === 'weekly') {
-                document.getElementById('monthlyComparisonChartContainer').classList.add('hidden');
-                document.getElementById('weeklyComparisonChartContainer').classList.remove('hidden');
-
-                createChart('weeklyComparisonChart', 'line',
-                    chartsData.weeklyCurrent.map((_, i) => `Semana ${i+1}`),
-                    [
-                        { label: 'Mês Atual', data: chartsData.weeklyCurrent, borderColor: '#379fae', backgroundColor: '#379fae', tension: 0.4, isCurrent: true },
-                        { label: 'Média Histórica', data: chartsData.weeklyHistory, borderColor: '#eaf7f8', backgroundColor: '#eaf7f8', tension: 0.4, isPrevious: true }
-                    ]
-                );
-            } else {
-                // Monthly Chart
-                document.getElementById('weeklyComparisonChartContainer').classList.add('hidden');
-                document.getElementById('monthlyComparisonChartContainer').classList.remove('hidden');
-
-                const labels = chartsData.monthlyData.map(d => d.label);
-                const isFat = comparisonMonthlyMetric === 'faturamento';
-                const values = chartsData.monthlyData.map(d => isFat ? d.fat : d.clients);
-
-                createChart('monthlyComparisonChart', 'bar', labels, [{
-                    label: isFat ? 'Faturamento' : 'Clientes',
-                    data: values,
-                    backgroundColor: '#379fae'
-                }]);
-            }
-
-            // Daily Chart
-            if (chartsData.dailyData && chartsData.dailyData.datasets.length > 0) {
-                createChart('dailyWeeklyComparisonChart', 'bar',
-                    chartsData.dailyData.labels,
-                    chartsData.dailyData.datasets
-                );
-            } else {
-                showNoDataMessage('dailyWeeklyComparisonChart', 'Sem dados diários disponíveis');
-            }
-        }
-
-        // Refactored to use declarative template literals and innerHTML instead of verbose document.createElement logic.
-        // This improves readability, maintainability, and significantly reduces code size while preserving XSS safety via escapeHtml.
-        function renderSupervisorTable(data) {
-            const tbody = document.getElementById('supervisorComparisonTableBody');
-            if (!tbody) return;
-
-            tbody.innerHTML = Object.entries(data).map(([sup, vals]) => {
-                const variation = vals.history > 0 ? ((vals.current - vals.history) / vals.history) * 100 : 0;
-                const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
-                return `
-                    <tr class="hover:bg-slate-700">
-                        <td class="px-4 py-2">${escapeHtml(sup)}</td>
-                        <td class="px-4 py-2 text-right">${escapeHtml(formatCurrency(vals.history))}</td>
-                        <td class="px-4 py-2 text-right">${escapeHtml(formatCurrency(vals.current))}</td>
-                        <td class="px-4 py-2 text-right ${colorClass}">${escapeHtml(variation.toFixed(2))}%</td>
-                    </tr>
-                `;
-            }).join('');
-        }
-// --- INOVACOES VIEW LOGIC ---
-let innovationsChart = null;
-let currentInnovationsFilters = {};
-
-async function updateInnovationsMonthView() {
-    window.showDashboardLoading('innovations-month-view');
-
-    const anoSelect = document.getElementById('innovations-ano-filter');
-    const mesSelect = document.getElementById('innovations-mes-filter');
-
-    const mappedRedes = innovationsSelectedRedes.map(r => {
-        if (r === 'C/ REDE') return 'com_ramo';
-        if (r === 'S/ REDE') return 'sem_ramo';
-        return r;
     });
 
-    const filters = {
-        p_ano: anoSelect ? (anoSelect.value === 'todos' ? null : anoSelect.value) : null,
-        p_mes: mesSelect ? (mesSelect.value === '' ? null : mesSelect.value) : null,
-        p_cidade: innovationsSelectedCidades,
-        p_filial: innovationsSelectedFiliais,
-        p_supervisor: innovationsSelectedSupervisors,
-        p_vendedor: innovationsSelectedVendedores,
-        p_rede: mappedRedes,
-        p_tipovenda: innovationsSelectedTiposVenda,
-        p_categoria_inovacao: innovationsSelectedCategorias
-    };
+    async function initComparisonFilters() {
+        const filters = {
+            p_ano: null,
+            p_mes: null,
+            p_filial: [],
+            p_cidade: [],
+            p_supervisor: [],
+            p_vendedor: [],
+            p_fornecedor: [],
+            p_tipovenda: [],
+            p_rede: [],
+            p_categoria: []
+        };
+        const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
+        if (error) AppLog.error('Error fetching comparison filters:', error);
+        if (!filterData) return;
 
-    // Replace empty arrays with null to avoid PostgREST overloading resolution issues
-    const rpcFilters = {
-        p_ano: filters.p_ano || null,
-        p_mes: filters.p_mes || null,
-        p_filial: filters.p_filial.length ? filters.p_filial : null,
-        p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
-        p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
-        p_vendedor: filters.p_vendedor.length ? filters.p_vendedor : null,
-        p_rede: filters.p_rede.length ? filters.p_rede : null,
-        p_tipovenda: filters.p_tipovenda.length ? filters.p_tipovenda : null,
-        p_categoria_inovacao: filters.p_categoria_inovacao && filters.p_categoria_inovacao.length ? filters.p_categoria_inovacao[0] : null // Categoria Inovacao was a text param
-    };
-
-    const cacheKey = generateCacheKey('innovations_view_data', rpcFilters);
-    let data = null;
-
-    try {
-        const cachedEntry = await getFromCache(cacheKey);
-        if (cachedEntry && cachedEntry.data) {
-            AppLog.log('Serving Innovations View from Cache');
-            data = cachedEntry.data;
+        if (filterData.anos && comparisonAnoFilter) {
+            const currentVal = comparisonAnoFilter.value;
+            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+            comparisonAnoFilter.innerHTML = filterData.anos.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+            await fetchLastSalesDate();
+            if (currentVal && currentVal !== 'todos' && currentVal !== '') {
+                comparisonAnoFilter.value = currentVal;
+            } else if (lastSalesDate) {
+                const lastDate = new Date(lastSalesDate + 'T12:00:00');
+                comparisonAnoFilter.value = String(lastDate.getFullYear());
+                comparisonAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
+            } else if (filterData.anos.length > 0) {
+                comparisonAnoFilter.value = filterData.anos[0];
+            }
+            enhanceSelectToCustomDropdown(comparisonAnoFilter);
         }
-    } catch (e) { AppLog.warn('Cache error:', e); }
 
-    if (!data) {
+        if (comparisonMesFilter && comparisonMesFilter.options.length <= 1) {
+            // Get the current value BEFORE we wipe the options
+            const currentMesVal = comparisonMesFilter.value;
+
+            const meses = MONTHS_PT;
+            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+            comparisonMesFilter.innerHTML = meses.map((m, i) => `<option value="${i}">${m}</option>`).join('');
+
+            // If there's an active valid selected month (not empty), keep it
+            // Otherwise, default to the last sales date month
+            if (currentMesVal && currentMesVal !== '') {
+                comparisonMesFilter.value = currentMesVal;
+            } else {
+                if (lastSalesDate) {
+                    const lastDate = new Date(lastSalesDate + 'T12:00:00');
+                    comparisonMesFilter.value = String(lastDate.getMonth());
+                } else {
+                    const now = new Date();
+                    comparisonMesFilter.value = String(now.getMonth());
+                }
+                comparisonMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            enhanceSelectToCustomDropdown(comparisonMesFilter);
+        }
+
+                    if (comparisonPastaFilter) enhanceSelectToCustomDropdown(comparisonPastaFilter);
+
         try {
-            const { data: rpcData, error } = await supabase.rpc('get_innovations_data', rpcFilters);
+    // Helper
+            const getList = (id) => document.getElementById(id);
+
+            // Filiais
+            window.setupMultiSelect(
+                comparisonFilialFilterBtn,
+                comparisonFilialFilterDropdown,
+                comparisonFilialFilterDropdown,
+                filterData.filiais,
+                selectedComparisonFiliais,
+                () => {},
+                false,
+                null
+            );
+
+            // Supervisors
+            const supList = getList('comparison-supervisor-filter-list') || comparisonSupervisorFilterDropdown;
+            window.setupMultiSelect(
+                comparisonSupervisorFilterBtn,
+                comparisonSupervisorFilterDropdown,
+                supList,
+                filterData.supervisors,
+                selectedComparisonSupervisors,
+                () => {},
+                false,
+                null
+            );
+
+            // Vendedores
+            const vendList = getList('comparison-vendedor-filter-list') || comparisonVendedorFilterDropdown;
+            window.setupMultiSelect(
+                comparisonVendedorFilterBtn,
+                comparisonVendedorFilterDropdown,
+                vendList,
+                filterData.vendedores,
+                selectedComparisonSellers,
+                () => {},
+                false,
+                null
+            );
+
+            // Suppliers
+            const suppList = getList('comparison-supplier-filter-list') || comparisonSupplierFilterDropdown;
+            window.setupMultiSelect(
+                comparisonSupplierFilterBtn,
+                comparisonSupplierFilterDropdown,
+                suppList,
+                filterData.fornecedores,
+                selectedComparisonSuppliers,
+                () => {},
+                true,
+                null
+            );
+
+            // Tipos Venda
+            const tipoList = getList('comparison-tipo-venda-filter-list') || comparisonTipoVendaFilterDropdown;
+            window.setupMultiSelect(
+                comparisonTipoVendaFilterBtn,
+                comparisonTipoVendaFilterDropdown,
+                tipoList,
+                filterData.tipos_venda,
+                selectedComparisonTiposVenda,
+                () => {},
+                false,
+                null
+            );
+
+            // Products (Using same structure as boxes if available, assuming filterData.produtos is present or empty)
+            const prodList = getList('comparison-product-list') || comparisonProductFilterDropdown;
+            const prodSearch = document.getElementById('comparison-product-search-input');
+            window.setupMultiSelect(
+                comparisonProductFilterBtn,
+                comparisonProductFilterDropdown,
+                prodList,
+                filterData.produtos || [],
+                selectedComparisonProducts,
+                () => {},
+                true,
+                prodSearch
+            );
+
+            // Cities (Multi Select)
+            window.setupMultiSelect(
+                comparisonCityFilterBtn,
+                comparisonCityFilterDropdown,
+                comparisonCityFilterList,
+                filterData.cidades || [],
+                selectedComparisonCities,
+                () => {},
+                false,
+                comparisonCityFilterSearch
+            );
+
+            // Categories
+            const catList = getList('comparison-categoria-filter-list') || comparisonCategoriaFilterDropdown;
+            const catSearch = document.getElementById('comparison-categoria-filter-search');
+            window.setupMultiSelect(
+                comparisonCategoriaFilterBtn,
+                comparisonCategoriaFilterDropdown,
+                catList,
+                filterData.categorias || [],
+                selectedComparisonCategorias,
+                () => {},
+                false,
+                catSearch
+            );
+
+            // Redes
+            const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
+            const redeList = getList('comparison-rede-filter-list') || comparisonRedeFilterDropdown;
+            window.setupMultiSelect(
+                comparisonRedeFilterBtn,
+                comparisonRedeFilterDropdown,
+                redeList,
+                redes,
+                selectedComparisonRedes,
+                () => {},
+                false,
+                document.getElementById('comparison-rede-filter-search')
+            );
+        } catch (e) {
+            AppLog.error('Error setting up comparison filters:', e);
+        }
+    }
+
+    async function loadComparisonView() {
+        window.showDashboardLoading('comparison-view');
+
+        if (typeof initComparisonFilters === 'function' && (!comparisonSupervisorFilterDropdown.children.length || comparisonSupervisorFilterDropdown.children.length === 0)) {
+            await initComparisonFilters();
+        }
+
+        let pFornecedorValue = selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null;
+        if (comparisonPastaFilter && comparisonPastaFilter.value !== 'ambas') {
+            const pastaSuppliers = comparisonPastaFilter.value === 'ELMA' ? ['707', '708', '752'] : ['1119'];
+            if (!pFornecedorValue) {
+                pFornecedorValue = [...pastaSuppliers];
+            } else {
+                const combined = new Set([...pFornecedorValue, ...pastaSuppliers]);
+                pFornecedorValue = Array.from(combined);
+            }
+        }
+
+        const filters = {
+            p_filial: selectedComparisonFiliais.length > 0 ? selectedComparisonFiliais : null,
+            p_cidade: selectedComparisonCities.length > 0 ? selectedComparisonCities : null,
+            p_supervisor: selectedComparisonSupervisors.length > 0 ? selectedComparisonSupervisors : null,
+            p_vendedor: selectedComparisonSellers.length > 0 ? selectedComparisonSellers : null,
+            p_fornecedor: pFornecedorValue,
+            p_produto: selectedComparisonProducts.length > 0 ? selectedComparisonProducts : null,
+            p_tipovenda: selectedComparisonTiposVenda.length > 0 ? selectedComparisonTiposVenda : null,
+            p_rede: selectedComparisonRedes.length > 0 ? selectedComparisonRedes : null,
+            p_categoria: selectedComparisonCategorias.length > 0 ? selectedComparisonCategorias : null,
+            p_ano: comparisonAnoFilter.value,
+            p_mes: comparisonMesFilter.value
+        };
+
+
+        const cacheKey = generateCacheKey('comparison_view_data', filters);
+        let data = null;
+
+        try {
+            const cachedEntry = await getFromCache(cacheKey);
+            if (cachedEntry && cachedEntry.data) {
+                AppLog.log('Serving Comparison View from Cache');
+                data = cachedEntry.data;
+            }
+        } catch (e) { AppLog.warn('Cache error:', e); }
+
+        if (!data) {
+            const { data: rpcData, error } = await supabase.rpc('get_comparison_view_data', filters);
 
             if (error) {
-                AppLog.error('Error fetching innovations:', error);
+                AppLog.error("RPC Error:", error);
                 window.hideDashboardLoading();
+                if (error.message.includes('function get_comparison_view_data') && error.message.includes('does not exist')) {
+                    window.showToast('error', "A função 'get_comparison_view_data' não foi encontrada no banco de dados. \n\nPor favor, execute o script 'sql/comparison_view_rpc.sql' no Supabase SQL Editor para corrigir isso.");
+                }
                 return;
             }
             data = rpcData;
             saveToCache(cacheKey, data);
-        } catch (err) {
-            AppLog.error('Exception fetching innovations:', err);
-            window.hideDashboardLoading();
-            return;
         }
-    }
 
-    try {
-        // Tira o peso da renderização síncrona, desdobrando o frontend.
-        requestAnimationFrame(() => {
-            renderInnovationsKPIs(data);
-            renderInnovationsChart(data);
+        // Map RPC Data to UI format
+        const metrics = mapRpcDataToMetrics(data);
 
-            // Renderiza a tabela depois que o gráfico e os números grandes acendem
-            setTimeout(() => {
-                try {
-                    renderInnovationsTable(data);
-                } catch(e) {
-                    AppLog.error('Error in table:', e);
-                } finally {
-                    window.hideDashboardLoading();
-                }
-            }, 10);
-        });
-    } catch (err) {
-        AppLog.error('Error rendering innovations:', err);
+        // Render KPIs
+        renderKpiCards(metrics.kpis);
+
+        // Render Charts
+        renderComparisonCharts(metrics.charts);
+
+        // Render Table
+        renderSupervisorTable(metrics.supervisorData);
+
         window.hideDashboardLoading();
     }
-}
 
-function renderInnovationsKPIs(data) {
-    if (!data) return;
+    function mapRpcDataToMetrics(data) {
+        if (!data) return { kpis: [], charts: {}, supervisorData: {} };
 
-    // We use data.kpi_clients_attended for new penetration math if available, fallback to active_clients
-    const activeClients = data.active_clients || 0;
+        // Trend Factor
+        const trendFactor = (useTendencyComparison && data.trend_info && data.trend_info.allowed) ? data.trend_info.factor : 1;
 
-    // The base is kpi_clients_base (total clients in the database applying filters)
-    const baseClients = data.kpi_clients_base || 0;
+        // Apply Trend to Current Base Values
+        const curF = data.current_kpi.f * trendFactor;
+        const curP = data.current_kpi.p * trendFactor;
+        const curC = Math.round(data.current_kpi.c * trendFactor);
 
-    // Total Clients (Base Total)
-    const activeClientsEl = document.getElementById('innovations-month-active-clients-kpi');
-    if (activeClientsEl) activeClientsEl.textContent = formatNumber(baseClients, 0);
+        // 1. Process KPIs
+        const kpis = [
+            { title: 'Faturamento Total', current: curF, history: data.history_kpi.f / 3, format: 'currency' },
+            { title: 'Peso Total (Ton)', current: curP/1000, history: (data.history_kpi.p/3)/1000, format: 'decimal' },
+            { title: 'Clientes Atendidos', current: curC, history: data.history_kpi.c / 3, format: 'integer' },
+            { title: 'Ticket Médio',
+              current: curC > 0 ? curF / curC : 0,
+              history: data.history_kpi.c > 0 ? (data.history_kpi.f/3) / (data.history_kpi.c/3) : 0,
+              format: 'currency'
+            },
+            { title: 'Mix por PDV (Pepsico)', current: Number(data.current_kpi.mix_pepsico.toFixed(2)), history: Number((data.history_kpi.sum_mix_pepsico / 3).toFixed(2)), format: 'decimal_2' },
+            { title: 'Mix Salty', current: Math.round(data.current_kpi.pos_salty * trendFactor), history: Math.round(data.history_kpi.sum_pos_salty / 3), format: 'integer' },
+            { title: 'Mix Foods', current: Math.round(data.current_kpi.pos_foods * trendFactor), history: Math.round(data.history_kpi.sum_pos_foods / 3), format: 'integer' }
+        ];
 
-    // Calculate Best Coverage & Avg Per Client
-    let bestCategory = null;
-    let maxCoverage = -1;
-    let maxCoverageCount = 0;
-    let bestAvgPerClient = 0;
+        // 2. Weekly Chart Logic
+        const currentDaily = data.current_daily || [];
+        const historyDaily = data.history_daily || [];
 
-    const categories = data.categories || [];
-    let totalSelectionPos = 0;
+        const getWeekIdx = (dateStr) => {
+            const d = new Date(dateStr);
+            const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
+            const offset = firstDay.getDay();
+            const dayOfMonth = d.getDate();
+            return Math.floor((dayOfMonth + offset - 1) / 7);
+        };
 
-    categories.forEach(cat => {
-        let cov = activeClients > 0 ? (cat.pos_current / activeClients) * 100 : 0;
-        if (cov > maxCoverage) {
-            maxCoverage = cov;
-            bestCategory = cat.name;
-            maxCoverageCount = cat.pos_current;
-            // distinct_clients_current comes from the new SQL aggregation
-            let distClients = cat.distinct_clients_current || 1;
-            let prodSum = cat.products_pos_sum_current || cat.pos_current;
-            bestAvgPerClient = (prodSum / distClients);
-            if(cat.pos_current === 0) bestAvgPerClient = 0;
-        }
-        totalSelectionPos += cat.pos_current;
-    });
+        const weeklyCurrent = new Array(6).fill(0);
+        const weeklyHistory = new Array(6).fill(0);
 
-    const topCovTitle = document.getElementById('innovations-month-top-coverage-title');
-    const topCovKpi = document.getElementById('innovations-month-top-coverage-kpi');
-    const topCovCount = document.getElementById('innovations-month-top-coverage-count-kpi');
-    const topCovValue = document.getElementById('innovations-month-top-coverage-value-kpi');
-    const topCovLabel = document.getElementById('innovations-month-top-coverage-label');
+        // 4. Daily Chart Init (moved up for shared logic)
+        const dailyDataByWeek = new Array(6).fill(0).map(() => new Array(7).fill(0)); // 6 weeks, 7 days
 
-    if (topCovTitle) topCovTitle.textContent = bestCategory || 'N/A';
-    if (topCovLabel) topCovLabel.textContent = 'Melhor Categoria';
-    
-    // Changing the count label to the calculated average
-    if (topCovKpi) topCovKpi.textContent = bestAvgPerClient > 0 ? bestAvgPerClient.toFixed(2) : '0.00';
-    if (topCovCount) topCovCount.textContent = 'Média Produtos';
-    
-    if (topCovValue) topCovValue.textContent = '';
+        // --- Trend Logic Implementation ---
+        // 1. Calculate Actuals & Find Last Sales Date
+        let maxDateStr = '0000-00-00';
+        let currentActualTotal = 0;
 
-    // Selection Percent
-    const selCovValue = document.getElementById('innovations-month-selection-coverage-value-kpi');
-    let selPercent = 0;
+        currentDaily.forEach(item => {
+            if (item.d > maxDateStr) maxDateStr = item.d;
+            currentActualTotal += item.f;
 
-    // Check if we have the new direct counts
-    if (data.kpi_innovations_attended !== undefined && data.kpi_clients_attended !== undefined) {
-        selPercent = data.kpi_clients_attended > 0 ? (data.kpi_innovations_attended / data.kpi_clients_attended) * 100 : 0;
-    } else {
-        // Fallback logic
-        selPercent = activeClients > 0 ? (totalSelectionPos / (activeClients * (categories.length > 0 ? categories.length : 1))) * 100 : 0;
-    }
-    if (selCovValue) selCovValue.textContent = selPercent.toFixed(2) + '%';
+            const idx = getWeekIdx(item.d + 'T12:00:00');
+            if (idx >= 0 && idx < 6) {
+                weeklyCurrent[idx] += item.f;
+                
+                // Fill Daily Actuals
+                const d = new Date(item.d + 'T12:00:00');
+                const dayIdx = d.getDay();
+                dailyDataByWeek[idx][dayIdx] += item.f;
+            }
+        });
 
-    // Selection Count
-    const selCovCount = document.getElementById('innovations-month-selection-coverage-count-kpi');
-    if (selCovCount) {
-        if (data.kpi_innovations_attended !== undefined && data.kpi_clients_attended !== undefined) {
-            selCovCount.textContent = `${data.kpi_innovations_attended} de ${data.kpi_clients_attended}`;
-        } else {
-            selCovCount.textContent = totalSelectionPos + ' de ' + (activeClients * categories.length);
-        }
-    }
-}
+        // 2. Apply Trend Projection (if enabled and applicable)
+        if (useTendencyComparison && data.trend_info && data.trend_info.allowed && maxDateStr !== '0000-00-00') {
+            const lastSalesDate = new Date(maxDateStr + 'T12:00:00');
+            const year = lastSalesDate.getFullYear();
+            const month = lastSalesDate.getMonth();
+            const monthStart = new Date(year, month, 1);
+            const monthEnd = new Date(year, month + 1, 0);
 
-function renderInnovationsChart(data) {
-    const ctx = document.getElementById('innovations-month-chartContainer');
-    if (!ctx || !data || !data.categories) return;
+            const isWorkingDay = (d) => {
+                const day = d.getDay();
+                const dateStr = d.toISOString().split('T')[0];
+                // Access global holidays if available
+                const hols = (typeof holidays !== 'undefined') ? holidays : [];
+                return day !== 0 && day !== 6 && !hols.includes(dateStr);
+            };
 
-    if (innovationsChart) {
-        innovationsChart.destroy();
-    }
+            // A. Process History to build Weights Matrix [Week][Day]
+            const historySums = new Array(6).fill(0).map(() => new Array(7).fill(0));
+            const historyCounts = new Array(6).fill(0).map(() => new Array(7).fill(0));
 
-    const categories = data.categories.sort((a,b) => b.pos_current - a.pos_current);
-
-    const labels = categories.map(c => c.name);
-
-    // Calcular % usando a Base Atendida (positivação geral) dinâmica de cada mês específico
-    const baseCurrent = data.attended_current || 1;
-    const baseM1 = data.attended_prev_m1 || 1;
-    const baseM2 = data.attended_prev_m2 || 1;
-    const baseM3 = data.attended_prev_m3 || 1;
-
-    const currentData = categories.map(c => ((c.pos_current / baseCurrent) * 100).toFixed(1));
-    const prevM1Data = categories.map(c => ((c.pos_prev_m1 / baseM1) * 100).toFixed(1));
-    const prevM2Data = categories.map(c => ((c.pos_prev_m2 / baseM2) * 100).toFixed(1));
-    const prevM3Data = categories.map(c => ((c.pos_prev_m3 / baseM3) * 100).toFixed(1));
-
-    // Get month labels based on the selected target date in the filters
-    const yearFilter = document.getElementById('innovations-ano-filter')?.value;
-    const monthFilter = document.getElementById('innovations-mes-filter')?.value;
-
-    let targetDate = new Date();
-    if(yearFilter && yearFilter !== 'todos' && monthFilter) {
-        targetDate = new Date(yearFilter, monthFilter - 1, 1);
-    }
-
-    const monthNames = MONTHS_PT_SHORT;
-
-    const getMonthName = (date, subtractMonths) => {
-        let d = new Date(date);
-        d.setMonth(d.getMonth() - subtractMonths);
-        return monthNames[d.getMonth()];
-    };
-
-    const labelCurrent = getMonthName(targetDate, 0);
-    const labelM1 = getMonthName(targetDate, 1);
-    const labelM2 = getMonthName(targetDate, 2);
-    const labelM3 = getMonthName(targetDate, 3);
-
-    innovationsChart = new Chart(ctx, {
-        plugins: [ChartDataLabels],
-        type: 'bar',
-        data: {
-            labels: labels,
-                                                datasets: [
-                {
-                    label: labelM3,
-                    data: prevM3Data,
-                    backgroundColor: '#eaf7f8',
-                    borderSkipped: 'bottom',
-                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
-                },
-                {
-                    label: labelM2,
-                    data: prevM2Data,
-                    backgroundColor: '#379fae',
-                    borderSkipped: 'bottom',
-                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
-                },
-                {
-                    label: labelM1,
-                    data: prevM1Data,
-                    backgroundColor: '#316a9a',
-                    borderSkipped: 'bottom',
-                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
-                },
-                {
-                    label: labelCurrent + ' (Mês Atual)',
-                    data: currentData,
-                    backgroundColor: '#ffaa4d',
-                    borderSkipped: 'bottom',
-                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
+            historyDaily.forEach(item => {
+                const idx = getWeekIdx(item.d + 'T12:00:00');
+                if (idx >= 0 && idx < 6) {
+                    const d = new Date(item.d + 'T12:00:00');
+                    const dayIdx = d.getDay();
+                    historySums[idx][dayIdx] += item.f;
+                    historyCounts[idx][dayIdx]++;
                 }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        color: '#94a3b8',
-                        font: { size: 10 }
+            });
+
+            const historyWeights = historySums.map((week, wIdx) =>
+                week.map((sum, dIdx) => {
+                    const count = historyCounts[wIdx][dIdx];
+                    return count > 0 ? sum / count : 0;
+                })
+            );
+
+            // B. Calculate Run Rate and Total Projected Pot
+            let passedWorkingDays = 0;
+            let curr = new Date(monthStart);
+            while (curr <= lastSalesDate) {
+                if (isWorkingDay(curr)) passedWorkingDays++;
+                curr.setDate(curr.getDate() + 1);
+            }
+
+            const dailyRunRate = passedWorkingDays > 0 ? currentActualTotal / passedWorkingDays : 0;
+
+            // Identify Future Working Days
+            const futureDays = [];
+            let iter = new Date(lastSalesDate);
+            iter.setDate(iter.getDate() + 1); // Start from next day
+
+            while (iter <= monthEnd) {
+                if (isWorkingDay(iter)) {
+                    const idx = getWeekIdx(iter.toISOString());
+                    const dayIdx = iter.getDay();
+                    if (idx >= 0 && idx < 6) {
+                        futureDays.push({ weekIdx: idx, dayIdx: dayIdx });
                     }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' + context.parsed.y + '%';
+                }
+                iter.setDate(iter.getDate() + 1);
+            }
+
+            const totalProjectedPot = dailyRunRate * futureDays.length;
+
+            // C. Distribute Pot
+            let totalWeightDenominator = 0;
+            futureDays.forEach(day => {
+                totalWeightDenominator += historyWeights[day.weekIdx][day.dayIdx];
+            });
+
+            futureDays.forEach(day => {
+                let allocation = 0;
+                if (totalWeightDenominator > 0) {
+                    const weight = historyWeights[day.weekIdx][day.dayIdx];
+                    allocation = totalProjectedPot * (weight / totalWeightDenominator);
+                } else {
+                    // Fallback to equal distribution if no history for these specific slots
+                    allocation = dailyRunRate;
+                }
+
+                weeklyCurrent[day.weekIdx] += allocation;
+                dailyDataByWeek[day.weekIdx][day.dayIdx] += allocation;
+            });
+        }
+
+        historyDaily.forEach(item => {
+            const idx = getWeekIdx(item.d + 'T12:00:00'); // Safe Timezone
+            if (idx >= 0 && idx < 6) weeklyHistory[idx] += item.f;
+        });
+
+        // Normalize History (Quarter Sum -> Average Month)
+        for(let i=0; i<6; i++) weeklyHistory[i] = weeklyHistory[i] / 3;
+
+        // Trim empty tail weeks dynamically
+        let lastActiveIndex = -1;
+        for (let i = 5; i >= 0; i--) {
+            if (weeklyCurrent[i] > 0 || weeklyHistory[i] > 0) {
+                lastActiveIndex = i;
+                break;
+            }
+        }
+        const numWeeksToKeep = Math.max(4, lastActiveIndex + 1);
+
+        const trimmedWeeklyCurrent = weeklyCurrent.slice(0, numWeeksToKeep);
+        const trimmedWeeklyHistory = weeklyHistory.slice(0, numWeeksToKeep);
+        const trimmedDailyDataByWeek = dailyDataByWeek.slice(0, numWeeksToKeep);
+
+        const weeklyLabels = Array.from({ length: numWeeksToKeep }, (_, i) => `Semana ${i + 1}`);
+
+        // 3. Monthly Chart (History Months + Current)
+        const monthlyData = (data.history_monthly || []).map(m => ({
+            label: m.m, // YYYY-MM
+            fat: m.f,
+            clients: m.c
+        }));
+
+        monthlyData.push({ label: 'Atual', fat: curF, clients: curC });
+
+        // 4. Daily Chart Datasets
+        const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+        const dailyColors = [
+            '#94a3b8', // Domingo (Slate)
+            '#60a5fa', // Segunda (Blue)
+            '#379fae', // Terca (Powder Blue - new palette)
+            '#eaf7f8', // Quarta (Light Blue - new palette)
+            '#ffaa4d', // Quinta (Orange - alternative)
+            '#316a9a', // Sexta (Dark Blue - new palette)
+            '#a78bfa'  // Sabado (Purple)
+        ];
+
+        const datasetsDaily = dayNames.map((name, i) => ({
+            label: name,
+            data: trimmedDailyDataByWeek.map(weekData => weekData[i]),
+            backgroundColor: dailyColors[i],
+            borderColor: dailyColors[i]
+        }));
+
+        // 5. Supervisor Table
+        const supervisorData = {};
+        (data.supervisor_data || []).forEach(s => {
+            supervisorData[s.name] = { current: s.current * trendFactor, history: s.history / 3 };
+        });
+
+        return {
+            kpis,
+            charts: {
+                weeklyCurrent: trimmedWeeklyCurrent,
+                weeklyHistory: trimmedWeeklyHistory,
+                monthlyData,
+                dailyData: {
+                    labels: weeklyLabels,
+                    datasets: datasetsDaily
+                }
+            },
+            supervisorData
+        };
+    }
+
+    function getMonthWeeksDistribution(date) {
+        const year = date.getFullYear(); // Local time for simplicity
+        const month = date.getMonth();
+
+        const startOfMonth = new Date(year, month, 1);
+        const endOfMonth = new Date(year, month + 1, 0);
+
+        const weeks = [];
+        let currentStart = new Date(startOfMonth);
+
+        while (currentStart <= endOfMonth) {
+            // Find end of week (Saturday or end of month)
+            const dayOfWeek = currentStart.getDay(); // 0 (Sun) -> 6 (Sat)
+            const daysToSaturday = 6 - dayOfWeek;
+
+            let currentEnd = new Date(currentStart);
+            currentEnd.setDate(currentStart.getDate() + daysToSaturday);
+
+            if (currentEnd > endOfMonth) currentEnd = new Date(endOfMonth);
+
+            // Count working days (Mon-Fri)
+            let workingDays = 0;
+            const temp = new Date(currentStart);
+            while(temp <= currentEnd) {
+                const d = temp.getDay();
+                if (d >= 1 && d <= 5) workingDays++;
+                temp.setDate(temp.getDate() + 1);
+            }
+
+            weeks.push({ start: new Date(currentStart), end: new Date(currentEnd), workingDays });
+
+            // Next week starts Sunday (or day after currentEnd)
+            currentStart = new Date(currentEnd);
+            currentStart.setDate(currentStart.getDate() + 1);
+        }
+
+        return { weeks };
+    }
+
+    function calculateUnifiedMetrics(currentSales, historySales) {
+        // Determine Reference Date (Target Month)
+        // Re-using logic from fetchComparisonData or inferring from currentSales
+        // Ideally we pass refDate, but we can infer from currentSales[0] or default
+        let refDate;
+        if (currentSales && currentSales.length > 0 && currentSales[0].dtped) {
+            refDate = new Date(currentSales[0].dtped);
+        } else {
+            // Fallback: If no current sales, use filter logic or lastSalesDate
+            const selectedYear = comparisonAnoFilter.value;
+            const selectedMonth = comparisonMesFilter.value;
+            const defaultRefDate = lastSalesDate ? new Date(lastSalesDate) : new Date();
+
+            if (selectedYear && selectedYear !== 'todos' && selectedYear !== '') {
+                const year = parseInt(selectedYear);
+                if (selectedMonth && selectedMonth !== '') {
+                    refDate = new Date(Date.UTC(year, parseInt(selectedMonth), 15));
+                } else {
+                    const currentYear = defaultRefDate.getFullYear();
+                    if (year === currentYear) refDate = defaultRefDate;
+                    else refDate = new Date(Date.UTC(year, 11, 15));
+                }
+            } else {
+                refDate = defaultRefDate;
+            }
+        }
+
+        const currentYear = refDate.getFullYear();
+        const currentMonth = refDate.getMonth(); // 0-11 local or UTC depending on how we handle
+
+        // Generate weeks structure for current (target) month
+        // Ensure refDate is handled correctly as UTC or Local.
+        // The getMonthWeeksDistribution uses local Date methods (getFullYear, getMonth).
+        // We should ensure consistency.
+        const { weeks } = getMonthWeeksDistribution(refDate);
+        const currentMonthWeeks = weeks;
+
+        const metrics = {
+            current: { fat: 0, peso: 0, clients: 0, mixPepsico: 0, positivacaoSalty: 0, positivacaoFoods: 0 },
+            history: { fat: 0, peso: 0, avgFat: 0, avgPeso: 0, avgClients: 0, avgMixPepsico: 0, avgPositivacaoSalty: 0, avgPositivacaoFoods: 0 },
+            charts: {
+                weeklyCurrent: new Array(currentMonthWeeks.length).fill(0),
+                weeklyHistory: new Array(currentMonthWeeks.length).fill(0),
+                monthlyData: [], // { label, fat, clients }
+                dailyData: { datasets: [], labels: [] }
+            },
+            supervisorData: {} // { sup: { current, history } }
+        };
+
+        // Helper to get week index
+        const getWeekIndex = (date) => {
+            const d = typeof date === 'number' ? new Date(date) : new Date(date);
+            if (!d || isNaN(d.getTime())) return -1;
+            for(let i=0; i<currentMonthWeeks.length; i++) {
+                if (d >= currentMonthWeeks[i].start && d <= currentMonthWeeks[i].end) return i;
+            }
+            return -1;
+        };
+
+        // 1. Process Current Sales
+        const currentClientsSet = new Set();
+
+        currentSales.forEach(s => {
+            const val = Number(s.vlvenda) || 0;
+            const peso = Number(s.totpesoliq) || 0;
+
+            metrics.current.fat += val;
+            metrics.current.peso += peso;
+
+            if (s.codcli) currentClientsSet.add(s.codcli);
+
+            // Supervisor
+            if (s.superv) {
+                if (!metrics.supervisorData[s.superv]) metrics.supervisorData[s.superv] = { current: 0, history: 0 };
+                metrics.supervisorData[s.superv].current += val;
+            }
+
+            // Weekly Chart
+            const d = s.dtped ? new Date(s.dtped) : null;
+            if (d) {
+                const wIdx = getWeekIndex(d);
+                if (wIdx !== -1) metrics.charts.weeklyCurrent[wIdx] += val;
+            }
+        });
+        metrics.current.clients = currentClientsSet.size;
+
+        // 2. Process History Sales
+        const historyMonths = new Map(); // monthKey -> { fat, clients: Set }
+
+        historySales.forEach(s => {
+            const val = Number(s.vlvenda) || 0;
+            const d = s.dtped ? new Date(s.dtped) : null;
+
+            metrics.history.fat += val;
+            metrics.history.peso += (Number(s.totpesoliq) || 0);
+
+            // Supervisor
+            if (s.superv) {
+                if (!metrics.supervisorData[s.superv]) metrics.supervisorData[s.superv] = { current: 0, history: 0 };
+                metrics.supervisorData[s.superv].history += val;
+            }
+
+            if (d) {
+                // Weekly History (Approximate mapping: map day of month to week index)
+                // If we want rigorous average per week number, we should map based on day 1-7, 8-14, etc?
+                // Or match week index of the historical month?
+                // Let's use getWeekIndex concept applied to the historical date's day-of-month projected to current month structure?
+                // Simple approach: Map by day of month to current week ranges
+                // This aligns "Start of month" behavior.
+
+                // Project date to current month/year for bucket finding
+                const projectedDate = new Date(Date.UTC(currentYear, currentMonth, d.getUTCDate()));
+                const wIdx = getWeekIndex(projectedDate);
+                if (wIdx !== -1) metrics.charts.weeklyHistory[wIdx] += val;
+
+                // Monthly Data Aggregation
+                const monthKey = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
+                if (!historyMonths.has(monthKey)) historyMonths.set(monthKey, { fat: 0, clients: new Set() });
+                const mData = historyMonths.get(monthKey);
+                mData.fat += val;
+                if(s.codcli) mData.clients.add(s.codcli);
+            }
+        });
+
+        // 3. Averages
+        const historyMonthCount = historyMonths.size || 1;
+        metrics.history.avgFat = metrics.history.fat / historyMonthCount;
+        metrics.history.avgPeso = metrics.history.peso / historyMonthCount;
+
+        let totalHistoryClients = 0;
+        historyMonths.forEach(m => totalHistoryClients += m.clients.size);
+        metrics.history.avgClients = totalHistoryClients / historyMonthCount;
+
+        // Normalize Weekly History
+        metrics.charts.weeklyHistory = metrics.charts.weeklyHistory.map(v => v / historyMonthCount);
+        // Normalize Supervisor History
+        Object.values(metrics.supervisorData).forEach(d => d.history /= historyMonthCount);
+
+        // Prepare Monthly Chart Data (History Months + Current Month)
+        // Sort history months
+        const sortedMonths = Array.from(historyMonths.keys()).sort();
+        sortedMonths.forEach(key => {
+            const [y, m] = key.split('-');
+            const label = new Date(Date.UTC(y, m, 1)).toLocaleDateString('pt-BR', { month: 'short' });
+            const mData = historyMonths.get(key);
+            metrics.charts.monthlyData.push({ label, fat: mData.fat, clients: mData.clients.size });
+        });
+        // Add Current
+        metrics.charts.monthlyData.push({
+            label: 'Atual',
+            fat: metrics.current.fat,
+            clients: metrics.current.clients
+        });
+
+        // Prepare Daily Chart (Current Month Day-by-Day or Week-Day breakdown?)
+        // External app shows "Faturamento por Dia da Semana" (Daily Breakdown by Week)
+        // It maps Mon-Sun for each week.
+        const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+        const dailyDataByWeek = currentMonthWeeks.map(() => new Array(7).fill(0));
+
+        currentSales.forEach(s => {
+            const d = s.dtped ? new Date(s.dtped) : null;
+            if(d) {
+                const wIdx = getWeekIndex(d);
+                if(wIdx !== -1) {
+                    dailyDataByWeek[wIdx][d.getUTCDay()] += (Number(s.vlvenda) || 0);
+                }
+            }
+        });
+
+        const dailyColors = [
+            '#94a3b8', // Domingo (Slate)
+            '#60a5fa', // Segunda (Blue)
+            '#379fae', // Terca (Powder Blue - new palette)
+            '#eaf7f8', // Quarta (Light Blue - new palette)
+            '#ffaa4d', // Quinta (Orange - alternative)
+            '#316a9a', // Sexta (Dark Blue - new palette)
+            '#a78bfa'  // Sabado (Purple)
+        ];
+
+        const datasetsDaily = dayNames.map((name, i) => ({
+            label: name,
+            data: dailyDataByWeek.map(weekData => weekData[i]),
+            backgroundColor: dailyColors[i],
+            borderColor: dailyColors[i]
+        }));
+
+        metrics.charts.dailyData = {
+            labels: currentMonthWeeks.map((_, i) => `Semana ${i+1}`),
+            datasets: datasetsDaily
+        };
+
+        const kpis = [
+            { title: 'Faturamento Total', current: metrics.current.fat, history: metrics.history.avgFat, format: 'currency' },
+            { title: 'Peso Total (Ton)', current: metrics.current.peso/1000, history: metrics.history.avgPeso/1000, format: 'decimal' },
+            { title: 'Clientes Atendidos', current: metrics.current.clients, history: metrics.history.avgClients, format: 'integer' },
+            // Placeholder for Mix (requires product details logic not fully implemented in simplified version)
+            { title: 'Ticket Médio', current: metrics.current.clients ? metrics.current.fat/metrics.current.clients : 0, history: metrics.history.avgClients ? metrics.history.avgFat/metrics.history.avgClients : 0, format: 'currency' }
+        ];
+
+        return { kpis, charts: metrics.charts, supervisorData: metrics.supervisorData };
+    }
+
+    function renderKpiCards(kpis) {
+        const container = document.getElementById('comparison-kpi-container');
+        if (!container) return;
+
+        const fmt = (val, format) => {
+            if (format === 'currency') return formatCurrency(val);
+            if (format === 'decimal') return formatNumber(val, 3);
+            if (format === 'decimal_2') return formatNumber(val, 2);
+            return formatInteger(val);
+        };
+
+        // ⚡ Bolt Optimization: Use template strings instead of multiple document.createElement calls
+        container.innerHTML = kpis.map(kpi => {
+            const variation = kpi.history > 0 ? ((kpi.current - kpi.history) / kpi.history) * 100 : 0;
+            const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
+
+            // Determine glow color
+            let glowClass = 'kpi-glow-blue';
+            if (kpi.title.includes('Faturamento')) glowClass = 'kpi-glow-green';
+            else if (kpi.title.includes('Peso')) glowClass = 'kpi-glow-blue';
+            else if (kpi.title.includes('Clientes')) glowClass = 'kpi-glow-purple';
+
+            return `
+                <div class="kpi-card p-4 rounded-lg text-center kpi-glow-base ${glowClass}">
+                    <p class="text-slate-300 text-sm">${escapeHtml(kpi.title)}</p>
+                    <p class="text-2xl font-bold text-white my-2">${escapeHtml(fmt(kpi.current, kpi.format))}</p>
+                    <p class="text-sm ${colorClass}">${variation > 0 ? '+' : ''}${escapeHtml(variation.toFixed(1))}% vs Média</p>
+                    <p class="text-xs text-slate-500">Média: ${escapeHtml(fmt(kpi.history, kpi.format))}</p>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderComparisonCharts(chartsData) {
+        // Weekly Chart
+        if (comparisonChartType === 'weekly') {
+            document.getElementById('monthlyComparisonChartContainer').classList.add('hidden');
+            document.getElementById('weeklyComparisonChartContainer').classList.remove('hidden');
+
+            createChart('weeklyComparisonChart', 'line',
+                chartsData.weeklyCurrent.map((_, i) => `Semana ${i+1}`),
+                [
+                    { label: 'Mês Atual', data: chartsData.weeklyCurrent, borderColor: '#379fae', backgroundColor: '#379fae', tension: 0.4, isCurrent: true },
+                    { label: 'Média Histórica', data: chartsData.weeklyHistory, borderColor: '#eaf7f8', backgroundColor: '#eaf7f8', tension: 0.4, isPrevious: true }
+                ]
+            );
+        } else {
+            // Monthly Chart
+            document.getElementById('weeklyComparisonChartContainer').classList.add('hidden');
+            document.getElementById('monthlyComparisonChartContainer').classList.remove('hidden');
+
+            const labels = chartsData.monthlyData.map(d => d.label);
+            const isFat = comparisonMonthlyMetric === 'faturamento';
+            const values = chartsData.monthlyData.map(d => isFat ? d.fat : d.clients);
+
+            createChart('monthlyComparisonChart', 'bar', labels, [{
+                label: isFat ? 'Faturamento' : 'Clientes',
+                data: values,
+                backgroundColor: '#379fae'
+            }]);
+        }
+
+        // Daily Chart
+        if (chartsData.dailyData && chartsData.dailyData.datasets.length > 0) {
+            createChart('dailyWeeklyComparisonChart', 'bar',
+                chartsData.dailyData.labels,
+                chartsData.dailyData.datasets
+            );
+        } else {
+            showNoDataMessage('dailyWeeklyComparisonChart', 'Sem dados diários disponíveis');
+        }
+    }
+
+    // Refactored to use declarative template literals and innerHTML instead of verbose document.createElement logic.
+    // This improves readability, maintainability, and significantly reduces code size while preserving XSS safety via escapeHtml.
+    function renderSupervisorTable(data) {
+        const tbody = document.getElementById('supervisorComparisonTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = Object.entries(data).map(([sup, vals]) => {
+            const variation = vals.history > 0 ? ((vals.current - vals.history) / vals.history) * 100 : 0;
+            const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
+            return `
+                <tr class="hover:bg-slate-700">
+                    <td class="px-4 py-2">${escapeHtml(sup)}</td>
+                    <td class="px-4 py-2 text-right">${escapeHtml(formatCurrency(vals.history))}</td>
+                    <td class="px-4 py-2 text-right">${escapeHtml(formatCurrency(vals.current))}</td>
+                    <td class="px-4 py-2 text-right ${colorClass}">${escapeHtml(variation.toFixed(2))}%</td>
+                </tr>
+            `;
+        }).join('');
+    }
+    // --- INOVACOES VIEW LOGIC ---
+    let innovationsChart = null;
+    let currentInnovationsFilters = {};
+
+    async function updateInnovationsMonthView() {
+        window.showDashboardLoading('innovations-month-view');
+
+        const anoSelect = document.getElementById('innovations-ano-filter');
+        const mesSelect = document.getElementById('innovations-mes-filter');
+
+        const mappedRedes = innovationsSelectedRedes.map(r => {
+            if (r === 'C/ REDE') return 'com_ramo';
+            if (r === 'S/ REDE') return 'sem_ramo';
+            return r;
+        });
+
+        const filters = {
+            p_ano: anoSelect ? (anoSelect.value === 'todos' ? null : anoSelect.value) : null,
+            p_mes: mesSelect ? (mesSelect.value === '' ? null : mesSelect.value) : null,
+            p_cidade: innovationsSelectedCidades,
+            p_filial: innovationsSelectedFiliais,
+            p_supervisor: innovationsSelectedSupervisors,
+            p_vendedor: innovationsSelectedVendedores,
+            p_rede: mappedRedes,
+            p_tipovenda: innovationsSelectedTiposVenda,
+            p_categoria_inovacao: innovationsSelectedCategorias
+        };
+
+        // Replace empty arrays with null to avoid PostgREST overloading resolution issues
+        const rpcFilters = {
+            p_ano: filters.p_ano || null,
+            p_mes: filters.p_mes || null,
+            p_filial: filters.p_filial.length ? filters.p_filial : null,
+            p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
+            p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
+            p_vendedor: filters.p_vendedor.length ? filters.p_vendedor : null,
+            p_rede: filters.p_rede.length ? filters.p_rede : null,
+            p_tipovenda: filters.p_tipovenda.length ? filters.p_tipovenda : null,
+            p_categoria_inovacao: filters.p_categoria_inovacao && filters.p_categoria_inovacao.length ? filters.p_categoria_inovacao[0] : null // Categoria Inovacao was a text param
+        };
+
+        const cacheKey = generateCacheKey('innovations_view_data', rpcFilters);
+        let data = null;
+
+        try {
+            const cachedEntry = await getFromCache(cacheKey);
+            if (cachedEntry && cachedEntry.data) {
+                AppLog.log('Serving Innovations View from Cache');
+                data = cachedEntry.data;
+            }
+        } catch (e) { AppLog.warn('Cache error:', e); }
+
+        if (!data) {
+            try {
+                const { data: rpcData, error } = await supabase.rpc('get_innovations_data', rpcFilters);
+
+                if (error) {
+                    AppLog.error('Error fetching innovations:', error);
+                    window.hideDashboardLoading();
+                    return;
+                }
+                data = rpcData;
+                saveToCache(cacheKey, data);
+            } catch (err) {
+                AppLog.error('Exception fetching innovations:', err);
+                window.hideDashboardLoading();
+                return;
+            }
+        }
+
+        try {
+            // Tira o peso da renderização síncrona, desdobrando o frontend.
+            requestAnimationFrame(() => {
+                renderInnovationsKPIs(data);
+                renderInnovationsChart(data);
+
+                // Renderiza a tabela depois que o gráfico e os números grandes acendem
+                setTimeout(() => {
+                    try {
+                        renderInnovationsTable(data);
+                    } catch(e) {
+                        AppLog.error('Error in table:', e);
+                    } finally {
+                        window.hideDashboardLoading();
+                    }
+                }, 10);
+            });
+        } catch (err) {
+            AppLog.error('Error rendering innovations:', err);
+            window.hideDashboardLoading();
+        }
+    }
+
+    function renderInnovationsKPIs(data) {
+        if (!data) return;
+
+        // We use data.kpi_clients_attended for new penetration math if available, fallback to active_clients
+        const activeClients = data.active_clients || 0;
+
+        // The base is kpi_clients_base (total clients in the database applying filters)
+        const baseClients = data.kpi_clients_base || 0;
+
+        // Total Clients (Base Total)
+        const activeClientsEl = document.getElementById('innovations-month-active-clients-kpi');
+        if (activeClientsEl) activeClientsEl.textContent = formatNumber(baseClients, 0);
+
+        // Calculate Best Coverage & Avg Per Client
+        let bestCategory = null;
+        let maxCoverage = -1;
+        let maxCoverageCount = 0;
+        let bestAvgPerClient = 0;
+
+        const categories = data.categories || [];
+        let totalSelectionPos = 0;
+
+        categories.forEach(cat => {
+            let cov = activeClients > 0 ? (cat.pos_current / activeClients) * 100 : 0;
+            if (cov > maxCoverage) {
+                maxCoverage = cov;
+                bestCategory = cat.name;
+                maxCoverageCount = cat.pos_current;
+                // distinct_clients_current comes from the new SQL aggregation
+                let distClients = cat.distinct_clients_current || 1;
+                let prodSum = cat.products_pos_sum_current || cat.pos_current;
+                bestAvgPerClient = (prodSum / distClients);
+                if(cat.pos_current === 0) bestAvgPerClient = 0;
+            }
+            totalSelectionPos += cat.pos_current;
+        });
+
+        const topCovTitle = document.getElementById('innovations-month-top-coverage-title');
+        const topCovKpi = document.getElementById('innovations-month-top-coverage-kpi');
+        const topCovCount = document.getElementById('innovations-month-top-coverage-count-kpi');
+        const topCovValue = document.getElementById('innovations-month-top-coverage-value-kpi');
+        const topCovLabel = document.getElementById('innovations-month-top-coverage-label');
+
+        if (topCovTitle) topCovTitle.textContent = bestCategory || 'N/A';
+        if (topCovLabel) topCovLabel.textContent = 'Melhor Categoria';
+
+        // Changing the count label to the calculated average
+        if (topCovKpi) topCovKpi.textContent = bestAvgPerClient > 0 ? bestAvgPerClient.toFixed(2) : '0.00';
+        if (topCovCount) topCovCount.textContent = 'Média Produtos';
+
+        if (topCovValue) topCovValue.textContent = '';
+
+        // Selection Percent
+        const selCovValue = document.getElementById('innovations-month-selection-coverage-value-kpi');
+        let selPercent = 0;
+
+        // Check if we have the new direct counts
+        if (data.kpi_innovations_attended !== undefined && data.kpi_clients_attended !== undefined) {
+            selPercent = data.kpi_clients_attended > 0 ? (data.kpi_innovations_attended / data.kpi_clients_attended) * 100 : 0;
+        } else {
+            // Fallback logic
+            selPercent = activeClients > 0 ? (totalSelectionPos / (activeClients * (categories.length > 0 ? categories.length : 1))) * 100 : 0;
+        }
+        if (selCovValue) selCovValue.textContent = selPercent.toFixed(2) + '%';
+
+        // Selection Count
+        const selCovCount = document.getElementById('innovations-month-selection-coverage-count-kpi');
+        if (selCovCount) {
+            if (data.kpi_innovations_attended !== undefined && data.kpi_clients_attended !== undefined) {
+                selCovCount.textContent = `${data.kpi_innovations_attended} de ${data.kpi_clients_attended}`;
+            } else {
+                selCovCount.textContent = totalSelectionPos + ' de ' + (activeClients * categories.length);
+            }
+        }
+    }
+
+    function renderInnovationsChart(data) {
+        const ctx = document.getElementById('innovations-month-chartContainer');
+        if (!ctx || !data || !data.categories) return;
+
+        if (innovationsChart) {
+            innovationsChart.destroy();
+        }
+
+        const categories = data.categories.sort((a,b) => b.pos_current - a.pos_current);
+
+        const labels = categories.map(c => c.name);
+
+        // Calcular % usando a Base Atendida (positivação geral) dinâmica de cada mês específico
+        const baseCurrent = data.attended_current || 1;
+        const baseM1 = data.attended_prev_m1 || 1;
+        const baseM2 = data.attended_prev_m2 || 1;
+        const baseM3 = data.attended_prev_m3 || 1;
+
+        const currentData = categories.map(c => ((c.pos_current / baseCurrent) * 100).toFixed(1));
+        const prevM1Data = categories.map(c => ((c.pos_prev_m1 / baseM1) * 100).toFixed(1));
+        const prevM2Data = categories.map(c => ((c.pos_prev_m2 / baseM2) * 100).toFixed(1));
+        const prevM3Data = categories.map(c => ((c.pos_prev_m3 / baseM3) * 100).toFixed(1));
+
+        // Get month labels based on the selected target date in the filters
+        const yearFilter = document.getElementById('innovations-ano-filter')?.value;
+        const monthFilter = document.getElementById('innovations-mes-filter')?.value;
+
+        let targetDate = new Date();
+        if(yearFilter && yearFilter !== 'todos' && monthFilter) {
+            targetDate = new Date(yearFilter, monthFilter - 1, 1);
+        }
+
+        const monthNames = MONTHS_PT_SHORT;
+
+        const getMonthName = (date, subtractMonths) => {
+            let d = new Date(date);
+            d.setMonth(d.getMonth() - subtractMonths);
+            return monthNames[d.getMonth()];
+        };
+
+        const labelCurrent = getMonthName(targetDate, 0);
+        const labelM1 = getMonthName(targetDate, 1);
+        const labelM2 = getMonthName(targetDate, 2);
+        const labelM3 = getMonthName(targetDate, 3);
+
+        innovationsChart = new Chart(ctx, {
+            plugins: [ChartDataLabels],
+            type: 'bar',
+            data: {
+                labels: labels,
+                                                    datasets: [
+                    {
+                        label: labelM3,
+                        data: prevM3Data,
+                        backgroundColor: '#eaf7f8',
+                        borderSkipped: 'bottom',
+                        borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
+                    },
+                    {
+                        label: labelM2,
+                        data: prevM2Data,
+                        backgroundColor: '#379fae',
+                        borderSkipped: 'bottom',
+                        borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
+                    },
+                    {
+                        label: labelM1,
+                        data: prevM1Data,
+                        backgroundColor: '#316a9a',
+                        borderSkipped: 'bottom',
+                        borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
+                    },
+                    {
+                        label: labelCurrent + ' (Mês Atual)',
+                        data: currentData,
+                        backgroundColor: '#ffaa4d',
+                        borderSkipped: 'bottom',
+                        borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            color: '#94a3b8',
+                            font: { size: 10 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y + '%';
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: function(context) {
+                            return context.dataset.data[context.dataIndex] > 0;
+                        },
+                        color: '#fff',
+                        font: { weight: 'bold', size: 10 },
+                        anchor: 'end',
+                        align: 'top',
+                        offset: 2,
+                        formatter: function(value) {
+                            return value + '%';
                         }
                     }
                 },
-                datalabels: {
-                    display: function(context) {
-                        return context.dataset.data[context.dataIndex] > 0;
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8', font: { size: 10 }, callback: function(value) { return value + '%'; } }
                     },
-                    color: '#fff',
-                    font: { weight: 'bold', size: 10 },
-                    anchor: 'end',
-                    align: 'top',
-                    offset: 2,
-                    formatter: function(value) {
-                        return value + '%';
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8', font: { size: 10, weight: 'bold' } }
                     }
                 }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                    ticks: { color: '#94a3b8', font: { size: 10 }, callback: function(value) { return value + '%'; } }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#94a3b8', font: { size: 10, weight: 'bold' } }
+            }
+        });
+    }
+
+    // Make global to be accessible by inline onclick handler
+    window.toggleInnovationRow = function(safeId) {
+        const childRows = document.querySelectorAll(`.innovations-child-${safeId}`);
+        const icon = document.getElementById(`icon-innovations-${safeId}`);
+
+        if (childRows.length === 0) return;
+
+        const isHidden = childRows[0].classList.contains('hidden');
+
+        childRows.forEach(row => {
+            if (isHidden) {
+                row.classList.remove('hidden');
+            } else {
+                row.classList.add('hidden');
+            }
+        });
+
+        if (icon) {
+            if (isHidden) {
+                // Expand (Minus icon)
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>';
+            } else {
+                // Collapse (Plus icon)
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>';
+            }
+        }
+    };
+
+    window.renderInnovationsTable = function(data) {
+        const tbody = document.getElementById('innovations-month-table-body');
+        if (!tbody || !data || !data.categories) return;
+
+        let html = '';
+        
+        // Use dynamic period-specific attended bases instead of a fixed 12m active base
+        // Fallback to 1 to prevent division by zero
+        const attCurrent = data.attended_current || 1;
+        const attPrevYear = data.attended_prev_year || 1;
+        const attPrevM1 = data.attended_prev_m1 || 1;
+        const attAvg12m = data.attended_12m > 0 ? (data.attended_12m / 3.0) : 1;
+
+        // Pre-group products by category for O(N+M) performance
+        const productsByCategory = new Map();
+        if (data.products && Array.isArray(data.products)) {
+            for (const p of data.products) {
+                if (!productsByCategory.has(p.category)) {
+                    productsByCategory.set(p.category, []);
                 }
+                productsByCategory.get(p.category).push(p);
             }
         }
-    });
-}
 
-// Make global to be accessible by inline onclick handler
-window.toggleInnovationRow = function(safeId) {
-    const childRows = document.querySelectorAll(`.innovations-child-${safeId}`);
-    const icon = document.getElementById(`icon-innovations-${safeId}`);
-    
-    if (childRows.length === 0) return;
-    
-    const isHidden = childRows[0].classList.contains('hidden');
-    
-    childRows.forEach(row => {
-        if (isHidden) {
-            row.classList.remove('hidden');
-        } else {
-            row.classList.add('hidden');
-        }
-    });
-    
-    if (icon) {
-        if (isHidden) {
-            // Expand (Minus icon)
-            icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>';
-        } else {
-            // Collapse (Plus icon)
-            icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>';
-        }
-    }
-};
-
-window.renderInnovationsTable = function(data) {
-    const tbody = document.getElementById('innovations-month-table-body');
-    if (!tbody || !data || !data.categories) return;
-
-    let html = '';
-    
-    // Use dynamic period-specific attended bases instead of a fixed 12m active base
-    // Fallback to 1 to prevent division by zero
-    const attCurrent = data.attended_current || 1;
-    const attPrevYear = data.attended_prev_year || 1;
-    const attPrevM1 = data.attended_prev_m1 || 1;
-    const attAvg12m = data.attended_12m > 0 ? (data.attended_12m / 3.0) : 1; 
-
-    // Pre-group products by category for O(N+M) performance
-    const productsByCategory = new Map();
-    if (data.products && Array.isArray(data.products)) {
-        for (const p of data.products) {
-            if (!productsByCategory.has(p.category)) {
-                productsByCategory.set(p.category, []);
-            }
-            productsByCategory.get(p.category).push(p);
-        }
-    }
-
-    data.categories.forEach((cat, idx) => {
-        let catPosAtual = Math.round(cat.pos_current || 0);
-        let catPosPrevYear = Math.round(cat.pos_prev_year || 0);
-        let catPosPrevM1 = Math.round(cat.pos_prev_m1 || 0);
-        let catPosAvg12m = Math.round(cat.pos_avg_12m || 0);
-        let catEstoque = Math.round(cat.estoque_current || 0);
-        
-        let varPercent = cat.pos_prev_m1 > 0 ? (((cat.pos_current - cat.pos_prev_m1) / cat.pos_prev_m1) * 100).toFixed(1) : (cat.pos_current > 0 ? 100 : 0);
-        let varColor = varPercent >= 0 ? 'text-green-400' : 'text-red-400';
-        
-        const safeId = cat.name.replace(/[^a-zA-Z0-9]/g, '_');
-
-        // Category Row (Parent)
-        html += `
-            <tr class="hover:bg-slate-700/30 transition-colors cursor-pointer bg-slate-800/30" onclick="toggleInnovationRow('${safeId}')">
-                <td class="px-4 py-4 text-white font-bold whitespace-normal flex items-center gap-2">
-                    <svg id="icon-innovations-${safeId}" class="w-4 h-4 text-orange-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                    ${escapeHtml(cat.name)}
-                </td>
-                <td class="px-4 py-4 text-slate-400 text-xs italic"></td>
-                <td class="px-4 py-4 text-center font-bold text-white">${escapeHtml(catEstoque)} cx</td>
-                <td class="px-4 py-4 text-center text-slate-400">${escapeHtml(catPosAvg12m)}</td>
-                <td class="px-4 py-4 text-center text-slate-400">${escapeHtml(catPosPrevYear)}</td>
-                <td class="px-4 py-4 text-center text-slate-400">${escapeHtml(catPosPrevM1)}</td>
-                <td class="px-4 py-4 text-center font-bold text-white">${escapeHtml(catPosAtual)}</td>
-                <td class="px-4 py-4 text-center ${escapeHtml(varColor)} font-bold">${escapeHtml(varPercent)}%</td>
-            </tr>
-        `;
-
-        // Product Rows (Children)
-        const productsInCat = productsByCategory.get(cat.name) || [];
-        productsInCat.forEach(p => {
-            let posAtual = Math.round(p.pos_current || 0);
-            let posPrevYear = Math.round(p.pos_prev_year || 0);
-            let posPrevM1 = Math.round(p.pos_prev_m1 || 0);
-            let posAvg12m = Math.round(p.pos_avg_12m || 0);
-            let pEstoque = Math.round(p.estoque_current || 0);
+        data.categories.forEach((cat, idx) => {
+            let catPosAtual = Math.round(cat.pos_current || 0);
+            let catPosPrevYear = Math.round(cat.pos_prev_year || 0);
+            let catPosPrevM1 = Math.round(cat.pos_prev_m1 || 0);
+            let catPosAvg12m = Math.round(cat.pos_avg_12m || 0);
+            let catEstoque = Math.round(cat.estoque_current || 0);
             
-            let pVarPercent = p.pos_prev_m1 > 0 ? (((p.pos_current - p.pos_prev_m1) / p.pos_prev_m1) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
-            let pVarColor = pVarPercent >= 0 ? 'text-green-400' : 'text-red-400';
+            let varPercent = cat.pos_prev_m1 > 0 ? (((cat.pos_current - cat.pos_prev_m1) / cat.pos_prev_m1) * 100).toFixed(1) : (cat.pos_current > 0 ? 100 : 0);
+            let varColor = varPercent >= 0 ? 'text-green-400' : 'text-red-400';
 
+            const safeId = cat.name.replace(/[^a-zA-Z0-9]/g, '_');
+
+            // Category Row (Parent)
             html += `
-                <tr class="hover:bg-slate-700/30 transition-colors hidden innovations-child-${safeId}">
-                    <td class="px-4 py-4 pl-10 text-slate-400 text-xs flex items-center gap-2">
-                        <svg class="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                <tr class="hover:bg-slate-700/30 transition-colors cursor-pointer bg-slate-800/30" onclick="toggleInnovationRow('${safeId}')">
+                    <td class="px-4 py-4 text-white font-bold whitespace-normal flex items-center gap-2">
+                        <svg id="icon-innovations-${safeId}" class="w-4 h-4 text-orange-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        ${escapeHtml(cat.name)}
                     </td>
-                    <td class="px-4 py-4 text-slate-300 text-xs">${escapeHtml(p.code)} - ${escapeHtml(p.name)}</td>
-                    <td class="px-4 py-4 text-center font-medium text-slate-300">${escapeHtml(pEstoque)} cx</td>
-                    <td class="px-4 py-4 text-center text-slate-500">${escapeHtml(posAvg12m)}</td>
-                    <td class="px-4 py-4 text-center text-slate-500">${escapeHtml(posPrevYear)}</td>
-                    <td class="px-4 py-4 text-center text-slate-500">${escapeHtml(posPrevM1)}</td>
-                    <td class="px-4 py-4 text-center font-medium text-slate-300">${escapeHtml(posAtual)}</td>
-                    <td class="px-4 py-4 text-center ${escapeHtml(pVarColor)} text-xs font-bold">${escapeHtml(pVarPercent)}%</td>
+                    <td class="px-4 py-4 text-slate-400 text-xs italic"></td>
+                    <td class="px-4 py-4 text-center font-bold text-white">${escapeHtml(catEstoque)} cx</td>
+                    <td class="px-4 py-4 text-center text-slate-400">${escapeHtml(catPosAvg12m)}</td>
+                    <td class="px-4 py-4 text-center text-slate-400">${escapeHtml(catPosPrevYear)}</td>
+                    <td class="px-4 py-4 text-center text-slate-400">${escapeHtml(catPosPrevM1)}</td>
+                    <td class="px-4 py-4 text-center font-bold text-white">${escapeHtml(catPosAtual)}</td>
+                    <td class="px-4 py-4 text-center ${escapeHtml(varColor)} font-bold">${escapeHtml(varPercent)}%</td>
                 </tr>
             `;
+
+            // Product Rows (Children)
+            const productsInCat = productsByCategory.get(cat.name) || [];
+            productsInCat.forEach(p => {
+                let posAtual = Math.round(p.pos_current || 0);
+                let posPrevYear = Math.round(p.pos_prev_year || 0);
+                let posPrevM1 = Math.round(p.pos_prev_m1 || 0);
+                let posAvg12m = Math.round(p.pos_avg_12m || 0);
+                let pEstoque = Math.round(p.estoque_current || 0);
+
+                let pVarPercent = p.pos_prev_m1 > 0 ? (((p.pos_current - p.pos_prev_m1) / p.pos_prev_m1) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
+                let pVarColor = pVarPercent >= 0 ? 'text-green-400' : 'text-red-400';
+
+                html += `
+                    <tr class="hover:bg-slate-700/30 transition-colors hidden innovations-child-${safeId}">
+                        <td class="px-4 py-4 pl-10 text-slate-400 text-xs flex items-center gap-2">
+                            <svg class="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </td>
+                        <td class="px-4 py-4 text-slate-300 text-xs">${escapeHtml(p.code)} - ${escapeHtml(p.name)}</td>
+                        <td class="px-4 py-4 text-center font-medium text-slate-300">${escapeHtml(pEstoque)} cx</td>
+                        <td class="px-4 py-4 text-center text-slate-500">${escapeHtml(posAvg12m)}</td>
+                        <td class="px-4 py-4 text-center text-slate-500">${escapeHtml(posPrevYear)}</td>
+                        <td class="px-4 py-4 text-center text-slate-500">${escapeHtml(posPrevM1)}</td>
+                        <td class="px-4 py-4 text-center font-medium text-slate-300">${escapeHtml(posAtual)}</td>
+                        <td class="px-4 py-4 text-center ${escapeHtml(pVarColor)} text-xs font-bold">${escapeHtml(pVarPercent)}%</td>
+                    </tr>
+                `;
+            });
         });
-    });
 
-    if (data.categories.length === 0) {
-        html = '<tr><td colspan="8" class="p-4 text-center text-slate-500">Nenhum dado encontrado para os filtros selecionados.</td></tr>';
-    }
+        if (data.categories.length === 0) {
+            html = '<tr><td colspan="8" class="p-4 text-center text-slate-500">Nenhum dado encontrado para os filtros selecionados.</td></tr>';
+        }
 
-    tbody.innerHTML = html;
-};
-
-// Helper para pegar valor de inputs (pode precisar ajuste dependendo de como voce estruturou os selects)
-function getSelectedValues(id) {
-    const el = document.getElementById(id);
-    if (!el) return [];
-    if (el.tagName === 'SELECT') {
-        return Array.from(el.selectedOptions).map(o => o.value);
-    }
-    if (el.tagName === 'INPUT' && el.type === 'hidden') {
-         return el.value ? [el.value] : [];
-    }
-
-    // Suporte para o dropdown customizado
-    const tagsContainer = el.querySelector('.flex.flex-wrap.gap-1.items-center');
-    if (tagsContainer) {
-        const values = [];
-        tagsContainer.querySelectorAll('.px-2.py-0\\.5').forEach(tag => {
-            const text = tag.textContent.trim().replace('×', '').trim();
-            if (text && text !== 'Todos') values.push(text);
-        });
-        return values.length > 0 ? values : [];
-    }
-
-    // Tentativa generica caso seja input text
-    if (el.tagName === 'INPUT' && el.type === 'text') {
-        return el.value ? [el.value] : [];
-    }
-
-    // Se é um wrapper, verifica se tem um select dentro
-    const selectInside = el.querySelector('select');
-    if (selectInside) {
-        return Array.from(selectInside.selectedOptions).map(o => o.value);
-    }
-
-    return [];
-}
-
-// Global Filter Setup for new pages
-let innovationsSelectedSupervisors = [];
-let innovationsSelectedVendedores = [];
-let innovationsSelectedCidades = [];
-let innovationsSelectedTiposVenda = [];
-let innovationsSelectedRedes = [];
-let innovationsSelectedFiliais = [];
-let innovationsSelectedCategorias = [];
-
-// DOM Elements
-const innovationsSupervisorFilterBtn = document.getElementById('innovations-supervisor-filter-btn');
-const innovationsSupervisorFilterDropdown = document.getElementById('innovations-supervisor-filter-dropdown');
-const innovationsVendedorFilterBtn = document.getElementById('innovations-vendedor-filter-btn');
-const innovationsVendedorFilterDropdown = document.getElementById('innovations-vendedor-filter-dropdown');
-const innovationsVendedorFilterList = document.getElementById('innovations-vendedor-filter-list');
-const innovationsVendedorFilterSearch = document.getElementById('innovations-vendedor-filter-search');
-const innovationsCidadeFilterBtn = document.getElementById('innovations-cidade-filter-btn');
-const innovationsCidadeFilterDropdown = document.getElementById('innovations-cidade-filter-dropdown');
-const innovationsCidadeFilterList = document.getElementById('innovations-cidade-filter-list');
-const innovationsCidadeFilterSearch = document.getElementById('innovations-cidade-filter-search');
-const innovationsTipovendaFilterBtn = document.getElementById('innovations-tipovenda-filter-btn');
-const innovationsTipovendaFilterDropdown = document.getElementById('innovations-tipovenda-filter-dropdown');
-const innovationsRedeFilterBtn = document.getElementById('innovations-rede-filter-btn');
-const innovationsRedeFilterDropdown = document.getElementById('innovations-rede-filter-dropdown');
-const innovationsRedeFilterList = document.getElementById('innovations-rede-filter-list');
-const innovationsRedeFilterSearch = document.getElementById('innovations-rede-filter-search');
-const innovationsFilialFilterBtn = document.getElementById('innovations-filial-filter-btn');
-const innovationsFilialFilterDropdown = document.getElementById('innovations-filial-filter-dropdown');
-const innovationsCategoriaFilterBtn = document.getElementById('innovations-categoria-filter-btn');
-const innovationsCategoriaFilterDropdown = document.getElementById('innovations-categoria-filter-dropdown');
-
-// Filter change handler
-const handleInnovationsFilterChange = () => {
-    updateInnovationsMonthView();
-};
-
-document.addEventListener('click', (e) => {
-    const dropdowns = [
-        innovationsSupervisorFilterDropdown, innovationsVendedorFilterDropdown,
-        innovationsCidadeFilterDropdown, innovationsTipovendaFilterDropdown,
-        innovationsRedeFilterDropdown, innovationsFilialFilterDropdown,
-        innovationsCategoriaFilterDropdown
-    ];
-    const btns = [
-        innovationsSupervisorFilterBtn, innovationsVendedorFilterBtn,
-        innovationsCidadeFilterBtn, innovationsTipovendaFilterBtn,
-        innovationsRedeFilterBtn, innovationsFilialFilterBtn,
-        innovationsCategoriaFilterBtn
-    ];
-    let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
-
-    if (anyClosed && innovationsMonthView && !innovationsMonthView.classList.contains('hidden')) {
-        handleInnovationsFilterChange();
-    }
-});
-
-
-const setupInnovationsFilters = async () => {
-    if (isInnovationsInitialized) return;
-
-    window.showDashboardLoading('innovations-month-view');
-
-    const filters = {
-        p_ano: null,
-        p_mes: null,
-        p_filial: [],
-        p_cidade: [],
-        p_supervisor: [],
-        p_vendedor: [],
-        p_fornecedor: [],
-        p_tipovenda: [],
-        p_rede: [],
-        p_categoria: []
+        tbody.innerHTML = html;
     };
 
-    const cacheKey = generateCacheKey('dashboard_filters', filters);
-    let filterData = null;
-
-    try {
-        const cachedEntry = await getFromCache(cacheKey);
-        if (cachedEntry && cachedEntry.data) {
-            AppLog.log('Serving Innovations Filters from Cache');
-            filterData = cachedEntry.data;
+    // Helper para pegar valor de inputs (pode precisar ajuste dependendo de como voce estruturou os selects)
+    function getSelectedValues(id) {
+        const el = document.getElementById(id);
+        if (!el) return [];
+        if (el.tagName === 'SELECT') {
+            return Array.from(el.selectedOptions).map(o => o.value);
         }
-    } catch (e) { AppLog.warn('Cache error:', e); }
-
-    if (!filterData) {
-        const { data } = await supabase.rpc('get_dashboard_filters', filters);
-        filterData = data;
-        if (filterData) saveToCache(cacheKey, filterData);
-    }
-
-    if (!filterData) {
-        window.hideDashboardLoading();
-        return;
-    }
-
-    // Load Ano and Mes
-    const anoSelect = document.getElementById('innovations-ano-filter');
-    const mesSelect = document.getElementById('innovations-mes-filter');
-    
-    await fetchLastSalesDate();
-    const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
-
-    if (anoSelect && filterData.anos) {
-        // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-        anoSelect.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(ano => `<option value="${escapeHtml(ano)}">${escapeHtml(ano)}</option>`).join('');
-
-        // Initial filter values
-        let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
-        anoSelect.value = hasYear ? currentYear : 'todos';
-
-        enhanceSelectToCustomDropdown(anoSelect);
-        anoSelect.addEventListener('change', handleInnovationsFilterChange);
-    }
-    
-    if (mesSelect) {
-        const meses = MONTHS_PT;
-        // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-        mesSelect.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
-
-        // Initial filter value
-        mesSelect.value = currentMonth;
-            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
-
-        enhanceSelectToCustomDropdown(mesSelect);
-        mesSelect.addEventListener('change', handleInnovationsFilterChange);
-    }
-
-    // Load Multi-Selects using standard CityMultiSelect pattern
-    setupCityMultiSelect(innovationsSupervisorFilterBtn, innovationsSupervisorFilterDropdown, innovationsSupervisorFilterDropdown, filterData.supervisors, innovationsSelectedSupervisors);
-    setupCityMultiSelect(innovationsVendedorFilterBtn, innovationsVendedorFilterDropdown, innovationsVendedorFilterList, filterData.vendedores, innovationsSelectedVendedores, innovationsVendedorFilterSearch);
-    setupCityMultiSelect(innovationsCidadeFilterBtn, innovationsCidadeFilterDropdown, innovationsCidadeFilterList, filterData.cidades, innovationsSelectedCidades, innovationsCidadeFilterSearch);
-    setupCityMultiSelect(innovationsTipovendaFilterBtn, innovationsTipovendaFilterDropdown, innovationsTipovendaFilterDropdown, filterData.tipos_venda, innovationsSelectedTiposVenda);
-    
-    const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-    setupCityMultiSelect(innovationsRedeFilterBtn, innovationsRedeFilterDropdown, innovationsRedeFilterList, redes, innovationsSelectedRedes, innovationsRedeFilterSearch);
-    
-    setupCityMultiSelect(innovationsFilialFilterBtn, innovationsFilialFilterDropdown, innovationsFilialFilterDropdown, filterData.filiais, innovationsSelectedFiliais);
-
-    // Load Inovações Categories
-    try {
-        const { data: inovacData } = await supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true });
-        if (inovacData) {
-            const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
-            setupCityMultiSelect(innovationsCategoriaFilterBtn, innovationsCategoriaFilterDropdown, innovationsCategoriaFilterDropdown, uniqueInovacoes, innovationsSelectedCategorias);
+        if (el.tagName === 'INPUT' && el.type === 'hidden') {
+             return el.value ? [el.value] : [];
         }
-    } catch (e) {
-        AppLog.error("Error loading inovacoes categories", e);
+
+        // Suporte para o dropdown customizado
+        const tagsContainer = el.querySelector('.flex.flex-wrap.gap-1.items-center');
+        if (tagsContainer) {
+            const values = [];
+            tagsContainer.querySelectorAll('.px-2.py-0\\.5').forEach(tag => {
+                const text = tag.textContent.trim().replace('×', '').trim();
+                if (text && text !== 'Todos') values.push(text);
+            });
+            return values.length > 0 ? values : [];
+        }
+
+        // Tentativa generica caso seja input text
+        if (el.tagName === 'INPUT' && el.type === 'text') {
+            return el.value ? [el.value] : [];
+        }
+
+        // Se é um wrapper, verifica se tem um select dentro
+        const selectInside = el.querySelector('select');
+        if (selectInside) {
+            return Array.from(selectInside.selectedOptions).map(o => o.value);
+        }
+
+        return [];
     }
-    
-    window.hideDashboardLoading();
 
-    
-    const lpSupervisorBtn = document.getElementById("lp-supervisor-filter-btn");
-    const lpSupervisorDropdown = document.getElementById("lp-supervisor-filter-dropdown");
-    if (lpSupervisorBtn) setupCityMultiSelect(lpSupervisorBtn, lpSupervisorDropdown, lpSupervisorDropdown, filterData.supervisors, lpSelectedSupervisors);
+    // Global Filter Setup for new pages
+    let innovationsSelectedSupervisors = [];
+    let innovationsSelectedVendedores = [];
+    let innovationsSelectedCidades = [];
+    let innovationsSelectedTiposVenda = [];
+    let innovationsSelectedRedes = [];
+    let innovationsSelectedFiliais = [];
+    let innovationsSelectedCategorias = [];
 
-    const lpVendedorBtn = document.getElementById("lp-vendedor-filter-btn");
-    const lpVendedorDropdown = document.getElementById("lp-vendedor-filter-dropdown");
-    const lpVendedorList = document.getElementById("lp-vendedor-filter-list");
-    const lpVendedorSearch = document.getElementById("lp-vendedor-filter-search");
-    if (lpVendedorBtn) setupCityMultiSelect(lpVendedorBtn, lpVendedorDropdown, lpVendedorList, filterData.vendedores, lpSelectedVendedores, lpVendedorSearch);
+    // DOM Elements
+    const innovationsSupervisorFilterBtn = document.getElementById('innovations-supervisor-filter-btn');
+    const innovationsSupervisorFilterDropdown = document.getElementById('innovations-supervisor-filter-dropdown');
+    const innovationsVendedorFilterBtn = document.getElementById('innovations-vendedor-filter-btn');
+    const innovationsVendedorFilterDropdown = document.getElementById('innovations-vendedor-filter-dropdown');
+    const innovationsVendedorFilterList = document.getElementById('innovations-vendedor-filter-list');
+    const innovationsVendedorFilterSearch = document.getElementById('innovations-vendedor-filter-search');
+    const innovationsCidadeFilterBtn = document.getElementById('innovations-cidade-filter-btn');
+    const innovationsCidadeFilterDropdown = document.getElementById('innovations-cidade-filter-dropdown');
+    const innovationsCidadeFilterList = document.getElementById('innovations-cidade-filter-list');
+    const innovationsCidadeFilterSearch = document.getElementById('innovations-cidade-filter-search');
+    const innovationsTipovendaFilterBtn = document.getElementById('innovations-tipovenda-filter-btn');
+    const innovationsTipovendaFilterDropdown = document.getElementById('innovations-tipovenda-filter-dropdown');
+    const innovationsRedeFilterBtn = document.getElementById('innovations-rede-filter-btn');
+    const innovationsRedeFilterDropdown = document.getElementById('innovations-rede-filter-dropdown');
+    const innovationsRedeFilterList = document.getElementById('innovations-rede-filter-list');
+    const innovationsRedeFilterSearch = document.getElementById('innovations-rede-filter-search');
+    const innovationsFilialFilterBtn = document.getElementById('innovations-filial-filter-btn');
+    const innovationsFilialFilterDropdown = document.getElementById('innovations-filial-filter-dropdown');
+    const innovationsCategoriaFilterBtn = document.getElementById('innovations-categoria-filter-btn');
+    const innovationsCategoriaFilterDropdown = document.getElementById('innovations-categoria-filter-dropdown');
 
-    const lpRedeBtn = document.getElementById("lp-rede-filter-btn");
-    const lpRedeDropdown = document.getElementById("lp-rede-filter-dropdown");
-    const lpRedeList = document.getElementById("lp-rede-filter-list");
-    const lpRedeSearch = document.getElementById("lp-rede-filter-search");
-    const lpRedesArray = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-    if (lpRedeBtn) setupCityMultiSelect(lpRedeBtn, lpRedeDropdown, lpRedeList, lpRedesArray, lpSelectedRedes, lpRedeSearch);
-
-    const lpCidadeBtn = document.getElementById("lp-cidade-filter-btn");
-    const lpCidadeDropdown = document.getElementById("lp-cidade-filter-dropdown");
-    const lpCidadeList = document.getElementById("lp-cidade-filter-list");
-    const lpCidadeSearch = document.getElementById("lp-cidade-filter-search");
-    if (lpCidadeBtn) setupCityMultiSelect(lpCidadeBtn, lpCidadeDropdown, lpCidadeList, filterData.cidades, lpSelectedCidades, lpCidadeSearch);
-
-    // Actually we need to call setupCityMultiSelect on wrappers if possible...
-    // wait, for Supervisor/Vendedor/Rede the wrappers are handled differently inside updateLojaPerfeitaFilters ?
-    // let's check how the others are initialized.
-    
-
-    isInnovationsInitialized = true;
-};
-
-// Listen for view load
-document.addEventListener('DOMContentLoaded', () => {
-    // Add setup on tab click or initially if those tabs are visible
-});
-// --- LOJA PERFEITA VIEW LOGIC ---
-let lpSelectedClient = null; // To hold the specific selected client code
-let lpTableData = []; // Store data for pagination
-let lpCurrentPage = 1;
-const lpRowsPerPage = 50;
-
-let lpFilterDebounce;
-
-async function loadLojaPerfeitaFilters(forceClear = false) {
-
-    const filters = {
-
-        p_ano: null,
-
-        p_mes: null,
-
-        p_filial: forceClear ? [] : lpSelectedFiliais,
-
-        p_cidade: forceClear ? [] : lpSelectedCidades,
-
-        p_supervisor: forceClear ? [] : lpSelectedSupervisors,
-
-        p_vendedor: forceClear ? [] : lpSelectedVendedores,
-
-        p_fornecedor: [],
-
-        p_tipovenda: [],
-
-        p_rede: forceClear ? [] : lpSelectedRedes,
-
-        p_categoria: []
-
+    // Filter change handler
+    const handleInnovationsFilterChange = () => {
+        updateInnovationsMonthView();
     };
 
-
-
-    try {
-
-        const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
-
-        if (error) {
-
-            AppLog.error('Error fetching Loja Perfeita filters:', error);
-
-            return;
-
-        }
-
-        if (!filterData) return;
-
-
-
-        const lpFilialBtn = document.getElementById("lp-filial-filter-btn");
-        const lpFilialDropdown = document.getElementById("lp-filial-filter-dropdown");
-        if (lpFilialBtn) setupCityMultiSelect(lpFilialBtn, lpFilialDropdown, lpFilialDropdown, filterData.filiais, lpSelectedFiliais);
-
-        const lpSupervisorBtn = document.getElementById("lp-supervisor-filter-btn");
-
-        const lpSupervisorDropdown = document.getElementById("lp-supervisor-filter-dropdown");
-
-        if (lpSupervisorBtn) setupCityMultiSelect(lpSupervisorBtn, lpSupervisorDropdown, lpSupervisorDropdown, filterData.supervisors, lpSelectedSupervisors);
-
-
-
-        const lpVendedorBtn = document.getElementById("lp-vendedor-filter-btn");
-
-        const lpVendedorDropdown = document.getElementById("lp-vendedor-filter-dropdown");
-
-        const lpVendedorList = document.getElementById("lp-vendedor-filter-list");
-
-        const lpVendedorSearch = document.getElementById("lp-vendedor-filter-search");
-
-        if (lpVendedorBtn) setupCityMultiSelect(lpVendedorBtn, lpVendedorDropdown, lpVendedorList, filterData.vendedores, lpSelectedVendedores, lpVendedorSearch);
-
-
-
-        const lpRedeBtn = document.getElementById("lp-rede-filter-btn");
-
-        const lpRedeDropdown = document.getElementById("lp-rede-filter-dropdown");
-
-        const lpRedeList = document.getElementById("lp-rede-filter-list");
-
-        const lpRedeSearch = document.getElementById("lp-rede-filter-search");
-
-        const lpRedesArray = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-
-        if (lpRedeBtn) setupCityMultiSelect(lpRedeBtn, lpRedeDropdown, lpRedeList, lpRedesArray, lpSelectedRedes, lpRedeSearch);
-
-
-
-        const lpCidadeBtn = document.getElementById("lp-cidade-filter-btn");
-
-        const lpCidadeDropdown = document.getElementById("lp-cidade-filter-dropdown");
-
-        const lpCidadeList = document.getElementById("lp-cidade-filter-list");
-
-        const lpCidadeSearch = document.getElementById("lp-cidade-filter-search");
-
-        if (lpCidadeBtn) setupCityMultiSelect(lpCidadeBtn, lpCidadeDropdown, lpCidadeList, filterData.cidades, lpSelectedCidades, lpCidadeSearch);
-
-
-
-    } catch (err) {
-
-        AppLog.error('Exception fetching Loja Perfeita filters:', err);
-
-    }
-
-}
-
-
-const handleLojaPerfeitaFilterChange = () => {
-    clearTimeout(lpFilterDebounce);
-    lpFilterDebounce = setTimeout(() => {
-        loadLojaPerfeitaFilters();
-    }, 300);
-
-    updateLojaPerfeitaView();
-};
-
-document.addEventListener('click', (e) => {
-    const dropdowns = [
-        document.getElementById('lp-filial-filter-dropdown'),
-        document.getElementById('lp-supervisor-filter-dropdown'),
-        document.getElementById('lp-vendedor-filter-dropdown'),
-        document.getElementById('lp-rede-filter-dropdown'),
-        document.getElementById('lp-cidade-filter-dropdown')
-    ];
-    const btns = [
-        document.getElementById('lp-filial-filter-btn'),
-        document.getElementById('lp-supervisor-filter-btn'),
-        document.getElementById('lp-vendedor-filter-btn'),
-        document.getElementById('lp-rede-filter-btn'),
-        document.getElementById('lp-cidade-filter-btn')
-    ];
-    let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
-
-    if (anyClosed) {
-        handleLojaPerfeitaFilterChange();
-    }
-});
-
-
-function setupLpClientSearchAutocomplete() {
-    const input = document.getElementById('lp-cliente-search-input');
-    const dropdown = document.getElementById('lp-cliente-search-dropdown');
-    const clearBtn = document.getElementById('lp-cliente-search-clear');
-
-    if (!input || !dropdown) return;
-
-    // ⚡ Bolt Optimization: Event delegation for client search autocomplete
-    dropdown.addEventListener('click', (e) => {
-        const option = e.target.closest('.lp-client-option');
-        if (!option) return;
-
-        const cod = option.getAttribute('data-cod');
-        const name = option.getAttribute('data-name');
-
-        input.value = `${cod} - ${name}`;
-        lpSelectedClient = cod;
-        dropdown.classList.add('hidden');
-        clearBtn.classList.remove('hidden');
-        updateLojaPerfeitaView(); // Trigger update with the new client
-    });
-
-    let debounceTimer;
-
-    input.addEventListener('input', (e) => {
-        const val = e.target.value;
-        if (val.length > 0) {
-            clearBtn.classList.remove('hidden');
-        } else {
-            clearBtn.classList.add('hidden');
-        }
-
-        clearTimeout(debounceTimer);
-        
-        if (val.length < 3) {
-            dropdown.innerHTML = '';
-            dropdown.classList.add('hidden');
-            return;
-        }
-
-        debounceTimer = setTimeout(async () => {
-            try {
-                // Use custom RPC to apply current filters to client search
-                const searchParams = {
-                    p_search: val,
-                    p_filial: lpSelectedFiliais.length > 0 ? lpSelectedFiliais : null,
-                    p_cidade: lpSelectedCidades.length > 0 ? lpSelectedCidades : null,
-                    p_supervisor: lpSelectedSupervisors.length > 0 ? lpSelectedSupervisors : null,
-                    p_vendedor: lpSelectedVendedores.length > 0 ? lpSelectedVendedores : null,
-                    p_rede: lpSelectedRedes.length > 0 ? lpSelectedRedes : null
-                };
-                const { data, error } = await supabase.rpc('search_loja_perfeita_clients', searchParams);
-                
-                if (error) throw error;
-
-                dropdown.innerHTML = '';
-                
-                if (!data || data.length === 0) {
-                    dropdown.innerHTML = '<div class="p-3 text-sm text-slate-400 text-center">Nenhum cliente encontrado</div>';
-                    dropdown.classList.remove('hidden');
-                    return;
-                }
-
-                // ⚡ Bolt Optimization: Use innerHTML and map for faster DOM rendering, combined with event delegation
-                dropdown.innerHTML = data.map(item => `
-                    <div class="p-3 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/30 last:border-0 transition-colors lp-client-option"
-                         data-cod="${escapeHtml(item.codigo_cliente)}"
-                         data-name="${escapeHtml(item.razaosocial || item.nomecliente || 'S/ NOME')}">
-                        <div class="flex items-start justify-between pointer-events-none">
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-xs font-bold text-slate-300 whitespace-nowrap">${escapeHtml(item.codigo_cliente)}</span>
-                                    <span class="text-sm font-bold text-white truncate">${escapeHtml(item.razaosocial || item.nomecliente || 'S/ NOME')}</span>
-                                </div>
-                                <div class="flex items-center gap-2 text-xs text-slate-400">
-                                    <span class="truncate uppercase">${escapeHtml(item.cidade || 'N/I')}</span>
-                                    <span class="text-slate-600">•</span>
-                                    <span class="whitespace-nowrap">${escapeHtml(item.cnpj || 'N/I')}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-
-                dropdown.classList.remove('hidden');
-            } catch (err) {
-                AppLog.error("Error fetching client suggestions:", err);
-            }
-        }, 400); // 400ms debounce
-    });
-
-    // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
-        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.classList.add('hidden');
+        const dropdowns = [
+            innovationsSupervisorFilterDropdown, innovationsVendedorFilterDropdown,
+            innovationsCidadeFilterDropdown, innovationsTipovendaFilterDropdown,
+            innovationsRedeFilterDropdown, innovationsFilialFilterDropdown,
+            innovationsCategoriaFilterDropdown
+        ];
+        const btns = [
+            innovationsSupervisorFilterBtn, innovationsVendedorFilterBtn,
+            innovationsCidadeFilterBtn, innovationsTipovendaFilterBtn,
+            innovationsRedeFilterBtn, innovationsFilialFilterBtn,
+            innovationsCategoriaFilterBtn
+        ];
+        let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
+
+        if (anyClosed && innovationsMonthView && !innovationsMonthView.classList.contains('hidden')) {
+            handleInnovationsFilterChange();
         }
     });
 
-    clearBtn.addEventListener('click', () => {
-        input.value = '';
-        lpSelectedClient = null;
-        clearBtn.classList.add('hidden');
-        dropdown.classList.add('hidden');
-        updateLojaPerfeitaView();
-    });
-}
 
+    const setupInnovationsFilters = async () => {
+        if (isInnovationsInitialized) return;
 
-async function updateLojaPerfeitaView() {
-    window.showDashboardLoading('loja-perfeita-view');
+        window.showDashboardLoading('innovations-month-view');
 
-    const filters = {
-        p_cidade: lpSelectedCidades,
-        p_filial: lpSelectedFiliais,
-        p_supervisor: lpSelectedSupervisors,
-        p_vendedor: lpSelectedVendedores,
-        p_rede: lpSelectedRedes
-    };
+        const filters = {
+            p_ano: null,
+            p_mes: null,
+            p_filial: [],
+            p_cidade: [],
+            p_supervisor: [],
+            p_vendedor: [],
+            p_fornecedor: [],
+            p_tipovenda: [],
+            p_rede: [],
+            p_categoria: []
+        };
 
-    const rpcFilters = {
-        p_filial: filters.p_filial.length ? filters.p_filial : null,
-        p_codcli: lpSelectedClient ? lpSelectedClient : null,
-        p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
-        p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
-        p_vendedor: filters.p_vendedor.length ? filters.p_vendedor : null,
-        p_rede: filters.p_rede.length ? filters.p_rede : null
-    };
+        const cacheKey = generateCacheKey('dashboard_filters', filters);
+        let filterData = null;
 
-    try {
-        const { data, error } = await supabase.rpc('get_loja_perfeita_data', rpcFilters);
+        try {
+            const cachedEntry = await getFromCache(cacheKey);
+            if (cachedEntry && cachedEntry.data) {
+                AppLog.log('Serving Innovations Filters from Cache');
+                filterData = cachedEntry.data;
+            }
+        } catch (e) { AppLog.warn('Cache error:', e); }
 
-        if (error) {
-            AppLog.error('Error fetching Loja Perfeita data:', error);
+        if (!filterData) {
+            const { data } = await supabase.rpc('get_dashboard_filters', filters);
+            filterData = data;
+            if (filterData) saveToCache(cacheKey, filterData);
+        }
+
+        if (!filterData) {
             window.hideDashboardLoading();
             return;
         }
 
-        renderLpKPIs(data.kpis);
-        renderLpTable(data.clients);
-
-    } catch (err) {
-        AppLog.error('Exception fetching Loja Perfeita data:', err);
-    } finally {
-        window.hideDashboardLoading();
-    }
-}
-
-function renderLpKPIs(kpis) {
-    if (!kpis) return;
-
-    const avgScoreEl = document.getElementById('lp-kpi-avg-score');
-    const totalAuditsEl = document.getElementById('lp-kpi-total-audits');
-    const perfStoresEl = document.getElementById('lp-kpi-perfect-stores');
-    const avgScoreCircle = document.getElementById('lp-avg-score-circle'); // Pode precisar do chart
-
-    if (avgScoreEl) avgScoreEl.textContent = formatNumber(kpis.avg_score, 1);
-    if (totalAuditsEl) totalAuditsEl.textContent = formatNumber(kpis.total_audits, 0);
-
-    if (perfStoresEl) {
-        let pct = kpis.total_audits > 0 ? (kpis.perfect_stores / kpis.total_audits) * 100 : 0;
-        perfStoresEl.textContent = pct.toFixed(1) + '%';
-        const sub = document.getElementById('lp-kpi-perfect-stores-sub');
-        if (sub) sub.textContent = formatNumber(kpis.perfect_stores, 0) + ' Auditorias';
-    }
-}
-
-window.prevLpPage = function() {
-    if (lpCurrentPage > 1) {
-        lpCurrentPage--;
-        renderLpTable();
-    }
-};
-
-window.nextLpPage = function() {
-    const totalPages = Math.ceil(lpTableData.length / lpRowsPerPage);
-    if (lpCurrentPage < totalPages) {
-        lpCurrentPage++;
-        renderLpTable();
-    }
-};
-
-function renderLpTable(clients) {
-    if (clients) {
-        lpTableData = clients;
-        lpCurrentPage = 1;
-    }
-
-    const tbody = document.getElementById('lp-table-body');
-    if (!tbody) return;
-
-    const totalRows = lpTableData.length;
-    const totalPages = Math.ceil(totalRows / lpRowsPerPage) || 1;
-
-    // Safety check for current page
-    if (lpCurrentPage > totalPages) lpCurrentPage = totalPages;
-    if (lpCurrentPage < 1) lpCurrentPage = 1;
-
-    const startIndex = (lpCurrentPage - 1) * lpRowsPerPage;
-    const endIndex = Math.min(startIndex + lpRowsPerPage, totalRows);
-
-    const paginatedData = lpTableData.slice(startIndex, endIndex);
-
-    tbody.innerHTML = paginatedData.map(c => {
-        const colorClass = c.score >= 80 ? 'text-green-400' : c.score >= 50 ? 'text-yellow-400' : 'text-red-400';
-        return `
-            <tr class="hover:bg-slate-700/30 transition-colors">
-                <td class="px-6 py-4 text-slate-400 text-xs">${escapeHtml(c.codcli)}</td>
-                <td class="px-6 py-4 font-bold text-slate-200">${escapeHtml(c.client_name)}</td>
-                <td class="px-6 py-4">
-                    <span class="font-bold text-white block">${escapeHtml(c.researcher)}</span>
-                </td>
-                <td class="px-6 py-4 text-slate-400">${escapeHtml(c.city || '--')}</td>
-                <td class="px-6 py-4 text-center font-bold ${colorClass} text-base">${escapeHtml(formatNumber(c.score, 1))}</td>
-            </tr>
-        `;
-    }).join('');
-
-    // Update Pagination UI
-    const pageInfoEl = document.getElementById('lp-page-info');
-    const prevBtn = document.getElementById('lp-prev-page');
-    const nextBtn = document.getElementById('lp-next-page');
-
-    if (pageInfoEl) {
-        if (totalRows === 0) {
-            pageInfoEl.textContent = '0 de 0';
-        } else {
-            pageInfoEl.textContent = `${startIndex + 1}-${endIndex} de ${totalRows} (Pág. ${lpCurrentPage}/${totalPages})`;
-        }
-    }
-
-    if (prevBtn) {
-        prevBtn.disabled = lpCurrentPage === 1 || totalRows === 0;
-        if (prevBtn.disabled) {
-            prevBtn.setAttribute('title', 'Primeira página');
-        } else {
-            prevBtn.removeAttribute('title');
-        }
-    }
-
-    if (nextBtn) {
-        nextBtn.disabled = lpCurrentPage === totalPages || totalRows === 0;
-        if (nextBtn.disabled) {
-            nextBtn.setAttribute('title', 'Última página');
-        } else {
-            nextBtn.removeAttribute('title');
-        }
-    }
-}
-
-
-async function renderInnovationsMonthView() {
-    if (!isInnovationsInitialized) {
-        await setupInnovationsFilters();
-    }
-    updateInnovationsMonthView();
-}
-
-async function renderLojaPerfeitaView() {
-    window.showDashboardLoading('loja-perfeita-view');
-    if (!isLojaPerfeitaInitialized) {
-        await setupInnovationsFilters();
-        await loadLojaPerfeitaFilters();
-        setupLpClientSearchAutocomplete();
-        isLojaPerfeitaInitialized = true;
-    }
-    updateLojaPerfeitaView();
-}
-
-window.clearAllFilters = async function(prefix) {
-    if (prefix === 'innovations') {
+        // Load Ano and Mes
         const anoSelect = document.getElementById('innovations-ano-filter');
         const mesSelect = document.getElementById('innovations-mes-filter');
 
         await fetchLastSalesDate();
         const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
 
-        if (anoSelect) {
-            // Check if currentYear is in options, if not default to 'todos'
+        if (anoSelect && filterData.anos) {
+            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+            anoSelect.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(ano => `<option value="${escapeHtml(ano)}">${escapeHtml(ano)}</option>`).join('');
+
+            // Initial filter values
             let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
             anoSelect.value = hasYear ? currentYear : 'todos';
-            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+            enhanceSelectToCustomDropdown(anoSelect);
+            anoSelect.addEventListener('change', handleInnovationsFilterChange);
         }
+
         if (mesSelect) {
+            const meses = MONTHS_PT;
+            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+            mesSelect.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
+
+            // Initial filter value
             mesSelect.value = currentMonth;
-            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        
-        innovationsSelectedSupervisors.length = 0;
-        innovationsSelectedVendedores.length = 0;
-        innovationsSelectedCidades.length = 0;
-        innovationsSelectedTiposVenda.length = 0;
-        innovationsSelectedRedes.length = 0;
-        innovationsSelectedFiliais.length = 0;
-        innovationsSelectedCategorias.length = 0;
-        
-        // Uncheck all custom select items visually
-        const wrappers = [
-            'innovations-supervisor-filter-dropdown', 'innovations-vendedor-filter-dropdown',
-            'innovations-cidade-filter-dropdown', 'innovations-tipovenda-filter-dropdown',
-            'innovations-rede-filter-dropdown', 'innovations-filial-filter-dropdown',
-            'innovations-categoria-filter-dropdown'
-        ];
-        lpSelectedCidades.length = 0;
-        const lpCodcliBtn = document.getElementById("lp-codcli-filter-btn");
-        if (lpCodcliBtn) {
-            lpCodcliBtn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
-            lpCodcliBtn.classList.remove("text-white", "font-medium", "bg-white/10");
-            lpCodcliBtn.classList.add("text-slate-300");
-        }
-        const lpCodcliDropdown = document.getElementById("lp-codcli-filter-dropdown");
-        if(lpCodcliDropdown) {
-            uncheckAllCheckboxes(lpCodcliDropdown);
+                mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+            enhanceSelectToCustomDropdown(mesSelect);
+            mesSelect.addEventListener('change', handleInnovationsFilterChange);
         }
 
-        wrappers.forEach(id => {
-            const dropdown = document.getElementById(id);
-            if (dropdown) {
-                uncheckAllCheckboxes(dropdown);
+        // Load Multi-Selects using standard CityMultiSelect pattern
+        window.setupMultiSelect(
+            innovationsSupervisorFilterBtn,
+            innovationsSupervisorFilterDropdown,
+            innovationsSupervisorFilterDropdown,
+            filterData.supervisors,
+            innovationsSelectedSupervisors,
+            () => {},
+            false,
+            null
+        );
+        window.setupMultiSelect(
+            innovationsVendedorFilterBtn,
+            innovationsVendedorFilterDropdown,
+            innovationsVendedorFilterList,
+            filterData.vendedores,
+            innovationsSelectedVendedores,
+            () => {},
+            false,
+            innovationsVendedorFilterSearch
+        );
+        window.setupMultiSelect(
+            innovationsCidadeFilterBtn,
+            innovationsCidadeFilterDropdown,
+            innovationsCidadeFilterList,
+            filterData.cidades,
+            innovationsSelectedCidades,
+            () => {},
+            false,
+            innovationsCidadeFilterSearch
+        );
+        window.setupMultiSelect(
+            innovationsTipovendaFilterBtn,
+            innovationsTipovendaFilterDropdown,
+            innovationsTipovendaFilterDropdown,
+            filterData.tipos_venda,
+            innovationsSelectedTiposVenda,
+            () => {},
+            false,
+            null
+        );
+
+        const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
+        window.setupMultiSelect(
+            innovationsRedeFilterBtn,
+            innovationsRedeFilterDropdown,
+            innovationsRedeFilterList,
+            redes,
+            innovationsSelectedRedes,
+            () => {},
+            false,
+            innovationsRedeFilterSearch
+        );
+
+        window.setupMultiSelect(
+            innovationsFilialFilterBtn,
+            innovationsFilialFilterDropdown,
+            innovationsFilialFilterDropdown,
+            filterData.filiais,
+            innovationsSelectedFiliais,
+            () => {},
+            false,
+            null
+        );
+
+        // Load Inovações Categories
+        try {
+            const { data: inovacData } = await supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true });
+            if (inovacData) {
+                const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
+                window.setupMultiSelect(
+                    innovationsCategoriaFilterBtn,
+                    innovationsCategoriaFilterDropdown,
+                    innovationsCategoriaFilterDropdown,
+                    uniqueInovacoes,
+                    innovationsSelectedCategorias,
+                    () => {},
+                    false,
+                    null
+                );
             }
-        });
+        } catch (e) {
+            AppLog.error("Error loading inovacoes categories", e);
+        }
 
-        // Clear visual tags if any (they are usually sibling or child elements of the dropdown container)
-        const tagContainers = [
-            'innovations-supervisor-filter-dropdown', 'innovations-vendedor-filter-dropdown',
-            'innovations-cidade-filter-dropdown', 'innovations-tipovenda-filter-dropdown',
-            'innovations-rede-filter-dropdown', 'innovations-filial-filter-dropdown',
-            'innovations-categoria-filter-dropdown'
-        ];
-        tagContainers.forEach(id => {
-            const dropdown = document.getElementById(id);
-            if (dropdown && dropdown.parentElement) {
-                const tagContainer = dropdown.parentElement.querySelector('.flex.flex-wrap.gap-1.items-center');
-                if (tagContainer) tagContainer.innerHTML = '';
+        window.hideDashboardLoading();
+
+
+        const lpSupervisorBtn = document.getElementById("lp-supervisor-filter-btn");
+        const lpSupervisorDropdown = document.getElementById("lp-supervisor-filter-dropdown");
+        if (lpSupervisorBtn) window.setupMultiSelect(
+            lpSupervisorBtn,
+            lpSupervisorDropdown,
+            lpSupervisorDropdown,
+            filterData.supervisors,
+            lpSelectedSupervisors,
+            () => {},
+            false,
+            null
+        );
+
+        const lpVendedorBtn = document.getElementById("lp-vendedor-filter-btn");
+        const lpVendedorDropdown = document.getElementById("lp-vendedor-filter-dropdown");
+        const lpVendedorList = document.getElementById("lp-vendedor-filter-list");
+        const lpVendedorSearch = document.getElementById("lp-vendedor-filter-search");
+        if (lpVendedorBtn) window.setupMultiSelect(
+            lpVendedorBtn,
+            lpVendedorDropdown,
+            lpVendedorList,
+            filterData.vendedores,
+            lpSelectedVendedores,
+            () => {},
+            false,
+            lpVendedorSearch
+        );
+
+        const lpRedeBtn = document.getElementById("lp-rede-filter-btn");
+        const lpRedeDropdown = document.getElementById("lp-rede-filter-dropdown");
+        const lpRedeList = document.getElementById("lp-rede-filter-list");
+        const lpRedeSearch = document.getElementById("lp-rede-filter-search");
+        const lpRedesArray = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
+        if (lpRedeBtn) window.setupMultiSelect(
+            lpRedeBtn,
+            lpRedeDropdown,
+            lpRedeList,
+            lpRedesArray,
+            lpSelectedRedes,
+            () => {},
+            false,
+            lpRedeSearch
+        );
+
+        const lpCidadeBtn = document.getElementById("lp-cidade-filter-btn");
+        const lpCidadeDropdown = document.getElementById("lp-cidade-filter-dropdown");
+        const lpCidadeList = document.getElementById("lp-cidade-filter-list");
+        const lpCidadeSearch = document.getElementById("lp-cidade-filter-search");
+        if (lpCidadeBtn) window.setupMultiSelect(
+            lpCidadeBtn,
+            lpCidadeDropdown,
+            lpCidadeList,
+            filterData.cidades,
+            lpSelectedCidades,
+            () => {},
+            false,
+            lpCidadeSearch
+        );
+
+        // Actually we need to call window.setupMultiSelect on wrappers if possible...
+        // wait, for Supervisor/Vendedor/Rede the wrappers are handled differently inside updateLojaPerfeitaFilters ?
+        // let's check how the others are initialized.
+
+
+        isInnovationsInitialized = true;
+    };
+
+    // Listen for view load
+    document.addEventListener('DOMContentLoaded', () => {
+        // Add setup on tab click or initially if those tabs are visible
+    });
+    // --- LOJA PERFEITA VIEW LOGIC ---
+    let lpSelectedClient = null; // To hold the specific selected client code
+    let lpTableData = []; // Store data for pagination
+    let lpCurrentPage = 1;
+    const lpRowsPerPage = 50;
+
+    let lpFilterDebounce;
+
+    async function loadLojaPerfeitaFilters(forceClear = false) {
+
+        const filters = {
+
+            p_ano: null,
+
+            p_mes: null,
+
+            p_filial: forceClear ? [] : lpSelectedFiliais,
+
+            p_cidade: forceClear ? [] : lpSelectedCidades,
+
+            p_supervisor: forceClear ? [] : lpSelectedSupervisors,
+
+            p_vendedor: forceClear ? [] : lpSelectedVendedores,
+
+            p_fornecedor: [],
+
+            p_tipovenda: [],
+
+            p_rede: forceClear ? [] : lpSelectedRedes,
+
+            p_categoria: []
+
+        };
+
+
+
+        try {
+
+            const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
+
+            if (error) {
+
+                AppLog.error('Error fetching Loja Perfeita filters:', error);
+
+                return;
+
             }
-        });
+
+            if (!filterData) return;
 
 
-        // Reset Search Inputs
-        const searchInputIds = [
-            'innovations-supervisor-filter-search', 'innovations-vendedor-filter-search',
-            'innovations-cidade-filter-search', 'innovations-rede-filter-search'
+
+            const lpFilialBtn = document.getElementById("lp-filial-filter-btn");
+            const lpFilialDropdown = document.getElementById("lp-filial-filter-dropdown");
+            if (lpFilialBtn) window.setupMultiSelect(
+                lpFilialBtn,
+                lpFilialDropdown,
+                lpFilialDropdown,
+                filterData.filiais,
+                lpSelectedFiliais,
+                () => {},
+                false,
+                null
+            );
+
+            const lpSupervisorBtn = document.getElementById("lp-supervisor-filter-btn");
+
+            const lpSupervisorDropdown = document.getElementById("lp-supervisor-filter-dropdown");
+
+            if (lpSupervisorBtn) window.setupMultiSelect(
+                lpSupervisorBtn,
+                lpSupervisorDropdown,
+                lpSupervisorDropdown,
+                filterData.supervisors,
+                lpSelectedSupervisors,
+                () => {},
+                false,
+                null
+            );
+
+
+
+            const lpVendedorBtn = document.getElementById("lp-vendedor-filter-btn");
+
+            const lpVendedorDropdown = document.getElementById("lp-vendedor-filter-dropdown");
+
+            const lpVendedorList = document.getElementById("lp-vendedor-filter-list");
+
+            const lpVendedorSearch = document.getElementById("lp-vendedor-filter-search");
+
+            if (lpVendedorBtn) window.setupMultiSelect(
+                lpVendedorBtn,
+                lpVendedorDropdown,
+                lpVendedorList,
+                filterData.vendedores,
+                lpSelectedVendedores,
+                () => {},
+                false,
+                lpVendedorSearch
+            );
+
+
+
+            const lpRedeBtn = document.getElementById("lp-rede-filter-btn");
+
+            const lpRedeDropdown = document.getElementById("lp-rede-filter-dropdown");
+
+            const lpRedeList = document.getElementById("lp-rede-filter-list");
+
+            const lpRedeSearch = document.getElementById("lp-rede-filter-search");
+
+            const lpRedesArray = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
+
+            if (lpRedeBtn) window.setupMultiSelect(
+                lpRedeBtn,
+                lpRedeDropdown,
+                lpRedeList,
+                lpRedesArray,
+                lpSelectedRedes,
+                () => {},
+                false,
+                lpRedeSearch
+            );
+
+
+
+            const lpCidadeBtn = document.getElementById("lp-cidade-filter-btn");
+
+            const lpCidadeDropdown = document.getElementById("lp-cidade-filter-dropdown");
+
+            const lpCidadeList = document.getElementById("lp-cidade-filter-list");
+
+            const lpCidadeSearch = document.getElementById("lp-cidade-filter-search");
+
+            if (lpCidadeBtn) window.setupMultiSelect(
+                lpCidadeBtn,
+                lpCidadeDropdown,
+                lpCidadeList,
+                filterData.cidades,
+                lpSelectedCidades,
+                () => {},
+                false,
+                lpCidadeSearch
+            );
+
+
+
+        } catch (err) {
+
+            AppLog.error('Exception fetching Loja Perfeita filters:', err);
+
+        }
+
+    }
+
+
+    const handleLojaPerfeitaFilterChange = () => {
+        clearTimeout(lpFilterDebounce);
+        lpFilterDebounce = setTimeout(() => {
+            loadLojaPerfeitaFilters();
+        }, 300);
+
+        updateLojaPerfeitaView();
+    };
+
+    document.addEventListener('click', (e) => {
+        const dropdowns = [
+            document.getElementById('lp-filial-filter-dropdown'),
+            document.getElementById('lp-supervisor-filter-dropdown'),
+            document.getElementById('lp-vendedor-filter-dropdown'),
+            document.getElementById('lp-rede-filter-dropdown'),
+            document.getElementById('lp-cidade-filter-dropdown')
         ];
-        searchInputIds.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = '';
-        });
-
-        // Reset button labels
         const btns = [
-            'innovations-supervisor-filter-btn', 'innovations-vendedor-filter-btn',
-            'innovations-cidade-filter-btn', 'innovations-tipovenda-filter-btn',
-            'innovations-rede-filter-btn', 'innovations-filial-filter-btn',
-            'innovations-categoria-filter-btn'
+            document.getElementById('lp-filial-filter-btn'),
+            document.getElementById('lp-supervisor-filter-btn'),
+            document.getElementById('lp-vendedor-filter-btn'),
+            document.getElementById('lp-rede-filter-btn'),
+            document.getElementById('lp-cidade-filter-btn')
         ];
-        btns.forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                const span = btn.querySelector('span');
-                if (span) {
-                    if (id.includes('vendedor') || id.includes('fornecedor') || id.includes('supervisor') || id.includes('tipovenda')) {
-                        span.textContent = 'Todos';
-                    } else {
-                        span.textContent = 'Todas';
+        let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
+
+        if (anyClosed) {
+            handleLojaPerfeitaFilterChange();
+        }
+    });
+
+
+    function setupLpClientSearchAutocomplete() {
+        const input = document.getElementById('lp-cliente-search-input');
+        const dropdown = document.getElementById('lp-cliente-search-dropdown');
+        const clearBtn = document.getElementById('lp-cliente-search-clear');
+
+        if (!input || !dropdown) return;
+
+        // ⚡ Bolt Optimization: Event delegation for client search autocomplete
+        dropdown.addEventListener('click', (e) => {
+            const option = e.target.closest('.lp-client-option');
+            if (!option) return;
+
+            const cod = option.getAttribute('data-cod');
+            const name = option.getAttribute('data-name');
+
+            input.value = `${cod} - ${name}`;
+            lpSelectedClient = cod;
+            dropdown.classList.add('hidden');
+            clearBtn.classList.remove('hidden');
+            updateLojaPerfeitaView(); // Trigger update with the new client
+        });
+
+        let debounceTimer;
+
+        input.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (val.length > 0) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+
+            clearTimeout(debounceTimer);
+
+            if (val.length < 3) {
+                dropdown.innerHTML = '';
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            debounceTimer = setTimeout(async () => {
+                try {
+                    // Use custom RPC to apply current filters to client search
+                    const searchParams = {
+                        p_search: val,
+                        p_filial: lpSelectedFiliais.length > 0 ? lpSelectedFiliais : null,
+                        p_cidade: lpSelectedCidades.length > 0 ? lpSelectedCidades : null,
+                        p_supervisor: lpSelectedSupervisors.length > 0 ? lpSelectedSupervisors : null,
+                        p_vendedor: lpSelectedVendedores.length > 0 ? lpSelectedVendedores : null,
+                        p_rede: lpSelectedRedes.length > 0 ? lpSelectedRedes : null
+                    };
+                    const { data, error } = await supabase.rpc('search_loja_perfeita_clients', searchParams);
+
+                    if (error) throw error;
+
+                    dropdown.innerHTML = '';
+
+                    if (!data || data.length === 0) {
+                        dropdown.innerHTML = '<div class="p-3 text-sm text-slate-400 text-center">Nenhum cliente encontrado</div>';
+                        dropdown.classList.remove('hidden');
+                        return;
+                    }
+
+                    // ⚡ Bolt Optimization: Use innerHTML and map for faster DOM rendering, combined with event delegation
+                    dropdown.innerHTML = data.map(item => `
+                        <div class="p-3 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/30 last:border-0 transition-colors lp-client-option"
+                             data-cod="${escapeHtml(item.codigo_cliente)}"
+                             data-name="${escapeHtml(item.razaosocial || item.nomecliente || 'S/ NOME')}">
+                            <div class="flex items-start justify-between pointer-events-none">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-xs font-bold text-slate-300 whitespace-nowrap">${escapeHtml(item.codigo_cliente)}</span>
+                                        <span class="text-sm font-bold text-white truncate">${escapeHtml(item.razaosocial || item.nomecliente || 'S/ NOME')}</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 text-xs text-slate-400">
+                                        <span class="truncate uppercase">${escapeHtml(item.cidade || 'N/I')}</span>
+                                        <span class="text-slate-600">•</span>
+                                        <span class="whitespace-nowrap">${escapeHtml(item.cnpj || 'N/I')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    dropdown.classList.remove('hidden');
+                } catch (err) {
+                    AppLog.error("Error fetching client suggestions:", err);
+                }
+            }, 400); // 400ms debounce
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            lpSelectedClient = null;
+            clearBtn.classList.add('hidden');
+            dropdown.classList.add('hidden');
+            updateLojaPerfeitaView();
+        });
+    }
+
+
+    async function updateLojaPerfeitaView() {
+        window.showDashboardLoading('loja-perfeita-view');
+
+        const filters = {
+            p_cidade: lpSelectedCidades,
+            p_filial: lpSelectedFiliais,
+            p_supervisor: lpSelectedSupervisors,
+            p_vendedor: lpSelectedVendedores,
+            p_rede: lpSelectedRedes
+        };
+
+        const rpcFilters = {
+            p_filial: filters.p_filial.length ? filters.p_filial : null,
+            p_codcli: lpSelectedClient ? lpSelectedClient : null,
+            p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
+            p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
+            p_vendedor: filters.p_vendedor.length ? filters.p_vendedor : null,
+            p_rede: filters.p_rede.length ? filters.p_rede : null
+        };
+
+        try {
+            const { data, error } = await supabase.rpc('get_loja_perfeita_data', rpcFilters);
+
+            if (error) {
+                AppLog.error('Error fetching Loja Perfeita data:', error);
+                window.hideDashboardLoading();
+                return;
+            }
+
+            renderLpKPIs(data.kpis);
+            renderLpTable(data.clients);
+
+        } catch (err) {
+            AppLog.error('Exception fetching Loja Perfeita data:', err);
+        } finally {
+            window.hideDashboardLoading();
+        }
+    }
+
+    function renderLpKPIs(kpis) {
+        if (!kpis) return;
+
+        const avgScoreEl = document.getElementById('lp-kpi-avg-score');
+        const totalAuditsEl = document.getElementById('lp-kpi-total-audits');
+        const perfStoresEl = document.getElementById('lp-kpi-perfect-stores');
+        const avgScoreCircle = document.getElementById('lp-avg-score-circle'); // Pode precisar do chart
+
+        if (avgScoreEl) avgScoreEl.textContent = formatNumber(kpis.avg_score, 1);
+        if (totalAuditsEl) totalAuditsEl.textContent = formatNumber(kpis.total_audits, 0);
+
+        if (perfStoresEl) {
+            let pct = kpis.total_audits > 0 ? (kpis.perfect_stores / kpis.total_audits) * 100 : 0;
+            perfStoresEl.textContent = pct.toFixed(1) + '%';
+            const sub = document.getElementById('lp-kpi-perfect-stores-sub');
+            if (sub) sub.textContent = formatNumber(kpis.perfect_stores, 0) + ' Auditorias';
+        }
+    }
+
+    window.prevLpPage = function() {
+        if (lpCurrentPage > 1) {
+            lpCurrentPage--;
+            renderLpTable();
+        }
+    };
+
+    window.nextLpPage = function() {
+        const totalPages = Math.ceil(lpTableData.length / lpRowsPerPage);
+        if (lpCurrentPage < totalPages) {
+            lpCurrentPage++;
+            renderLpTable();
+        }
+    };
+
+    function renderLpTable(clients) {
+        if (clients) {
+            lpTableData = clients;
+            lpCurrentPage = 1;
+        }
+
+        const tbody = document.getElementById('lp-table-body');
+        if (!tbody) return;
+
+        const totalRows = lpTableData.length;
+        const totalPages = Math.ceil(totalRows / lpRowsPerPage) || 1;
+
+        // Safety check for current page
+        if (lpCurrentPage > totalPages) lpCurrentPage = totalPages;
+        if (lpCurrentPage < 1) lpCurrentPage = 1;
+
+        const startIndex = (lpCurrentPage - 1) * lpRowsPerPage;
+        const endIndex = Math.min(startIndex + lpRowsPerPage, totalRows);
+
+        const paginatedData = lpTableData.slice(startIndex, endIndex);
+
+        tbody.innerHTML = paginatedData.map(c => {
+            const colorClass = c.score >= 80 ? 'text-green-400' : c.score >= 50 ? 'text-yellow-400' : 'text-red-400';
+            return `
+                <tr class="hover:bg-slate-700/30 transition-colors">
+                    <td class="px-6 py-4 text-slate-400 text-xs">${escapeHtml(c.codcli)}</td>
+                    <td class="px-6 py-4 font-bold text-slate-200">${escapeHtml(c.client_name)}</td>
+                    <td class="px-6 py-4">
+                        <span class="font-bold text-white block">${escapeHtml(c.researcher)}</span>
+                    </td>
+                    <td class="px-6 py-4 text-slate-400">${escapeHtml(c.city || '--')}</td>
+                    <td class="px-6 py-4 text-center font-bold ${colorClass} text-base">${escapeHtml(formatNumber(c.score, 1))}</td>
+                </tr>
+            `;
+        }).join('');
+
+        // Update Pagination UI
+        const pageInfoEl = document.getElementById('lp-page-info');
+        const prevBtn = document.getElementById('lp-prev-page');
+        const nextBtn = document.getElementById('lp-next-page');
+
+        if (pageInfoEl) {
+            if (totalRows === 0) {
+                pageInfoEl.textContent = '0 de 0';
+            } else {
+                pageInfoEl.textContent = `${startIndex + 1}-${endIndex} de ${totalRows} (Pág. ${lpCurrentPage}/${totalPages})`;
+            }
+        }
+
+        if (prevBtn) {
+            prevBtn.disabled = lpCurrentPage === 1 || totalRows === 0;
+            if (prevBtn.disabled) {
+                prevBtn.setAttribute('title', 'Primeira página');
+            } else {
+                prevBtn.removeAttribute('title');
+            }
+        }
+
+        if (nextBtn) {
+            nextBtn.disabled = lpCurrentPage === totalPages || totalRows === 0;
+            if (nextBtn.disabled) {
+                nextBtn.setAttribute('title', 'Última página');
+            } else {
+                nextBtn.removeAttribute('title');
+            }
+        }
+    }
+
+
+    async function renderInnovationsMonthView() {
+        if (!isInnovationsInitialized) {
+            await setupInnovationsFilters();
+        }
+        updateInnovationsMonthView();
+    }
+
+    async function renderLojaPerfeitaView() {
+        window.showDashboardLoading('loja-perfeita-view');
+        if (!isLojaPerfeitaInitialized) {
+            await setupInnovationsFilters();
+            await loadLojaPerfeitaFilters();
+            setupLpClientSearchAutocomplete();
+            isLojaPerfeitaInitialized = true;
+        }
+        updateLojaPerfeitaView();
+    }
+
+    window.clearAllFilters = async function(prefix) {
+        if (prefix === 'innovations') {
+            const anoSelect = document.getElementById('innovations-ano-filter');
+            const mesSelect = document.getElementById('innovations-mes-filter');
+
+            await fetchLastSalesDate();
+            const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+
+            if (anoSelect) {
+                // Check if currentYear is in options, if not default to 'todos'
+                let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
+                anoSelect.value = hasYear ? currentYear : 'todos';
+                anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            if (mesSelect) {
+                mesSelect.value = currentMonth;
+                mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            innovationsSelectedSupervisors.length = 0;
+            innovationsSelectedVendedores.length = 0;
+            innovationsSelectedCidades.length = 0;
+            innovationsSelectedTiposVenda.length = 0;
+            innovationsSelectedRedes.length = 0;
+            innovationsSelectedFiliais.length = 0;
+            innovationsSelectedCategorias.length = 0;
+
+            // Uncheck all custom select items visually
+            const wrappers = [
+                'innovations-supervisor-filter-dropdown', 'innovations-vendedor-filter-dropdown',
+                'innovations-cidade-filter-dropdown', 'innovations-tipovenda-filter-dropdown',
+                'innovations-rede-filter-dropdown', 'innovations-filial-filter-dropdown',
+                'innovations-categoria-filter-dropdown'
+            ];
+            lpSelectedCidades.length = 0;
+            const lpCodcliBtn = document.getElementById("lp-codcli-filter-btn");
+            if (lpCodcliBtn) {
+                lpCodcliBtn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
+                lpCodcliBtn.classList.remove("text-white", "font-medium", "bg-white/10");
+                lpCodcliBtn.classList.add("text-slate-300");
+            }
+            const lpCodcliDropdown = document.getElementById("lp-codcli-filter-dropdown");
+            if(lpCodcliDropdown) {
+                uncheckAllCheckboxes(lpCodcliDropdown);
+            }
+
+            wrappers.forEach(id => {
+                const dropdown = document.getElementById(id);
+                if (dropdown) {
+                    uncheckAllCheckboxes(dropdown);
+                }
+            });
+
+            // Clear visual tags if any (they are usually sibling or child elements of the dropdown container)
+            const tagContainers = [
+                'innovations-supervisor-filter-dropdown', 'innovations-vendedor-filter-dropdown',
+                'innovations-cidade-filter-dropdown', 'innovations-tipovenda-filter-dropdown',
+                'innovations-rede-filter-dropdown', 'innovations-filial-filter-dropdown',
+                'innovations-categoria-filter-dropdown'
+            ];
+            tagContainers.forEach(id => {
+                const dropdown = document.getElementById(id);
+                if (dropdown && dropdown.parentElement) {
+                    const tagContainer = dropdown.parentElement.querySelector('.flex.flex-wrap.gap-1.items-center');
+                    if (tagContainer) tagContainer.innerHTML = '';
+                }
+            });
+
+
+            // Reset Search Inputs
+            const searchInputIds = [
+                'innovations-supervisor-filter-search', 'innovations-vendedor-filter-search',
+                'innovations-cidade-filter-search', 'innovations-rede-filter-search'
+            ];
+            searchInputIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+
+            // Reset button labels
+            const btns = [
+                'innovations-supervisor-filter-btn', 'innovations-vendedor-filter-btn',
+                'innovations-cidade-filter-btn', 'innovations-tipovenda-filter-btn',
+                'innovations-rede-filter-btn', 'innovations-filial-filter-btn',
+                'innovations-categoria-filter-btn'
+            ];
+            btns.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    const span = btn.querySelector('span');
+                    if (span) {
+                        if (id.includes('vendedor') || id.includes('fornecedor') || id.includes('supervisor') || id.includes('tipovenda')) {
+                            span.textContent = 'Todos';
+                        } else {
+                            span.textContent = 'Todas';
+                        }
                     }
                 }
-            }
-        });
+            });
 
-        // We must re-setup the filters to ensure options are refreshed correctly.
-        // `isInnovationsInitialized` flag is true, so `setupInnovationsFilters` won't run its code.
-        // We will directly call the RPC to get fresh filters without any active selection.
+            // We must re-setup the filters to ensure options are refreshed correctly.
+            // `isInnovationsInitialized` flag is true, so `setupInnovationsFilters` won't run its code.
+            // We will directly call the RPC to get fresh filters without any active selection.
+            const filters = {
+                p_ano: null,
+                p_mes: null,
+                p_cidade: [], p_filial: [], p_supervisor: [], p_vendedor: [],
+                p_rede: [], p_tipovenda: [], p_categoria: []
+            };
+            supabase.rpc('get_dashboard_filters', filters).then(({data, error}) => {
+                if (data && !error) {
+                    // Re-bind the standard multi-selects to ensure the checkboxes are correctly refreshed from DB
+                    window.setupMultiSelect(
+                        document.getElementById('innovations-supervisor-filter-btn'),
+                        document.getElementById('innovations-supervisor-filter-dropdown'),
+                        document.getElementById('innovations-supervisor-filter-dropdown'),
+                        data.supervisors,
+                        innovationsSelectedSupervisors,
+                        () => {},
+                        false,
+                        null
+                    );
+                    window.setupMultiSelect(
+                        document.getElementById('innovations-vendedor-filter-btn'),
+                        document.getElementById('innovations-vendedor-filter-dropdown'),
+                        document.getElementById('innovations-vendedor-filter-list'),
+                        data.vendedores,
+                        innovationsSelectedVendedores,
+                        () => {},
+                        false,
+                        document.getElementById('innovations-vendedor-filter-search')
+                    );
+                    window.setupMultiSelect(
+                        document.getElementById('innovations-cidade-filter-btn'),
+                        document.getElementById('innovations-cidade-filter-dropdown'),
+                        document.getElementById('innovations-cidade-filter-list'),
+                        data.cidades,
+                        innovationsSelectedCidades,
+                        () => {},
+                        false,
+                        document.getElementById('innovations-cidade-filter-search')
+                    );
+                    window.setupMultiSelect(
+                        document.getElementById('innovations-tipovenda-filter-btn'),
+                        document.getElementById('innovations-tipovenda-filter-dropdown'),
+                        document.getElementById('innovations-tipovenda-filter-dropdown'),
+                        data.tipos_venda,
+                        innovationsSelectedTiposVenda,
+                        () => {},
+                        false,
+                        null
+                    );
+
+                    const redes = ['C/ REDE', 'S/ REDE', ...(data.redes || [])];
+                    window.setupMultiSelect(
+                        document.getElementById('innovations-rede-filter-btn'),
+                        document.getElementById('innovations-rede-filter-dropdown'),
+                        document.getElementById('innovations-rede-filter-list'),
+                        redes,
+                        innovationsSelectedRedes,
+                        () => {},
+                        false,
+                        document.getElementById('innovations-rede-filter-search')
+                    );
+
+                    window.setupMultiSelect(
+                        document.getElementById('innovations-filial-filter-btn'),
+                        document.getElementById('innovations-filial-filter-dropdown'),
+                        document.getElementById('innovations-filial-filter-dropdown'),
+                        data.filiais,
+                        innovationsSelectedFiliais,
+                        () => {},
+                        false,
+                        null
+                    );
+
+                    supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true }).then(({data: inovacData}) => {
+                        if (inovacData) {
+                            const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
+                            window.setupMultiSelect(
+                                document.getElementById('innovations-categoria-filter-btn'),
+                                document.getElementById('innovations-categoria-filter-dropdown'),
+                                document.getElementById('innovations-categoria-filter-dropdown'),
+                                uniqueInovacoes,
+                                innovationsSelectedCategorias,
+                                () => {},
+                                false,
+                                null
+                            );
+                        }
+                        updateInnovationsMonthView();
+                    });
+                } else {
+                    updateInnovationsMonthView();
+                }
+            });
+
+        } else if (prefix === 'estrelas') {
+            const anoSelect = document.getElementById('estrelas-ano-filter');
+            const mesSelect = document.getElementById('estrelas-mes-filter');
+
+            if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
+            const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+
+            if (anoSelect) {
+                let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
+                anoSelect.value = hasYear ? currentYear : 'todos';
+                anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            if (mesSelect) {
+                mesSelect.value = currentMonth;
+                mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            estrelasSelectedSupervisors.length = 0;
+            estrelasSelectedVendedores.length = 0;
+            estrelasSelectedCidades.length = 0;
+            estrelasSelectedTiposVenda.length = 0;
+            estrelasSelectedRedes.length = 0;
+            estrelasSelectedFiliais.length = 0;
+            estrelasSelectedCategorias.length = 0;
+            estrelasSelectedFornecedores.length = 0;
+
+            const wrappers = [
+                'estrelas-supervisor-filter-dropdown', 'estrelas-vendedor-filter-dropdown',
+                'estrelas-cidade-filter-dropdown', 'estrelas-tipovenda-filter-dropdown',
+                'estrelas-rede-filter-dropdown', 'estrelas-filial-filter-dropdown',
+                'estrelas-categoria-filter-dropdown', 'estrelas-fornecedor-filter-dropdown'
+            ];
+
+            wrappers.forEach(id => {
+                const dropdown = document.getElementById(id);
+                if (dropdown) {
+                    uncheckAllCheckboxes(dropdown);
+                }
+            });
+
+            const searchInputIds = [
+                'estrelas-supervisor-filter-search', 'estrelas-vendedor-filter-search',
+                'estrelas-cidade-filter-search', 'estrelas-rede-filter-search',
+                'estrelas-categoria-filter-search', 'estrelas-fornecedor-filter-search'
+            ];
+            searchInputIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+
+            const btns = [
+                'estrelas-supervisor-filter-btn', 'estrelas-vendedor-filter-btn',
+                'estrelas-cidade-filter-btn', 'estrelas-tipovenda-filter-btn',
+                'estrelas-rede-filter-btn', 'estrelas-filial-filter-btn',
+                'estrelas-categoria-filter-btn', 'estrelas-fornecedor-filter-btn'
+            ];
+            btns.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    const span = btn.querySelector('span');
+                    if (span) {
+                        if (id.includes('vendedor') || id.includes('fornecedor') || id.includes('supervisor') || id.includes('tipovenda')) {
+                            span.textContent = 'Todos';
+                        } else {
+                            span.textContent = 'Todas';
+                        }
+                    }
+                }
+            });
+
+            const filters = {
+                p_ano: null, p_mes: null, p_cidade: [], p_filial: [], p_supervisor: [],
+                p_vendedor: [], p_rede: [], p_tipovenda: [], p_categoria: [], p_fornecedor: []
+            };
+            supabase.rpc('get_dashboard_filters', filters).then(({data, error}) => {
+                if (data && !error && typeof window.setupMultiSelect === 'function') {
+                    window.setupMultiSelect(
+                        document.getElementById('estrelas-supervisor-filter-btn'),
+                        document.getElementById('estrelas-supervisor-filter-dropdown'),
+                        document.getElementById('estrelas-supervisor-filter-dropdown'),
+                        data.supervisors,
+                        estrelasSelectedSupervisors,
+                        () => {},
+                        false,
+                        null
+                    );
+                    window.setupMultiSelect(
+                        document.getElementById('estrelas-vendedor-filter-btn'),
+                        document.getElementById('estrelas-vendedor-filter-dropdown'),
+                        document.getElementById('estrelas-vendedor-filter-list'),
+                        data.vendedores,
+                        estrelasSelectedVendedores,
+                        () => {},
+                        false,
+                        document.getElementById('estrelas-vendedor-filter-search')
+                    );
+                    window.setupMultiSelect(
+                        document.getElementById('estrelas-fornecedor-filter-btn'),
+                        document.getElementById('estrelas-fornecedor-filter-dropdown'),
+                        document.getElementById('estrelas-fornecedor-filter-list'),
+                        data.fornecedores,
+                        estrelasSelectedFornecedores,
+                        () => {},
+                        true,
+                        document.getElementById('estrelas-fornecedor-filter-search')
+                    );
+                    window.setupMultiSelect(
+                        document.getElementById('estrelas-cidade-filter-btn'),
+                        document.getElementById('estrelas-cidade-filter-dropdown'),
+                        document.getElementById('estrelas-cidade-filter-list'),
+                        data.cidades,
+                        estrelasSelectedCidades,
+                        () => {},
+                        false,
+                        document.getElementById('estrelas-cidade-filter-search')
+                    );
+                    window.setupMultiSelect(
+                        document.getElementById('estrelas-tipovenda-filter-btn'),
+                        document.getElementById('estrelas-tipovenda-filter-dropdown'),
+                        document.getElementById('estrelas-tipovenda-filter-dropdown'),
+                        data.tipos_venda,
+                        estrelasSelectedTiposVenda,
+                        () => {},
+                        false,
+                        null
+                    );
+
+                    const redes = ['C/ REDE', 'S/ REDE', ...(data.redes || [])];
+                    window.setupMultiSelect(
+                        document.getElementById('estrelas-rede-filter-btn'),
+                        document.getElementById('estrelas-rede-filter-dropdown'),
+                        document.getElementById('estrelas-rede-filter-list'),
+                        redes,
+                        estrelasSelectedRedes,
+                        () => {},
+                        false,
+                        document.getElementById('estrelas-rede-filter-search')
+                    );
+
+                    window.setupMultiSelect(
+                        document.getElementById('estrelas-filial-filter-btn'),
+                        document.getElementById('estrelas-filial-filter-dropdown'),
+                        document.getElementById('estrelas-filial-filter-dropdown'),
+                        data.filiais,
+                        estrelasSelectedFiliais,
+                        () => {},
+                        false,
+                        null
+                    );
+                    window.setupMultiSelect(
+                        document.getElementById('estrelas-categoria-filter-btn'),
+                        document.getElementById('estrelas-categoria-filter-dropdown'),
+                        document.getElementById('estrelas-categoria-filter-list'),
+                        data.categorias || [],
+                        estrelasSelectedCategorias,
+                        () => {},
+                        false,
+                        document.getElementById('estrelas-categoria-filter-search')
+                    );
+
+                    updateEstrelasView();
+                } else {
+                    updateEstrelasView();
+                }
+            });
+
+        } else if (prefix === 'agenda') {
+            agendaSelectedSupervisors.length = 0;
+            agendaSelectedRotas.length = 0;
+
+            ['agenda-supervisor', 'agenda-rota'].forEach(pref => {
+                const btn = document.getElementById(`${pref}-filter-btn`);
+                if (btn) {
+                    const label = pref.includes('supervisor') ? 'Todos' : 'Todas';
+                    const span = btn.querySelector('span.truncate');
+                    if (span) {
+                        span.textContent = label;
+                    } else {
+                        btn.innerHTML = `<span class="truncate pr-2">${label}</span><svg aria-hidden="true" class="w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
+                    }
+                }
+                const dropdown = document.getElementById(`${pref}-filter-dropdown`);
+                if (dropdown) {
+                    uncheckAllCheckboxes(dropdown);
+                }
+            });
+
+            const anoSelect = document.getElementById('agenda-ano-filter');
+            const mesSelect = document.getElementById('agenda-mes-filter');
+
+            const currentYear = new Date().getFullYear().toString();
+            const currentMonth = (new Date().getMonth() + 1).toString();
+
+            if (anoSelect) {
+                let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
+                anoSelect.value = hasYear ? currentYear : 'todos';
+                anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            if (mesSelect) {
+                mesSelect.value = currentMonth;
+                mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            // No need to call updateAgendaView directly, as the dispatchEvent('change') on ano/mes selects will trigger handleAgendaFilterChange if they are attached, OR the user might not have them.
+            // Actually, let's call it just to be safe, but wait, if dispatchEvent triggers debounce, and we call it, it might trigger twice.
+            // Let's just call it directly to ensure update, as debounce will protect us.
+            handleAgendaFilterChange();
+        } else if (prefix === 'lp') {
+            lpSelectedCidades.length = 0;
+            lpSelectedFiliais.length = 0;
+            lpSelectedSupervisors.length = 0;
+            lpSelectedVendedores.length = 0;
+            lpSelectedRedes.length = 0;
+
+            ['lp-supervisor', 'lp-vendedor', 'lp-rede', 'lp-cidade'].forEach(prefix => {
+                const btn = document.getElementById(`${prefix}-filter-btn`);
+                if (btn) {
+                    btn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
+                    btn.classList.remove("text-white", "font-medium", "bg-white/10");
+                    btn.classList.add("text-slate-300");
+                }
+                const dropdown = document.getElementById(`${prefix}-filter-dropdown`);
+                if (dropdown) {
+                    uncheckAllCheckboxes(dropdown);
+                }
+
+                // clear search inputs if they exist
+                const searchInput = document.getElementById(`${prefix}-filter-search`);
+                if (searchInput) searchInput.value = '';
+            });
+
+            // Clear Client Autocomplete
+            lpSelectedClient = null;
+            const lpClientInput = document.getElementById('lp-cliente-search-input');
+            const lpClientClearBtn = document.getElementById('lp-cliente-search-clear');
+            const lpClientDropdown = document.getElementById('lp-cliente-search-dropdown');
+            if (lpClientInput) lpClientInput.value = '';
+            if (lpClientClearBtn) lpClientClearBtn.classList.add('hidden');
+            if (lpClientDropdown) lpClientDropdown.classList.add('hidden');
+            loadLojaPerfeitaFilters(true);
+
+            updateLojaPerfeitaView();
+        }
+    };
+
+    // --- ESTRELAS VIEW LOGIC ---
+
+    // DOM Elements
+    const estrelasSupervisorFilterBtn = document.getElementById('estrelas-supervisor-filter-btn');
+    const estrelasSupervisorFilterDropdown = document.getElementById('estrelas-supervisor-filter-dropdown');
+    const estrelasVendedorFilterBtn = document.getElementById('estrelas-vendedor-filter-btn');
+    const estrelasVendedorFilterDropdown = document.getElementById('estrelas-vendedor-filter-dropdown');
+    const estrelasVendedorFilterList = document.getElementById('estrelas-vendedor-filter-list');
+    const estrelasVendedorFilterSearch = document.getElementById('estrelas-vendedor-filter-search');
+    const estrelasFornecedorFilterBtn = document.getElementById('estrelas-fornecedor-filter-btn');
+    const estrelasFornecedorFilterDropdown = document.getElementById('estrelas-fornecedor-filter-dropdown');
+    const estrelasFornecedorFilterList = document.getElementById('estrelas-fornecedor-filter-list');
+    const estrelasFornecedorFilterSearch = document.getElementById('estrelas-fornecedor-filter-search');
+    const estrelasCidadeFilterBtn = document.getElementById('estrelas-cidade-filter-btn');
+    const estrelasCidadeFilterDropdown = document.getElementById('estrelas-cidade-filter-dropdown');
+    const estrelasCidadeFilterList = document.getElementById('estrelas-cidade-filter-list');
+    const estrelasCidadeFilterSearch = document.getElementById('estrelas-cidade-filter-search');
+    const estrelasTipovendaFilterBtn = document.getElementById('estrelas-tipovenda-filter-btn');
+    const estrelasTipovendaFilterDropdown = document.getElementById('estrelas-tipovenda-filter-dropdown');
+    const estrelasRedeFilterBtn = document.getElementById('estrelas-rede-filter-btn');
+    const estrelasRedeFilterDropdown = document.getElementById('estrelas-rede-filter-dropdown');
+    const estrelasRedeFilterList = document.getElementById('estrelas-rede-filter-list');
+    const estrelasRedeFilterSearch = document.getElementById('estrelas-rede-filter-search');
+    const estrelasFilialFilterBtn = document.getElementById('estrelas-filial-filter-btn');
+    const estrelasFilialFilterDropdown = document.getElementById('estrelas-filial-filter-dropdown');
+    const estrelasCategoriaFilterBtn = document.getElementById('estrelas-categoria-filter-btn');
+    const estrelasCategoriaFilterDropdown = document.getElementById('estrelas-categoria-filter-dropdown');
+    const estrelasCategoriaFilterList = document.getElementById('estrelas-categoria-filter-list');
+    const estrelasCategoriaFilterSearch = document.getElementById('estrelas-categoria-filter-search');
+
+
+    const handleEstrelasFilterChange = () => {
+        updateEstrelasView();
+    };
+
+    document.addEventListener('click', (e) => {
+        const dropdowns = [
+            estrelasSupervisorFilterDropdown, estrelasVendedorFilterDropdown,
+            estrelasCidadeFilterDropdown, estrelasTipovendaFilterDropdown,
+            estrelasRedeFilterDropdown, estrelasFilialFilterDropdown,
+            estrelasCategoriaFilterDropdown, estrelasFornecedorFilterDropdown
+        ];
+        const btns = [
+            estrelasSupervisorFilterBtn, estrelasVendedorFilterBtn,
+            estrelasCidadeFilterBtn, estrelasTipovendaFilterBtn,
+            estrelasRedeFilterBtn, estrelasFilialFilterBtn,
+            estrelasCategoriaFilterBtn, estrelasFornecedorFilterBtn
+        ];
+        let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
+
+        const view = document.getElementById('estrelas-view');
+        if (anyClosed && view && !view.classList.contains('hidden')) {
+            handleEstrelasFilterChange();
+        }
+    });
+
+
+    const setupEstrelasFilters = async () => {
+        if (isEstrelasInitialized) return;
+
+
+        const overlay = document.getElementById("dashboard-loading-overlay");
+
         const filters = {
             p_ano: null,
             p_mes: null,
-            p_cidade: [], p_filial: [], p_supervisor: [], p_vendedor: [],
-            p_rede: [], p_tipovenda: [], p_categoria: []
+            p_filial: [],
+            p_cidade: [],
+            p_supervisor: [],
+            p_vendedor: [],
+            p_fornecedor: [],
+            p_tipovenda: [],
+            p_rede: [],
+            p_categoria: []
         };
-        supabase.rpc('get_dashboard_filters', filters).then(({data, error}) => {
-            if (data && !error) {
-                // Re-bind the standard multi-selects to ensure the checkboxes are correctly refreshed from DB
-                setupCityMultiSelect(document.getElementById('innovations-supervisor-filter-btn'), document.getElementById('innovations-supervisor-filter-dropdown'), document.getElementById('innovations-supervisor-filter-dropdown'), data.supervisors, innovationsSelectedSupervisors);
-                setupCityMultiSelect(document.getElementById('innovations-vendedor-filter-btn'), document.getElementById('innovations-vendedor-filter-dropdown'), document.getElementById('innovations-vendedor-filter-list'), data.vendedores, innovationsSelectedVendedores, document.getElementById('innovations-vendedor-filter-search'));
-                setupCityMultiSelect(document.getElementById('innovations-cidade-filter-btn'), document.getElementById('innovations-cidade-filter-dropdown'), document.getElementById('innovations-cidade-filter-list'), data.cidades, innovationsSelectedCidades, document.getElementById('innovations-cidade-filter-search'));
-                setupCityMultiSelect(document.getElementById('innovations-tipovenda-filter-btn'), document.getElementById('innovations-tipovenda-filter-dropdown'), document.getElementById('innovations-tipovenda-filter-dropdown'), data.tipos_venda, innovationsSelectedTiposVenda);
-                
-                const redes = ['C/ REDE', 'S/ REDE', ...(data.redes || [])];
-                setupCityMultiSelect(document.getElementById('innovations-rede-filter-btn'), document.getElementById('innovations-rede-filter-dropdown'), document.getElementById('innovations-rede-filter-list'), redes, innovationsSelectedRedes, document.getElementById('innovations-rede-filter-search'));
-                
-                setupCityMultiSelect(document.getElementById('innovations-filial-filter-btn'), document.getElementById('innovations-filial-filter-dropdown'), document.getElementById('innovations-filial-filter-dropdown'), data.filiais, innovationsSelectedFiliais);
-                
-                supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true }).then(({data: inovacData}) => {
-                    if (inovacData) {
-                        const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
-                        setupCityMultiSelect(document.getElementById('innovations-categoria-filter-btn'), document.getElementById('innovations-categoria-filter-dropdown'), document.getElementById('innovations-categoria-filter-dropdown'), uniqueInovacoes, innovationsSelectedCategorias);
-                    }
-                    updateInnovationsMonthView();
-                });
-            } else {
-                updateInnovationsMonthView();
-            }
-        });
 
-    } else if (prefix === 'estrelas') {
+        let filterData = null;
+        try {
+            const { data } = await supabase.rpc('get_dashboard_filters', filters);
+            filterData = data;
+        } catch (e) {
+            AppLog.error(e);
+        }
+
+        if (!filterData) {
+            if (overlay) overlay.classList.add('hidden');
+            return;
+        }
+
+        // Load Ano and Mes
         const anoSelect = document.getElementById('estrelas-ano-filter');
         const mesSelect = document.getElementById('estrelas-mes-filter');
 
+        // We assume fetchLastSalesDate logic is available globally (it is in app.js)
         if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
         const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
 
-        if (anoSelect) {
+        if (anoSelect && filterData.anos) {
+            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+            anoSelect.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(ano => `<option value="${escapeHtml(ano)}">${escapeHtml(ano)}</option>`).join('');
+
             let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
             anoSelect.value = hasYear ? currentYear : 'todos';
-            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+            if(typeof window.enhanceSelectToCustomDropdown === 'function') window.enhanceSelectToCustomDropdown(anoSelect);
+            anoSelect.addEventListener('change', handleEstrelasFilterChange);
         }
+
         if (mesSelect) {
+            const meses = MONTHS_PT;
+            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+            mesSelect.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
+
             mesSelect.value = currentMonth;
             mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+            if(typeof window.enhanceSelectToCustomDropdown === 'function') window.enhanceSelectToCustomDropdown(mesSelect);
+            mesSelect.addEventListener('change', handleEstrelasFilterChange);
         }
 
-        estrelasSelectedSupervisors.length = 0;
-        estrelasSelectedVendedores.length = 0;
-        estrelasSelectedCidades.length = 0;
-        estrelasSelectedTiposVenda.length = 0;
-        estrelasSelectedRedes.length = 0;
-        estrelasSelectedFiliais.length = 0;
-        estrelasSelectedCategorias.length = 0;
-        estrelasSelectedFornecedores.length = 0;
+        if(typeof window.setupMultiSelect === 'function') {
+            window.setupMultiSelect(
+                estrelasSupervisorFilterBtn,
+                estrelasSupervisorFilterDropdown,
+                estrelasSupervisorFilterDropdown,
+                filterData.supervisors,
+                estrelasSelectedSupervisors,
+                () => {},
+                false,
+                null
+            );
+            window.setupMultiSelect(
+                estrelasVendedorFilterBtn,
+                estrelasVendedorFilterDropdown,
+                estrelasVendedorFilterList,
+                filterData.vendedores,
+                estrelasSelectedVendedores,
+                () => {},
+                false,
+                estrelasVendedorFilterSearch
+            );
+            window.setupMultiSelect(
+                estrelasFornecedorFilterBtn,
+                estrelasFornecedorFilterDropdown,
+                estrelasFornecedorFilterList,
+                filterData.fornecedores,
+                estrelasSelectedFornecedores,
+                () => {},
+                true,
+                estrelasFornecedorFilterSearch
+            );
+            window.setupMultiSelect(
+                estrelasCidadeFilterBtn,
+                estrelasCidadeFilterDropdown,
+                estrelasCidadeFilterList,
+                filterData.cidades,
+                estrelasSelectedCidades,
+                () => {},
+                false,
+                estrelasCidadeFilterSearch
+            );
+            window.setupMultiSelect(
+                estrelasTipovendaFilterBtn,
+                estrelasTipovendaFilterDropdown,
+                estrelasTipovendaFilterDropdown,
+                filterData.tipos_venda,
+                estrelasSelectedTiposVenda,
+                () => {},
+                false,
+                null
+            );
 
-        const wrappers = [
-            'estrelas-supervisor-filter-dropdown', 'estrelas-vendedor-filter-dropdown',
-            'estrelas-cidade-filter-dropdown', 'estrelas-tipovenda-filter-dropdown',
-            'estrelas-rede-filter-dropdown', 'estrelas-filial-filter-dropdown',
-            'estrelas-categoria-filter-dropdown', 'estrelas-fornecedor-filter-dropdown'
-        ];
+            const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
+            window.setupMultiSelect(
+                estrelasRedeFilterBtn,
+                estrelasRedeFilterDropdown,
+                estrelasRedeFilterList,
+                redes,
+                estrelasSelectedRedes,
+                () => {},
+                false,
+                estrelasRedeFilterSearch
+            );
 
-        wrappers.forEach(id => {
-            const dropdown = document.getElementById(id);
-            if (dropdown) {
-                uncheckAllCheckboxes(dropdown);
-            }
-        });
-
-        const searchInputIds = [
-            'estrelas-supervisor-filter-search', 'estrelas-vendedor-filter-search',
-            'estrelas-cidade-filter-search', 'estrelas-rede-filter-search',
-            'estrelas-categoria-filter-search', 'estrelas-fornecedor-filter-search'
-        ];
-        searchInputIds.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = '';
-        });
-
-        const btns = [
-            'estrelas-supervisor-filter-btn', 'estrelas-vendedor-filter-btn',
-            'estrelas-cidade-filter-btn', 'estrelas-tipovenda-filter-btn',
-            'estrelas-rede-filter-btn', 'estrelas-filial-filter-btn',
-            'estrelas-categoria-filter-btn', 'estrelas-fornecedor-filter-btn'
-        ];
-        btns.forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                const span = btn.querySelector('span');
-                if (span) {
-                    if (id.includes('vendedor') || id.includes('fornecedor') || id.includes('supervisor') || id.includes('tipovenda')) {
-                        span.textContent = 'Todos';
-                    } else {
-                        span.textContent = 'Todas';
-                    }
-                }
-            }
-        });
-
-        const filters = {
-            p_ano: null, p_mes: null, p_cidade: [], p_filial: [], p_supervisor: [],
-            p_vendedor: [], p_rede: [], p_tipovenda: [], p_categoria: [], p_fornecedor: []
-        };
-        supabase.rpc('get_dashboard_filters', filters).then(({data, error}) => {
-            if (data && !error && typeof setupCityMultiSelect === 'function') {
-                setupCityMultiSelect(document.getElementById('estrelas-supervisor-filter-btn'), document.getElementById('estrelas-supervisor-filter-dropdown'), document.getElementById('estrelas-supervisor-filter-dropdown'), data.supervisors, estrelasSelectedSupervisors);
-                setupCityMultiSelect(document.getElementById('estrelas-vendedor-filter-btn'), document.getElementById('estrelas-vendedor-filter-dropdown'), document.getElementById('estrelas-vendedor-filter-list'), data.vendedores, estrelasSelectedVendedores, document.getElementById('estrelas-vendedor-filter-search'));
-                setupCityMultiSelect(document.getElementById('estrelas-fornecedor-filter-btn'), document.getElementById('estrelas-fornecedor-filter-dropdown'), document.getElementById('estrelas-fornecedor-filter-list'), data.fornecedores, estrelasSelectedFornecedores, document.getElementById('estrelas-fornecedor-filter-search'), true);
-                setupCityMultiSelect(document.getElementById('estrelas-cidade-filter-btn'), document.getElementById('estrelas-cidade-filter-dropdown'), document.getElementById('estrelas-cidade-filter-list'), data.cidades, estrelasSelectedCidades, document.getElementById('estrelas-cidade-filter-search'));
-                setupCityMultiSelect(document.getElementById('estrelas-tipovenda-filter-btn'), document.getElementById('estrelas-tipovenda-filter-dropdown'), document.getElementById('estrelas-tipovenda-filter-dropdown'), data.tipos_venda, estrelasSelectedTiposVenda);
-
-                const redes = ['C/ REDE', 'S/ REDE', ...(data.redes || [])];
-                setupCityMultiSelect(document.getElementById('estrelas-rede-filter-btn'), document.getElementById('estrelas-rede-filter-dropdown'), document.getElementById('estrelas-rede-filter-list'), redes, estrelasSelectedRedes, document.getElementById('estrelas-rede-filter-search'));
-
-                setupCityMultiSelect(document.getElementById('estrelas-filial-filter-btn'), document.getElementById('estrelas-filial-filter-dropdown'), document.getElementById('estrelas-filial-filter-dropdown'), data.filiais, estrelasSelectedFiliais);
-                setupCityMultiSelect(document.getElementById('estrelas-categoria-filter-btn'), document.getElementById('estrelas-categoria-filter-dropdown'), document.getElementById('estrelas-categoria-filter-list'), data.categorias || [], estrelasSelectedCategorias, document.getElementById('estrelas-categoria-filter-search'));
-
-                updateEstrelasView();
-            } else {
-                updateEstrelasView();
-            }
-        });
-
-    } else if (prefix === 'agenda') {
-        agendaSelectedSupervisors.length = 0;
-        agendaSelectedRotas.length = 0;
-
-        ['agenda-supervisor', 'agenda-rota'].forEach(pref => {
-            const btn = document.getElementById(`${pref}-filter-btn`);
-            if (btn) {
-                const label = pref.includes('supervisor') ? 'Todos' : 'Todas';
-                const span = btn.querySelector('span.truncate');
-                if (span) {
-                    span.textContent = label;
-                } else {
-                    btn.innerHTML = `<span class="truncate pr-2">${label}</span><svg aria-hidden="true" class="w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
-                }
-            }
-            const dropdown = document.getElementById(`${pref}-filter-dropdown`);
-            if (dropdown) {
-                uncheckAllCheckboxes(dropdown);
-            }
-        });
-
-        const anoSelect = document.getElementById('agenda-ano-filter');
-        const mesSelect = document.getElementById('agenda-mes-filter');
-
-        const currentYear = new Date().getFullYear().toString();
-        const currentMonth = (new Date().getMonth() + 1).toString();
-
-        if (anoSelect) {
-            let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
-            anoSelect.value = hasYear ? currentYear : 'todos';
-            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            window.setupMultiSelect(
+                estrelasFilialFilterBtn,
+                estrelasFilialFilterDropdown,
+                estrelasFilialFilterDropdown,
+                filterData.filiais,
+                estrelasSelectedFiliais,
+                () => {},
+                false,
+                null
+            );
+            window.setupMultiSelect(
+                estrelasCategoriaFilterBtn,
+                estrelasCategoriaFilterDropdown,
+                estrelasCategoriaFilterList,
+                filterData.categorias || [],
+                estrelasSelectedCategorias,
+                () => {},
+                false,
+                estrelasCategoriaFilterSearch
+            );
         }
-        if (mesSelect) {
-            mesSelect.value = currentMonth;
-            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        
-        // No need to call updateAgendaView directly, as the dispatchEvent('change') on ano/mes selects will trigger handleAgendaFilterChange if they are attached, OR the user might not have them.
-        // Actually, let's call it just to be safe, but wait, if dispatchEvent triggers debounce, and we call it, it might trigger twice.
-        // Let's just call it directly to ensure update, as debounce will protect us.
-        handleAgendaFilterChange();
-    } else if (prefix === 'lp') {
-        lpSelectedCidades.length = 0;
-        lpSelectedFiliais.length = 0;
-        lpSelectedSupervisors.length = 0;
-        lpSelectedVendedores.length = 0;
-        lpSelectedRedes.length = 0;
-        
-        ['lp-supervisor', 'lp-vendedor', 'lp-rede', 'lp-cidade'].forEach(prefix => {
-            const btn = document.getElementById(`${prefix}-filter-btn`);
-            if (btn) {
-                btn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
-                btn.classList.remove("text-white", "font-medium", "bg-white/10");
-                btn.classList.add("text-slate-300");
-            }
-            const dropdown = document.getElementById(`${prefix}-filter-dropdown`);
-            if (dropdown) {
-                uncheckAllCheckboxes(dropdown);
-            }
 
-            // clear search inputs if they exist
-            const searchInput = document.getElementById(`${prefix}-filter-search`);
-            if (searchInput) searchInput.value = '';
-        });
-        
-        // Clear Client Autocomplete
-        lpSelectedClient = null;
-        const lpClientInput = document.getElementById('lp-cliente-search-input');
-        const lpClientClearBtn = document.getElementById('lp-cliente-search-clear');
-        const lpClientDropdown = document.getElementById('lp-cliente-search-dropdown');
-        if (lpClientInput) lpClientInput.value = '';
-        if (lpClientClearBtn) lpClientClearBtn.classList.add('hidden');
-        if (lpClientDropdown) lpClientDropdown.classList.add('hidden');
-        loadLojaPerfeitaFilters(true);
-        
-        updateLojaPerfeitaView();
-    }
-};
-
-// --- ESTRELAS VIEW LOGIC ---
-
-// DOM Elements
-const estrelasSupervisorFilterBtn = document.getElementById('estrelas-supervisor-filter-btn');
-const estrelasSupervisorFilterDropdown = document.getElementById('estrelas-supervisor-filter-dropdown');
-const estrelasVendedorFilterBtn = document.getElementById('estrelas-vendedor-filter-btn');
-const estrelasVendedorFilterDropdown = document.getElementById('estrelas-vendedor-filter-dropdown');
-const estrelasVendedorFilterList = document.getElementById('estrelas-vendedor-filter-list');
-const estrelasVendedorFilterSearch = document.getElementById('estrelas-vendedor-filter-search');
-const estrelasFornecedorFilterBtn = document.getElementById('estrelas-fornecedor-filter-btn');
-const estrelasFornecedorFilterDropdown = document.getElementById('estrelas-fornecedor-filter-dropdown');
-const estrelasFornecedorFilterList = document.getElementById('estrelas-fornecedor-filter-list');
-const estrelasFornecedorFilterSearch = document.getElementById('estrelas-fornecedor-filter-search');
-const estrelasCidadeFilterBtn = document.getElementById('estrelas-cidade-filter-btn');
-const estrelasCidadeFilterDropdown = document.getElementById('estrelas-cidade-filter-dropdown');
-const estrelasCidadeFilterList = document.getElementById('estrelas-cidade-filter-list');
-const estrelasCidadeFilterSearch = document.getElementById('estrelas-cidade-filter-search');
-const estrelasTipovendaFilterBtn = document.getElementById('estrelas-tipovenda-filter-btn');
-const estrelasTipovendaFilterDropdown = document.getElementById('estrelas-tipovenda-filter-dropdown');
-const estrelasRedeFilterBtn = document.getElementById('estrelas-rede-filter-btn');
-const estrelasRedeFilterDropdown = document.getElementById('estrelas-rede-filter-dropdown');
-const estrelasRedeFilterList = document.getElementById('estrelas-rede-filter-list');
-const estrelasRedeFilterSearch = document.getElementById('estrelas-rede-filter-search');
-const estrelasFilialFilterBtn = document.getElementById('estrelas-filial-filter-btn');
-const estrelasFilialFilterDropdown = document.getElementById('estrelas-filial-filter-dropdown');
-const estrelasCategoriaFilterBtn = document.getElementById('estrelas-categoria-filter-btn');
-const estrelasCategoriaFilterDropdown = document.getElementById('estrelas-categoria-filter-dropdown');
-const estrelasCategoriaFilterList = document.getElementById('estrelas-categoria-filter-list');
-const estrelasCategoriaFilterSearch = document.getElementById('estrelas-categoria-filter-search');
-
-
-const handleEstrelasFilterChange = () => {
-    updateEstrelasView();
-};
-
-document.addEventListener('click', (e) => {
-    const dropdowns = [
-        estrelasSupervisorFilterDropdown, estrelasVendedorFilterDropdown,
-        estrelasCidadeFilterDropdown, estrelasTipovendaFilterDropdown,
-        estrelasRedeFilterDropdown, estrelasFilialFilterDropdown,
-        estrelasCategoriaFilterDropdown, estrelasFornecedorFilterDropdown
-    ];
-    const btns = [
-        estrelasSupervisorFilterBtn, estrelasVendedorFilterBtn,
-        estrelasCidadeFilterBtn, estrelasTipovendaFilterBtn,
-        estrelasRedeFilterBtn, estrelasFilialFilterBtn,
-        estrelasCategoriaFilterBtn, estrelasFornecedorFilterBtn
-    ];
-    let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
-
-    const view = document.getElementById('estrelas-view');
-    if (anyClosed && view && !view.classList.contains('hidden')) {
-        handleEstrelasFilterChange();
-    }
-});
-
-
-const setupEstrelasFilters = async () => {
-    if (isEstrelasInitialized) return;
-
-
-    const overlay = document.getElementById("dashboard-loading-overlay");
-
-    const filters = {
-        p_ano: null,
-        p_mes: null,
-        p_filial: [],
-        p_cidade: [],
-        p_supervisor: [],
-        p_vendedor: [],
-        p_fornecedor: [],
-        p_tipovenda: [],
-        p_rede: [],
-        p_categoria: []
+        if (overlay) overlay.classList.add('hidden');
+        isEstrelasInitialized = true;
     };
 
-    let filterData = null;
-    try {
-        const { data } = await supabase.rpc('get_dashboard_filters', filters);
-        filterData = data;
-    } catch (e) {
-        AppLog.error(e);
+    async function renderEstrelasView() {
+        window.showDashboardLoading('estrelas-view');
+        if (!isEstrelasInitialized) {
+            await setupEstrelasFilters();
+        }
+        updateEstrelasView();
     }
 
-    if (!filterData) {
-        if (overlay) overlay.classList.add('hidden');
-        return;
+    async function updateEstrelasView() {
+        AppLog.log("Estrelas view updating...");
+
+        // Show overlay handled by showDashboardLoading
+        window.showDashboardLoading('estrelas-view');
+
+        try {
+            const filters = {
+                p_ano: document.getElementById('estrelas-ano-filter')?.value === 'todos' ? null : document.getElementById('estrelas-ano-filter')?.value,
+                p_mes: document.getElementById('estrelas-mes-filter')?.value === '' ? null : document.getElementById('estrelas-mes-filter')?.value,
+                p_filial: (estrelasSelectedFiliais && estrelasSelectedFiliais.length) ? estrelasSelectedFiliais : null,
+                p_cidade: (estrelasSelectedCidades && estrelasSelectedCidades.length) ? estrelasSelectedCidades : null,
+                p_supervisor: (estrelasSelectedSupervisors && estrelasSelectedSupervisors.length) ? estrelasSelectedSupervisors : null,
+                p_vendedor: (estrelasSelectedVendedores && estrelasSelectedVendedores.length) ? estrelasSelectedVendedores : null,
+                p_fornecedor: (estrelasSelectedFornecedores && estrelasSelectedFornecedores.length) ? estrelasSelectedFornecedores : null,
+                p_tipovenda: (estrelasSelectedTiposVenda && estrelasSelectedTiposVenda.length) ? estrelasSelectedTiposVenda : null,
+                p_rede: (estrelasSelectedRedes && estrelasSelectedRedes.length) ? estrelasSelectedRedes : null,
+                p_categoria: (estrelasSelectedCategorias && estrelasSelectedCategorias.length) ? estrelasSelectedCategorias : null
+            };
+
+            const { data, error } = await supabase.rpc('get_estrelas_kpis_data', filters);
+
+            if (error) throw error;
+
+            // --- Dynamic Metas ---
+            const metaSelloutSalty = data.sellout_salty_meta || 0;
+            const metaSelloutFoods = data.sellout_foods_meta || 0;
+            const metaSellout = metaSelloutSalty + metaSelloutFoods;
+
+            const metaPos = data.positivacao_meta || 0;
+            const metaAcel = data.aceleradores_meta || 0;
+
+            // Helper function to safely update DOM
+            const updateEl = (id, val, isStyle = false) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (isStyle) el.style.width = val;
+                    else el.textContent = val;
+                }
+            };
+
+            // Update UI
+            updateEl('sellout-meta-val', `${metaSellout.toFixed(2)} tons`);
+            updateEl('sellout-meta-salty-val', `${metaSelloutSalty.toFixed(2)} tons`);
+            updateEl('sellout-meta-foods-val', `${metaSelloutFoods.toFixed(2)} tons`);
+            updateEl('sellout-realizado-val', `${data.sellout_salty + data.sellout_foods < 0.01 ? '0.00' : (data.sellout_salty + data.sellout_foods).toFixed(2)} tons`);
+            updateEl('sellout-salty-val', `${data.sellout_salty < 0.01 ? '0.00' : data.sellout_salty.toFixed(2)} tons`);
+            updateEl('sellout-foods-val', `${data.sellout_foods < 0.01 ? '0.00' : data.sellout_foods.toFixed(2)} tons`);
+
+            // Remove old unused nodes safely if they exist in DOM (just in case they weren't removed from HTML)
+            updateEl('pontos-possiveis-sellout', data.base_clientes);
+            updateEl('pontos-parciais-sellout', 0);
+
+            // Store the details globally for the modal
+            estrelasDetailedData = data.detalhes || [];
+            estrelasQtdMarcas = data.aceleradores_qtd_marcas || 0;
+
+            updateEl('pos-meta-val', `${metaPos} PDV(s)`);
+            updateEl('pos-realizado-salty-val', `${data.positivacao_salty} PDV(s)`);
+            updateEl('pos-realizado-foods-val', `${data.positivacao_foods} PDV(s)`);
+            updateEl('pontos-possiveis-pos', data.base_clientes);
+
+            updateEl('acel-meta-val', metaAcel);
+            updateEl('aceleradores-realizado-val', data.aceleradores_realizado);
+            updateEl('aceleradores-parcial-val', data.aceleradores_parcial);
+            updateEl('pontos-possiveis-acel', data.base_clientes);
+
+            // Progress Bars
+            let pctPos = data.base_clientes > 0 ? (data.positivacao_salty / data.base_clientes) * 100 : 0;
+            let pctAcel = data.base_clientes > 0 ? (data.aceleradores_realizado / data.base_clientes) * 100 : 0;
+
+            let realizedSellout = data.sellout_salty + data.sellout_foods;
+            let pctSellout = metaSellout > 0 ? (realizedSellout / metaSellout) * 100 : (realizedSellout > 0 ? 100 : 0);
+
+            updateEl('sellout-pdb-bar', `${Math.min(pctSellout, 100).toFixed(0)}%`, true);
+            updateEl('sellout-pdb-pct', `${pctSellout.toFixed(0)}%`);
+
+            updateEl('pos-salty-bar', `${Math.min(pctPos, 100).toFixed(0)}%`, true);
+            updateEl('pos-salty-pct', `${pctPos.toFixed(0)}%`);
+
+            updateEl('acel-batatas-bar', `${Math.min(pctAcel, 100).toFixed(0)}%`, true);
+            updateEl('acel-batatas-pct', `${pctAcel.toFixed(0)}%`);
+
+        } catch (err) {
+            AppLog.error("Erro ao carregar dados de KPIs Estrelas:", err);
+            // Optionally show a toast error
+        } finally {
+            window.hideDashboardLoading();
+        }
     }
-
-    // Load Ano and Mes
-    const anoSelect = document.getElementById('estrelas-ano-filter');
-    const mesSelect = document.getElementById('estrelas-mes-filter');
-
-    // We assume fetchLastSalesDate logic is available globally (it is in app.js)
-    if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
-    const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
-
-    if (anoSelect && filterData.anos) {
-        // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-        anoSelect.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(ano => `<option value="${escapeHtml(ano)}">${escapeHtml(ano)}</option>`).join('');
-
-        let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
-        anoSelect.value = hasYear ? currentYear : 'todos';
-
-        if(typeof window.enhanceSelectToCustomDropdown === 'function') window.enhanceSelectToCustomDropdown(anoSelect);
-        anoSelect.addEventListener('change', handleEstrelasFilterChange);
-    }
-
-    if (mesSelect) {
-        const meses = MONTHS_PT;
-        // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-        mesSelect.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
-
-        mesSelect.value = currentMonth;
-        mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
-
-        if(typeof window.enhanceSelectToCustomDropdown === 'function') window.enhanceSelectToCustomDropdown(mesSelect);
-        mesSelect.addEventListener('change', handleEstrelasFilterChange);
-    }
-
-    if(typeof setupCityMultiSelect === 'function') {
-        setupCityMultiSelect(estrelasSupervisorFilterBtn, estrelasSupervisorFilterDropdown, estrelasSupervisorFilterDropdown, filterData.supervisors, estrelasSelectedSupervisors);
-        setupCityMultiSelect(estrelasVendedorFilterBtn, estrelasVendedorFilterDropdown, estrelasVendedorFilterList, filterData.vendedores, estrelasSelectedVendedores, estrelasVendedorFilterSearch);
-        setupCityMultiSelect(estrelasFornecedorFilterBtn, estrelasFornecedorFilterDropdown, estrelasFornecedorFilterList, filterData.fornecedores, estrelasSelectedFornecedores, estrelasFornecedorFilterSearch, true);
-        setupCityMultiSelect(estrelasCidadeFilterBtn, estrelasCidadeFilterDropdown, estrelasCidadeFilterList, filterData.cidades, estrelasSelectedCidades, estrelasCidadeFilterSearch);
-        setupCityMultiSelect(estrelasTipovendaFilterBtn, estrelasTipovendaFilterDropdown, estrelasTipovendaFilterDropdown, filterData.tipos_venda, estrelasSelectedTiposVenda);
-
-        const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-        setupCityMultiSelect(estrelasRedeFilterBtn, estrelasRedeFilterDropdown, estrelasRedeFilterList, redes, estrelasSelectedRedes, estrelasRedeFilterSearch);
-
-        setupCityMultiSelect(estrelasFilialFilterBtn, estrelasFilialFilterDropdown, estrelasFilialFilterDropdown, filterData.filiais, estrelasSelectedFiliais);
-        setupCityMultiSelect(estrelasCategoriaFilterBtn, estrelasCategoriaFilterDropdown, estrelasCategoriaFilterList, filterData.categorias || [], estrelasSelectedCategorias, estrelasCategoriaFilterSearch);
-    }
-
-    if (overlay) overlay.classList.add('hidden');
-    isEstrelasInitialized = true;
-};
-
-async function renderEstrelasView() {
-    window.showDashboardLoading('estrelas-view');
-    if (!isEstrelasInitialized) {
-        await setupEstrelasFilters();
-    }
-    updateEstrelasView();
-}
-
-async function updateEstrelasView() {
-    AppLog.log("Estrelas view updating...");
-    
-    // Show overlay handled by showDashboardLoading
-    window.showDashboardLoading('estrelas-view');
-
-    try {
-        const filters = {
-            p_ano: document.getElementById('estrelas-ano-filter')?.value === 'todos' ? null : document.getElementById('estrelas-ano-filter')?.value,
-            p_mes: document.getElementById('estrelas-mes-filter')?.value === '' ? null : document.getElementById('estrelas-mes-filter')?.value,
-            p_filial: (estrelasSelectedFiliais && estrelasSelectedFiliais.length) ? estrelasSelectedFiliais : null,
-            p_cidade: (estrelasSelectedCidades && estrelasSelectedCidades.length) ? estrelasSelectedCidades : null,
-            p_supervisor: (estrelasSelectedSupervisors && estrelasSelectedSupervisors.length) ? estrelasSelectedSupervisors : null,
-            p_vendedor: (estrelasSelectedVendedores && estrelasSelectedVendedores.length) ? estrelasSelectedVendedores : null,
-            p_fornecedor: (estrelasSelectedFornecedores && estrelasSelectedFornecedores.length) ? estrelasSelectedFornecedores : null,
-            p_tipovenda: (estrelasSelectedTiposVenda && estrelasSelectedTiposVenda.length) ? estrelasSelectedTiposVenda : null,
-            p_rede: (estrelasSelectedRedes && estrelasSelectedRedes.length) ? estrelasSelectedRedes : null,
-            p_categoria: (estrelasSelectedCategorias && estrelasSelectedCategorias.length) ? estrelasSelectedCategorias : null
-        };
-
-        const { data, error } = await supabase.rpc('get_estrelas_kpis_data', filters);
-
-        if (error) throw error;
-
-        // --- Dynamic Metas ---
-        const metaSelloutSalty = data.sellout_salty_meta || 0;
-        const metaSelloutFoods = data.sellout_foods_meta || 0;
-        const metaSellout = metaSelloutSalty + metaSelloutFoods;
-        
-        const metaPos = data.positivacao_meta || 0;
-        const metaAcel = data.aceleradores_meta || 0;
-
-        // Helper function to safely update DOM
-        const updateEl = (id, val, isStyle = false) => {
-            const el = document.getElementById(id);
-            if (el) {
-                if (isStyle) el.style.width = val;
-                else el.textContent = val;
-            }
-        };
-
-        // Update UI
-        updateEl('sellout-meta-val', `${metaSellout.toFixed(2)} tons`);
-        updateEl('sellout-meta-salty-val', `${metaSelloutSalty.toFixed(2)} tons`);
-        updateEl('sellout-meta-foods-val', `${metaSelloutFoods.toFixed(2)} tons`);
-        updateEl('sellout-realizado-val', `${data.sellout_salty + data.sellout_foods < 0.01 ? '0.00' : (data.sellout_salty + data.sellout_foods).toFixed(2)} tons`);
-        updateEl('sellout-salty-val', `${data.sellout_salty < 0.01 ? '0.00' : data.sellout_salty.toFixed(2)} tons`);
-        updateEl('sellout-foods-val', `${data.sellout_foods < 0.01 ? '0.00' : data.sellout_foods.toFixed(2)} tons`);
-        
-        // Remove old unused nodes safely if they exist in DOM (just in case they weren't removed from HTML)
-        updateEl('pontos-possiveis-sellout', data.base_clientes);
-        updateEl('pontos-parciais-sellout', 0);
-
-        // Store the details globally for the modal
-        estrelasDetailedData = data.detalhes || [];
-        estrelasQtdMarcas = data.aceleradores_qtd_marcas || 0;
-
-        updateEl('pos-meta-val', `${metaPos} PDV(s)`);
-        updateEl('pos-realizado-salty-val', `${data.positivacao_salty} PDV(s)`);
-        updateEl('pos-realizado-foods-val', `${data.positivacao_foods} PDV(s)`);
-        updateEl('pontos-possiveis-pos', data.base_clientes);
-
-        updateEl('acel-meta-val', metaAcel);
-        updateEl('aceleradores-realizado-val', data.aceleradores_realizado);
-        updateEl('aceleradores-parcial-val', data.aceleradores_parcial);
-        updateEl('pontos-possiveis-acel', data.base_clientes);
-
-        // Progress Bars
-        let pctPos = data.base_clientes > 0 ? (data.positivacao_salty / data.base_clientes) * 100 : 0;
-        let pctAcel = data.base_clientes > 0 ? (data.aceleradores_realizado / data.base_clientes) * 100 : 0;
-        
-        let realizedSellout = data.sellout_salty + data.sellout_foods;
-        let pctSellout = metaSellout > 0 ? (realizedSellout / metaSellout) * 100 : (realizedSellout > 0 ? 100 : 0);
-
-        updateEl('sellout-pdb-bar', `${Math.min(pctSellout, 100).toFixed(0)}%`, true);
-        updateEl('sellout-pdb-pct', `${pctSellout.toFixed(0)}%`);
-
-        updateEl('pos-salty-bar', `${Math.min(pctPos, 100).toFixed(0)}%`, true);
-        updateEl('pos-salty-pct', `${pctPos.toFixed(0)}%`);
-
-        updateEl('acel-batatas-bar', `${Math.min(pctAcel, 100).toFixed(0)}%`, true);
-        updateEl('acel-batatas-pct', `${pctAcel.toFixed(0)}%`);
-
-    } catch (err) {
-        AppLog.error("Erro ao carregar dados de KPIs Estrelas:", err);
-        // Optionally show a toast error
-    } finally {
-        window.hideDashboardLoading();
-    }
-}
-
 });
 async function loadFrequencyTable(filters) {
     const tableBody = document.getElementById('frequency-table-body');
@@ -8251,18 +8953,10 @@ const loadAgendaFilters = async () => {
         const years = [...new Set(routeData.map(r => r.data_rota ? r.data_rota.substring(0,4) : null).filter(Boolean))].sort().reverse();
         const anoSelect = document.getElementById('agenda-ano-filter');
         if (anoSelect) {
-            anoSelect.innerHTML = '<option value="todos" class="bg-slate-800 text-slate-200">Todos</option>';
-            years.forEach(y => {
-                const opt = document.createElement('option');
-                opt.value = y;
-                opt.textContent = y;
-                opt.className = 'bg-slate-800 text-slate-200';
-                // Set default to current year if exists
-                if (y === new Date().getFullYear().toString()) {
-                    opt.selected = true;
-                }
-                anoSelect.appendChild(opt);
-            });
+            const currentYearStr = new Date().getFullYear().toString();
+            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
+            anoSelect.innerHTML = '<option value="todos" class="bg-slate-800 text-slate-200">Todos</option>' +
+                years.map(y => `<option value="${escapeHtml(y)}" class="bg-slate-800 text-slate-200" ${y === currentYearStr ? 'selected' : ''}>${escapeHtml(y)}</option>`).join('');
             if(typeof window.enhanceSelectToCustomDropdown === 'function') window.enhanceSelectToCustomDropdown(anoSelect);
             anoSelect.addEventListener('change', handleAgendaFilterChange);
         }
