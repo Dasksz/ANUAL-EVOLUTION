@@ -33,3 +33,7 @@
 ## 2026/04/27 : (Tidy) Centralize Loja Perfeita KPI logic **Aprendizado:** Alteração no cálculo do KPI Loja Perfeita para focar em clientes únicos em vez de total de auditorias. **Ação:** Atualizado full_system_v1.sql
 ## 2026/04/27 : (Tidy) Centralize migration scripts **Aprendizado:** Arquivo de migração isolado criado. **Ação:** Adicionado sql/update_loja_perfeita_kpi.sql
 ## 2024/05/23 : (Tidy) Fix Loja Perfeita KPIs and filters **Aprendizado:** As vezes bugs complexos em cascata, como a de dropdowns sumindo e filtros ignorados, têm relação com hardcoded defaults no client ou variáveis referenciando queries erradas. **Ação:** Consertada lógica de clickaway e mapeamento de filtro de filial no app.js e get_loja_perfeita_data do supabase.
+
+## 2024-05-28 : (Remoção de Helpers MultiSelect Redundantes)
+**Aprendizado:** Haviam funções wrapper (como `setupCityMultiSelect` e `setupBranchMultiSelect`) que simplesmente chamavam `window.setupMultiSelect` sem adicionar nenhum comportamento útil. Isso apenas aumentava a pilha de chamadas e duplicava a declaração do mesmo fluxo lógico em `src/js/app.js`.
+**Ação:** Removidos `setupCityMultiSelect` e `setupBranchMultiSelect` e substituídos diretamente por chamadas a `window.setupMultiSelect`, que agora centraliza ainda mais a lógica e melhora a legibilidade ao remover abstrações desnecessárias.
