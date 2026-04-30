@@ -3220,6 +3220,32 @@ let estrelasSelectedCategorias = [];
         }
     };
         
+        // ⚡ Bolt Optimization: Attach event listener to container once (Event Delegation)
+        // to avoid O(N) DOM queries and listener overhead on every render.
+        container.onclick = (e) => {
+            const div = e.target.closest('.filter-item-row');
+            if (!div) return;
+            e.stopPropagation();
+            const checkbox = div.querySelector('input');
+            if (!checkbox) return;
+
+            if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
+            const val = checkbox.value;
+
+            if (checkbox.checked) {
+                if (!selectedArray.includes(val)) {
+                    selectedArray.push(val);
+                }
+            } else {
+                const idx = selectedArray.indexOf(val);
+                if (idx > -1) {
+                    selectedArray.splice(idx, 1);
+                }
+            }
+            updateBtnLabel();
+            if (labelCallback) labelCallback();
+        };
+
         let debounceTimer;
         const renderItems = (filterText = '') => {
             container.innerHTML = '';
@@ -3262,28 +3288,8 @@ let estrelasSelectedCategorias = [];
                 `;
             }).join('');
 
-            // Attach event listeners after rendering
-            container.querySelectorAll('.filter-item-row').forEach(div => {
-                div.onclick = (e) => {
-                    e.stopPropagation();
-                    const checkbox = div.querySelector('input');
-                    if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
-                    const val = checkbox.value;
-
-                    if (checkbox.checked) {
-                        if (!selectedArray.includes(val)) {
-                            selectedArray.push(val);
-                        }
-                    } else {
-                        const idx = selectedArray.indexOf(val);
-                        if (idx > -1) {
-                            selectedArray.splice(idx, 1);
-                        }
-                    }
-                    updateBtnLabel();
-                    if (labelCallback) labelCallback();
-                };
-            });
+            // ⚡ Bolt Optimization: Use event delegation instead of attaching N listeners inside the loop
+            // Event delegation is set up once outside renderItems
 
             if (filteredItems.length > MAX_ITEMS) {
                 const limitMsg = document.createElement('div');
@@ -3361,6 +3367,45 @@ let estrelasSelectedCategorias = [];
         selectElement.parentNode.insertBefore(btn, selectElement.nextSibling);
         selectElement.parentNode.insertBefore(dropdown, btn.nextSibling);
 
+        // ⚡ Bolt Optimization: Attach event listener to container once (Event Delegation)
+        dropdown.addEventListener('click', (e) => {
+            const itemDiv = e.target.closest('.custom-dropdown-item');
+            if (!itemDiv) return;
+            e.stopPropagation();
+
+            const val = itemDiv.getAttribute('data-value');
+            const opt = Array.from(selectElement.options).find(o => o.value === val);
+
+            if (opt) {
+                selectElement.value = opt.value;
+                span.textContent = opt.text;
+                btn.setAttribute('title', span.textContent);
+            }
+
+            // Update visual state of all items
+            dropdown.querySelectorAll('.custom-dropdown-item').forEach(child => {
+                const cb = child.querySelector('input');
+                if (cb) cb.checked = false;
+                const lbl = child.querySelector('label');
+                if (lbl) {
+                    lbl.classList.remove('text-orange-500', 'font-bold');
+                    lbl.classList.add('text-slate-200');
+                }
+            });
+
+            // Check current
+            const myCb = itemDiv.querySelector('input');
+            if (myCb) myCb.checked = true;
+            const myLbl = itemDiv.querySelector('label');
+            if (myLbl) {
+                myLbl.classList.remove('text-slate-200');
+                myLbl.classList.add('text-orange-500', 'font-bold');
+            }
+
+            selectElement.dispatchEvent(new Event('change'));
+            dropdown.classList.add('hidden');
+        });
+
         const renderOptions = () => {
             // 🧹 Tidy Optimization: Batch DOM creation for options
             dropdown.innerHTML = Array.from(selectElement.options).map(opt => {
@@ -3374,40 +3419,7 @@ let estrelasSelectedCategorias = [];
                 `;
             }).join('');
 
-            // Attach event listeners
-            dropdown.querySelectorAll('.custom-dropdown-item').forEach(itemDiv => {
-                itemDiv.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const val = itemDiv.getAttribute('data-value');
-                    const opt = Array.from(selectElement.options).find(o => o.value === val);
-
-                    if (opt) {
-                        selectElement.value = opt.value;
-                        span.textContent = opt.text;
-                        btn.setAttribute('title', span.textContent);
-                    }
-
-                    // Update visual state of all items
-                    dropdown.querySelectorAll('.custom-dropdown-item').forEach(child => {
-                        const cb = child.querySelector('input');
-                        if (cb) cb.checked = false;
-                        const lbl = child.querySelector('label');
-                        if (lbl) {
-                            lbl.classList.remove('text-orange-500', 'font-bold');
-                            lbl.classList.add('text-slate-200');
-                        }
-                    });
-
-                    // Check the clicked one
-                    const clickedCb = itemDiv.querySelector('input');
-                    if (clickedCb) clickedCb.checked = true;
-                    const clickedLbl = itemDiv.querySelector('label');
-                    if (clickedLbl) {
-                        clickedLbl.classList.remove('text-slate-200');
-                        clickedLbl.classList.add('text-orange-500', 'font-bold');
-                    }
-                });
-            });
+            // ⚡ Bolt Optimization: Event listeners are now attached via Event Delegation on the container
 
             // Update span text just in case value changed
             const selectedOpt = selectElement.options[selectElement.selectedIndex];
@@ -4763,6 +4775,41 @@ let estrelasSelectedCategorias = [];
     };
         
         const selectedSet = new Set(selectedArray);
+
+        // ⚡ Bolt Optimization: Attach event listener to container once (Event Delegation)
+        container.onclick = (e) => {
+            const div = e.target.closest('.filter-item-row');
+            if (!div) return;
+            e.stopPropagation();
+            const checkbox = div.querySelector('input');
+            if (!checkbox) return;
+            const val = div.getAttribute('data-value');
+
+            // Toggle logic
+            if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
+
+            if (checkbox.checked) {
+                if (!selectedSet.has(val)) {
+                    selectedSet.add(val);
+                    selectedArray.push(val);
+                    // Enforce max 2: remove first added
+                    if (selectedArray.length > 2) {
+                        const removed = selectedArray.shift();
+                        selectedSet.delete(removed);
+                    }
+                }
+            } else {
+                if (selectedSet.has(val)) {
+                    selectedSet.delete(val);
+                    const idx = selectedArray.indexOf(val);
+                    if (idx > -1) selectedArray.splice(idx, 1);
+                }
+            }
+
+            renderItems(); // Re-render to update checks visually (e.g. if one was auto-removed)
+            updateBtnLabel();
+        };
+
         const renderItems = () => {
             // ⚡ Bolt Optimization: Use template strings instead of multiple document.createElement calls
             container.innerHTML = (items || []).map(item => {
@@ -4776,37 +4823,8 @@ let estrelasSelectedCategorias = [];
                 `;
             }).join('');
 
-            container.querySelectorAll('.filter-item-row').forEach(div => {
-                div.onclick = (e) => {
-                    e.stopPropagation();
-                    const checkbox = div.querySelector('input');
-                    const val = div.getAttribute('data-value');
-
-                    // Toggle logic
-                    if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
-                    
-                    if (checkbox.checked) {
-                        if (!selectedSet.has(val)) {
-                            selectedSet.add(val);
-                            selectedArray.push(val);
-                            // Enforce max 2: remove first added
-                            if (selectedArray.length > 2) {
-                                const removed = selectedArray.shift();
-                                selectedSet.delete(removed);
-                            }
-                        }
-                    } else {
-                        if (selectedSet.has(val)) {
-                            selectedSet.delete(val);
-                            const idx = selectedArray.indexOf(val);
-                            if (idx > -1) selectedArray.splice(idx, 1);
-                        }
-                    }
-                    
-                    renderItems(); // Re-render to update checks visually (e.g. if one was auto-removed)
-                    updateBtnLabel();
-                };
-            });
+            // ⚡ Bolt Optimization: Use event delegation instead of attaching N listeners inside the loop
+            // Event delegation is set up once outside renderItems
 
             if (!items || items.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
         };
