@@ -33,3 +33,6 @@
 ## 2026/04/27 : (Tidy) Centralize Loja Perfeita KPI logic **Aprendizado:** Alteração no cálculo do KPI Loja Perfeita para focar em clientes únicos em vez de total de auditorias. **Ação:** Atualizado full_system_v1.sql
 ## 2026/04/27 : (Tidy) Centralize migration scripts **Aprendizado:** Arquivo de migração isolado criado. **Ação:** Adicionado sql/update_loja_perfeita_kpi.sql
 ## 2024/05/23 : (Tidy) Fix Loja Perfeita KPIs and filters **Aprendizado:** As vezes bugs complexos em cascata, como a de dropdowns sumindo e filtros ignorados, têm relação com hardcoded defaults no client ou variáveis referenciando queries erradas. **Ação:** Consertada lógica de clickaway e mapeamento de filtro de filial no app.js e get_loja_perfeita_data do supabase.
+## 2024-05-29 : (Extração de lógica de Custom Dropdowns)
+**Aprendizado:** A função `enhanceSelectToCustomDropdown` convertia `select` elements nativos em dropdowns customizados usando código DOM verboso. Isso criava muitos elementos via `document.createElement`, `appendChild`, e manipulava classes de forma imperativa.
+**Ação:** Refatorei `enhanceSelectToCustomDropdown` em `src/js/app.js` para usar o padrão de template literal e `insertAdjacentHTML`, reduzindo linhas e simplificando a inicialização visual, mantendo a proteção XSS com `escapeHtml`.
