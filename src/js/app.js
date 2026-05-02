@@ -2078,19 +2078,13 @@ let estrelasSelectedCategorias = [];
                         initDashboard();
                     }, 1500);
                 } catch (e) {
-                    statusText.innerHTML = '';
-                    const span = document.createElement('span');
-                    span.className = 'text-red-500';
-                    span.textContent = `Erro: ${e.message}`;
-                    statusText.appendChild(span);
+                    // 🧹 Tidy Optimization: Use innerHTML and template string for error span
+                    statusText.innerHTML = `<span class="text-red-500">Erro: ${escapeHtml(e.message)}</span>`;
                     generateBtn.disabled = false;
                 }
             } else if (type === 'error') {
-                statusText.innerHTML = '';
-                const span = document.createElement('span');
-                span.className = 'text-red-500';
-                span.textContent = `Erro: ${message}`;
-                statusText.appendChild(span);
+                // 🧹 Tidy Optimization: Use innerHTML and template string for error span
+                statusText.innerHTML = `<span class="text-red-500">Erro: ${escapeHtml(message)}</span>`;
                 generateBtn.disabled = false;
             }
         };
@@ -3346,12 +3340,13 @@ let estrelasSelectedCategorias = [];
         btn.className = [...new Set([...classes, 'text-left', 'flex', 'justify-between', 'items-center'])].join(' ');
         btn.type = 'button';
 
-        const span = document.createElement('span');
-        span.className = 'truncate';
-
         // Find initial selected option
         const initialSelectedOption = selectElement.options[selectElement.selectedIndex];
-        span.textContent = initialSelectedOption ? initialSelectedOption.text : '';
+        const initialText = initialSelectedOption ? initialSelectedOption.text : '';
+
+        const span = document.createElement('span');
+        span.className = 'truncate';
+        span.textContent = initialText;
 
         const icon = document.createElement('div');
         icon.innerHTML = '<svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>';
