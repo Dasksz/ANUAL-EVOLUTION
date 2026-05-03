@@ -181,7 +181,7 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
-import {  formatNumber, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes } from './utils.js';
+import {  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -2826,7 +2826,7 @@ let estrelasSelectedCategorias = [];
         const fmtVar = (v) => {
             const cls = v >= 0 ? 'text-emerald-400' : 'text-red-400';
             const sign = v > 0 ? '+' : '';
-            return `<span class="${cls}">${sign}${v.toFixed(1)}%</span>`;
+            return `<span class="${cls}">${sign}${formatPercentage(v, 1)}</span>`;
         };
 
         // Determine View Mode (Year vs Month)
@@ -4028,7 +4028,7 @@ let estrelasSelectedCategorias = [];
 
             // Render New KPIs
             const fmtBRL = (v) => formatCurrency(v);
-            const fmtPerc = (v) => `${(isNaN(v) ? 0 : v).toFixed(1)}%`;
+            const fmtPerc = (v) => `${formatPercentage((isNaN(v) ? 0 : v), 1)}`;
 
             // 1. Bonification
             document.getElementById('kpi-bonif-val').textContent = fmtBRL(kpiBonifCurr);
@@ -4047,7 +4047,7 @@ let estrelasSelectedCategorias = [];
             // 2. Bonification Variation
             document.getElementById('kpi-bonif-var-val').textContent = fmtBRL(kpiBonifCurr);
             const elBonifVarPerc = document.getElementById('kpi-bonif-var-perc');
-            elBonifVarPerc.textContent = `${varBonif > 0 ? '+' : ''}${varBonif.toFixed(1)}%`;
+            elBonifVarPerc.textContent = `${varBonif > 0 ? '+' : ''}${formatPercentage(varBonif, 1)}`;
             elBonifVarPerc.className = `text-lg font-bold ${varBonif <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
             document.getElementById('kpi-bonif-var-sec').textContent = fmtBRL(kpiBonifPrev);
 
@@ -4061,14 +4061,14 @@ let estrelasSelectedCategorias = [];
             // 4. Devolução Variation
             document.getElementById('kpi-devol-var-val').textContent = fmtBRL(kpiDevolCurr);
             const elDevolVarPerc = document.getElementById('kpi-devol-var-perc');
-            elDevolVarPerc.textContent = `${varDevol > 0 ? '+' : ''}${varDevol.toFixed(1)}%`;
+            elDevolVarPerc.textContent = `${varDevol > 0 ? '+' : ''}${formatPercentage(varDevol, 1)}`;
             elDevolVarPerc.className = `text-lg font-bold ${varDevol <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
             document.getElementById('kpi-devol-var-sec').textContent = fmtBRL(kpiDevolPrev);
 
             // 5. Mix PDV
             document.getElementById('kpi-mix-val').textContent = formatNumber(avgMixCurr, 2);
             const elMixPerc = document.getElementById('kpi-mix-perc');
-            elMixPerc.textContent = `${varMix > 0 ? '+' : ''}${varMix.toFixed(1)}%`;
+            elMixPerc.textContent = `${varMix > 0 ? '+' : ''}${formatPercentage(varMix, 1)}`;
             elMixPerc.className = `text-lg font-bold ${varMix >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
             document.getElementById('kpi-mix-sec').textContent = formatNumber(avgMixPrev, 2);
         } catch (err) {
@@ -4209,7 +4209,7 @@ let estrelasSelectedCategorias = [];
     function updateKpi(id, value) {
         const el = document.getElementById(id);
         if(!el) return;
-        el.textContent = `${value.toFixed(1)}%`;
+        el.textContent = `${formatPercentage(value, 1)}`;
         el.className = `text-2xl font-bold ${value >= 0 ? 'text-green-400' : 'text-red-400'}`;
     }
 
@@ -4223,7 +4223,7 @@ let estrelasSelectedCategorias = [];
         if (elTrend) elTrend.textContent = fmt(trendVal);
         if (elPrev) elPrev.textContent = fmt(prevVal);
         if (elVar) {
-            elVar.textContent = `${evo > 0 ? '+' : ''}${evo.toFixed(1)}%`;
+            elVar.textContent = `${evo > 0 ? '+' : ''}${formatPercentage(evo, 1)}`;
             elVar.className = `font-bold ${evo >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
         }
     }
@@ -4360,9 +4360,9 @@ let estrelasSelectedCategorias = [];
             { name: 'Mix PDV', key: 'mix_pdv', fmt: v => formatNumber(v, 2) },
             { name: 'Ticket Médio', key: 'ticket_medio', fmt: v => formatCurrency(v) },
             { name: 'BONIFICAÇÃO', key: 'bonificacao', fmt: v => formatCurrency(v) },
-            { name: '% Perda', key: 'perc_perda', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
+            { name: '% Perda', key: 'perc_perda', allowNull: true, fmt: v => v !== null ? `${formatPercentage(v, 1)}` : '-' },
             { name: 'DEVOLUÇÃO', key: 'devolucao', isRed: true, fmt: v => formatCurrency(v) },
-            { name: '% Devolução', key: 'perc_devolucao', allowNull: true, fmt: v => v !== null ? `${v.toFixed(1)}%` : '-' },
+            { name: '% Devolução', key: 'perc_devolucao', allowNull: true, fmt: v => v !== null ? `${formatPercentage(v, 1)}` : '-' },
             { name: 'TON VENDIDA', key: 'peso', fmt: v => `${(v/1000).toFixed(2)} Kg` }
         ];
 
@@ -4601,8 +4601,8 @@ let estrelasSelectedCategorias = [];
                     return `
                         <tr class="table-row">
                             <td class="p-2 font-semibold">${escapeHtml(c['Cidade'] || '')}</td>
-                            <td class="p-2 text-right text-cyan-400 font-bold">${escapeHtml(parseFloat(c['% Share']).toFixed(2))}%</td>
-                            <td class="p-2 text-right font-bold ${varClass}">${varArrow} ${escapeHtml(Math.abs(c['Variação']).toFixed(2))}%</td>
+                            <td class="p-2 text-right text-cyan-400 font-bold">${escapeHtml(formatPercentage(c['% Share'], 2))}</td>
+                            <td class="p-2 text-right font-bold ${varClass}">${varArrow} ${escapeHtml(formatPercentage(Math.abs(c['Variação']), 2))}</td>
                         </tr>
                     `;
                 }).join('');
@@ -4977,12 +4977,12 @@ let estrelasSelectedCategorias = [];
 
          const elVar1Fat = document.getElementById('branch-var-1-fat');
          if(elVar1Fat) {
-             elVar1Fat.textContent = `${share1Fat.toFixed(1)}%`;
+             elVar1Fat.textContent = `${formatPercentage(share1Fat, 1)}`;
              elVar1Fat.className = `text-sm font-bold mt-1 ${share1Fat >= 50 ? 'text-emerald-400' : 'text-red-400'}`;
          }
          const elVar2Fat = document.getElementById('branch-var-2-fat');
          if(elVar2Fat) {
-             elVar2Fat.textContent = `${share2Fat.toFixed(1)}%`;
+             elVar2Fat.textContent = `${formatPercentage(share2Fat, 1)}`;
              elVar2Fat.className = `text-sm font-bold mt-1 ${share2Fat >= 50 ? 'text-emerald-400' : 'text-red-400'}`;
          }
 
@@ -4998,12 +4998,12 @@ let estrelasSelectedCategorias = [];
 
          const elVar1Kg = document.getElementById('branch-var-1-kg');
          if(elVar1Kg) {
-             elVar1Kg.textContent = `${share1Kg.toFixed(1)}%`;
+             elVar1Kg.textContent = `${formatPercentage(share1Kg, 1)}`;
              elVar1Kg.className = `text-sm font-bold mt-1 ${share1Kg >= 50 ? 'text-emerald-400' : 'text-red-400'}`;
          }
          const elVar2Kg = document.getElementById('branch-var-2-kg');
          if(elVar2Kg) {
-             elVar2Kg.textContent = `${share2Kg.toFixed(1)}%`;
+             elVar2Kg.textContent = `${formatPercentage(share2Kg, 1)}`;
              elVar2Kg.className = `text-sm font-bold mt-1 ${share2Kg >= 50 ? 'text-emerald-400' : 'text-red-400'}`;
          }
          
@@ -6079,7 +6079,7 @@ let estrelasSelectedCategorias = [];
                     <div class="kpi-card p-4 rounded-lg text-center kpi-glow-base ${glowClass}">
                         <p class="text-slate-300 text-sm">${escapeHtml(kpi.title)}</p>
                         <p class="text-2xl font-bold text-white my-2">${escapeHtml(fmt(kpi.current, kpi.format))}</p>
-                        <p class="text-sm ${colorClass}">${variation > 0 ? '+' : ''}${escapeHtml(variation.toFixed(1))}% vs Média</p>
+                        <p class="text-sm ${colorClass}">${variation > 0 ? '+' : ''}${escapeHtml(formatPercentage(variation, 1))} vs Média</p>
                         <p class="text-xs text-slate-500">Média: ${escapeHtml(fmt(kpi.history, kpi.format))}</p>
                     </div>
                 `;
@@ -6140,7 +6140,7 @@ let estrelasSelectedCategorias = [];
                         <td class="px-4 py-2">${escapeHtml(sup)}</td>
                         <td class="px-4 py-2 text-right">${escapeHtml(formatCurrency(vals.history))}</td>
                         <td class="px-4 py-2 text-right">${escapeHtml(formatCurrency(vals.current))}</td>
-                        <td class="px-4 py-2 text-right ${colorClass}">${escapeHtml(variation.toFixed(2))}%</td>
+                        <td class="px-4 py-2 text-right ${colorClass}">${escapeHtml(formatPercentage(variation, 2))}</td>
                     </tr>
                 `;
             }).join('');
@@ -6301,7 +6301,7 @@ function renderInnovationsKPIs(data) {
         // Fallback logic
         selPercent = activeClients > 0 ? (totalSelectionPos / (activeClients * (categories.length > 0 ? categories.length : 1))) * 100 : 0;
     }
-    if (selCovValue) selCovValue.textContent = selPercent.toFixed(2) + '%';
+    if (selCovValue) selCovValue.textContent = formatPercentage(selPercent, 2);
 
     // Selection Count
     const selCovCount = document.getElementById('innovations-month-selection-coverage-count-kpi');
@@ -7087,7 +7087,7 @@ function renderLpKPIs(kpis) {
 
     if (perfStoresEl) {
         let pct = kpis.total_audits > 0 ? (kpis.perfect_stores / kpis.total_audits) * 100 : 0;
-        perfStoresEl.textContent = pct.toFixed(1) + '%';
+        perfStoresEl.textContent = formatPercentage(pct, 1);
         const sub = document.getElementById('lp-kpi-perfect-stores-sub');
         if (sub) sub.textContent = formatNumber(kpis.perfect_stores, 0) + ' Auditorias';
     }
@@ -7722,14 +7722,14 @@ async function updateEstrelasView() {
         let realizedSellout = data.sellout_salty + data.sellout_foods;
         let pctSellout = metaSellout > 0 ? (realizedSellout / metaSellout) * 100 : (realizedSellout > 0 ? 100 : 0);
 
-        updateEl('sellout-pdb-bar', `${Math.min(pctSellout, 100).toFixed(0)}%`, true);
-        updateEl('sellout-pdb-pct', `${pctSellout.toFixed(0)}%`);
+        updateEl('sellout-pdb-bar', `${formatPercentage(Math.min(pctSellout, 100), 0)}`, true);
+        updateEl('sellout-pdb-pct', `${formatPercentage(pctSellout, 0)}`);
 
-        updateEl('pos-salty-bar', `${Math.min(pctPos, 100).toFixed(0)}%`, true);
-        updateEl('pos-salty-pct', `${pctPos.toFixed(0)}%`);
+        updateEl('pos-salty-bar', `${formatPercentage(Math.min(pctPos, 100), 0)}`, true);
+        updateEl('pos-salty-pct', `${formatPercentage(pctPos, 0)}`);
 
-        updateEl('acel-batatas-bar', `${Math.min(pctAcel, 100).toFixed(0)}%`, true);
-        updateEl('acel-batatas-pct', `${pctAcel.toFixed(0)}%`);
+        updateEl('acel-batatas-bar', `${formatPercentage(Math.min(pctAcel, 100), 0)}`, true);
+        updateEl('acel-batatas-pct', `${formatPercentage(pctAcel, 0)}`);
 
     } catch (err) {
         AppLog.error("Erro ao carregar dados de KPIs Estrelas:", err);
@@ -7862,7 +7862,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
             varYago = ((dataNode.faturamento / dataNode.faturamento_prev) - 1) * 100;
         }
 
-        const varYagoStr = (varYago > 0 ? '+' : '') + varYago.toFixed(1) + '%';
+        const varYagoStr = (varYago > 0 ? '+' : '') + formatPercentage(varYago, 1);
         const varYagoColor = varYago > 0 ? 'text-green-500' : (varYago < 0 ? 'text-red-500' : 'text-slate-400');
         const varYagoIcon = varYago > 0 ? '<svg class="w-4 h-4 text-green-500 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"></path></svg>' : (varYago < 0 ? '<svg class="w-4 h-4 text-red-500 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707 10.293a1 1 0 00-1.414 0l-3-3a1 1 0 101.414-1.414L9 14.586V11a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3z" clip-rule="evenodd"></path></svg>' : '');
 
@@ -7880,7 +7880,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         if (percPosit > 100) percPosit = 100;
 
         const positStr = dataNode.positivacao || 0;
-        const percPositStr = percPosit.toFixed(1) + '%';
+        const percPositStr = formatPercentage(percPosit, 1);
         
         const rowHtml = `
             <tr class="hover:bg-white/5 transition-colors ${level > 0 ? 'hidden freq-child-row' : ''}" id="${id}" data-parent="${parentId}" data-level="${level}">
@@ -7921,7 +7921,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
             <td class="px-2 py-3 border-t border-white/20 text-right">${escapeHtml(rootData.skuPdv.toFixed(2))}</td>
             <td class="px-2 py-3 border-t border-white/20 text-right">${escapeHtml(rootData.freq.toFixed(2))}</td>
             <td class="px-2 py-3 border-t border-white/20 text-right">${escapeHtml(rootData.positivacao)}</td>
-            <td class="px-2 py-3 border-t border-white/20 text-right">${escapeHtml(rootData.percPosit.toFixed(1))}%</td>
+            <td class="px-2 py-3 border-t border-white/20 text-right">${escapeHtml(formatPercentage(rootData.percPosit, 1))}</td>
         </tr>
     `;
 }
