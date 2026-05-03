@@ -42,12 +42,12 @@ window.openDetalhadoModal = function(type) {
     const subtitle = document.getElementById('modal-detalhado-subtitle');
     const thead = document.getElementById('modal-detalhado-thead');
     const tbody = document.getElementById('modal-detalhado-tbody');
-    
+
     // Reset contents
     thead.textContent = '';
     tbody.textContent = '';
     subtitle.classList.add('hidden');
-    
+
     let totalRealizado = 0;
 
     if (!estrelasDetailedData || estrelasDetailedData.length === 0) {
@@ -79,7 +79,7 @@ window.openDetalhadoModal = function(type) {
             <th class="py-3 px-4 text-right bg-indigo-500/10 text-indigo-200">${TABLE_ICONS.target}Meta Foods</th>
             <th class="py-3 px-4 text-right rounded-tr-lg bg-indigo-500/10 text-indigo-200">${TABLE_ICONS.chart}Realizado Foods</th>
         `;
-        
+
         const sortedDataSellout = [...estrelasDetailedData].sort((a, b) => {
             const valA = (a.sellout_salty || 0) + (a.sellout_foods || 0);
             const valB = (b.sellout_salty || 0) + (b.sellout_foods || 0);
@@ -92,7 +92,7 @@ window.openDetalhadoModal = function(type) {
             const realizadoSalty = ((row.sellout_salty || 0) / 1000.0).toFixed(2);
             const metaFoods = (row.meta_foods || 0).toFixed(2);
             const realizadoFoods = ((row.sellout_foods || 0) / 1000.0).toFixed(2);
-            
+
             const bgClass = index % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.02]';
             return `
                 <tr class="hover:bg-white/5 transition-colors border-b border-white/5 ${bgClass}">
@@ -111,7 +111,7 @@ window.openDetalhadoModal = function(type) {
             `;
         });
         tbody.innerHTML = htmlArray.join('');
-        
+
     } else if (type === 'positivacao') {
         title.innerHTML = `<span class="flex items-center text-emerald-400">${TABLE_ICONS.chart} Resultado Detalhado - Positivação</span>`;
         thead.innerHTML = `
@@ -121,9 +121,9 @@ window.openDetalhadoModal = function(type) {
             <th class="py-3 px-4 text-right bg-emerald-500/10 text-emerald-200">${TABLE_ICONS.target}Meta</th>
             <th class="py-3 px-4 text-right rounded-tr-lg bg-emerald-500/10 text-emerald-200">${TABLE_ICONS.share}% Share</th>
         `;
-        
+
         totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + ((curr.pos_salty || 0) + (curr.pos_foods || 0)), 0);
-        
+
         const sortedDataPos = [...estrelasDetailedData].sort((a, b) => {
             const valA = (a.pos_salty || 0) + (a.pos_foods || 0);
             const valB = (b.pos_salty || 0) + (b.pos_foods || 0);
@@ -138,12 +138,12 @@ window.openDetalhadoModal = function(type) {
             return createDetalhadoRow(row, index, realizado, 'PDV(s)', meta, 'PDV(s)', share, 'text-emerald-400');
         });
         tbody.innerHTML = htmlArray.join('');
-        
+
     } else if (type === 'aceleradores') {
         title.innerHTML = `<span class="flex items-center text-amber-400">${TABLE_ICONS.target} Resultado Detalhado - Aceleradores</span>`;
         subtitle.textContent = `Total de Marcas Cadastradas: ${estrelasQtdMarcas}`;
         subtitle.classList.remove('hidden');
-        
+
         thead.innerHTML = `
             <th class="py-3 px-4 text-left rounded-tl-lg bg-amber-500/10 text-amber-200">${TABLE_ICONS.vendedor}Vendedor</th>
             <th class="py-3 px-4 text-left bg-amber-500/10 text-amber-200">${TABLE_ICONS.filial}Filial</th>
@@ -151,9 +151,9 @@ window.openDetalhadoModal = function(type) {
             <th class="py-3 px-4 text-right bg-amber-500/10 text-amber-200">${TABLE_ICONS.target}Meta (50% da Pos.)</th>
             <th class="py-3 px-4 text-right rounded-tr-lg bg-amber-500/10 text-amber-200">${TABLE_ICONS.share}% Share</th>
         `;
-        
+
         totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + (curr.acel_realizado || 0), 0);
-        
+
         const sortedDataAcel = [...estrelasDetailedData].sort((a, b) => {
             const valA = a.acel_realizado || 0;
             const valB = b.acel_realizado || 0;
@@ -164,7 +164,7 @@ window.openDetalhadoModal = function(type) {
         const htmlArray = sortedDataAcel.map((row, index) => {
             const realizado = row.acel_realizado || 0;
             const metaPositivação = row.meta_pos || 0;
-            const meta = Math.ceil(metaPositivação * 0.5); 
+            const meta = Math.ceil(metaPositivação * 0.5);
             const share = totalRealizado > 0 ? ((realizado / totalRealizado) * 100).toFixed(2) : 0;
             return createDetalhadoRow(row, index, realizado, null, meta, null, share, 'text-amber-400');
         });
@@ -422,7 +422,7 @@ let estrelasSelectedCategorias = [];
         if (!exportDropdown) return;
         const isClickInsideDropdown = exportDropdown.contains(e.target);
         const isClickOnActiveNav = e.target.closest('.nav-link.active');
-        
+
         if (!isClickInsideDropdown && !isClickOnActiveNav && !exportDropdown.classList.contains('hidden')) {
             exportDropdown.classList.add('hidden');
         }
@@ -463,7 +463,7 @@ let estrelasSelectedCategorias = [];
     if (exportExcelBtn) {
         exportExcelBtn.addEventListener('click', () => {
             if (exportDropdown) exportDropdown.classList.add('hidden');
-            
+
             const { activeView, viewName } = getActiveExportView();
 
             if (!activeView) {
@@ -491,7 +491,7 @@ let estrelasSelectedCategorias = [];
                     const clonedTable = table.cloneNode(true);
                     const hiddenRows = clonedTable.querySelectorAll('.hidden, [style*="display: none"]');
                     hiddenRows.forEach(row => row.parentNode.removeChild(row));
-                    
+
                     // Sanitize text if there are icons or complex formatting
                     const thTdElements = clonedTable.querySelectorAll('th, td');
                     thTdElements.forEach(cell => {
@@ -504,7 +504,7 @@ let estrelasSelectedCategorias = [];
 
                     // Generate worksheet
                     const ws = XLSX.utils.table_to_sheet(clonedTable, { raw: true });
-                    
+
                     // Name the sheet
                     let sheetName = `Tabela ${sheetCounter}`;
                     // Attempt to find a title above the table
@@ -514,7 +514,7 @@ let estrelasSelectedCategorias = [];
                     } else if (table.id) {
                          sheetName = table.id.replace(/[-_]/g, ' ').substring(0, 30);
                     }
-                    
+
                     // Ensure unique sheet name
                     let baseName = sheetName;
                     let dupCounter = 1;
@@ -546,7 +546,7 @@ let estrelasSelectedCategorias = [];
         exportPdfBtn.addEventListener('click', async () => {
             // Hide dropdown
             if (exportDropdown) exportDropdown.classList.add('hidden');
-            
+
             // Find currently active view
             const { activeView } = getActiveExportView();
 
@@ -567,7 +567,7 @@ let estrelasSelectedCategorias = [];
                     // Remover ícones ou texto extra do botão de nav se houver
                     viewTitle = activeNav.textContent.trim();
                 }
-                
+
                 // Criar cabeçalho customizado para o PDF
                 const currentDate = new Date().toLocaleString('pt-BR');
                 headerEl = document.createElement('div');
@@ -582,7 +582,7 @@ let estrelasSelectedCategorias = [];
                         <p class="text-xs text-slate-500">Gerado em: ${escapeHtml(currentDate)}</p>
                     </div>
                 `;
-                
+
                 // Inserir cabeçalho no topo da view
                 activeView.insertBefore(headerEl, activeView.firstChild);
 
@@ -602,9 +602,9 @@ let estrelasSelectedCategorias = [];
                     margin:       0, // We handle margins via CSS padding on .pdf-exporting
                     filename:     `export_${new Date().toISOString().split('T')[0]}.pdf`,
                     image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  { 
+                    html2canvas:  {
                         scale: 2,
-                        useCORS: true, 
+                        useCORS: true,
                         logging: false,
                         x: 0,
                         y: 0,
@@ -625,7 +625,7 @@ let estrelasSelectedCategorias = [];
                 };
 
                 await html2pdf().set(opt).from(activeView).save();
-                
+
             } catch (err) {
                 AppLog.error("Erro ao gerar PDF:", err);
                 alert("Ocorreu um erro ao gerar o PDF. Tente novamente.");
@@ -634,7 +634,7 @@ let estrelasSelectedCategorias = [];
                 if (headerEl && headerEl.parentNode) {
                     headerEl.parentNode.removeChild(headerEl);
                 }
-                
+
                 // Restore button state
                 restoreElementState(exportPdfBtn, exportPdfBtn, originalHtml);
                 if (activeView) activeView.classList.remove('pdf-exporting');
@@ -677,7 +677,7 @@ let estrelasSelectedCategorias = [];
     const lojaPerfeitaView = document.getElementById('loja-perfeita-view');
     const estrelasView = document.getElementById('estrelas-view');
     const agendaView = document.getElementById('agenda-view');
-    
+
     const closeUploaderBtn = document.getElementById('close-uploader-btn');
 
     // Dashboard Internal Views
@@ -916,10 +916,10 @@ let estrelasSelectedCategorias = [];
     const showScreen = (screenId) => {
         // Hide all auth/app screens first
         [loginView, telaLoading, telaPendente, appLayout].forEach(el => el?.classList.add('hidden'));
-        
+
         // Ensure topNavbar is hidden by default on auth screens
         if (topNavbar) topNavbar.classList.add('hidden');
-        
+
         if (screenId) {
             const screen = document.getElementById(screenId);
             screen?.classList.remove('hidden');
@@ -1335,7 +1335,7 @@ let estrelasSelectedCategorias = [];
         }
 
         checkProfileLock = true;
-        
+
         try {
             const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Tempo limite de conexão excedido. Verifique sua internet.')), 10000));
             const profileQuery = supabase.from('profiles').select('status, role, name').eq('id', user.id).single();
@@ -1371,7 +1371,7 @@ let estrelasSelectedCategorias = [];
             } else {
                 showScreen('tela-pendente');
                 if (status === 'bloqueado') {
-                        const statusMsg = document.getElementById('status-text-pendente'); 
+                        const statusMsg = document.getElementById('status-text-pendente');
                         if(statusMsg) statusMsg.textContent = "Acesso Bloqueado";
                 }
                 startStatusListener(user.id);
@@ -1595,7 +1595,7 @@ let estrelasSelectedCategorias = [];
             e.preventDefault();
             e.stopPropagation(); // prevent other handlers
             currentActiveNavId = navBtn.id;
-            
+
             // Show Export Dropdown
             exportDropdown.classList.toggle('hidden');
             if (!exportDropdown.classList.contains('hidden')) {
@@ -1809,12 +1809,12 @@ let estrelasSelectedCategorias = [];
         optimizeDbBtnNav.addEventListener('click', async () => {
             if (window.userRole !== 'adm') return;
             if (!confirm('Recriar índices do banco de dados?')) return;
-            
+
             try {
                 const { data, error } = await supabase.rpc('optimize_database');
                 if (error) throw error;
                 window.showToast('success', data || 'Otimização concluída!');
-            } catch(e) { 
+            } catch(e) {
                 window.showToast('error', 'Erro: ' + e.message);
             }
         });
@@ -1879,7 +1879,7 @@ let estrelasSelectedCategorias = [];
 
         // Note: loadFilters will re-render the dropdowns with checked status based on these empty arrays,
         // effectively clearing the checkboxes visually.
-        
+
         await loadFilters(getCurrentFilters());
         loadMainDashboardData();
     });
@@ -1945,7 +1945,7 @@ let estrelasSelectedCategorias = [];
     if(clientsFileInput) clientsFileInput.addEventListener('change', (e) => { files.clientsFile = e.target.files[0]; checkFiles(); });
     if(productsFileInput) productsFileInput.addEventListener('change', (e) => { files.productsFile = e.target.files[0]; checkFiles(); });
     if(innovationsFileInput) innovationsFileInput.addEventListener('change', (e) => { files.innovationsFile = e.target.files[0]; checkFiles(); });
-    
+
     if(notaInvolvesMultipleInput) notaInvolvesMultipleInput.addEventListener('change', (e) => {
         files.notaInvolvesFile1 = e.target.files.length > 0 ? e.target.files[0] : null;
         files.notaInvolvesFile2 = e.target.files.length > 1 ? e.target.files[1] : null;
@@ -2018,7 +2018,7 @@ let estrelasSelectedCategorias = [];
             .from('config_city_branches')
             .select('cidade')
             .or('filial.is.null,filial.eq.""');
-        
+
         if (!error && data && data.length > 0) {
             missingBranchesNotification.classList.remove('hidden');
         } else {
@@ -2041,7 +2041,7 @@ let estrelasSelectedCategorias = [];
         const cityBranchMap = await fetchCityBranchMap();
 
         statusText.textContent = 'Processando...';
-        
+
         const worker = new Worker('src/js/worker.js?v=4');
         // Pass files AND the city map
         worker.postMessage({ ...files, cityBranchMap });
@@ -2064,7 +2064,7 @@ let estrelasSelectedCategorias = [];
                     }
 
                     await enviarDadosParaSupabase(data);
-                    
+
                     // Re-check missing branches after upload
                     await checkMissingBranches();
 
@@ -2078,11 +2078,19 @@ let estrelasSelectedCategorias = [];
                         initDashboard();
                     }, 1500);
                 } catch (e) {
-                    statusText.innerHTML = `<span class="text-red-500">Erro: ${escapeHtml(e.message)}</span>`;
+                    statusText.innerHTML = '';
+                    const span = document.createElement('span');
+                    span.className = 'text-red-500';
+                    span.textContent = `Erro: ${e.message}`;
+                    statusText.appendChild(span);
                     generateBtn.disabled = false;
                 }
             } else if (type === 'error') {
-                statusText.innerHTML = `<span class="text-red-500">Erro: ${escapeHtml(message)}</span>`;
+                statusText.innerHTML = '';
+                const span = document.createElement('span');
+                span.className = 'text-red-500';
+                span.textContent = `Erro: ${message}`;
+                statusText.appendChild(span);
                 generateBtn.disabled = false;
             }
         };
@@ -2118,7 +2126,7 @@ let estrelasSelectedCategorias = [];
                     const { error: insertErr } = await supabase.from(table).insert(batch);
                     error = insertErr;
                 }
-                
+
                 if (error) {
                     if (error.code === '42P01') {
                         throw new Error(`Tabela '${table}' não encontrada. Por favor, execute o script SQL de atualização (full_system_v1.sql) no painel do Supabase antes de enviar os arquivos.`);
@@ -2171,7 +2179,7 @@ let estrelasSelectedCategorias = [];
         };
 
         // --- Incremental Sync Logic (Chunked for Sales, Row-Hash for Clients) ---
-        
+
         // Sync Logic for Sales (Metadata + Chunking + Batched HTTP Requests)
         const syncSalesChunks = async (tableName, localChunks, progressStart, progressEnd) => {
             updateStatus(`Verificando metadados de ${tableName}...`, progressStart);
@@ -2199,7 +2207,7 @@ let estrelasSelectedCategorias = [];
                 if (serverHash !== localChunk.hash) {
                     AppLog.log(`[${tableName}] Syncing chunk ${key} (Size: ${localChunk.rows.length})...`);
                     updateStatus(`Sincronizando ${tableName} (${key})...`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
-                    
+
                     // --- GRANULAR UPLOAD STRATEGY ---
                     // 1. Wipe Data for Month
                     const { error: wipeErr } = await supabase.rpc('begin_sync_chunk', {
@@ -2212,7 +2220,7 @@ let estrelasSelectedCategorias = [];
                     const ROWS_PER_REQUEST = 2000;
                     const CONCURRENCY_LIMIT = 3;
                     const totalRows = localChunk.rows.length;
-                    
+
                     let activePromises = [];
                     for (let i = 0; i < totalRows; i += ROWS_PER_REQUEST) {
                         const batch = localChunk.rows.slice(i, i + ROWS_PER_REQUEST);
@@ -2262,11 +2270,11 @@ let estrelasSelectedCategorias = [];
         // Legacy Row-Hash Sync (Kept for Clients)
         const syncTable = async (tableName, clientRows, progressStart, progressEnd) => {
             updateStatus(`Sincronizando ${tableName}...`, progressStart);
-            
+
             // 1. Get Server Hashes
             const { data: serverHashes, error } = await supabase.rpc('get_table_hashes', { p_table_name: tableName });
             if (error) throw new Error(`Erro ao buscar hashes de ${tableName}: ${error.message}`);
-            
+
             const serverHashSet = new Set(serverHashes.map(h => h.row_hash));
             const clientHashMap = new Map();
             clientRows.forEach(r => {
@@ -2355,7 +2363,7 @@ let estrelasSelectedCategorias = [];
             // Sales Tables (Use Chunk Sync)
             if (data.historyChunks) await syncSalesChunks('data_history', data.historyChunks, 10, 40);
             if (data.detailedChunks) await syncSalesChunks('data_detailed', data.detailedChunks, 40, 70);
-            
+
             // Clients Table (Use Row Sync)
             if (data.clients) await syncTable('data_clients', data.clients, 70, 75);
 
@@ -2379,7 +2387,7 @@ let estrelasSelectedCategorias = [];
 
             // CHUNKED CACHE REFRESH LOGIC
             updateStatus('Iniciando processamento do resumo...', 80);
-            
+
             // 1. Explicitly clear Summary Table
             await clearTable('data_summary');
             await clearTable('data_summary_frequency');
@@ -2495,7 +2503,7 @@ let estrelasSelectedCategorias = [];
             // Filters for dropdowns should NOT include the product itself to avoid signature mismatch
             // and usually we don't want selecting a product to filter the other dropdowns backwards in this context.
             const { p_produto, ...dropdownFilters } = viewFilters;
-            
+
             await loadBoxesFilters(dropdownFilters);
             await loadBoxesView();
         }, 500);
@@ -2506,7 +2514,7 @@ let estrelasSelectedCategorias = [];
         // Usually dependent filters (Supplier -> Product) mean selection in Supplier narrows Product.
         // But selection in Product shouldn't necessarily narrow Supplier in a way that hides the current selection?
         // For now, pass all filters as is standard.
-        
+
         const { data, error } = await supabase.rpc('get_dashboard_filters', currentFilters);
         if (error) {
             AppLog.error('Error refreshing boxes filters:', error);
@@ -2537,7 +2545,7 @@ let estrelasSelectedCategorias = [];
         boxesTrendToggleBtn.addEventListener('click', () => {
             boxesTrendActive = !boxesTrendActive;
             const span = document.getElementById('boxes-trend-text');
-            
+
             if (boxesTrendActive) {
                 boxesTrendToggleBtn.classList.remove('text-orange-500', 'hover:text-orange-400');
                 boxesTrendToggleBtn.classList.add('text-purple-500', 'hover:text-purple-400');
@@ -2547,12 +2555,12 @@ let estrelasSelectedCategorias = [];
                 boxesTrendToggleBtn.classList.add('text-orange-500', 'hover:text-orange-400');
                 if (span) span.textContent = 'Calcular Tendência';
             }
-            
+
             // Re-render only (data already has trend info if RPC updated)
-            // But we need to make sure we have the data. 
+            // But we need to make sure we have the data.
             // Ideally we re-fetch if we suspect cache is stale, but usually RPC returns trend info always if available.
             // Let's just re-render first.
-            loadBoxesView(); 
+            loadBoxesView();
         });
     }
 
@@ -2609,7 +2617,7 @@ let estrelasSelectedCategorias = [];
         if (format === 'excel') {
             // Create workbook
             const wb = XLSX.utils.book_new();
-            
+
             // Prepare Filter Info rows
             const filterInfo = [
                 ["Relatório de Produtos por Caixas"],
@@ -2622,7 +2630,7 @@ let estrelasSelectedCategorias = [];
 
             // Create Worksheet
             const ws = XLSX.utils.aoa_to_sheet(filterInfo);
-            
+
             // Append Data starting at row after filters
             XLSX.utils.sheet_add_json(ws, reportData, { origin: -1 });
 
@@ -2638,14 +2646,14 @@ let estrelasSelectedCategorias = [];
 
             doc.setFontSize(16);
             doc.text("Relatório de Produtos por Caixas", 14, 15);
-            
+
             doc.setFontSize(10);
             doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 22);
 
             let yPos = 30;
             doc.text("Filtros Aplicados:", 14, yPos);
             yPos += 5;
-            
+
             doc.setFontSize(9);
             Object.entries(filters).forEach(([k, v]) => {
                 doc.text(`${k}: ${v}`, 14, yPos);
@@ -2677,7 +2685,7 @@ let estrelasSelectedCategorias = [];
         const dropdowns = [boxesFilialFilterDropdown, boxesProdutoFilterDropdown, boxesSupervisorFilterDropdown, boxesVendedorFilterDropdown, boxesFornecedorFilterDropdown, boxesCidadeFilterDropdown, boxesTipovendaFilterDropdown, boxesCategoriaFilterDropdown];
         const btns = [boxesFilialFilterBtn, boxesProdutoFilterBtn, boxesSupervisorFilterBtn, boxesVendedorFilterBtn, boxesFornecedorFilterBtn, boxesCidadeFilterBtn, boxesTipovendaFilterBtn, boxesCategoriaFilterBtn];
         let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
-        
+
         // Close export dropdown if clicked outside
         if (boxesExportDropdown && !boxesExportDropdown.classList.contains('hidden') && !boxesExportDropdown.contains(e.target) && !boxesExportBtn.contains(e.target)) {
             boxesExportDropdown.classList.add('hidden');
@@ -2753,7 +2761,7 @@ let estrelasSelectedCategorias = [];
         setupCityMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, filterData.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
         setupCityMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, filterData.tipos_venda || [], boxesSelectedTiposVenda);
         setupCityMultiSelect(boxesCategoriaFilterBtn, boxesCategoriaFilterDropdown, boxesCategoriaFilterList, filterData.categorias || [], boxesSelectedCategorias, boxesCategoriaFilterSearch);
-        
+
         // Products - filterData.produtos
         setupCityMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, filterData.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
     }
@@ -2791,7 +2799,7 @@ let estrelasSelectedCategorias = [];
 
         if (!data) {
             const { data: rpcData, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
-            
+
             if (error) {
                 AppLog.error(error);
                 window.hideDashboardLoading();
@@ -2812,13 +2820,13 @@ let estrelasSelectedCategorias = [];
         // Trend Data Extraction
         const trendInfo = data.trend_info || { allowed: false, factor: 1, current_month_index: -1 };
         const applyTrend = boxesTrendActive && trendInfo.allowed;
-        
+
         // Safe access helpers
         const safeVal = (v) => v || 0;
         const fmtBRL = (v) => formatCurrency(safeVal(v));
         const fmtKg = (v) => formatTons(safeVal(v), 1);
         const fmtCaixas = (v) => formatInteger(safeVal(v));
-        
+
         const calcVar = (curr, prev) => {
             if (prev > 0) return ((curr / prev) - 1) * 100;
             return curr > 0 ? 100 : 0;
@@ -2826,7 +2834,10 @@ let estrelasSelectedCategorias = [];
         const fmtVar = (v) => {
             const cls = v >= 0 ? 'text-emerald-400' : 'text-red-400';
             const sign = v > 0 ? '+' : '';
-            return `<span class="${cls}">${sign}${v.toFixed(1)}%</span>`;
+            const span = document.createElement('span');
+            span.className = cls;
+            span.textContent = `${sign}${v.toFixed(1)}%`;
+            return span;
         };
 
         // Determine View Mode (Year vs Month)
@@ -2839,7 +2850,7 @@ let estrelasSelectedCategorias = [];
             let curr = safeVal(data.kpi_current[key]);
             const prev = safeVal(data.kpi_previous[key]);
             const tri = safeVal(data.kpi_tri_avg[key]);
-            
+
             let mainDisplayVal = curr;
             let triComparisonVal = curr; // Default: Compare current realized vs Tri Avg
 
@@ -2848,10 +2859,10 @@ let estrelasSelectedCategorias = [];
                     // YEAR VIEW + TREND
                     // Main Value: Should be Annual Projection (YTD Realized - Current Realized + Current Trended) / Months * 12
                     // Formula simplified: (YTD_Realized_Excluding_Current + (Current_Realized * Factor)) / Month_Index * 12
-                    
+
                     const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
                     const currMonthData = (data.chart_data || []).find(d => d.year === filterYear && d.month_index === trendInfo.current_month_index);
-                    
+
                     let currMonthRealized = 0;
                     if (currMonthData) {
                         if (key === 'fat') currMonthRealized = currMonthData.faturamento;
@@ -2859,29 +2870,29 @@ let estrelasSelectedCategorias = [];
                         else if (key === 'caixas') currMonthRealized = currMonthData.caixas;
                         else if (key === 'clientes') currMonthRealized = currMonthData.clientes || 0;
                     }
-                    
+
                     // Tri Indicator: Trended Current Month vs Tri Avg
                     triComparisonVal = currMonthRealized * trendInfo.factor;
-                    
+
                     // Main Display: Annual Projection
                     // 1. Calculate YTD Realized Excluding Current Month
                     // curr is the total YTD from RPC
                     const ytdExclCurrent = curr - currMonthRealized;
-                    
+
                     // 2. Add Trended Current Month
                     const ytdWithTrend = ytdExclCurrent + triComparisonVal;
-                    
+
                     // 3. Project for Full Year (12 months)
                     // If we are in Jan (index 0), divide by 1 * 12
                     // If we are in Dec (index 11), divide by 12 * 12 (basically identity)
                     const monthsPassed = trendInfo.current_month_index + 1;
-                    
+
                     if (monthsPassed > 0) {
                         mainDisplayVal = (ytdWithTrend / monthsPassed) * 12;
                     } else {
                         mainDisplayVal = ytdWithTrend; // Fallback
                     }
-                    
+
                 } else {
                     // MONTH VIEW + TREND
                     // Main Value: Trended Monthly Value.
@@ -2899,7 +2910,7 @@ let estrelasSelectedCategorias = [];
                      // Find max month in data or current month index
                      // If trend is not allowed (e.g. past year), use the last month available in data?
                      // Or just use the average of the year vs tri? Usually it's Month vs Tri.
-                     
+
                      // Let's assume for Year View, Tri indicator is always "Last Active Month" vs "Previous 3 Months Avg".
                      // If we are in 2025 (current), it's Current Month.
                      // If we are in 2024 (past), it's Dec 2024 vs Oct-Nov-Dec 2024 avg? Or Jan 2025 vs Q4 2024?
@@ -2913,9 +2924,9 @@ let estrelasSelectedCategorias = [];
                              else if (key === 'clientes') triComparisonVal = currMonthData.clientes || 0;
                          }
                      } else {
-                         // If past year, maybe just leave it as average vs average or hide? 
+                         // If past year, maybe just leave it as average vs average or hide?
                          // Logic: "always the most recent month".
-                         // For now, let's keep triComparisonVal = curr (which is Total Year) ONLY if we can't isolate month, 
+                         // For now, let's keep triComparisonVal = curr (which is Total Year) ONLY if we can't isolate month,
                          // but standard logic suggests we shouldn't compare Year Total vs Monthly Average.
                          // Let's stick to: if chart data exists, pick last month.
                          const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : new Date().getFullYear();
@@ -2937,22 +2948,24 @@ let estrelasSelectedCategorias = [];
             const elPrevVal = document.getElementById(`boxes-kpi-${prefix}-prev`);
             const elPrevVar = document.getElementById(`boxes-kpi-${prefix}-prev-var`);
             if(elPrevVal) elPrevVal.textContent = formatFn(prev);
-            
+
             // Year vs Year variation (using Main Display Val which might be Trended Month or Realized Year)
             // If Year View: Realized Year vs Previous Year.
             // If Month View + Trend: Trended Month vs Previous Month (same period prev year).
             // Logic: calcVar(mainDisplayVal, prev).
             if(elPrevVar) {
-                elPrevVar.innerHTML = fmtVar(calcVar(mainDisplayVal, prev));
+                elPrevVar.innerHTML = '';
+                elPrevVar.appendChild(fmtVar(calcVar(mainDisplayVal, prev)));
             }
 
             const elTriVal = document.getElementById(`boxes-kpi-${prefix}-tri`);
             const elTriVar = document.getElementById(`boxes-kpi-${prefix}-tri-var`);
             if(elTriVal) elTriVal.textContent = formatFn(tri);
-            
+
             // Tri Variation: Always Monthly (Recent/Trended) vs Tri Avg
             if(elTriVar) {
-                elTriVar.innerHTML = fmtVar(calcVar(triComparisonVal, tri));
+                elTriVar.innerHTML = '';
+                elTriVar.appendChild(fmtVar(calcVar(triComparisonVal, tri)));
             }
         };
 
@@ -2964,12 +2977,12 @@ let estrelasSelectedCategorias = [];
         // Chart (2 datasets: Current vs Previous + Trend if active)
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         const labels = [...monthNames];
-        const currentYear = new Date().getFullYear(); 
-        
+        const currentYear = new Date().getFullYear();
+
         const boxesCurrent = new Array(12).fill(0);
         const boxesPrev = new Array(12).fill(0);
         const chartData = data.chart_data || [];
-        
+
         const filterYear = boxesAnoFilter.value !== 'todos' ? parseInt(boxesAnoFilter.value) : currentYear;
         const prevYear = filterYear - 1;
 
@@ -2999,7 +3012,7 @@ let estrelasSelectedCategorias = [];
         if (applyTrend) {
             // Add "Tendência" Bar
             labels.push('Tendência');
-            
+
             // Calculate Trended Value for the current month
             // We need the realized value of the current month to project
             const currMonthData = chartData.find(d => d.year === filterYear && d.month_index === trendInfo.current_month_index);
@@ -3010,13 +3023,13 @@ let estrelasSelectedCategorias = [];
             // BUT simpler: extend current year dataset? No, distinct color.
             // Let's add a new dataset "Tendência" with 13 points (12 null + 1 val)
             // And pad others with 0 or null
-            
+
             // Pad existing
             datasets.forEach(ds => ds.data.push(null));
-            
+
             const trendData = new Array(13).fill(null);
             trendData[12] = trendCaixas;
-            
+
             datasets.push({
                 label: `Tendência ${monthNames[trendInfo.current_month_index]}`,
                 data: trendData,
@@ -3084,7 +3097,7 @@ let estrelasSelectedCategorias = [];
         // If overlay exists but is in a different container, move it
         if (overlay && overlay.parentElement !== container) {
             overlay.remove();
-            overlay = null; 
+            overlay = null;
         }
 
         if (!overlay && container) {
@@ -3114,7 +3127,7 @@ let estrelasSelectedCategorias = [];
         const filters = getCurrentFilters();
         await loadFilters(filters);
         await loadMainDashboardData();
-        
+
         // Trigger background prefetch after main load
         setTimeout(() => {
             queueCommonFilters();
@@ -3128,14 +3141,14 @@ let estrelasSelectedCategorias = [];
             if (error) { AppLog.warn('Erro ao verificar versão:', error); return; }
 
             const localVersion = localStorage.getItem('dashboard_data_version');
-            
+
             if (serverVersion && serverVersion !== localVersion) {
                 AppLog.log('Nova versão de dados detectada. Limpando cache...', serverVersion);
-                
+
                 // Clear IndexedDB
                 const db = await initDB();
                 await db.clear(STORE_NAME);
-                
+
                 // Update Local Version
                 localStorage.setItem('dashboard_data_version', serverVersion);
             }
@@ -3163,7 +3176,7 @@ let estrelasSelectedCategorias = [];
         // Cache logic for Filters
         const CACHE_TTL = 1000 * 60 * 5; // 5 minutes for filters
         const cacheKey = generateCacheKey('dashboard_filters', currentFilters);
-        
+
         try {
             const cachedEntry = await getFromCache(cacheKey);
             if (cachedEntry && cachedEntry.timestamp) {
@@ -3171,7 +3184,7 @@ let estrelasSelectedCategorias = [];
                 if (age < CACHE_TTL) {
                     AppLog.log('Serving filters from cache (fresh)');
                     applyFiltersData(cachedEntry.data);
-                    return; 
+                    return;
                 }
             }
         } catch (e) { AppLog.warn('Cache error:', e); }
@@ -3206,7 +3219,7 @@ let estrelasSelectedCategorias = [];
             dropdown.classList.remove('hidden');
         }
     };
-        
+
         // ⚡ Bolt Optimization: Attach event listener to container once (Event Delegation)
         // to avoid O(N) DOM queries and listener overhead on every render.
         container.onclick = (e) => {
@@ -3245,7 +3258,7 @@ let estrelasSelectedCategorias = [];
                     return String(nameVal).toLowerCase().includes(lower) || (isObject && String(codVal).toLowerCase().includes(lower));
                 });
             }
-            
+
                         // Sort items so selected ones appear first
             // ⚡ Bolt Optimization: Use a Set for O(1) lookups during sorting instead of O(N) array.includes()
             const currentSelectedSet = new Set(selectedArray);
@@ -3307,12 +3320,12 @@ let estrelasSelectedCategorias = [];
         };
         renderItems();
         updateBtnLabel();
-        if (searchInput) { 
+        if (searchInput) {
             searchInput.oninput = (e) => {
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => renderItems(e.target.value), 300);
-            }; 
-            searchInput.onclick = (e) => e.stopPropagation(); 
+            };
+            searchInput.onclick = (e) => e.stopPropagation();
         }
     }
 
@@ -3327,27 +3340,32 @@ let estrelasSelectedCategorias = [];
         selectElement.style.display = 'none';
 
         // Create Button
+        const btn = document.createElement('button');
         // Copy select classes, remove appearance-none, add button classes
         const classes = selectElement.className.replace('appearance-none', '').split(' ').filter(c => c.trim() !== '');
-        const btnClass = [...new Set([...classes, 'text-left', 'flex', 'justify-between', 'items-center'])].join(' ');
+        btn.className = [...new Set([...classes, 'text-left', 'flex', 'justify-between', 'items-center'])].join(' ');
+        btn.type = 'button';
+
+        const span = document.createElement('span');
+        span.className = 'truncate';
 
         // Find initial selected option
         const initialSelectedOption = selectElement.options[selectElement.selectedIndex];
-        const initialText = initialSelectedOption ? escapeHtml(initialSelectedOption.text) : '';
+        span.textContent = initialSelectedOption ? initialSelectedOption.text : '';
 
-        // 🧹 Tidy Optimization: Using innerHTML and insertAdjacentHTML for template construction rather than createElement blocks
-        const htmlTemplate = `
-            <button type="button" class="${btnClass}">
-                <span class="truncate">${initialText}</span>
-                <svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-            </button>
-            <div class="hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
-        `;
+        const icon = document.createElement('div');
+        icon.innerHTML = '<svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>';
 
-        selectElement.insertAdjacentHTML('afterend', htmlTemplate);
-        const btn = selectElement.nextElementSibling;
-        const span = btn.querySelector('span');
-        const dropdown = btn.nextElementSibling;
+        btn.appendChild(span);
+        btn.appendChild(icon.firstChild);
+
+        // Create Dropdown Container
+        const dropdown = document.createElement('div');
+        dropdown.className = 'hidden absolute z-[50] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2';
+
+        // Insert after select
+        selectElement.parentNode.insertBefore(btn, selectElement.nextSibling);
+        selectElement.parentNode.insertBefore(dropdown, btn.nextSibling);
 
         // ⚡ Bolt Optimization: Attach event listener to container once (Event Delegation)
         dropdown.addEventListener('click', (e) => {
@@ -3528,14 +3546,14 @@ let estrelasSelectedCategorias = [];
              // But if we want default 'Todos', we should let it fall through to first option?
              // If the user wants specific year by default on load, logic handles it.
              // If user wants 'Todos' (e.g. clear filters), it matches.
-             
+
              // If currentVal was invalid (e.g. old year not in list), default to Todos (index 0) or First Year?
              // Usually defaulting to 'Todos' (index 0) is safer now that we added it.
              if (!element.value) element.value = 'todos';
             }
         };
         updateSingleSelect(anoFilter, data.anos);
-        if (mesFilter.options.length <= 1) { 
+        if (mesFilter.options.length <= 1) {
             const meses = MONTHS_PT;
             // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
             mesFilter.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${i}">${m}</option>`).join('');
@@ -3587,7 +3605,7 @@ let estrelasSelectedCategorias = [];
         const currentFiltersStr = JSON.stringify(filters);
         if (currentFiltersStr === lastMainDashboardFiltersStr) return; // No changes made
         lastMainDashboardFiltersStr = currentFiltersStr;
-        
+
         clearTimeout(filterDebounceTimer);
         filterDebounceTimer = setTimeout(async () => {
             window.showDashboardLoading();
@@ -3625,7 +3643,7 @@ let estrelasSelectedCategorias = [];
         // 2. Network Request
         if (isBackground) AppLog.log(`[Background] Fetching data from API...`);
         const { data, error } = await supabase.rpc('get_main_dashboard_data', filters);
-        
+
         if (error) {
             AppLog.error('API Error:', error);
             return { data: null, error };
@@ -3641,7 +3659,7 @@ let estrelasSelectedCategorias = [];
     async function loadMainDashboardData(forceRefresh = false) {
         const filters = getCurrentFilters();
         const cacheKey = generateCacheKey('dashboard_data', filters);
-        
+
         // 1. Stale-While-Revalidate: Try Cache & Render Immediately
         if (!forceRefresh) {
             try {
@@ -3681,7 +3699,7 @@ let estrelasSelectedCategorias = [];
         ]);
 
         const { data, error } = dashboardResult;
-        
+
         if (data && !error) {
             AppLog.log('SWR: Updated with fresh data.');
             lastDashboardData = data;
@@ -3691,7 +3709,7 @@ let estrelasSelectedCategorias = [];
             // Prefetch Next
             prefetchViews(filters);
         }
-        
+
         window.hideDashboardLoading();
     }
 
@@ -3748,7 +3766,7 @@ let estrelasSelectedCategorias = [];
                 .order('dtped', { ascending: false })
                 .limit(1)
                 .maybeSingle();
-            
+
             if (data && data.dtped) {
                 // dtped is timestamp with time zone, e.g., "2026-01-20T14:00:00+00:00"
                 // We want just the date part in YYYY-MM-DD for comparison
@@ -3771,7 +3789,7 @@ let estrelasSelectedCategorias = [];
             p_mes: currentFilters.p_mes,
             p_filial: [], p_cidade: [], p_supervisor: [], p_vendedor: [], p_fornecedor: [], p_tipovenda: []
         };
-        
+
         // Helper to check and add
         const checkAndAdd = async (label, filters) => {
              const key = generateCacheKey('dashboard_data', filters);
@@ -3783,7 +3801,7 @@ let estrelasSelectedCategorias = [];
         };
 
         const tasks = [];
-        
+
         // 1. Filiais
         availableFiltersState.filiais.forEach(v => tasks.push(checkAndAdd(`Filial: ${v}`, { ...baseFilters, p_filial: [v] })));
 
@@ -3804,7 +3822,7 @@ let estrelasSelectedCategorias = [];
 
         // 6. Tipos Venda
         availableFiltersState.tipos_venda.forEach(v => tasks.push(checkAndAdd(`Tipo: ${v}`, { ...baseFilters, p_tipovenda: [v] })));
-        
+
         // 7. Redes
         availableFiltersState.redes.forEach(v => tasks.push(checkAndAdd(`Rede: ${v}`, { ...baseFilters, p_rede: [v] })));
 
@@ -3836,17 +3854,17 @@ let estrelasSelectedCategorias = [];
 
         isPrefetching = true;
         const task = prefetchQueue.shift();
-        
+
         AppLog.log(`[Background] Processando filtro para: ${task.label} (${prefetchQueue.length} restantes)`);
-        
+
         // We use fetchDashboardData which handles the "Check Cache -> Fetch -> Save Cache" loop
         // We pass isBackground=true to suppress standard logs and enable specific ones
         await fetchDashboardData(task.filters, true);
-        
+
         isPrefetching = false;
-        
+
         // Schedule next task with a delay to yield to main thread (UI responsiveness)
-        setTimeout(processQueue, 500); 
+        setTimeout(processQueue, 500);
     }
 
     function renderDashboard(data) {
@@ -3869,13 +3887,13 @@ let estrelasSelectedCategorias = [];
         // KPI Calculation Variables
         let currFat, currKg, prevFat, prevKg, triAvgFat, triAvgPeso;
         let kpiTitleFat, kpiTitleKg;
-        
+
         // --- KPI LOGIC (Scenario Check) ---
         if (mesFilter.value === '') {
             // SCENARIO A: Month All -> Show Year vs Previous Year (Accumulated)
-            
+
             const sumData = (dataset, useTrend) => {
-                let sumFat = 0; 
+                let sumFat = 0;
                 let sumKg = 0;
                 // Sum available months (0 to 11)
                 dataset.forEach(d => {
@@ -3909,13 +3927,13 @@ let estrelasSelectedCategorias = [];
 
             prevFat = prevSums.faturamento;
             prevKg = prevSums.peso;
-            
+
             kpiTitleFat = `Tend. Anual FAT vs Ano Ant.`;
             kpiTitleKg = `Tend. Anual TON vs Ano Ant.`;
 
         } else {
             // SCENARIO B: Default (Month vs Month or Filtered Month)
-            
+
             if (mesFilter.value !== '') {
                 const selectedMonthIndex = parseInt(mesFilter.value);
                 currentData = currentData.filter(d => d.month_index === selectedMonthIndex);
@@ -4082,7 +4100,7 @@ let estrelasSelectedCategorias = [];
             fmt: (v) => formatCurrency(v),
             calcEvo
         });
-        
+
         updateKpiCard({
             prefix: 'kg',
             trendVal: currKg,
@@ -4108,7 +4126,7 @@ let estrelasSelectedCategorias = [];
         triAvgPeso = triCount > 0 ? triSumPeso / triCount : 0;
 
         let currMonthFatForTri, currMonthKgForTri;
-        
+
         if (mesFilter.value === '') {
              // In Year View, we still want the Tri card to make sense (Current Month vs Tri).
              // Let's re-fetch the specific current month data for the Tri calculation.
@@ -4143,7 +4161,7 @@ let estrelasSelectedCategorias = [];
         });
 
         const mName = monthNames[targetIndex]?.toUpperCase() || "";
-        
+
         // Update Titles
         document.getElementById('kpi-title-evo-ano-fat').textContent = kpiTitleFat;
         document.getElementById('kpi-title-evo-ano-kg').textContent = kpiTitleKg;
@@ -4152,7 +4170,7 @@ let estrelasSelectedCategorias = [];
 
         // --- CHART PREP (Responsive to Mode) ---
         const mainChartTitle = document.getElementById('main-chart-title');
-        
+
         // Determine Bonification Mode
         const isBonifMode = isBonificationMode(getCurrentFilters().p_tipovenda);
 
@@ -4161,7 +4179,7 @@ let estrelasSelectedCategorias = [];
             if (isBonifMode && currentChartMode === 'faturamento') return d.bonificacao;
             return currentChartMode === 'faturamento' ? d.faturamento : d.peso;
         };
-        
+
         // Formatters
         const currencyFormatter = (v) => formatChartLabel(v);
         const weightFormatter = (v) => formatChartLabel(v, ' Ton');
@@ -4173,12 +4191,12 @@ let estrelasSelectedCategorias = [];
             mainChartTitle.textContent = "TONELAGEM MENSAL";
         }
 
-        const mapTo12 = (arr) => { 
-            const res = new Array(12).fill(0); 
-            arr.forEach(d => res[d.month_index] = getDataValue(d)); 
-            return res; 
+        const mapTo12 = (arr) => {
+            const res = new Array(12).fill(0);
+            arr.forEach(d => res[d.month_index] = getDataValue(d));
+            return res;
         };
-        
+
         const datasets = [];
 
         datasets.push({ label: `Ano ${data.previous_year}`, data: mapTo12(previousData), isPrevious: true });
@@ -4189,13 +4207,13 @@ let estrelasSelectedCategorias = [];
             const trendArray = new Array(13).fill(null); // Increased to 13 to separate trend
             // Pad previous datasets to 13
             datasets.forEach(ds => ds.data.push(null));
-            
+
             trendArray[12] = getDataValue(data.trend_data); // Use 13th slot
-            
-            datasets.push({ 
-                label: `Tendência ${monthNames[data.trend_data.month_index]}`, 
+
+            datasets.push({
+                label: `Tendência ${monthNames[data.trend_data.month_index]}`,
                 data: trendArray,
-                isTrend: true 
+                isTrend: true
             });
         }
 
@@ -4215,7 +4233,7 @@ let estrelasSelectedCategorias = [];
 
     function updateKpiCard({ prefix, trendVal, prevVal, fmt, calcEvo }) {
         const evo = calcEvo(trendVal, prevVal);
-        
+
         const elTrend = document.getElementById(`kpi-value-trend-${prefix}`);
         const elPrev = document.getElementById(`kpi-value-prev-${prefix}`);
         const elVar = document.getElementById(`kpi-var-${prefix}`);
@@ -4253,7 +4271,7 @@ let estrelasSelectedCategorias = [];
             if (d.isPrevious) color = professionalPalette.previous;
             if (d.isCurrent) color = professionalPalette.current;
             if (d.isTrend) color = professionalPalette.trend;
-            
+
             return {
                 ...d,
                 label: d.label,
@@ -4308,15 +4326,15 @@ let estrelasSelectedCategorias = [];
                     }
                 },
                 scales: {
-                    y: { 
+                    y: {
                         grace: '10%',
-                        ticks: { color: '#94a3b8' }, 
+                        ticks: { color: '#94a3b8' },
                         grid: { color: 'rgba(255, 255, 255, 0.05)' },
                         afterFit: (axis) => { axis.width = 150; } // Force Y-axis width to match table first column
                     },
-                    x: { 
-                        ticks: { color: '#94a3b8' }, 
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' } 
+                    x: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
                     }
                 }
             },
@@ -4432,10 +4450,10 @@ let estrelasSelectedCategorias = [];
         const currentFiltersStr = JSON.stringify(filters);
         if (currentFiltersStr === lastCityFiltersStr) return;
         lastCityFiltersStr = currentFiltersStr;
-        
+
         clearTimeout(cityFilterDebounceTimer);
         cityFilterDebounceTimer = setTimeout(() => {
-            currentCityPage = 0; 
+            currentCityPage = 0;
             loadCityView();
         }, 500);
     };
@@ -4499,7 +4517,7 @@ let estrelasSelectedCategorias = [];
              else if (filterData.anos.length > 0) cityAnoFilter.value = filterData.anos[0];
              enhanceSelectToCustomDropdown(cityAnoFilter);
          }
-         
+
          if (cityMesFilter && cityMesFilter.options.length <= 1) {
             const meses = MONTHS_PT;
             // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
@@ -4542,7 +4560,7 @@ let estrelasSelectedCategorias = [];
         };
 
         const { data, error } = await supabase.rpc('get_city_view_data', filters);
-        
+
         window.hideDashboardLoading();
 
         if(error) { AppLog.error(error); return; }
@@ -4647,7 +4665,7 @@ let estrelasSelectedCategorias = [];
         const currentFiltersStr = JSON.stringify(filters);
         if (currentFiltersStr === lastBranchFiltersStr) return;
         lastBranchFiltersStr = currentFiltersStr;
-        
+
         clearTimeout(branchFilterDebounceTimer);
         branchFilterDebounceTimer = setTimeout(loadBranchView, 500);
     };
@@ -4670,7 +4688,7 @@ let estrelasSelectedCategorias = [];
             handleBranchFilterChange();
         }
     });
-    
+
     branchClearFiltersBtn?.addEventListener('click', () => {
          branchAnoFilter.value = 'todos';
          branchAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
@@ -4716,7 +4734,7 @@ let estrelasSelectedCategorias = [];
              else if (filterData.anos.length > 0) branchAnoFilter.value = filterData.anos[0];
              enhanceSelectToCustomDropdown(branchAnoFilter);
          }
-         
+
          // Months
          if (branchMesFilter.options.length <= 1) {
             const meses = MONTHS_PT;
@@ -4736,7 +4754,7 @@ let estrelasSelectedCategorias = [];
         const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
         setupBranchMultiSelect(branchRedeFilterBtn, branchRedeFilterDropdown, branchRedeFilterList, redes, branchSelectedRedes, branchRedeFilterSearch);
     }
-    
+
     // Specific setup for Branch Filter to enforce 2 selections
     function setupBranchFilialSelect(btn, dropdown, container, items, selectedArray) {
         // If nothing selected, default to first 2
@@ -4755,7 +4773,7 @@ let estrelasSelectedCategorias = [];
             dropdown.classList.remove('hidden');
         }
     };
-        
+
         const selectedSet = new Set(selectedArray);
 
         // ⚡ Bolt Optimization: Attach event listener to container once (Event Delegation)
@@ -4810,13 +4828,13 @@ let estrelasSelectedCategorias = [];
 
             if (!items || items.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
         };
-        
+
         const updateBtnLabel = () => {
             const span = btn.querySelector('span');
             if (selectedArray.length === 0) span.textContent = 'Selecione 2';
             else span.textContent = `${selectedArray.length} selecionadas`;
         };
-        
+
         renderItems();
         updateBtnLabel();
     }
@@ -4830,7 +4848,7 @@ let estrelasSelectedCategorias = [];
 
         // Populate Dropdowns if needed
         if (branchAnoFilter.options.length <= 1) {
-            await initBranchFilters(); 
+            await initBranchFilters();
         }
 
         // Prepare Filters for RPC
@@ -4871,7 +4889,7 @@ let estrelasSelectedCategorias = [];
         } catch (e) {
             AppLog.error("Erro geral no fetch de filiais:", e);
         }
-        
+
         window.hideDashboardLoading();
         if (branchDataMap) {
             renderBranchDashboard(branchDataMap, selectedYear, selectedMonth);
@@ -4881,7 +4899,7 @@ let estrelasSelectedCategorias = [];
     function renderBranchDashboard(branchDataMap, selectedYear, selectedMonth) {
          const now = new Date();
          const branches = Object.keys(branchDataMap).sort();
-         const kpiBranches = {}; 
+         const kpiBranches = {};
          const chartBranches = {};
          const monthNames = MONTHS_PT;
 
@@ -4902,7 +4920,7 @@ let estrelasSelectedCategorias = [];
          branches.forEach(b => {
              const data = branchDataMap[b];
              let monthlyData = data.monthly_data_current || [];
-             
+
              // If month is selected, filter data
              if (selectedMonth !== null && selectedMonth !== undefined && selectedMonth !== '') {
                  const monthIdx = parseInt(selectedMonth);
@@ -4944,7 +4962,7 @@ let estrelasSelectedCategorias = [];
                      kpiKg += (d.peso || 0);
                  });
              }
-             
+
              kpiBranches[b] = { faturamento: kpiFat, peso: kpiKg };
          });
 
@@ -4952,7 +4970,7 @@ let estrelasSelectedCategorias = [];
          // Ensure we display consistent order as fetched/selected
          const b1 = branches[0] || 'N/A';
          const b2 = branches[1] || 'N/A';
-         
+
          const val1Fat = kpiBranches[b1]?.faturamento || 0;
          const val2Fat = kpiBranches[b2]?.faturamento || 0;
          const val1Kg = kpiBranches[b1]?.peso || 0;
@@ -4962,15 +4980,15 @@ let estrelasSelectedCategorias = [];
          const elB2Name = document.getElementById('branch-name-2'); if(elB2Name) elB2Name.textContent = b2;
          const elVal1Fat = document.getElementById('branch-val-1-fat'); if(elVal1Fat) elVal1Fat.textContent = formatCurrency(val1Fat);
          const elVal2Fat = document.getElementById('branch-val-2-fat'); if(elVal2Fat) elVal2Fat.textContent = formatCurrency(val2Fat);
-         
+
          // Variations Logic
          // Share of Total (Val / Total)
-         
+
          const calcShare = (val, total) => {
              if (total > 0) return (val / total) * 100;
              return 0;
          };
-         
+
          const totalFat = val1Fat + val2Fat;
          const share1Fat = calcShare(val1Fat, totalFat);
          const share2Fat = calcShare(val2Fat, totalFat);
@@ -5006,7 +5024,7 @@ let estrelasSelectedCategorias = [];
              elVar2Kg.textContent = `${share2Kg.toFixed(1)}%`;
              elVar2Kg.className = `text-sm font-bold mt-1 ${share2Kg >= 50 ? 'text-emerald-400' : 'text-red-400'}`;
          }
-         
+
          // Update Title Context
          let kpiContext;
          if (!selectedYear || selectedYear === 'todos') {
@@ -5042,15 +5060,15 @@ let estrelasSelectedCategorias = [];
                  borderWidth: 1
              });
          });
-         
+
          const chartYear = (!selectedYear || selectedYear === 'todos') ? now.getFullYear() : parseInt(selectedYear);
-         
+
          // Check if ANY branch has trend data available
          const hasTrendData = branches.some(b => {
              const bData = branchDataMap[b];
              return bData && bData.trend_allowed && bData.trend_data;
          });
-         
+
          if (hasTrendData) {
              branches.forEach((b, idx) => {
                  const bData = branchDataMap[b];
@@ -5060,27 +5078,27 @@ let estrelasSelectedCategorias = [];
                  } else {
                      if (datasets[idx]) datasets[idx].data.push(0);
                  }
-                 
+
                  // Update colors to highlight trend
                  const baseColor = colors[idx % colors.length];
                  const trendColor = trendColors[idx % trendColors.length];
-                 
+
                  // Create array of colors: 12 months + 1 trend
                  const bgColors = new Array(12).fill(baseColor);
                  bgColors.push(trendColor);
-                 
+
                  datasets[idx].backgroundColor = bgColors;
                  datasets[idx].borderColor = bgColors;
              });
-             
+
              const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Tendência"];
-             const fmt = currentBranchChartMode === 'faturamento' 
+             const fmt = currentBranchChartMode === 'faturamento'
                 ? (v) => formatChartLabel(v)
                 : (v) => formatChartLabel(v, ' Ton');
              createChart('branch-chart', 'bar', labels, datasets, fmt);
          } else {
              const labels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-             const fmt = currentBranchChartMode === 'faturamento' 
+             const fmt = currentBranchChartMode === 'faturamento'
                 ? (v) => formatChartLabel(v)
                 : (v) => formatChartLabel(v, ' Ton');
              createChart('branch-chart', 'bar', labels, datasets, fmt);
@@ -5130,7 +5148,7 @@ let estrelasSelectedCategorias = [];
         const now = new Date();
         let year = now.getFullYear();
         let month = now.getMonth();
-        
+
         // Respect Filters if selected
         if (anoFilter && anoFilter.value !== 'todos') {
             year = parseInt(anoFilter.value);
@@ -5142,14 +5160,14 @@ let estrelasSelectedCategorias = [];
                  }
             }
         }
-        
+
         if (mesFilter && mesFilter.value !== '') {
             month = parseInt(mesFilter.value);
         }
 
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
-        
+
         const daysInMonth = lastDay.getDate();
         const startingDay = firstDay.getDay(); // 0 = Sunday
 
@@ -5157,7 +5175,7 @@ let estrelasSelectedCategorias = [];
 
         let html = `<div class="mb-2 font-bold text-slate-300 text-center">${escapeHtml(monthNames[month])} ${escapeHtml(year)}</div>`;
         html += `<div class="grid grid-cols-7 gap-1 text-center">`;
-        
+
         const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
         weekDays.forEach(day => html += `<div class="w-8 h-8 flex items-center justify-center text-xs font-bold text-slate-500 cursor-default">${escapeHtml(day)}</div>`);
 
@@ -5172,7 +5190,7 @@ let estrelasSelectedCategorias = [];
             const isHoliday = holidays.includes(dateStr);
             const isToday = (day === now.getDate() && month === now.getMonth() && year === now.getFullYear());
             const isLastSalesDay = (dateStr === lastSalesDate);
-            
+
             let classes = 'calendar-day w-8 h-8 flex items-center justify-center rounded cursor-pointer text-xs transition-colors';
 
             if (isHoliday) {
@@ -5183,12 +5201,12 @@ let estrelasSelectedCategorias = [];
 
             if (isToday) classes += ' ring-1 ring-inset ring-cyan-500';
             if (isLastSalesDay) classes += ' border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 font-bold';
-            
+
             html += `<div class="${classes}" data-date="${escapeHtml(dateStr)}" title="${isLastSalesDay ? 'Última Venda' : ''}">${escapeHtml(day)}</div>`;
         }
-        
+
         html += `</div>`;
-        
+
         // Legend
         html += `
             <div class="mt-4 flex flex-col gap-2 text-xs text-slate-400">
@@ -5213,27 +5231,27 @@ let estrelasSelectedCategorias = [];
         calendarModalContent.querySelectorAll('.calendar-day[data-date]').forEach(el => {
             el.addEventListener('click', async () => {
                 AppLog.log("Calendar day clicked:", el.getAttribute('data-date'));
-                
+
                 if (window.userRole !== 'adm') {
                     AppLog.warn("User role not adm:", window.userRole);
                     window.showToast('error', "Apenas administradores podem alterar feriados.");
                     return;
                 }
-                
+
                 const date = el.getAttribute('data-date');
                 const isSelected = el.classList.contains('selected');
                 const [y, m, d] = date.split('-');
                 const formattedDate = `${d}/${m}/${y}`;
-                
-                const confirmMsg = isSelected 
-                    ? `Você deseja remover o feriado de ${formattedDate}?` 
+
+                const confirmMsg = isSelected
+                    ? `Você deseja remover o feriado de ${formattedDate}?`
                     : `Você deseja selecionar ${formattedDate} como feriado?`;
 
                 if (!confirm(confirmMsg)) return;
 
                 // Optimistic UI Update
                 el.classList.toggle('selected');
-                
+
                 // Call RPC
                 const { data: result, error } = await supabase.rpc('toggle_holiday', { p_date: date });
                 if (error) {
@@ -5242,7 +5260,7 @@ let estrelasSelectedCategorias = [];
                     window.showToast('error', "Erro ao alterar feriado: " + error.message);
                 } else {
                     AppLog.log("Holiday toggled successfully.");
-                    
+
                     // Update local holidays array
                     if (isSelected) {
                         holidays = holidays.filter(h => h !== date);
@@ -5257,7 +5275,7 @@ let estrelasSelectedCategorias = [];
             });
         });
     }
- 
+
 
         let selectedComparisonSupervisors = [];
         let selectedComparisonSellers = [];
@@ -5276,9 +5294,9 @@ let estrelasSelectedCategorias = [];
         let lastComparisonFiltersStr = "";
         const handleComparisonFilterChange = () => {
             let pFornecedorValue = selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null;
-            
+
             // Apply "Pasta" filter logic on top of existing fornecedor if 'ambas' is not selected
-            // "Pasta" is conceptually a macro-fornecedor. 
+            // "Pasta" is conceptually a macro-fornecedor.
             if (comparisonPastaFilter && comparisonPastaFilter.value !== 'ambas') {
                 const pastaSuppliers = comparisonPastaFilter.value === 'ELMA' ? ['707', '708', '752'] : ['1119'];
                 if (!pFornecedorValue) {
@@ -5305,7 +5323,7 @@ let estrelasSelectedCategorias = [];
             const currentFiltersStr = JSON.stringify(filters);
             if (currentFiltersStr === lastComparisonFiltersStr) return;
             lastComparisonFiltersStr = currentFiltersStr;
-            
+
             clearTimeout(comparisonFilterDebounceTimer);
             comparisonFilterDebounceTimer = setTimeout(() => {
                 loadComparisonView();
@@ -5472,22 +5490,22 @@ let estrelasSelectedCategorias = [];
             try {
         // Helper
                 const getList = (id) => document.getElementById(id);
-                
+
                 // Filiais
                 setupCityMultiSelect(comparisonFilialFilterBtn, comparisonFilialFilterDropdown, comparisonFilialFilterDropdown, filterData.filiais, selectedComparisonFiliais);
 
                 // Supervisors
                 const supList = getList('comparison-supervisor-filter-list') || comparisonSupervisorFilterDropdown;
                 setupCityMultiSelect(comparisonSupervisorFilterBtn, comparisonSupervisorFilterDropdown, supList, filterData.supervisors, selectedComparisonSupervisors);
-                
+
                 // Vendedores
                 const vendList = getList('comparison-vendedor-filter-list') || comparisonVendedorFilterDropdown;
                 setupCityMultiSelect(comparisonVendedorFilterBtn, comparisonVendedorFilterDropdown, vendList, filterData.vendedores, selectedComparisonSellers);
-                
+
                 // Suppliers
                 const suppList = getList('comparison-supplier-filter-list') || comparisonSupplierFilterDropdown;
                 setupCityMultiSelect(comparisonSupplierFilterBtn, comparisonSupplierFilterDropdown, suppList, filterData.fornecedores, selectedComparisonSuppliers, null, true);
-                
+
                 // Tipos Venda
                 const tipoList = getList('comparison-tipo-venda-filter-list') || comparisonTipoVendaFilterDropdown;
                 setupCityMultiSelect(comparisonTipoVendaFilterBtn, comparisonTipoVendaFilterDropdown, tipoList, filterData.tipos_venda, selectedComparisonTiposVenda);
@@ -5604,10 +5622,10 @@ let estrelasSelectedCategorias = [];
                 { title: 'Faturamento Total', current: curF, history: data.history_kpi.f / 3, format: 'currency' },
                 { title: 'Peso Total (Ton)', current: curP/1000, history: (data.history_kpi.p/3)/1000, format: 'decimal' },
                 { title: 'Clientes Atendidos', current: curC, history: data.history_kpi.c / 3, format: 'integer' },
-                { title: 'Ticket Médio', 
-                  current: curC > 0 ? curF / curC : 0, 
-                  history: data.history_kpi.c > 0 ? (data.history_kpi.f/3) / (data.history_kpi.c/3) : 0, 
-                  format: 'currency' 
+                { title: 'Ticket Médio',
+                  current: curC > 0 ? curF / curC : 0,
+                  history: data.history_kpi.c > 0 ? (data.history_kpi.f/3) / (data.history_kpi.c/3) : 0,
+                  format: 'currency'
                 },
                 { title: 'Mix por PDV (Pepsico)', current: Number(data.current_kpi.mix_pepsico.toFixed(2)), history: Number((data.history_kpi.sum_mix_pepsico / 3).toFixed(2)), format: 'decimal_2' },
                 { title: 'Mix Salty', current: Math.round(data.current_kpi.pos_salty * trendFactor), history: Math.round(data.history_kpi.sum_pos_salty / 3), format: 'integer' },
@@ -5617,11 +5635,11 @@ let estrelasSelectedCategorias = [];
             // 2. Weekly Chart Logic
             const currentDaily = data.current_daily || [];
             const historyDaily = data.history_daily || [];
-            
+
             const getWeekIdx = (dateStr) => {
                 const d = new Date(dateStr);
                 const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
-                const offset = firstDay.getDay(); 
+                const offset = firstDay.getDay();
                 const dayOfMonth = d.getDate();
                 return Math.floor((dayOfMonth + offset - 1) / 7);
             };
@@ -5640,11 +5658,11 @@ let estrelasSelectedCategorias = [];
             currentDaily.forEach(item => {
                 if (item.d > maxDateStr) maxDateStr = item.d;
                 currentActualTotal += item.f;
-                
+
                 const idx = getWeekIdx(item.d + 'T12:00:00');
                 if (idx >= 0 && idx < 6) {
                     weeklyCurrent[idx] += item.f;
-                    
+
                     // Fill Daily Actuals
                     const d = new Date(item.d + 'T12:00:00');
                     const dayIdx = d.getDay();
@@ -5664,7 +5682,7 @@ let estrelasSelectedCategorias = [];
                     const day = d.getDay();
                     const dateStr = d.toISOString().split('T')[0];
                     // Access global holidays if available
-                    const hols = (typeof holidays !== 'undefined') ? holidays : []; 
+                    const hols = (typeof holidays !== 'undefined') ? holidays : [];
                     return day !== 0 && day !== 6 && !hols.includes(dateStr);
                 };
 
@@ -5682,7 +5700,7 @@ let estrelasSelectedCategorias = [];
                     }
                 });
 
-                const historyWeights = historySums.map((week, wIdx) => 
+                const historyWeights = historySums.map((week, wIdx) =>
                     week.map((sum, dIdx) => {
                         const count = historyCounts[wIdx][dIdx];
                         return count > 0 ? sum / count : 0;
@@ -5698,9 +5716,9 @@ let estrelasSelectedCategorias = [];
                 }
 
                 const dailyRunRate = passedWorkingDays > 0 ? currentActualTotal / passedWorkingDays : 0;
-                
+
                 // Identify Future Working Days
-                const futureDays = []; 
+                const futureDays = [];
                 let iter = new Date(lastSalesDate);
                 iter.setDate(iter.getDate() + 1); // Start from next day
 
@@ -5730,9 +5748,9 @@ let estrelasSelectedCategorias = [];
                         allocation = totalProjectedPot * (weight / totalWeightDenominator);
                     } else {
                         // Fallback to equal distribution if no history for these specific slots
-                        allocation = dailyRunRate; 
+                        allocation = dailyRunRate;
                     }
-                    
+
                     weeklyCurrent[day.weekIdx] += allocation;
                     dailyDataByWeek[day.weekIdx][day.dayIdx] += allocation;
                 });
@@ -5768,7 +5786,7 @@ let estrelasSelectedCategorias = [];
                 fat: m.f,
                 clients: m.c
             }));
-            
+
             monthlyData.push({ label: 'Atual', fat: curF, clients: curC });
 
             // 4. Daily Chart Datasets
@@ -6283,11 +6301,11 @@ function renderInnovationsKPIs(data) {
 
     if (topCovTitle) topCovTitle.textContent = bestCategory || 'N/A';
     if (topCovLabel) topCovLabel.textContent = 'Melhor Categoria';
-    
+
     // Changing the count label to the calculated average
     if (topCovKpi) topCovKpi.textContent = bestAvgPerClient > 0 ? bestAvgPerClient.toFixed(2) : '0.00';
     if (topCovCount) topCovCount.textContent = 'Média Produtos';
-    
+
     if (topCovValue) topCovValue.textContent = '';
 
     // Selection Percent
@@ -6446,11 +6464,11 @@ function renderInnovationsChart(data) {
 window.toggleInnovationRow = function(safeId) {
     const childRows = document.querySelectorAll(`.innovations-child-${safeId}`);
     const icon = document.getElementById(`icon-innovations-${safeId}`);
-    
+
     if (childRows.length === 0) return;
-    
+
     const isHidden = childRows[0].classList.contains('hidden');
-    
+
     childRows.forEach(row => {
         if (isHidden) {
             row.classList.remove('hidden');
@@ -6458,7 +6476,7 @@ window.toggleInnovationRow = function(safeId) {
             row.classList.add('hidden');
         }
     });
-    
+
     if (icon) {
         if (isHidden) {
             // Expand (Minus icon)
@@ -6475,13 +6493,13 @@ window.renderInnovationsTable = function(data) {
     if (!tbody || !data || !data.categories) return;
 
     let html = '';
-    
+
     // Use dynamic period-specific attended bases instead of a fixed 12m active base
     // Fallback to 1 to prevent division by zero
     const attCurrent = data.attended_current || 1;
     const attPrevYear = data.attended_prev_year || 1;
     const attPrevM1 = data.attended_prev_m1 || 1;
-    const attAvg12m = data.attended_12m > 0 ? (data.attended_12m / 3.0) : 1; 
+    const attAvg12m = data.attended_12m > 0 ? (data.attended_12m / 3.0) : 1;
 
     // Pre-group products by category for O(N+M) performance
     const productsByCategory = new Map();
@@ -6500,10 +6518,10 @@ window.renderInnovationsTable = function(data) {
         let catPosPrevM1 = Math.round(cat.pos_prev_m1 || 0);
         let catPosAvg12m = Math.round(cat.pos_avg_12m || 0);
         let catEstoque = Math.round(cat.estoque_current || 0);
-        
+
         let varPercent = cat.pos_prev_m1 > 0 ? (((cat.pos_current - cat.pos_prev_m1) / cat.pos_prev_m1) * 100).toFixed(1) : (cat.pos_current > 0 ? 100 : 0);
         let varColor = varPercent >= 0 ? 'text-green-400' : 'text-red-400';
-        
+
         const safeId = cat.name.replace(/[^a-zA-Z0-9]/g, '_');
 
         // Category Row (Parent)
@@ -6531,7 +6549,7 @@ window.renderInnovationsTable = function(data) {
             let posPrevM1 = Math.round(p.pos_prev_m1 || 0);
             let posAvg12m = Math.round(p.pos_avg_12m || 0);
             let pEstoque = Math.round(p.estoque_current || 0);
-            
+
             let pVarPercent = p.pos_prev_m1 > 0 ? (((p.pos_current - p.pos_prev_m1) / p.pos_prev_m1) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
             let pVarColor = pVarPercent >= 0 ? 'text-green-400' : 'text-red-400';
 
@@ -6695,7 +6713,7 @@ const setupInnovationsFilters = async () => {
     // Load Ano and Mes
     const anoSelect = document.getElementById('innovations-ano-filter');
     const mesSelect = document.getElementById('innovations-mes-filter');
-    
+
     await fetchLastSalesDate();
     const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
 
@@ -6710,7 +6728,7 @@ const setupInnovationsFilters = async () => {
         enhanceSelectToCustomDropdown(anoSelect);
         anoSelect.addEventListener('change', handleInnovationsFilterChange);
     }
-    
+
     if (mesSelect) {
         const meses = MONTHS_PT;
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
@@ -6729,10 +6747,10 @@ const setupInnovationsFilters = async () => {
     setupCityMultiSelect(innovationsVendedorFilterBtn, innovationsVendedorFilterDropdown, innovationsVendedorFilterList, filterData.vendedores, innovationsSelectedVendedores, innovationsVendedorFilterSearch);
     setupCityMultiSelect(innovationsCidadeFilterBtn, innovationsCidadeFilterDropdown, innovationsCidadeFilterList, filterData.cidades, innovationsSelectedCidades, innovationsCidadeFilterSearch);
     setupCityMultiSelect(innovationsTipovendaFilterBtn, innovationsTipovendaFilterDropdown, innovationsTipovendaFilterDropdown, filterData.tipos_venda, innovationsSelectedTiposVenda);
-    
+
     const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
     setupCityMultiSelect(innovationsRedeFilterBtn, innovationsRedeFilterDropdown, innovationsRedeFilterList, redes, innovationsSelectedRedes, innovationsRedeFilterSearch);
-    
+
     setupCityMultiSelect(innovationsFilialFilterBtn, innovationsFilialFilterDropdown, innovationsFilialFilterDropdown, filterData.filiais, innovationsSelectedFiliais);
 
     // Load Inovações Categories
@@ -6745,10 +6763,10 @@ const setupInnovationsFilters = async () => {
     } catch (e) {
         AppLog.error("Error loading inovacoes categories", e);
     }
-    
+
     window.hideDashboardLoading();
 
-    
+
     const lpSupervisorBtn = document.getElementById("lp-supervisor-filter-btn");
     const lpSupervisorDropdown = document.getElementById("lp-supervisor-filter-dropdown");
     if (lpSupervisorBtn) setupCityMultiSelect(lpSupervisorBtn, lpSupervisorDropdown, lpSupervisorDropdown, filterData.supervisors, lpSelectedSupervisors);
@@ -6775,7 +6793,7 @@ const setupInnovationsFilters = async () => {
     // Actually we need to call setupCityMultiSelect on wrappers if possible...
     // wait, for Supervisor/Vendedor/Rede the wrappers are handled differently inside updateLojaPerfeitaFilters ?
     // let's check how the others are initialized.
-    
+
 
     isInnovationsInitialized = true;
 };
@@ -6960,7 +6978,7 @@ function setupLpClientSearchAutocomplete() {
         }
 
         clearTimeout(debounceTimer);
-        
+
         if (val.length < 3) {
             dropdown.innerHTML = '';
             dropdown.classList.add('hidden');
@@ -6979,11 +6997,11 @@ function setupLpClientSearchAutocomplete() {
                     p_rede: lpSelectedRedes.length > 0 ? lpSelectedRedes : null
                 };
                 const { data, error } = await supabase.rpc('search_loja_perfeita_clients', searchParams);
-                
+
                 if (error) throw error;
 
                 dropdown.innerHTML = '';
-                
+
                 if (!data || data.length === 0) {
                     dropdown.innerHTML = '<div class="p-3 text-sm text-slate-400 text-center">Nenhum cliente encontrado</div>';
                     dropdown.classList.remove('hidden');
@@ -7213,7 +7231,7 @@ window.clearAllFilters = async function(prefix) {
             mesSelect.value = currentMonth;
             mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
-        
+
         innovationsSelectedSupervisors.length = 0;
         innovationsSelectedVendedores.length = 0;
         innovationsSelectedCidades.length = 0;
@@ -7221,7 +7239,7 @@ window.clearAllFilters = async function(prefix) {
         innovationsSelectedRedes.length = 0;
         innovationsSelectedFiliais.length = 0;
         innovationsSelectedCategorias.length = 0;
-        
+
         // Uncheck all custom select items visually
         const wrappers = [
             'innovations-supervisor-filter-dropdown', 'innovations-vendedor-filter-dropdown',
@@ -7311,12 +7329,12 @@ window.clearAllFilters = async function(prefix) {
                 setupCityMultiSelect(document.getElementById('innovations-vendedor-filter-btn'), document.getElementById('innovations-vendedor-filter-dropdown'), document.getElementById('innovations-vendedor-filter-list'), data.vendedores, innovationsSelectedVendedores, document.getElementById('innovations-vendedor-filter-search'));
                 setupCityMultiSelect(document.getElementById('innovations-cidade-filter-btn'), document.getElementById('innovations-cidade-filter-dropdown'), document.getElementById('innovations-cidade-filter-list'), data.cidades, innovationsSelectedCidades, document.getElementById('innovations-cidade-filter-search'));
                 setupCityMultiSelect(document.getElementById('innovations-tipovenda-filter-btn'), document.getElementById('innovations-tipovenda-filter-dropdown'), document.getElementById('innovations-tipovenda-filter-dropdown'), data.tipos_venda, innovationsSelectedTiposVenda);
-                
+
                 const redes = ['C/ REDE', 'S/ REDE', ...(data.redes || [])];
                 setupCityMultiSelect(document.getElementById('innovations-rede-filter-btn'), document.getElementById('innovations-rede-filter-dropdown'), document.getElementById('innovations-rede-filter-list'), redes, innovationsSelectedRedes, document.getElementById('innovations-rede-filter-search'));
-                
+
                 setupCityMultiSelect(document.getElementById('innovations-filial-filter-btn'), document.getElementById('innovations-filial-filter-dropdown'), document.getElementById('innovations-filial-filter-dropdown'), data.filiais, innovationsSelectedFiliais);
-                
+
                 supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true }).then(({data: inovacData}) => {
                     if (inovacData) {
                         const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
@@ -7459,7 +7477,7 @@ window.clearAllFilters = async function(prefix) {
             mesSelect.value = currentMonth;
             mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
-        
+
         // No need to call updateAgendaView directly, as the dispatchEvent('change') on ano/mes selects will trigger handleAgendaFilterChange if they are attached, OR the user might not have them.
         // Actually, let's call it just to be safe, but wait, if dispatchEvent triggers debounce, and we call it, it might trigger twice.
         // Let's just call it directly to ensure update, as debounce will protect us.
@@ -7470,7 +7488,7 @@ window.clearAllFilters = async function(prefix) {
         lpSelectedSupervisors.length = 0;
         lpSelectedVendedores.length = 0;
         lpSelectedRedes.length = 0;
-        
+
         ['lp-supervisor', 'lp-vendedor', 'lp-rede', 'lp-cidade'].forEach(prefix => {
             const btn = document.getElementById(`${prefix}-filter-btn`);
             if (btn) {
@@ -7487,7 +7505,7 @@ window.clearAllFilters = async function(prefix) {
             const searchInput = document.getElementById(`${prefix}-filter-search`);
             if (searchInput) searchInput.value = '';
         });
-        
+
         // Clear Client Autocomplete
         lpSelectedClient = null;
         const lpClientInput = document.getElementById('lp-cliente-search-input');
@@ -7497,7 +7515,7 @@ window.clearAllFilters = async function(prefix) {
         if (lpClientClearBtn) lpClientClearBtn.classList.add('hidden');
         if (lpClientDropdown) lpClientDropdown.classList.add('hidden');
         loadLojaPerfeitaFilters(true);
-        
+
         updateLojaPerfeitaView();
     }
 };
@@ -7650,7 +7668,7 @@ async function renderEstrelasView() {
 
 async function updateEstrelasView() {
     AppLog.log("Estrelas view updating...");
-    
+
     // Show overlay handled by showDashboardLoading
     window.showDashboardLoading('estrelas-view');
 
@@ -7676,7 +7694,7 @@ async function updateEstrelasView() {
         const metaSelloutSalty = data.sellout_salty_meta || 0;
         const metaSelloutFoods = data.sellout_foods_meta || 0;
         const metaSellout = metaSelloutSalty + metaSelloutFoods;
-        
+
         const metaPos = data.positivacao_meta || 0;
         const metaAcel = data.aceleradores_meta || 0;
 
@@ -7696,7 +7714,7 @@ async function updateEstrelasView() {
         updateEl('sellout-realizado-val', `${data.sellout_salty + data.sellout_foods < 0.01 ? '0.00' : (data.sellout_salty + data.sellout_foods).toFixed(2)} tons`);
         updateEl('sellout-salty-val', `${data.sellout_salty < 0.01 ? '0.00' : data.sellout_salty.toFixed(2)} tons`);
         updateEl('sellout-foods-val', `${data.sellout_foods < 0.01 ? '0.00' : data.sellout_foods.toFixed(2)} tons`);
-        
+
         // Remove old unused nodes safely if they exist in DOM (just in case they weren't removed from HTML)
         updateEl('pontos-possiveis-sellout', data.base_clientes);
         updateEl('pontos-parciais-sellout', 0);
@@ -7718,7 +7736,7 @@ async function updateEstrelasView() {
         // Progress Bars
         let pctPos = data.base_clientes > 0 ? (data.positivacao_salty / data.base_clientes) * 100 : 0;
         let pctAcel = data.base_clientes > 0 ? (data.aceleradores_realizado / data.base_clientes) * 100 : 0;
-        
+
         let realizedSellout = data.sellout_salty + data.sellout_foods;
         let pctSellout = metaSellout > 0 ? (realizedSellout / metaSellout) * 100 : (realizedSellout > 0 ? 100 : 0);
 
@@ -7835,7 +7853,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         // Leaf Node (grp_vendedor === 0)
         if (!hierarchy.children[filial]) hierarchy.children[filial] = { name: filial, children: {}, totals: {} };
         if (!hierarchy.children[filial].children[cidade]) hierarchy.children[filial].children[cidade] = { name: cidade, children: {}, totals: {} };
-        
+
         hierarchy.children[filial].children[cidade].children[vendedor] = {
             name: vendedor,
             ...rowData
@@ -7881,7 +7899,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
 
         const positStr = dataNode.positivacao || 0;
         const percPositStr = percPosit.toFixed(1) + '%';
-        
+
         const rowHtml = `
             <tr class="hover:bg-white/5 transition-colors ${level > 0 ? 'hidden freq-child-row' : ''}" id="${id}" data-parent="${parentId}" data-level="${level}">
                 <td class="px-2 py-2 border-b border-white/5 w-8 text-center cursor-pointer" onclick="toggleFreqNode('${id}')">
@@ -8226,23 +8244,29 @@ const loadAgendaFilters = async () => {
         const { data: routeData, error } = await supabase
             .from('supervisors_routes')
             .select('supervisor, rota_dia, data_rota');
-            
+
         if (error) throw error;
-        
+
         // Populate Year
         const years = [...new Set(routeData.map(r => r.data_rota ? r.data_rota.substring(0,4) : null).filter(Boolean))].sort().reverse();
         const anoSelect = document.getElementById('agenda-ano-filter');
         if (anoSelect) {
-            const currentYearStr = new Date().getFullYear().toString();
-            // ⚡ Bolt Optimization: Replace document.createElement inside loop with innerHTML
-            anoSelect.innerHTML = '<option value="todos" class="bg-slate-800 text-slate-200">Todos</option>' + years.map(y => {
-                const isSelected = y === currentYearStr ? 'selected' : '';
-                return `<option value="${escapeHtml(y)}" class="bg-slate-800 text-slate-200" ${isSelected}>${escapeHtml(y)}</option>`;
-            }).join('');
+            anoSelect.innerHTML = '<option value="todos" class="bg-slate-800 text-slate-200">Todos</option>';
+            years.forEach(y => {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y;
+                opt.className = 'bg-slate-800 text-slate-200';
+                // Set default to current year if exists
+                if (y === new Date().getFullYear().toString()) {
+                    opt.selected = true;
+                }
+                anoSelect.appendChild(opt);
+            });
             if(typeof window.enhanceSelectToCustomDropdown === 'function') window.enhanceSelectToCustomDropdown(anoSelect);
             anoSelect.addEventListener('change', handleAgendaFilterChange);
         }
-        
+
         // Select current month by default
         const mesSelect = document.getElementById('agenda-mes-filter');
         if (mesSelect) {
@@ -8255,7 +8279,7 @@ const loadAgendaFilters = async () => {
         const supBtn = document.getElementById('agenda-supervisor-filter-btn');
         const supDd = document.getElementById('agenda-supervisor-filter-dropdown');
         window.setupMultiSelect(supBtn, supDd, supDd, supervisors, agendaSelectedSupervisors, () => {});
-        
+
         const rotas = [...new Set(routeData.map(r => r.rota_dia).filter(Boolean))].sort();
         const rotasBtn = document.getElementById('agenda-rota-filter-btn');
         const rotasDd = document.getElementById('agenda-rota-filter-dropdown');
@@ -8268,7 +8292,7 @@ const loadAgendaFilters = async () => {
 
 const setupAgendaFilters = async () => {
     if (isAgendaInitialized) return;
-    
+
     await loadAgendaFilters();
 
     // Clickaway setup - attach to document to capture outside clicks
@@ -8284,7 +8308,7 @@ const setupAgendaFilters = async () => {
             document.getElementById('agenda-supervisor-filter-btn'),
             document.getElementById('agenda-rota-filter-btn')
         ];
-        
+
         let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
 
         if (anyClosed) {
@@ -8305,15 +8329,15 @@ async function renderAgendaView() {
 
 async function updateAgendaView() {
     window.showDashboardLoading('agenda-view');
-    
+
     try {
         let query = supabase.from('supervisors_routes').select('*').order('data_rota', { ascending: false });
-        
+
         const ano = document.getElementById('agenda-ano-filter')?.value;
         if (ano && ano !== 'todos') {
             query = query.gte('data_rota', `${ano}-01-01`).lte('data_rota', `${ano}-12-31`);
         }
-        
+
         const mesStr = document.getElementById('agenda-mes-filter')?.value;
         if (mesStr && mesStr !== 'todos') {
             const mesNum = parseInt(mesStr, 10);
@@ -8323,22 +8347,22 @@ async function updateAgendaView() {
                 query = query.gte('data_rota', startDate).lte('data_rota', endDate);
             }
         }
-        
+
         if (agendaSelectedSupervisors.length > 0) {
             query = query.in('supervisor', agendaSelectedSupervisors);
         }
         if (agendaSelectedRotas.length > 0) {
             query = query.in('rota_dia', agendaSelectedRotas);
         }
-        
+
         const { data, error } = await query;
         if (error) throw error;
-        
+
         // Calculate KPIs
         const totalDias = data.length;
         let preenchidos = 0;
         let foco = 0;
-        
+
         data.forEach(r => {
             // Considerado preenchido se tiver rota_dia ou foco_dia preenchidos
             if ((r.rota_dia && r.rota_dia.trim() !== '') || (r.foco_dia && r.foco_dia.trim() !== '')) {
@@ -8348,25 +8372,25 @@ async function updateAgendaView() {
                 foco++;
             }
         });
-        
+
         const pendentes = totalDias - preenchidos;
-        
+
         const calcPct = (val, total) => total > 0 ? Math.round((val / total) * 100) : 0;
-        
+
         document.getElementById('agenda-kpi-total-dias').textContent = formatInteger(totalDias);
         document.getElementById('agenda-kpi-preenchidos').textContent = formatInteger(preenchidos);
         document.getElementById('agenda-kpi-preenchidos-pct').textContent = `${calcPct(preenchidos, totalDias)}%`;
-        
+
         document.getElementById('agenda-kpi-pendentes').textContent = formatInteger(pendentes);
         document.getElementById('agenda-kpi-pendentes-pct').textContent = `${calcPct(pendentes, totalDias)}%`;
-        
+
         document.getElementById('agenda-kpi-foco').textContent = formatInteger(foco);
         document.getElementById('agenda-kpi-foco-pct').textContent = `${calcPct(foco, totalDias)}%`;
-        
+
         // Render Table
         const tbody = document.getElementById('agenda-table-body');
         if (!tbody) return;
-        
+
         if (data.length === 0) {
             tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-500">Nenhum dado encontrado para os filtros selecionados.</td></tr>`;
         } else {
