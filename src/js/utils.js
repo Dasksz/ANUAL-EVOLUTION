@@ -218,3 +218,12 @@ export function uncheckAllCheckboxes(element) {
     if (!element) return;
     element.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
 }
+
+/**
+ * Formats a value as a percentage string.
+ * Improves readability by centralizing percentage formatting and removing repetitive string interpolations.
+ */
+export function formatPercentage(value, decimals = 1) {
+    if (value == null || isNaN(Number(value))) return (0).toFixed(decimals) + '%';
+    return Number(value).toFixed(decimals) + '%';
+}

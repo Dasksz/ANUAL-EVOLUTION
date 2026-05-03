@@ -36,3 +36,6 @@
 ## 2024-05-29 : (Extração de lógica de Custom Dropdowns)
 **Aprendizado:** A função `enhanceSelectToCustomDropdown` convertia `select` elements nativos em dropdowns customizados usando código DOM verboso. Isso criava muitos elementos via `document.createElement`, `appendChild`, e manipulava classes de forma imperativa.
 **Ação:** Refatorei `enhanceSelectToCustomDropdown` em `src/js/app.js` para usar o padrão de template literal e `insertAdjacentHTML`, reduzindo linhas e simplificando a inicialização visual, mantendo a proteção XSS com `escapeHtml`.
+## 2024-05-30 : (Extração da Lógica de Formatação de Porcentagens)
+**Aprendizado:** Muitos lugares do código realizavam formatação manual de porcentagem interpolando `.toFixed(N)` com a string `%`. Isso gerava um padrão verboso (`${value.toFixed(1)}%`) e repetição da verificação de fallback.
+**Ação:** Criada a utilidade `formatPercentage(value, decimals)` em `src/js/utils.js` para padronizar e limpar o código de formatação, melhorando a legibilidade dos templates do DOM.
