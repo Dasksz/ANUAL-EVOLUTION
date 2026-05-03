@@ -3195,6 +3195,16 @@ let estrelasSelectedCategorias = [];
             AppLog.warn('Container not found for filter', btn?.id);
             return;
         }
+
+        // ⚡ Bolt Optimization: Pre-calculate Map for O(1) item lookups
+        const itemsMap = new Map();
+        if (items) {
+            for (const item of items) {
+                const key = String(isObject ? item.cod : item);
+                itemsMap.set(key, item);
+            }
+        }
+
         const MAX_ITEMS = 100;
         btn.onclick = (e) => {
         e.stopPropagation();
@@ -3298,9 +3308,8 @@ let estrelasSelectedCategorias = [];
                 if(btn.id.includes('vendedor') || btn.id.includes('fornecedor') || btn.id.includes('supervisor') || btn.id.includes('tipovenda')) span.textContent = 'Todos';
             } else if (selectedArray.length === 1) {
                 const val = selectedArray[0];
-                let found;
-                // ⚡ Bolt Optimization: Use loose equality '==' to avoid unnecessary String() conversions and allocations in O(N) search
-                if (isObject) found = (items || []).find(i => i.cod == val); else found = (items || []).find(i => i == val);
+                // ⚡ Bolt Optimization: Use pre-calculated Map for O(1) lookup
+                const found = itemsMap.get(String(val));
                 if (found) span.textContent = isObject ? found.name : found; else span.textContent = val;
             } else { span.textContent = `${selectedArray.length} selecionados`; }
             btn.setAttribute('title', span.textContent);
