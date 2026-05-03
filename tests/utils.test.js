@@ -1,6 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { formatNumber, escapeHtml, setElementLoading, restoreElementState, formatInteger, formatCurrency, formatTons, updateSvgPaths } from '../src/js/utils.js';
+import {
+    formatNumber,
+    escapeHtml,
+    setElementLoading,
+    restoreElementState,
+    formatInteger,
+    formatCurrency,
+    formatTons,
+    updateSvgPaths,
+    handleDropdownsClickaway,
+    closeAllDropdowns,
+    uncheckAllCheckboxes,
+    formatPercentage
+} from '../src/js/utils.js';
 
 test('updateSvgPaths', () => {
     // Mock SVG structure
@@ -207,4 +220,92 @@ test('restoreElementState', () => {
 
     // Just verify it doesn't throw
     restoreElementState(null, btn, 'Original Text');
+});
+
+test('closeAllDropdowns', () => {
+    class MockElementWithClass {
+        constructor(classes = []) {
+            this.classList = {
+                classes: new Set(classes),
+                contains: (cls) => this.classList.classes.has(cls),
+                add: (cls) => this.classList.classes.add(cls)
+            };
+        }
+    }
+
+    const el1 = new MockElementWithClass(['absolute', 'z-[50]']);
+    const el2 = new MockElementWithClass(['absolute', 'z-[999]', 'hidden']);
+    const el3 = new MockElementWithClass(['absolute', 'z-[50]']);
+
+    const originalDocument = global.document;
+    try {
+        global.document = {
+            querySelectorAll: (selector) => {
+                // The selector in src/js/utils.js uses escaped brackets for Tailwind classes
+                if (selector.includes('.absolute.z-\\[50\\]') && selector.includes('.absolute.z-\\[999\\]')) {
+                    return [el1, el2, el3];
+                }
+                return [];
+            }
+        };
+
+        closeAllDropdowns();
+
+        assert.ok(el1.classList.contains('hidden'), 'el1 should have hidden class');
+        assert.ok(el2.classList.contains('hidden'), 'el2 should still have hidden class');
+        assert.ok(el3.classList.contains('hidden'), 'el3 should have hidden class');
+    } finally {
+        global.document = originalDocument;
+    }
+});
+
+test('handleDropdownsClickaway', () => {
+    class MockElementWithContains {
+        constructor(isHidden) {
+            this.classList = {
+                contains: (cls) => cls === 'hidden' ? isHidden : false,
+                add: (cls) => { if (cls === 'hidden') isHidden = true; }
+            };
+        }
+        contains(target) { return this === target; }
+    }
+
+    const dd1 = new MockElementWithContains(false);
+    const btn1 = new MockElementWithContains(false);
+    const dd2 = new MockElementWithContains(true);
+    const btn2 = new MockElementWithContains(false);
+
+    // Case 1: Click outside
+    const result1 = handleDropdownsClickaway({ target: {} }, [dd1, dd2], [btn1, btn2]);
+    assert.strictEqual(result1, true);
+
+    // Case 2: Click inside dd1
+    const result2 = handleDropdownsClickaway({ target: dd1 }, [dd1], [btn1]);
+    assert.strictEqual(result2, false);
+
+    // Case 3: Click on btn1
+    const result3 = handleDropdownsClickaway({ target: btn1 }, [dd1], [btn1]);
+    assert.strictEqual(result3, false);
+});
+
+test('uncheckAllCheckboxes', () => {
+    const checkboxes = [{ checked: true }, { checked: true }];
+    const mockElement = {
+        querySelectorAll: (selector) => selector === 'input[type="checkbox"]' ? checkboxes : []
+    };
+
+    uncheckAllCheckboxes(mockElement);
+    assert.strictEqual(checkboxes[0].checked, false);
+    assert.strictEqual(checkboxes[1].checked, false);
+
+    // Should not throw for null
+    uncheckAllCheckboxes(null);
+});
+
+test('formatPercentage', () => {
+    assert.strictEqual(formatPercentage(12.34), '12.3%');
+    assert.strictEqual(formatPercentage(12.34, 2), '12.34%');
+    assert.strictEqual(formatPercentage(null), '0.0%');
+    assert.strictEqual(formatPercentage(undefined), '0.0%');
+    assert.strictEqual(formatPercentage('abc'), '0.0%');
 });
