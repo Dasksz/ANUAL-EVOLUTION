@@ -3349,83 +3349,22 @@ let estrelasSelectedCategorias = [];
         const span = btn.querySelector('span');
         const dropdown = btn.nextElementSibling;
 
-        // ⚡ Bolt Optimization: Attach event listener to container once (Event Delegation)
-        dropdown.addEventListener('click', (e) => {
-            const itemDiv = e.target.closest('.custom-dropdown-item');
-            if (!itemDiv) return;
-            e.stopPropagation();
-
-            const val = itemDiv.getAttribute('data-value');
-            const opt = Array.from(selectElement.options).find(o => o.value === val);
-
-            if (opt) {
-                selectElement.value = opt.value;
-                span.textContent = opt.text;
-                btn.setAttribute('title', span.textContent);
-            }
-
-            // Update visual state of all items
-            dropdown.querySelectorAll('.custom-dropdown-item').forEach(child => {
-                const cb = child.querySelector('input');
-                if (cb) cb.checked = false;
-                const lbl = child.querySelector('label');
-                if (lbl) {
-                    lbl.classList.remove('text-orange-500', 'font-bold');
-                    lbl.classList.add('text-slate-200');
-                }
-            });
-
-            // Check current
-            const myCb = itemDiv.querySelector('input');
-            if (myCb) myCb.checked = true;
-            const myLbl = itemDiv.querySelector('label');
-            if (myLbl) {
-                myLbl.classList.remove('text-slate-200');
-                myLbl.classList.add('text-orange-500', 'font-bold');
-            }
-
-            selectElement.dispatchEvent(new Event('change'));
-            dropdown.classList.add('hidden');
-        });
-
-        const renderOptions = () => {
-            // 🧹 Tidy Optimization: Batch DOM creation for options
-            dropdown.innerHTML = Array.from(selectElement.options).map(opt => {
-                const isSelected = selectElement.value === opt.value;
-                const labelClasses = isSelected ? 'text-orange-500 font-bold' : 'text-slate-200';
-                return `
-                    <div class="flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded custom-dropdown-item" data-value="${escapeHtml(opt.value)}">
-                        <input type="checkbox" class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2 pointer-events-none" readonly ${isSelected ? 'checked' : ''}>
-                        <label class="ml-2 text-sm cursor-pointer flex-1 truncate ${labelClasses}" title="${escapeHtml(opt.text)}">${escapeHtml(opt.text)}</label>
-                    </div>
-                `;
-            }).join('');
-
-            // ⚡ Bolt Optimization: Event listeners are now attached via Event Delegation on the container
-
-            // Update span text just in case value changed
-            const selectedOpt = selectElement.options[selectElement.selectedIndex];
-            if (selectedOpt) {
-                span.textContent = selectedOpt.text;
-                btn.setAttribute('title', span.textContent);
-            }
-        };
-
-        renderOptions();
-
         // Force update visual state without recreating DOM to fix unselected bug on reopen
         const updateVisualState = () => {
             const selectedOpt = selectElement.options[selectElement.selectedIndex];
             if (selectedOpt) {
                 span.textContent = selectedOpt.text;
                 btn.setAttribute('title', span.textContent);
+            } else {
+                span.textContent = '';
+                btn.removeAttribute('title');
             }
 
             Array.from(dropdown.children).forEach((child, index) => {
                 const opt = selectElement.options[index];
                 if (!opt) return;
 
-                const isSelected = selectElement.value === opt.value;
+                const isSelected = selectElement.selectedIndex === index;
                 const cb = child.querySelector('input');
                 if (cb) cb.checked = isSelected;
 
@@ -3441,6 +3380,39 @@ let estrelasSelectedCategorias = [];
                 }
             });
         };
+
+        // ⚡ Bolt Optimization: Attach event listener to container once (Event Delegation)
+        dropdown.addEventListener('click', (e) => {
+            const itemDiv = e.target.closest('.custom-dropdown-item');
+            if (!itemDiv) return;
+            e.stopPropagation();
+
+            const idx = parseInt(itemDiv.getAttribute('data-index'));
+            if (!isNaN(idx) && selectElement.options[idx]) {
+                selectElement.selectedIndex = idx;
+                updateVisualState();
+                selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            dropdown.classList.add('hidden');
+        });
+
+        const renderOptions = () => {
+            // 🧹 Tidy Optimization: Batch DOM creation for options
+            dropdown.innerHTML = Array.from(selectElement.options).map((opt, index) => {
+                const isSelected = selectElement.selectedIndex === index;
+                const labelClasses = isSelected ? 'text-orange-500 font-bold' : 'text-slate-200';
+                return `
+                    <div class="flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded custom-dropdown-item" data-value="${escapeHtml(opt.value)}" data-index="${index}">
+                        <input type="checkbox" class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2 pointer-events-none" readonly ${isSelected ? 'checked' : ''}>
+                        <label class="ml-2 text-sm cursor-pointer flex-1 truncate ${labelClasses}" title="${escapeHtml(opt.text)}">${escapeHtml(opt.text)}</label>
+                    </div>
+                `;
+            }).join('');
+
+            updateVisualState();
+        };
+
+        renderOptions();
 
         // Observe changes to the select options
         const observer = new MutationObserver((mutations) => {
