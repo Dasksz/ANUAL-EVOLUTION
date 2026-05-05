@@ -39,3 +39,7 @@
 ## 2024-05-30 : (Extração da Lógica de Formatação de Porcentagens)
 **Aprendizado:** Muitos lugares do código realizavam formatação manual de porcentagem interpolando `.toFixed(N)` com a string `%`. Isso gerava um padrão verboso (`${value.toFixed(1)}%`) e repetição da verificação de fallback.
 **Ação:** Criada a utilidade `formatPercentage(value, decimals)` em `src/js/utils.js` para padronizar e limpar o código de formatação, melhorando a legibilidade dos templates do DOM.
+
+## 2026-05-05 : (Remoção de document.createElement Verbosos)
+**Aprendizado:** A manipulação imperativa de DOM via `document.createElement` e múltiplos `appendChild()` repetitivos cria funções muito longas, verbosas e difíceis de ler ou manter.
+**Ação:** Refatorei instâncias seguras de `document.createElement` em `app.js` (`limitMsg` e spans de erro, e removi a variável não utilizada `svgLoader`) utilizando literais de modelo com `insertAdjacentHTML` ou `innerHTML`. Essa abordagem melhora a legibilidade da estrutura do DOM injetado, mantendo a proteção XSS via `escapeHtml()`.
