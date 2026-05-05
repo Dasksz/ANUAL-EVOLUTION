@@ -1473,7 +1473,6 @@ let estrelasSelectedCategorias = [];
 
             const btn = formSignin.querySelector('button[type="submit"]');
             const btnText = btn.querySelector('.btn-text');
-            const svgLoader = btn.querySelector('.loader') || document.createElement('svg');
             const oldText = btnText ? setElementLoading(btnText, btn, 'Entrando...', 'text-white') : setElementLoading(btn, btn, 'Entrando...', 'text-white');
 
             const { data, error } = await supabase.auth.signInWithPassword({
@@ -3289,10 +3288,7 @@ let estrelasSelectedCategorias = [];
             // Event delegation is set up once outside renderItems
 
             if (filteredItems.length > MAX_ITEMS) {
-                const limitMsg = document.createElement('div');
-                limitMsg.className = 'p-2 text-xs text-slate-500 text-center border-t border-slate-700 mt-1';
-                limitMsg.textContent = `Exibindo ${MAX_ITEMS} de ${filteredItems.length}. Use a busca.`;
-                container.appendChild(limitMsg);
+                container.insertAdjacentHTML('beforeend', `<div class="p-2 text-xs text-slate-500 text-center border-t border-slate-700 mt-1">Exibindo ${MAX_ITEMS} de ${filteredItems.length}. Use a busca.</div>`);
             }
 
             if (filteredItems.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
