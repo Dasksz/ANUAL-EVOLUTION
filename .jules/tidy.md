@@ -39,3 +39,6 @@
 ## 2024-05-30 : (Extração da Lógica de Formatação de Porcentagens)
 **Aprendizado:** Muitos lugares do código realizavam formatação manual de porcentagem interpolando `.toFixed(N)` com a string `%`. Isso gerava um padrão verboso (`${value.toFixed(1)}%`) e repetição da verificação de fallback.
 **Ação:** Criada a utilidade `formatPercentage(value, decimals)` em `src/js/utils.js` para padronizar e limpar o código de formatação, melhorando a legibilidade dos templates do DOM.
+## 2024/05/31 : (Extração de Cálculo de Variação)
+**Aprendizado:** A lógica de cálculo de variação percentual `((current - history) / history) * 100` estava sendo repetida em várias partes do código (`src/js/app.js`), às vezes encadeada com lógicas ternárias para precaver contra divisão por zero (`history > 0`). Isso gera repetição e torna o código mais propenso a inconsistências matemáticas se cada implementação for levemente diferente.
+**Ação:** Criada a utilidade `calcVariation(current, history)` em `src/js/utils.js` para padronizar este cálculo matemático, garantindo que a divisão por zero retorne 100 se `current > 0` e 0 se ambos forem 0, prevenindo repetição e limpando os literais e condicionais ternárias na renderização.

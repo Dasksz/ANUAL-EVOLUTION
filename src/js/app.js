@@ -181,7 +181,7 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
-import {  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes } from './utils.js';
+import {  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, calcVariation } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -6047,7 +6047,7 @@ let estrelasSelectedCategorias = [];
 
             // ⚡ Bolt Optimization: Use template strings instead of multiple document.createElement calls
             container.innerHTML = kpis.map(kpi => {
-                const variation = kpi.history > 0 ? ((kpi.current - kpi.history) / kpi.history) * 100 : 0;
+                const variation = calcVariation(kpi.current, kpi.history);
                 const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
 
                 // Determine glow color
@@ -6114,7 +6114,7 @@ let estrelasSelectedCategorias = [];
             if (!tbody) return;
 
             tbody.innerHTML = Object.entries(data).map(([sup, vals]) => {
-                const variation = vals.history > 0 ? ((vals.current - vals.history) / vals.history) * 100 : 0;
+                const variation = calcVariation(vals.current, vals.history);
                 const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
                 return `
                     <tr class="hover:bg-slate-700">
@@ -6482,7 +6482,7 @@ window.renderInnovationsTable = function(data) {
         let catPosAvg12m = Math.round(cat.pos_avg_12m || 0);
         let catEstoque = Math.round(cat.estoque_current || 0);
         
-        let varPercent = cat.pos_prev_m1 > 0 ? (((cat.pos_current - cat.pos_prev_m1) / cat.pos_prev_m1) * 100).toFixed(1) : (cat.pos_current > 0 ? 100 : 0);
+        let varPercent = calcVariation(cat.pos_current, cat.pos_prev_m1).toFixed(1);
         let varColor = varPercent >= 0 ? 'text-green-400' : 'text-red-400';
         
         const safeId = cat.name.replace(/[^a-zA-Z0-9]/g, '_');
@@ -6513,7 +6513,7 @@ window.renderInnovationsTable = function(data) {
             let posAvg12m = Math.round(p.pos_avg_12m || 0);
             let pEstoque = Math.round(p.estoque_current || 0);
             
-            let pVarPercent = p.pos_prev_m1 > 0 ? (((p.pos_current - p.pos_prev_m1) / p.pos_prev_m1) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
+            let pVarPercent = calcVariation(p.pos_current, p.pos_prev_m1).toFixed(1);
             let pVarColor = pVarPercent >= 0 ? 'text-green-400' : 'text-red-400';
 
             html += `

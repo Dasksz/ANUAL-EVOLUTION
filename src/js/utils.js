@@ -227,3 +227,15 @@ export function formatPercentage(value, decimals = 1) {
     if (value == null || isNaN(Number(value))) return (0).toFixed(decimals) + '%';
     return Number(value).toFixed(decimals) + '%';
 }
+
+/**
+ * Calculates percentage variation between current and historical values.
+ * Returns 100 if history is 0 but current > 0.
+ * Returns 0 if history is 0 and current is 0.
+ */
+export function calcVariation(current, history) {
+    if (history > 0) {
+        return ((current - history) / history) * 100;
+    }
+    return current > 0 ? 100 : 0;
+}
