@@ -181,7 +181,9 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
-import {  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes } from './utils.js';
+import {
+    generateYearOptionsHtml,
+    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -2761,16 +2763,14 @@ let estrelasSelectedCategorias = [];
         if (filterData.anos && boxesAnoFilter) {
             const currentVal = boxesAnoFilter.value;
             // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-            boxesAnoFilter.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+            boxesAnoFilter.innerHTML = generateYearOptionsHtml(filterData.anos);
             if (currentVal && currentVal !== 'todos') boxesAnoFilter.value = currentVal;
             else if (filterData.anos.length > 0) boxesAnoFilter.value = filterData.anos[0];
             enhanceSelectToCustomDropdown(boxesAnoFilter);
         }
 
         if (boxesMesFilter && boxesMesFilter.options.length <= 1) {
-            const meses = MONTHS_PT;
-            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-            boxesMesFilter.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${i}">${m}</option>`).join('');
+            boxesMesFilter.innerHTML = generateMonthOptionsHtml('Todos', '', false);
             enhanceSelectToCustomDropdown(boxesMesFilter);
         }
 
@@ -3545,9 +3545,7 @@ let estrelasSelectedCategorias = [];
         };
         updateSingleSelect(anoFilter, data.anos);
         if (mesFilter.options.length <= 1) { 
-            const meses = MONTHS_PT;
-            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-            mesFilter.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${i}">${m}</option>`).join('');
+            mesFilter.innerHTML = generateMonthOptionsHtml('Todos', '', false);
         }
         window.setupMultiSelect(filialFilterBtn, filialFilterDropdown, filialFilterDropdown, data.filiais, selectedFiliais, () => {});
         window.setupMultiSelect(cidadeFilterBtn, cidadeFilterDropdown, cidadeFilterList, data.cidades, selectedCidades, () => {}, false, cidadeFilterSearch);
@@ -4503,16 +4501,14 @@ let estrelasSelectedCategorias = [];
          if (filterData.anos && cityAnoFilter) {
              const currentVal = cityAnoFilter.value;
              // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-             cityAnoFilter.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+             cityAnoFilter.innerHTML = generateYearOptionsHtml(filterData.anos);
              if (currentVal && currentVal !== 'todos') cityAnoFilter.value = currentVal;
              else if (filterData.anos.length > 0) cityAnoFilter.value = filterData.anos[0];
              enhanceSelectToCustomDropdown(cityAnoFilter);
          }
          
          if (cityMesFilter && cityMesFilter.options.length <= 1) {
-            const meses = MONTHS_PT;
-            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-            cityMesFilter.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${i}">${m}</option>`).join('');
+            cityMesFilter.innerHTML = generateMonthOptionsHtml('Todos', '', false);
             enhanceSelectToCustomDropdown(cityMesFilter);
         }
 
@@ -4719,7 +4715,7 @@ let estrelasSelectedCategorias = [];
          if (filterData.anos) {
              const currentVal = branchAnoFilter.value;
              // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-             branchAnoFilter.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+             branchAnoFilter.innerHTML = generateYearOptionsHtml(filterData.anos);
              // Preserve selection or default to current year
              if (currentVal && currentVal !== 'todos') branchAnoFilter.value = currentVal;
              else if (filterData.anos.length > 0) branchAnoFilter.value = filterData.anos[0];
@@ -4728,8 +4724,7 @@ let estrelasSelectedCategorias = [];
          
          // Months
          if (branchMesFilter.options.length <= 1) {
-            const meses = MONTHS_PT;
-            branchMesFilter.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${i}">${m}</option>`).join('');
+            branchMesFilter.innerHTML = generateMonthOptionsHtml('Todos', '', false);
             enhanceSelectToCustomDropdown(branchMesFilter);
         }
 
@@ -5437,7 +5432,7 @@ let estrelasSelectedCategorias = [];
             if (filterData.anos && comparisonAnoFilter) {
                 const currentVal = comparisonAnoFilter.value;
                 // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-                comparisonAnoFilter.innerHTML = filterData.anos.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+                comparisonAnoFilter.innerHTML = generateYearOptionsHtml(filterData.anos, '', '');
                 await fetchLastSalesDate();
                 if (currentVal && currentVal !== 'todos' && currentVal !== '') {
                     comparisonAnoFilter.value = currentVal;
@@ -5455,9 +5450,7 @@ let estrelasSelectedCategorias = [];
                 // Get the current value BEFORE we wipe the options
                 const currentMesVal = comparisonMesFilter.value;
 
-                const meses = MONTHS_PT;
-                // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-                comparisonMesFilter.innerHTML = meses.map((m, i) => `<option value="${i}">${m}</option>`).join('');
+                comparisonMesFilter.innerHTML = generateMonthOptionsHtml('', '', false);
 
                 // If there's an active valid selected month (not empty), keep it
                 // Otherwise, default to the last sales date month
@@ -6710,7 +6703,7 @@ const setupInnovationsFilters = async () => {
 
     if (anoSelect && filterData.anos) {
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-        anoSelect.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(ano => `<option value="${escapeHtml(ano)}">${escapeHtml(ano)}</option>`).join('');
+        anoSelect.innerHTML = generateYearOptionsHtml(filterData.anos);
 
         // Initial filter values
         let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
@@ -6721,9 +6714,7 @@ const setupInnovationsFilters = async () => {
     }
     
     if (mesSelect) {
-        const meses = MONTHS_PT;
-        // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-        mesSelect.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
+        mesSelect.innerHTML = generateMonthOptionsHtml('Todos', '', true);
 
         // Initial filter value
         mesSelect.value = currentMonth;
@@ -6813,7 +6804,7 @@ async function loadLojaPerfeitaFilters(forceClear = false) {
     const uniqueYears = lpYears ? [...new Set(lpYears.map(y => y.ano).filter(Boolean))] : [new Date().getFullYear()];
 
     if (anoSelect) {
-        anoSelect.innerHTML = '<option value="todos">Todos</option>' + uniqueYears.map(ano => `<option value="${escapeHtml(ano)}">${escapeHtml(ano)}</option>`).join('');
+        anoSelect.innerHTML = generateYearOptionsHtml(uniqueYears);
         let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
         anoSelect.value = hasYear ? currentYear : (uniqueYears.length > 0 ? uniqueYears[0] : new Date().getFullYear().toString());
         if(typeof window.enhanceSelectToCustomDropdown === 'function') window.enhanceSelectToCustomDropdown(anoSelect);
@@ -6821,8 +6812,7 @@ async function loadLojaPerfeitaFilters(forceClear = false) {
     }
 
     if (mesSelect) {
-        const meses = MONTHS_PT;
-        mesSelect.innerHTML = '<option value="todos">Todos</option>' + meses.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
+        mesSelect.innerHTML = generateMonthOptionsHtml('Todos', 'todos', true);
         mesSelect.value = currentMonth;
         if(typeof window.enhanceSelectToCustomDropdown === 'function') window.enhanceSelectToCustomDropdown(mesSelect);
         mesSelect.addEventListener('change', updateLojaPerfeitaView);
