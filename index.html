@@ -1785,6 +1785,35 @@
         <div class="flex flex-wrap items-end gap-3 mb-2" id="lp-filters-container">
 
             <div class="flex-1 min-w-[140px] relative">
+                <label for="lp-ano-filter" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ano</label>
+                <div class="relative w-full">
+                    <select id="lp-ano-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none">
+                        <!-- Options populated via JS -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex-1 min-w-[140px] relative">
+                <label for="lp-mes-filter" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Mês</label>
+                <div class="relative w-full">
+                    <select id="lp-mes-filter" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none">
+                        <option value="1" class="bg-slate-800 text-slate-200">Janeiro</option>
+                        <option value="2" class="bg-slate-800 text-slate-200">Fevereiro</option>
+                        <option value="3" class="bg-slate-800 text-slate-200">Março</option>
+                        <option value="4" class="bg-slate-800 text-slate-200">Abril</option>
+                        <option value="5" class="bg-slate-800 text-slate-200">Maio</option>
+                        <option value="6" class="bg-slate-800 text-slate-200">Junho</option>
+                        <option value="7" class="bg-slate-800 text-slate-200">Julho</option>
+                        <option value="8" class="bg-slate-800 text-slate-200">Agosto</option>
+                        <option value="9" class="bg-slate-800 text-slate-200">Setembro</option>
+                        <option value="10" class="bg-slate-800 text-slate-200">Outubro</option>
+                        <option value="11" class="bg-slate-800 text-slate-200">Novembro</option>
+                        <option value="12" class="bg-slate-800 text-slate-200">Dezembro</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex-1 min-w-[140px] relative">
                 <label for="lp-filial-filter-btn" class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Filial</label>
                 <div id="lp-filial-filter-wrapper" class="relative group">
                     <button id="lp-filial-filter-btn" aria-haspopup="listbox" aria-expanded="false" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 min-w-[140px]">
@@ -2259,6 +2288,15 @@
                     <svg aria-hidden="true" class="w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </button>
                 <div id="agenda-rota-filter-dropdown" class="hidden absolute z-[999] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
+            </div>
+
+            <div class="flex-1 min-w-[180px] relative">
+                <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Foco</label>
+                <button type="button" id="agenda-foco-filter-btn" aria-haspopup="listbox" aria-expanded="false" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-slate-300 h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 flex justify-between items-center">
+                    <span class="truncate pr-2">Todos</span>
+                    <svg aria-hidden="true" class="w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div id="agenda-foco-filter-dropdown" class="hidden absolute z-[999] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
             </div>
 
             <div class="ml-auto flex justify-end items-end gap-3">

@@ -4388,11 +4388,14 @@ CREATE OR REPLACE FUNCTION get_loja_perfeita_data(
     p_supervisor text[] DEFAULT NULL,
     p_vendedor text[] DEFAULT NULL,
     p_rede text[] DEFAULT NULL,
-    p_codcli text DEFAULT NULL
+    p_codcli text DEFAULT NULL,
+    p_ano integer DEFAULT NULL,
+    p_mes integer DEFAULT NULL
 )
 RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
     v_result json;
@@ -4403,6 +4406,14 @@ BEGIN
     -- Base Filters
     IF p_codcli IS NOT NULL THEN
         v_where_base := v_where_base || format(' AND np.codigo_cliente = %L', p_codcli);
+    END IF;
+
+    IF p_ano IS NOT NULL THEN
+        v_where_base := v_where_base || format(' AND np.ano = %L', p_ano);
+    END IF;
+
+    IF p_mes IS NOT NULL THEN
+        v_where_base := v_where_base || format(' AND np.mes = %L', p_mes);
     END IF;
 
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
@@ -4627,8 +4638,7 @@ ALTER FUNCTION public.get_frequency_table_data(p_diretoria text[], p_gerencia te
 ALTER FUNCTION public.update_products_stock(p_stock_data jsonb) SET search_path = public;
 ALTER FUNCTION public.classify_product_mix() SET search_path = public;
 
-ALTER FUNCTION public.get_loja_perfeita_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[]) SET search_path = public;
-ALTER FUNCTION public.get_loja_perfeita_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[], p_codcli text) SET search_path = public;
+ALTER FUNCTION public.get_loja_perfeita_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[], p_codcli text, p_ano integer, p_mes integer) SET search_path = public;
 ALTER FUNCTION public.search_clients(p_search text) SET search_path = public;
 ALTER FUNCTION public.search_loja_perfeita_clients(p_search text, p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[]) SET search_path = public;
 CREATE OR REPLACE FUNCTION get_mix_salty_foods_data(

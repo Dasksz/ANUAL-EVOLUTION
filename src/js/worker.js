@@ -544,6 +544,22 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                 // Calculate dynamically based on score since column is removed
                 const perfectAudits = nota >= 80 ? audits : 0;
 
+                // Extract month and year from mesAno
+                let mesNum = null;
+                let anoNum = null;
+                const monthsPT = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+                if (mesAno) {
+                    const mesLower = mesAno.toLowerCase();
+                    const matchedMonthIndex = monthsPT.findIndex(m => mesLower.includes(m));
+                    if (matchedMonthIndex !== -1) {
+                        mesNum = matchedMonthIndex + 1;
+                    }
+                    const yearMatch = mesAno.match(/\d{4}/);
+                    if (yearMatch) {
+                        anoNum = parseInt(yearMatch[0], 10);
+                    }
+                }
+
                 if (!current) {
                     grouped.set(key, {
                         codigo_cliente: codCli,
@@ -555,7 +571,9 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                         subcanal: subcanal,
                         nota_media: nota,
                         auditorias: audits,
-                        auditorias_perfeitas: perfectAudits
+                        auditorias_perfeitas: perfectAudits,
+                        mes: mesNum,
+                        ano: anoNum
                     });
                 } else {
                     if (nota > current.nota_media) {

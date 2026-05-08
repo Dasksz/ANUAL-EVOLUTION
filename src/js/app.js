@@ -1039,6 +1039,10 @@ let estrelasSelectedCategorias = [];
             state.redes = estrelasSelectedRedes;
             state.categorias = estrelasSelectedCategorias;
         } else if (view === 'loja-perfeita') {
+            const anoSelect = document.getElementById('lp-ano-filter');
+            const mesSelect = document.getElementById('lp-mes-filter');
+            state.ano = anoSelect ? anoSelect.value : null;
+            state.mes = mesSelect ? mesSelect.value : null;
             state.cidades = lpSelectedCidades;
             state.supervisores = lpSelectedSupervisors;
             state.vendedores = lpSelectedVendedores;
@@ -1158,6 +1162,10 @@ let estrelasSelectedCategorias = [];
             estrelasSelectedRedes = getList('redes');
             estrelasSelectedCategorias = getList('categorias');
         } else if (view === 'loja-perfeita') {
+            const anoSelect = document.getElementById('lp-ano-filter');
+            const mesSelect = document.getElementById('lp-mes-filter');
+            if (getVal('ano') && anoSelect) anoSelect.value = getVal('ano');
+            if (getVal('mes') && mesSelect) mesSelect.value = getVal('mes');
             lpSelectedCidades = getList('cidades');
             lpSelectedSupervisors = getList('supervisores');
             lpSelectedVendedores = getList('vendedores');
@@ -2365,9 +2373,29 @@ let estrelasSelectedCategorias = [];
                 await clearTable('data_innovations');
                 await uploadBatch('data_innovations', data.innovations);
             }
-            if (data.notaPerfeita && data.notaPerfeita.length > 0) {
+                        if (data.notaPerfeita && data.notaPerfeita.length > 0) {
                 updateStatus('Atualizando Nota Involves...', 78);
-                await clearTable('data_nota_perfeita');
+                try {
+                    // Find unique year/month combinations to delete
+                    const periodsToDelete = new Set();
+                    data.notaPerfeita.forEach(item => {
+                        if (item.ano && item.mes) {
+                            periodsToDelete.add(`${item.ano}-${item.mes}`);
+                        }
+                    });
+
+                    // Delete old data for each period
+                    for (const period of periodsToDelete) {
+                        const [ano, mes] = period.split('-');
+                        await retryOperation(async () => {
+                            const { error } = await supabase.from('data_nota_perfeita').delete().match({ ano: parseInt(ano, 10), mes: parseInt(mes, 10) });
+                            if (error) throw error;
+                        });
+                    }
+                } catch (e) {
+                    AppLog.error('Erro ao limpar dados antigos da Loja Perfeita:', e);
+                }
+
                 await uploadBatch('data_nota_perfeita', data.notaPerfeita);
             }
 
@@ -6774,6 +6802,32 @@ const lpRowsPerPage = 50;
 let lpFilterDebounce;
 
 async function loadLojaPerfeitaFilters(forceClear = false) {
+    const anoSelect = document.getElementById('lp-ano-filter');
+    const mesSelect = document.getElementById('lp-mes-filter');
+
+    if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
+    const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+
+    // Fetch available years from Loja Perfeita, or fallback to global years
+    const { data: lpYears } = await supabase.from('data_nota_perfeita').select('ano').order('ano', {ascending: false});
+    const uniqueYears = lpYears ? [...new Set(lpYears.map(y => y.ano).filter(Boolean))] : [new Date().getFullYear()];
+
+    if (anoSelect) {
+        anoSelect.innerHTML = '<option value="todos">Todos</option>' + uniqueYears.map(ano => `<option value="${escapeHtml(ano)}">${escapeHtml(ano)}</option>`).join('');
+        let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
+        anoSelect.value = hasYear ? currentYear : (uniqueYears.length > 0 ? uniqueYears[0] : new Date().getFullYear().toString());
+        if(typeof window.enhanceSelectToCustomDropdown === 'function') window.enhanceSelectToCustomDropdown(anoSelect);
+        anoSelect.addEventListener('change', updateLojaPerfeitaView);
+    }
+
+    if (mesSelect) {
+        const meses = MONTHS_PT;
+        mesSelect.innerHTML = '<option value="todos">Todos</option>' + meses.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
+        mesSelect.value = currentMonth;
+        if(typeof window.enhanceSelectToCustomDropdown === 'function') window.enhanceSelectToCustomDropdown(mesSelect);
+        mesSelect.addEventListener('change', updateLojaPerfeitaView);
+    }
+
 
     const filters = {
 
@@ -7033,7 +7087,9 @@ async function updateLojaPerfeitaView() {
         p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
         p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
         p_vendedor: filters.p_vendedor.length ? filters.p_vendedor : null,
-        p_rede: filters.p_rede.length ? filters.p_rede : null
+        p_rede: filters.p_rede.length ? filters.p_rede : null,
+        p_ano: document.getElementById('lp-ano-filter')?.value && document.getElementById('lp-ano-filter')?.value !== 'todos' ? parseInt(document.getElementById('lp-ano-filter').value, 10) : null,
+        p_mes: document.getElementById('lp-mes-filter')?.value && document.getElementById('lp-mes-filter')?.value !== 'todos' ? parseInt(document.getElementById('lp-mes-filter').value, 10) : null
     };
 
     try {
@@ -7407,8 +7463,9 @@ window.clearAllFilters = async function(prefix) {
     } else if (prefix === 'agenda') {
         agendaSelectedSupervisors.length = 0;
         agendaSelectedRotas.length = 0;
+        agendaSelectedFoco.length = 0;
 
-        ['agenda-supervisor', 'agenda-rota'].forEach(pref => {
+        ['agenda-supervisor', 'agenda-rota', 'agenda-foco'].forEach(pref => {
             const btn = document.getElementById(`${pref}-filter-btn`);
             if (btn) {
                 const label = pref.includes('supervisor') ? 'Todos' : 'Todas';
@@ -7446,6 +7503,21 @@ window.clearAllFilters = async function(prefix) {
         // Let's just call it directly to ensure update, as debounce will protect us.
         handleAgendaFilterChange();
     } else if (prefix === 'lp') {
+        const anoSelect = document.getElementById('lp-ano-filter');
+        const mesSelect = document.getElementById('lp-mes-filter');
+        const currentYear = new Date().getFullYear().toString();
+        const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
+
+        if (anoSelect) {
+            let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
+            anoSelect.value = hasYear ? currentYear : 'todos';
+            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (mesSelect) {
+            mesSelect.value = currentMonth;
+            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
         lpSelectedCidades.length = 0;
         lpSelectedFiliais.length = 0;
         lpSelectedSupervisors.length = 0;
@@ -8193,6 +8265,7 @@ function renderMixSaltyFoodsChart(data) {
 let isAgendaInitialized = false;
 let agendaSelectedSupervisors = [];
 let agendaSelectedRotas = [];
+let agendaSelectedFoco = [];
 
 let agendaFilterDebounceTimer;
 const handleAgendaFilterChange = () => {
@@ -8206,7 +8279,7 @@ const loadAgendaFilters = async () => {
     try {
         const { data: routeData, error } = await supabase
             .from('supervisors_routes')
-            .select('supervisor, rota_dia, data_rota');
+            .select('supervisor, rota_dia, data_rota, foco_dia');
             
         if (error) throw error;
         
@@ -8242,6 +8315,11 @@ const loadAgendaFilters = async () => {
         const rotasDd = document.getElementById('agenda-rota-filter-dropdown');
         window.setupMultiSelect(rotasBtn, rotasDd, rotasDd, rotas, agendaSelectedRotas, () => {});
 
+        const focos = [...new Set(routeData.map(r => r.foco_dia).filter(Boolean))].sort();
+        const focoBtn = document.getElementById('agenda-foco-filter-btn');
+        const focoDd = document.getElementById('agenda-foco-filter-dropdown');
+        window.setupMultiSelect(focoBtn, focoDd, focoDd, focos, agendaSelectedFoco, () => {});
+
     } catch (err) {
         AppLog.error("Erro ao carregar filtros da Agenda:", err);
     }
@@ -8259,11 +8337,13 @@ const setupAgendaFilters = async () => {
 
         const dropdowns = [
             document.getElementById('agenda-supervisor-filter-dropdown'),
-            document.getElementById('agenda-rota-filter-dropdown')
+            document.getElementById('agenda-rota-filter-dropdown'),
+            document.getElementById('agenda-foco-filter-dropdown')
         ];
         const btns = [
             document.getElementById('agenda-supervisor-filter-btn'),
-            document.getElementById('agenda-rota-filter-btn')
+            document.getElementById('agenda-rota-filter-btn'),
+            document.getElementById('agenda-foco-filter-btn')
         ];
         
         let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
@@ -8288,7 +8368,7 @@ async function updateAgendaView() {
     window.showDashboardLoading('agenda-view');
     
     try {
-        let query = supabase.from('supervisors_routes').select('*').order('data_rota', { ascending: false });
+        let query = supabase.from('supervisors_routes').select('*').order('data_rota', { ascending: true });
         
         const ano = document.getElementById('agenda-ano-filter')?.value;
         if (ano && ano !== 'todos') {
@@ -8310,6 +8390,9 @@ async function updateAgendaView() {
         }
         if (agendaSelectedRotas.length > 0) {
             query = query.in('rota_dia', agendaSelectedRotas);
+        }
+        if (agendaSelectedFoco.length > 0) {
+            query = query.in('foco_dia', agendaSelectedFoco);
         }
         
         const { data, error } = await query;
