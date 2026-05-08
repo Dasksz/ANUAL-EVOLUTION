@@ -227,3 +227,42 @@ export function formatPercentage(value, decimals = 1) {
     if (value == null || isNaN(Number(value))) return (0).toFixed(decimals) + '%';
     return Number(value).toFixed(decimals) + '%';
 }
+
+/**
+ * Generates options HTML string for a Year dropdown.
+ * Improves readability by centralizing the repetitive mapping and joining of year arrays,
+ * and reducing duplicated `map().join('')` logic across `app.js`.
+ * @param {string[]|number[]} years - The array of years to map.
+ * @param {string} defaultLabel - The text label for the default/empty option.
+ * @param {string} defaultValue - The value for the default/empty option.
+ * @returns {string} The HTML string containing the option elements.
+ */
+export function generateYearOptionsHtml(years, defaultLabel = 'Todos', defaultValue = 'todos') {
+    let html = '';
+    if (defaultLabel !== '') {
+        html += `<option value="${escapeHtml(defaultValue)}">${escapeHtml(defaultLabel)}</option>`;
+    }
+    html += years.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+    return html;
+}
+
+/**
+ * Generates options HTML string for a Month dropdown.
+ * Improves readability by centralizing the repetitive iteration over MONTHS_PT,
+ * and reducing duplicated `map().join('')` logic across `app.js`.
+ * @param {string} defaultLabel - The text label for the default/empty option.
+ * @param {string} defaultValue - The value for the default/empty option.
+ * @param {boolean} oneIndexedPadded - If true, month values are 01-12. If false, month values are 0-11.
+ * @returns {string} The HTML string containing the option elements.
+ */
+export function generateMonthOptionsHtml(defaultLabel = 'Todos', defaultValue = '', oneIndexedPadded = false) {
+    let html = '';
+    if (defaultLabel !== '') {
+        html += `<option value="${escapeHtml(defaultValue)}">${escapeHtml(defaultLabel)}</option>`;
+    }
+    html += MONTHS_PT.map((m, i) => {
+        const val = oneIndexedPadded ? String(i + 1).padStart(2, '0') : i;
+        return `<option value="${escapeHtml(val)}">${escapeHtml(m)}</option>`;
+    }).join('');
+    return html;
+}
