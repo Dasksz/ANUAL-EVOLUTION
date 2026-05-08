@@ -2383,7 +2383,7 @@ let estrelasSelectedCategorias = [];
                             periodsToDelete.add(`${item.ano}-${item.mes}`);
                         }
                     });
-
+                    
                     // Delete old data for each period
                     for (const period of periodsToDelete) {
                         const [ano, mes] = period.split('-');
@@ -2395,7 +2395,7 @@ let estrelasSelectedCategorias = [];
                 } catch (e) {
                     AppLog.error('Erro ao limpar dados antigos da Loja Perfeita:', e);
                 }
-
+                
                 await uploadBatch('data_nota_perfeita', data.notaPerfeita);
             }
 
@@ -7507,7 +7507,7 @@ window.clearAllFilters = async function(prefix) {
         const mesSelect = document.getElementById('lp-mes-filter');
         const currentYear = new Date().getFullYear().toString();
         const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
-
+        
         if (anoSelect) {
             let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
             anoSelect.value = hasYear ? currentYear : 'todos';

@@ -390,15 +390,38 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
 
             // Helper to format date to "Month of Year"
             const formatMonthYear = (val) => {
-                if (!val) return '';
+                if (!val) return { text: '', mes: null, ano: null };
                 let dateObj = null;
 
                 // Check if Excel Serial Date
-                if (typeof val === 'number') {
-                    if (val < 1000000) {
-                        dateObj = parseExcelDate(val);
+                const numVal = Number(val);
+                if (!isNaN(numVal) && typeof val !== 'boolean') {
+                    if (numVal < 1000000) {
+                        dateObj = parseExcelDate(numVal);
                     } else {
-                        dateObj = new Date(val);
+                        dateObj = new Date(numVal);
+                    }
+                } else if (typeof val === 'string') {
+                    // Try parsing "abril de 2026" manually before Date.parse which might give NaNs
+                    const strVal = val.trim().toLowerCase();
+                    let foundMonth = -1;
+                    let foundYear = null;
+                    
+                    const yearMatch = strVal.match(/\d{4}/);
+                    if (yearMatch) foundYear = parseInt(yearMatch[0], 10);
+                    
+                    for (let i = 0; i < monthsPT.length; i++) {
+                         if (strVal.includes(monthsPT[i])) {
+                              foundMonth = i;
+                              break;
+                         }
+                    }
+                    
+                    if (foundMonth !== -1 && foundYear) {
+                         dateObj = new Date(Date.UTC(foundYear, foundMonth, 1));
+                    } else {
+                         const parsed = Date.parse(val);
+                         if (!isNaN(parsed)) dateObj = new Date(parsed);
                     }
                 } else {
                     const parsed = Date.parse(val);
@@ -408,10 +431,12 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                 if (dateObj && !isNaN(dateObj.getTime())) {
                     const m = dateObj.getUTCMonth();
                     const y = dateObj.getUTCFullYear();
-                    return `${monthsPT[m]} de ${y}`;
+                    return { text: `${monthsPT[m]} de ${y}`, mes: m + 1, ano: y };
                 }
 
-                return String(val).trim();
+                // Fallback for totally unparseable string
+                const fallbackStr = String(val).trim();
+                return { text: fallbackStr, mes: null, ano: null };
             };
 
             const matchedKeysCache = new Map();
@@ -536,29 +561,17 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
 
                 const current = grouped.get(key);
                 const mesAnoRaw = getVal(row, 'Mês') || getVal(row, 'Mes');
-                const mesAno = formatMonthYear(mesAnoRaw);
+                const parsedMesAno = formatMonthYear(mesAnoRaw);
+                const mesAno = parsedMesAno.text;
+                const mesNum = parsedMesAno.mes;
+                const anoNum = parsedMesAno.ano;
+                
                 const semana = getVal(row, 'Semana');
                 const canal = getVal(row, 'Canal');
                 const subcanal = getVal(row, 'Subcanal');
                 const audits = parseInt(getVal(row, 'Auditorias Distintas') || 0);
                 // Calculate dynamically based on score since column is removed
                 const perfectAudits = nota >= 80 ? audits : 0;
-
-                // Extract month and year from mesAno
-                let mesNum = null;
-                let anoNum = null;
-                const monthsPT = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-                if (mesAno) {
-                    const mesLower = mesAno.toLowerCase();
-                    const matchedMonthIndex = monthsPT.findIndex(m => mesLower.includes(m));
-                    if (matchedMonthIndex !== -1) {
-                        mesNum = matchedMonthIndex + 1;
-                    }
-                    const yearMatch = mesAno.match(/\d{4}/);
-                    if (yearMatch) {
-                        anoNum = parseInt(yearMatch[0], 10);
-                    }
-                }
 
                 if (!current) {
                     grouped.set(key, {

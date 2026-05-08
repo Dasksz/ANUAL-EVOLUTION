@@ -1,5 +1,5 @@
 -- Add ano and mes columns to data_nota_perfeita
-ALTER TABLE public.data_nota_perfeita
+ALTER TABLE public.data_nota_perfeita 
 ADD COLUMN IF NOT EXISTS ano integer,
 ADD COLUMN IF NOT EXISTS mes integer;
 
@@ -68,7 +68,7 @@ BEGIN
 
     v_sql := format('
         WITH latest_sales AS (
-            SELECT
+            SELECT 
                 codcli, codsupervisor, codusur, filial,
                 ROW_NUMBER() OVER(PARTITION BY codcli ORDER BY ano DESC, mes DESC, created_at DESC) as rn
             FROM public.data_summary_frequency
@@ -79,7 +79,7 @@ BEGIN
             WHERE rn = 1
         ),
         filtered_data AS (
-            SELECT
+            SELECT 
                 np.codigo_cliente as codcli,
                 dc.nomecliente as client_name,
                 np.pesquisador as researcher,
@@ -96,7 +96,7 @@ BEGIN
             WHERE %s
         ),
         kpis AS (
-            SELECT
+            SELECT 
                 COALESCE(AVG(score), 0) as avg_score,
                 COUNT(DISTINCT codcli) as total_audits,
                 COUNT(DISTINCT CASE WHEN score >= 80 THEN codcli END) as perfect_stores
@@ -144,3 +144,4 @@ SET ano = CAST(SUBSTRING(mes_ano FROM '[0-9]{4}') AS INTEGER),
         WHEN LOWER(mes_ano) LIKE '%dezembro%' THEN 12
     END
 WHERE ano IS NULL OR mes IS NULL;
+
