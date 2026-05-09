@@ -2988,7 +2988,7 @@ BEGIN
         IF v_current_year < EXTRACT(YEAR FROM CURRENT_DATE)::int THEN
             v_ref_date := make_date(v_current_year, 12, 1);
         ELSE
-             v_ref_date := date_trunc('month', CURRENT_DATE)::date;
+             v_ref_date := date_trunc(''month'', CURRENT_DATE)::date;
         END IF;
     END IF;
 
@@ -3219,7 +3219,7 @@ BEGIN
         v_active_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
         v_active_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
         v_active_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
-        v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
+        v_active_client_cond, v_where_summary, date_trunc(''month'', v_tri_start), date_trunc(''month'', v_tri_end), v_where_summary, date_trunc(''month'', v_tri_start), date_trunc(''month'', v_tri_end), -- KPI Tri
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
         v_active_client_cond_slow -- Prod Agg
@@ -3821,11 +3821,11 @@ BEGIN
         v_ref_date := v_end_target::date;
     END IF;
 
-    v_start_target := date_trunc('month', v_ref_date);
+    v_start_target := date_trunc(''month'', v_ref_date);
     v_end_target := (v_start_target + interval '1 month' - interval '1 second');
 
     v_end_quarter := v_start_target - interval '1 second';
-    v_start_quarter := date_trunc('month', v_end_quarter - interval '2 months');
+    v_start_quarter := date_trunc(''month'', v_end_quarter - interval '2 months');
 
     -- Trend Calculation
     v_max_sale_date := (SELECT MAX(dtped)::date FROM public.data_detailed);
@@ -3834,7 +3834,7 @@ BEGIN
     v_trend_allowed := (EXTRACT(YEAR FROM v_end_target) = EXTRACT(YEAR FROM v_max_sale_date) AND EXTRACT(MONTH FROM v_end_target) = EXTRACT(MONTH FROM v_max_sale_date));
 
     IF v_trend_allowed THEN
-        v_month_start := date_trunc('month', v_max_sale_date);
+        v_month_start := date_trunc(''month'', v_max_sale_date);
         v_month_end := (v_month_start + interval '1 month' - interval '1 day')::date;
 
         v_work_days_passed := public.calc_working_days(v_month_start, v_max_sale_date);
@@ -4001,7 +4001,7 @@ BEGIN
                 COALESCE((SELECT COUNT(1) FROM curr_mix_base WHERE has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1), 0) as pos_foods,
                 (SELECT COUNT(*) FROM curr_daily_clients WHERE val >= 1) as total_pos_diaria,
                 COALESCE(public.calc_working_days(
-                    (SELECT date_trunc('month', MIN(dtped))::date FROM target_sales),
+                    (SELECT date_trunc(''month'', MIN(dtped))::date FROM target_sales),
                     (SELECT MAX(dtped)::date FROM target_sales)
                 ), 1) as days_passed
             FROM target_sales ts
@@ -4046,10 +4046,10 @@ BEGIN
                 COALESCE(SUM(pepsico_skus)::numeric / NULLIF(COUNT(CASE WHEN pepsico_skus > 0 THEN 1 END), 0), 0) as monthly_mix_pepsico,
                 COUNT(CASE WHEN has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1 THEN 1 END) as monthly_pos_salty,
                 COUNT(CASE WHEN has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1 THEN 1 END) as monthly_pos_foods,
-                (SELECT COUNT(*) FROM hist_daily_clients hdc WHERE hdc.val >= 1 AND date_trunc('month', hdc.d) = hist_monthly_mix.m_date) as monthly_total_pos_diaria,
+                (SELECT COUNT(*) FROM hist_daily_clients hdc WHERE hdc.val >= 1 AND date_trunc(''month'', hdc.d) = hist_monthly_mix.m_date) as monthly_total_pos_diaria,
                 COALESCE(public.calc_working_days(
                     hist_monthly_mix.m_date::date,
-                    (SELECT MAX(dtped)::date FROM history_sales hs WHERE date_trunc('month', hs.dtped) = hist_monthly_mix.m_date)
+                    (SELECT MAX(dtped)::date FROM history_sales hs WHERE date_trunc(''month'', hs.dtped) = hist_monthly_mix.m_date)
                 ), 1) as monthly_days_passed
             FROM hist_monthly_mix
             GROUP BY 1
@@ -5360,7 +5360,7 @@ END $$;
 /* Cria a tabela fisica com os dados consolidados e agora com endereco */
 CREATE MATERIALIZED VIEW public.n8n_agent_view AS
 WITH limites_data AS (
-    SELECT date_trunc('month', MAX(dtped)) - interval '12 months' as data_corte
+    SELECT date_trunc(''month'', MAX(dtped)) - interval '12 months' as data_corte
     FROM (
         SELECT MAX(dtped) as dtped FROM public.data_detailed
         UNION ALL

@@ -79,11 +79,11 @@ BEGIN
         v_ref_date := v_end_target::date;
     END IF;
 
-    v_start_target := date_trunc('month', v_ref_date);
+    v_start_target := date_trunc(''month'', v_ref_date);
     v_end_target := (v_start_target + interval '1 month' - interval '1 second');
 
     v_end_quarter := v_start_target - interval '1 second';
-    v_start_quarter := date_trunc('month', v_end_quarter - interval '2 months');
+    v_start_quarter := date_trunc(''month'', v_end_quarter - interval '2 months');
 
     -- Trend Calculation
     v_max_sale_date := (SELECT MAX(dtped)::date FROM public.data_detailed);
@@ -92,7 +92,7 @@ BEGIN
     v_trend_allowed := (EXTRACT(YEAR FROM v_end_target) = EXTRACT(YEAR FROM v_max_sale_date) AND EXTRACT(MONTH FROM v_end_target) = EXTRACT(MONTH FROM v_max_sale_date));
 
     IF v_trend_allowed THEN
-        v_month_start := date_trunc('month', v_max_sale_date);
+        v_month_start := date_trunc(''month'', v_max_sale_date);
         v_month_end := (v_month_start + interval '1 month' - interval '1 day')::date;
 
         v_work_days_passed := public.calc_working_days(v_month_start, v_max_sale_date);
