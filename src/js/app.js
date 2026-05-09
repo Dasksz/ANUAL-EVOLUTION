@@ -6081,7 +6081,7 @@ let estrelasSelectedCategorias = [];
                 return `
                     <div class="kpi-card p-4 rounded-lg text-center kpi-glow-base ${glowClass}">
                         <p class="text-slate-300 text-sm">${escapeHtml(kpi.title)}</p>
-                        <p class="text-xl xl:text-2xl font-bold text-white my-2 tracking-tighter sm:tracking-normal">${escapeHtml(fmt(kpi.current, kpi.format))}</p>
+                        <p class="text-lg xl:text-xl font-bold text-white my-2 tracking-tight whitespace-nowrap overflow-hidden text-ellipsis" title="${escapeHtml(fmt(kpi.current, kpi.format))}">${escapeHtml(fmt(kpi.current, kpi.format))}</p>
                         <p class="text-sm ${colorClass}">${variation > 0 ? '+' : ''}${escapeHtml(formatPercentage(variation, 1))} vs Média</p>
                         <p class="text-xs text-slate-500">Média: ${escapeHtml(fmt(kpi.history, kpi.format))}</p>
                     </div>
