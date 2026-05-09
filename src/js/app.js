@@ -5613,7 +5613,8 @@ let estrelasSelectedCategorias = [];
                 },
                 { title: 'Mix por PDV (Pepsico)', current: Number(data.current_kpi.mix_pepsico.toFixed(2)), history: Number((data.history_kpi.sum_mix_pepsico / 3).toFixed(2)), format: 'decimal_2' },
                 { title: 'Mix Salty', current: Math.round(data.current_kpi.pos_salty * trendFactor), history: Math.round(data.history_kpi.sum_pos_salty / 3), format: 'integer' },
-                { title: 'Mix Foods', current: Math.round(data.current_kpi.pos_foods * trendFactor), history: Math.round(data.history_kpi.sum_pos_foods / 3), format: 'integer' }
+                { title: 'Mix Foods', current: Math.round(data.current_kpi.pos_foods * trendFactor), history: Math.round(data.history_kpi.sum_pos_foods / 3), format: 'integer' },
+                { title: 'Positivação Diária', current: (data.current_kpi.total_pos_diaria || 0) / (data.current_kpi.days_passed || 1), history: data.history_kpi.avg_pos_diaria || 0, format: 'decimal' }
             ];
 
             // 2. Weekly Chart Logic

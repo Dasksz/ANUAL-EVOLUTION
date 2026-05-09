@@ -3781,6 +3781,7 @@ DECLARE
     v_month_end date;
     v_work_days_passed int;
     v_work_days_total int;
+    v_days_passed_target int;
 
     -- Outputs
     v_current_kpi json;
@@ -3954,6 +3955,15 @@ BEGIN
             %s %s AND s.dtped >= %L AND s.dtped <= %L
         ),
         -- Current Aggregates
+
+        curr_daily_clients AS (
+            SELECT dtped::date as d, codcli, SUM(vlvenda) as val
+            FROM target_sales GROUP BY 1, 2
+        ),
+        hist_daily_clients AS (
+            SELECT dtped::date as d, codcli, SUM(vlvenda) as val
+            FROM history_sales GROUP BY 1, 2
+        ),
         curr_daily AS (
             SELECT dtped::date as d, SUM(vlvenda) as f, SUM(totpesoliq) as p
             FROM target_sales GROUP BY 1
@@ -3988,7 +3998,12 @@ BEGIN
                 (SELECT COUNT(*) FROM curr_mix_base WHERE total_val >= 1) as c,
                 COALESCE((SELECT SUM(pepsico_skus)::numeric / NULLIF(COUNT(CASE WHEN pepsico_skus > 0 THEN 1 END), 0) FROM curr_mix_base), 0) as mix_pepsico,
                 COALESCE((SELECT COUNT(1) FROM curr_mix_base WHERE has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1), 0) as pos_salty,
-                COALESCE((SELECT COUNT(1) FROM curr_mix_base WHERE has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1), 0) as pos_foods
+                COALESCE((SELECT COUNT(1) FROM curr_mix_base WHERE has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1), 0) as pos_foods,
+                (SELECT COUNT(*) FROM curr_daily_clients WHERE val >= 1) as total_pos_diaria,
+                COALESCE(public.calc_working_days(
+                    (SELECT date_trunc(''month'', MIN(dtped))::date FROM target_sales),
+                    (SELECT MAX(dtped)::date FROM target_sales)
+                ), 1) as days_passed
             FROM target_sales ts
         ),
         curr_superv AS (
@@ -4030,7 +4045,12 @@ BEGIN
                 COUNT(CASE WHEN total_val >= 1 THEN 1 END) as monthly_active_clients,
                 COALESCE(SUM(pepsico_skus)::numeric / NULLIF(COUNT(CASE WHEN pepsico_skus > 0 THEN 1 END), 0), 0) as monthly_mix_pepsico,
                 COUNT(CASE WHEN has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1 THEN 1 END) as monthly_pos_salty,
-                COUNT(CASE WHEN has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1 THEN 1 END) as monthly_pos_foods
+                COUNT(CASE WHEN has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1 THEN 1 END) as monthly_pos_foods,
+                (SELECT COUNT(*) FROM hist_daily_clients hdc WHERE hdc.val >= 1 AND date_trunc(''month'', hdc.d) = hist_monthly_mix.m_date) as monthly_total_pos_diaria,
+                COALESCE(public.calc_working_days(
+                    hist_monthly_mix.m_date::date,
+                    (SELECT MAX(dtped)::date FROM history_sales hs WHERE date_trunc(''month'', hs.dtped) = hist_monthly_mix.m_date)
+                ), 1) as monthly_days_passed
             FROM hist_monthly_mix
             GROUP BY 1
         ),
@@ -4041,7 +4061,8 @@ BEGIN
                 COALESCE((SELECT SUM(monthly_active_clients) FROM hist_monthly_sums), 0) as c,
                 COALESCE((SELECT SUM(monthly_mix_pepsico) FROM hist_monthly_sums), 0) as sum_mix_pepsico,
                 COALESCE((SELECT SUM(monthly_pos_salty) FROM hist_monthly_sums), 0) as sum_pos_salty,
-                COALESCE((SELECT SUM(monthly_pos_foods) FROM hist_monthly_sums), 0) as sum_pos_foods
+                COALESCE((SELECT SUM(monthly_pos_foods) FROM hist_monthly_sums), 0) as sum_pos_foods,
+                COALESCE((SELECT AVG(monthly_total_pos_diaria::numeric / NULLIF(monthly_days_passed, 0)) FROM hist_monthly_sums), 0) as avg_pos_diaria
             FROM history_sales ts
         ),
         hist_superv AS (
