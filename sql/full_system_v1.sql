@@ -3933,23 +3933,23 @@ BEGIN
 
     EXECUTE format('
         WITH target_sales AS (
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor
             FROM public.data_detailed s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
             UNION ALL
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor
             FROM public.data_history s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
         ),
         history_sales AS (
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor
             FROM public.data_detailed s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
             UNION ALL
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor
             FROM public.data_history s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
@@ -3957,11 +3957,11 @@ BEGIN
         -- Current Aggregates
 
         curr_daily_clients AS (
-            SELECT dtped::date as d, codcli, SUM(vlvenda) as val
+            SELECT dtped::date as d, codcli, MAX(codusur) as codusur, SUM(vlvenda) as val
             FROM target_sales GROUP BY 1, 2
         ),
         hist_daily_clients AS (
-            SELECT dtped::date as d, codcli, SUM(vlvenda) as val
+            SELECT dtped::date as d, codcli, MAX(codusur) as codusur, SUM(vlvenda) as val
             FROM history_sales GROUP BY 1, 2
         ),
         curr_daily AS (
@@ -3999,7 +3999,15 @@ BEGIN
                 COALESCE((SELECT SUM(pepsico_skus)::numeric / NULLIF(COUNT(CASE WHEN pepsico_skus > 0 THEN 1 END), 0) FROM curr_mix_base), 0) as mix_pepsico,
                 COALESCE((SELECT COUNT(1) FROM curr_mix_base WHERE has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1), 0) as pos_salty,
                 COALESCE((SELECT COUNT(1) FROM curr_mix_base WHERE has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1), 0) as pos_foods,
-                (SELECT COUNT(*) FROM curr_daily_clients WHERE val >= 1) as total_pos_diaria,
+                (SELECT COUNT(*) FROM curr_daily_clients cdc
+                    LEFT JOIN public.dim_vendedores dv ON cdc.codusur = dv.codigo
+                    WHERE cdc.val >= 1
+                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE '%INATIVO%' AND dv.nome NOT ILIKE '%BALCAO%' AND dv.nome NOT ILIKE '%BALCÃO%' AND dv.nome NOT ILIKE '%AMERICANAS%'))
+                ) as total_pos_diaria,
+                COALESCE(NULLIF((SELECT COUNT(DISTINCT s.codusur) FROM target_sales s
+                    LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
+                    WHERE (dv.nome IS NULL OR (dv.nome NOT ILIKE '%INATIVO%' AND dv.nome NOT ILIKE '%BALCAO%' AND dv.nome NOT ILIKE '%BALCÃO%' AND dv.nome NOT ILIKE '%AMERICANAS%'))
+                ), 0), 1) as valid_vendors,
                 COALESCE(public.calc_working_days(
                     (SELECT date_trunc(''month'', MIN(dtped))::date FROM target_sales),
                     (SELECT MAX(dtped)::date FROM target_sales)
@@ -4046,7 +4054,16 @@ BEGIN
                 COALESCE(SUM(pepsico_skus)::numeric / NULLIF(COUNT(CASE WHEN pepsico_skus > 0 THEN 1 END), 0), 0) as monthly_mix_pepsico,
                 COUNT(CASE WHEN has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1 THEN 1 END) as monthly_pos_salty,
                 COUNT(CASE WHEN has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1 THEN 1 END) as monthly_pos_foods,
-                (SELECT COUNT(*) FROM hist_daily_clients hdc WHERE hdc.val >= 1 AND date_trunc(''month'', hdc.d) = hist_monthly_mix.m_date) as monthly_total_pos_diaria,
+                (SELECT COUNT(*) FROM hist_daily_clients hdc
+                    LEFT JOIN public.dim_vendedores dv ON hdc.codusur = dv.codigo
+                    WHERE hdc.val >= 1 AND date_trunc(''month'', hdc.d) = hist_monthly_mix.m_date
+                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE '%INATIVO%' AND dv.nome NOT ILIKE '%BALCAO%' AND dv.nome NOT ILIKE '%BALCÃO%' AND dv.nome NOT ILIKE '%AMERICANAS%'))
+                ) as monthly_total_pos_diaria,
+                COALESCE(NULLIF((SELECT COUNT(DISTINCT hs.codusur) FROM history_sales hs
+                    LEFT JOIN public.dim_vendedores dv ON hs.codusur = dv.codigo
+                    WHERE date_trunc(''month'', hs.dtped) = hist_monthly_mix.m_date
+                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE '%INATIVO%' AND dv.nome NOT ILIKE '%BALCAO%' AND dv.nome NOT ILIKE '%BALCÃO%' AND dv.nome NOT ILIKE '%AMERICANAS%'))
+                ), 0), 1) as monthly_valid_vendors,
                 COALESCE(public.calc_working_days(
                     hist_monthly_mix.m_date::date,
                     (SELECT MAX(dtped)::date FROM history_sales hs WHERE date_trunc(''month'', hs.dtped) = hist_monthly_mix.m_date)
@@ -4062,7 +4079,7 @@ BEGIN
                 COALESCE((SELECT SUM(monthly_mix_pepsico) FROM hist_monthly_sums), 0) as sum_mix_pepsico,
                 COALESCE((SELECT SUM(monthly_pos_salty) FROM hist_monthly_sums), 0) as sum_pos_salty,
                 COALESCE((SELECT SUM(monthly_pos_foods) FROM hist_monthly_sums), 0) as sum_pos_foods,
-                COALESCE((SELECT AVG(monthly_total_pos_diaria::numeric / NULLIF(monthly_days_passed, 0)) FROM hist_monthly_sums), 0) as avg_pos_diaria
+                COALESCE((SELECT AVG((monthly_total_pos_diaria::numeric / NULLIF(monthly_days_passed, 0)) / monthly_valid_vendors) FROM hist_monthly_sums), 0) as avg_pos_diaria
             FROM history_sales ts
         ),
         hist_superv AS (
