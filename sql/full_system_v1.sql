@@ -2988,7 +2988,7 @@ BEGIN
         IF v_current_year < EXTRACT(YEAR FROM CURRENT_DATE)::int THEN
             v_ref_date := make_date(v_current_year, 12, 1);
         ELSE
-             v_ref_date := date_trunc(''month'', CURRENT_DATE)::date;
+             v_ref_date := date_trunc('month', CURRENT_DATE)::date;
         END IF;
     END IF;
 
@@ -3219,7 +3219,7 @@ BEGIN
         v_active_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
         v_active_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
         v_active_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
-        v_active_client_cond, v_where_summary, date_trunc(''month'', v_tri_start), date_trunc(''month'', v_tri_end), v_where_summary, date_trunc(''month'', v_tri_start), date_trunc(''month'', v_tri_end), -- KPI Tri
+        v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
         v_active_client_cond_slow -- Prod Agg
@@ -3821,11 +3821,11 @@ BEGIN
         v_ref_date := v_end_target::date;
     END IF;
 
-    v_start_target := date_trunc(''month'', v_ref_date);
+    v_start_target := date_trunc('month', v_ref_date);
     v_end_target := (v_start_target + interval '1 month' - interval '1 second');
 
     v_end_quarter := v_start_target - interval '1 second';
-    v_start_quarter := date_trunc(''month'', v_end_quarter - interval '2 months');
+    v_start_quarter := date_trunc('month', v_end_quarter - interval '2 months');
 
     -- Trend Calculation
     v_max_sale_date := (SELECT MAX(dtped)::date FROM public.data_detailed);
@@ -3834,7 +3834,7 @@ BEGIN
     v_trend_allowed := (EXTRACT(YEAR FROM v_end_target) = EXTRACT(YEAR FROM v_max_sale_date) AND EXTRACT(MONTH FROM v_end_target) = EXTRACT(MONTH FROM v_max_sale_date));
 
     IF v_trend_allowed THEN
-        v_month_start := date_trunc(''month'', v_max_sale_date);
+        v_month_start := date_trunc('month', v_max_sale_date);
         v_month_end := (v_month_start + interval '1 month' - interval '1 day')::date;
 
         v_work_days_passed := public.calc_working_days(v_month_start, v_max_sale_date);
@@ -5360,7 +5360,7 @@ END $$;
 /* Cria a tabela fisica com os dados consolidados e agora com endereco */
 CREATE MATERIALIZED VIEW public.n8n_agent_view AS
 WITH limites_data AS (
-    SELECT date_trunc(''month'', MAX(dtped)) - interval '12 months' as data_corte
+    SELECT date_trunc('month', MAX(dtped)) - interval '12 months' as data_corte
     FROM (
         SELECT MAX(dtped) as dtped FROM public.data_detailed
         UNION ALL
