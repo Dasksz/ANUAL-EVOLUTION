@@ -39,3 +39,4 @@
 ## 2024-05-30 : (Extração da Lógica de Formatação de Porcentagens)
 **Aprendizado:** Muitos lugares do código realizavam formatação manual de porcentagem interpolando `.toFixed(N)` com a string `%`. Isso gerava um padrão verboso (`${value.toFixed(1)}%`) e repetição da verificação de fallback.
 **Ação:** Criada a utilidade `formatPercentage(value, decimals)` em `src/js/utils.js` para padronizar e limpar o código de formatação, melhorando a legibilidade dos templates do DOM.
+## 2026/16/10 : (Refatoração de Mapas Inline de Options HTML) **Aprendizado:** (A substituição de mapas inline por utilitários centralizados como `generateYearOptionsHtml` melhora a legibilidade e reduz a repetição, mas certifique-se sempre de que os utilitários estão disponíveis no escopo) **Ação:** (Continuar centralizando lógicas de geração de HTML comuns e verificar as importações)

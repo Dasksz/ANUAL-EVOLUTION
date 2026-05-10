@@ -7645,7 +7645,8 @@ const setupEstrelasFilters = async () => {
 
     if (anoSelect && filterData.anos) {
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-        anoSelect.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(ano => `<option value="${escapeHtml(ano)}">${escapeHtml(ano)}</option>`).join('');
+        // 🧹 Tidy: Replaced inline mapping with the centralized generateYearOptionsHtml utility to improve readability and reduce duplication.
+        anoSelect.innerHTML = generateYearOptionsHtml(filterData.anos);
 
         let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
         anoSelect.value = hasYear ? currentYear : 'todos';
@@ -7657,7 +7658,8 @@ const setupEstrelasFilters = async () => {
     if (mesSelect) {
         const meses = MONTHS_PT;
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-        mesSelect.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
+        // 🧹 Tidy: Replaced inline mapping with the centralized generateMonthOptionsHtml utility to improve readability and reduce duplication.
+        mesSelect.innerHTML = generateMonthOptionsHtml('Todos', '', true);
 
         mesSelect.value = currentMonth;
         mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
