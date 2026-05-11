@@ -434,6 +434,7 @@ let estrelasSelectedCategorias = [];
     const navCityAnalysisBtn = document.getElementById('nav-city-analysis');
     const navBoxesBtn = document.getElementById('nav-boxes-btn');
     const navBranchBtn = document.getElementById('nav-branch-btn');
+    const optimizeDbBtnNav = document.getElementById('optimize-db-btn-nav');
     const navUploaderBtn = document.getElementById('nav-uploader');
     const navInnovationsBtn = document.getElementById('nav-innovations-btn');
     const navLojaPerfeitaBtn = document.getElementById('nav-loja-perfeita-btn');
