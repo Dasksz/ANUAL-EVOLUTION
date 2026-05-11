@@ -430,7 +430,6 @@ let estrelasSelectedCategorias = [];
         });
     });
     const navDashboardBtn = document.getElementById('nav-dashboard');
-    const navComparativoBtn = document.getElementById('nav-comparativo-btn');
     const navCityAnalysisBtn = document.getElementById('nav-city-analysis');
     const navBoxesBtn = document.getElementById('nav-boxes-btn');
     const navBranchBtn = document.getElementById('nav-branch-btn');
