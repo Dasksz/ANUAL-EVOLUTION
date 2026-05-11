@@ -417,3 +417,40 @@ th {
     margin: 0;
     line-height: 1.2;
 }
+
+/* Side Menu Styles */
+.side-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    color: #cbd5e1;
+    transition: all 0.2s ease-in-out;
+}
+
+.side-nav-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+.side-nav-item.active {
+    background-color: rgba(249, 115, 22, 0.1);
+    color: #f97316 !important;
+    font-weight: 600;
+}
+
+.side-nav-item.active svg {
+    stroke: #f97316 !important;
+}
+
+.side-nav-item svg {
+    color: inherit;
+    transition: all 0.2s;
+}
+
+/* Ensure body scroll lock when side menu is open */
+body.side-menu-open {
+    overflow: hidden;
+}
