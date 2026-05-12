@@ -2157,8 +2157,8 @@ let estrelasSelectedCategorias = [];
         };
 
         // Reduced Batch Size to avoid 60s timeout during heavy inserts
-        const BATCH_SIZE = 500;
-        const CONCURRENT_REQUESTS = 3;
+        const BATCH_SIZE = 1500;
+        const CONCURRENT_REQUESTS = 10;
 
         const uploadBatch = async (table, items) => {
             const totalBatches = Math.ceil(items.length / BATCH_SIZE);
@@ -2446,32 +2446,39 @@ let estrelasSelectedCategorias = [];
                         const progress = 80 + Math.round((i * yearStep) + (m * monthStep));
 
                         // Calculate date boundaries
-                        const startDate = `${year}-${String(m).padStart(2, '0')}-01`;
-                        const chunk1EndDate = `${year}-${String(m).padStart(2, '0')}-11`;
-                        const chunk2EndDate = `${year}-${String(m).padStart(2, '0')}-21`;
                         let nextMonth = m + 1;
                         let nextYear = year;
                         if (nextMonth > 12) {
                             nextMonth = 1;
                             nextYear++;
                         }
-                        const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
 
-                        updateStatus(`Processando ${m}/${year} (Partes 1-3)...`, progress + Math.round(monthStep * 0.20));
-                        await retryOperation(async () => {
-                            const res1 = await supabase.rpc('refresh_summary_chunk', { p_start_date: startDate, p_end_date: chunk1EndDate });
-                            if (res1.error) throw new Error(`Erro processando ${m}/${year} (Parte 1): ${res1.error.message}`);
-                        }, 3, 2000);
+                        // We split the month into 6 chunks (every 5-6 days) to prevent statement timeout on large data
+                        const chunkDays = [1, 6, 11, 16, 21, 26];
+                        for (let j = 0; j < chunkDays.length; j++) {
+                            const startDay = chunkDays[j];
+                            let endDay, endMonth, endYear;
 
-                        await retryOperation(async () => {
-                            const res2 = await supabase.rpc('refresh_summary_chunk', { p_start_date: chunk1EndDate, p_end_date: chunk2EndDate });
-                            if (res2.error) throw new Error(`Erro processando ${m}/${year} (Parte 2): ${res2.error.message}`);
-                        }, 3, 2000);
+                            if (j === chunkDays.length - 1) {
+                                // Last chunk goes to the 1st of the next month
+                                endDay = 1;
+                                endMonth = nextMonth;
+                                endYear = nextYear;
+                            } else {
+                                endDay = chunkDays[j + 1];
+                                endMonth = m;
+                                endYear = year;
+                            }
 
-                        await retryOperation(async () => {
-                            const res3 = await supabase.rpc('refresh_summary_chunk', { p_start_date: chunk2EndDate, p_end_date: endDate });
-                            if (res3.error) throw new Error(`Erro processando ${m}/${year} (Parte 3): ${res3.error.message}`);
-                        }, 3, 2000);
+                            const chunkStartDate = `${year}-${String(m).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
+                            const chunkEndDate = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
+
+                            updateStatus(`Processando ${m}/${year} (Parte ${j + 1}/6)...`, progress + Math.round(monthStep * ((j + 1) / 6) * 0.80));
+                            await retryOperation(async () => {
+                                const res = await supabase.rpc('refresh_summary_chunk', { p_start_date: chunkStartDate, p_end_date: chunkEndDate });
+                                if (res.error) throw new Error(`Erro processando ${m}/${year} (Parte ${j + 1}): ${res.error.message}`);
+                            }, 3, 2000);
+                        }
 
                         // Atualiza o cache de filtros apenas para o mês que acabou de ser processado para evitar timeout
                         updateStatus(`Atualizando filtros ${m}/${year}...`, progress + Math.round(monthStep * 0.90));
