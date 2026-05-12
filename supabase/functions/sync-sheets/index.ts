@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
         dia_semana: columns[3] || null,
         supervisor: columns[4] || null,
         rota_dia: columns[5] || null,
-        acompanhado_dia_nome: columns[6] || null, // ADDED HERE
+        acompanhado_dia_nome: columns[6] || null,
         clientes_roteirizados: columns[7] ? parseInt(columns[7], 10) : null,
         foco_dia: columns[8] || null,
         clientes_visitados: columns[9] ? parseInt(columns[9], 10) : null,
