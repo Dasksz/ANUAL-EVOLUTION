@@ -181,6 +181,7 @@ window.closeDetalhadoModal = function() {
 
 
 import supabase from './supabase.js?v=3';
+import { SUPABASE_KEY } from "./config.js";
 import {
     generateYearOptionsHtml,
     generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes } from './utils.js';
@@ -8264,6 +8265,43 @@ const handleAgendaFilterChange = () => {
     agendaFilterDebounceTimer = setTimeout(() => {
         updateAgendaView();
     }, 500);
+};
+
+window.forceSyncSheets = async () => {
+    const btn = document.querySelector('button[aria-label="Atualizar Dados da Planilha"]');
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        const svg = btn.querySelector('svg');
+        if (svg) svg.classList.add('animate-spin');
+    }
+
+    try {
+        const response = await fetch('https://vawrdqreibhlfsfvxbpv.supabase.co/functions/v1/sync-sheets', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+
+        if (!response.ok) throw new Error('Falha ao sincronizar dados.');
+
+        window.showToast('Sucesso', 'Dados da planilha atualizados.', 'success');
+
+        await loadAgendaFilters();
+        await updateAgendaView();
+
+    } catch (error) {
+        console.error('Erro ao sincronizar:', error);
+        window.showToast('Erro', 'Não foi possível atualizar os dados.', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            const svg = btn.querySelector('svg');
+            if (svg) svg.classList.remove('animate-spin');
+        }
+    }
 };
 
 const loadAgendaFilters = async () => {
