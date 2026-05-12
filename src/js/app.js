@@ -435,6 +435,7 @@ let estrelasSelectedCategorias = [];
     const navBoxesBtn = document.getElementById('nav-boxes-btn');
     const navBranchBtn = document.getElementById('nav-branch-btn');
     const optimizeDbBtnNav = document.getElementById('optimize-db-btn-nav');
+    const closeUploaderBtn = document.getElementById('close-uploader-btn');
     const navUploaderBtn = document.getElementById('nav-uploader');
     const navInnovationsBtn = document.getElementById('nav-innovations-btn');
     const navLojaPerfeitaBtn = document.getElementById('nav-loja-perfeita-btn');
@@ -444,7 +445,7 @@ let estrelasSelectedCategorias = [];
     // const exportDropdown removed
     let currentActiveNavId = 'nav-dashboard'; // keep track
 
-    
+
     // Removed old positionExportDropdown and toggleExportDropdown since buttons are now in side menu
     // The existing logic for exportExcelBtn and exportPdfBtn event listeners should still work
     // because they rely on the active view, which is independent of the dropdown.
