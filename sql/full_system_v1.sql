@@ -712,7 +712,6 @@ DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[],
 DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
 
 
-$(cat sql/migrations/update_frequency_yago_skupdv.sql)
 
 -- ==============================================================================
 -- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT (V2 - Storage Optimized)
@@ -4675,9 +4674,6 @@ GRANT EXECUTE ON FUNCTION public.search_loja_perfeita_clients(text, text[], text
 -- FIX LINTER WARNINGS: SEARCH_PATH
 ALTER FUNCTION public.append_to_chunk_v2(p_table_name text, p_rows jsonb) SET search_path = public;
 ALTER FUNCTION public.sync_chunk_v2(p_table_name text, p_chunk_key text, p_rows jsonb, p_hash text) SET search_path = public;
-ALTER FUNCTION public.get_frequency_table_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_fornecedor text[], p_tipovenda text[], p_rede text[], p_produto text[], p_categoria text[]) SET search_path = public;
-ALTER FUNCTION public.get_frequency_table_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_fornecedor text[], p_ano text, p_mes text, p_tipovenda text[], p_rede text[], p_produto text[], p_categoria text[]) SET search_path = public;
-ALTER FUNCTION public.get_frequency_table_data(p_diretoria text[], p_gerencia text[], p_filial text[], p_vendedor text[], p_supervisor text[], p_ano text, p_mes text, p_fornecedor text[], p_rede text[], p_produto text[], p_categoria text[], p_tipovenda text[]) SET search_path = public;
 ALTER FUNCTION public.update_products_stock(p_stock_data jsonb) SET search_path = public;
 ALTER FUNCTION public.classify_product_mix() SET search_path = public;
 
