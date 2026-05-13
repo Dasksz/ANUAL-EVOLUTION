@@ -538,7 +538,7 @@ BEGIN
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
             COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END)::numeric as month_pedidos,
-            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as sum_vlvenda
+            SUM(CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN CASE WHEN c.tipovenda = ANY($1) AND c.tipovenda IN (''5'',''11'') THEN c.bonificacao WHEN c.tipovenda = ANY($1) AND c.tipovenda NOT IN (''5'',''11'') THEN c.vlvenda ELSE 0 END WHEN c.tipovenda IN (''1'', ''9'') THEN c.vlvenda ELSE 0 END) as sum_vlvenda
         FROM current_data c
         GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
     ),
@@ -574,8 +574,8 @@ BEGIN
             COALESCE(c.filial, ''TOTAL_GERAL'') as filial,
             COALESCE(c.cidade, ''TOTAL_CIDADE'') as cidade,
             c.codusur as vendedor_cod,
-            SUM(c.peso) as tons,
-            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
+            SUM(CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) THEN CASE WHEN c.tipovenda = ANY($1) THEN c.peso ELSE 0 END ELSE CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN CASE WHEN c.tipovenda = ANY($1) AND c.tipovenda NOT IN (''5'', ''11'') THEN c.peso ELSE 0 END WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.peso ELSE 0 END END END) as tons,
+            SUM(CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN CASE WHEN c.tipovenda = ANY($1) AND c.tipovenda IN (''5'',''11'') THEN c.bonificacao WHEN c.tipovenda = ANY($1) AND c.tipovenda NOT IN (''5'',''11'') THEN c.vlvenda ELSE 0 END WHEN c.tipovenda IN (''1'', ''9'') THEN c.vlvenda ELSE 0 END) as faturamento,
             COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END) as total_pedidos,
             COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
@@ -2759,7 +2759,7 @@ BEGIN
             fs.mes,
             SUM(CASE 
                 WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN
-                    CASE WHEN fs.tipovenda = ANY($1) THEN fs.vlvenda ELSE 0 END
+                    CASE WHEN fs.tipovenda = ANY($1) AND fs.tipovenda IN (''5'', ''11'') THEN fs.bonificacao WHEN fs.tipovenda = ANY($1) AND fs.tipovenda NOT IN (''5'', ''11'') THEN fs.vlvenda ELSE 0 END
                 WHEN fs.tipovenda IN (''1'', ''9'') THEN fs.vlvenda
                 ELSE 0 
             END) as faturamento,
