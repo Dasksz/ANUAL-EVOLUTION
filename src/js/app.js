@@ -409,7 +409,7 @@ let estrelasSelectedCategorias = [];
 
     function openSideMenu() {
         if (!sideMenu || !sideMenuOverlay) return;
-        sideMenu.classList.remove('-translate-x-full');
+        sideMenu.classList.remove('translate-x-full');
         sideMenuOverlay.classList.remove('hidden');
         // Small delay to allow display:block to apply before animating opacity
         setTimeout(() => {
@@ -420,7 +420,7 @@ let estrelasSelectedCategorias = [];
 
     function closeSideMenu() {
         if (!sideMenu || !sideMenuOverlay) return;
-        sideMenu.classList.add('-translate-x-full');
+        sideMenu.classList.add('translate-x-full');
         sideMenuOverlay.classList.add('opacity-0');
         setTimeout(() => {
             sideMenuOverlay.classList.add('hidden');
