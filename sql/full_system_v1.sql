@@ -262,24 +262,6 @@ BEGIN
     RETURN v_result;
 END;
 $$;
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data();
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text[], text[], text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
-
-
 CREATE OR REPLACE FUNCTION get_frequency_table_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -302,7 +284,8 @@ DECLARE
     v_current_year int;
     v_previous_year int;
     v_target_month int;
-    v_eval_target_month int;
+    v_max_month int;
+    v_num_months int;
 
     v_where_base text := ' WHERE 1=1 ';
     v_where_clients text := ' WHERE 1=1 ';
@@ -328,11 +311,14 @@ BEGIN
 
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_target_month := p_mes::int + 1;
+        v_num_months := 1;
         v_where_base := v_where_base || ' AND s.ano = ' || v_current_year || ' AND s.mes = ' || v_target_month || ' ';
         v_where_base_prev := v_where_base_prev || ' AND s.ano = ' || v_previous_year || ' AND s.mes = ' || v_target_month || ' ';
     ELSE
+        SELECT COALESCE(MAX(mes), 12) INTO v_max_month FROM public.data_summary_frequency WHERE ano = v_current_year;
+        v_num_months := v_max_month;
         v_where_base := v_where_base || ' AND s.ano = ' || v_current_year || ' ';
-        v_where_base_prev := v_where_base_prev || ' AND s.ano = ' || v_previous_year || ' ';
+        v_where_base_prev := v_where_base_prev || ' AND s.ano = ' || v_previous_year || ' AND s.mes <= ' || v_max_month || ' ';
     END IF;
 
     v_where_chart := v_where_chart || ' AND ano IN (' || v_previous_year || ', ' || v_current_year || ') ';
@@ -411,7 +397,6 @@ BEGIN
                     
                     v_where_base := v_where_base || ' AND (' || v_cond_str || ') ';
                     v_where_base_prev := v_where_base_prev || ' AND (' || v_cond_str || ') ';
-                    -- for chart alias 'codfor' is actually 's.codfor' in the view so we just string replace 's.' with '' for v_where_chart if necessary, but actually current_data in get_frequency_table_data has no alias prefix in monthly_freq, so let's use the CTE column name which is 'codfor' and 'categorias'
                     v_where_chart := v_where_chart || ' AND (' || replace(v_cond_str, 's.', '') || ') ';
                     
                     IF v_unnested_str <> '' THEN
@@ -468,24 +453,24 @@ BEGIN
     IF v_where_unnested = ' ' OR v_where_unnested = '' THEN
         v_pre_agg_skus_sql := '
         SELECT
-            c.filial, c.cidade, c.codusur, c.codcli,
+            c.filial, c.cidade, c.codusur, c.mes, c.codcli,
             COUNT(DISTINCT p.produto) as dist_skus_per_cli
         FROM current_data c
         CROSS JOIN LATERAL unnest(c.produtos_arr) AS p(produto)
         WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
-        GROUP BY c.filial, c.cidade, c.codusur, c.codcli
+        GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
         ';
     ELSE
         v_pre_agg_skus_sql := '
         SELECT
-            c.filial, c.cidade, c.codusur, c.codcli,
+            c.filial, c.cidade, c.codusur, c.mes, c.codcli,
             COUNT(DISTINCT dp.codigo) as dist_skus_per_cli
         FROM current_data c
         CROSS JOIN LATERAL unnest(c.produtos_arr) AS p(produto)
         INNER JOIN public.dim_produtos dp ON dp.codigo = p.produto
         WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
         ' || v_where_unnested || '
-        GROUP BY c.filial, c.cidade, c.codusur, c.codcli
+        GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
         ';
     END IF;
 
@@ -577,8 +562,7 @@ BEGIN
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
             codusur as vendedor_cod,
-            -- Calculate frequency per month, then average those frequencies across active months
-            AVG(CASE WHEN month_clientes > 0 THEN month_pedidos / month_clientes ELSE NULL END) as avg_monthly_freq
+            SUM(CASE WHEN month_clientes > 0 THEN month_pedidos / month_clientes ELSE 0 END) / ' || v_num_months || ' as avg_monthly_freq
         FROM monthly_freq
         GROUP BY ROLLUP(filial, cidade, codusur)
     ),
@@ -642,7 +626,8 @@ BEGIN
             ac.total_pedidos::numeric as total_pedidos,
             ac.q_meses,
             COALESCE(mf.avg_monthly_freq, 0) as avg_monthly_freq,
-            COALESCE(cb.base_total, 0) as base_total
+            COALESCE(cb.base_total, 0) as base_total,
+            ' || v_num_months || ' as num_months_filter
         FROM aggregated_curr ac
         LEFT JOIN aggregated_positivados ap
             ON ac.grp_filial = ap.grp_filial
@@ -708,6 +693,26 @@ BEGIN
     RETURN v_result;
 END;
 $$;
+
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data();
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text[], text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
+
+
+$(cat sql/migrations/update_frequency_yago_skupdv.sql)
 
 -- ==============================================================================
 -- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT (V2 - Storage Optimized)
