@@ -33,3 +33,7 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## $(date +%Y-%m-%d) - Fix SKU/PDV aggregation logic
 **Learning:** For KPI metrics like SKU/PDV and Mix PDV, doing calculations at a pre-aggregated monthly level and then rolling up the average provides better context compared to taking the unique SKU count across the entire span and dividing it by total positivations (which inflates the metric as the same sku bought over multiple months doesn't count up).
 **Action:** When working on sales aggregation, identify if metrics like "unique items" need to be evaluated per-month before global rollup. Grouping by `mes` at the CTE level before rolling up ensures more accurate KPIs.
+
+## $(date +%Y-%m-%d) - Optimize ARRAY unnest lateral joins
+**Learning:** `CROSS JOIN LATERAL unnest(array_column)` inside a large CTE (like millions of orders) explodes the rows and causes statement timeouts.
+**Action:** When you need unique array values grouped by client/month, perform a `string_agg(array_column::text, ',')` grouped by client/month in an intermediate step. Then perform the unnest on the pre-grouped smaller dataset using `unnest(string_to_array(prod_str, ','))`. This radically reduces the Cartesian expansion and fixes timeouts.
