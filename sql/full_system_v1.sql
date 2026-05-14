@@ -303,6 +303,7 @@ DECLARE
     v_previous_year int;
     v_target_month int;
     v_eval_target_month int;
+    v_max_current_month int;
 
     v_where_base text := ' WHERE 1=1 ';
     v_where_clients text := ' WHERE 1=1 ';
@@ -332,7 +333,11 @@ BEGIN
         v_where_base_prev := v_where_base_prev || ' AND s.ano = ' || v_previous_year || ' AND s.mes = ' || v_target_month || ' ';
     ELSE
         v_where_base := v_where_base || ' AND s.ano = ' || v_current_year || ' ';
-        v_where_base_prev := v_where_base_prev || ' AND s.ano = ' || v_previous_year || ' ';
+
+        -- PROPORTIONAL YAGO (Year-Ago): Se for o ano todo, o ano passado deve comparar apenas até o mês máximo que tem dados no ano atual.
+        SELECT COALESCE(MAX(mes), 12) INTO v_max_current_month FROM public.data_summary_frequency WHERE ano = v_current_year;
+
+        v_where_base_prev := v_where_base_prev || ' AND s.ano = ' || v_previous_year || ' AND s.mes <= ' || v_max_current_month || ' ';
     END IF;
 
     v_where_chart := v_where_chart || ' AND ano IN (' || v_previous_year || ', ' || v_current_year || ') ';
