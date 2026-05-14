@@ -262,6 +262,24 @@ BEGIN
     RETURN v_result;
 END;
 $$;
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data();
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text[], text[], text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
+DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
+
+
 CREATE OR REPLACE FUNCTION get_frequency_table_data(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -284,8 +302,7 @@ DECLARE
     v_current_year int;
     v_previous_year int;
     v_target_month int;
-    v_max_month int;
-    v_num_months int;
+    v_eval_target_month int;
 
     v_where_base text := ' WHERE 1=1 ';
     v_where_clients text := ' WHERE 1=1 ';
@@ -311,14 +328,11 @@ BEGIN
 
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_target_month := p_mes::int + 1;
-        v_num_months := 1;
         v_where_base := v_where_base || ' AND s.ano = ' || v_current_year || ' AND s.mes = ' || v_target_month || ' ';
         v_where_base_prev := v_where_base_prev || ' AND s.ano = ' || v_previous_year || ' AND s.mes = ' || v_target_month || ' ';
     ELSE
-        SELECT COALESCE(MAX(mes), 12) INTO v_max_month FROM public.data_summary_frequency WHERE ano = v_current_year;
-        v_num_months := v_max_month;
         v_where_base := v_where_base || ' AND s.ano = ' || v_current_year || ' ';
-        v_where_base_prev := v_where_base_prev || ' AND s.ano = ' || v_previous_year || ' AND s.mes <= ' || v_max_month || ' ';
+        v_where_base_prev := v_where_base_prev || ' AND s.ano = ' || v_previous_year || ' ';
     END IF;
 
     v_where_chart := v_where_chart || ' AND ano IN (' || v_previous_year || ', ' || v_current_year || ') ';
@@ -397,6 +411,7 @@ BEGIN
                     
                     v_where_base := v_where_base || ' AND (' || v_cond_str || ') ';
                     v_where_base_prev := v_where_base_prev || ' AND (' || v_cond_str || ') ';
+                    -- for chart alias 'codfor' is actually 's.codfor' in the view so we just string replace 's.' with '' for v_where_chart if necessary, but actually current_data in get_frequency_table_data has no alias prefix in monthly_freq, so let's use the CTE column name which is 'codfor' and 'categorias'
                     v_where_chart := v_where_chart || ' AND (' || replace(v_cond_str, 's.', '') || ') ';
                     
                     IF v_unnested_str <> '' THEN
@@ -453,24 +468,24 @@ BEGIN
     IF v_where_unnested = ' ' OR v_where_unnested = '' THEN
         v_pre_agg_skus_sql := '
         SELECT
-            c.filial, c.cidade, c.codusur, c.mes, c.codcli,
+            c.filial, c.cidade, c.codusur, c.codcli,
             COUNT(DISTINCT p.produto) as dist_skus_per_cli
         FROM current_data c
         CROSS JOIN LATERAL unnest(c.produtos_arr) AS p(produto)
         WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
-        GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
+        GROUP BY c.filial, c.cidade, c.codusur, c.codcli
         ';
     ELSE
         v_pre_agg_skus_sql := '
         SELECT
-            c.filial, c.cidade, c.codusur, c.mes, c.codcli,
+            c.filial, c.cidade, c.codusur, c.codcli,
             COUNT(DISTINCT dp.codigo) as dist_skus_per_cli
         FROM current_data c
         CROSS JOIN LATERAL unnest(c.produtos_arr) AS p(produto)
         INNER JOIN public.dim_produtos dp ON dp.codigo = p.produto
         WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
         ' || v_where_unnested || '
-        GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
+        GROUP BY c.filial, c.cidade, c.codusur, c.codcli
         ';
     END IF;
 
@@ -538,7 +553,7 @@ BEGIN
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
             COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END)::numeric as month_pedidos,
-            SUM(CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN CASE WHEN c.tipovenda = ANY($1) AND c.tipovenda IN (''5'',''11'') THEN c.bonificacao WHEN c.tipovenda = ANY($1) AND c.tipovenda NOT IN (''5'',''11'') THEN c.vlvenda ELSE 0 END WHEN c.tipovenda IN (''1'', ''9'') THEN c.vlvenda ELSE 0 END) as sum_vlvenda
+            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as sum_vlvenda
         FROM current_data c
         GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
     ),
@@ -562,7 +577,8 @@ BEGIN
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
             codusur as vendedor_cod,
-            SUM(CASE WHEN month_clientes > 0 THEN month_pedidos / month_clientes ELSE 0 END) / ' || v_num_months || ' as avg_monthly_freq
+            -- Calculate frequency per month, then average those frequencies across active months
+            AVG(CASE WHEN month_clientes > 0 THEN month_pedidos / month_clientes ELSE NULL END) as avg_monthly_freq
         FROM monthly_freq
         GROUP BY ROLLUP(filial, cidade, codusur)
     ),
@@ -574,8 +590,8 @@ BEGIN
             COALESCE(c.filial, ''TOTAL_GERAL'') as filial,
             COALESCE(c.cidade, ''TOTAL_CIDADE'') as cidade,
             c.codusur as vendedor_cod,
-            SUM(CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) THEN CASE WHEN c.tipovenda = ANY($1) THEN c.peso ELSE 0 END ELSE CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN CASE WHEN c.tipovenda = ANY($1) AND c.tipovenda NOT IN (''5'', ''11'') THEN c.peso ELSE 0 END WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.peso ELSE 0 END END END) as tons,
-            SUM(CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN CASE WHEN c.tipovenda = ANY($1) AND c.tipovenda IN (''5'',''11'') THEN c.bonificacao WHEN c.tipovenda = ANY($1) AND c.tipovenda NOT IN (''5'',''11'') THEN c.vlvenda ELSE 0 END WHEN c.tipovenda IN (''1'', ''9'') THEN c.vlvenda ELSE 0 END) as faturamento,
+            SUM(c.peso) as tons,
+            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
             COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END) as total_pedidos,
             COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
@@ -626,8 +642,7 @@ BEGIN
             ac.total_pedidos::numeric as total_pedidos,
             ac.q_meses,
             COALESCE(mf.avg_monthly_freq, 0) as avg_monthly_freq,
-            COALESCE(cb.base_total, 0) as base_total,
-            ' || v_num_months || ' as num_months_filter
+            COALESCE(cb.base_total, 0) as base_total
         FROM aggregated_curr ac
         LEFT JOIN aggregated_positivados ap
             ON ac.grp_filial = ap.grp_filial
@@ -693,25 +708,6 @@ BEGIN
     RETURN v_result;
 END;
 $$;
-
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data();
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text[], text[], text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
-
-
 
 -- ==============================================================================
 -- UNIFIED DATABASE SETUP & OPTIMIZED SYSTEM SCRIPT (V2 - Storage Optimized)
@@ -2759,7 +2755,7 @@ BEGIN
             fs.mes,
             SUM(CASE 
                 WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN
-                    CASE WHEN fs.tipovenda = ANY($1) AND fs.tipovenda IN (''5'', ''11'') THEN fs.bonificacao WHEN fs.tipovenda = ANY($1) AND fs.tipovenda NOT IN (''5'', ''11'') THEN fs.vlvenda ELSE 0 END
+                    CASE WHEN fs.tipovenda = ANY($1) THEN fs.vlvenda ELSE 0 END
                 WHEN fs.tipovenda IN (''1'', ''9'') THEN fs.vlvenda
                 ELSE 0 
             END) as faturamento,
@@ -4006,11 +4002,11 @@ BEGIN
                 (SELECT COUNT(*) FROM curr_daily_clients cdc 
                     LEFT JOIN public.dim_vendedores dv ON cdc.codusur = dv.codigo
                     WHERE cdc.val >= 1 
-                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%INATIVO%'' AND dv.nome NOT ILIKE ''%BALCAO%'' AND dv.nome NOT ILIKE ''%BALCÃO%'' AND dv.nome NOT ILIKE ''%AMERICANAS%''))
+                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE '%INATIVO%' AND dv.nome NOT ILIKE '%BALCAO%' AND dv.nome NOT ILIKE '%BALCÃO%' AND dv.nome NOT ILIKE '%AMERICANAS%'))
                 ) as total_pos_diaria,
                 COALESCE(NULLIF((SELECT COUNT(DISTINCT s.codusur) FROM target_sales s 
                     LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
-                    WHERE (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%INATIVO%'' AND dv.nome NOT ILIKE ''%BALCAO%'' AND dv.nome NOT ILIKE ''%BALCÃO%'' AND dv.nome NOT ILIKE ''%AMERICANAS%''))
+                    WHERE (dv.nome IS NULL OR (dv.nome NOT ILIKE '%INATIVO%' AND dv.nome NOT ILIKE '%BALCAO%' AND dv.nome NOT ILIKE '%BALCÃO%' AND dv.nome NOT ILIKE '%AMERICANAS%'))
                 ), 0), 1) as valid_vendors,
                 COALESCE(public.calc_working_days(
                     (SELECT date_trunc(''month'', MIN(dtped))::date FROM target_sales), 
@@ -4061,12 +4057,12 @@ BEGIN
                 (SELECT COUNT(*) FROM hist_daily_clients hdc 
                     LEFT JOIN public.dim_vendedores dv ON hdc.codusur = dv.codigo
                     WHERE hdc.val >= 1 AND date_trunc(''month'', hdc.d) = hist_monthly_mix.m_date
-                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%INATIVO%'' AND dv.nome NOT ILIKE ''%BALCAO%'' AND dv.nome NOT ILIKE ''%BALCÃO%'' AND dv.nome NOT ILIKE ''%AMERICANAS%''))
+                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE '%INATIVO%' AND dv.nome NOT ILIKE '%BALCAO%' AND dv.nome NOT ILIKE '%BALCÃO%' AND dv.nome NOT ILIKE '%AMERICANAS%'))
                 ) as monthly_total_pos_diaria,
                 COALESCE(NULLIF((SELECT COUNT(DISTINCT hs.codusur) FROM history_sales hs 
                     LEFT JOIN public.dim_vendedores dv ON hs.codusur = dv.codigo
                     WHERE date_trunc(''month'', hs.dtped) = hist_monthly_mix.m_date
-                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%INATIVO%'' AND dv.nome NOT ILIKE ''%BALCAO%'' AND dv.nome NOT ILIKE ''%BALCÃO%'' AND dv.nome NOT ILIKE ''%AMERICANAS%''))
+                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE '%INATIVO%' AND dv.nome NOT ILIKE '%BALCAO%' AND dv.nome NOT ILIKE '%BALCÃO%' AND dv.nome NOT ILIKE '%AMERICANAS%'))
                 ), 0), 1) as monthly_valid_vendors,
                 COALESCE(public.calc_working_days(
                     hist_monthly_mix.m_date::date,
@@ -4674,6 +4670,9 @@ GRANT EXECUTE ON FUNCTION public.search_loja_perfeita_clients(text, text[], text
 -- FIX LINTER WARNINGS: SEARCH_PATH
 ALTER FUNCTION public.append_to_chunk_v2(p_table_name text, p_rows jsonb) SET search_path = public;
 ALTER FUNCTION public.sync_chunk_v2(p_table_name text, p_chunk_key text, p_rows jsonb, p_hash text) SET search_path = public;
+ALTER FUNCTION public.get_frequency_table_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_fornecedor text[], p_tipovenda text[], p_rede text[], p_produto text[], p_categoria text[]) SET search_path = public;
+ALTER FUNCTION public.get_frequency_table_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_fornecedor text[], p_ano text, p_mes text, p_tipovenda text[], p_rede text[], p_produto text[], p_categoria text[]) SET search_path = public;
+ALTER FUNCTION public.get_frequency_table_data(p_diretoria text[], p_gerencia text[], p_filial text[], p_vendedor text[], p_supervisor text[], p_ano text, p_mes text, p_fornecedor text[], p_rede text[], p_produto text[], p_categoria text[], p_tipovenda text[]) SET search_path = public;
 ALTER FUNCTION public.update_products_stock(p_stock_data jsonb) SET search_path = public;
 ALTER FUNCTION public.classify_product_mix() SET search_path = public;
 
