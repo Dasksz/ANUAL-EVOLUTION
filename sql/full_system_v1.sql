@@ -547,10 +547,6 @@ BEGIN
         FROM base_clients
         GROUP BY ROLLUP(filial, cidade, vendedor)
     ),
-    pre_aggregated_skus AS (
-        ' || v_pre_agg_skus_sql || '
-    ),
-    
     client_monthly_sales AS MATERIALIZED (
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
@@ -559,6 +555,9 @@ BEGIN
             string_agg(c.produtos, '','') as prod_str
         FROM current_data c
         GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
+    ),
+    pre_aggregated_skus AS (
+        ' || v_pre_agg_skus_sql || '
     ),
     monthly_freq AS (
         SELECT
