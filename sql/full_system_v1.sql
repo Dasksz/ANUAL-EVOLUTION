@@ -474,23 +474,20 @@ BEGIN
         v_pre_agg_skus_sql := '
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
-            COUNT(DISTINCT p.produto) as dist_skus_per_cli
-        FROM current_data c
-        CROSS JOIN LATERAL unnest(c.produtos_arr) AS p(produto)
-        WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
-        GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
+            (SELECT COUNT(DISTINCT p) FROM unnest(string_to_array(c.prod_str, '','')) as p) as dist_skus_per_cli
+        FROM client_monthly_sales c
+        WHERE c.sum_vlvenda >= 1
         ';
     ELSE
         v_pre_agg_skus_sql := '
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
-            COUNT(DISTINCT dp.codigo) as dist_skus_per_cli
-        FROM current_data c
-        CROSS JOIN LATERAL unnest(c.produtos_arr) AS p(produto)
-        INNER JOIN public.dim_produtos dp ON dp.codigo = p.produto
-        WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
-        ' || v_where_unnested || '
-        GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
+            (SELECT COUNT(DISTINCT dp.codigo) 
+             FROM unnest(string_to_array(c.prod_str, '','')) as p(produto)
+             INNER JOIN public.dim_produtos dp ON dp.codigo = p.produto
+             WHERE 1=1 ' || v_where_unnested || ') as dist_skus_per_cli
+        FROM client_monthly_sales c
+        WHERE c.sum_vlvenda >= 1
         ';
     END IF;
 
@@ -558,7 +555,8 @@ BEGIN
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
             COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END)::numeric as month_pedidos,
-            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as sum_vlvenda
+            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as sum_vlvenda,
+            string_agg(c.produtos, '','') as prod_str
         FROM current_data c
         GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
     ),
@@ -616,15 +614,7 @@ BEGIN
         GROUP BY ROLLUP(filial, cidade, codusur)
     ),
 
-    monthly_skus AS (
-        SELECT
-            filial, cidade, codusur, mes,
-            SUM(dist_skus_per_cli) as sum_skus_mes,
-            COUNT(DISTINCT codcli) as clients_positivados_mes
-        FROM pre_aggregated_skus
-        GROUP BY filial, cidade, codusur, mes
-    ),
-    aggregated_skus AS (
+    rolled_monthly_skus AS (
         SELECT
             GROUPING(filial) as grp_filial,
             GROUPING(cidade) as grp_cidade,
@@ -632,10 +622,24 @@ BEGIN
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
             codusur as vendedor_cod,
+            mes,
+            SUM(dist_skus_per_cli) as sum_skus_mes,
+            COUNT(codcli) as clients_positivados_mes
+        FROM pre_aggregated_skus
+        GROUP BY ROLLUP(filial, cidade, codusur), mes
+    ),
+    aggregated_skus AS (
+        SELECT
+            grp_filial,
+            grp_cidade,
+            grp_vendedor,
+            filial,
+            cidade,
+            vendedor_cod,
             SUM(sum_skus_mes) as sum_skus,
             AVG(CASE WHEN clients_positivados_mes > 0 THEN sum_skus_mes::numeric / clients_positivados_mes ELSE NULL END) as avg_sku_pdv
-        FROM monthly_skus
-        GROUP BY ROLLUP(filial, cidade, codusur)
+        FROM rolled_monthly_skus
+        GROUP BY grp_filial, grp_cidade, grp_vendedor, filial, cidade, vendedor_cod
     ),
     final_tree AS (
         SELECT
