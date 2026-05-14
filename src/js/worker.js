@@ -703,7 +703,13 @@ self.onmessage = async (event) => {
             const codCli = String(client['Código'] || '').trim();
             if (!codCli) return null;
 
-            const rca1 = String(client['RCA 1'] || '');
+            let rca1 = String(client['RCA 1'] || '');
+            const nomeClienteStr = String(client['Fantasia'] || client['Cliente'] || 'N/A').toUpperCase();
+            const razaoSocialStr = String(client['Cliente'] || 'N/A').toUpperCase();
+            if (nomeClienteStr.includes('AMERICANAS S.A') || razaoSocialStr.includes('AMERICANAS S.A')) {
+                rca1 = 'AMERICANAS';
+            }
+
             const rawCnpj = client['CNPJ/CPF'] || client['Cpf/Cnpj'] || '';
             const cleanedCnpj = rawCnpj ? String(rawCnpj).replace(/[^0-9]/g, '') : null;
             const ultimaCompraRaw = client['Data da Última Compra'];
