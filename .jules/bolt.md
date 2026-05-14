@@ -37,3 +37,7 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## $(date +%Y-%m-%d) - Optimize ARRAY unnest lateral joins
 **Learning:** `CROSS JOIN LATERAL unnest(array_column)` inside a large CTE (like millions of orders) explodes the rows and causes statement timeouts.
 **Action:** When you need unique array values grouped by client/month, perform a `string_agg(array_column::text, ',')` grouped by client/month in an intermediate step. Then perform the unnest on the pre-grouped smaller dataset using `unnest(string_to_array(prod_str, ','))`. This radically reduces the Cartesian expansion and fixes timeouts.
+
+## $(date +%Y-%m-%d) - Be careful with JSONB and string_agg
+**Learning:** You cannot use `string_agg` on a `jsonb` column directly; it will throw `function string_agg(jsonb, unknown) does not exist`.
+**Action:** When reverting to `CROSS JOIN LATERAL unnest(array_column)`, verify if the performance penalty was from the unnest itself or from subsequent operations like `COUNT(DISTINCT)` on a large grouped dataset. Often, optimizing the downstream aggregation (e.g., removing `DISTINCT` when data is already unique) is enough to resolve timeouts without complex array flattening.
