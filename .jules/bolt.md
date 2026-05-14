@@ -29,3 +29,7 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## 2026-05-03 - O(1) Item Lookup in Multi-Select
 **Learning:** Performing an O(N) `.find()` search on every selection change in a multi-select component is inefficient. Pre-calculating a `Map` during initialization provides O(1) lookups and significantly improves UI responsiveness when dealing with many items.
 **Action:** Use a `Map` for frequent lookups of items by their code or ID instead of repeated array searches.
+
+## $(date +%Y-%m-%d) - Fix SKU/PDV aggregation logic
+**Learning:** For KPI metrics like SKU/PDV and Mix PDV, doing calculations at a pre-aggregated monthly level and then rolling up the average provides better context compared to taking the unique SKU count across the entire span and dividing it by total positivations (which inflates the metric as the same sku bought over multiple months doesn't count up).
+**Action:** When working on sales aggregation, identify if metrics like "unique items" need to be evaluated per-month before global rollup. Grouping by `mes` at the CTE level before rolling up ensures more accurate KPIs.

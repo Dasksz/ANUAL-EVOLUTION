@@ -7849,11 +7849,12 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         const avg_monthly_freq = row.avg_monthly_freq || 0;
         const clientsWithSales = (faturamento > 0) ? positivacao : 0;
 
-        const rowData = { tons, faturamento, faturamento_prev, positivacao, positivacao_mensal, sum_skus, total_pedidos, avg_monthly_freq, base_total, clientsWithSales };
+        const avg_sku_pdv = row.avg_sku_pdv || 0;
+        const rowData = { tons, faturamento, faturamento_prev, positivacao, positivacao_mensal, sum_skus, avg_sku_pdv, total_pedidos, avg_monthly_freq, base_total, clientsWithSales };
 
         // Rely strictly on ROLLUP flags
         if (row.grp_filial === 1) {
-            hierarchy.totals = { ...rowData, base_total: rowData.base_total || 0, avg_monthly_freq: rowData.avg_monthly_freq || 0 };
+            hierarchy.totals = { ...rowData, base_total: rowData.base_total || 0, avg_monthly_freq: rowData.avg_monthly_freq || 0, avg_sku_pdv: rowData.avg_sku_pdv || 0 };
             return;
         }
         if (row.grp_cidade === 1) {
@@ -7903,7 +7904,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         const varYagoIcon = varYago > 0 ? '<svg class="w-4 h-4 text-green-500 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"></path></svg>' : (varYago < 0 ? '<svg class="w-4 h-4 text-red-500 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707 10.293a1 1 0 00-1.414 0l-3-3a1 1 0 101.414-1.414L9 14.586V11a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3z" clip-rule="evenodd"></path></svg>' : '');
 
         // SKU / PDV
-        const skuPdv = dataNode.positivacao_mensal > 0 ? ((dataNode.sum_skus || 0) / dataNode.positivacao_mensal) : 0;
+        const skuPdv = dataNode.avg_sku_pdv || 0;
 
         // Frequencia
         const freq = dataNode.avg_monthly_freq || 0;
