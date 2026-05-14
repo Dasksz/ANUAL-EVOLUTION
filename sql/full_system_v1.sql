@@ -616,15 +616,7 @@ BEGIN
         GROUP BY ROLLUP(filial, cidade, codusur)
     ),
 
-    monthly_skus AS (
-        SELECT
-            filial, cidade, codusur, mes,
-            SUM(dist_skus_per_cli) as sum_skus_mes,
-            COUNT(DISTINCT codcli) as clients_positivados_mes
-        FROM pre_aggregated_skus
-        GROUP BY filial, cidade, codusur, mes
-    ),
-    aggregated_skus AS (
+    rolled_monthly_skus AS (
         SELECT
             GROUPING(filial) as grp_filial,
             GROUPING(cidade) as grp_cidade,
@@ -632,10 +624,24 @@ BEGIN
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
             codusur as vendedor_cod,
+            mes,
+            SUM(dist_skus_per_cli) as sum_skus_mes,
+            COUNT(codcli) as clients_positivados_mes
+        FROM pre_aggregated_skus
+        GROUP BY ROLLUP(filial, cidade, codusur), mes
+    ),
+    aggregated_skus AS (
+        SELECT
+            grp_filial,
+            grp_cidade,
+            grp_vendedor,
+            filial,
+            cidade,
+            vendedor_cod,
             SUM(sum_skus_mes) as sum_skus,
             AVG(CASE WHEN clients_positivados_mes > 0 THEN sum_skus_mes::numeric / clients_positivados_mes ELSE NULL END) as avg_sku_pdv
-        FROM monthly_skus
-        GROUP BY ROLLUP(filial, cidade, codusur)
+        FROM rolled_monthly_skus
+        GROUP BY grp_filial, grp_cidade, grp_vendedor, filial, cidade, vendedor_cod
     ),
     final_tree AS (
         SELECT
