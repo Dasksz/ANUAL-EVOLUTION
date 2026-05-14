@@ -400,48 +400,39 @@ let estrelasSelectedCategorias = [];
     const navEstrelasBtn = document.getElementById('nav-estrelas-btn');
     const navAgendaBtn = document.getElementById('nav-agenda-btn');
     // Export UI Logic
+    const exportDropdown = document.getElementById('export-dropdown');
+    let currentActiveNavId = 'nav-dashboard'; // keep track
 
-    // Side Menu Elements
-    const hamburgerBtn = document.getElementById('hamburger-menu-btn');
-    const sideMenu = document.getElementById('side-menu');
-    const sideMenuOverlay = document.getElementById('side-menu-overlay');
-    const closeSideMenuBtn = document.getElementById('close-side-menu-btn');
-
-    function openSideMenu() {
-        if (!sideMenu || !sideMenuOverlay) return;
-        sideMenu.classList.remove('translate-x-full');
-        sideMenuOverlay.classList.remove('hidden');
-        // Small delay to allow display:block to apply before animating opacity
-        setTimeout(() => {
-            sideMenuOverlay.classList.remove('opacity-0');
-        }, 10);
-        document.body.classList.add('side-menu-open');
+    function positionExportDropdown(targetEl) {
+        if (!exportDropdown || !targetEl) return;
+        const rect = targetEl.getBoundingClientRect();
+        exportDropdown.style.left = `${rect.left}px`;
+        exportDropdown.style.top = `${rect.bottom + 8}px`; // 8px spacing
     }
 
-    function closeSideMenu() {
-        if (!sideMenu || !sideMenuOverlay) return;
-        sideMenu.classList.add('translate-x-full');
-        sideMenuOverlay.classList.add('opacity-0');
-        setTimeout(() => {
-            sideMenuOverlay.classList.add('hidden');
-        }, 300); // Wait for transition
-        document.body.classList.remove('side-menu-open');
+    function toggleExportDropdown(targetEl) {
+        if (!exportDropdown) return;
+        if (exportDropdown.classList.contains('hidden')) {
+            positionExportDropdown(targetEl);
+            exportDropdown.classList.remove('hidden');
+        } else {
+            exportDropdown.classList.add('hidden');
+        }
     }
 
-    if (hamburgerBtn) hamburgerBtn.addEventListener('click', openSideMenu);
-    if (closeSideMenuBtn) closeSideMenuBtn.addEventListener('click', closeSideMenu);
-    if (sideMenuOverlay) sideMenuOverlay.addEventListener('click', closeSideMenu);
-
-    // Auto-close side menu on nav link click
-    document.querySelectorAll('.side-nav-item').forEach(link => {
-        link.addEventListener('click', () => {
-            if (window.innerWidth < 1024) { // Close on mobile/tablet
-                closeSideMenu();
-            } else {
-                closeSideMenu(); // Let's always close to give better UX when navigating
-            }
-        });
+    // Global click listener to close dropdown
+    document.addEventListener('click', (e) => {
+        if (!exportDropdown) return;
+        const isClickInsideDropdown = exportDropdown.contains(e.target);
+        const isClickOnActiveNav = e.target.closest('.nav-link.active');
+        
+        if (!isClickInsideDropdown && !isClickOnActiveNav && !exportDropdown.classList.contains('hidden')) {
+            exportDropdown.classList.add('hidden');
+        }
     });
+
+    // Handle Window Resize to keep dropdown positioned correctly or hide it
+
 
     function getActiveExportView() {
         let activeView = null;
@@ -474,6 +465,8 @@ let estrelasSelectedCategorias = [];
     const exportExcelBtn = document.getElementById('export-excel-btn');
     if (exportExcelBtn) {
         exportExcelBtn.addEventListener('click', () => {
+            if (exportDropdown) exportDropdown.classList.add('hidden');
+            
             const { activeView, viewName } = getActiveExportView();
 
             if (!activeView) {
@@ -555,6 +548,8 @@ let estrelasSelectedCategorias = [];
     if (exportPdfBtn) {
         exportPdfBtn.addEventListener('click', async () => {
             // Hide dropdown
+            if (exportDropdown) exportDropdown.classList.add('hidden');
+            
             // Find currently active view
             const { activeView } = getActiveExportView();
 
@@ -650,7 +645,9 @@ let estrelasSelectedCategorias = [];
         });
     }
     window.addEventListener('resize', () => {
-
+        if (exportDropdown && !exportDropdown.classList.contains('hidden')) {
+             exportDropdown.classList.add('hidden');
+        }
     });
     const navComparativoBtn = document.getElementById('nav-comparativo-btn');
     const optimizeDbBtnNav = document.getElementById('optimize-db-btn-nav');
@@ -1604,7 +1601,27 @@ let estrelasSelectedCategorias = [];
 
     // --- Navigation Logic (Updated for Top Nav) ---
     // Helper to check if a clicked link is already active
-    // Navigation Logic
+    function handleActiveLinkClick(e, navBtn, viewId) {
+        if (navBtn.classList.contains('active')) {
+            e.preventDefault();
+            e.stopPropagation(); // prevent other handlers
+            currentActiveNavId = navBtn.id;
+            
+            // Show Export Dropdown
+            exportDropdown.classList.toggle('hidden');
+            if (!exportDropdown.classList.contains('hidden')) {
+                const rect = navBtn.getBoundingClientRect();
+                exportDropdown.style.left = `${rect.left}px`;
+                exportDropdown.style.top = `${rect.bottom + 8}px`; // 8px spacing
+            }
+            return true; // handled
+        }
+        // if not active, hide it
+        if (exportDropdown && !exportDropdown.classList.contains('hidden')) {
+            exportDropdown.classList.add('hidden');
+        }
+        return false;
+    }
 
     function setActiveNavLink(link) {
         if (!link) return;
@@ -1721,20 +1738,20 @@ let estrelasSelectedCategorias = [];
     }
 
     navDashboardBtn.addEventListener('click', (e) => {
-
+        if (handleActiveLinkClick(e, navDashboardBtn, 'dashboard')) return;
         if (navigateWithCtrl(e, 'dashboard')) return;
         renderView('dashboard');
     });
 
     navCityAnalysisBtn.addEventListener('click', (e) => {
-
+        if (handleActiveLinkClick(e, navCityAnalysisBtn, 'city')) return;
         if (navigateWithCtrl(e, 'city')) return;
         renderView('city');
     });
 
     if (navBoxesBtn) {
         navBoxesBtn.addEventListener('click', (e) => {
-
+            if (handleActiveLinkClick(e, navBoxesBtn, 'boxes')) return;
             if (navigateWithCtrl(e, 'boxes')) return;
             renderView('boxes');
         });
@@ -1742,7 +1759,7 @@ let estrelasSelectedCategorias = [];
 
     if (navComparativoBtn) {
         navComparativoBtn.addEventListener('click', (e) => {
-
+            if (handleActiveLinkClick(e, navComparativoBtn, 'comparison')) return;
             if (navigateWithCtrl(e, 'comparison')) return;
             renderView('comparison');
         });
@@ -1750,7 +1767,7 @@ let estrelasSelectedCategorias = [];
 
     if (navBranchBtn) {
         navBranchBtn.addEventListener('click', (e) => {
-
+            if (handleActiveLinkClick(e, navBranchBtn, 'branch')) return;
             if (navigateWithCtrl(e, 'branch')) return;
             renderView('branch');
         });
@@ -1758,7 +1775,7 @@ let estrelasSelectedCategorias = [];
 
     if (navInnovationsBtn) {
         navInnovationsBtn.addEventListener('click', (e) => {
-
+            if (handleActiveLinkClick(e, navInnovationsBtn, 'innovations')) return;
             if (navigateWithCtrl(e, 'innovations')) return;
             renderView('innovations');
         });
@@ -1766,7 +1783,7 @@ let estrelasSelectedCategorias = [];
 
     if (navEstrelasBtn) {
         navEstrelasBtn.addEventListener('click', (e) => {
-
+            if (handleActiveLinkClick(e, navEstrelasBtn, 'estrelas')) return;
             if (navigateWithCtrl(e, 'estrelas')) return;
             renderView('estrelas');
         });
@@ -1774,7 +1791,7 @@ let estrelasSelectedCategorias = [];
 
     if (navAgendaBtn) {
         navAgendaBtn.addEventListener('click', (e) => {
-
+            if (handleActiveLinkClick(e, navAgendaBtn, 'agenda')) return;
             if (navigateWithCtrl(e, 'agenda')) return;
             renderView('agenda');
         });
@@ -1782,7 +1799,7 @@ let estrelasSelectedCategorias = [];
 
     if (navLojaPerfeitaBtn) {
         navLojaPerfeitaBtn.addEventListener('click', (e) => {
-
+            if (handleActiveLinkClick(e, navLojaPerfeitaBtn, 'lojaperfeita')) return;
             if (navigateWithCtrl(e, 'loja-perfeita')) return;
             renderView('loja-perfeita');
         });
@@ -3165,16 +3182,16 @@ let estrelasSelectedCategorias = [];
 
     function getCurrentFilters() {
         return {
-            p_filial: selectedFiliais,
-            p_cidade: selectedCidades,
-            p_supervisor: selectedSupervisores,
-            p_vendedor: selectedVendedores,
-            p_fornecedor: selectedFornecedores,
-            p_ano: anoFilter.value,
-            p_mes: mesFilter.value,
-            p_tipovenda: selectedTiposVenda,
-            p_rede: selectedRedes,
-            p_categoria: selectedCategorias
+            p_filial: selectedFiliais.length > 0 ? selectedFiliais : null,
+            p_cidade: selectedCidades.length > 0 ? selectedCidades : null,
+            p_supervisor: selectedSupervisores.length > 0 ? selectedSupervisores : null,
+            p_vendedor: selectedVendedores.length > 0 ? selectedVendedores : null,
+            p_fornecedor: selectedFornecedores.length > 0 ? selectedFornecedores : null,
+            p_ano: (anoFilter.value !== null && anoFilter.value !== undefined && anoFilter.value !== "") ? String(anoFilter.value) : null,
+            p_mes: (mesFilter.value !== null && mesFilter.value !== undefined && mesFilter.value !== "") ? String(mesFilter.value) : null,
+            p_tipovenda: selectedTiposVenda.length > 0 ? selectedTiposVenda : null,
+            p_rede: selectedRedes.length > 0 ? selectedRedes : null,
+            p_categoria: selectedCategorias.length > 0 ? selectedCategorias : null
         };
     }
 
@@ -6169,8 +6186,8 @@ async function updateInnovationsMonthView() {
 
     // Replace empty arrays with null to avoid PostgREST overloading resolution issues
     const rpcFilters = {
-        p_ano: filters.p_ano ? String(filters.p_ano) : null,
-        p_mes: filters.p_mes ? String(filters.p_mes) : null,
+        p_ano: (filters.p_ano !== null && filters.p_ano !== undefined && filters.p_ano !== "") ? String(filters.p_ano) : null,
+        p_mes: (filters.p_mes !== null && filters.p_mes !== undefined && filters.p_mes !== "") ? String(filters.p_mes) : null,
         p_filial: filters.p_filial.length ? filters.p_filial : null,
         p_cidade: filters.p_cidade.length ? filters.p_cidade : null,
         p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
@@ -7788,8 +7805,8 @@ async function loadFrequencyTable(filters) {
         p_supervisor: (filters.p_supervisor && filters.p_supervisor.length) ? filters.p_supervisor : null,
         p_vendedor: (filters.p_vendedor && filters.p_vendedor.length) ? filters.p_vendedor : null,
         p_fornecedor: (filters.p_fornecedor && filters.p_fornecedor.length) ? filters.p_fornecedor : null,
-        p_ano: filters.p_ano ? String(filters.p_ano) : null,
-        p_mes: filters.p_mes ? String(filters.p_mes) : null,
+        p_ano: (filters.p_ano !== null && filters.p_ano !== undefined && filters.p_ano !== "") ? String(filters.p_ano) : null,
+        p_mes: (filters.p_mes !== null && filters.p_mes !== undefined && filters.p_mes !== "") ? String(filters.p_mes) : null,
         p_tipovenda: (filters.p_tipovenda && filters.p_tipovenda.length) ? filters.p_tipovenda : null,
         p_rede: (filters.p_rede && filters.p_rede.length) ? filters.p_rede : null,
         p_produto: (filters.p_produto && filters.p_produto.length) ? filters.p_produto : null,
