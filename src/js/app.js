@@ -6026,7 +6026,7 @@ let jbpPanelData = [];
                     AppLog.error("RPC Error:", error);
                     window.hideDashboardLoading();
                     if (error.message.includes('function get_comparison_view_data') && error.message.includes('does not exist')) {
-                        window.showToast('error', "A função 'get_comparison_view_data' não foi encontrada no banco de dados. \n\nPor favor, execute o script 'sql/comparison_view_rpc.sql' no Supabase SQL Editor para corrigir isso.");
+                        window.showToast('error', "A função 'get_comparison_view_data' não foi encontrada no banco de dados. \n\nPor favor, execute o script 'sql/fix_comparison_view_quotes_inativo.sql' no Supabase SQL Editor para corrigir isso.");
                     }
                     return;
                 }
