@@ -399,6 +399,7 @@ let estrelasSelectedCategorias = [];
     const navLojaPerfeitaBtn = document.getElementById('nav-loja-perfeita-btn');
     const navEstrelasBtn = document.getElementById('nav-estrelas-btn');
     const navAgendaBtn = document.getElementById('nav-agenda-btn');
+    const navJbpBtn = document.getElementById('nav-jbp-btn');
     // Export UI Logic
 
     // Side Menu Elements
@@ -455,7 +456,8 @@ let estrelasSelectedCategorias = [];
             { id: 'innovations-month-view', navId: 'nav-innovations-btn', name: 'Inovacoes' },
             { id: 'loja-perfeita-view', navId: 'nav-loja-perfeita-btn', name: 'Loja Perfeita' },
             { id: 'estrelas-view', navId: 'nav-estrelas-btn', name: 'Estrelas' },
-            { id: 'agenda-view', navId: 'nav-agenda-btn', name: 'Agenda' }
+            { id: 'agenda-view', navId: 'nav-agenda-btn', name: 'Agenda' },
+            { id: 'jbp-view', navId: 'nav-jbp-btn', name: 'JBP' }
         ];
 
         for (const view of views) {
@@ -683,6 +685,7 @@ let estrelasSelectedCategorias = [];
     const lojaPerfeitaView = document.getElementById('loja-perfeita-view');
     const estrelasView = document.getElementById('estrelas-view');
     const agendaView = document.getElementById('agenda-view');
+    const jbpView = document.getElementById('jbp-view');
     
     const closeUploaderBtn = document.getElementById('close-uploader-btn');
 
@@ -1662,6 +1665,7 @@ let jbpPanelData = [];
         if (lojaPerfeitaView) lojaPerfeitaView.classList.add('hidden');
         if (estrelasView) estrelasView.classList.add('hidden');
         if (agendaView) agendaView.classList.add('hidden');
+        if (jbpView) jbpView.classList.add('hidden');
     };
 
     async function renderView(view, options = {}) {
@@ -1748,6 +1752,14 @@ let jbpPanelData = [];
                     loadBranchView();
                 }
                 break;
+            case 'jbp':
+                if (jbpView && navJbpBtn) {
+                    window.showDashboardLoading('jbp-view');
+                    jbpView.classList.remove('hidden');
+                    setActiveNavLink(navJbpBtn);
+                    loadJbpView();
+                }
+                break;
             default:
                 mainDashboardView.classList.remove('hidden');
                 setActiveNavLink(navDashboardBtn);
@@ -1823,6 +1835,13 @@ let jbpPanelData = [];
 
             if (navigateWithCtrl(e, 'loja-perfeita')) return;
             renderView('loja-perfeita');
+        });
+    }
+
+    if (navJbpBtn) {
+        navJbpBtn.addEventListener('click', (e) => {
+            if (navigateWithCtrl(e, 'jbp')) return;
+            renderView('jbp');
         });
     }
 
