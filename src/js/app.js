@@ -5656,7 +5656,7 @@ let jbpPanelData = [];
                          addJbpEntity("rede", rede, rede);
                     });
                     jbpSelectedRedes.length = 0;
-                    jbpRedeFilterBtn.innerHTML = "<span class=\"truncate\">Todas as Redes</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-orange-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>"; h-4 ml-2 text-orange-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>";
+                    jbpRedeFilterBtn.innerHTML = "<span class=\"truncate\">Todas as Redes</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-orange-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
                     window.uncheckAllCheckboxes(jbpRedeFilterDropdown);
                 } else {
                     window.showToast("Nenhuma Rede selecionada ou Cliente pesquisado.", "warning");
@@ -5680,10 +5680,10 @@ let jbpPanelData = [];
                 window.uncheckAllCheckboxes(jbpRedeFilterDropdown);
                 window.uncheckAllCheckboxes(jbpCategoriaFilterDropdown);
 
-                jbpFilialFilterBtn.innerHTML = "<span class="truncate">Todas</span><svg aria-hidden="true" class="w-4 h-4 ml-2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>";
+                jbpFilialFilterBtn.innerHTML = "<span class=\"truncate\">Todas</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
                 jbpCidadeFilterBtn.innerHTML = "<span class="truncate">Todas</span><svg aria-hidden="true" class="w-4 h-4 ml-2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>";
-                jbpFornecedorFilterBtn.innerHTML = "<span class="truncate">Todos</span><svg aria-hidden="true" class="w-4 h-4 ml-2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>";
-                jbpRedeFilterBtn.innerHTML = "<span class=\"truncate\">Todas as Redes</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-orange-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>"; h-4 ml-2 text-orange-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>";
+                jbpFornecedorFilterBtn.innerHTML = "<span class=\"truncate\">Todos</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
+                jbpCategoriaFilterBtn.innerHTML = "<span class=\"truncate\">Todas</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
                 jbpCategoriaFilterBtn.innerHTML = "<span class="truncate">Todas</span><svg aria-hidden="true" class="w-4 h-4 ml-2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>";
 
                 jbpAnoFilter.value = new Date().getFullYear().toString();
@@ -5766,7 +5766,7 @@ let jbpPanelData = [];
             if(!jbpSelectedClientsContainer) return;
             jbpSelectedClientsContainer.innerHTML = jbpPanelEntities.map(e => `
                 <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-500/20 text-orange-200 border border-orange-500/30">
-                    ${e.type === "rede" ? "<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1v1H9V7zm5 0h1v1h-1V7zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1z"></path></svg>" : ""}
+                    ${e.type === "rede" ? "<svg class=\"w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1v1H9V7zm5 0h1v1h-1V7zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1z"></path></svg>" : ""}
                     ${escapeHtml(e.name)}
                     <button type="button" class="ml-1.5 text-orange-400 hover:text-orange-200 focus:outline-none" onclick="removeJbpEntity('${e.type}', '${e.id}')">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
