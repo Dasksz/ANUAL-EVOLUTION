@@ -184,7 +184,7 @@ import supabase from './supabase.js?v=3';
 import { SUPABASE_KEY } from "./config.js";
 import {
     generateYearOptionsHtml,
-    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes } from './utils.js';
+    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -5600,7 +5600,7 @@ let jbpPanelData = [];
         if (jbpMesFilter) jbpMesFilter.addEventListener("change", () => { window.updateGlobalState("jbp"); if(jbpPanelEntities.length > 0) refreshJbpData(); });
 
         if (jbpClienteSearch) {
-            jbpClienteSearch.addEventListener("input", window.utils.debounce(async (e) => {
+            jbpClienteSearch.addEventListener("input", debounce(async (e) => {
                 const term = e.target.value.trim().toLowerCase();
                 if(!jbpClienteSearchResults) return;
                 jbpClienteSearchResults.innerHTML = "";
