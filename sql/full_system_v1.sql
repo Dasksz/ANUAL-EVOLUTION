@@ -538,7 +538,7 @@ BEGIN
             s.codusur as vendedor_cod,
             ' || replace(v_freq_sum_value_expr, 'c.', 's.') || ' as faturamento_prev
         FROM public.data_summary_frequency s
-        ' || v_where_base_prev || '
+        ' || v_where_base_prev || ' 
         GROUP BY ROLLUP(s.filial, s.cidade, s.codusur)
     ),
     client_base AS (
@@ -4025,11 +4025,11 @@ BEGIN
                 (SELECT COUNT(*) FROM curr_daily_clients cdc 
                     LEFT JOIN public.dim_vendedores dv ON cdc.codusur = dv.codigo
                     WHERE cdc.val >= 1 
-                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%INATIVO%'' AND dv.nome NOT ILIKE ''%BALCAO%'' AND dv.nome NOT ILIKE ''%BALCÃO%'' AND dv.nome NOT ILIKE ''%AMERICANAS%''))
+                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE '%INATIVO%' AND dv.nome NOT ILIKE '%BALCAO%' AND dv.nome NOT ILIKE '%BALCÃO%' AND dv.nome NOT ILIKE '%AMERICANAS%'))
                 ) as total_pos_diaria,
                 COALESCE(NULLIF((SELECT COUNT(DISTINCT s.codusur) FROM target_sales s 
                     LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
-                    WHERE (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%INATIVO%'' AND dv.nome NOT ILIKE ''%BALCAO%'' AND dv.nome NOT ILIKE ''%BALCÃO%'' AND dv.nome NOT ILIKE ''%AMERICANAS%''))
+                    WHERE (dv.nome IS NULL OR (dv.nome NOT ILIKE '%INATIVO%' AND dv.nome NOT ILIKE '%BALCAO%' AND dv.nome NOT ILIKE '%BALCÃO%' AND dv.nome NOT ILIKE '%AMERICANAS%'))
                 ), 0), 1) as valid_vendors,
                 COALESCE(public.calc_working_days(
                     (SELECT date_trunc(''month'', MIN(dtped))::date FROM target_sales), 
@@ -4080,12 +4080,12 @@ BEGIN
                 (SELECT COUNT(*) FROM hist_daily_clients hdc 
                     LEFT JOIN public.dim_vendedores dv ON hdc.codusur = dv.codigo
                     WHERE hdc.val >= 1 AND date_trunc(''month'', hdc.d) = hist_monthly_mix.m_date
-                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%INATIVO%'' AND dv.nome NOT ILIKE ''%BALCAO%'' AND dv.nome NOT ILIKE ''%BALCÃO%'' AND dv.nome NOT ILIKE ''%AMERICANAS%''))
+                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE '%INATIVO%' AND dv.nome NOT ILIKE '%BALCAO%' AND dv.nome NOT ILIKE '%BALCÃO%' AND dv.nome NOT ILIKE '%AMERICANAS%'))
                 ) as monthly_total_pos_diaria,
                 COALESCE(NULLIF((SELECT COUNT(DISTINCT hs.codusur) FROM history_sales hs 
                     LEFT JOIN public.dim_vendedores dv ON hs.codusur = dv.codigo
                     WHERE date_trunc(''month'', hs.dtped) = hist_monthly_mix.m_date
-                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%INATIVO%'' AND dv.nome NOT ILIKE ''%BALCAO%'' AND dv.nome NOT ILIKE ''%BALCÃO%'' AND dv.nome NOT ILIKE ''%AMERICANAS%''))
+                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE '%INATIVO%' AND dv.nome NOT ILIKE '%BALCAO%' AND dv.nome NOT ILIKE '%BALCÃO%' AND dv.nome NOT ILIKE '%AMERICANAS%'))
                 ), 0), 1) as monthly_valid_vendors,
                 COALESCE(public.calc_working_days(
                     hist_monthly_mix.m_date::date,
@@ -4837,7 +4837,7 @@ BEGIN
             MAX(has_quaker) as has_quaker,
             MAX(has_kerococo) as has_kerococo
         FROM public.data_summary_frequency s
-        ' || v_where_chart || '
+        ' || v_where_chart || ' 
         GROUP BY 1, 2
     ),
     monthly_flags AS (
