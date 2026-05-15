@@ -612,8 +612,8 @@ BEGIN
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
             codusur as vendedor_cod,
-            COUNT(DISTINCT CASE WHEN sum_vlvenda >= 1 THEN codcli END) as positivacao,
-            COUNT(DISTINCT CASE WHEN sum_vlvenda >= 1 THEN codcli::text || ''-'' || mes::text END) as positivacao_mensal
+            COUNT(DISTINCT CASE WHEN sum_vlvenda ' || v_freq_sum_operator_expr || ' THEN codcli END) as positivacao,
+            COUNT(DISTINCT CASE WHEN sum_vlvenda ' || v_freq_sum_operator_expr || ' THEN codcli::text || ''''-'''' || mes::text END) as positivacao_mensal
         FROM client_monthly_sales
         GROUP BY ROLLUP(filial, cidade, codusur)
     ),
