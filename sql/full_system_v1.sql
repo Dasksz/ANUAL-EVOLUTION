@@ -311,6 +311,9 @@ DECLARE
     v_where_base_prev text := ' WHERE 1=1 ';
     v_where_chart text := ' WHERE 1=1 ';
     v_pre_agg_skus_sql text;
+    v_freq_sum_value_expr text := 'SUM(CASE WHEN c.tipovenda NOT IN (''''5'''', ''''11'''') THEN c.vlvenda ELSE 0 END)';
+    v_freq_sum_operator_expr text := '>= 1';
+    v_freq_pedidos_expr text := 'COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''''5'''', ''''11'''') THEN c.pedido END)';
 
     v_result json;
     v_sql text;
@@ -477,7 +480,7 @@ BEGIN
             COUNT(DISTINCT p.produto) as dist_skus_per_cli
         FROM current_data c
         CROSS JOIN LATERAL unnest(c.produtos_arr) AS p(produto)
-        WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
+        WHERE ' || v_freq_sum_value_expr || ' ' || v_freq_sum_operator_expr || '
         GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
         ';
     ELSE
@@ -488,7 +491,7 @@ BEGIN
         FROM current_data c
         CROSS JOIN LATERAL unnest(c.produtos_arr) AS p(produto)
         INNER JOIN public.dim_produtos dp ON dp.codigo = p.produto
-        WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
+        WHERE ' || v_freq_sum_value_expr || ' ' || v_freq_sum_operator_expr || '
         ' || v_where_unnested || '
         GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
         ';
@@ -533,9 +536,9 @@ BEGIN
             COALESCE(s.filial, ''TOTAL_GERAL'') as filial,
             COALESCE(s.cidade, ''TOTAL_CIDADE'') as cidade,
             s.codusur as vendedor_cod,
-            SUM(s.vlvenda) as faturamento_prev
+            ' || replace(v_freq_sum_value_expr, 'c.', 's.') || ' as faturamento_prev
         FROM public.data_summary_frequency s
-        ' || v_where_base_prev || ' AND s.tipovenda NOT IN (''5'', ''11'')
+        ' || v_where_base_prev || '
         GROUP BY ROLLUP(s.filial, s.cidade, s.codusur)
     ),
     client_base AS (
@@ -553,8 +556,8 @@ BEGIN
     client_monthly_sales AS MATERIALIZED (
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
-            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END)::numeric as month_pedidos,
-            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as sum_vlvenda
+            ' || v_freq_pedidos_expr || '::numeric as month_pedidos,
+            ' || v_freq_sum_value_expr || ' as sum_vlvenda
         FROM current_data c
         GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
     ),
@@ -568,7 +571,7 @@ BEGIN
             codusur,
             mes,
             SUM(month_pedidos) as month_pedidos,
-            SUM(CASE WHEN sum_vlvenda >= 1 THEN 1 ELSE 0 END)::numeric as month_clientes
+            SUM(CASE WHEN sum_vlvenda ' || v_freq_sum_operator_expr || ' THEN 1 ELSE 0 END)::numeric as month_clientes
         FROM client_monthly_sales
         GROUP BY filial, cidade, codusur, mes
     ),
@@ -595,8 +598,8 @@ BEGIN
             COALESCE(c.cidade, ''TOTAL_CIDADE'') as cidade,
             c.codusur as vendedor_cod,
             SUM(c.peso) as tons,
-            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
-            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END) as total_pedidos,
+            ' || v_freq_sum_value_expr || ' as faturamento,
+            ' || v_freq_pedidos_expr || ' as total_pedidos,
             COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
         GROUP BY ROLLUP(c.filial, c.cidade, c.codusur)
@@ -609,8 +612,8 @@ BEGIN
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
             codusur as vendedor_cod,
-            COUNT(DISTINCT CASE WHEN sum_vlvenda >= 1 THEN codcli END) as positivacao,
-            COUNT(DISTINCT CASE WHEN sum_vlvenda >= 1 THEN codcli::text || ''-'' || mes::text END) as positivacao_mensal
+            COUNT(DISTINCT CASE WHEN sum_vlvenda ' || v_freq_sum_operator_expr || ' THEN codcli END) as positivacao,
+            COUNT(DISTINCT CASE WHEN sum_vlvenda ' || v_freq_sum_operator_expr || ' THEN codcli::text || ''''-'''' || mes::text END) as positivacao_mensal
         FROM client_monthly_sales
         GROUP BY ROLLUP(filial, cidade, codusur)
     ),
@@ -711,7 +714,7 @@ BEGIN
             ano,
             mes,
             SUM(month_pedidos) as total_pedidos,
-            SUM(CASE WHEN sum_vlvenda >= 1 THEN 1 ELSE 0 END) as total_clientes
+            SUM(CASE WHEN sum_vlvenda ' || v_freq_sum_operator_expr || ' THEN 1 ELSE 0 END) as total_clientes
         FROM chart_monthly_sales
         GROUP BY 1, 2
     )
@@ -2762,9 +2765,9 @@ BEGIN
             )
             GROUP BY ano, mes, codcli
             HAVING (
-                ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(bonificacao) > 0 )
+                ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(peso) > 0 )
                 OR
-                ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(vlvenda) >= 1 )
+                ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN vlvenda ELSE 0 END) >= 1 )
             )
         ) grouped_clients
         GROUP BY ano, mes
@@ -2845,9 +2848,9 @@ BEGIN
             )
             GROUP BY codcli
             HAVING (
-                ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(bonificacao) > 0 )
+                ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(peso) > 0 )
                 OR
-                ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(vlvenda) >= 1 )
+                ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN vlvenda ELSE 0 END) >= 1 )
             )
         ) grouped_active_clients
     ),
@@ -3702,7 +3705,7 @@ BEGIN
         FROM public.data_summary
         ' || v_where || '
         GROUP BY codcli
-        HAVING SUM(vlvenda) >= 1
+        HAVING SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN vlvenda ELSE 0 END) >= 1
     ),
     count_cte AS (SELECT COUNT(*) as cnt FROM client_totals),
     paginated_clients AS (
@@ -4834,7 +4837,7 @@ BEGIN
             MAX(has_quaker) as has_quaker,
             MAX(has_kerococo) as has_kerococo
         FROM public.data_summary_frequency s
-        ' || v_where_chart || ' AND s.tipovenda NOT IN (''5'', ''11'')
+        ' || v_where_chart || '
         GROUP BY 1, 2
     ),
     monthly_flags AS (
@@ -5009,17 +5012,17 @@ BEGIN
         v_where_base := v_where_base || format(' AND d.tipovenda = ANY(%L::text[]) ', p_tipovenda);
         v_where_client_tipo := ' ';
         IF p_tipovenda <@ ARRAY['5', '11'] THEN
-            v_having_client_tipo := ' SUM(d.vlbonific) > 0 ';
-            v_sum_value_expr := 'd.vlbonific';
+            v_having_client_tipo := ' SUM(d.peso) > 0 ';
+            v_sum_value_expr := 'd.peso';
             v_sum_operator_expr := '> 0';
         ELSIF NOT (p_tipovenda && ARRAY['5', '11']) THEN
             v_having_client_tipo := ' SUM(d.vlvenda) >= 1 ';
             v_sum_value_expr := 'd.vlvenda';
             v_sum_operator_expr := '>= 1';
         ELSE
-            v_having_client_tipo := ' SUM(CASE WHEN d.tipovenda NOT IN (''5'',''11'') THEN d.vlvenda ELSE 0 END) >= 1 OR SUM(CASE WHEN d.tipovenda IN (''5'',''11'') THEN d.vlbonific ELSE 0 END) > 0 ';
+            v_having_client_tipo := ' SUM(CASE WHEN d.tipovenda NOT IN (''5'',''11'') THEN d.vlvenda ELSE 0 END) >= 1 OR SUM(CASE WHEN d.tipovenda IN (''5'',''11'') THEN d.peso ELSE 0 END) > 0 ';
             -- Mixed types: we sum vlbonific for 5/11 and vlvenda for others
-            v_sum_value_expr := '(CASE WHEN d.tipovenda IN (''5'',''11'') THEN d.vlbonific ELSE d.vlvenda END)';
+            v_sum_value_expr := '(CASE WHEN d.tipovenda IN (''5'',''11'') THEN d.peso ELSE d.vlvenda END)';
             v_sum_operator_expr := '>= 1';
         END IF;
     ELSE
