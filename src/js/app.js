@@ -5976,6 +5976,7 @@ let jbpPanelData = [];
         window.addJbpEntity = addJbpEntity;
 
 
+        async function loadComparisonView() {
 
             if (typeof initComparisonFilters === 'function' && (!comparisonSupervisorFilterDropdown.children.length || comparisonSupervisorFilterDropdown.children.length === 0)) {
                 await initComparisonFilters();
@@ -6047,6 +6048,7 @@ let jbpPanelData = [];
 
             window.hideDashboardLoading();
         }
+        window.loadComparisonView = loadComparisonView;
 
         function mapRpcDataToMetrics(data) {
             if (!data) return { kpis: [], charts: {}, supervisorData: {} };
