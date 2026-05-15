@@ -5640,7 +5640,7 @@ let jbpPanelData = [];
                             });
                         });
                     } else {
-                        jbpClienteSearchResults.innerHTML = "<div class="p-2 text-sm text-slate-400">Nenhum cliente encontrado.</div>";
+                        jbpClienteSearchResults.innerHTML = "<div class=\"p-2 text-sm text-slate-400\">Nenhum cliente encontrado.</div>";
                         jbpClienteSearchResults.classList.remove("hidden");
                     }
                 } catch (err) {
