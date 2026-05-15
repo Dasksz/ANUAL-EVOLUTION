@@ -1602,6 +1602,44 @@ let estrelasSelectedCategorias = [];
 
     checkSession();
 
+// --- JBP Logic Variables ---
+let jbpSelectedAno = new Date().getFullYear().toString();
+let jbpSelectedMes = (new Date().getMonth() + 1).toString();
+let jbpSelectedFiliais = [];
+let jbpSelectedCidades = [];
+let jbpSelectedFornecedores = [];
+let jbpSelectedRedes = [];
+let jbpSelectedCategorias = [];
+
+const jbpAnoFilter = document.getElementById('jbp-ano-filter');
+const jbpMesFilter = document.getElementById('jbp-mes-filter');
+const jbpFilialFilterBtn = document.getElementById('jbp-filial-filter-btn');
+const jbpFilialFilterDropdown = document.getElementById('jbp-filial-filter-dropdown');
+const jbpCidadeFilterBtn = document.getElementById('jbp-cidade-filter-btn');
+const jbpCidadeFilterDropdown = document.getElementById('jbp-cidade-filter-dropdown');
+const jbpFornecedorFilterBtn = document.getElementById('jbp-fornecedor-filter-btn');
+const jbpFornecedorFilterDropdown = document.getElementById('jbp-fornecedor-filter-dropdown');
+const jbpCategoriaFilterBtn = document.getElementById('jbp-categoria-filter-btn');
+const jbpCategoriaFilterDropdown = document.getElementById('jbp-categoria-filter-dropdown');
+const jbpRedeFilterBtn = document.getElementById('jbp-rede-filter-btn');
+const jbpRedeFilterDropdown = document.getElementById('jbp-rede-filter-dropdown');
+
+const jbpClienteSearch = document.getElementById('jbp-cliente-search');
+const jbpClienteSearchResults = document.getElementById('jbp-cliente-search-results');
+const jbpSelectedClientsContainer = document.getElementById('jbp-selected-clients-container');
+const jbpAddBtn = document.getElementById('jbp-add-btn');
+const jbpClearFiltersBtn = document.getElementById('jbp-clear-filters-btn');
+
+const jbpEmptyState = document.getElementById('jbp-empty-state');
+const jbpContentArea = document.getElementById('jbp-content-area');
+const jbpChartIndicatorSelect = document.getElementById('jbp-chart-indicator-select');
+const jbpChartTitleIndicator = document.getElementById('jbp-chart-title-indicator');
+const jbpTableBody = document.getElementById('jbp-table-body');
+const jbpClearPanelBtn = document.getElementById('jbp-clear-panel-btn');
+
+let jbpMainChartInstance = null;
+let jbpPanelEntities = [];
+let jbpPanelData = [];
     // --- Navigation Logic (Updated for Top Nav) ---
     // Helper to check if a clicked link is already active
     // Navigation Logic
@@ -5507,8 +5545,438 @@ let estrelasSelectedCategorias = [];
             }
         }
 
-        async function loadComparisonView() {
-            window.showDashboardLoading('comparison-view');
+
+        // --- JBP Filters Initialization ---
+        async function initJbpFilters() {
+            try {
+                if (!jbpAnoFilter) return;
+                jbpAnoFilter.innerHTML = generateYearOptionsHtml(availableYears);
+                jbpAnoFilter.value = currentFilters.ano || new Date().getFullYear().toString();
+                
+                jbpMesFilter.innerHTML = generateMonthOptionsHtml("Todos", "todos", true);
+                jbpMesFilter.value = currentFilters.mes || (new Date().getMonth() + 1).toString();
+
+                jbpSelectedFiliais = currentFilters.filiais || [];
+                jbpSelectedCidades = currentFilters.cidades || [];
+                jbpSelectedFornecedores = currentFilters.fornecedores || [];
+                jbpSelectedRedes = currentFilters.redes || [];
+                jbpSelectedCategorias = currentFilters.categorias || [];
+
+                const reqFilters = {
+                    p_ano: jbpAnoFilter.value,
+                    p_mes: jbpMesFilter.value !== "todos" ? jbpMesFilter.value : null
+                };
+
+                const { data: filterData, error } = await supabase.rpc("get_dashboard_filters", reqFilters);
+                if (error) throw error;
+
+                if (filterData && filterData.length > 0) {
+                    const row = filterData[0];
+                    window.setupMultiSelect(row.filiais, jbpFilialFilterDropdown, jbpFilialFilterBtn, jbpSelectedFiliais, "filiais", () => {});
+                    const jbpCidadeFilterList = document.getElementById("jbp-cidade-filter-list");
+                    if(jbpCidadeFilterList) window.setupMultiSelect(row.cidades, jbpCidadeFilterList, jbpCidadeFilterBtn, jbpSelectedCidades, "cidades", () => {}, jbpCidadeFilterDropdown);
+                    const jbpFornecedorFilterList = document.getElementById("jbp-fornecedor-filter-list");
+                    if(jbpFornecedorFilterList) window.setupMultiSelect(row.fornecedores, jbpFornecedorFilterList, jbpFornecedorFilterBtn, jbpSelectedFornecedores, "fornecedores", () => {}, jbpFornecedorFilterDropdown);
+                    window.setupMultiSelect(row.redes, jbpRedeFilterDropdown, jbpRedeFilterBtn, jbpSelectedRedes, "redes", () => {}, null, null, null, null, true, true);
+                    window.setupMultiSelect(row.categorias, jbpCategoriaFilterDropdown, jbpCategoriaFilterBtn, jbpSelectedCategorias, "categorias", () => {});
+                }
+            } catch (e) {
+                AppLog.error("Error initializing JBP filters:", e);
+            }
+        }
+
+        async function loadJbpView() {
+            window.showDashboardLoading("jbp-view");
+
+            if (typeof initJbpFilters === "function" && (!jbpFilialFilterDropdown.children.length || jbpFilialFilterDropdown.children.length === 0)) {
+                await initJbpFilters();
+            }
+
+            renderJbpPanel();
+            window.hideDashboardLoading("jbp-view");
+        }
+
+        if (jbpAnoFilter) jbpAnoFilter.addEventListener("change", () => { window.updateGlobalState("jbp"); if(jbpPanelEntities.length > 0) refreshJbpData(); });
+        if (jbpMesFilter) jbpMesFilter.addEventListener("change", () => { window.updateGlobalState("jbp"); if(jbpPanelEntities.length > 0) refreshJbpData(); });
+
+        if (jbpClienteSearch) {
+            jbpClienteSearch.addEventListener("input", window.utils.debounce(async (e) => {
+                const term = e.target.value.trim().toLowerCase();
+                if(!jbpClienteSearchResults) return;
+                jbpClienteSearchResults.innerHTML = "";
+                if (term.length < 3) {
+                    jbpClienteSearchResults.classList.add("hidden");
+                    return;
+                }
+
+                try {
+                    const params = {
+                        p_search: term,
+                        p_filial: jbpSelectedFiliais.length > 0 ? jbpSelectedFiliais : null,
+                        p_cidade: jbpSelectedCidades.length > 0 ? jbpSelectedCidades : null,
+                        p_fornecedor: null, 
+                        p_rede: jbpSelectedRedes.length > 0 ? jbpSelectedRedes : null
+                    };
+
+                    const { data, error } = await supabase.rpc("search_loja_perfeita_clients", params); 
+                    if (error) throw error;
+
+                    if (data && data.length > 0) {
+                        jbpClienteSearchResults.innerHTML = data.map(c => `
+                            <div class="p-2 hover:bg-white/10 cursor-pointer border-b border-white/5 text-sm" data-cod="${c.codigo_cliente}" data-nome="${escapeHtml(c.razaosocial)}">
+                                <div class="font-bold text-slate-200">${escapeHtml(c.razaosocial)}</div>
+                                <div class="text-xs text-slate-400">Cod: ${c.codigo_cliente} | CNPJ: ${c.cnpj || "N/I"} | ${escapeHtml(c.cidade)}</div>
+                            </div>
+                        `).join("");
+                        jbpClienteSearchResults.classList.remove("hidden");
+
+                        jbpClienteSearchResults.querySelectorAll("div[data-cod]").forEach(div => {
+                            div.addEventListener("click", () => {
+                                const cod = div.getAttribute("data-cod");
+                                const nome = div.getAttribute("data-nome");
+                                addJbpEntity("cliente", cod, nome);
+                                jbpClienteSearch.value = "";
+                                jbpClienteSearchResults.classList.add("hidden");
+                            });
+                        });
+                    } else {
+                        jbpClienteSearchResults.innerHTML = "<div class="p-2 text-sm text-slate-400">Nenhum cliente encontrado.</div>";
+                        jbpClienteSearchResults.classList.remove("hidden");
+                    }
+                } catch (err) {
+                    AppLog.error("Error searching clients:", err);
+                }
+            }, 300));
+        }
+
+        if (jbpAddBtn) {
+            jbpAddBtn.addEventListener("click", () => {
+                if (jbpSelectedRedes.length > 0) {
+                    jbpSelectedRedes.forEach(rede => {
+                         addJbpEntity("rede", rede, rede);
+                    });
+                    jbpSelectedRedes.length = 0;
+                    jbpRedeFilterBtn.innerHTML = "<span class="truncate">Todas as Redes</span><svg aria-hidden="true" class="w-4 h-4 ml-2 text-orange-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>";
+                    window.uncheckAllCheckboxes(jbpRedeFilterDropdown);
+                } else {
+                    window.showToast("Nenhuma Rede selecionada ou Cliente pesquisado.", "warning");
+                }
+            });
+        }
+
+        if (jbpClearFiltersBtn) {
+            jbpClearFiltersBtn.addEventListener("click", () => {
+                jbpSelectedFiliais.length = 0;
+                jbpSelectedCidades.length = 0;
+                jbpSelectedFornecedores.length = 0;
+                jbpSelectedRedes.length = 0;
+                jbpSelectedCategorias.length = 0;
+
+                window.uncheckAllCheckboxes(jbpFilialFilterDropdown);
+                const jbpCidadeFilterList = document.getElementById("jbp-cidade-filter-list");
+                if(jbpCidadeFilterList) window.uncheckAllCheckboxes(jbpCidadeFilterList);
+                const jbpFornecedorFilterList = document.getElementById("jbp-fornecedor-filter-list");
+                if(jbpFornecedorFilterList) window.uncheckAllCheckboxes(jbpFornecedorFilterList);
+                window.uncheckAllCheckboxes(jbpRedeFilterDropdown);
+                window.uncheckAllCheckboxes(jbpCategoriaFilterDropdown);
+
+                jbpFilialFilterBtn.innerHTML = "<span class="truncate">Todas</span><svg aria-hidden="true" class="w-4 h-4 ml-2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>";
+                jbpCidadeFilterBtn.innerHTML = "<span class="truncate">Todas</span><svg aria-hidden="true" class="w-4 h-4 ml-2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>";
+                jbpFornecedorFilterBtn.innerHTML = "<span class="truncate">Todos</span><svg aria-hidden="true" class="w-4 h-4 ml-2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>";
+                jbpRedeFilterBtn.innerHTML = "<span class="truncate">Todas as Redes</span><svg aria-hidden="true" class="w-4 h-4 ml-2 text-orange-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>";
+                jbpCategoriaFilterBtn.innerHTML = "<span class="truncate">Todas</span><svg aria-hidden="true" class="w-4 h-4 ml-2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>";
+
+                jbpAnoFilter.value = new Date().getFullYear().toString();
+                jbpMesFilter.value = "todos";
+                window.updateGlobalState("jbp");
+                if(jbpPanelEntities.length > 0) refreshJbpData();
+            });
+        }
+
+        if (jbpClearPanelBtn) {
+            jbpClearPanelBtn.addEventListener("click", () => {
+                jbpPanelEntities.length = 0;
+                jbpPanelData.length = 0;
+                renderJbpPanel();
+            });
+        }
+        
+        if (jbpChartIndicatorSelect) {
+            jbpChartIndicatorSelect.addEventListener("change", () => {
+                renderJbpChart();
+            });
+        }
+
+        function addJbpEntity(type, id, name) {
+            if (!jbpPanelEntities.find(e => e.type === type && e.id === id)) {
+                jbpPanelEntities.push({ type, id, name });
+                refreshJbpData();
+            } else {
+                window.showToast(`${type === "cliente" ? "Cliente" : "Rede"} já adicionado ao painel.`, "info");
+            }
+        }
+
+        function removeJbpEntity(type, id) {
+            jbpPanelEntities = jbpPanelEntities.filter(e => !(e.type === type && e.id === id));
+            if (jbpPanelEntities.length === 0) {
+                jbpPanelData = [];
+                renderJbpPanel();
+            } else {
+                refreshJbpData();
+            }
+        }
+
+        async function refreshJbpData() {
+            if (jbpPanelEntities.length === 0) {
+                jbpPanelData = [];
+                renderJbpPanel();
+                return;
+            }
+
+            window.showDashboardLoading("jbp-view");
+            try {
+                const clientesArray = jbpPanelEntities.filter(e => e.type === "cliente").map(e => e.id);
+                const redesArray = jbpPanelEntities.filter(e => e.type === "rede").map(e => e.id);
+
+                const params = {
+                    p_filial: jbpSelectedFiliais.length > 0 ? jbpSelectedFiliais : null,
+                    p_cidade: jbpSelectedCidades.length > 0 ? jbpSelectedCidades : null,
+                    p_fornecedor: jbpSelectedFornecedores.length > 0 ? jbpSelectedFornecedores : null,
+                    p_produto: null,
+                    p_categoria: jbpSelectedCategorias.length > 0 ? jbpSelectedCategorias : null,
+                    p_ano: jbpAnoFilter.value,
+                    p_clientes: clientesArray.length > 0 ? clientesArray : null,
+                    p_redes_adicionadas: redesArray.length > 0 ? redesArray : null
+                };
+
+                const { data, error } = await supabase.rpc("get_jbp_data", params);
+                if (error) throw error;
+
+                jbpPanelData = data || [];
+                renderJbpPanel();
+            } catch (error) {
+                AppLog.error("Error refreshing JBP data:", error);
+                window.showToast("Erro ao atualizar dados do painel.", "error");
+            } finally {
+                window.hideDashboardLoading("jbp-view");
+            }
+        }
+
+        function renderJbpPanel() {
+            if(!jbpSelectedClientsContainer) return;
+            jbpSelectedClientsContainer.innerHTML = jbpPanelEntities.map(e => `
+                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-500/20 text-orange-200 border border-orange-500/30">
+                    ${e.type === "rede" ? "<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1v1H9V7zm5 0h1v1h-1V7zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1z"></path></svg>" : ""}
+                    ${escapeHtml(e.name)}
+                    <button type="button" class="ml-1.5 text-orange-400 hover:text-orange-200 focus:outline-none" onclick="removeJbpEntity('${e.type}', '${e.id}')">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </span>
+            `).join("");
+
+            if (jbpPanelEntities.length === 0) {
+                jbpEmptyState.classList.remove("hidden");
+                jbpContentArea.classList.add("hidden");
+            } else {
+                jbpEmptyState.classList.add("hidden");
+                jbpContentArea.classList.remove("hidden");
+                jbpContentArea.style.display = "flex";
+                
+                renderJbpChart();
+                renderJbpTable();
+            }
+        }
+
+        function renderJbpChart() {
+            const ctx = document.getElementById("jbpMainChart");
+            if (!ctx) return;
+            
+            const indicator = jbpChartIndicatorSelect.value;
+            const indicatorLabel = jbpChartIndicatorSelect.options[jbpChartIndicatorSelect.selectedIndex].text;
+            jbpChartTitleIndicator.textContent = indicatorLabel;
+
+            const baseYear = parseInt(jbpAnoFilter.value) || new Date().getFullYear();
+            const prevYear = baseYear - 1;
+
+            const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+            const currData = new Array(12).fill(0);
+            const prevData = new Array(12).fill(0);
+
+            jbpPanelData.forEach(row => {
+                if (row.ano === baseYear && row.mes >= 1 && row.mes <= 12) {
+                    currData[row.mes - 1] += (row[indicator] || 0);
+                } else if (row.ano === prevYear && row.mes >= 1 && row.mes <= 12) {
+                    prevData[row.mes - 1] += (row[indicator] || 0);
+                }
+            });
+
+            if (jbpMainChartInstance) {
+                jbpMainChartInstance.destroy();
+            }
+
+            const formatValue = (val) => {
+                if (indicator === "faturamento" || indicator === "perda_valor" || indicator === "bonificacao_valor") return formatCurrency(val);
+                if (indicator === "peso") return formatTons(val, 1);
+                return formatInteger(val);
+            };
+
+            jbpMainChartInstance = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: months,
+                    datasets: [
+                        {
+                            label: `Ano ${prevYear}`,
+                            data: prevData,
+                            backgroundColor: "rgba(241, 245, 249, 0.8)",
+                            borderColor: "#f1f5f9",
+                            borderWidth: 1,
+                            borderRadius: 4
+                        },
+                        {
+                            label: `Ano ${baseYear}`,
+                            data: currData,
+                            backgroundColor: "rgba(56, 189, 248, 0.8)",
+                            borderColor: "#38bdf8",
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: "#cbd5e1" }
+                        },
+                        tooltip: {
+                            mode: "index",
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${formatValue(context.raw)}`;
+                                }
+                            }
+                        },
+                        datalabels: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: "rgba(255, 255, 255, 0.05)" },
+                            ticks: {
+                                color: "#94a3b8",
+                                callback: function(value) {
+                                    if (value === 0) return "0";
+                                    if (value >= 1000000) return (value / 1000000).toFixed(1) + "M";
+                                    if (value >= 1000) return (value / 1000).toFixed(1) + "k";
+                                    return value;
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: "#94a3b8" }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderJbpTable() {
+            const baseYear = parseInt(jbpAnoFilter.value) || new Date().getFullYear();
+            let html = "";
+
+            const groupedData = {};
+
+            jbpPanelEntities.forEach(entity => {
+                const entityKey = entity.id;
+                groupedData[entityKey] = {
+                    name: entity.name,
+                    type: entity.type,
+                    months: new Array(12).fill(null).map(() => ({
+                        faturamento: 0, peso: 0, caixas: 0, perda_valor: 0, bonificacao_valor: 0, clientes_positivados: 0, total_mix: 0, clientes_inovacoes: 0
+                    }))
+                };
+            });
+
+            jbpPanelData.forEach(row => {
+                if (row.ano !== baseYear) return;
+                const mIdx = row.mes - 1;
+                if (mIdx < 0 || mIdx > 11) return;
+
+                let matchId = null;
+                if (row.rede && jbpPanelEntities.some(e => e.type === "rede" && e.id === row.rede)) {
+                    matchId = row.rede;
+                } else if (row.codcli && jbpPanelEntities.some(e => e.type === "cliente" && e.id === row.codcli)) {
+                    matchId = row.codcli;
+                }
+
+                if (matchId && groupedData[matchId]) {
+                    const m = groupedData[matchId].months[mIdx];
+                    m.faturamento += (row.faturamento || 0);
+                    m.peso += (row.peso || 0);
+                    m.caixas += (row.caixas || 0);
+                    m.perda_valor += (row.perda_valor || 0);
+                    m.bonificacao_valor += (row.bonificacao_valor || 0);
+                    m.clientes_positivados += (row.clientes_positivados || 0);
+                    m.total_mix += (row.total_mix || 0);
+                    m.clientes_inovacoes += (row.clientes_inovacoes || 0);
+                }
+            });
+
+            const generateRowHtml = (label, dataFn, formatFn, isTotal = false, rowClass = "") => {
+                let rowTotal = 0;
+                let activeMonths = 0;
+                const cells = new Array(12).fill(0).map((_, i) => {
+                    const val = dataFn(i);
+                    rowTotal += val;
+                    if (val > 0) activeMonths++;
+                    return `<td class="px-2 py-2 text-center whitespace-nowrap">${val === 0 ? "-" : escapeHtml(formatFn(val))}</td>`;
+                }).join("");
+
+                const finalTotal = isTotal ? rowTotal : (activeMonths > 0 ? (rowTotal / activeMonths) : 0);
+                return `
+                    <tr class="${rowClass} hover:bg-white/5 transition-colors">
+                        <td class="px-4 py-2 font-medium whitespace-nowrap border-r border-white/5 bg-slate-800/30">${escapeHtml(label)}</td>
+                        ${cells}
+                        <td class="px-4 py-2 text-right font-bold text-orange-400 whitespace-nowrap bg-slate-800/30">${escapeHtml(formatFn(finalTotal))}</td>
+                    </tr>
+                `;
+            };
+
+            Object.values(groupedData).forEach(group => {
+                html += `
+                    <tr class="bg-slate-700/50">
+                        <td colspan="14" class="px-4 py-2 font-bold text-white text-base">
+                            ${group.type === "rede" ? "🏢 REDE: " : "👤 CLIENTE: "} ${escapeHtml(group.name)}
+                        </td>
+                    </tr>
+                `;
+
+                html += generateRowHtml("FATURAMENTO", i => group.months[i].faturamento, formatCurrency, true);
+                html += generateRowHtml("TONELADAS", i => group.months[i].peso, v => formatTons(v, 1), true);
+                html += generateRowHtml("QTD. CAIXAS", i => group.months[i].caixas, formatInteger, true);
+                
+                html += generateRowHtml("MIX PDV", i => {
+                    const pos = group.months[i].clientes_positivados;
+                    return pos > 0 ? (group.months[i].total_mix / pos) : 0;
+                }, v => v.toFixed(2), false);
+                
+                html += generateRowHtml("INOVAÇÕES", i => group.months[i].clientes_inovacoes, formatInteger, true);
+
+                html += generateRowHtml("BONIFICAÇÃO", i => group.months[i].bonificacao_valor, formatCurrency, true);
+                html += generateRowHtml("PERDAS", i => group.months[i].perda_valor, formatCurrency, true, "text-red-400");
+            });
+
+            if(jbpTableBody) jbpTableBody.innerHTML = html;
+        }
+        
+        window.removeJbpEntity = removeJbpEntity;
+        window.addJbpEntity = addJbpEntity;
+
+
 
             if (typeof initComparisonFilters === 'function' && (!comparisonSupervisorFilterDropdown.children.length || comparisonSupervisorFilterDropdown.children.length === 0)) {
                 await initComparisonFilters();
