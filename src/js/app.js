@@ -5681,10 +5681,9 @@ let jbpPanelData = [];
                 window.uncheckAllCheckboxes(jbpCategoriaFilterDropdown);
 
                 jbpFilialFilterBtn.innerHTML = "<span class=\"truncate\">Todas</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
-                jbpCidadeFilterBtn.innerHTML = "<span class="truncate">Todas</span><svg aria-hidden="true" class="w-4 h-4 ml-2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>";
+                jbpCidadeFilterBtn.innerHTML = "<span class=\"truncate\">Todas</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
                 jbpFornecedorFilterBtn.innerHTML = "<span class=\"truncate\">Todos</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
                 jbpCategoriaFilterBtn.innerHTML = "<span class=\"truncate\">Todas</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
-                jbpCategoriaFilterBtn.innerHTML = "<span class="truncate">Todas</span><svg aria-hidden="true" class="w-4 h-4 ml-2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>";
 
                 jbpAnoFilter.value = new Date().getFullYear().toString();
                 jbpMesFilter.value = "todos";
