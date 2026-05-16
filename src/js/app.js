@@ -5569,8 +5569,26 @@ let jbpPanelData = [];
         async function initJbpFilters() {
             try {
                 if (!jbpAnoFilter) return;
-                jbpAnoFilter.innerHTML = generateYearOptionsHtml(availableYears);
-                jbpAnoFilter.value = currentFilters.ano || new Date().getFullYear().toString();
+
+                const reqFilters = {
+                    p_ano: null,
+                    p_mes: null,
+                    p_filial: [],
+                    p_cidade: [],
+                    p_fornecedor: [],
+                    p_tipovenda: [],
+                    p_rede: [],
+                    p_categoria: []
+                };
+
+                const { data: filterData, error } = await supabase.rpc("get_dashboard_filters", reqFilters);
+                if (error) throw error;
+                if (!filterData) return;
+
+                if (filterData.anos) {
+                    jbpAnoFilter.innerHTML = generateYearOptionsHtml(filterData.anos);
+                    jbpAnoFilter.value = currentFilters.ano || new Date().getFullYear().toString();
+                }
                 
                 jbpMesFilter.innerHTML = generateMonthOptionsHtml("Todos", "todos", true);
                 jbpMesFilter.value = currentFilters.mes || (new Date().getMonth() + 1).toString();
@@ -5581,24 +5599,14 @@ let jbpPanelData = [];
                 jbpSelectedRedes = currentFilters.redes || [];
                 jbpSelectedCategorias = currentFilters.categorias || [];
 
-                const reqFilters = {
-                    p_ano: jbpAnoFilter.value,
-                    p_mes: jbpMesFilter.value !== "todos" ? jbpMesFilter.value : null
-                };
+                window.setupMultiSelect(filterData.filiais || [], jbpFilialFilterDropdown, jbpFilialFilterBtn, jbpSelectedFiliais, "filiais", () => {});
+                const jbpCidadeFilterList = document.getElementById("jbp-cidade-filter-list");
+                if(jbpCidadeFilterList) window.setupMultiSelect(filterData.cidades || [], jbpCidadeFilterList, jbpCidadeFilterBtn, jbpSelectedCidades, "cidades", () => {}, jbpCidadeFilterDropdown);
+                const jbpFornecedorFilterList = document.getElementById("jbp-fornecedor-filter-list");
+                if(jbpFornecedorFilterList) window.setupMultiSelect(filterData.fornecedores || [], jbpFornecedorFilterList, jbpFornecedorFilterBtn, jbpSelectedFornecedores, "fornecedores", () => {}, jbpFornecedorFilterDropdown);
+                window.setupMultiSelect(filterData.redes || [], jbpRedeFilterDropdown, jbpRedeFilterBtn, jbpSelectedRedes, "redes", () => {}, null, null, null, null, true, true);
+                window.setupMultiSelect(filterData.categorias || [], jbpCategoriaFilterDropdown, jbpCategoriaFilterBtn, jbpSelectedCategorias, "categorias", () => {});
 
-                const { data: filterData, error } = await supabase.rpc("get_dashboard_filters", reqFilters);
-                if (error) throw error;
-
-                if (filterData && filterData.length > 0) {
-                    const row = filterData[0];
-                    window.setupMultiSelect(row.filiais, jbpFilialFilterDropdown, jbpFilialFilterBtn, jbpSelectedFiliais, "filiais", () => {});
-                    const jbpCidadeFilterList = document.getElementById("jbp-cidade-filter-list");
-                    if(jbpCidadeFilterList) window.setupMultiSelect(row.cidades, jbpCidadeFilterList, jbpCidadeFilterBtn, jbpSelectedCidades, "cidades", () => {}, jbpCidadeFilterDropdown);
-                    const jbpFornecedorFilterList = document.getElementById("jbp-fornecedor-filter-list");
-                    if(jbpFornecedorFilterList) window.setupMultiSelect(row.fornecedores, jbpFornecedorFilterList, jbpFornecedorFilterBtn, jbpSelectedFornecedores, "fornecedores", () => {}, jbpFornecedorFilterDropdown);
-                    window.setupMultiSelect(row.redes, jbpRedeFilterDropdown, jbpRedeFilterBtn, jbpSelectedRedes, "redes", () => {}, null, null, null, null, true, true);
-                    window.setupMultiSelect(row.categorias, jbpCategoriaFilterDropdown, jbpCategoriaFilterBtn, jbpSelectedCategorias, "categorias", () => {});
-                }
             } catch (e) {
                 AppLog.error("Error initializing JBP filters:", e);
             }
