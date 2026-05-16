@@ -33,3 +33,6 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## $(date +%Y-%m-%d) - Fix SKU/PDV aggregation logic
 **Learning:** For KPI metrics like SKU/PDV and Mix PDV, doing calculations at a pre-aggregated monthly level and then rolling up the average provides better context compared to taking the unique SKU count across the entire span and dividing it by total positivations (which inflates the metric as the same sku bought over multiple months doesn't count up).
 **Action:** When working on sales aggregation, identify if metrics like "unique items" need to be evaluated per-month before global rollup. Grouping by `mes` at the CTE level before rolling up ensures more accurate KPIs.
+## 2026-05-16 - Safe Global State Fallbacks
+**Learning:** Legacy UI elements relying on global callback events (like `window.updateGlobalState`) will break page interactivity and throw `Uncaught TypeError` if these functions are undocumented and accidentally removed during refactors, blocking features like `refreshJbpData` from firing via event listeners.
+**Action:** When debugging missing UI behaviors, grep for chained functions `() => { window.someState(); refreshData() }` and ensure either the missing function is safely stubbed or implemented fully to prevent execution blocking.
