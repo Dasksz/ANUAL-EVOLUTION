@@ -1906,6 +1906,8 @@ let jbpPanelData = [];
     }
 
     clearFiltersBtn.addEventListener('click', async () => {
+        // Reset state so next apply of same filters works
+        lastMainDashboardFiltersStr = "";
         // Reset Single Selects
         anoFilter.value = 'todos';
         anoFilter.dispatchEvent(new Event('change', { bubbles: true }));
@@ -2554,6 +2556,12 @@ let jbpPanelData = [];
 
     // Boxes Logic
     let boxesFilterDebounceTimer;
+
+    document.addEventListener('ui:dropdowns_closed', () => {
+        if (typeof boxesView !== 'undefined' && !boxesView.classList.contains('hidden')) {
+            handleBoxesFilterChange();
+        }
+    });
     let boxesSelectedFiliais = [];
     let boxesSelectedCidades = [];
     let boxesSelectedSupervisores = [];
@@ -3300,6 +3308,10 @@ let jbpPanelData = [];
         // Restore this one if it was hidden
         if (isHidden) {
             dropdown.classList.remove('hidden');
+        } else {
+            // It was open, and we clicked the button to close it.
+            // Dispatch a global event so the document listener can trigger filter updates.
+            document.dispatchEvent(new Event('ui:dropdowns_closed'));
         }
     };
         
@@ -3647,6 +3659,13 @@ let jbpPanelData = [];
 
     let filterDebounceTimer;
     let lastMainDashboardFiltersStr = "";
+
+    // Listen to explicit dropdown close events from the filter buttons themselves
+    document.addEventListener('ui:dropdowns_closed', () => {
+        if (!mainDashboardView.classList.contains('hidden')) {
+            handleFilterChange();
+        }
+    });
     const handleFilterChange = async () => {
         const filters = getCurrentFilters();
         const currentFiltersStr = JSON.stringify(filters);
@@ -4487,6 +4506,12 @@ let jbpPanelData = [];
 
     let cityFilterDebounceTimer;
     let lastCityFiltersStr = "";
+
+    document.addEventListener('ui:dropdowns_closed', () => {
+        if (!cityView.classList.contains('hidden')) {
+            handleCityFilterChange();
+        }
+    });
     const handleCityFilterChange = () => {
         const filters = {
             p_filial: citySelectedFiliais.length > 0 ? citySelectedFiliais : null,
@@ -4516,6 +4541,7 @@ let jbpPanelData = [];
 
     if (cityClearFiltersBtn) {
         cityClearFiltersBtn.addEventListener('click', () => {
+        lastCityFiltersStr = "";
              cityAnoFilter.value = 'todos';
              cityAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
              cityMesFilter.value = '';
@@ -4700,6 +4726,12 @@ let jbpPanelData = [];
     // Filter Change Handler
     let branchFilterDebounceTimer;
     let lastBranchFiltersStr = "";
+
+    document.addEventListener('ui:dropdowns_closed', () => {
+        if (!branchView.classList.contains('hidden')) {
+            handleBranchFilterChange();
+        }
+    });
     const handleBranchFilterChange = () => {
         const filters = {
             p_ano: branchAnoFilter.value === 'todos' ? null : branchAnoFilter.value,
@@ -4741,6 +4773,7 @@ let jbpPanelData = [];
     });
     
     branchClearFiltersBtn?.addEventListener('click', () => {
+         lastBranchFiltersStr = "";
          branchAnoFilter.value = 'todos';
          branchAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
          branchMesFilter.value = '';
@@ -5343,6 +5376,12 @@ let jbpPanelData = [];
 
         let comparisonFilterDebounceTimer;
         let lastComparisonFiltersStr = "";
+
+        document.addEventListener('ui:dropdowns_closed', () => {
+            if (!comparisonView.classList.contains('hidden')) {
+                handleComparisonFilterChange();
+            }
+        });
         const handleComparisonFilterChange = () => {
             let pFornecedorValue = selectedComparisonSuppliers.length > 0 ? selectedComparisonSuppliers : null;
             
@@ -5437,6 +5476,7 @@ let jbpPanelData = [];
 
         if (clearComparisonFiltersBtn) {
             clearComparisonFiltersBtn.addEventListener('click', async () => {
+            lastComparisonFiltersStr = "";
                 await fetchLastSalesDate();
                 if (lastSalesDate) {
                     const lastDate = new Date(lastSalesDate + 'T12:00:00');
@@ -7307,6 +7347,13 @@ const lpRowsPerPage = 50;
 
 let lpFilterDebounce;
 
+    document.addEventListener('ui:dropdowns_closed', () => {
+        const lpView = document.getElementById('loja-perfeita-view');
+        if (lpView && !lpView.classList.contains('hidden') && typeof handleLojaPerfeitaFilterChange === 'function') {
+            handleLojaPerfeitaFilterChange();
+        }
+    });
+
 async function loadLojaPerfeitaFilters(forceClear = false) {
     const anoSelect = document.getElementById('lp-ano-filter');
     const mesSelect = document.getElementById('lp-mes-filter');
@@ -8775,6 +8822,13 @@ let agendaSelectedRotas = [];
 let agendaSelectedFoco = [];
 
 let agendaFilterDebounceTimer;
+
+    document.addEventListener('ui:dropdowns_closed', () => {
+        const agendaView = document.getElementById('agenda-view');
+        if (agendaView && !agendaView.classList.contains('hidden') && typeof handleAgendaFilterChange === 'function') {
+            handleAgendaFilterChange();
+        }
+    });
 const handleAgendaFilterChange = () => {
     clearTimeout(agendaFilterDebounceTimer);
     agendaFilterDebounceTimer = setTimeout(() => {
