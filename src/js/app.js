@@ -5647,8 +5647,49 @@ let jbpPanelData = [];
             window.hideDashboardLoading("jbp-view");
         }
 
-        if (jbpAnoFilter) jbpAnoFilter.addEventListener("change", () => { window.updateGlobalState("jbp"); if(jbpPanelEntities.length > 0) refreshJbpData(); });
-        if (jbpMesFilter) jbpMesFilter.addEventListener("change", () => { window.updateGlobalState("jbp"); if(jbpPanelEntities.length > 0) refreshJbpData(); });
+        document.addEventListener('click', (e) => {
+            const dropdowns = [jbpFilialFilterDropdown, jbpCidadeFilterDropdown, jbpFornecedorFilterDropdown, jbpCategoriaFilterDropdown, jbpRedeFilterDropdown];
+            const btns = [jbpFilialFilterBtn, jbpCidadeFilterBtn, jbpFornecedorFilterBtn, jbpCategoriaFilterBtn, jbpRedeFilterBtn];
+            let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
+
+            // Close client search results if clicked outside
+            if (jbpClienteSearchResults && !jbpClienteSearchResults.classList.contains('hidden') && !jbpClienteSearchResults.contains(e.target) && !jbpClienteSearch.contains(e.target)) {
+                jbpClienteSearchResults.classList.add('hidden');
+            }
+
+            const jbpView = document.getElementById('jbp-view');
+            if (anyClosed && jbpView && !jbpView.classList.contains('hidden')) {
+                handleJbpFilterChange();
+            }
+        });
+
+        let jbpFilterDebounceTimer;
+        let lastJbpFiltersStr = "";
+        const handleJbpFilterChange = async () => {
+            const currentFiltersStr = JSON.stringify({
+                ano: jbpAnoFilter?.value,
+                mes: jbpMesFilter?.value,
+                filiais: jbpSelectedFiliais,
+                cidades: jbpSelectedCidades,
+                fornecedores: jbpSelectedFornecedores,
+                categorias: jbpSelectedCategorias,
+                redes: jbpSelectedRedes
+            });
+
+            if (currentFiltersStr === lastJbpFiltersStr) return;
+            lastJbpFiltersStr = currentFiltersStr;
+
+            clearTimeout(jbpFilterDebounceTimer);
+            jbpFilterDebounceTimer = setTimeout(async () => {
+                window.updateGlobalState("jbp");
+                if (jbpPanelEntities.length > 0) {
+                    await refreshJbpData();
+                }
+            }, 500);
+        };
+
+        if (jbpAnoFilter) jbpAnoFilter.addEventListener("change", handleJbpFilterChange);
+        if (jbpMesFilter) jbpMesFilter.addEventListener("change", handleJbpFilterChange);
 
         if (jbpClienteSearch) {
             jbpClienteSearch.addEventListener("input", debounce(async (e) => {
