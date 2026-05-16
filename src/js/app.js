@@ -5681,7 +5681,6 @@ let jbpPanelData = [];
 
             clearTimeout(jbpFilterDebounceTimer);
             jbpFilterDebounceTimer = setTimeout(async () => {
-                window.updateGlobalState("jbp");
                 if (jbpPanelEntities.length > 0) {
                     await refreshJbpData();
                 }
@@ -5748,7 +5747,7 @@ let jbpPanelData = [];
                     });
                     jbpSelectedRedes.length = 0;
                     jbpRedeFilterBtn.innerHTML = "<span class=\"truncate\">Todas as Redes</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-orange-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
-                    window.uncheckAllCheckboxes(jbpRedeFilterDropdown);
+                    uncheckAllCheckboxes(jbpRedeFilterDropdown);
                 } else {
                     window.showToast("Nenhuma Rede selecionada ou Cliente pesquisado.", "warning");
                 }
@@ -5763,13 +5762,13 @@ let jbpPanelData = [];
                 jbpSelectedRedes.length = 0;
                 jbpSelectedCategorias.length = 0;
 
-                window.uncheckAllCheckboxes(jbpFilialFilterDropdown);
+                uncheckAllCheckboxes(jbpFilialFilterDropdown);
                 const jbpCidadeFilterList = document.getElementById("jbp-cidade-filter-list");
-                if(jbpCidadeFilterList) window.uncheckAllCheckboxes(jbpCidadeFilterList);
+                if(jbpCidadeFilterList) uncheckAllCheckboxes(jbpCidadeFilterList);
                 const jbpFornecedorFilterList = document.getElementById("jbp-fornecedor-filter-list");
-                if(jbpFornecedorFilterList) window.uncheckAllCheckboxes(jbpFornecedorFilterList);
-                window.uncheckAllCheckboxes(jbpRedeFilterDropdown);
-                window.uncheckAllCheckboxes(jbpCategoriaFilterDropdown);
+                if(jbpFornecedorFilterList) uncheckAllCheckboxes(jbpFornecedorFilterList);
+                uncheckAllCheckboxes(jbpRedeFilterDropdown);
+                uncheckAllCheckboxes(jbpCategoriaFilterDropdown);
 
                 jbpFilialFilterBtn.innerHTML = "<span class=\"truncate\">Todas</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
                 jbpCidadeFilterBtn.innerHTML = "<span class=\"truncate\">Todas</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
@@ -5778,7 +5777,6 @@ let jbpPanelData = [];
 
                 jbpAnoFilter.value = new Date().getFullYear().toString();
                 jbpMesFilter.value = "todos";
-                window.updateGlobalState("jbp");
                 if(jbpPanelEntities.length > 0) refreshJbpData();
             });
         }
