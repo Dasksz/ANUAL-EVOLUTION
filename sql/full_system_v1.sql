@@ -2786,15 +2786,10 @@ BEGIN
             END) as total_sold_base,
 
             SUM(CASE
-                WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) THEN
+                WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN
                      CASE WHEN fs.tipovenda = ANY($1) THEN fs.peso ELSE 0 END
-                ELSE
-                    CASE
-                        WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN
-                             CASE WHEN fs.tipovenda = ANY($1) AND fs.tipovenda NOT IN (''5'', ''11'') THEN fs.peso ELSE 0 END
-                        WHEN fs.tipovenda NOT IN (''5'', ''11'') THEN fs.peso
-                        ELSE 0
-                    END
+                WHEN fs.tipovenda NOT IN (''5'', ''11'') THEN fs.peso
+                ELSE 0
             END) as peso,
 
             SUM(CASE
