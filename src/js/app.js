@@ -5620,13 +5620,13 @@ let jbpPanelData = [];
                 jbpSelectedRedes = currentFilters.p_rede || [];
                 jbpSelectedCategorias = currentFilters.p_categoria || [];
 
-                window.setupMultiSelect(filterData.filiais || [], jbpFilialFilterDropdown, jbpFilialFilterBtn, jbpSelectedFiliais, "filiais", () => {});
+                window.setupMultiSelect(jbpFilialFilterBtn, jbpFilialFilterDropdown, jbpFilialFilterDropdown, filterData.filiais || [], jbpSelectedFiliais, () => {});
                 const jbpCidadeFilterList = document.getElementById("jbp-cidade-filter-list");
-                if(jbpCidadeFilterList) window.setupMultiSelect(filterData.cidades || [], jbpCidadeFilterList, jbpCidadeFilterBtn, jbpSelectedCidades, "cidades", () => {}, jbpCidadeFilterDropdown);
+                if(jbpCidadeFilterList) window.setupMultiSelect(jbpCidadeFilterBtn, jbpCidadeFilterDropdown, jbpCidadeFilterList, filterData.cidades || [], jbpSelectedCidades, () => {}, false, document.getElementById("jbp-cidade-search"));
                 const jbpFornecedorFilterList = document.getElementById("jbp-fornecedor-filter-list");
-                if(jbpFornecedorFilterList) window.setupMultiSelect(filterData.fornecedores || [], jbpFornecedorFilterList, jbpFornecedorFilterBtn, jbpSelectedFornecedores, "fornecedores", () => {}, jbpFornecedorFilterDropdown);
-                window.setupMultiSelect(filterData.redes || [], jbpRedeFilterDropdown, jbpRedeFilterBtn, jbpSelectedRedes, "redes", () => {}, null, null, null, null, true, true);
-                window.setupMultiSelect(filterData.categorias || [], jbpCategoriaFilterDropdown, jbpCategoriaFilterBtn, jbpSelectedCategorias, "categorias", () => {});
+                if(jbpFornecedorFilterList) window.setupMultiSelect(jbpFornecedorFilterBtn, jbpFornecedorFilterDropdown, jbpFornecedorFilterList, filterData.fornecedores || [], jbpSelectedFornecedores, () => {}, true, document.getElementById("jbp-fornecedor-search"));
+                window.setupMultiSelect(jbpRedeFilterBtn, jbpRedeFilterDropdown, jbpRedeFilterDropdown, filterData.redes || [], jbpSelectedRedes, () => {}, false, null);
+                window.setupMultiSelect(jbpCategoriaFilterBtn, jbpCategoriaFilterDropdown, jbpCategoriaFilterDropdown, filterData.categorias || [], jbpSelectedCategorias, () => {}, false, null);
 
 
                 enhanceSelectToCustomDropdown(jbpAnoFilter);
@@ -5665,7 +5665,6 @@ let jbpPanelData = [];
                         p_search: term,
                         p_filial: jbpSelectedFiliais.length > 0 ? jbpSelectedFiliais : null,
                         p_cidade: jbpSelectedCidades.length > 0 ? jbpSelectedCidades : null,
-                        p_fornecedor: null, 
                         p_rede: jbpSelectedRedes.length > 0 ? jbpSelectedRedes : null
                     };
 
