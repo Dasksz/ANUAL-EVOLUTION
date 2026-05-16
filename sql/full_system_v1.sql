@@ -6688,7 +6688,7 @@ BEGIN
                 ds.ano,
                 ds.mes,
                 ds.codcli,
-                MAX(dc.razao_social) as cliente_nome,
+                MAX(dc.razaosocial) as cliente_nome,
                 ds.rede,
                 SUM(CASE WHEN ds.tipovenda NOT IN (''5'', ''11'') THEN ds.vlvenda ELSE 0 END) as faturamento,
                 SUM(CASE WHEN ds.tipovenda NOT IN (''5'', ''11'') THEN ds.peso ELSE 0 END) as peso,
