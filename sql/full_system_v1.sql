@@ -4611,6 +4611,7 @@ AS $$
 DECLARE
     v_where text := '1=1';
     v_sql text;
+    v_needs_join boolean := false;
 BEGIN
     IF p_search IS NOT NULL AND p_search <> '' THEN
         v_where := v_where || format(' AND (
@@ -4634,52 +4635,71 @@ BEGIN
         END IF;
     END IF;
 
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND dv.nome = ANY(%L::text[])', p_vendedor);
+    -- Only add joins if specific filters are provided
+    IF (p_filial IS NOT NULL AND array_length(p_filial, 1) > 0) OR
+       (p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0) OR
+       (p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0) THEN
+
+       v_needs_join := true;
+
+       IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+           v_where := v_where || format(' AND cm.filial = ANY(%L::text[])', p_filial);
+       END IF;
+
+       IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
+           v_where := v_where || format(' AND dv.nome = ANY(%L::text[])', p_vendedor);
+       END IF;
+
+       IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
+           v_where := v_where || format(' AND ds.nome = ANY(%L::text[])', p_supervisor);
+       END IF;
     END IF;
 
-    IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where := v_where || format(' AND ds.nome = ANY(%L::text[])', p_supervisor);
+    IF v_needs_join THEN
+        v_sql := format('
+            WITH latest_sales AS (
+                SELECT
+                    codcli, codsupervisor, codusur, filial,
+                    ROW_NUMBER() OVER(PARTITION BY codcli ORDER BY ano DESC, mes DESC, created_at DESC) as rn
+                FROM public.data_summary_frequency
+            ),
+            client_mapping AS (
+                SELECT codcli, codsupervisor, codusur, filial
+                FROM latest_sales
+                WHERE rn = 1
+            )
+            SELECT DISTINCT
+                dc.codigo_cliente,
+                dc.razaosocial,
+                dc.nomecliente,
+                dc.cidade,
+                dc.cnpj
+            FROM public.data_clients dc
+            INNER JOIN client_mapping cm ON dc.codigo_cliente = cm.codcli
+            LEFT JOIN public.dim_vendedores dv ON cm.codusur = dv.codigo
+            LEFT JOIN public.dim_supervisores ds ON cm.codsupervisor = ds.codigo
+            WHERE %s
+            LIMIT 20
+        ', v_where);
+    ELSE
+        v_sql := format('
+            SELECT DISTINCT
+                dc.codigo_cliente,
+                dc.razaosocial,
+                dc.nomecliente,
+                dc.cidade,
+                dc.cnpj
+            FROM public.data_clients dc
+            WHERE %s
+            LIMIT 20
+        ', v_where);
     END IF;
-
-    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where := v_where || format(' AND cm.filial = ANY(%L::text[])', p_filial);
-    END IF;
-
-
-    v_sql := format('
-
-        WITH latest_sales AS (
-            SELECT
-                codcli, codsupervisor, codusur, filial,
-                ROW_NUMBER() OVER(PARTITION BY codcli ORDER BY ano DESC, mes DESC, created_at DESC) as rn
-            FROM public.data_summary_frequency
-        ),
-        client_mapping AS (
-            SELECT codcli, codsupervisor, codusur, filial
-            FROM latest_sales
-            WHERE rn = 1
-        )
-        SELECT DISTINCT
-            dc.codigo_cliente,
-            dc.razaosocial,
-            dc.nomecliente,
-            dc.cidade,
-            dc.cnpj
-        FROM public.data_nota_perfeita np
-        INNER JOIN public.data_clients dc ON np.codigo_cliente = dc.codigo_cliente
-        LEFT JOIN client_mapping cm ON np.codigo_cliente = cm.codcli
-        LEFT JOIN public.dim_vendedores dv ON cm.codusur = dv.codigo
-        LEFT JOIN public.dim_supervisores ds ON cm.codsupervisor = ds.codigo
-        WHERE %s
-        LIMIT 20
-    ', v_where);
 
     RETURN QUERY EXECUTE v_sql;
 END;
 $$;
-
 GRANT EXECUTE ON FUNCTION public.search_loja_perfeita_clients(text, text[], text[], text[], text[], text[]) TO anon, authenticated;
+
 
 
 -- FIX LINTER WARNINGS: SEARCH_PATH
