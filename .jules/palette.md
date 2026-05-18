@@ -7,3 +7,6 @@
 ## 2024-05-19 - Dropdown Options Truncation & Tooltips
 **Learning:** Custom multi-select dropdown options with long names can break container layouts and become unreadable.
 **Action:** Always apply text truncation (e.g., Tailwind's `truncate` class) and a native `title` attribute reflecting the full text to custom dropdown items. Additionally, propagate the selected text to the dropdown toggle button's `title` attribute for immediate context on hover.
+## 2026-05-18 - Additional Context to Client Names in JBP Views
+**Learning:** Displaying only the `cliente_nome` (which is often just `razaosocial`) in dashboards can make it difficult for users to disambiguate branches or locations of the same company (e.g. "DMA DISTRIBUIDORA S/A" exists in multiple cities).
+**Action:** When displaying aggregate views organized by client entities (like the JBP panel), append geographic context (e.g., `Bairro, Cidade`) to the header title.

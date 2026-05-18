@@ -6012,6 +6012,8 @@ let jbpPanelData = [];
                     const clientData = jbpPanelData.find(r => r.codcli === codcli);
                     groupedData[codcli] = {
                         name: clientData ? clientData.cliente_nome : codcli,
+                        bairro: clientData ? clientData.bairro : null,
+                        cidade: clientData ? clientData.cidade : null,
                         type: "cliente",
                         months: new Array(12).fill(null).map(() => ({
                             faturamento: 0, peso: 0, caixas: 0, perda_valor: 0, bonificacao_valor: 0, clientes_positivados: 0, total_mix: 0, clientes_inovacoes: 0
@@ -6038,6 +6040,8 @@ let jbpPanelData = [];
                 }
 
                 if (matchId && groupedData[matchId]) {
+                    if (!groupedData[matchId].bairro && row.bairro) groupedData[matchId].bairro = row.bairro;
+                    if (!groupedData[matchId].cidade && row.cidade) groupedData[matchId].cidade = row.cidade;
                     const m = groupedData[matchId].months[mIdx];
                     m.faturamento += (row.faturamento || 0);
                     m.peso += (row.peso || 0);
@@ -6074,7 +6078,7 @@ let jbpPanelData = [];
                 html += `
                     <tr class="bg-slate-700/50">
                         <td colspan="14" class="px-4 py-2 font-bold text-white text-base">
-                            ${group.type === "rede" ? "🏢 REDE: " : "👤 CLIENTE: "} ${escapeHtml(group.name)}
+                            ${group.type === "rede" ? "🏢 REDE: " : "👤 CLIENTE: "} ${escapeHtml(group.name)}${group.type === "cliente" && (group.bairro || group.cidade) ? " - " + escapeHtml([group.bairro, group.cidade].filter(Boolean).join(", ")) : ""}
                         </td>
                     </tr>
                 `;
