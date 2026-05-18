@@ -36,3 +36,6 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## 2026-05-16 - Safe Global State Fallbacks
 **Learning:** Legacy UI elements relying on global callback events (like `window.updateGlobalState`) will break page interactivity and throw `Uncaught TypeError` if these functions are undocumented and accidentally removed during refactors, blocking features like `refreshJbpData` from firing via event listeners.
 **Action:** When debugging missing UI behaviors, grep for chained functions `() => { window.someState(); refreshData() }` and ensure either the missing function is safely stubbed or implemented fully to prevent execution blocking.
+## 2026-05-18 - Safe Group By Extensions in SQL
+**Learning:** Modifying SQL aggregation queries to include new literal columns (e.g., adding `bairro` and `cidade` to a report) requires updating both the `SELECT` clause with aggregate functions (like `MAX()`) and ensuring the `GROUP BY` clause is correctly adjusted if the columns are intended as un-aggregated dimensions.
+**Action:** When adding standard attributes to existing SQL queries, prefer wrapping them in `MAX()` or `MIN()` if the data granularity is already defined by existing `GROUP BY` keys (e.g. `codcli`). This avoids expanding the row count accidentally or having to adjust nested `GROUP BY` indices manually which can be error-prone.

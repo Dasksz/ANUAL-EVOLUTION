@@ -6709,6 +6709,8 @@ BEGIN
                 EXTRACT(MONTH FROM s.dtped)::int as mes,
                 c.codigo_cliente as codcli,
                 MAX(c.razaosocial) as cliente_nome,
+                MAX(c.bairro) as bairro,
+                MAX(c.cidade) as cidade,
                 c.ramo as rede,
                 s.tipovenda,
                 SUM(COALESCE(s.vlvenda, 0)) as vlvenda,
@@ -6721,13 +6723,15 @@ BEGIN
             JOIN public.data_clients c ON s.codcli = c.codigo_cliente
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s
-            GROUP BY 1, 2, 3, 5, 6
+            GROUP BY 1, 2, 3, 7, 8
             UNION ALL
             SELECT 
                 EXTRACT(YEAR FROM s.dtped)::int as ano,
                 EXTRACT(MONTH FROM s.dtped)::int as mes,
                 c.codigo_cliente as codcli,
                 MAX(c.razaosocial) as cliente_nome,
+                MAX(c.bairro) as bairro,
+                MAX(c.cidade) as cidade,
                 c.ramo as rede,
                 s.tipovenda,
                 SUM(COALESCE(s.vlvenda, 0)) as vlvenda,
@@ -6740,7 +6744,7 @@ BEGIN
             JOIN public.data_clients c ON s.codcli = c.codigo_cliente
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s
-            GROUP BY 1, 2, 3, 5, 6
+            GROUP BY 1, 2, 3, 7, 8
         ),
         base_data AS (
             SELECT 
@@ -6748,6 +6752,8 @@ BEGIN
                 mes,
                 codcli,
                 MAX(cliente_nome) as cliente_nome,
+                MAX(bairro) as bairro,
+                MAX(cidade) as cidade,
                 rede,
                 SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN vlvenda ELSE 0 END) as faturamento,
                 SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN peso ELSE 0 END) as peso,
@@ -6757,7 +6763,7 @@ BEGIN
                 MAX(CASE WHEN tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1 THEN 1 ELSE 0 END) as positivado,
                 MAX(CASE WHEN tipovenda NOT IN (''5'', ''11'') AND inovacao_pedidos > 0 THEN 1 ELSE 0 END) as inovou
             FROM raw_union
-            GROUP BY 1, 2, 3, 5
+            GROUP BY 1, 2, 3, 7
         ),
         monthly_agg AS (
             SELECT 
@@ -6765,6 +6771,8 @@ BEGIN
                 mes,
                 codcli,
                 MAX(cliente_nome) as cliente_nome,
+                MAX(bairro) as bairro,
+                MAX(cidade) as cidade,
                 rede,
                 SUM(faturamento) as faturamento,
                 SUM(peso) as peso,
@@ -6774,7 +6782,7 @@ BEGIN
                 MAX(positivado) as clientes_positivados,
                 SUM(inovou) as clientes_inovacoes
             FROM base_data
-            GROUP BY 1, 2, 3, 5
+            GROUP BY 1, 2, 3, 7
         )
         SELECT COALESCE(json_agg(row_to_json(t)), ''[]''::json)
         FROM (
