@@ -5865,6 +5865,7 @@ let jbpPanelData = [];
             if (jbpPanelEntities.length === 0) {
                 jbpEmptyState.classList.remove("hidden");
                 jbpContentArea.classList.add("hidden");
+                jbpContentArea.style.display = ""; // <--- FIX HERE: Reset display so it truly hides
             } else {
                 jbpEmptyState.classList.add("hidden");
                 jbpContentArea.classList.remove("hidden");
@@ -5881,7 +5882,17 @@ let jbpPanelData = [];
             
             const indicator = jbpChartIndicatorSelect.value;
             const indicatorLabel = jbpChartIndicatorSelect.options[jbpChartIndicatorSelect.selectedIndex].text;
-            jbpChartTitleIndicator.textContent = indicatorLabel;
+
+            const redesSelecionadas = jbpPanelEntities.filter(e => e.type === "rede");
+            const clientesSelecionados = jbpPanelEntities.filter(e => e.type === "cliente");
+
+            let suffix = "";
+            if (redesSelecionadas.length === 1 && clientesSelecionados.length === 0) {
+                suffix = ` - ${redesSelecionadas[0].name}`;
+            }
+
+            jbpChartTitleIndicator.textContent = indicatorLabel + suffix;
+
 
             const baseYear = parseInt(jbpAnoFilter.value) || new Date().getFullYear();
             const prevYear = baseYear - 1;
@@ -5976,18 +5987,39 @@ let jbpPanelData = [];
             const baseYear = parseInt(jbpAnoFilter.value) || new Date().getFullYear();
             let html = "";
 
+            const redesSelecionadas = jbpPanelEntities.filter(e => e.type === "rede");
+            const clientesSelecionados = jbpPanelEntities.filter(e => e.type === "cliente");
+            const isSingleRedeView = redesSelecionadas.length === 1 && clientesSelecionados.length === 0;
+
             const groupedData = {};
 
-            jbpPanelEntities.forEach(entity => {
-                const entityKey = entity.id;
-                groupedData[entityKey] = {
-                    name: entity.name,
-                    type: entity.type,
-                    months: new Array(12).fill(null).map(() => ({
-                        faturamento: 0, peso: 0, caixas: 0, perda_valor: 0, bonificacao_valor: 0, clientes_positivados: 0, total_mix: 0, clientes_inovacoes: 0
-                    }))
-                };
-            });
+
+            if (!isSingleRedeView) {
+                jbpPanelEntities.forEach(entity => {
+                    const entityKey = entity.id;
+                    groupedData[entityKey] = {
+                        name: entity.name,
+                        type: entity.type,
+                        months: new Array(12).fill(null).map(() => ({
+                            faturamento: 0, peso: 0, caixas: 0, perda_valor: 0, bonificacao_valor: 0, clientes_positivados: 0, total_mix: 0, clientes_inovacoes: 0
+                        }))
+                    };
+                });
+            } else {
+                // Pre-populate with distinct clients found in data for this single rede
+                const uniqueClients = [...new Set(jbpPanelData.map(row => row.codcli))].filter(Boolean);
+                uniqueClients.forEach(codcli => {
+                    const clientData = jbpPanelData.find(r => r.codcli === codcli);
+                    groupedData[codcli] = {
+                        name: clientData ? clientData.cliente_nome : codcli,
+                        type: "cliente",
+                        months: new Array(12).fill(null).map(() => ({
+                            faturamento: 0, peso: 0, caixas: 0, perda_valor: 0, bonificacao_valor: 0, clientes_positivados: 0, total_mix: 0, clientes_inovacoes: 0
+                        }))
+                    };
+                });
+            }
+
 
             jbpPanelData.forEach(row => {
                 if (row.ano !== baseYear) return;
@@ -5995,10 +6027,14 @@ let jbpPanelData = [];
                 if (mIdx < 0 || mIdx > 11) return;
 
                 let matchId = null;
-                if (row.rede && jbpPanelEntities.some(e => e.type === "rede" && e.id === row.rede)) {
-                    matchId = row.rede;
-                } else if (row.codcli && jbpPanelEntities.some(e => e.type === "cliente" && e.id === row.codcli)) {
+                if (isSingleRedeView) {
                     matchId = row.codcli;
+                } else {
+                    if (row.rede && jbpPanelEntities.some(e => e.type === "rede" && e.id === row.rede)) {
+                        matchId = row.rede;
+                    } else if (row.codcli && jbpPanelEntities.some(e => e.type === "cliente" && e.id === row.codcli)) {
+                        matchId = row.codcli;
+                    }
                 }
 
                 if (matchId && groupedData[matchId]) {
