@@ -6709,7 +6709,7 @@ BEGIN
             -- Also enforce that the main query only considers products in this specific innovation category
             v_where := v_where || format(' AND s.produto IN (SELECT codigo FROM public.data_innovations WHERE inovacoes = %L) ', p_categoria_inovacao);
         END IF;
-
+    
 
     -- Dynamic SQL: Union of detailed and history
     v_sql := format('
@@ -6803,7 +6803,7 @@ BEGIN
         FROM (
             SELECT * FROM monthly_agg ORDER BY ano DESC, mes DESC
         ) t
-    ', v_where, v_where);
+    ', v_where_inov, v_where, v_where);
 
     EXECUTE v_sql INTO v_result;
     
