@@ -267,6 +267,19 @@ export function generateMonthOptionsHtml(defaultLabel = 'Todos', defaultValue = 
     return html;
 }
 
+/**
+ * Clears multiple arrays in place.
+ * Centralizes repetitive array.length = 0 assignments.
+ * @param {...Array} arrays - Arrays to be cleared.
+ */
+export function clearArrays(...arrays) {
+    arrays.forEach(arr => {
+        if (Array.isArray(arr)) {
+            arr.length = 0;
+        }
+    });
+}
+
 export function debounce(func, wait = 300) {
     let timeout;
     return function executedFunction(...args) {
