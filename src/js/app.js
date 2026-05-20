@@ -770,8 +770,8 @@ let estrelasSelectedCategorias = [];
             state.redes = selectedRedes;
             state.categorias = selectedCategorias;
         } else if (view === 'city') {
-            state.ano = document.getElementById('city-ano-filter')?.value;
-            state.mes = document.getElementById('city-mes-filter')?.value;
+            state.ano = cityAnoFilter.value;
+            state.mes = cityMesFilter.value;
             state.filiais = cityState.citySelectedFiliais;
             state.cidades = cityState.citySelectedCidades;
             state.supervisores = cityState.citySelectedSupervisores;
@@ -884,8 +884,8 @@ let estrelasSelectedCategorias = [];
             selectedCategorias = getList('categorias');
 
         } else if (view === 'city') {
-            if (getVal('ano')) { let el = document.getElementById('city-ano-filter'); if(el) el.value = getVal('ano'); }
-            if (getVal('mes')) { let el = document.getElementById('city-mes-filter'); if(el) el.value = getVal('mes'); }
+            if (getVal('ano')) cityAnoFilter.value = getVal('ano');
+            if (getVal('mes')) cityMesFilter.value = getVal('mes');
 
             citySelectedFiliais = getList('filiais');
             citySelectedCidades = getList('cidades');
@@ -4264,6 +4264,67 @@ let jbpPanelData = [];
             tableHTML += `</tr>`;
         });
         tableBody.innerHTML = tableHTML;
+    }
+
+
+    let citySelectedFiliais = [];
+    let citySelectedCidades = [];
+    let citySelectedSupervisores = [];
+    let citySelectedVendedores = [];
+    let citySelectedFornecedores = [];
+    let citySelectedTiposVenda = [];
+    let citySelectedRedes = [];
+    let citySelectedCategorias = [];
+
+    let cityFilterDebounceTimer;
+    let lastCityFiltersStr = "";
+    const handleCityFilterChange = () => {
+        const filters = {
+            p_filial: citySelectedFiliais.length > 0 ? citySelectedFiliais : null,
+            p_cidade: citySelectedCidades.length > 0 ? citySelectedCidades : null,
+            p_supervisor: citySelectedSupervisores.length > 0 ? citySelectedSupervisores : null,
+            p_vendedor: citySelectedVendedores.length > 0 ? citySelectedVendedores : null,
+            p_fornecedor: citySelectedFornecedores.length > 0 ? citySelectedFornecedores : null,
+            p_tipovenda: citySelectedTiposVenda.length > 0 ? citySelectedTiposVenda : null,
+            p_rede: citySelectedRedes.length > 0 ? citySelectedRedes : null,
+            p_categoria: citySelectedCategorias.length > 0 ? citySelectedCategorias : null,
+            p_ano: cityAnoFilter.value === 'todos' ? null : cityAnoFilter.value,
+            p_mes: cityMesFilter.value === '' ? null : cityMesFilter.value
+        };
+        const currentFiltersStr = JSON.stringify(filters);
+        if (currentFiltersStr === lastCityFiltersStr) return;
+        lastCityFiltersStr = currentFiltersStr;
+        
+        clearTimeout(cityFilterDebounceTimer);
+        cityFilterDebounceTimer = setTimeout(() => {
+            currentCityPage = 0; 
+            loadCityView();
+        }, 500);
+    };
+
+    if (cityAnoFilter) cityAnoFilter.addEventListener('change', handleCityFilterChange);
+    if (cityMesFilter) cityMesFilter.addEventListener('change', handleCityFilterChange);
+
+    if (cityClearFiltersBtn) {
+        cityClearFiltersBtn.addEventListener('click', () => {
+             cityAnoFilter.value = 'todos';
+             cityAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
+             cityMesFilter.value = '';
+             cityMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
+             clearArrays(citySelectedFiliais, citySelectedCidades, citySelectedSupervisores, citySelectedVendedores, citySelectedFornecedores, citySelectedTiposVenda, citySelectedRedes, citySelectedCategorias);
+             initCityFilters().then(loadCityView);
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        const dropdowns = [cityFilialFilterDropdown, cityCidadeFilterDropdown, citySupervisorFilterDropdown, cityVendedorFilterDropdown, cityFornecedorFilterDropdown, cityTipovendaFilterDropdown, cityRedeFilterDropdown, cityCategoriaFilterDropdown];
+        const btns = [cityFilialFilterBtn, cityCidadeFilterBtn, citySupervisorFilterBtn, cityVendedorFilterBtn, cityFornecedorFilterBtn, cityTipovendaFilterBtn, cityRedeFilterBtn, cityCategoriaFilterBtn];
+        let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
+        if (anyClosed && !cityView.classList.contains('hidden')) {
+            handleCityFilterChange();
+        }
+    });
+
     function setupCityMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
     return window.setupMultiSelect(btn, dropdown, container, items, selectedArray, () => {}, isObject, searchInput);
 }
