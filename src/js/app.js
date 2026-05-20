@@ -184,7 +184,7 @@ import supabase from './supabase.js?v=3';
 import { SUPABASE_KEY } from "./config.js";
 import {
     generateYearOptionsHtml,
-    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce } from './utils.js';
+    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays } from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
@@ -2790,14 +2790,7 @@ let jbpPanelData = [];
             boxesAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
             boxesMesFilter.value = '';
             boxesMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
-            boxesSelectedFiliais.length = 0;
-            boxesSelectedProducts.length = 0;
-            boxesSelectedSupervisores.length = 0;
-            boxesSelectedVendedores.length = 0;
-            boxesSelectedFornecedores.length = 0;
-            boxesSelectedCidades.length = 0;
-            boxesSelectedTiposVenda.length = 0;
-            boxesSelectedCategorias.length = 0;
+            clearArrays(boxesSelectedFiliais, boxesSelectedProducts, boxesSelectedSupervisores, boxesSelectedVendedores, boxesSelectedFornecedores, boxesSelectedCidades, boxesSelectedTiposVenda, boxesSelectedCategorias);
             boxesTrendActive = false; // Reset Trend
             const span = document.getElementById('boxes-trend-text');
             if(span) span.textContent = 'Calcular Tendência';
@@ -4528,14 +4521,7 @@ let jbpPanelData = [];
              cityAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
              cityMesFilter.value = '';
              cityMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
-             citySelectedFiliais.length = 0;
-             citySelectedCidades.length = 0;
-             citySelectedSupervisores.length = 0;
-             citySelectedVendedores.length = 0;
-             citySelectedFornecedores.length = 0;
-             citySelectedTiposVenda.length = 0;
-             citySelectedRedes.length = 0;
-             citySelectedCategorias.length = 0;
+             clearArrays(citySelectedFiliais, citySelectedCidades, citySelectedSupervisores, citySelectedVendedores, citySelectedFornecedores, citySelectedTiposVenda, citySelectedRedes, citySelectedCategorias);
              initCityFilters().then(loadCityView);
         });
     }
@@ -4753,14 +4739,7 @@ let jbpPanelData = [];
          branchAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
          branchMesFilter.value = '';
          branchMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
-         branchSelectedFiliais.length = 0; // Reset but re-init will likely pick first 2
-         branchSelectedCidades.length = 0;
-         branchSelectedSupervisores.length = 0;
-         branchSelectedVendedores.length = 0;
-         branchSelectedFornecedores.length = 0;
-         branchSelectedTiposVenda.length = 0;
-         branchSelectedRedes.length = 0;
-         branchSelectedCategorias.length = 0;
+         clearArrays(branchSelectedFiliais, branchSelectedCidades, branchSelectedSupervisores, branchSelectedVendedores, branchSelectedFornecedores, branchSelectedTiposVenda, branchSelectedRedes, branchSelectedCategorias); // // Reset but re-init will likely pick first 2
          // Re-init filters to update UI
          initBranchFilters().then(loadBranchView);
     });
@@ -5768,7 +5747,7 @@ let jbpPanelData = [];
                     jbpSelectedRedes.forEach(rede => {
                          addJbpEntity("rede", rede, rede);
                     });
-                    jbpSelectedRedes.length = 0;
+                    clearArrays(jbpSelectedRedes);
                     jbpRedeFilterBtn.innerHTML = "<span class=\"truncate\">Todas as Redes</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-orange-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
                     uncheckAllCheckboxes(jbpRedeFilterDropdown);
                 } else {
@@ -5779,13 +5758,7 @@ let jbpPanelData = [];
 
         if (jbpClearFiltersBtn) {
             jbpClearFiltersBtn.addEventListener("click", () => {
-                jbpSelectedFiliais.length = 0;
-                jbpSelectedCidades.length = 0;
-                jbpSelectedFornecedores.length = 0;
-                jbpSelectedRedes.length = 0;
-                jbpSelectedCategorias.length = 0;
-                jbpSelectedProdutos.length = 0;
-                jbpSelectedInovacoes.length = 0;
+                clearArrays(jbpSelectedFiliais, jbpSelectedCidades, jbpSelectedFornecedores, jbpSelectedRedes, jbpSelectedCategorias, jbpSelectedProdutos, jbpSelectedInovacoes);
 
                 uncheckAllCheckboxes(jbpFilialFilterDropdown);
                 const jbpCidadeFilterList = document.getElementById("jbp-cidade-filter-list");
@@ -5813,8 +5786,7 @@ let jbpPanelData = [];
 
         if (jbpClearPanelBtn) {
             jbpClearPanelBtn.addEventListener("click", () => {
-                jbpPanelEntities.length = 0;
-                jbpPanelData.length = 0;
+                clearArrays(jbpPanelEntities, jbpPanelData);
                 renderJbpPanel();
             });
         }
@@ -7866,13 +7838,7 @@ window.clearAllFilters = async function(prefix) {
             mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
         
-        innovationsSelectedSupervisors.length = 0;
-        innovationsSelectedVendedores.length = 0;
-        innovationsSelectedCidades.length = 0;
-        innovationsSelectedTiposVenda.length = 0;
-        innovationsSelectedRedes.length = 0;
-        innovationsSelectedFiliais.length = 0;
-        innovationsSelectedCategorias.length = 0;
+        clearArrays(innovationsSelectedSupervisors, innovationsSelectedVendedores, innovationsSelectedCidades, innovationsSelectedTiposVenda, innovationsSelectedRedes, innovationsSelectedFiliais, innovationsSelectedCategorias);
         
         // Uncheck all custom select items visually
         const wrappers = [
@@ -7881,7 +7847,7 @@ window.clearAllFilters = async function(prefix) {
             'innovations-rede-filter-dropdown', 'innovations-filial-filter-dropdown',
             'innovations-categoria-filter-dropdown'
         ];
-        lpSelectedCidades.length = 0;
+        clearArrays(lpSelectedCidades);
         const lpCodcliBtn = document.getElementById("lp-codcli-filter-btn");
         if (lpCodcliBtn) {
             lpCodcliBtn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
@@ -7998,14 +7964,7 @@ window.clearAllFilters = async function(prefix) {
             mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
-        estrelasSelectedSupervisors.length = 0;
-        estrelasSelectedVendedores.length = 0;
-        estrelasSelectedCidades.length = 0;
-        estrelasSelectedTiposVenda.length = 0;
-        estrelasSelectedRedes.length = 0;
-        estrelasSelectedFiliais.length = 0;
-        estrelasSelectedCategorias.length = 0;
-        estrelasSelectedFornecedores.length = 0;
+        clearArrays(estrelasSelectedSupervisors, estrelasSelectedVendedores, estrelasSelectedCidades, estrelasSelectedTiposVenda, estrelasSelectedRedes, estrelasSelectedFiliais, estrelasSelectedCategorias, estrelasSelectedFornecedores);
 
         const wrappers = [
             'estrelas-supervisor-filter-dropdown', 'estrelas-vendedor-filter-dropdown',
@@ -8076,9 +8035,7 @@ window.clearAllFilters = async function(prefix) {
         });
 
     } else if (prefix === 'agenda') {
-        agendaSelectedSupervisors.length = 0;
-        agendaSelectedRotas.length = 0;
-        agendaSelectedFoco.length = 0;
+        clearArrays(agendaSelectedSupervisors, agendaSelectedRotas, agendaSelectedFoco);
 
         ['agenda-supervisor', 'agenda-rota', 'agenda-foco'].forEach(pref => {
             const btn = document.getElementById(`${pref}-filter-btn`);
@@ -8133,11 +8090,7 @@ window.clearAllFilters = async function(prefix) {
             mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
-        lpSelectedCidades.length = 0;
-        lpSelectedFiliais.length = 0;
-        lpSelectedSupervisors.length = 0;
-        lpSelectedVendedores.length = 0;
-        lpSelectedRedes.length = 0;
+        clearArrays(lpSelectedCidades, lpSelectedFiliais, lpSelectedSupervisors, lpSelectedVendedores, lpSelectedRedes);
         
         ['lp-supervisor', 'lp-vendedor', 'lp-rede', 'lp-cidade'].forEach(prefix => {
             const btn = document.getElementById(`${prefix}-filter-btn`);
