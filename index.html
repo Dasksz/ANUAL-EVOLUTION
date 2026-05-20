@@ -1117,6 +1117,26 @@
                 </button>
                 <div id="jbp-categoria-filter-dropdown" class="hidden absolute z-[999] mt-1 w-full sm:w-64 bg-slate-800 border border-slate-700 rounded-md shadow-lg max-h-60 overflow-y-auto" role="listbox" aria-multiselectable="true"></div>
             </div>
+
+            <div class="relative">
+                <label for="jbp-produto-filter-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Produto</label>
+                <button id="jbp-produto-filter-btn" aria-haspopup="listbox" aria-expanded="false" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 min-w-[140px]">
+                    <span class="truncate">Todos</span>
+                    <svg aria-hidden="true" class="w-4 h-4 ml-2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div id="jbp-produto-filter-dropdown" class="hidden absolute z-[999] mt-1 w-full sm:w-72 bg-slate-800 border border-slate-700 rounded-md shadow-lg" role="listbox" aria-multiselectable="true">
+                    <div class="p-2 sticky top-0 bg-slate-800 border-b border-slate-700 z-10"><input type="text" id="jbp-produto-search" class="w-full bg-slate-900 border border-slate-600 rounded p-1.5 text-sm text-slate-300 focus:outline-none focus:border-orange-500 placeholder-slate-500" placeholder="Buscar produto..."></div>
+                    <div id="jbp-produto-filter-list" class="max-h-48 overflow-y-auto"></div>
+                </div>
+            </div>
+            <div class="relative">
+                <label for="jbp-inovacoes-filter-btn" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Inovações</label>
+                <button id="jbp-inovacoes-filter-btn" aria-haspopup="listbox" aria-expanded="false" class="w-full bg-white/5 border border-white/10 text-slate-300 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-white/10 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500 min-w-[140px]">
+                    <span class="truncate">Todas</span>
+                    <svg aria-hidden="true" class="w-4 h-4 ml-2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div id="jbp-inovacoes-filter-dropdown" class="hidden absolute z-[999] mt-1 w-full sm:w-64 bg-slate-800 border border-slate-700 rounded-md shadow-lg max-h-60 overflow-y-auto" role="listbox" aria-multiselectable="true"></div>
+            </div>
             <div class="relative flex-1 min-w-[200px]">
                 <label for="jbp-rede-filter-btn" class="text-[11px] font-bold text-orange-400 uppercase tracking-wider block mb-1">Filtro de Rede (Foco)</label>
                 <button id="jbp-rede-filter-btn" aria-haspopup="listbox" aria-expanded="false" class="w-full bg-orange-500/10 border border-orange-500/30 text-orange-200 text-sm rounded-lg p-2 text-left flex justify-between items-center h-[38px] hover:bg-orange-500/20 transition-colors focus:outline-none focus:ring-1 focus:ring-orange-500">

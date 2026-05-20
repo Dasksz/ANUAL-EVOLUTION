@@ -6595,6 +6595,7 @@ CREATE OR REPLACE FUNCTION get_jbp_data(
     p_rede text[] default null,
     p_produto text[] default null,
     p_categoria text[] default null,
+    p_categoria_inovacao text default null,
     p_ano text default null,
     p_clientes text[] default null,
     p_redes_adicionadas text[] default null
@@ -6681,6 +6682,7 @@ BEGIN
        END IF;
     END IF;
 
+
     -- JBP Specific filtering: must match the specific clients OR redes we are adding to the panel
     IF (p_clientes IS NOT NULL AND array_length(p_clientes, 1) > 0) OR (p_redes_adicionadas IS NOT NULL AND array_length(p_redes_adicionadas, 1) > 0) THEN
         v_where := v_where || ' AND (';
@@ -6698,10 +6700,21 @@ BEGIN
         v_where := v_where || ') ';
     END IF;
 
+    -- JBP Categoria Inovacao Filtering
+    DECLARE
+        v_where_inov text := '';
+    BEGIN
+        IF p_categoria_inovacao IS NOT NULL AND p_categoria_inovacao != '' THEN
+            v_where_inov := format(' AND inovacoes = %L ', p_categoria_inovacao);
+            -- Also enforce that the main query only considers products in this specific innovation category
+            v_where := v_where || format(' AND s.produto IN (SELECT codigo FROM public.data_innovations WHERE inovacoes = %L) ', p_categoria_inovacao);
+        END IF;
+
+
     -- Dynamic SQL: Union of detailed and history
     v_sql := format('
         WITH inovacoes AS (
-            SELECT codigo FROM public.data_innovations WHERE codigo IS NOT NULL
+            SELECT DISTINCT inovacoes FROM public.data_innovations WHERE inovacoes IS NOT NULL %s
         ),
         raw_union AS (
             SELECT 
@@ -6718,10 +6731,11 @@ BEGIN
                 SUM(COALESCE(s.qtvenda, 0) / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)) as caixas,
                 SUM(COALESCE(s.vldevolucao, 0)) as devolucao,
                 SUM(COALESCE(s.vlbonific, 0)) as bonificacao,
-                COUNT(DISTINCT CASE WHEN s.produto IN (SELECT codigo FROM inovacoes) THEN s.pedido ELSE NULL END) as inovacao_pedidos
+                COUNT(DISTINCT CASE WHEN inov.inovacoes IS NOT NULL AND COALESCE(s.vlvenda, 0) >= 1 THEN inov.inovacoes ELSE NULL END) as inovacao_pedidos
             FROM public.data_detailed s
             JOIN public.data_clients c ON s.codcli = c.codigo_cliente
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+            LEFT JOIN public.data_innovations inov ON s.produto = inov.codigo
             %s
             GROUP BY 1, 2, 3, 7, 8
             UNION ALL
@@ -6739,10 +6753,11 @@ BEGIN
                 SUM(COALESCE(s.qtvenda, 0) / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)) as caixas,
                 SUM(COALESCE(s.vldevolucao, 0)) as devolucao,
                 SUM(COALESCE(s.vlbonific, 0)) as bonificacao,
-                COUNT(DISTINCT CASE WHEN s.produto IN (SELECT codigo FROM inovacoes) THEN s.pedido ELSE NULL END) as inovacao_pedidos
+                COUNT(DISTINCT CASE WHEN inov.inovacoes IS NOT NULL AND COALESCE(s.vlvenda, 0) >= 1 THEN inov.inovacoes ELSE NULL END) as inovacao_pedidos
             FROM public.data_history s
             JOIN public.data_clients c ON s.codcli = c.codigo_cliente
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+            LEFT JOIN public.data_innovations inov ON s.produto = inov.codigo
             %s
             GROUP BY 1, 2, 3, 7, 8
         ),
@@ -6761,7 +6776,7 @@ BEGIN
                 SUM(CASE WHEN tipovenda = ''5'' THEN vlvenda + COALESCE(devolucao,0) + COALESCE(bonificacao,0) ELSE 0 END) as perda_valor,
                 SUM(CASE WHEN tipovenda = ''11'' THEN vlvenda + COALESCE(bonificacao,0) ELSE 0 END) as bonificacao_valor,
                 MAX(CASE WHEN tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1 THEN 1 ELSE 0 END) as positivado,
-                MAX(CASE WHEN tipovenda NOT IN (''5'', ''11'') AND inovacao_pedidos > 0 THEN 1 ELSE 0 END) as inovou
+                MAX(CASE WHEN tipovenda NOT IN (''5'', ''11'') AND inovacao_pedidos > 0 THEN inovacao_pedidos ELSE 0 END) as inovou
             FROM raw_union
             GROUP BY 1, 2, 3, 7
         ),
@@ -6780,7 +6795,7 @@ BEGIN
                 SUM(perda_valor) as perda_valor,
                 SUM(bonificacao_valor) as bonificacao_valor,
                 MAX(positivado) as clientes_positivados,
-                SUM(inovou) as clientes_inovacoes
+                MAX(inovou) as clientes_inovacoes
             FROM base_data
             GROUP BY 1, 2, 3, 7
         )

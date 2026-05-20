@@ -1616,6 +1616,8 @@ let jbpSelectedCidades = [];
 let jbpSelectedFornecedores = [];
 let jbpSelectedRedes = [];
 let jbpSelectedCategorias = [];
+let jbpSelectedProdutos = [];
+let jbpSelectedInovacoes = [];
 
 const jbpAnoFilter = document.getElementById('jbp-ano-filter');
 const jbpMesFilter = document.getElementById('jbp-mes-filter');
@@ -1627,6 +1629,12 @@ const jbpFornecedorFilterBtn = document.getElementById('jbp-fornecedor-filter-bt
 const jbpFornecedorFilterDropdown = document.getElementById('jbp-fornecedor-filter-dropdown');
 const jbpCategoriaFilterBtn = document.getElementById('jbp-categoria-filter-btn');
 const jbpCategoriaFilterDropdown = document.getElementById('jbp-categoria-filter-dropdown');
+const jbpProdutoFilterBtn = document.getElementById('jbp-produto-filter-btn');
+const jbpProdutoFilterDropdown = document.getElementById('jbp-produto-filter-dropdown');
+const jbpProdutoFilterList = document.getElementById('jbp-produto-filter-list');
+const jbpProdutoFilterSearch = document.getElementById('jbp-produto-search');
+const jbpInovacoesFilterBtn = document.getElementById('jbp-inovacoes-filter-btn');
+const jbpInovacoesFilterDropdown = document.getElementById('jbp-inovacoes-filter-dropdown');
 const jbpRedeFilterBtn = document.getElementById('jbp-rede-filter-btn');
 const jbpRedeFilterDropdown = document.getElementById('jbp-rede-filter-dropdown');
 
@@ -5619,6 +5627,8 @@ let jbpPanelData = [];
                 jbpSelectedFornecedores = currentFilters.p_fornecedor || [];
                 jbpSelectedRedes = currentFilters.p_rede || [];
                 jbpSelectedCategorias = currentFilters.p_categoria || [];
+                jbpSelectedProdutos = currentFilters.p_produto || [];
+                jbpSelectedInovacoes = []; // New array
 
                 window.setupMultiSelect(jbpFilialFilterBtn, jbpFilialFilterDropdown, jbpFilialFilterDropdown, filterData.filiais || [], jbpSelectedFiliais, () => {});
                 const jbpCidadeFilterList = document.getElementById("jbp-cidade-filter-list");
@@ -5627,6 +5637,19 @@ let jbpPanelData = [];
                 if(jbpFornecedorFilterList) window.setupMultiSelect(jbpFornecedorFilterBtn, jbpFornecedorFilterDropdown, jbpFornecedorFilterList, filterData.fornecedores || [], jbpSelectedFornecedores, () => {}, true, document.getElementById("jbp-fornecedor-search"));
                 window.setupMultiSelect(jbpRedeFilterBtn, jbpRedeFilterDropdown, jbpRedeFilterDropdown, filterData.redes || [], jbpSelectedRedes, () => {}, false, null);
                 window.setupMultiSelect(jbpCategoriaFilterBtn, jbpCategoriaFilterDropdown, jbpCategoriaFilterDropdown, filterData.categorias || [], jbpSelectedCategorias, () => {}, false, null);
+
+                if(jbpProdutoFilterList) window.setupMultiSelect(jbpProdutoFilterBtn, jbpProdutoFilterDropdown, jbpProdutoFilterList, filterData.produtos || [], jbpSelectedProdutos, () => {}, true, document.getElementById("jbp-produto-search"));
+
+                // Load Inovações Categories for JBP
+                try {
+                    const { data: inovacData } = await supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true });
+                    if (inovacData) {
+                        const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
+                        window.setupMultiSelect(jbpInovacoesFilterBtn, jbpInovacoesFilterDropdown, jbpInovacoesFilterDropdown, uniqueInovacoes, jbpSelectedInovacoes, () => {}, false, null);
+                    }
+                } catch (e) {
+                    AppLog.error("Error loading inovacoes categories for JBP", e);
+                }
 
 
                 enhanceSelectToCustomDropdown(jbpAnoFilter);
@@ -5761,19 +5784,26 @@ let jbpPanelData = [];
                 jbpSelectedFornecedores.length = 0;
                 jbpSelectedRedes.length = 0;
                 jbpSelectedCategorias.length = 0;
+                jbpSelectedProdutos.length = 0;
+                jbpSelectedInovacoes.length = 0;
 
                 uncheckAllCheckboxes(jbpFilialFilterDropdown);
                 const jbpCidadeFilterList = document.getElementById("jbp-cidade-filter-list");
                 if(jbpCidadeFilterList) uncheckAllCheckboxes(jbpCidadeFilterList);
                 const jbpFornecedorFilterList = document.getElementById("jbp-fornecedor-filter-list");
                 if(jbpFornecedorFilterList) uncheckAllCheckboxes(jbpFornecedorFilterList);
+                const jbpProdutoFilterListElem = document.getElementById("jbp-produto-filter-list");
+                if(jbpProdutoFilterListElem) uncheckAllCheckboxes(jbpProdutoFilterListElem);
                 uncheckAllCheckboxes(jbpRedeFilterDropdown);
                 uncheckAllCheckboxes(jbpCategoriaFilterDropdown);
+                uncheckAllCheckboxes(jbpInovacoesFilterDropdown);
 
                 jbpFilialFilterBtn.innerHTML = "<span class=\"truncate\">Todas</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
                 jbpCidadeFilterBtn.innerHTML = "<span class=\"truncate\">Todas</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
                 jbpFornecedorFilterBtn.innerHTML = "<span class=\"truncate\">Todos</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
                 jbpCategoriaFilterBtn.innerHTML = "<span class=\"truncate\">Todas</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
+                jbpProdutoFilterBtn.innerHTML = "<span class=\"truncate\">Todos</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
+                jbpInovacoesFilterBtn.innerHTML = "<span class=\"truncate\">Todas</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
 
                 jbpAnoFilter.value = new Date().getFullYear().toString();
                 jbpMesFilter.value = "todos";
@@ -5830,8 +5860,9 @@ let jbpPanelData = [];
                     p_filial: jbpSelectedFiliais.length > 0 ? jbpSelectedFiliais : null,
                     p_cidade: jbpSelectedCidades.length > 0 ? jbpSelectedCidades : null,
                     p_fornecedor: jbpSelectedFornecedores.length > 0 ? jbpSelectedFornecedores : null,
-                    p_produto: null,
+                    p_produto: jbpSelectedProdutos.length > 0 ? jbpSelectedProdutos : null,
                     p_categoria: jbpSelectedCategorias.length > 0 ? jbpSelectedCategorias : null,
+                    p_categoria_inovacao: jbpSelectedInovacoes.length > 0 ? jbpSelectedInovacoes[0] : null,
                     p_ano: jbpAnoFilter.value,
                     p_clientes: clientesArray.length > 0 ? clientesArray : null,
                     p_redes_adicionadas: redesArray.length > 0 ? redesArray : null
