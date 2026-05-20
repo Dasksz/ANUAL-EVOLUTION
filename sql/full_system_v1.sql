@@ -6803,7 +6803,7 @@ BEGIN
         FROM (
             SELECT * FROM monthly_agg ORDER BY ano DESC, mes DESC
         ) t
-    ', v_where, v_where);
+    ', v_where_inov, v_where, v_where);
 
     EXECUTE v_sql INTO v_result;
     
