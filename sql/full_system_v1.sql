@@ -3883,15 +3883,15 @@ BEGIN
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
                 IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%TODDYNHO%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%%TODDYNHO%%'')');
                 ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%TODDY %'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%%TODDY %%'')');
                 ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%QUAKER%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%%QUAKER%%'')');
                 ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%KEROCOCO%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%%KEROCOCO%%'')');
                 ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao NOT ILIKE ''%TODDYNHO%'' AND dp.descricao NOT ILIKE ''%TODDY %'' AND dp.descricao NOT ILIKE ''%QUAKER%'' AND dp.descricao NOT ILIKE ''%KEROCOCO%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao NOT ILIKE ''%%TODDYNHO%%'' AND dp.descricao NOT ILIKE ''%%TODDY %%'' AND dp.descricao NOT ILIKE ''%%QUAKER%%'' AND dp.descricao NOT ILIKE ''%%KEROCOCO%%'')');
                 ELSE
                     v_simple_codes := array_append(v_simple_codes, v_code);
                 END IF;
@@ -4017,11 +4017,11 @@ BEGIN
                 (SELECT COUNT(*) FROM curr_daily_clients cdc 
                     LEFT JOIN public.dim_vendedores dv ON cdc.codusur = dv.codigo
                     WHERE cdc.val >= 1 
-                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%INATIVO%'' AND dv.nome NOT ILIKE ''%BALCAO%'' AND dv.nome NOT ILIKE ''%BALCÃO%'' AND dv.nome NOT ILIKE ''%AMERICANAS%''))
+                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%%INATIVO%%'' AND dv.nome NOT ILIKE ''%%BALCAO%%'' AND dv.nome NOT ILIKE ''%%BALCÃO%%'' AND dv.nome NOT ILIKE ''%%AMERICANAS%%''))
                 ) as total_pos_diaria,
                 COALESCE(NULLIF((SELECT COUNT(DISTINCT s.codusur) FROM target_sales s 
                     LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
-                    WHERE (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%INATIVO%'' AND dv.nome NOT ILIKE ''%BALCAO%'' AND dv.nome NOT ILIKE ''%BALCÃO%'' AND dv.nome NOT ILIKE ''%AMERICANAS%''))
+                    WHERE (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%%INATIVO%%'' AND dv.nome NOT ILIKE ''%%BALCAO%%'' AND dv.nome NOT ILIKE ''%%BALCÃO%%'' AND dv.nome NOT ILIKE ''%%AMERICANAS%%''))
                 ), 0), 1) as valid_vendors,
                 COALESCE(public.calc_working_days(
                     (SELECT date_trunc(''month'', MIN(dtped))::date FROM target_sales), 
@@ -4072,12 +4072,12 @@ BEGIN
                 (SELECT COUNT(*) FROM hist_daily_clients hdc 
                     LEFT JOIN public.dim_vendedores dv ON hdc.codusur = dv.codigo
                     WHERE hdc.val >= 1 AND date_trunc(''month'', hdc.d) = hist_monthly_mix.m_date
-                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%INATIVO%'' AND dv.nome NOT ILIKE ''%BALCAO%'' AND dv.nome NOT ILIKE ''%BALCÃO%'' AND dv.nome NOT ILIKE ''%AMERICANAS%''))
+                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%%INATIVO%%'' AND dv.nome NOT ILIKE ''%%BALCAO%%'' AND dv.nome NOT ILIKE ''%%BALCÃO%%'' AND dv.nome NOT ILIKE ''%%AMERICANAS%%''))
                 ) as monthly_total_pos_diaria,
                 COALESCE(NULLIF((SELECT COUNT(DISTINCT hs.codusur) FROM history_sales hs 
                     LEFT JOIN public.dim_vendedores dv ON hs.codusur = dv.codigo
                     WHERE date_trunc(''month'', hs.dtped) = hist_monthly_mix.m_date
-                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%INATIVO%'' AND dv.nome NOT ILIKE ''%BALCAO%'' AND dv.nome NOT ILIKE ''%BALCÃO%'' AND dv.nome NOT ILIKE ''%AMERICANAS%''))
+                    AND (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%%INATIVO%%'' AND dv.nome NOT ILIKE ''%%BALCAO%%'' AND dv.nome NOT ILIKE ''%%BALCÃO%%'' AND dv.nome NOT ILIKE ''%%AMERICANAS%%''))
                 ), 0), 1) as monthly_valid_vendors,
                 COALESCE(public.calc_working_days(
                     hist_monthly_mix.m_date::date,
@@ -6709,6 +6709,7 @@ BEGIN
             -- Also enforce that the main query only considers products in this specific innovation category
             v_where := v_where || format(' AND s.produto IN (SELECT codigo FROM public.data_innovations WHERE inovacoes = %L) ', p_categoria_inovacao);
         END IF;
+    END;
     
 
     -- Dynamic SQL: Union of detailed and history
