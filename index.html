@@ -1183,49 +1183,71 @@
     <!-- Content Area (Hidden initially) -->
     <div id="jbp-content-area" class="hidden flex-col gap-6">
         
-                <!-- Main Chart Section -->
+                        <!-- Main Chart Section -->
         <div class="bg-[#151419]/80 backdrop-blur-md p-5 rounded-xl shadow-lg border border-white/10">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-white uppercase tracking-wide">Comparativo Anual <span id="jbp-chart-title-indicator" class="text-orange-400">Faturamento</span></h3>
-                <div class="flex items-center gap-2">
-                     <span class="text-xs text-slate-400">Indicador:</span>
-                     <select id="jbp-chart-indicator-select" class="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg focus:ring-orange-500 focus:border-orange-500 block p-1.5 cursor-pointer">
-                         <option value="faturamento">Faturamento (R$)</option>
-                         <option value="caixas">Quantidade (Caixas)</option>
-                         <option value="peso">Toneladas (Kg)</option>
-                         <option value="perda_valor">Perdas (R$)</option>
-                         <option value="bonificacao_valor">Bonificação (R$)</option>
-                     </select>
-                </div>
-            </div>
             
             <div class="flex flex-col lg:flex-row gap-4 h-full">
                 <!-- Large Main Chart (~80% width) -->
-                <div class="relative h-80 w-full lg:w-4/5">
-                    <canvas id="jbpMainChart"></canvas>
+                <div class="w-full lg:w-4/5 flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-white uppercase tracking-wide">Comparativo Anual <span id="jbp-chart-title-indicator" class="text-orange-400">Faturamento</span></h3>
+                        <div class="flex items-center gap-2">
+                             <span class="text-xs text-slate-400">Indicador:</span>
+                             <select id="jbp-chart-indicator-select" class="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg focus:ring-orange-500 focus:border-orange-500 block p-1.5 cursor-pointer">
+                                 <option value="faturamento">Faturamento (R$)</option>
+                                 <option value="caixas">Quantidade (Caixas)</option>
+                                 <option value="peso">Toneladas (Kg)</option>
+                                 <option value="perda_valor">Perdas (R$)</option>
+                                 <option value="bonificacao_valor">Bonificação (R$)</option>
+                             </select>
+                        </div>
+                    </div>
+
+                    <!-- Chart container that fills available height -->
+                    <div class="relative w-full flex-1 min-h-[320px]">
+                        <canvas id="jbpMainChart"></canvas>
+                    </div>
                 </div>
 
                 <!-- Mini Charts Column (~20% width) -->
                 <div class="w-full lg:w-1/5 flex flex-col gap-4 border-l border-white/10 pl-4">
 
-                    <!-- Faturamento Mini Chart Container -->
+                    <!-- Top Mini Chart Container -->
                     <div class="flex-1 flex flex-col overflow-hidden min-h-[150px]">
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-white/5 pb-1 flex justify-between">
-                            <span>Top Faturamento</span>
-                            <span id="jbp-faturamento-mini-mes" class="text-orange-400 text-[10px]">Todos</span>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-white/5 pb-1 flex flex-col gap-1">
+                            <div class="flex justify-between items-center w-full">
+                                <span class="text-[10px]">TOP</span>
+                                <span id="jbp-mini-1-mes" class="text-orange-400 text-[10px]">Todos</span>
+                            </div>
+                            <select id="jbp-mini-chart-1-select" class="bg-slate-800/80 border border-slate-700 text-slate-200 text-[11px] rounded focus:ring-orange-500 focus:border-orange-500 block w-full p-1 cursor-pointer">
+                                 <option value="faturamento" selected>Faturamento (R$)</option>
+                                 <option value="caixas">Quantidade (Caixas)</option>
+                                 <option value="peso">Toneladas (Kg)</option>
+                                 <option value="perda_valor">Perdas (R$)</option>
+                                 <option value="bonificacao_valor">Bonificação (R$)</option>
+                            </select>
                         </h4>
-                        <div id="jbp-mini-faturamento-container" class="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+                        <div id="jbp-mini-chart-1-container" class="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar overscroll-y-contain">
                             <!-- Injected bars here -->
                         </div>
                     </div>
 
-                    <!-- Perdas Mini Chart Container -->
+                    <!-- Bottom Mini Chart Container -->
                     <div class="flex-1 flex flex-col overflow-hidden min-h-[150px]">
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-white/5 pb-1 flex justify-between">
-                            <span>Top Perdas</span>
-                            <span id="jbp-perdas-mini-mes" class="text-orange-400 text-[10px]">Todos</span>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-white/5 pb-1 flex flex-col gap-1">
+                            <div class="flex justify-between items-center w-full">
+                                <span class="text-[10px]">TOP</span>
+                                <span id="jbp-mini-2-mes" class="text-orange-400 text-[10px]">Todos</span>
+                            </div>
+                            <select id="jbp-mini-chart-2-select" class="bg-slate-800/80 border border-slate-700 text-slate-200 text-[11px] rounded focus:ring-orange-500 focus:border-orange-500 block w-full p-1 cursor-pointer">
+                                 <option value="faturamento">Faturamento (R$)</option>
+                                 <option value="caixas">Quantidade (Caixas)</option>
+                                 <option value="peso">Toneladas (Kg)</option>
+                                 <option value="perda_valor" selected>Perdas (R$)</option>
+                                 <option value="bonificacao_valor">Bonificação (R$)</option>
+                            </select>
                         </h4>
-                        <div id="jbp-mini-perdas-container" class="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+                        <div id="jbp-mini-chart-2-container" class="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar overscroll-y-contain">
                             <!-- Injected bars here -->
                         </div>
                     </div>
@@ -2758,6 +2780,10 @@
         </div>
     </div>
 </div>
+
+
+    <!-- JBP Custom Tooltip (Instant) -->
+    <div id="jbp-custom-tooltip" class="fixed pointer-events-none z-[9999] opacity-0 transition-opacity duration-150 bg-slate-800 text-slate-200 border border-slate-600 rounded-lg p-2 text-xs shadow-xl max-w-xs whitespace-pre-line" style="display: none;"></div>
 
 </body>
 </html>

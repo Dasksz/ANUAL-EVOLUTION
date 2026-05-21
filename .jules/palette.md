@@ -14,3 +14,7 @@
 ## 2025-05-21 - [JBP Mini-gráficos Layout]
 **Learning:** Ao introduzir gráficos laterais ou painéis secundários (ex: Top faturamento e Top perdas), a limitação de espaço exige uso de barras de rolagem vertical (overflow-y-auto), porém barras visuais nativas muito grossas quebram o layout.
 **Action:** Crie layouts com `flex flex-col` e `overflow-hidden` nos containers pais e `overflow-y-auto` no container filho exato para restringir a altura, e implemente tooltips (attributo `title`) para exibir informações complementares nas barras de progressão do tipo Chart-simulado.
+
+## 2025-05-21 - [JBP Tooltip & Overscroll]
+**Learning:** O atributo `title` padrão gera um atraso de renderização por parte do browser, o que afeta a UX e velocidade percebida na leitura de painéis de dados curtos. Além disso, ter barras de scroll internas ativas pode vazar o scroll para a página (scroll chaining).
+**Action:** Implemente tooltips customizados baseados na delegação de eventos de `mousemove` e o uso do utilitário Tailwind `overscroll-y-contain` nas divisórias restritas (`overflow-y-auto`) para parar a propagação do scroll.
