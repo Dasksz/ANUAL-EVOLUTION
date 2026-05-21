@@ -6264,6 +6264,22 @@ Valor: ${formatValue(item.valor, indicator)}`;
                             ${group.type === "rede" ? "🏢 REDE: " : "👤 CLIENTE: "} ${escapeHtml(group.name)}${group.type === "cliente" && (group.bairro || group.cidade) ? " - " + escapeHtml([group.bairro, group.cidade].filter(Boolean).join(", ")) : ""}
                         </td>
                     </tr>
+                    <tr class="text-[11px] text-slate-400 uppercase bg-slate-800/80 font-semibold border-b border-white/5">
+                        <td class="px-4 py-2 rounded-tl-lg border-r border-white/5">Indicadores</td>
+                        <td class="px-2 py-2 text-center">J</td>
+                        <td class="px-2 py-2 text-center">F</td>
+                        <td class="px-2 py-2 text-center">M</td>
+                        <td class="px-2 py-2 text-center">A</td>
+                        <td class="px-2 py-2 text-center">M</td>
+                        <td class="px-2 py-2 text-center">J</td>
+                        <td class="px-2 py-2 text-center">J</td>
+                        <td class="px-2 py-2 text-center">A</td>
+                        <td class="px-2 py-2 text-center">S</td>
+                        <td class="px-2 py-2 text-center">O</td>
+                        <td class="px-2 py-2 text-center">N</td>
+                        <td class="px-2 py-2 text-center">D</td>
+                        <td class="px-4 py-2 text-right text-orange-400/80 rounded-tr-lg">Total / Média</td>
+                    </tr>
                 `;
 
                 html += generateRowHtml("FATURAMENTO", i => group.months[i].faturamento, formatCurrency, true);
