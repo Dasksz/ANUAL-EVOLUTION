@@ -1204,8 +1204,16 @@
                     </div>
                     
                     <!-- Chart container that fills available height -->
-                    <div class="relative w-full flex-1 min-h-[320px]">
-                        <canvas id="jbpMainChart"></canvas>
+                    <div class="relative w-full flex-1 min-h-[320px] flex gap-2">
+                        <div class="flex-1 relative">
+                            <canvas id="jbpMainChart"></canvas>
+                        </div>
+                        <div class="w-32 bg-slate-800/30 border border-indigo-500/20 rounded-lg p-2 relative flex flex-col hidden" id="jbpSideChartContainer">
+                            <h4 class="text-[10px] text-center font-semibold text-indigo-400 mb-1 uppercase tracking-wider">Projeção</h4>
+                            <div class="flex-1 relative">
+                                <canvas id="jbpSideChart"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
