@@ -6165,56 +6165,6 @@ Valor: ${formatValue(item.valor, indicator)}`;
             renderBars(map1, total1, jbpMiniChart1Container, ind1);
             renderBars(map2, total2, jbpMiniChart2Container, ind2);
         }
-                    if (!perdasMap.has(key)) {
-                        perdasMap.set(key, { nome, cidade: row.cidade || "", bairro: row.bairro || "", valor: 0 });
-                    }
-
-                    faturamentoMap.get(key).valor += fat;
-                    perdasMap.get(key).valor += perda;
-                }
-            });
-
-            const renderBars = (map, total, container, isPerda) => {
-                let arr = Array.from(map.values()).filter(item => item.valor > 0);
-                arr.sort((a, b) => b.valor - a.valor);
-                
-                if (arr.length === 0) {
-                    container.innerHTML = '<div class="text-[10px] text-slate-500 italic py-2 text-center">Sem dados</div>';
-                    return;
-                }
-
-                let html = '';
-                const maxValor = arr[0].valor;
-
-                arr.forEach((item, index) => {
-                    const pctOfTotal = total > 0 ? (item.valor / total) * 100 : 0;
-                    const pctOfMax = maxValor > 0 ? (item.valor / maxValor) * 100 : 0;
-                    
-                    const tooltipText = `${index + 1}º | ${item.nome}\nCidade: ${item.cidade || 'N/A'} | Bairro: ${item.bairro || 'N/A'}\nValor: ${formatCurrency(item.valor)}`;
-                    const barColor = isPerda ? 'bg-red-500/80' : 'bg-orange-500/80';
-                    
-                    html += `
-                        <div class="relative w-full mb-2 group cursor-default" title="${escapeHtml(tooltipText)}">
-                            <!-- Background Bar -->
-                            <div class="w-full bg-slate-800/50 rounded h-5 relative overflow-hidden">
-                                <!-- Value Bar -->
-                                <div class="${barColor} h-full absolute left-0 top-0 transition-all duration-500" style="width: ${pctOfMax}%"></div>
-                            </div>
-                            
-                            <!-- Label overlay -->
-                            <div class="absolute inset-0 flex justify-between items-center px-1 text-[9px] font-medium z-10 pointer-events-none">
-                                <span class="text-white truncate drop-shadow-md pr-1" style="max-width: 70%;">${index + 1}. ${escapeHtml(item.nome)}</span>
-                                <span class="text-white drop-shadow-md shrink-0">${pctOfTotal.toFixed(1)}%</span>
-                            </div>
-                        </div>
-                    `;
-                });
-                container.innerHTML = html;
-            };
-
-            renderBars(faturamentoMap, totalFaturamento, jbpMiniFaturamentoContainer, false);
-            renderBars(perdasMap, totalPerdas, jbpMiniPerdasContainer, true);
-        }
 
         function renderJbpTable() {
             const baseYear = parseInt(jbpAnoFilter.value) || new Date().getFullYear();
