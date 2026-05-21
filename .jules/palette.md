@@ -10,3 +10,7 @@
 ## 2026-05-18 - Additional Context to Client Names in JBP Views
 **Learning:** Displaying only the `cliente_nome` (which is often just `razaosocial`) in dashboards can make it difficult for users to disambiguate branches or locations of the same company (e.g. "DMA DISTRIBUIDORA S/A" exists in multiple cities).
 **Action:** When displaying aggregate views organized by client entities (like the JBP panel), append geographic context (e.g., `Bairro, Cidade`) to the header title.
+
+## 2025-05-21 - [JBP Mini-gráficos Layout]
+**Learning:** Ao introduzir gráficos laterais ou painéis secundários (ex: Top faturamento e Top perdas), a limitação de espaço exige uso de barras de rolagem vertical (overflow-y-auto), porém barras visuais nativas muito grossas quebram o layout.
+**Action:** Crie layouts com `flex flex-col` e `overflow-hidden` nos containers pais e `overflow-y-auto` no container filho exato para restringir a altura, e implemente tooltips (attributo `title`) para exibir informações complementares nas barras de progressão do tipo Chart-simulado.
