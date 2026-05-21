@@ -5650,8 +5650,8 @@ let jbpPanelData = [];
         }
 
         document.addEventListener('click', (e) => {
-            const dropdowns = [jbpFilialFilterDropdown, jbpCidadeFilterDropdown, jbpFornecedorFilterDropdown, jbpCategoriaFilterDropdown, jbpRedeFilterDropdown];
-            const btns = [jbpFilialFilterBtn, jbpCidadeFilterBtn, jbpFornecedorFilterBtn, jbpCategoriaFilterBtn, jbpRedeFilterBtn];
+            const dropdowns = [jbpFilialFilterDropdown, jbpCidadeFilterDropdown, jbpFornecedorFilterDropdown, jbpCategoriaFilterDropdown, jbpRedeFilterDropdown, jbpProdutoFilterDropdown, jbpInovacoesFilterDropdown];
+            const btns = [jbpFilialFilterBtn, jbpCidadeFilterBtn, jbpFornecedorFilterBtn, jbpCategoriaFilterBtn, jbpRedeFilterBtn, jbpProdutoFilterBtn, jbpInovacoesFilterBtn];
             let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
 
             // Close client search results if clicked outside
