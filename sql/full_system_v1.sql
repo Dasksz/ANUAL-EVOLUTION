@@ -6608,6 +6608,7 @@ AS $$
 DECLARE
     v_where text := ' WHERE 1=1 ';
     v_where_rede text := '';
+    v_where_inov text := '';
 
     v_has_com_rede boolean;
     v_has_sem_rede boolean;
@@ -6701,16 +6702,12 @@ BEGIN
     END IF;
 
     -- JBP Categoria Inovacao Filtering
-    DECLARE
-        v_where_inov text := '';
-    BEGIN
         IF p_categoria_inovacao IS NOT NULL AND p_categoria_inovacao != '' THEN
             v_where_inov := format(' AND inovacoes = %L ', p_categoria_inovacao);
             -- Also enforce that the main query only considers products in this specific innovation category
             v_where := v_where || format(' AND s.produto IN (SELECT codigo FROM public.data_innovations WHERE inovacoes = %L) ', p_categoria_inovacao);
         END IF;
-    END;
-    
+
 
     -- Dynamic SQL: Union of detailed and history
     v_sql := format('
