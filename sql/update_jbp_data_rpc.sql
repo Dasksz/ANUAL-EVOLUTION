@@ -183,7 +183,7 @@ BEGIN
                 SUM(COALESCE(s.vldevolucao, 0)) as devolucao,
                 SUM(COALESCE(s.vlbonific, 0)) as bonificacao,
                 COUNT(DISTINCT CASE WHEN inov.inovacoes IS NOT NULL AND COALESCE(s.vlvenda, 0) >= 1 THEN inov.inovacoes ELSE NULL END) as inovacao_pedidos,
-                MAX(CASE WHEN s.tipovenda IN (''1'', ''9'') AND (%s) THEN 1 ELSE 0 END) as atingiu_mix
+                COUNT(DISTINCT CASE WHEN s.tipovenda IN (''1'', ''9'') AND (%s) THEN s.produto ELSE NULL END) as atingiu_mix
             FROM public.data_detailed s
             JOIN public.data_clients c ON s.codcli = c.codigo_cliente
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
@@ -206,7 +206,7 @@ BEGIN
                 SUM(COALESCE(s.vldevolucao, 0)) as devolucao,
                 SUM(COALESCE(s.vlbonific, 0)) as bonificacao,
                 COUNT(DISTINCT CASE WHEN inov.inovacoes IS NOT NULL AND COALESCE(s.vlvenda, 0) >= 1 THEN inov.inovacoes ELSE NULL END) as inovacao_pedidos,
-                MAX(CASE WHEN s.tipovenda IN (''1'', ''9'') AND (%s) THEN 1 ELSE 0 END) as atingiu_mix
+                COUNT(DISTINCT CASE WHEN s.tipovenda IN (''1'', ''9'') AND (%s) THEN s.produto ELSE NULL END) as atingiu_mix
             FROM public.data_history s
             JOIN public.data_clients c ON s.codcli = c.codigo_cliente
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo

@@ -1660,6 +1660,7 @@ const jbpTableBody = document.getElementById('jbp-table-body');
 const jbpClearPanelBtn = document.getElementById('jbp-clear-panel-btn');
 
 let jbpMainChartInstance = null;
+let jbpSideChartInstance = null;
 let jbpPanelEntities = [];
 
 let jbpPanelData = [];
@@ -1724,21 +1725,12 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 // Fetch details from the database. 
                 // We'll query raw data_summary looking for inovações sales for this entity in this month.
                 
-                let query = supabase.from('data_summary')
-                    .select('cod_prod, nome_prod, inovacao_categoria')
-                    .eq('ano', ano)
-                    .eq('mes', mes)
-                    .not('inovacao_categoria', 'is', null)
-                    .neq('inovacao_categoria', '')
-                    .gt('faturamento', 0);
-                    
-                if (p_codcli) {
-                    query = query.eq('codcli', p_codcli);
-                } else if (p_rede) {
-                    query = query.eq('rede', p_rede);
-                }
-
-                const { data, error } = await query;
+                const { data, error } = await supabase.rpc("get_jbp_inovacoes_details", {
+                    p_ano: ano,
+                    p_mes: mes,
+                    p_codcli: p_codcli,
+                    p_rede: p_rede
+                });
 
                 if (error) throw error;
                 
@@ -6132,9 +6124,9 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             const baseYear = parseInt(jbpAnoFilter.value) || new Date().getFullYear();
             const prevYear = baseYear - 1;
 
-            const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Média Ant.", "Tend. Atual"];
-            const currData = new Array(14).fill(null);
-            const prevData = new Array(14).fill(null);
+            const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+            const currData = new Array(12).fill(0);
+            const prevData = new Array(12).fill(0);
             
             // Initialize 0 for the first 12 months
             for(let i=0; i<12; i++) {
@@ -6151,8 +6143,9 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             });
             
             // Calculate Média Ano Anterior
-            const sumPrev = prevData.slice(0, 12).reduce((a, b) => a + b, 0);
-            const mediaPrev = sumPrev / 12;
+            const activePrevMonthsCount = prevData.filter(v => v > 0).length || 1;
+            const sumPrev = prevData.reduce((a, b) => a + b, 0);
+            const mediaPrev = sumPrev / activePrevMonthsCount; // Using only months with sales to represent a true average if it's incomplete
             
             // Tendencia Ano Atual
             const currentYear = new Date().getFullYear();
@@ -6168,19 +6161,25 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                         sumCurr += currData[i];
                     }
                 }
-                const monthsPassed = jbpTrendInfo ? jbpTrendInfo.month_index + 1 : 12;
-                tendenciaCurr = (sumCurr / monthsPassed) * 12;
+                const monthsPassed = jbpTrendInfo && jbpTrendInfo.allowed ? jbpTrendInfo.month_index + 1 : (currData.filter(v => v > 0).length || 1);
+                const mediaCurr = sumCurr / monthsPassed;
+                tendenciaCurr = mediaCurr * 12; // Project this average for the full year
             } else {
-                // Past year: just compare Média vs Média
-                sumCurr = currData.slice(0, 12).reduce((a, b) => a + b, 0);
-                tendenciaCurr = sumCurr / 12;
+                // Past year: just calculate total tendency (which is just the sum of the full year)
+                // wait, if we want to compare average vs average:
+                // sumCurr = currData.reduce((a, b) => a + b, 0);
+                // tendenciaCurr = sumCurr / 12;
+                // BUT the user wants "Média do ano anterior" vs "Tendência do ano atual". 
+                // Tendência do ano atual = Average of months passed * 12.
+                sumCurr = currData.reduce((a, b) => a + b, 0);
+                tendenciaCurr = sumCurr; // For past years, tendency is just the actual total.
             }
             
-            prevData[12] = mediaPrev;
-            currData[13] = tendenciaCurr;
-
             if (jbpMainChartInstance) {
                 jbpMainChartInstance.destroy();
+            }
+            if (jbpSideChartInstance) {
+                jbpSideChartInstance.destroy();
             }
 
             const formatValue = (val) => {
@@ -6188,6 +6187,67 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 if (indicator === "peso") return formatTons(val, 1);
                 return formatInteger(val);
             };
+
+            
+            // Render Side Chart for Projections
+            const sideCtx = document.getElementById("jbpSideChart");
+            const sideContainer = document.getElementById("jbpSideChartContainer");
+            
+            if (sideCtx && sideContainer) {
+                sideContainer.classList.remove('hidden');
+                
+                jbpSideChartInstance = new Chart(sideCtx, {
+                    type: "bar",
+                    data: {
+                        labels: ["Média Ant.", "Tendência"],
+                        datasets: [
+                            {
+                                data: [mediaPrev, tendenciaCurr],
+                                backgroundColor: [
+                                    "rgba(241, 245, 249, 0.8)", // Color matching Ano Anterior
+                                    "rgba(56, 189, 248, 0.8)"   // Color matching Ano Atual
+                                ],
+                                borderColor: [
+                                    "#f1f5f9",
+                                    "#38bdf8"
+                                ],
+                                borderWidth: 1,
+                                borderRadius: 4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.label}: ${formatValue(context.raw)}`;
+                                    }
+                                }
+                            },
+                            datalabels: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                display: false, // Hide Y axis to save space
+                                beginAtZero: true
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    color: "#cbd5e1",
+                                    font: { size: 10 }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
 
             jbpMainChartInstance = new Chart(ctx, {
                 type: "bar",
