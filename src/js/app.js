@@ -1621,6 +1621,11 @@ let jbpSelectedInovacoes = [];
 
 const jbpAnoFilter = document.getElementById('jbp-ano-filter');
 const jbpMesFilter = document.getElementById('jbp-mes-filter');
+const jbpMiniFaturamentoContainer = document.getElementById('jbp-mini-faturamento-container');
+const jbpMiniPerdasContainer = document.getElementById('jbp-mini-perdas-container');
+const jbpFaturamentoMiniMes = document.getElementById('jbp-faturamento-mini-mes');
+const jbpPerdasMiniMes = document.getElementById('jbp-perdas-mini-mes');
+
 const jbpFilialFilterBtn = document.getElementById('jbp-filial-filter-btn');
 const jbpFilialFilterDropdown = document.getElementById('jbp-filial-filter-dropdown');
 const jbpCidadeFilterBtn = document.getElementById('jbp-cidade-filter-btn');
@@ -5666,11 +5671,12 @@ let jbpPanelData = [];
         });
 
         let jbpFilterDebounceTimer;
-        let lastJbpFiltersStr = "";
+        let lastJbpFiltersDbStr = "";
+        let lastJbpMesVal = "";
+
         const handleJbpFilterChange = async () => {
-            const currentFiltersStr = JSON.stringify({
+            const currentDbFiltersStr = JSON.stringify({
                 ano: jbpAnoFilter?.value,
-                mes: jbpMesFilter?.value,
                 filiais: jbpSelectedFiliais,
                 cidades: jbpSelectedCidades,
                 fornecedores: jbpSelectedFornecedores,
@@ -5678,15 +5684,28 @@ let jbpPanelData = [];
                 redes: jbpSelectedRedes
             });
 
-            if (currentFiltersStr === lastJbpFiltersStr) return;
-            lastJbpFiltersStr = currentFiltersStr;
+            const currentMesVal = jbpMesFilter?.value || 'todos';
+
+            const dbChanged = currentDbFiltersStr !== lastJbpFiltersDbStr;
+            const mesChanged = currentMesVal !== lastJbpMesVal;
+
+            if (!dbChanged && !mesChanged) return;
+
+            lastJbpFiltersDbStr = currentDbFiltersStr;
+            lastJbpMesVal = currentMesVal;
 
             clearTimeout(jbpFilterDebounceTimer);
             jbpFilterDebounceTimer = setTimeout(async () => {
                 if (jbpPanelEntities.length > 0) {
-                    await refreshJbpData();
+                    if (dbChanged) {
+                        // If DB filters changed, we need to fetch new data from Supabase
+                        await refreshJbpData();
+                    } else if (mesChanged) {
+                        // If only the month filter changed, we can just re-render the mini charts locally
+                        renderJbpMiniCharts();
+                    }
                 }
-            }, 500);
+            }, 300);
         };
 
         if (jbpAnoFilter) jbpAnoFilter.addEventListener("change", handleJbpFilterChange);
@@ -5759,6 +5778,9 @@ let jbpPanelData = [];
         if (jbpClearFiltersBtn) {
             jbpClearFiltersBtn.addEventListener("click", () => {
                 clearArrays(jbpSelectedFiliais, jbpSelectedCidades, jbpSelectedFornecedores, jbpSelectedRedes, jbpSelectedCategorias, jbpSelectedProdutos, jbpSelectedInovacoes);
+
+                lastJbpFiltersDbStr = "";
+                lastJbpMesVal = "";
 
                 uncheckAllCheckboxes(jbpFilialFilterDropdown);
                 const jbpCidadeFilterList = document.getElementById("jbp-cidade-filter-list");
@@ -5857,7 +5879,7 @@ let jbpPanelData = [];
             if(!jbpSelectedClientsContainer) return;
             jbpSelectedClientsContainer.innerHTML = jbpPanelEntities.map(e => `
                 <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-500/20 text-orange-200 border border-orange-500/30">
-                    ${e.type === "rede" ? "<svg class=\"w-3 h-3 mr-1\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1v1H9V7zm5 0h1v1h-1V7zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1z\"></path></svg>" : ""}
+                    ${e.type === "rede" ? "<svg class=\"w-3 h-3 mr-1\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2-2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1v1H9V7zm5 0h1v1h-1V7zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1z\"></path></svg>" : ""}
                     ${escapeHtml(e.name)}
                     <button type="button" class="ml-1.5 text-orange-400 hover:text-orange-200 focus:outline-none" onclick="removeJbpEntity('${e.type}', '${e.id}')">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -5873,8 +5895,8 @@ let jbpPanelData = [];
                 jbpEmptyState.classList.add("hidden");
                 jbpContentArea.classList.remove("hidden");
                 jbpContentArea.style.display = "flex";
-                
                 renderJbpChart();
+                renderJbpMiniCharts();
                 renderJbpTable();
             }
         }
@@ -5984,6 +6006,94 @@ let jbpPanelData = [];
                     }
                 }
             });
+        }
+
+
+        function renderJbpMiniCharts() {
+            if (!jbpMiniFaturamentoContainer || !jbpMiniPerdasContainer) return;
+
+            const mesFilterVal = jbpMesFilter?.value || 'todos';
+            const isTodos = mesFilterVal === 'todos';
+            const mesNum = parseInt(mesFilterVal);
+
+            const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+            const mesLabel = isTodos ? "Todos os Meses" : monthNames[mesNum - 1];
+
+            if (jbpFaturamentoMiniMes) jbpFaturamentoMiniMes.textContent = mesLabel;
+            if (jbpPerdasMiniMes) jbpPerdasMiniMes.textContent = mesLabel;
+
+            const baseYear = parseInt(jbpAnoFilter.value) || new Date().getFullYear();
+
+            // Aggregate data by loja
+            const faturamentoMap = new Map();
+            const perdasMap = new Map();
+            let totalFaturamento = 0;
+            let totalPerdas = 0;
+
+            jbpPanelData.forEach(row => {
+                // Filter by year and selected month
+                if (row.ano === baseYear && (isTodos || row.mes === mesNum)) {
+                    const key = row.codcli; // or rede if it's aggregated, but we have codcli
+                    const nome = row.cliente_nome || row.rede || "Desconhecido";
+
+                    const fat = row.faturamento || 0;
+                    const perda = row.perda_valor || 0;
+
+                    totalFaturamento += fat;
+                    totalPerdas += perda;
+
+                    if (!faturamentoMap.has(key)) {
+                        faturamentoMap.set(key, { nome, cidade: row.cidade || "", bairro: row.bairro || "", valor: 0 });
+                    }
+                    if (!perdasMap.has(key)) {
+                        perdasMap.set(key, { nome, cidade: row.cidade || "", bairro: row.bairro || "", valor: 0 });
+                    }
+
+                    faturamentoMap.get(key).valor += fat;
+                    perdasMap.get(key).valor += perda;
+                }
+            });
+
+            const renderBars = (map, total, container, isPerda) => {
+                let arr = Array.from(map.values()).filter(item => item.valor > 0);
+                arr.sort((a, b) => b.valor - a.valor);
+
+                if (arr.length === 0) {
+                    container.innerHTML = '<div class="text-[10px] text-slate-500 italic py-2 text-center">Sem dados</div>';
+                    return;
+                }
+
+                let html = '';
+                const maxValor = arr[0].valor;
+
+                arr.forEach((item, index) => {
+                    const pctOfTotal = total > 0 ? (item.valor / total) * 100 : 0;
+                    const pctOfMax = maxValor > 0 ? (item.valor / maxValor) * 100 : 0;
+
+                    const tooltipText = `${index + 1}º | ${item.nome}\nCidade: ${item.cidade || 'N/A'} | Bairro: ${item.bairro || 'N/A'}\nValor: ${formatCurrency(item.valor)}`;
+                    const barColor = isPerda ? 'bg-red-500/80' : 'bg-orange-500/80';
+
+                    html += `
+                        <div class="relative w-full mb-2 group cursor-default" title="${escapeHtml(tooltipText)}">
+                            <!-- Background Bar -->
+                            <div class="w-full bg-slate-800/50 rounded h-5 relative overflow-hidden">
+                                <!-- Value Bar -->
+                                <div class="${barColor} h-full absolute left-0 top-0 transition-all duration-500" style="width: ${pctOfMax}%"></div>
+                            </div>
+
+                            <!-- Label overlay -->
+                            <div class="absolute inset-0 flex justify-between items-center px-1 text-[9px] font-medium z-10 pointer-events-none">
+                                <span class="text-white truncate drop-shadow-md pr-1" style="max-width: 70%;">${index + 1}. ${escapeHtml(item.nome)}</span>
+                                <span class="text-white drop-shadow-md shrink-0">${pctOfTotal.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            };
+
+            renderBars(faturamentoMap, totalFaturamento, jbpMiniFaturamentoContainer, false);
+            renderBars(perdasMap, totalPerdas, jbpMiniPerdasContainer, true);
         }
 
         function renderJbpTable() {

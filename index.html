@@ -1183,7 +1183,7 @@
     <!-- Content Area (Hidden initially) -->
     <div id="jbp-content-area" class="hidden flex-col gap-6">
         
-        <!-- Main Chart Section -->
+                <!-- Main Chart Section -->
         <div class="bg-[#151419]/80 backdrop-blur-md p-5 rounded-xl shadow-lg border border-white/10">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-bold text-white uppercase tracking-wide">Comparativo Anual <span id="jbp-chart-title-indicator" class="text-orange-400">Faturamento</span></h3>
@@ -1199,8 +1199,37 @@
                 </div>
             </div>
             
-            <div class="relative h-80 w-full">
-                <canvas id="jbpMainChart"></canvas>
+            <div class="flex flex-col lg:flex-row gap-4 h-full">
+                <!-- Large Main Chart (~80% width) -->
+                <div class="relative h-80 w-full lg:w-4/5">
+                    <canvas id="jbpMainChart"></canvas>
+                </div>
+
+                <!-- Mini Charts Column (~20% width) -->
+                <div class="w-full lg:w-1/5 flex flex-col gap-4 border-l border-white/10 pl-4">
+
+                    <!-- Faturamento Mini Chart Container -->
+                    <div class="flex-1 flex flex-col overflow-hidden min-h-[150px]">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-white/5 pb-1 flex justify-between">
+                            <span>Top Faturamento</span>
+                            <span id="jbp-faturamento-mini-mes" class="text-orange-400 text-[10px]">Todos</span>
+                        </h4>
+                        <div id="jbp-mini-faturamento-container" class="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+                            <!-- Injected bars here -->
+                        </div>
+                    </div>
+
+                    <!-- Perdas Mini Chart Container -->
+                    <div class="flex-1 flex flex-col overflow-hidden min-h-[150px]">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-white/5 pb-1 flex justify-between">
+                            <span>Top Perdas</span>
+                            <span id="jbp-perdas-mini-mes" class="text-orange-400 text-[10px]">Todos</span>
+                        </h4>
+                        <div id="jbp-mini-perdas-container" class="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+                            <!-- Injected bars here -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
