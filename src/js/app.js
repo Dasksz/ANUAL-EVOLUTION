@@ -1660,9 +1660,137 @@ const jbpTableBody = document.getElementById('jbp-table-body');
 const jbpClearPanelBtn = document.getElementById('jbp-clear-panel-btn');
 
 let jbpMainChartInstance = null;
+let jbpSideChartInstance = null;
 let jbpPanelEntities = [];
+
 let jbpPanelData = [];
-    // --- Navigation Logic (Updated for Top Nav) ---
+let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
+
+        // -------------------------------------------------------------
+        // INOVAÇÕES MODAL LOGIC
+        // -------------------------------------------------------------
+        const jbpInovacoesModal = document.getElementById('jbp-inovacoes-modal');
+        const jbpInovacoesCloseBtn = document.getElementById('jbp-inovacoes-modal-close');
+        const jbpInovacoesLoading = document.getElementById('jbp-inovacoes-loading');
+        const jbpInovacoesContent = document.getElementById('jbp-inovacoes-content');
+        const jbpInovacoesSubtitle = document.getElementById('jbp-inovacoes-modal-subtitle');
+
+        if (jbpInovacoesCloseBtn) {
+            jbpInovacoesCloseBtn.addEventListener('click', () => {
+                if (jbpInovacoesModal) {
+                    jbpInovacoesModal.classList.remove('opacity-100');
+                    jbpInovacoesModal.classList.add('opacity-0');
+                    const modalInner = jbpInovacoesModal.querySelector('.transform');
+                    if (modalInner) {
+                        modalInner.classList.remove('scale-100');
+                        modalInner.classList.add('scale-95');
+                    }
+                    setTimeout(() => {
+                        jbpInovacoesModal.classList.add('hidden');
+                    }, 300);
+                }
+            });
+        }
+
+        window.openInovacoesModal = async function(event, ano, mes, entityId, entityType) {
+            event.preventDefault();
+
+            if (!jbpInovacoesModal) return;
+
+            // Show modal
+            jbpInovacoesModal.classList.remove('hidden');
+            // Small delay to allow display:block to apply before animating opacity
+            setTimeout(() => {
+                jbpInovacoesModal.classList.remove('opacity-0');
+                jbpInovacoesModal.classList.add('opacity-100');
+                const modalInner = jbpInovacoesModal.querySelector('.transform');
+                if (modalInner) {
+                    modalInner.classList.remove('scale-95');
+                    modalInner.classList.add('scale-100');
+                }
+            }, 10);
+
+            const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            jbpInovacoesSubtitle.textContent = `Mês: ${monthNames[mes - 1]} / ${ano}`;
+
+            jbpInovacoesContent.innerHTML = '';
+            jbpInovacoesLoading.classList.remove('hidden');
+            jbpInovacoesContent.classList.add('hidden');
+
+            try {
+                // Determine parameters for query
+                const p_codcli = entityType === 'cliente' ? entityId : null;
+                const p_rede = entityType === 'rede' ? entityId : null;
+
+                // Fetch details from the database.
+                // We'll query raw data_summary looking for inovações sales for this entity in this month.
+
+                const { data, error } = await supabase.rpc("get_jbp_inovacoes_details", {
+                    p_ano: ano,
+                    p_mes: mes,
+                    p_codcli: p_codcli,
+                    p_rede: p_rede
+                });
+
+                if (error) throw error;
+
+                jbpInovacoesLoading.classList.add('hidden');
+                jbpInovacoesContent.classList.remove('hidden');
+
+                if (!data || data.length === 0) {
+                    jbpInovacoesContent.innerHTML = `<p class="text-slate-400 text-center py-8">Nenhuma inovação encontrada para este período.</p>`;
+                    return;
+                }
+
+                // Group by Category and then Unique Products
+                const grouped = {};
+                data.forEach(row => {
+                    const cat = row.inovacao_categoria.trim().toUpperCase();
+                    if (!grouped[cat]) grouped[cat] = new Set();
+                    grouped[cat].add(`${row.cod_prod} - ${row.nome_prod}`);
+                });
+
+                let html = '';
+                const categories = Object.keys(grouped).sort();
+
+                categories.forEach(cat => {
+                    html += `
+                        <div class="bg-slate-800 rounded-lg p-5 border border-slate-700 shadow-sm">
+                            <h4 class="text-sm font-bold text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                ${escapeHtml(cat)}
+                            </h4>
+                            <ul class="space-y-2 mt-2">
+                    `;
+
+                    const products = Array.from(grouped[cat]).sort();
+                    products.forEach(prod => {
+                        html += `
+                                <li class="text-slate-300 text-sm flex items-start gap-2 ml-2">
+                                    <span class="text-slate-500 mt-1">•</span>
+                                    <span>${escapeHtml(prod)}</span>
+                                </li>
+                        `;
+                    });
+
+                    html += `
+                            </ul>
+                        </div>
+                    `;
+                });
+
+                jbpInovacoesContent.innerHTML = html;
+
+            } catch (err) {
+                AppLog.error("Error fetching inovacoes details:", err);
+                jbpInovacoesLoading.classList.add('hidden');
+                jbpInovacoesContent.classList.remove('hidden');
+                jbpInovacoesContent.innerHTML = `<p class="text-red-400 text-center py-8">Erro ao carregar detalhes.</p>`;
+            }
+        };
+
+        // --- Navigation Logic (Updated for Top Nav) ---
+
     // Helper to check if a clicked link is already active
     // Navigation Logic
 
@@ -5922,11 +6050,25 @@ let jbpPanelData = [];
                     p_redes_adicionadas: redesArray.length > 0 ? redesArray : null
                 };
 
-                const { data, error } = await supabase.rpc("get_jbp_data", params);
+
+                const { data: responseData, error } = await supabase.rpc("get_jbp_data", params);
                 if (error) throw error;
 
-                jbpPanelData = data || [];
+                if (responseData && responseData.data) {
+                    jbpPanelData = responseData.data || [];
+                    jbpTrendInfo = {
+                        allowed: responseData.trend_allowed,
+                        factor: responseData.trend_factor,
+                        month_index: responseData.trend_month_index
+                    };
+                } else {
+                    // Fallback to older RPC format if it hasn't updated yet
+                    jbpPanelData = responseData || [];
+                    jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
+                }
+
                 renderJbpPanel();
+
             } catch (error) {
                 AppLog.error("Error refreshing JBP data:", error);
                 window.showToast("Erro ao atualizar dados do painel.", "error");
@@ -5986,6 +6128,12 @@ let jbpPanelData = [];
             const currData = new Array(12).fill(0);
             const prevData = new Array(12).fill(0);
 
+            // Initialize 0 for the first 12 months
+            for(let i=0; i<12; i++) {
+                currData[i] = 0;
+                prevData[i] = 0;
+            }
+
             jbpPanelData.forEach(row => {
                 if (row.ano === baseYear && row.mes >= 1 && row.mes <= 12) {
                     currData[row.mes - 1] += (row[indicator] || 0);
@@ -5994,8 +6142,44 @@ let jbpPanelData = [];
                 }
             });
 
+            // Calculate Média Ano Anterior
+            const activePrevMonthsCount = prevData.filter(v => v > 0).length || 1;
+            const sumPrev = prevData.reduce((a, b) => a + b, 0);
+            const mediaPrev = sumPrev / activePrevMonthsCount; // Using only months with sales to represent a true average if it's incomplete
+
+            // Tendencia Ano Atual
+            const currentYear = new Date().getFullYear();
+            let sumCurr = 0;
+            let tendenciaCurr = 0;
+
+            if (baseYear === currentYear) {
+                // Apply trend logic
+                for(let i=0; i<12; i++) {
+                    if (jbpTrendInfo && jbpTrendInfo.allowed && i === jbpTrendInfo.month_index) {
+                        sumCurr += currData[i] * jbpTrendInfo.factor;
+                    } else {
+                        sumCurr += currData[i];
+                    }
+                }
+                const monthsPassed = jbpTrendInfo && jbpTrendInfo.allowed ? jbpTrendInfo.month_index + 1 : (currData.filter(v => v > 0).length || 1);
+                const mediaCurr = sumCurr / monthsPassed;
+                tendenciaCurr = mediaCurr * 12; // Project this average for the full year
+            } else {
+                // Past year: just calculate total tendency (which is just the sum of the full year)
+                // wait, if we want to compare average vs average:
+                // sumCurr = currData.reduce((a, b) => a + b, 0);
+                // tendenciaCurr = sumCurr / 12;
+                // BUT the user wants "Média do ano anterior" vs "Tendência do ano atual".
+                // Tendência do ano atual = Average of months passed * 12.
+                sumCurr = currData.reduce((a, b) => a + b, 0);
+                tendenciaCurr = sumCurr; // For past years, tendency is just the actual total.
+            }
+
             if (jbpMainChartInstance) {
                 jbpMainChartInstance.destroy();
+            }
+            if (jbpSideChartInstance) {
+                jbpSideChartInstance.destroy();
             }
 
             const formatValue = (val) => {
@@ -6003,6 +6187,67 @@ let jbpPanelData = [];
                 if (indicator === "peso") return formatTons(val, 1);
                 return formatInteger(val);
             };
+
+
+            // Render Side Chart for Projections
+            const sideCtx = document.getElementById("jbpSideChart");
+            const sideContainer = document.getElementById("jbpSideChartContainer");
+
+            if (sideCtx && sideContainer) {
+                sideContainer.classList.remove('hidden');
+
+                jbpSideChartInstance = new Chart(sideCtx, {
+                    type: "bar",
+                    data: {
+                        labels: ["Média Ant.", "Tendência"],
+                        datasets: [
+                            {
+                                data: [mediaPrev, tendenciaCurr],
+                                backgroundColor: [
+                                    "rgba(241, 245, 249, 0.8)", // Color matching Ano Anterior
+                                    "rgba(56, 189, 248, 0.8)"   // Color matching Ano Atual
+                                ],
+                                borderColor: [
+                                    "#f1f5f9",
+                                    "#38bdf8"
+                                ],
+                                borderWidth: 1,
+                                borderRadius: 4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.label}: ${formatValue(context.raw)}`;
+                                    }
+                                }
+                            },
+                            datalabels: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                display: false, // Hide Y axis to save space
+                                beginAtZero: true
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    color: "#cbd5e1",
+                                    font: { size: 10 }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
 
             jbpMainChartInstance = new Chart(ctx, {
                 type: "bar",
@@ -6181,6 +6426,7 @@ Valor: ${formatValue(item.valor, indicator)}`;
                 jbpPanelEntities.forEach(entity => {
                     const entityKey = entity.id;
                     groupedData[entityKey] = {
+                        id: entityKey,
                         name: entity.name,
                         type: entity.type,
                         months: new Array(12).fill(null).map(() => ({
@@ -6194,6 +6440,7 @@ Valor: ${formatValue(item.valor, indicator)}`;
                 uniqueClients.forEach(codcli => {
                     const clientData = jbpPanelData.find(r => r.codcli === codcli);
                     groupedData[codcli] = {
+                        id: codcli,
                         name: clientData ? clientData.cliente_nome : codcli,
                         bairro: clientData ? clientData.bairro : null,
                         cidade: clientData ? clientData.cidade : null,
@@ -6291,7 +6538,26 @@ Valor: ${formatValue(item.valor, indicator)}`;
                     return pos > 0 ? (group.months[i].total_mix / pos) : 0;
                 }, v => v.toFixed(2), false);
                 
-                html += generateRowHtml("INOVAÇÕES", i => group.months[i].clientes_inovacoes, formatInteger, true);
+                // Custom row for INOVAÇÕES to make it clickable
+                let inovacoesTotal = 0;
+                const inovCells = new Array(12).fill(0).map((_, i) => {
+                    const val = group.months[i].clientes_inovacoes;
+                    inovacoesTotal += val;
+                    const displayVal = val === 0 ? "-" : escapeHtml(formatInteger(val));
+                    // Make it clickable if > 0
+                    if (val > 0) {
+                        return `<td class="px-2 py-2 text-center whitespace-nowrap"><a href="#" onclick="openInovacoesModal(event, ${baseYear}, ${i + 1}, '${group.id}', '${group.type}')" class="text-blue-400 hover:text-blue-300 underline underline-offset-2">${displayVal}</a></td>`;
+                    }
+                    return `<td class="px-2 py-2 text-center whitespace-nowrap">${displayVal}</td>`;
+                }).join("");
+
+                html += `
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <td class="px-4 py-2 font-medium whitespace-nowrap border-r border-white/5 bg-slate-800/30">INOVAÇÕES</td>
+                        ${inovCells}
+                        <td class="px-4 py-2 text-right font-bold text-orange-400 whitespace-nowrap bg-slate-800/30">${escapeHtml(formatInteger(inovacoesTotal))}</td>
+                    </tr>
+                `;
 
                 html += generateRowHtml("BONIFICAÇÃO", i => group.months[i].bonificacao_valor, formatCurrency, true);
                 html += generateRowHtml("PERDAS", i => group.months[i].perda_valor, formatCurrency, true, "text-red-400");
