@@ -18,3 +18,7 @@
 ## 2025-05-21 - [JBP Tooltip & Overscroll]
 **Learning:** O atributo `title` padrão gera um atraso de renderização por parte do browser, o que afeta a UX e velocidade percebida na leitura de painéis de dados curtos. Além disso, ter barras de scroll internas ativas pode vazar o scroll para a página (scroll chaining).
 **Action:** Implemente tooltips customizados baseados na delegação de eventos de `mousemove` e o uso do utilitário Tailwind `overscroll-y-contain` nas divisórias restritas (`overflow-y-auto`) para parar a propagação do scroll.
+
+## 2025-05-21 - [Tabela de Dados: Cabeçalho Desalinhado]
+**Learning:** O uso de `<thead>` global em tabelas que quebram o conteúdo com agrupamentos longos horizontais e blocos de detalhamento causa confusão visual para o usuário quando o título desce na tela.
+**Action:** Desativar o Thead e inserir uma linha estilo cabeçalho (`<tr>`) com as descrições em forma abreviada imediatamente abaixo de cada bloco que a requer, melhorando o alinhamento contexto/valor de leitura rápida.
