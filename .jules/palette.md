@@ -10,3 +10,6 @@
 ## 2026-05-18 - Additional Context to Client Names in JBP Views
 **Learning:** Displaying only the `cliente_nome` (which is often just `razaosocial`) in dashboards can make it difficult for users to disambiguate branches or locations of the same company (e.g. "DMA DISTRIBUIDORA S/A" exists in multiple cities).
 **Action:** When displaying aggregate views organized by client entities (like the JBP panel), append geographic context (e.g., `Bairro, Cidade`) to the header title.
+## 2026-05-20 - Adicionado Scrollbar no Modal de Uploader Opcional
+**Aprendizado:** Em modais longos que contêm abas sanfonadas (expansíveis) ou muitos `inputs`, ao expandir, a lista pode "vazar" da tela (`overflow`), deixando partes do painel inacessíveis, especialmente em telas menores como notebooks de 13 polegadas.
+**Ação:** Envolver as seções internas de modais dentro de um container `<div class="max-h-[60vh] overflow-y-auto custom-scrollbar">` (ou similar) garantindo que a tela nunca exceda a altura da janela, mantendo o botão "Submit" ou "Atualizar Base" sempre visível e passível de clique na parte inferior.

@@ -1,0 +1,1 @@
+sed -i '/\.progress-bar {/i \        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }\n        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }\n        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.2); border-radius: 20px; }' index.html
