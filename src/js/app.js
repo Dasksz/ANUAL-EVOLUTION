@@ -6536,9 +6536,11 @@ Valor: ${formatValue(item.valor, indicator)}`;
                 
                 // Custom row for INOVAÇÕES to make it clickable
                 let inovacoesTotal = 0;
+                let inovacoesActiveMonths = 0;
                 const inovCells = new Array(12).fill(0).map((_, i) => {
                     const val = group.months[i].clientes_inovacoes;
                     inovacoesTotal += val;
+                    if (val > 0) inovacoesActiveMonths++;
                     const displayVal = val === 0 ? "-" : escapeHtml(formatInteger(val));
                     // Make it clickable if > 0
                     if (val > 0) {
@@ -6547,11 +6549,13 @@ Valor: ${formatValue(item.valor, indicator)}`;
                     return `<td class="px-2 py-2 text-center whitespace-nowrap">${displayVal}</td>`;
                 }).join("");
                 
+                const inovacoesMedia = inovacoesActiveMonths > 0 ? (inovacoesTotal / inovacoesActiveMonths) : 0;
+                
                 html += `
                     <tr class="hover:bg-white/5 transition-colors">
                         <td class="px-4 py-2 font-medium whitespace-nowrap border-r border-white/5 bg-slate-800/30">INOVAÇÕES</td>
                         ${inovCells}
-                        <td class="px-4 py-2 text-right font-bold text-orange-400 whitespace-nowrap bg-slate-800/30">${escapeHtml(formatInteger(inovacoesTotal))}</td>
+                        <td class="px-4 py-2 text-right font-bold text-orange-400 whitespace-nowrap bg-slate-800/30">${escapeHtml(formatInteger(inovacoesMedia))}</td>
                     </tr>
                 `;
 
