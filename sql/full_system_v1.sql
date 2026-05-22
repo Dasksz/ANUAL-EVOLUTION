@@ -6807,7 +6807,7 @@ BEGIN
                 SUM(CASE WHEN tipovenda = ''11'' THEN COALESCE(vlvenda,0) + COALESCE(vlbonific,0) ELSE 0 END) as bonificacao_valor,
                 MAX(CASE WHEN tipovenda NOT IN (''5'', ''11'') AND COALESCE(vlvenda,0) >= 1 THEN 1 ELSE 0 END) as positivado,
                 COUNT(DISTINCT CASE WHEN tipovenda NOT IN (''5'', ''11'') AND inovacoes IS NOT NULL AND COALESCE(vlvenda, 0) >= 1 THEN inovacoes ELSE NULL END) as inovou,
-                COUNT(DISTINCT CASE WHEN tipovenda IN (''1'', ''9'') AND (%s) THEN produto ELSE NULL END) as pre_mix_count
+                COUNT(DISTINCT CASE WHEN tipovenda IN (''1'', ''9'') AND COALESCE(vlvenda,0) >= 1 AND (%s) THEN produto ELSE NULL END) as pre_mix_count
             FROM raw_data
             GROUP BY 1, 2, 3
         ),
