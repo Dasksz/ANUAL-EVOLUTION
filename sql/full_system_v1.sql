@@ -6611,7 +6611,6 @@ DECLARE
     v_has_com_rede boolean := false;
     v_has_sem_rede boolean := false;
     v_specific_redes text[];
-    v_mix_constraint text := '';
     
     v_trend_allowed boolean := false;
     v_trend_factor numeric := 1.0;
@@ -6732,13 +6731,6 @@ BEGIN
         v_where := v_where || format(' AND s.produto IN (SELECT codigo FROM public.data_innovations WHERE inovacoes = %L) ', p_categoria_inovacao);
     END IF;
 
-    -- MIX Constraint Logic
-    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_mix_constraint := ' 1=1 ';
-    ELSE
-        v_mix_constraint := ' s.codfor IN (''707'', ''708'', ''752'') ';
-    END IF;
-
 
     v_sql := format('
         WITH inovacoes AS (
@@ -6807,7 +6799,7 @@ BEGIN
                 SUM(CASE WHEN tipovenda = ''11'' THEN COALESCE(vlvenda,0) + COALESCE(vlbonific,0) ELSE 0 END) as bonificacao_valor,
                 MAX(CASE WHEN tipovenda NOT IN (''5'', ''11'') AND COALESCE(vlvenda,0) >= 1 THEN 1 ELSE 0 END) as positivado,
                 COUNT(DISTINCT CASE WHEN tipovenda NOT IN (''5'', ''11'') AND inovacoes IS NOT NULL AND COALESCE(vlvenda, 0) >= 1 THEN inovacoes ELSE NULL END) as inovou,
-                COUNT(DISTINCT CASE WHEN tipovenda IN (''1'', ''9'') AND COALESCE(vlvenda,0) >= 1 AND (%s) THEN produto ELSE NULL END) as pre_mix_count
+                COUNT(DISTINCT CASE WHEN tipovenda IN (''1'', ''9'') AND COALESCE(vlvenda,0) >= 1 THEN produto ELSE NULL END) as pre_mix_count
             FROM raw_data
             GROUP BY 1, 2, 3
         ),
@@ -6840,7 +6832,7 @@ BEGIN
         FROM (
             SELECT * FROM monthly_agg ORDER BY ano DESC, mes DESC
         ) t
-    ', v_where_inov, v_where, v_where, v_mix_constraint, v_trend_allowed, v_trend_factor, COALESCE(EXTRACT(MONTH FROM v_max_sale_date)::int - 1, 11));
+    ', v_where_inov, v_where, v_where, v_trend_allowed, v_trend_factor, COALESCE(EXTRACT(MONTH FROM v_max_sale_date)::int - 1, 11));
 
     EXECUTE v_sql INTO v_result;
     
