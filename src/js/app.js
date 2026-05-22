@@ -6142,10 +6142,9 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 }
             });
             
-            // Calculate Média Ano Anterior
-            const activePrevMonthsCount = prevData.filter(v => v > 0).length || 1;
+            // Calculate Total Ano Anterior
             const sumPrev = prevData.reduce((a, b) => a + b, 0);
-            const mediaPrev = sumPrev / activePrevMonthsCount; // Using only months with sales to represent a true average if it's incomplete
+            const totalPrev = sumPrev;
             
             // Tendencia Ano Atual
             const currentYear = new Date().getFullYear();
@@ -6166,11 +6165,6 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 tendenciaCurr = mediaCurr * 12; // Project this average for the full year
             } else {
                 // Past year: just calculate total tendency (which is just the sum of the full year)
-                // wait, if we want to compare average vs average:
-                // sumCurr = currData.reduce((a, b) => a + b, 0);
-                // tendenciaCurr = sumCurr / 12;
-                // BUT the user wants "Média do ano anterior" vs "Tendência do ano atual". 
-                // Tendência do ano atual = Average of months passed * 12.
                 sumCurr = currData.reduce((a, b) => a + b, 0);
                 tendenciaCurr = sumCurr; // For past years, tendency is just the actual total.
             }
@@ -6199,10 +6193,10 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 jbpSideChartInstance = new Chart(sideCtx, {
                     type: "bar",
                     data: {
-                        labels: ["Média Ant.", "Tendência"],
+                        labels: ["Total Ant.", "Tendência"],
                         datasets: [
                             {
-                                data: [mediaPrev, tendenciaCurr],
+                                data: [totalPrev, tendenciaCurr],
                                 backgroundColor: [
                                     "rgba(241, 245, 249, 0.8)", // Color matching Ano Anterior
                                     "rgba(56, 189, 248, 0.8)"   // Color matching Ano Atual
@@ -6224,7 +6218,12 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                                 display: false
                             },
                             tooltip: {
+                                bodyFont: { size: 10 },
+                                padding: 6,
                                 callbacks: {
+                                    title: function() {
+                                        return '';
+                                    },
                                     label: function(context) {
                                         return `${context.label}: ${formatValue(context.raw)}`;
                                     }
@@ -6533,10 +6532,7 @@ Valor: ${formatValue(item.valor, indicator)}`;
                 html += generateRowHtml("TONELADAS", i => group.months[i].peso, v => formatTons(v, 1), true);
                 html += generateRowHtml("QTD. CAIXAS", i => group.months[i].caixas, formatInteger, true);
                 
-                html += generateRowHtml("MIX PDV", i => {
-                    const pos = group.months[i].clientes_positivados;
-                    return pos > 0 ? (group.months[i].total_mix / pos) : 0;
-                }, v => v.toFixed(2), false);
+                html += generateRowHtml("MIX PDV", i => group.months[i].total_mix, formatInteger, false);
                 
                 // Custom row for INOVAÇÕES to make it clickable
                 let inovacoesTotal = 0;
