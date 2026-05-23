@@ -6130,7 +6130,7 @@ BEGIN
             END as codfor, 
             s.tipovenda, 
             s.codcli,
-            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
+            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
             c.ramo
         FROM raw_data s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
@@ -6212,7 +6212,7 @@ BEGIN
             END as codfor, 
             s.tipovenda, 
             s.codcli,
-            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
+            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
             c.ramo
         FROM raw_data s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
@@ -6296,7 +6296,7 @@ BEGIN
             END as codfor, 
             s.tipovenda, 
             s.codcli,
-            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
+            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
             c.ramo
         FROM raw_data s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
@@ -6753,14 +6753,14 @@ BEGIN
                 s.tipovenda,
                 s.vlvenda,
                 s.totpesoliq,
-                s.qtvenda_embalagem_master,
+                s.qtvenda, dp.qtde_embalagem_master,
                 s.vldevolucao,
                 s.vlbonific,
                 s.produto,
                 s.pedido
             FROM public.data_detailed s
             JOIN public.data_clients c ON s.codcli = c.codigo_cliente
-            LEFT JOIN public.data_product_details dp ON s.produto = dp.code
+            LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s
             UNION ALL
             SELECT 
@@ -6774,14 +6774,14 @@ BEGIN
                 s.tipovenda,
                 s.vlvenda,
                 s.totpesoliq,
-                s.qtvenda_embalagem_master,
+                s.qtvenda, dp.qtde_embalagem_master,
                 s.vldevolucao,
                 s.vlbonific,
                 s.produto,
                 s.pedido
             FROM public.data_history s
             JOIN public.data_clients c ON s.codcli = c.codigo_cliente
-            LEFT JOIN public.data_product_details dp ON s.produto = dp.code
+            LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s
         ),
         base_data AS (
@@ -6795,7 +6795,7 @@ BEGIN
                 MAX(rede) as rede,
                 SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN COALESCE(vlvenda, 0) ELSE 0 END) as faturamento,
                 SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN COALESCE(totpesoliq, 0) ELSE 0 END) as peso,
-                SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN COALESCE(qtvenda_embalagem_master, 0) ELSE 0 END) as caixas,
+                SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1) ELSE 0 END) as caixas,
                 SUM(CASE WHEN tipovenda = ''5'' THEN COALESCE(vlvenda,0) + COALESCE(vldevolucao,0) + COALESCE(vlbonific,0) ELSE 0 END) as perda_valor,
                 SUM(CASE WHEN tipovenda = ''11'' THEN COALESCE(vlvenda,0) + COALESCE(vlbonific,0) ELSE 0 END) as bonificacao_valor,
                 MAX(CASE WHEN tipovenda NOT IN (''5'', ''11'') AND COALESCE(vlvenda,0) >= 1 THEN 1 ELSE 0 END) as positivado,
