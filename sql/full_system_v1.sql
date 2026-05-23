@@ -6130,7 +6130,7 @@ BEGIN
             END as codfor, 
             s.tipovenda, 
             s.codcli,
-            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
+            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
             c.ramo
         FROM raw_data s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
@@ -6212,7 +6212,7 @@ BEGIN
             END as codfor, 
             s.tipovenda, 
             s.codcli,
-            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
+            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
             c.ramo
         FROM raw_data s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
@@ -6296,7 +6296,7 @@ BEGIN
             END as codfor, 
             s.tipovenda, 
             s.codcli,
-            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda_embalagem_master,
+            s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
             c.ramo
         FROM raw_data s
         LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
@@ -6595,6 +6595,7 @@ CREATE OR REPLACE FUNCTION public.get_jbp_data(
     p_rede text[] DEFAULT NULL,
     p_produto text[] DEFAULT NULL,
     p_categoria text[] DEFAULT NULL,
+    p_categoria_inovacao text DEFAULT NULL,
     p_ano text DEFAULT NULL,
     p_clientes text[] DEFAULT NULL,
     p_redes_adicionadas text[] DEFAULT NULL
@@ -6606,15 +6607,24 @@ SET search_path TO 'public'
 AS $function$
 DECLARE
     v_where text := ' WHERE 1=1 ';
-    v_where_rede text := '';
+    v_where_inov text := '';
+    v_rede_condition text := '';
 
     v_has_com_rede boolean;
     v_has_sem_rede boolean;
     v_specific_redes text[];
-    v_rede_condition text := '';
 
     v_result json;
     v_sql text;
+
+    v_trend_allowed boolean := false;
+    v_trend_factor numeric := 1.0;
+    v_work_days_passed integer;
+    v_work_days_total integer;
+    v_current_year integer := EXTRACT(YEAR FROM CURRENT_DATE)::int;
+    v_month_start date;
+    v_month_end date;
+    v_max_sale_date date;
 BEGIN
     SET LOCAL statement_timeout = '600s';
 
@@ -6695,53 +6705,84 @@ BEGIN
         v_where := v_where || ') ';
     END IF;
 
+    -- JBP Categoria Inovacao Filtering
+    IF p_categoria_inovacao IS NOT NULL AND p_categoria_inovacao != '' THEN
+        v_where_inov := format(' AND inovacoes = %L ', p_categoria_inovacao);
+        v_where := v_where || format(' AND s.produto IN (SELECT codigo FROM public.data_innovations WHERE inovacoes = %L) ', p_categoria_inovacao);
+    END IF;
+
+    -- Calculate Trends
+    SELECT MAX(dtped) INTO v_max_sale_date FROM (
+        SELECT MAX(dtped) as dtped FROM public.data_history
+        UNION ALL
+        SELECT MAX(dtped) as dtped FROM public.data_detailed
+    );
+    IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
+
+    v_trend_allowed := (v_current_year = EXTRACT(YEAR FROM v_max_sale_date)::int);
+
+    IF v_trend_allowed THEN
+        v_month_start := make_date(v_current_year, EXTRACT(MONTH FROM v_max_sale_date)::int, 1);
+        v_month_end := (v_month_start + interval '1 month' - interval '1 day')::date;
+        IF v_max_sale_date > v_month_end THEN v_max_sale_date := v_month_end; END IF;
+
+        v_work_days_passed := public.calc_working_days(v_month_start, v_max_sale_date);
+        v_work_days_total := public.calc_working_days(v_month_start, v_month_end);
+
+        IF v_work_days_passed > 0 AND v_work_days_total > 0 THEN
+            v_trend_factor := v_work_days_total::numeric / v_work_days_passed::numeric;
+        END IF;
+    END IF;
+
     -- Dynamic SQL: Union of detailed and history
+    -- Fix for MIX PDV: We fetch raw data directly and aggregate it by client/month,
+    -- ensuring we distinct count the product correctly.
     v_sql := format('
         WITH inovacoes AS (
-            SELECT codigo FROM public.data_innovations WHERE codigo IS NOT NULL
+            SELECT DISTINCT inovacoes FROM public.data_innovations WHERE inovacoes IS NOT NULL %s
         ),
-        raw_union AS (
+        raw_data AS (
             SELECT 
                 EXTRACT(YEAR FROM s.dtped)::int as ano,
                 EXTRACT(MONTH FROM s.dtped)::int as mes,
                 c.codigo_cliente as codcli,
-                MAX(c.razaosocial) as cliente_nome,
+                c.razaosocial as cliente_nome,
+                c.bairro as bairro,
+                c.cidade as cidade,
                 c.ramo as rede,
-                c.bairro,
-                c.cidade,
                 s.tipovenda,
+                s.vlvenda,
+                s.totpesoliq,
+                s.qtvenda, dp.qtde_embalagem_master,
+                s.vldevolucao,
+                s.vlbonific,
                 s.produto,
-                s.pedido,
-                SUM(COALESCE(s.vlvenda, 0)) as vlvenda,
-                SUM(COALESCE(s.totpesoliq, 0)) as peso,
-                SUM(COALESCE(s.qtvenda_embalagem_master, 0)) as caixas,
-                SUM(COALESCE(s.vlbonific, 0)) as bonificacao
+                s.pedido
             FROM public.data_detailed s
             JOIN public.data_clients c ON s.codcli = c.codigo_cliente
-            LEFT JOIN public.data_product_details dp ON s.produto = dp.code
+            LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s
-            GROUP BY 1, 2, 3, 5, 6, 7, 8, 9, 10
             UNION ALL
             SELECT 
                 EXTRACT(YEAR FROM s.dtped)::int as ano,
                 EXTRACT(MONTH FROM s.dtped)::int as mes,
                 c.codigo_cliente as codcli,
-                MAX(c.razaosocial) as cliente_nome,
+                c.razaosocial as cliente_nome,
+                c.bairro as bairro,
+                c.cidade as cidade,
                 c.ramo as rede,
-                c.bairro,
-                c.cidade,
                 s.tipovenda,
+                s.vlvenda,
+                s.totpesoliq,
+                s.qtvenda, dp.qtde_embalagem_master,
+                s.vldevolucao,
+                s.vlbonific,
                 s.produto,
-                s.pedido,
-                SUM(COALESCE(s.vlvenda, 0)) as vlvenda,
-                SUM(COALESCE(s.totpesoliq, 0)) as peso,
-                SUM(COALESCE(s.qtvenda_embalagem_master, 0)) as caixas,
-                SUM(COALESCE(s.vlbonific, 0)) as bonificacao
+                s.pedido
             FROM public.data_history s
             JOIN public.data_clients c ON s.codcli = c.codigo_cliente
-            LEFT JOIN public.data_product_details dp ON s.produto = dp.code
+            LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s
-            GROUP BY 1, 2, 3, 5, 6, 7, 8, 9, 10
         ),
         base_data AS (
             SELECT 
@@ -6752,15 +6793,15 @@ BEGIN
                 MAX(bairro) as bairro,
                 MAX(cidade) as cidade,
                 MAX(rede) as rede,
-                SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN vlvenda ELSE 0 END) as faturamento,
-                SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN peso ELSE 0 END) as peso,
-                SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN caixas ELSE 0 END) as caixas,
-                SUM(CASE WHEN tipovenda = ''5'' THEN vlvenda + COALESCE(bonificacao,0) ELSE 0 END) as perda_valor,
-                SUM(CASE WHEN tipovenda = ''11'' THEN vlvenda + COALESCE(bonificacao,0) ELSE 0 END) as bonificacao_valor,
-                MAX(CASE WHEN tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1 THEN 1 ELSE 0 END) as positivado,
-                COUNT(DISTINCT CASE WHEN tipovenda NOT IN (''5'', ''11'') AND produto IN (SELECT codigo FROM inovacoes) AND vlvenda >= 1 THEN pedido ELSE NULL END) as inovou,
-                COUNT(DISTINCT CASE WHEN tipovenda IN (''1'', ''9'') AND vlvenda >= 1 THEN produto ELSE NULL END) as pre_mix_count
-            FROM raw_union
+                SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN COALESCE(vlvenda, 0) ELSE 0 END) as faturamento,
+                SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN COALESCE(totpesoliq, 0) ELSE 0 END) as peso,
+                SUM(CASE WHEN tipovenda NOT IN (''5'', ''11'') THEN COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1) ELSE 0 END) as caixas,
+                SUM(CASE WHEN tipovenda = ''5'' THEN COALESCE(vlvenda,0) + COALESCE(vldevolucao,0) + COALESCE(vlbonific,0) ELSE 0 END) as perda_valor,
+                SUM(CASE WHEN tipovenda = ''11'' THEN COALESCE(vlvenda,0) + COALESCE(vlbonific,0) ELSE 0 END) as bonificacao_valor,
+                MAX(CASE WHEN tipovenda NOT IN (''5'', ''11'') AND COALESCE(vlvenda,0) >= 1 THEN 1 ELSE 0 END) as positivado,
+                COUNT(DISTINCT CASE WHEN tipovenda NOT IN (''5'', ''11'') AND produto IN (SELECT DISTINCT codigo FROM public.data_innovations WHERE inovacoes IS NOT NULL) AND COALESCE(vlvenda, 0) >= 1 THEN pedido ELSE NULL END) as inovou,
+                COUNT(DISTINCT CASE WHEN tipovenda IN (''1'', ''9'') AND COALESCE(vlvenda,0) >= 1 THEN produto ELSE NULL END) as pre_mix_count
+            FROM raw_data
             GROUP BY 1, 2, 3
         ),
         monthly_agg AS (
@@ -6783,11 +6824,16 @@ BEGIN
             FROM base_data
             GROUP BY 1, 2, 3
         )
-        SELECT COALESCE(json_agg(row_to_json(t)), ''[]''::json)
+        SELECT json_build_object(
+            ''data'', COALESCE(json_agg(row_to_json(t)), ''[]''::json),
+            ''trend_allowed'', %L,
+            ''trend_factor'', %s,
+            ''trend_month_index'', %s
+        )
         FROM (
             SELECT * FROM monthly_agg ORDER BY ano DESC, mes DESC
         ) t
-    ', v_where, v_where);
+    ', v_where_inov, v_where, v_where, v_trend_allowed, v_trend_factor, COALESCE(EXTRACT(MONTH FROM v_max_sale_date)::int - 1, 11));
 
     EXECUTE v_sql INTO v_result;
     
