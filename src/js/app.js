@@ -6478,7 +6478,7 @@ Valor: ${formatValue(item.valor, indicator)}`;
                     m.perda_valor += (row.perda_valor || 0);
                     m.bonificacao_valor += (row.bonificacao_valor || 0);
                     m.clientes_positivados += (row.clientes_positivados || 0);
-                    m.total_mix += (row.total_mix || 0);
+                    m.total_mix = Math.max(m.total_mix, row.total_mix || 0);
                     m.clientes_inovacoes += (row.clientes_inovacoes || 0);
                 }
             });
