@@ -1610,7 +1610,7 @@ let estrelasSelectedCategorias = [];
 
 // --- JBP Logic Variables ---
 let jbpSelectedAno = new Date().getFullYear().toString();
-let jbpSelectedMes = (new Date().getMonth() + 1).toString().padStart(2, '0');
+let jbpSelectedMes = "todos";
 let jbpSelectedFiliais = [];
 let jbpSelectedCidades = [];
 let jbpSelectedFornecedores = [];
@@ -5735,7 +5735,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 }
                 
                 jbpMesFilter.innerHTML = generateMonthOptionsHtml("Todos", "todos", true);
-                jbpMesFilter.value = currentFilters.p_mes || (new Date().getMonth() + 1).toString().padStart(2, '0');
+                jbpMesFilter.value = currentFilters.p_mes || "todos";
 
                 jbpSelectedFiliais = currentFilters.p_filial || [];
                 jbpSelectedCidades = currentFilters.p_cidade || [];
