@@ -1610,7 +1610,7 @@ let estrelasSelectedCategorias = [];
 
 // --- JBP Logic Variables ---
 let jbpSelectedAno = new Date().getFullYear().toString();
-let jbpSelectedMes = (new Date().getMonth() + 1).toString();
+let jbpSelectedMes = (new Date().getMonth() + 1).toString().padStart(2, '0');
 let jbpSelectedFiliais = [];
 let jbpSelectedCidades = [];
 let jbpSelectedFornecedores = [];
@@ -5735,7 +5735,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 }
                 
                 jbpMesFilter.innerHTML = generateMonthOptionsHtml("Todos", "todos", true);
-                jbpMesFilter.value = currentFilters.p_mes || (new Date().getMonth() + 1).toString();
+                jbpMesFilter.value = currentFilters.p_mes || (new Date().getMonth() + 1).toString().padStart(2, '0');
 
                 jbpSelectedFiliais = currentFilters.p_filial || [];
                 jbpSelectedCidades = currentFilters.p_cidade || [];
@@ -8520,7 +8520,7 @@ window.clearAllFilters = async function(prefix) {
         const mesSelect = document.getElementById('agenda-mes-filter');
 
         const currentYear = new Date().getFullYear().toString();
-        const currentMonth = (new Date().getMonth() + 1).toString();
+        const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
 
         if (anoSelect) {
             let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
@@ -9369,7 +9369,7 @@ const loadAgendaFilters = async () => {
         // Select current month by default
         const mesSelect = document.getElementById('agenda-mes-filter');
         if (mesSelect) {
-            mesSelect.value = (new Date().getMonth() + 1).toString();
+            mesSelect.value = (new Date().getMonth() + 1).toString().padStart(2, '0');
             if(typeof window.enhanceSelectToCustomDropdown === 'function') window.enhanceSelectToCustomDropdown(mesSelect);
             mesSelect.addEventListener('change', handleAgendaFilterChange);
         }
