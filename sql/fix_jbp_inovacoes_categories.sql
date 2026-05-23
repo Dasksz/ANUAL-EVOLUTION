@@ -1,3 +1,6 @@
+-- Migration: Fix JBP Innovations Count to use Categories instead of Pedidos
+-- Description: The main table was counting distinct orders (pedido) instead of distinct categories.
+
 CREATE OR REPLACE FUNCTION public.get_jbp_data(
     p_filial text[] DEFAULT NULL,
     p_cidade text[] DEFAULT NULL,

@@ -6799,7 +6799,7 @@ BEGIN
                 SUM(CASE WHEN tipovenda = ''5'' THEN COALESCE(vlvenda,0) + COALESCE(vldevolucao,0) + COALESCE(vlbonific,0) ELSE 0 END) as perda_valor,
                 SUM(CASE WHEN tipovenda = ''11'' THEN COALESCE(vlvenda,0) + COALESCE(vlbonific,0) ELSE 0 END) as bonificacao_valor,
                 MAX(CASE WHEN tipovenda NOT IN (''5'', ''11'') AND COALESCE(vlvenda,0) >= 1 THEN 1 ELSE 0 END) as positivado,
-                COUNT(DISTINCT CASE WHEN tipovenda NOT IN (''5'', ''11'') AND produto IN (SELECT DISTINCT codigo FROM public.data_innovations WHERE inovacoes IS NOT NULL) AND COALESCE(vlvenda, 0) >= 1 THEN pedido ELSE NULL END) as inovou,
+                COUNT(DISTINCT CASE WHEN tipovenda NOT IN (''5'', ''11'') AND produto IN (SELECT DISTINCT codigo FROM public.data_innovations WHERE inovacoes IS NOT NULL) AND COALESCE(vlvenda, 0) >= 1 THEN (SELECT max(inovacoes) FROM public.data_innovations d_in WHERE d_in.codigo = raw_data.produto) ELSE NULL END) as inovou,
                 COUNT(DISTINCT CASE WHEN tipovenda IN (''1'', ''9'') AND COALESCE(vlvenda,0) >= 1 THEN produto ELSE NULL END) as pre_mix_count
             FROM raw_data
             GROUP BY 1, 2, 3
