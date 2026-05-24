@@ -2748,17 +2748,17 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         if (data) {
              // Update Dropdowns (Re-render options)
              // Note: We do NOT reset the selected arrays here, we just re-render the available options.
-             // If a selected item is no longer in the returned data, it remains in the selected array (logic in setupCityMultiSelect handles check status based on array)
+             // If a selected item is no longer in the returned data, it remains in the selected array (logic in window.setupMultiSelect handles check status based on array)
              // However, visually it won't be in the list.
 
-             setupCityMultiSelect(boxesFilialFilterBtn, boxesFilialFilterDropdown, boxesFilialFilterDropdown, data.filiais, boxesSelectedFiliais);
-             setupCityMultiSelect(boxesSupervisorFilterBtn, boxesSupervisorFilterDropdown, boxesSupervisorFilterDropdown, data.supervisors, boxesSelectedSupervisores);
-             setupCityMultiSelect(boxesVendedorFilterBtn, boxesVendedorFilterDropdown, boxesVendedorFilterList, data.vendedores, boxesSelectedVendedores, boxesVendedorFilterSearch);
-             setupCityMultiSelect(boxesFornecedorFilterBtn, boxesFornecedorFilterDropdown, boxesFornecedorFilterList, data.fornecedores, boxesSelectedFornecedores, boxesFornecedorFilterSearch, true);
-             setupCityMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, data.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
-             setupCityMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, data.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
-             setupCityMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, data.tipos_venda || [], boxesSelectedTiposVenda);
-             setupCityMultiSelect(boxesCategoriaFilterBtn, boxesCategoriaFilterDropdown, boxesCategoriaFilterList, data.categorias || [], boxesSelectedCategorias, boxesCategoriaFilterSearch);
+             window.setupMultiSelect(boxesFilialFilterBtn, boxesFilialFilterDropdown, boxesFilialFilterDropdown, data.filiais, boxesSelectedFiliais, () => {}, false, null);
+             window.setupMultiSelect(boxesSupervisorFilterBtn, boxesSupervisorFilterDropdown, boxesSupervisorFilterDropdown, data.supervisors, boxesSelectedSupervisores, () => {}, false, null);
+             window.setupMultiSelect(boxesVendedorFilterBtn, boxesVendedorFilterDropdown, boxesVendedorFilterList, data.vendedores, boxesSelectedVendedores, () => {}, false, boxesVendedorFilterSearch);
+             window.setupMultiSelect(boxesFornecedorFilterBtn, boxesFornecedorFilterDropdown, boxesFornecedorFilterList, data.fornecedores, boxesSelectedFornecedores, () => {}, true, boxesFornecedorFilterSearch);
+             window.setupMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, data.cidades, boxesSelectedCidades, () => {}, false, boxesCidadeFilterSearch);
+             window.setupMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, data.produtos || [], boxesSelectedProducts, () => {}, true, boxesProdutoFilterSearch);
+             window.setupMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, data.tipos_venda || [], boxesSelectedTiposVenda, () => {}, false, null);
+             window.setupMultiSelect(boxesCategoriaFilterBtn, boxesCategoriaFilterDropdown, boxesCategoriaFilterList, data.categorias || [], boxesSelectedCategorias, () => {}, false, boxesCategoriaFilterSearch);
         }
     }
 
@@ -2969,16 +2969,16 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             enhanceSelectToCustomDropdown(boxesMesFilter);
         }
 
-        setupCityMultiSelect(boxesFilialFilterBtn, boxesFilialFilterDropdown, boxesFilialFilterDropdown, filterData.filiais, boxesSelectedFiliais);
-        setupCityMultiSelect(boxesSupervisorFilterBtn, boxesSupervisorFilterDropdown, boxesSupervisorFilterDropdown, filterData.supervisors, boxesSelectedSupervisores);
-        setupCityMultiSelect(boxesVendedorFilterBtn, boxesVendedorFilterDropdown, boxesVendedorFilterList, filterData.vendedores, boxesSelectedVendedores, boxesVendedorFilterSearch);
-        setupCityMultiSelect(boxesFornecedorFilterBtn, boxesFornecedorFilterDropdown, boxesFornecedorFilterList, filterData.fornecedores, boxesSelectedFornecedores, boxesFornecedorFilterSearch, true);
-        setupCityMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, filterData.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
-        setupCityMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, filterData.tipos_venda || [], boxesSelectedTiposVenda);
-        setupCityMultiSelect(boxesCategoriaFilterBtn, boxesCategoriaFilterDropdown, boxesCategoriaFilterList, filterData.categorias || [], boxesSelectedCategorias, boxesCategoriaFilterSearch);
+        window.setupMultiSelect(boxesFilialFilterBtn, boxesFilialFilterDropdown, boxesFilialFilterDropdown, filterData.filiais, boxesSelectedFiliais, () => {}, false, null);
+        window.setupMultiSelect(boxesSupervisorFilterBtn, boxesSupervisorFilterDropdown, boxesSupervisorFilterDropdown, filterData.supervisors, boxesSelectedSupervisores, () => {}, false, null);
+        window.setupMultiSelect(boxesVendedorFilterBtn, boxesVendedorFilterDropdown, boxesVendedorFilterList, filterData.vendedores, boxesSelectedVendedores, () => {}, false, boxesVendedorFilterSearch);
+        window.setupMultiSelect(boxesFornecedorFilterBtn, boxesFornecedorFilterDropdown, boxesFornecedorFilterList, filterData.fornecedores, boxesSelectedFornecedores, () => {}, true, boxesFornecedorFilterSearch);
+        window.setupMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, filterData.cidades, boxesSelectedCidades, () => {}, false, boxesCidadeFilterSearch);
+        window.setupMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, filterData.tipos_venda || [], boxesSelectedTiposVenda, () => {}, false, null);
+        window.setupMultiSelect(boxesCategoriaFilterBtn, boxesCategoriaFilterDropdown, boxesCategoriaFilterList, filterData.categorias || [], boxesSelectedCategorias, () => {}, false, boxesCategoriaFilterSearch);
         
         // Products - filterData.produtos
-        setupCityMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, filterData.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
+        window.setupMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, filterData.produtos || [], boxesSelectedProducts, () => {}, true, boxesProdutoFilterSearch);
     }
 
     async function loadBoxesView() {
@@ -4671,9 +4671,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         }
     });
 
-    function setupCityMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
-    return window.setupMultiSelect(btn, dropdown, container, items, selectedArray, () => {}, isObject, searchInput);
-}
+
 
     async function initCityFilters() {
         const filters = {
@@ -4706,16 +4704,16 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             enhanceSelectToCustomDropdown(cityMesFilter);
         }
 
-        setupCityMultiSelect(cityFilialFilterBtn, cityFilialFilterDropdown, cityFilialFilterDropdown, filterData.filiais, citySelectedFiliais);
-        setupCityMultiSelect(cityCidadeFilterBtn, cityCidadeFilterDropdown, cityCidadeFilterList, filterData.cidades, citySelectedCidades, cityCidadeFilterSearch);
-        setupCityMultiSelect(citySupervisorFilterBtn, citySupervisorFilterDropdown, citySupervisorFilterDropdown, filterData.supervisors, citySelectedSupervisores);
-        setupCityMultiSelect(cityVendedorFilterBtn, cityVendedorFilterDropdown, cityVendedorFilterList, filterData.vendedores, citySelectedVendedores, cityVendedorFilterSearch);
-        setupCityMultiSelect(cityFornecedorFilterBtn, cityFornecedorFilterDropdown, cityFornecedorFilterList, filterData.fornecedores, citySelectedFornecedores, cityFornecedorFilterSearch, true);
-        setupCityMultiSelect(cityTipovendaFilterBtn, cityTipovendaFilterDropdown, cityTipovendaFilterDropdown, filterData.tipos_venda, citySelectedTiposVenda);
-        setupCityMultiSelect(cityCategoriaFilterBtn, cityCategoriaFilterDropdown, cityCategoriaFilterList, filterData.categorias || [], citySelectedCategorias, cityCategoriaFilterSearch);
+        window.setupMultiSelect(cityFilialFilterBtn, cityFilialFilterDropdown, cityFilialFilterDropdown, filterData.filiais, citySelectedFiliais, () => {}, false, null);
+        window.setupMultiSelect(cityCidadeFilterBtn, cityCidadeFilterDropdown, cityCidadeFilterList, filterData.cidades, citySelectedCidades, () => {}, false, cityCidadeFilterSearch);
+        window.setupMultiSelect(citySupervisorFilterBtn, citySupervisorFilterDropdown, citySupervisorFilterDropdown, filterData.supervisors, citySelectedSupervisores, () => {}, false, null);
+        window.setupMultiSelect(cityVendedorFilterBtn, cityVendedorFilterDropdown, cityVendedorFilterList, filterData.vendedores, citySelectedVendedores, () => {}, false, cityVendedorFilterSearch);
+        window.setupMultiSelect(cityFornecedorFilterBtn, cityFornecedorFilterDropdown, cityFornecedorFilterList, filterData.fornecedores, citySelectedFornecedores, () => {}, true, cityFornecedorFilterSearch);
+        window.setupMultiSelect(cityTipovendaFilterBtn, cityTipovendaFilterDropdown, cityTipovendaFilterDropdown, filterData.tipos_venda, citySelectedTiposVenda, () => {}, false, null);
+        window.setupMultiSelect(cityCategoriaFilterBtn, cityCategoriaFilterDropdown, cityCategoriaFilterList, filterData.categorias || [], citySelectedCategorias, () => {}, false, cityCategoriaFilterSearch);
 
         const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-        setupCityMultiSelect(cityRedeFilterBtn, cityRedeFilterDropdown, cityRedeFilterList, redes, citySelectedRedes, cityRedeFilterSearch);
+        window.setupMultiSelect(cityRedeFilterBtn, cityRedeFilterDropdown, cityRedeFilterList, redes, citySelectedRedes, () => {}, false, cityRedeFilterSearch);
     }
 
     async function loadCityView() {
@@ -4918,15 +4916,15 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
         // Multi Selects
         setupBranchFilialSelect(branchFilialFilterBtn, branchFilialFilterDropdown, branchFilialFilterDropdown, filterData.filiais, branchSelectedFiliais);
-        setupBranchMultiSelect(branchCidadeFilterBtn, branchCidadeFilterDropdown, branchCidadeFilterList, filterData.cidades, branchSelectedCidades, branchCidadeFilterSearch);
-        setupBranchMultiSelect(branchSupervisorFilterBtn, branchSupervisorFilterDropdown, branchSupervisorFilterDropdown, filterData.supervisors, branchSelectedSupervisores);
-        setupBranchMultiSelect(branchVendedorFilterBtn, branchVendedorFilterDropdown, branchVendedorFilterList, filterData.vendedores, branchSelectedVendedores, branchVendedorFilterSearch);
-        setupBranchMultiSelect(branchFornecedorFilterBtn, branchFornecedorFilterDropdown, branchFornecedorFilterList, filterData.fornecedores, branchSelectedFornecedores, branchFornecedorFilterSearch, true);
-        setupBranchMultiSelect(branchTipovendaFilterBtn, branchTipovendaFilterDropdown, branchTipovendaFilterDropdown, filterData.tipos_venda, branchSelectedTiposVenda);
-        setupBranchMultiSelect(branchCategoriaFilterBtn, branchCategoriaFilterDropdown, branchCategoriaFilterList, filterData.categorias || [], branchSelectedCategorias, branchCategoriaFilterSearch);
+        window.setupMultiSelect(branchCidadeFilterBtn, branchCidadeFilterDropdown, branchCidadeFilterList, filterData.cidades, branchSelectedCidades, () => {}, false, branchCidadeFilterSearch);
+        window.setupMultiSelect(branchSupervisorFilterBtn, branchSupervisorFilterDropdown, branchSupervisorFilterDropdown, filterData.supervisors, branchSelectedSupervisores, () => {}, false, null);
+        window.setupMultiSelect(branchVendedorFilterBtn, branchVendedorFilterDropdown, branchVendedorFilterList, filterData.vendedores, branchSelectedVendedores, () => {}, false, branchVendedorFilterSearch);
+        window.setupMultiSelect(branchFornecedorFilterBtn, branchFornecedorFilterDropdown, branchFornecedorFilterList, filterData.fornecedores, branchSelectedFornecedores, () => {}, true, branchFornecedorFilterSearch);
+        window.setupMultiSelect(branchTipovendaFilterBtn, branchTipovendaFilterDropdown, branchTipovendaFilterDropdown, filterData.tipos_venda, branchSelectedTiposVenda, () => {}, false, null);
+        window.setupMultiSelect(branchCategoriaFilterBtn, branchCategoriaFilterDropdown, branchCategoriaFilterList, filterData.categorias || [], branchSelectedCategorias, () => {}, false, branchCategoriaFilterSearch);
 
         const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-        setupBranchMultiSelect(branchRedeFilterBtn, branchRedeFilterDropdown, branchRedeFilterList, redes, branchSelectedRedes, branchRedeFilterSearch);
+        window.setupMultiSelect(branchRedeFilterBtn, branchRedeFilterDropdown, branchRedeFilterList, redes, branchSelectedRedes, () => {}, false, branchRedeFilterSearch);
     }
     
     // Specific setup for Branch Filter to enforce 2 selections
@@ -5013,9 +5011,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         updateBtnLabel();
     }
 
-    function setupBranchMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
-    return window.setupMultiSelect(btn, dropdown, container, items, selectedArray, () => {}, isObject, searchInput);
-}
+
 
     async function loadBranchView() {
         window.showDashboardLoading('branch-view');
@@ -5664,41 +5660,41 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 const getList = (id) => document.getElementById(id);
                 
                 // Filiais
-                setupCityMultiSelect(comparisonFilialFilterBtn, comparisonFilialFilterDropdown, comparisonFilialFilterDropdown, filterData.filiais, selectedComparisonFiliais);
+                window.setupMultiSelect(comparisonFilialFilterBtn, comparisonFilialFilterDropdown, comparisonFilialFilterDropdown, filterData.filiais, selectedComparisonFiliais, () => {}, false, null);
 
                 // Supervisors
                 const supList = getList('comparison-supervisor-filter-list') || comparisonSupervisorFilterDropdown;
-                setupCityMultiSelect(comparisonSupervisorFilterBtn, comparisonSupervisorFilterDropdown, supList, filterData.supervisors, selectedComparisonSupervisors);
+                window.setupMultiSelect(comparisonSupervisorFilterBtn, comparisonSupervisorFilterDropdown, supList, filterData.supervisors, selectedComparisonSupervisors, () => {}, false, null);
                 
                 // Vendedores
                 const vendList = getList('comparison-vendedor-filter-list') || comparisonVendedorFilterDropdown;
-                setupCityMultiSelect(comparisonVendedorFilterBtn, comparisonVendedorFilterDropdown, vendList, filterData.vendedores, selectedComparisonSellers);
+                window.setupMultiSelect(comparisonVendedorFilterBtn, comparisonVendedorFilterDropdown, vendList, filterData.vendedores, selectedComparisonSellers, () => {}, false, null);
                 
                 // Suppliers
                 const suppList = getList('comparison-supplier-filter-list') || comparisonSupplierFilterDropdown;
-                setupCityMultiSelect(comparisonSupplierFilterBtn, comparisonSupplierFilterDropdown, suppList, filterData.fornecedores, selectedComparisonSuppliers, null, true);
+                window.setupMultiSelect(comparisonSupplierFilterBtn, comparisonSupplierFilterDropdown, suppList, filterData.fornecedores, selectedComparisonSuppliers, () => {}, true, null);
                 
                 // Tipos Venda
                 const tipoList = getList('comparison-tipo-venda-filter-list') || comparisonTipoVendaFilterDropdown;
-                setupCityMultiSelect(comparisonTipoVendaFilterBtn, comparisonTipoVendaFilterDropdown, tipoList, filterData.tipos_venda, selectedComparisonTiposVenda);
+                window.setupMultiSelect(comparisonTipoVendaFilterBtn, comparisonTipoVendaFilterDropdown, tipoList, filterData.tipos_venda, selectedComparisonTiposVenda, () => {}, false, null);
 
                 // Products (Using same structure as boxes if available, assuming filterData.produtos is present or empty)
                 const prodList = getList('comparison-product-list') || comparisonProductFilterDropdown;
                 const prodSearch = document.getElementById('comparison-product-search-input');
-                setupCityMultiSelect(comparisonProductFilterBtn, comparisonProductFilterDropdown, prodList, filterData.produtos || [], selectedComparisonProducts, prodSearch, true);
+                window.setupMultiSelect(comparisonProductFilterBtn, comparisonProductFilterDropdown, prodList, filterData.produtos || [], selectedComparisonProducts, () => {}, true, prodSearch);
 
                 // Cities (Multi Select)
-                setupCityMultiSelect(comparisonCityFilterBtn, comparisonCityFilterDropdown, comparisonCityFilterList, filterData.cidades || [], selectedComparisonCities, comparisonCityFilterSearch);
+                window.setupMultiSelect(comparisonCityFilterBtn, comparisonCityFilterDropdown, comparisonCityFilterList, filterData.cidades || [], selectedComparisonCities, () => {}, false, comparisonCityFilterSearch);
 
                 // Categories
                 const catList = getList('comparison-categoria-filter-list') || comparisonCategoriaFilterDropdown;
                 const catSearch = document.getElementById('comparison-categoria-filter-search');
-                setupCityMultiSelect(comparisonCategoriaFilterBtn, comparisonCategoriaFilterDropdown, catList, filterData.categorias || [], selectedComparisonCategorias, catSearch);
+                window.setupMultiSelect(comparisonCategoriaFilterBtn, comparisonCategoriaFilterDropdown, catList, filterData.categorias || [], selectedComparisonCategorias, () => {}, false, catSearch);
 
                 // Redes
                 const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
                 const redeList = getList('comparison-rede-filter-list') || comparisonRedeFilterDropdown;
-                setupCityMultiSelect(comparisonRedeFilterBtn, comparisonRedeFilterDropdown, redeList, redes, selectedComparisonRedes, document.getElementById('comparison-rede-filter-search'));
+                window.setupMultiSelect(comparisonRedeFilterBtn, comparisonRedeFilterDropdown, redeList, redes, selectedComparisonRedes, () => {}, false, document.getElementById('comparison-rede-filter-search'));
 
                 enhanceSelectToCustomDropdown(jbpAnoFilter);
                 enhanceSelectToCustomDropdown(jbpMesFilter);
@@ -7784,22 +7780,22 @@ const setupInnovationsFilters = async () => {
     }
 
     // Load Multi-Selects using standard CityMultiSelect pattern
-    setupCityMultiSelect(innovationsSupervisorFilterBtn, innovationsSupervisorFilterDropdown, innovationsSupervisorFilterDropdown, filterData.supervisors, innovationsSelectedSupervisors);
-    setupCityMultiSelect(innovationsVendedorFilterBtn, innovationsVendedorFilterDropdown, innovationsVendedorFilterList, filterData.vendedores, innovationsSelectedVendedores, innovationsVendedorFilterSearch);
-    setupCityMultiSelect(innovationsCidadeFilterBtn, innovationsCidadeFilterDropdown, innovationsCidadeFilterList, filterData.cidades, innovationsSelectedCidades, innovationsCidadeFilterSearch);
-    setupCityMultiSelect(innovationsTipovendaFilterBtn, innovationsTipovendaFilterDropdown, innovationsTipovendaFilterDropdown, filterData.tipos_venda, innovationsSelectedTiposVenda);
+    window.setupMultiSelect(innovationsSupervisorFilterBtn, innovationsSupervisorFilterDropdown, innovationsSupervisorFilterDropdown, filterData.supervisors, innovationsSelectedSupervisors, () => {}, false, null);
+    window.setupMultiSelect(innovationsVendedorFilterBtn, innovationsVendedorFilterDropdown, innovationsVendedorFilterList, filterData.vendedores, innovationsSelectedVendedores, () => {}, false, innovationsVendedorFilterSearch);
+    window.setupMultiSelect(innovationsCidadeFilterBtn, innovationsCidadeFilterDropdown, innovationsCidadeFilterList, filterData.cidades, innovationsSelectedCidades, () => {}, false, innovationsCidadeFilterSearch);
+    window.setupMultiSelect(innovationsTipovendaFilterBtn, innovationsTipovendaFilterDropdown, innovationsTipovendaFilterDropdown, filterData.tipos_venda, innovationsSelectedTiposVenda, () => {}, false, null);
     
     const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-    setupCityMultiSelect(innovationsRedeFilterBtn, innovationsRedeFilterDropdown, innovationsRedeFilterList, redes, innovationsSelectedRedes, innovationsRedeFilterSearch);
+    window.setupMultiSelect(innovationsRedeFilterBtn, innovationsRedeFilterDropdown, innovationsRedeFilterList, redes, innovationsSelectedRedes, () => {}, false, innovationsRedeFilterSearch);
     
-    setupCityMultiSelect(innovationsFilialFilterBtn, innovationsFilialFilterDropdown, innovationsFilialFilterDropdown, filterData.filiais, innovationsSelectedFiliais);
+    window.setupMultiSelect(innovationsFilialFilterBtn, innovationsFilialFilterDropdown, innovationsFilialFilterDropdown, filterData.filiais, innovationsSelectedFiliais, () => {}, false, null);
 
     // Load Inovações Categories
     try {
         const { data: inovacData } = await supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true });
         if (inovacData) {
             const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
-            setupCityMultiSelect(innovationsCategoriaFilterBtn, innovationsCategoriaFilterDropdown, innovationsCategoriaFilterDropdown, uniqueInovacoes, innovationsSelectedCategorias);
+            window.setupMultiSelect(innovationsCategoriaFilterBtn, innovationsCategoriaFilterDropdown, innovationsCategoriaFilterDropdown, uniqueInovacoes, innovationsSelectedCategorias, () => {}, false, null);
         }
     } catch (e) {
         AppLog.error("Error loading inovacoes categories", e);
@@ -7810,28 +7806,28 @@ const setupInnovationsFilters = async () => {
     
     const lpSupervisorBtn = document.getElementById("lp-supervisor-filter-btn");
     const lpSupervisorDropdown = document.getElementById("lp-supervisor-filter-dropdown");
-    if (lpSupervisorBtn) setupCityMultiSelect(lpSupervisorBtn, lpSupervisorDropdown, lpSupervisorDropdown, filterData.supervisors, lpSelectedSupervisors);
+    if (lpSupervisorBtn) window.setupMultiSelect(lpSupervisorBtn, lpSupervisorDropdown, lpSupervisorDropdown, filterData.supervisors, lpSelectedSupervisors, () => {}, false, null);
 
     const lpVendedorBtn = document.getElementById("lp-vendedor-filter-btn");
     const lpVendedorDropdown = document.getElementById("lp-vendedor-filter-dropdown");
     const lpVendedorList = document.getElementById("lp-vendedor-filter-list");
     const lpVendedorSearch = document.getElementById("lp-vendedor-filter-search");
-    if (lpVendedorBtn) setupCityMultiSelect(lpVendedorBtn, lpVendedorDropdown, lpVendedorList, filterData.vendedores, lpSelectedVendedores, lpVendedorSearch);
+    if (lpVendedorBtn) window.setupMultiSelect(lpVendedorBtn, lpVendedorDropdown, lpVendedorList, filterData.vendedores, lpSelectedVendedores, () => {}, false, lpVendedorSearch);
 
     const lpRedeBtn = document.getElementById("lp-rede-filter-btn");
     const lpRedeDropdown = document.getElementById("lp-rede-filter-dropdown");
     const lpRedeList = document.getElementById("lp-rede-filter-list");
     const lpRedeSearch = document.getElementById("lp-rede-filter-search");
     const lpRedesArray = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-    if (lpRedeBtn) setupCityMultiSelect(lpRedeBtn, lpRedeDropdown, lpRedeList, lpRedesArray, lpSelectedRedes, lpRedeSearch);
+    if (lpRedeBtn) window.setupMultiSelect(lpRedeBtn, lpRedeDropdown, lpRedeList, lpRedesArray, lpSelectedRedes, () => {}, false, lpRedeSearch);
 
     const lpCidadeBtn = document.getElementById("lp-cidade-filter-btn");
     const lpCidadeDropdown = document.getElementById("lp-cidade-filter-dropdown");
     const lpCidadeList = document.getElementById("lp-cidade-filter-list");
     const lpCidadeSearch = document.getElementById("lp-cidade-filter-search");
-    if (lpCidadeBtn) setupCityMultiSelect(lpCidadeBtn, lpCidadeDropdown, lpCidadeList, filterData.cidades, lpSelectedCidades, lpCidadeSearch);
+    if (lpCidadeBtn) window.setupMultiSelect(lpCidadeBtn, lpCidadeDropdown, lpCidadeList, filterData.cidades, lpSelectedCidades, () => {}, false, lpCidadeSearch);
 
-    // Actually we need to call setupCityMultiSelect on wrappers if possible...
+    // Actually we need to call window.setupMultiSelect on wrappers if possible...
     // wait, for Supervisor/Vendedor/Rede the wrappers are handled differently inside updateLojaPerfeitaFilters ?
     // let's check how the others are initialized.
     
@@ -7922,13 +7918,13 @@ async function loadLojaPerfeitaFilters(forceClear = false) {
 
         const lpFilialBtn = document.getElementById("lp-filial-filter-btn");
         const lpFilialDropdown = document.getElementById("lp-filial-filter-dropdown");
-        if (lpFilialBtn) setupCityMultiSelect(lpFilialBtn, lpFilialDropdown, lpFilialDropdown, filterData.filiais, lpSelectedFiliais);
+        if (lpFilialBtn) window.setupMultiSelect(lpFilialBtn, lpFilialDropdown, lpFilialDropdown, filterData.filiais, lpSelectedFiliais, () => {}, false, null);
 
         const lpSupervisorBtn = document.getElementById("lp-supervisor-filter-btn");
 
         const lpSupervisorDropdown = document.getElementById("lp-supervisor-filter-dropdown");
 
-        if (lpSupervisorBtn) setupCityMultiSelect(lpSupervisorBtn, lpSupervisorDropdown, lpSupervisorDropdown, filterData.supervisors, lpSelectedSupervisors);
+        if (lpSupervisorBtn) window.setupMultiSelect(lpSupervisorBtn, lpSupervisorDropdown, lpSupervisorDropdown, filterData.supervisors, lpSelectedSupervisors, () => {}, false, null);
 
 
 
@@ -7940,7 +7936,7 @@ async function loadLojaPerfeitaFilters(forceClear = false) {
 
         const lpVendedorSearch = document.getElementById("lp-vendedor-filter-search");
 
-        if (lpVendedorBtn) setupCityMultiSelect(lpVendedorBtn, lpVendedorDropdown, lpVendedorList, filterData.vendedores, lpSelectedVendedores, lpVendedorSearch);
+        if (lpVendedorBtn) window.setupMultiSelect(lpVendedorBtn, lpVendedorDropdown, lpVendedorList, filterData.vendedores, lpSelectedVendedores, () => {}, false, lpVendedorSearch);
 
 
 
@@ -7954,7 +7950,7 @@ async function loadLojaPerfeitaFilters(forceClear = false) {
 
         const lpRedesArray = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
 
-        if (lpRedeBtn) setupCityMultiSelect(lpRedeBtn, lpRedeDropdown, lpRedeList, lpRedesArray, lpSelectedRedes, lpRedeSearch);
+        if (lpRedeBtn) window.setupMultiSelect(lpRedeBtn, lpRedeDropdown, lpRedeList, lpRedesArray, lpSelectedRedes, () => {}, false, lpRedeSearch);
 
 
 
@@ -7966,7 +7962,7 @@ async function loadLojaPerfeitaFilters(forceClear = false) {
 
         const lpCidadeSearch = document.getElementById("lp-cidade-filter-search");
 
-        if (lpCidadeBtn) setupCityMultiSelect(lpCidadeBtn, lpCidadeDropdown, lpCidadeList, filterData.cidades, lpSelectedCidades, lpCidadeSearch);
+        if (lpCidadeBtn) window.setupMultiSelect(lpCidadeBtn, lpCidadeDropdown, lpCidadeList, filterData.cidades, lpSelectedCidades, () => {}, false, lpCidadeSearch);
 
 
 
@@ -8387,20 +8383,20 @@ window.clearAllFilters = async function(prefix) {
         supabase.rpc('get_dashboard_filters', filters).then(({data, error}) => {
             if (data && !error) {
                 // Re-bind the standard multi-selects to ensure the checkboxes are correctly refreshed from DB
-                setupCityMultiSelect(document.getElementById('innovations-supervisor-filter-btn'), document.getElementById('innovations-supervisor-filter-dropdown'), document.getElementById('innovations-supervisor-filter-dropdown'), data.supervisors, innovationsSelectedSupervisors);
-                setupCityMultiSelect(document.getElementById('innovations-vendedor-filter-btn'), document.getElementById('innovations-vendedor-filter-dropdown'), document.getElementById('innovations-vendedor-filter-list'), data.vendedores, innovationsSelectedVendedores, document.getElementById('innovations-vendedor-filter-search'));
-                setupCityMultiSelect(document.getElementById('innovations-cidade-filter-btn'), document.getElementById('innovations-cidade-filter-dropdown'), document.getElementById('innovations-cidade-filter-list'), data.cidades, innovationsSelectedCidades, document.getElementById('innovations-cidade-filter-search'));
-                setupCityMultiSelect(document.getElementById('innovations-tipovenda-filter-btn'), document.getElementById('innovations-tipovenda-filter-dropdown'), document.getElementById('innovations-tipovenda-filter-dropdown'), data.tipos_venda, innovationsSelectedTiposVenda);
+                window.setupMultiSelect(document.getElementById('innovations-supervisor-filter-btn'), document.getElementById('innovations-supervisor-filter-dropdown'), document.getElementById('innovations-supervisor-filter-dropdown'), data.supervisors, innovationsSelectedSupervisors, () => {}, false, null);
+                window.setupMultiSelect(document.getElementById('innovations-vendedor-filter-btn'), document.getElementById('innovations-vendedor-filter-dropdown'), document.getElementById('innovations-vendedor-filter-list'), data.vendedores, innovationsSelectedVendedores, () => {}, false, document.getElementById('innovations-vendedor-filter-search'));
+                window.setupMultiSelect(document.getElementById('innovations-cidade-filter-btn'), document.getElementById('innovations-cidade-filter-dropdown'), document.getElementById('innovations-cidade-filter-list'), data.cidades, innovationsSelectedCidades, () => {}, false, document.getElementById('innovations-cidade-filter-search'));
+                window.setupMultiSelect(document.getElementById('innovations-tipovenda-filter-btn'), document.getElementById('innovations-tipovenda-filter-dropdown'), document.getElementById('innovations-tipovenda-filter-dropdown'), data.tipos_venda, innovationsSelectedTiposVenda, () => {}, false, null);
                 
                 const redes = ['C/ REDE', 'S/ REDE', ...(data.redes || [])];
-                setupCityMultiSelect(document.getElementById('innovations-rede-filter-btn'), document.getElementById('innovations-rede-filter-dropdown'), document.getElementById('innovations-rede-filter-list'), redes, innovationsSelectedRedes, document.getElementById('innovations-rede-filter-search'));
+                window.setupMultiSelect(document.getElementById('innovations-rede-filter-btn'), document.getElementById('innovations-rede-filter-dropdown'), document.getElementById('innovations-rede-filter-list'), redes, innovationsSelectedRedes, () => {}, false, document.getElementById('innovations-rede-filter-search'));
                 
-                setupCityMultiSelect(document.getElementById('innovations-filial-filter-btn'), document.getElementById('innovations-filial-filter-dropdown'), document.getElementById('innovations-filial-filter-dropdown'), data.filiais, innovationsSelectedFiliais);
+                window.setupMultiSelect(document.getElementById('innovations-filial-filter-btn'), document.getElementById('innovations-filial-filter-dropdown'), document.getElementById('innovations-filial-filter-dropdown'), data.filiais, innovationsSelectedFiliais, () => {}, false, null);
                 
                 supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true }).then(({data: inovacData}) => {
                     if (inovacData) {
                         const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
-                        setupCityMultiSelect(document.getElementById('innovations-categoria-filter-btn'), document.getElementById('innovations-categoria-filter-dropdown'), document.getElementById('innovations-categoria-filter-dropdown'), uniqueInovacoes, innovationsSelectedCategorias);
+                        window.setupMultiSelect(document.getElementById('innovations-categoria-filter-btn'), document.getElementById('innovations-categoria-filter-dropdown'), document.getElementById('innovations-categoria-filter-dropdown'), uniqueInovacoes, innovationsSelectedCategorias, () => {}, false, null);
                     }
                     updateInnovationsMonthView();
                 });
@@ -8477,18 +8473,18 @@ window.clearAllFilters = async function(prefix) {
             p_vendedor: [], p_rede: [], p_tipovenda: [], p_categoria: [], p_fornecedor: []
         };
         supabase.rpc('get_dashboard_filters', filters).then(({data, error}) => {
-            if (data && !error && typeof setupCityMultiSelect === 'function') {
-                setupCityMultiSelect(document.getElementById('estrelas-supervisor-filter-btn'), document.getElementById('estrelas-supervisor-filter-dropdown'), document.getElementById('estrelas-supervisor-filter-dropdown'), data.supervisors, estrelasSelectedSupervisors);
-                setupCityMultiSelect(document.getElementById('estrelas-vendedor-filter-btn'), document.getElementById('estrelas-vendedor-filter-dropdown'), document.getElementById('estrelas-vendedor-filter-list'), data.vendedores, estrelasSelectedVendedores, document.getElementById('estrelas-vendedor-filter-search'));
-                setupCityMultiSelect(document.getElementById('estrelas-fornecedor-filter-btn'), document.getElementById('estrelas-fornecedor-filter-dropdown'), document.getElementById('estrelas-fornecedor-filter-list'), data.fornecedores, estrelasSelectedFornecedores, document.getElementById('estrelas-fornecedor-filter-search'), true);
-                setupCityMultiSelect(document.getElementById('estrelas-cidade-filter-btn'), document.getElementById('estrelas-cidade-filter-dropdown'), document.getElementById('estrelas-cidade-filter-list'), data.cidades, estrelasSelectedCidades, document.getElementById('estrelas-cidade-filter-search'));
-                setupCityMultiSelect(document.getElementById('estrelas-tipovenda-filter-btn'), document.getElementById('estrelas-tipovenda-filter-dropdown'), document.getElementById('estrelas-tipovenda-filter-dropdown'), data.tipos_venda, estrelasSelectedTiposVenda);
+            if (data && !error && typeof window.setupMultiSelect === 'function') {
+                window.setupMultiSelect(document.getElementById('estrelas-supervisor-filter-btn'), document.getElementById('estrelas-supervisor-filter-dropdown'), document.getElementById('estrelas-supervisor-filter-dropdown'), data.supervisors, estrelasSelectedSupervisors, () => {}, false, null);
+                window.setupMultiSelect(document.getElementById('estrelas-vendedor-filter-btn'), document.getElementById('estrelas-vendedor-filter-dropdown'), document.getElementById('estrelas-vendedor-filter-list'), data.vendedores, estrelasSelectedVendedores, () => {}, false, document.getElementById('estrelas-vendedor-filter-search'));
+                window.setupMultiSelect(document.getElementById('estrelas-fornecedor-filter-btn'), document.getElementById('estrelas-fornecedor-filter-dropdown'), document.getElementById('estrelas-fornecedor-filter-list'), data.fornecedores, estrelasSelectedFornecedores, () => {}, false, document.getElementById('estrelas-fornecedor-filter-search'), true);
+                window.setupMultiSelect(document.getElementById('estrelas-cidade-filter-btn'), document.getElementById('estrelas-cidade-filter-dropdown'), document.getElementById('estrelas-cidade-filter-list'), data.cidades, estrelasSelectedCidades, () => {}, false, document.getElementById('estrelas-cidade-filter-search'));
+                window.setupMultiSelect(document.getElementById('estrelas-tipovenda-filter-btn'), document.getElementById('estrelas-tipovenda-filter-dropdown'), document.getElementById('estrelas-tipovenda-filter-dropdown'), data.tipos_venda, estrelasSelectedTiposVenda, () => {}, false, null);
 
                 const redes = ['C/ REDE', 'S/ REDE', ...(data.redes || [])];
-                setupCityMultiSelect(document.getElementById('estrelas-rede-filter-btn'), document.getElementById('estrelas-rede-filter-dropdown'), document.getElementById('estrelas-rede-filter-list'), redes, estrelasSelectedRedes, document.getElementById('estrelas-rede-filter-search'));
+                window.setupMultiSelect(document.getElementById('estrelas-rede-filter-btn'), document.getElementById('estrelas-rede-filter-dropdown'), document.getElementById('estrelas-rede-filter-list'), redes, estrelasSelectedRedes, () => {}, false, document.getElementById('estrelas-rede-filter-search'));
 
-                setupCityMultiSelect(document.getElementById('estrelas-filial-filter-btn'), document.getElementById('estrelas-filial-filter-dropdown'), document.getElementById('estrelas-filial-filter-dropdown'), data.filiais, estrelasSelectedFiliais);
-                setupCityMultiSelect(document.getElementById('estrelas-categoria-filter-btn'), document.getElementById('estrelas-categoria-filter-dropdown'), document.getElementById('estrelas-categoria-filter-list'), data.categorias || [], estrelasSelectedCategorias, document.getElementById('estrelas-categoria-filter-search'));
+                window.setupMultiSelect(document.getElementById('estrelas-filial-filter-btn'), document.getElementById('estrelas-filial-filter-dropdown'), document.getElementById('estrelas-filial-filter-dropdown'), data.filiais, estrelasSelectedFiliais, () => {}, false, null);
+                window.setupMultiSelect(document.getElementById('estrelas-categoria-filter-btn'), document.getElementById('estrelas-categoria-filter-dropdown'), document.getElementById('estrelas-categoria-filter-list'), data.categorias || [], estrelasSelectedCategorias, () => {}, false, document.getElementById('estrelas-categoria-filter-search'));
 
                 updateEstrelasView();
             } else {
@@ -8705,18 +8701,18 @@ const setupEstrelasFilters = async () => {
         mesSelect.addEventListener('change', handleEstrelasFilterChange);
     }
 
-    if(typeof setupCityMultiSelect === 'function') {
-        setupCityMultiSelect(estrelasSupervisorFilterBtn, estrelasSupervisorFilterDropdown, estrelasSupervisorFilterDropdown, filterData.supervisors, estrelasSelectedSupervisors);
-        setupCityMultiSelect(estrelasVendedorFilterBtn, estrelasVendedorFilterDropdown, estrelasVendedorFilterList, filterData.vendedores, estrelasSelectedVendedores, estrelasVendedorFilterSearch);
-        setupCityMultiSelect(estrelasFornecedorFilterBtn, estrelasFornecedorFilterDropdown, estrelasFornecedorFilterList, filterData.fornecedores, estrelasSelectedFornecedores, estrelasFornecedorFilterSearch, true);
-        setupCityMultiSelect(estrelasCidadeFilterBtn, estrelasCidadeFilterDropdown, estrelasCidadeFilterList, filterData.cidades, estrelasSelectedCidades, estrelasCidadeFilterSearch);
-        setupCityMultiSelect(estrelasTipovendaFilterBtn, estrelasTipovendaFilterDropdown, estrelasTipovendaFilterDropdown, filterData.tipos_venda, estrelasSelectedTiposVenda);
+    if(typeof window.setupMultiSelect === 'function') {
+        window.setupMultiSelect(estrelasSupervisorFilterBtn, estrelasSupervisorFilterDropdown, estrelasSupervisorFilterDropdown, filterData.supervisors, estrelasSelectedSupervisors, () => {}, false, null);
+        window.setupMultiSelect(estrelasVendedorFilterBtn, estrelasVendedorFilterDropdown, estrelasVendedorFilterList, filterData.vendedores, estrelasSelectedVendedores, () => {}, false, estrelasVendedorFilterSearch);
+        window.setupMultiSelect(estrelasFornecedorFilterBtn, estrelasFornecedorFilterDropdown, estrelasFornecedorFilterList, filterData.fornecedores, estrelasSelectedFornecedores, () => {}, true, estrelasFornecedorFilterSearch);
+        window.setupMultiSelect(estrelasCidadeFilterBtn, estrelasCidadeFilterDropdown, estrelasCidadeFilterList, filterData.cidades, estrelasSelectedCidades, () => {}, false, estrelasCidadeFilterSearch);
+        window.setupMultiSelect(estrelasTipovendaFilterBtn, estrelasTipovendaFilterDropdown, estrelasTipovendaFilterDropdown, filterData.tipos_venda, estrelasSelectedTiposVenda, () => {}, false, null);
 
         const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
-        setupCityMultiSelect(estrelasRedeFilterBtn, estrelasRedeFilterDropdown, estrelasRedeFilterList, redes, estrelasSelectedRedes, estrelasRedeFilterSearch);
+        window.setupMultiSelect(estrelasRedeFilterBtn, estrelasRedeFilterDropdown, estrelasRedeFilterList, redes, estrelasSelectedRedes, () => {}, false, estrelasRedeFilterSearch);
 
-        setupCityMultiSelect(estrelasFilialFilterBtn, estrelasFilialFilterDropdown, estrelasFilialFilterDropdown, filterData.filiais, estrelasSelectedFiliais);
-        setupCityMultiSelect(estrelasCategoriaFilterBtn, estrelasCategoriaFilterDropdown, estrelasCategoriaFilterList, filterData.categorias || [], estrelasSelectedCategorias, estrelasCategoriaFilterSearch);
+        window.setupMultiSelect(estrelasFilialFilterBtn, estrelasFilialFilterDropdown, estrelasFilialFilterDropdown, filterData.filiais, estrelasSelectedFiliais, () => {}, false, null);
+        window.setupMultiSelect(estrelasCategoriaFilterBtn, estrelasCategoriaFilterDropdown, estrelasCategoriaFilterList, filterData.categorias || [], estrelasSelectedCategorias, () => {}, false, estrelasCategoriaFilterSearch);
     }
 
     if (overlay) overlay.classList.add('hidden');
