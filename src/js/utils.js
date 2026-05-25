@@ -291,3 +291,67 @@ export function debounce(func, wait = 300) {
         timeout = setTimeout(later, wait);
     };
 }
+
+
+export function showToast(type, message, title = '') {
+    const container = document.getElementById('toast-container');
+    if (!container) {
+        console.error('Toast container not found!');
+        console.log(`[${type}] ${message}`);
+        return;
+    }
+
+    const variants = {
+        success: {
+            class: 'toast-success',
+            icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+            defaultTitle: 'Sucesso'
+        },
+        error: {
+            class: 'toast-error',
+            icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+            defaultTitle: 'Erro'
+        },
+        info: {
+            class: 'toast-info',
+            icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+            defaultTitle: 'Informação'
+        },
+        warning: {
+            class: 'toast-warning',
+            icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`,
+            defaultTitle: 'Atenção'
+        }
+    };
+
+    const variant = variants[type] || variants.info;
+    const finalTitle = title || variant.defaultTitle;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${variant.class}`;
+    const role = (type === 'error' || type === 'warning') ? 'alert' : 'status';
+    const ariaLive = (type === 'error' || type === 'warning') ? 'assertive' : 'polite';
+    toast.setAttribute('role', role);
+    toast.setAttribute('aria-live', ariaLive);
+
+    // 🧹 Tidy Optimization: Usado innerHTML literal para criar o toast substituindo o documento.createElement excessivo
+    toast.innerHTML = `
+        <div class="toast-icon">${variant.icon}</div>
+        <div class="flex-1 min-w-0">
+            <h4 class="toast-title">${escapeHtml(finalTitle)}</h4>
+            <p class="toast-message">${escapeHtml(message)}</p>
+        </div>
+        <button class="toast-close-btn" aria-label="Fechar notificação">
+            <svg class="w-4 h-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    `;
+
+    toast.querySelector('.toast-close-btn').onclick = function() {
+        toast.classList.add('hiding');
+        toast.addEventListener('animationend', () => toast.remove());
+    };
+
+    container.appendChild(toast);
+};
