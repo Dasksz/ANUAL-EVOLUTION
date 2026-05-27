@@ -3659,12 +3659,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             const currentVal = element.value;
             // Always add 'Todos' option (value='todos' for year, '' for others)
             const allVal = (element.id === 'ano-filter') ? 'todos' : '';
-            let html = `<option value="${allVal}">Todos</option>`;
-            if (items) {
-                html += items.map(item => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join('');
-            }
             // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-            element.innerHTML = html;
+            element.innerHTML = generateYearOptionsHtml(items || [], 'Todos', allVal);
             // Logic to set default or preserve selection
             if (currentVal && Array.from(element.options).some(o => o.value === currentVal)) {
                 element.value = currentVal;
@@ -6341,7 +6337,7 @@ Valor: ${formatValue(item.valor, indicator)}`;
                             </div>
                             <div class="absolute inset-0 flex justify-between items-center px-1 text-[9px] font-medium z-10 pointer-events-none">
                                 <span class="text-white truncate drop-shadow-md pr-1" style="max-width: 70%;">${index + 1}. ${escapeHtml(item.nome)}</span>
-                                <span class="text-white drop-shadow-md shrink-0">${pctOfTotal.toFixed(1)}%</span>
+                                <span class="text-white drop-shadow-md shrink-0">${formatPercentage(pctOfTotal, 1)}</span>
                             </div>
                         </div>
                     `;
@@ -8627,7 +8623,7 @@ const setupEstrelasFilters = async () => {
 
     if (anoSelect && filterData.anos) {
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-        anoSelect.innerHTML = '<option value="todos">Todos</option>' + filterData.anos.map(ano => `<option value="${escapeHtml(ano)}">${escapeHtml(ano)}</option>`).join('');
+        anoSelect.innerHTML = generateYearOptionsHtml(filterData.anos);
 
         let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
         anoSelect.value = hasYear ? currentYear : 'todos';
@@ -8637,9 +8633,8 @@ const setupEstrelasFilters = async () => {
     }
 
     if (mesSelect) {
-        const meses = MONTHS_PT;
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-        mesSelect.innerHTML = '<option value="">Todos</option>' + meses.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
+        mesSelect.innerHTML = generateMonthOptionsHtml('Todos', '', true);
 
         mesSelect.value = currentMonth;
         mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
