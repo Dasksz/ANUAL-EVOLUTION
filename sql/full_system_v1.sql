@@ -262,36 +262,20 @@ BEGIN
     RETURN v_result;
 END;
 $$;
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data();
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text[], text[], text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[], text[]);
-DROP FUNCTION IF EXISTS get_frequency_table_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[], text[]);
 
 
 CREATE OR REPLACE FUNCTION get_frequency_table_data(
-    p_filial text[] default null,
+    p_ano text default null,
+    p_mes text default null,
     p_cidade text[] default null,
+    p_filial text[] default null,
     p_supervisor text[] default null,
     p_vendedor text[] default null,
     p_fornecedor text[] default null,
-    p_ano text default null,
-    p_mes text default null,
-    p_tipovenda text[] default null,
     p_rede text[] default null,
     p_produto text[] default null,
-    p_categoria text[] default null
+    p_categoria text[] default null,
+    p_tipovenda text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -474,11 +458,9 @@ BEGIN
         v_pre_agg_skus_sql := '
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
-            COUNT(DISTINCT p.produto) as dist_skus_per_cli
+            COALESCE(array_length(c.produtos_arr, 1), 0) as dist_skus_per_cli
         FROM current_data c
-        CROSS JOIN LATERAL unnest(c.produtos_arr) AS p(produto)
         WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
-        GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
         ';
     ELSE
         v_pre_agg_skus_sql := '
@@ -1718,48 +1700,78 @@ BEGIN
         FROM raw_data s
         LEFT JOIN dim_prod_enhanced dp ON s.produto = dp.codigo
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
+    ),
+    final_agg AS (
+        SELECT
+            op.ano,
+            op.mes,
+            op.filial,
+            op.cidade,
+            op.codsupervisor,
+            op.codusur,
+            op.codfor,
+            op.codcli,
+            op.tipovenda,
+            op.pedido,
+            SUM(op.prod_vlvenda) as vlvenda,
+            SUM(op.prod_peso) as peso,
+            jsonb_agg(DISTINCT op.produto) as produtos,
+            jsonb_agg(DISTINCT op.categoria_produto) as categorias,
+            c.ramo as rede,
+            array_agg(DISTINCT op.produto) as produtos_arr,
+            array_agg(DISTINCT op.categoria_produto) as categorias_arr,
+            MAX(CASE WHEN op.mix_marca = 'CHEETOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_cheetos,
+            MAX(CASE WHEN op.mix_marca = 'DORITOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_doritos,
+            MAX(CASE WHEN op.mix_marca = 'FANDANGOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_fandangos,
+            MAX(CASE WHEN op.mix_marca = 'RUFFLES' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_ruffles,
+            MAX(CASE WHEN op.mix_marca = 'TORCIDA' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_torcida,
+            MAX(CASE WHEN op.mix_marca = 'TODDYNHO' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_toddynho,
+            MAX(CASE WHEN op.mix_marca = 'TODDY' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_toddy,
+            MAX(CASE WHEN op.mix_marca = 'QUAKER' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_quaker,
+            MAX(CASE WHEN op.mix_marca = 'KEROCOCO' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_kerococo
+        FROM order_prod_agg op
+        LEFT JOIN public.data_clients c ON op.codcli = c.codigo_cliente
+        GROUP BY
+            op.ano,
+            op.mes,
+            op.filial,
+            op.cidade,
+            op.codsupervisor,
+            op.codusur,
+            op.codfor,
+            op.codcli,
+            op.tipovenda,
+            op.pedido,
+            c.ramo
     )
     SELECT
-        op.ano,
-        op.mes,
-        op.filial,
-        op.cidade,
-        op.codsupervisor,
-        op.codusur,
-        op.codfor,
-        op.codcli,
-        op.tipovenda,
-        op.pedido,
-        SUM(op.prod_vlvenda) as vlvenda,
-        SUM(op.prod_peso) as peso,
-        jsonb_agg(DISTINCT op.produto) as produtos,
-        jsonb_agg(DISTINCT op.categoria_produto) as categorias,
-        c.ramo as rede,
-        array_agg(DISTINCT op.produto) as produtos_arr,
-        array_agg(DISTINCT op.categoria_produto) as categorias_arr,
-        MAX(CASE WHEN op.mix_marca = 'CHEETOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_cheetos,
-        MAX(CASE WHEN op.mix_marca = 'DORITOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_doritos,
-        MAX(CASE WHEN op.mix_marca = 'FANDANGOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_fandangos,
-        MAX(CASE WHEN op.mix_marca = 'RUFFLES' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_ruffles,
-        MAX(CASE WHEN op.mix_marca = 'TORCIDA' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_torcida,
-        MAX(CASE WHEN op.mix_marca = 'TODDYNHO' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddynho,
-        MAX(CASE WHEN op.mix_marca = 'TODDY' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddy,
-        MAX(CASE WHEN op.mix_marca = 'QUAKER' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_quaker,
-        MAX(CASE WHEN op.mix_marca = 'KEROCOCO' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_kerococo
-    FROM order_prod_agg op
-    LEFT JOIN public.data_clients c ON op.codcli = c.codigo_cliente
-    GROUP BY
-        op.ano,
-        op.mes,
-        op.filial,
-        op.cidade,
-        op.codsupervisor,
-        op.codusur,
-        op.codfor,
-        op.codcli,
-        op.tipovenda,
-        op.pedido,
-        c.ramo;
+        ano,
+        mes,
+        filial,
+        cidade,
+        codsupervisor,
+        codusur,
+        codfor,
+        codcli,
+        tipovenda,
+        pedido,
+        vlvenda,
+        peso,
+        produtos,
+        categorias,
+        rede,
+        produtos_arr,
+        categorias_arr,
+        has_cheetos,
+        has_doritos,
+        has_fandangos,
+        has_ruffles,
+        has_torcida,
+        has_toddynho,
+        has_toddy,
+        has_quaker,
+        has_kerococo
+    FROM final_agg;
     -- ANALYZE public.data_summary;
 END;
 $$;
@@ -1949,15 +1961,15 @@ BEGIN
             jsonb_agg(DISTINCT op.categoria_produto) FILTER (WHERE op.categoria_produto IS NOT NULL) as categorias,
             array_agg(DISTINCT op.produto) as produtos_arr,
             array_agg(DISTINCT op.categoria_produto) FILTER (WHERE op.categoria_produto IS NOT NULL) as categorias_arr,
-            MAX(CASE WHEN op.mix_marca = 'CHEETOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_cheetos,
-            MAX(CASE WHEN op.mix_marca = 'DORITOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_doritos,
-            MAX(CASE WHEN op.mix_marca = 'FANDANGOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_fandangos,
-            MAX(CASE WHEN op.mix_marca = 'RUFFLES' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_ruffles,
-            MAX(CASE WHEN op.mix_marca = 'TORCIDA' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_torcida,
-            MAX(CASE WHEN op.mix_marca = 'TODDYNHO' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddynho,
-            MAX(CASE WHEN op.mix_marca = 'TODDY' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_toddy,
-            MAX(CASE WHEN op.mix_marca = 'QUAKER' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_quaker,
-            MAX(CASE WHEN op.mix_marca = 'KEROCOCO' AND op.prod_vlvenda >= 1 THEN 1 ELSE NULL END) as has_kerococo
+            MAX(CASE WHEN op.mix_marca = 'CHEETOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_cheetos,
+            MAX(CASE WHEN op.mix_marca = 'DORITOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_doritos,
+            MAX(CASE WHEN op.mix_marca = 'FANDANGOS' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_fandangos,
+            MAX(CASE WHEN op.mix_marca = 'RUFFLES' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_ruffles,
+            MAX(CASE WHEN op.mix_marca = 'TORCIDA' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_torcida,
+            MAX(CASE WHEN op.mix_marca = 'TODDYNHO' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_toddynho,
+            MAX(CASE WHEN op.mix_marca = 'TODDY' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_toddy,
+            MAX(CASE WHEN op.mix_marca = 'QUAKER' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_quaker,
+            MAX(CASE WHEN op.mix_marca = 'KEROCOCO' AND op.prod_vlvenda >= 1 THEN 1 ELSE 0 END) as has_kerococo
         FROM order_prod_agg op
         GROUP BY
             op.ano,
@@ -4705,9 +4717,6 @@ GRANT EXECUTE ON FUNCTION public.search_loja_perfeita_clients(text, text[], text
 -- FIX LINTER WARNINGS: SEARCH_PATH
 ALTER FUNCTION public.append_to_chunk_v2(p_table_name text, p_rows jsonb) SET search_path = public;
 ALTER FUNCTION public.sync_chunk_v2(p_table_name text, p_chunk_key text, p_rows jsonb, p_hash text) SET search_path = public;
-ALTER FUNCTION public.get_frequency_table_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_fornecedor text[], p_tipovenda text[], p_rede text[], p_produto text[], p_categoria text[]) SET search_path = public;
-ALTER FUNCTION public.get_frequency_table_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_fornecedor text[], p_ano text, p_mes text, p_tipovenda text[], p_rede text[], p_produto text[], p_categoria text[]) SET search_path = public;
-ALTER FUNCTION public.get_frequency_table_data(p_diretoria text[], p_gerencia text[], p_filial text[], p_vendedor text[], p_supervisor text[], p_ano text, p_mes text, p_fornecedor text[], p_rede text[], p_produto text[], p_categoria text[], p_tipovenda text[]) SET search_path = public;
 ALTER FUNCTION public.update_products_stock(p_stock_data jsonb) SET search_path = public;
 ALTER FUNCTION public.classify_product_mix() SET search_path = public;
 
@@ -4715,17 +4724,17 @@ ALTER FUNCTION public.get_loja_perfeita_data(p_filial text[], p_cidade text[], p
 ALTER FUNCTION public.search_clients(p_search text) SET search_path = public;
 ALTER FUNCTION public.search_loja_perfeita_clients(p_search text, p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[]) SET search_path = public;
 CREATE OR REPLACE FUNCTION get_mix_salty_foods_data(
-    p_filial text[] default null,
+    p_ano text default null,
+    p_mes text default null,
     p_cidade text[] default null,
+    p_filial text[] default null,
     p_supervisor text[] default null,
     p_vendedor text[] default null,
     p_fornecedor text[] default null,
-    p_ano text default null,
-    p_mes text default null,
-    p_tipovenda text[] default null,
     p_rede text[] default null,
     p_produto text[] default null,
-    p_categoria text[] default null
+    p_categoria text[] default null,
+    p_tipovenda text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
