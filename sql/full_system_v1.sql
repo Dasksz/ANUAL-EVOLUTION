@@ -30,7 +30,7 @@ DECLARE
     v_result json;
     v_sql text;
 BEGIN
-    SET LOCAL work_mem = '64MB';
+    SET LOCAL work_mem = '90MB';
 
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = 'todos' THEN
@@ -299,7 +299,7 @@ DECLARE
     v_result json;
     v_sql text;
 BEGIN
-    SET LOCAL work_mem = '64MB';
+    SET LOCAL work_mem = '90MB';
     SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Resolution
@@ -490,7 +490,7 @@ BEGIN
         LEFT JOIN public.dim_vendedores dv ON dc.rca1 = dv.codigo
         ' || v_where_clients || '
     ),
-    current_data AS MATERIALIZED (
+    current_data AS (
         SELECT
             s.filial,
             s.cidade,
@@ -532,11 +532,11 @@ BEGIN
         FROM base_clients
         GROUP BY ROLLUP(filial, cidade, vendedor)
     ),
-    client_monthly_sales AS MATERIALIZED (
+    client_monthly_sales AS (
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
-            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END)::numeric as month_pedidos,
-            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as sum_vlvenda
+            COUNT(DISTINCT c.pedido) FILTER (WHERE c.tipovenda NOT IN (''5'', ''11''))::numeric as month_pedidos,
+            COALESCE(SUM(c.vlvenda) FILTER (WHERE c.tipovenda NOT IN (''5'', ''11'')), 0) as sum_vlvenda
         FROM current_data c
         GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
     ),
@@ -550,7 +550,7 @@ BEGIN
             codusur,
             mes,
             SUM(month_pedidos) as month_pedidos,
-            SUM(CASE WHEN sum_vlvenda >= 1 THEN 1 ELSE 0 END)::numeric as month_clientes
+            COUNT(*) FILTER (WHERE sum_vlvenda >= 1)::numeric as month_clientes
         FROM client_monthly_sales
         GROUP BY filial, cidade, codusur, mes
     ),
@@ -577,8 +577,8 @@ BEGIN
             COALESCE(c.cidade, ''TOTAL_CIDADE'') as cidade,
             c.codusur as vendedor_cod,
             SUM(c.peso) as tons,
-            SUM(CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.vlvenda ELSE 0 END) as faturamento,
-            COUNT(DISTINCT CASE WHEN c.tipovenda NOT IN (''5'', ''11'') THEN c.pedido END) as total_pedidos,
+            COALESCE(SUM(c.vlvenda) FILTER (WHERE c.tipovenda NOT IN (''5'', ''11'')), 0) as faturamento,
+            COUNT(DISTINCT c.pedido) FILTER (WHERE c.tipovenda NOT IN (''5'', ''11'')) as total_pedidos,
             COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
         GROUP BY ROLLUP(c.filial, c.cidade, c.codusur)
@@ -591,8 +591,8 @@ BEGIN
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
             codusur as vendedor_cod,
-            COUNT(DISTINCT CASE WHEN sum_vlvenda >= 1 THEN codcli END) as positivacao,
-            COUNT(DISTINCT CASE WHEN sum_vlvenda >= 1 THEN codcli::text || ''-'' || mes::text END) as positivacao_mensal
+            COUNT(DISTINCT codcli) FILTER (WHERE sum_vlvenda >= 1) as positivacao,
+            COUNT(DISTINCT codcli::text || ''-'' || mes::text) FILTER (WHERE sum_vlvenda >= 1) as positivacao_mensal
         FROM client_monthly_sales
         GROUP BY ROLLUP(filial, cidade, codusur)
     ),
@@ -682,8 +682,8 @@ BEGIN
     ),
     chart_monthly_sales AS (
         SELECT s.ano, s.mes, s.codcli,
-               COUNT(DISTINCT CASE WHEN s.tipovenda NOT IN (''5'', ''11'') THEN s.pedido END) as month_pedidos,
-               SUM(CASE WHEN s.tipovenda NOT IN (''5'', ''11'') THEN s.vlvenda ELSE 0 END) as sum_vlvenda
+               COUNT(DISTINCT s.pedido) FILTER (WHERE s.tipovenda NOT IN (''5'', ''11'')) as month_pedidos,
+               COALESCE(SUM(s.vlvenda) FILTER (WHERE s.tipovenda NOT IN (''5'', ''11'')), 0) as sum_vlvenda
         FROM public.data_summary_frequency s
         ' || v_where_chart || '
         GROUP BY s.ano, s.mes, s.codcli
@@ -693,7 +693,7 @@ BEGIN
             ano,
             mes,
             SUM(month_pedidos) as total_pedidos,
-            SUM(CASE WHEN sum_vlvenda >= 1 THEN 1 ELSE 0 END) as total_clientes
+            COUNT(*) FILTER (WHERE sum_vlvenda >= 1) as total_clientes
         FROM chart_monthly_sales
         GROUP BY 1, 2
     )
@@ -2577,7 +2577,7 @@ DECLARE
 BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
 
-    SET LOCAL work_mem = '64MB';
+    SET LOCAL work_mem = '90MB';
     SET LOCAL statement_timeout = '600s';
 
     -- 1. Determine Date Ranges
@@ -2997,7 +2997,7 @@ DECLARE
     v_curr_month_idx int;
 BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
-    SET LOCAL work_mem = '64MB';
+    SET LOCAL work_mem = '90MB';
     SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Logic
@@ -3406,7 +3406,7 @@ DECLARE
 BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
 
-    SET LOCAL work_mem = '64MB';
+    SET LOCAL work_mem = '90MB';
 
     -- 1. Date & Trend Setup
     IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
@@ -3569,7 +3569,7 @@ DECLARE
 BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
 
-    SET LOCAL work_mem = '64MB';
+    SET LOCAL work_mem = '90MB';
     SET LOCAL statement_timeout = '600s';
 
     -- Date Logic
@@ -4751,7 +4751,7 @@ DECLARE
     v_sql text;
 
 BEGIN
-    SET LOCAL work_mem = '64MB';
+    SET LOCAL work_mem = '90MB';
     SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Resolution
@@ -4936,7 +4936,7 @@ DECLARE
     v_where_inov text := ' 1=1 ';
     v_filial_cities text[];
 BEGIN
-    SET LOCAL work_mem = '64MB';
+    SET LOCAL work_mem = '90MB';
     SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Resolution
@@ -5625,7 +5625,7 @@ DECLARE
     v_result json;
     v_sql text;
 BEGIN
-    SET LOCAL work_mem = '64MB';
+    SET LOCAL work_mem = '90MB';
 
     -- 1. Date Resolution
     IF p_ano IS NULL OR p_ano = 'todos' THEN
