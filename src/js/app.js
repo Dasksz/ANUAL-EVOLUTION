@@ -1798,40 +1798,40 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 break;
             case 'comparison':
                 if (comparisonView && navComparativoBtn) {
-                    window.showDashboardLoading("comparison-view");
                     comparisonView.classList.remove('hidden');
+                    window.showDashboardLoading("comparison-view");
                     setActiveNavLink(navComparativoBtn);
                     loadComparisonView();
                 }
                 break;
             case 'innovations':
                 if (innovationsMonthView && navInnovationsBtn) {
-                    window.showDashboardLoading('innovations-month-view');
                     innovationsMonthView.classList.remove('hidden');
+                    window.showDashboardLoading('innovations-month-view');
                     setActiveNavLink(navInnovationsBtn);
                     renderInnovationsMonthView();
                 }
                 break;
                         case 'estrelas':
                 if (estrelasView && navEstrelasBtn) {
-                    window.showDashboardLoading('estrelas-view');
                     estrelasView.classList.remove('hidden');
+                    window.showDashboardLoading('estrelas-view');
                     setActiveNavLink(navEstrelasBtn);
                     renderEstrelasView();
                 }
                 break;
             case 'agenda':
                 if (agendaView && navAgendaBtn) {
-                    window.showDashboardLoading('agenda-view');
                     agendaView.classList.remove('hidden');
+                    window.showDashboardLoading('agenda-view');
                     setActiveNavLink(navAgendaBtn);
                     renderAgendaView();
                 }
                 break;
             case 'loja-perfeita':
                 if (lojaPerfeitaView && navLojaPerfeitaBtn) {
-                    window.showDashboardLoading('loja-perfeita-view');
                     lojaPerfeitaView.classList.remove('hidden');
+                    window.showDashboardLoading('loja-perfeita-view');
                     setActiveNavLink(navLojaPerfeitaBtn);
                     renderLojaPerfeitaView();
                 }
@@ -1845,8 +1845,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 break;
             case 'jbp':
                 if (jbpView && navJbpBtn) {
-                    window.showDashboardLoading('jbp-view');
                     jbpView.classList.remove('hidden');
+                    window.showDashboardLoading('jbp-view');
                     setActiveNavLink(navJbpBtn);
                     loadJbpView();
                 }
