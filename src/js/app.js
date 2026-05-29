@@ -5718,6 +5718,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
             if (typeof initJbpFilters === "function" && (!jbpFilialFilterDropdown.children.length || jbpFilialFilterDropdown.children.length === 0)) {
                 await initJbpFilters();
+                window.showDashboardLoading("jbp-view");
             }
 
             renderJbpPanel();
@@ -8213,6 +8214,7 @@ async function renderLojaPerfeitaView() {
     window.showDashboardLoading('loja-perfeita-view');
     if (!isLojaPerfeitaInitialized) {
         await setupInnovationsFilters();
+        window.showDashboardLoading('loja-perfeita-view'); // Re-assert loader because setupInnovationsFilters might hide it
         await loadLojaPerfeitaFilters();
         setupLpClientSearchAutocomplete();
         isLojaPerfeitaInitialized = true;
@@ -8665,6 +8667,7 @@ async function renderEstrelasView() {
     window.showDashboardLoading('estrelas-view');
     if (!isEstrelasInitialized) {
         await setupEstrelasFilters();
+        window.showDashboardLoading('estrelas-view'); // Re-assert loader because setupEstrelasFilters hides it
     }
     updateEstrelasView();
 }
@@ -9367,6 +9370,7 @@ async function renderAgendaView() {
     window.showDashboardLoading('agenda-view');
     if (!isAgendaInitialized) {
         await setupAgendaFilters();
+        window.showDashboardLoading('agenda-view'); // Re-assert loader
     }
     updateAgendaView();
 }
