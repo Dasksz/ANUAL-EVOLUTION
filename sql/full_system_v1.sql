@@ -490,7 +490,7 @@ BEGIN
         LEFT JOIN public.dim_vendedores dv ON dc.rca1 = dv.codigo
         ' || v_where_clients || '
     ),
-    current_data AS (
+    current_data AS MATERIALIZED (
         SELECT
             s.filial,
             s.cidade,
@@ -532,7 +532,7 @@ BEGIN
         FROM base_clients
         GROUP BY ROLLUP(filial, cidade, vendedor)
     ),
-    client_monthly_sales AS (
+    client_monthly_sales AS MATERIALIZED (
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
             COUNT(DISTINCT c.pedido) FILTER (WHERE c.tipovenda NOT IN (''5'', ''11''))::numeric as month_pedidos,
