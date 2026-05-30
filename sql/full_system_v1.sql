@@ -458,9 +458,11 @@ BEGIN
         v_pre_agg_skus_sql := '
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
-            COALESCE(array_length(c.produtos_arr, 1), 0) as dist_skus_per_cli
+            COUNT(DISTINCT p.produto) as dist_skus_per_cli
         FROM current_data c
+        CROSS JOIN LATERAL unnest(c.produtos_arr) AS p(produto)
         WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
+        GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
         ';
     ELSE
         v_pre_agg_skus_sql := '
