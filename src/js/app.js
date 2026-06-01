@@ -2319,16 +2319,10 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         
         // Sync Logic for Sales (Metadata + Chunking + Batched HTTP Requests)
         const syncSalesChunks = async (tableName, localChunks, progressStart, progressEnd) => {
-            updateStatus(`Verificando metadados de ${tableName}...`, progressStart);
+            updateStatus(`Limpando tabela ${tableName}...`, progressStart);
 
-            // 1. Get Server Metadata
-            const { data: serverMeta, error: metaErr } = await supabase.from('data_metadata').select('chunk_key, chunk_hash').eq('table_name', tableName);
-            if (metaErr) throw new Error(`Erro metadados ${tableName}: ${metaErr.message}`);
-
-            const serverMap = new Map();
-            if (serverMeta) {
-                serverMeta.forEach(m => serverMap.set(m.chunk_key, m.chunk_hash));
-            }
+            // 1. Explicitly clear the table
+            await clearTable(tableName);
 
             const localKeys = Object.keys(localChunks);
             const totalChunks = localKeys.length;
@@ -2336,69 +2330,49 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
             AppLog.log(`[${tableName}] Total Chunks: ${totalChunks}`);
 
-            // 2. Iterate Chunks
+            // 2. Iterate Chunks and append
             for (const key of localKeys) {
                 const localChunk = localChunks[key];
-                const serverHash = serverMap.get(key);
 
-                if (serverHash !== localChunk.hash) {
-                    AppLog.log(`[${tableName}] Syncing chunk ${key} (Size: ${localChunk.rows.length})...`);
-                    updateStatus(`Sincronizando ${tableName} (${key})...`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
-                    
-                    // --- GRANULAR UPLOAD STRATEGY ---
-                    // 1. Wipe Data for Month
-                    const { error: wipeErr } = await supabase.rpc('begin_sync_chunk', {
-                        p_table_name: tableName,
-                        p_chunk_key: key
-                    });
-                    if (wipeErr) throw new Error(`Erro WIPE chunk ${key}: ${wipeErr.message}`);
+                AppLog.log(`[${tableName}] Syncing chunk ${key} (Size: ${localChunk.rows.length})...`);
+                updateStatus(`Sincronizando ${tableName} (${key})...`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
 
-                    // 2. Batch Append (e.g. 2000 rows per request to avoid Gateway Timeouts)
-                    const ROWS_PER_REQUEST = 2000;
-                    const CONCURRENCY_LIMIT = 3;
-                    const totalRows = localChunk.rows.length;
-                    
-                    let activePromises = [];
-                    for (let i = 0; i < totalRows; i += ROWS_PER_REQUEST) {
-                        const batch = localChunk.rows.slice(i, i + ROWS_PER_REQUEST);
+                // --- GRANULAR UPLOAD STRATEGY ---
+                // Batch Append (e.g. 2000 rows per request to avoid Gateway Timeouts)
+                const ROWS_PER_REQUEST = 2000;
+                const CONCURRENCY_LIMIT = 3;
+                const totalRows = localChunk.rows.length;
 
-                        const uploadTask = retryOperation(async () => {
-                            const { error: appendErr } = await supabase.rpc('append_sync_chunk', {
-                                p_table_name: tableName,
-                                p_rows: batch
-                            });
-                            if (appendErr) throw new Error(`Erro APPEND chunk ${key} batch ${i}: ${appendErr.message}`);
+                let activePromises = [];
+                for (let i = 0; i < totalRows; i += ROWS_PER_REQUEST) {
+                    const batch = localChunk.rows.slice(i, i + ROWS_PER_REQUEST);
+
+                    const uploadTask = retryOperation(async () => {
+                        const { error: appendErr } = await supabase.rpc('append_sync_chunk', {
+                            p_table_name: tableName,
+                            p_rows: batch
                         });
-
-                        activePromises.push(uploadTask);
-
-                        // Wait if we hit concurrency limit
-                        if (activePromises.length >= CONCURRENCY_LIMIT) {
-                            await Promise.all(activePromises);
-                            activePromises = [];
-                            // Update progress after batch completes
-                            const progress = Math.round((Math.min(i + ROWS_PER_REQUEST, totalRows) / totalRows) * 100);
-                            updateStatus(`Enviando ${tableName} (${key}): ${progress}%`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
-                        }
-                    }
-
-                    // Await any remaining promises
-                    if (activePromises.length > 0) {
-                        await Promise.all(activePromises);
-                        updateStatus(`Enviando ${tableName} (${key}): 100%`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
-                    }
-
-                    // 3. Commit/Finalize
-                    const { error: commitErr } = await supabase.rpc('commit_sync_chunk', {
-                        p_table_name: tableName,
-                        p_chunk_key: key,
-                        p_hash: localChunk.hash
+                        if (appendErr) throw new Error(`Erro APPEND chunk ${key} batch ${i}: ${appendErr.message}`);
                     });
-                    if (commitErr) throw new Error(`Erro COMMIT chunk ${key}: ${commitErr.message}`);
 
-                } else {
-                    AppLog.log(`[${tableName}] Chunk ${key} is up-to-date.`);
+                    activePromises.push(uploadTask);
+
+                    // Wait if we hit concurrency limit
+                    if (activePromises.length >= CONCURRENCY_LIMIT) {
+                        await Promise.all(activePromises);
+                        activePromises = [];
+                        // Update progress after batch completes
+                        const progress = Math.round((Math.min(i + ROWS_PER_REQUEST, totalRows) / totalRows) * 100);
+                        updateStatus(`Enviando ${tableName} (${key}): ${progress}%`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
+                    }
                 }
+
+                // Await any remaining promises
+                if (activePromises.length > 0) {
+                    await Promise.all(activePromises);
+                    updateStatus(`Enviando ${tableName} (${key}): 100%`, progressStart + Math.floor((processedChunks / totalChunks) * (progressEnd - progressStart)));
+                }
+
                 processedChunks++;
             }
             updateStatus(`${tableName} sincronizada.`, progressEnd);
