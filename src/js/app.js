@@ -1,3 +1,9 @@
+import supabase from './supabase.js?v=3';
+import { SUPABASE_KEY } from "./config.js";
+import {
+    generateYearOptionsHtml,
+    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
+
 
 let estrelasDetailedData = [];
 let estrelasQtdMarcas = 0;
@@ -180,11 +186,6 @@ window.closeDetalhadoModal = function() {
 };
 
 
-import supabase from './supabase.js?v=3';
-import { SUPABASE_KEY } from "./config.js";
-import {
-    generateYearOptionsHtml,
-    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
 
 
 function getDefaultFilterDates(lastSalesDate) {
