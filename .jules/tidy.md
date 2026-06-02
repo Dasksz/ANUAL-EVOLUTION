@@ -12,3 +12,6 @@
 ## 2025/05/31 : (Consolidate Multi-Select Wrapper Functions)
 **Aprendizado:** Found duplicated wrapper functions (`setupCityMultiSelect` and `setupBranchMultiSelect`) for the global `window.setupMultiSelect` function. They did identical setup with empty label callbacks. Since automated review tools don't natively understand variable-argument wrapper semantics, replacing these wrappers directly in `app.js` using regex string replacements is a safe way to consolidate logic without messing up dependencies.
 **Ação:** Refactored `app.js` to replace 80+ uses of redundant wrapper functions with `setupDefaultMultiSelect`.
+## 2026-06-02 - ES Modules Import Statement Location
+**Learning:** All `import` statements in ES Modules must be at the very top level of the file, before any logic or variable declarations. Failing to do so causes browser syntax errors and prevents variables exported from other modules from initializing correctly.
+**Action:** Always ensure any refactoring or insertions place `import` statements at the top of the file, above any other statements (except comments).
