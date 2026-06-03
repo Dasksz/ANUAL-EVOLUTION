@@ -4205,15 +4205,16 @@ create index if not exists idx_nota_perfeita_codcli on public.data_nota_perfeita
 -- Tabela de Relação Rota Involves
 create table if not exists public.relacao_rota_involves (
   id uuid default uuid_generate_v4 () primary key,
-  seller_code text, -- Código do Vendedor
-  involves_code text, -- Código na tabela de notas
+  tipo text,
+  cod_system text,
+  cod_involves text,
   created_at timestamp with time zone default now()
 );
 ALTER TABLE public.relacao_rota_involves ENABLE ROW LEVEL SECURITY;
 
 -- Index for fast lookup
-create index if not exists idx_relacao_rota_involves_seller on public.relacao_rota_involves (seller_code);
-create index if not exists idx_relacao_rota_involves_involves on public.relacao_rota_involves (involves_code);
+create index if not exists idx_relacao_rota_involves_system on public.relacao_rota_involves (cod_system);
+create index if not exists idx_relacao_rota_involves_involves on public.relacao_rota_involves (cod_involves);
 
 -- 1. Metadata Table for Chunk-Based Sync
 CREATE TABLE IF NOT EXISTS public.data_metadata (
