@@ -2348,6 +2348,22 @@ BEGIN
         ''tipos_venda'', (SELECT array_agg(DISTINCT tipovenda ORDER BY tipovenda) FROM public.cache_filters ' || v_where_tipovenda || '),
         ''redes'', (SELECT array_agg(DISTINCT rede ORDER BY rede) FROM public.cache_filters ' || v_where_rede || ' AND rede IS NOT NULL AND rede NOT IN (''N/A'', ''N/D'')),
         ''categorias'', (SELECT array_agg(DISTINCT categoria_produto ORDER BY categoria_produto) FROM public.cache_filters ' || v_where_cat || ' AND categoria_produto IS NOT NULL),
+        ''pesquisadores'', (
+            SELECT json_agg(DISTINCT researcher_name)
+            FROM (
+                SELECT COALESCE(
+                    CASE
+                        WHEN rri.tipo = ''promotor'' THEN rri.cod_involves
+                        WHEN rri.tipo = ''rca'' THEN dv_rca.nome
+                    END,
+                    np.pesquisador
+                ) as researcher_name
+                FROM public.data_nota_perfeita np
+                LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
+                LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
+                WHERE researcher_name IS NOT NULL
+            ) subq
+        ),
         ''produtos'', (
             SELECT json_agg(jsonb_build_object(''cod'', codigo, ''name'', descricao))
             FROM (
@@ -4457,7 +4473,8 @@ CREATE OR REPLACE FUNCTION get_loja_perfeita_data(
     p_rede text[] DEFAULT NULL,
     p_codcli text DEFAULT NULL,
     p_ano integer DEFAULT NULL,
-    p_mes integer DEFAULT NULL
+    p_mes integer DEFAULT NULL,
+    p_pesquisador text[] DEFAULT NULL
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -4507,6 +4524,10 @@ BEGIN
         v_where_base := v_where_base || format(' AND cb.filial = ANY(%L::text[])', p_filial);
     END IF;
 
+    IF p_pesquisador IS NOT NULL AND array_length(p_pesquisador, 1) > 0 THEN
+        v_where_base := v_where_base || format(' AND final_researcher.researcher_name = ANY(%L::text[])', p_pesquisador);
+    END IF;
+
     v_sql := format('
 
         WITH latest_sales AS (
@@ -4524,12 +4545,23 @@ BEGIN
             SELECT 
                 np.codigo_cliente as codcli,
                 dc.nomecliente as client_name,
-                np.pesquisador as researcher,
+                final_researcher.researcher_name as researcher,
                 dc.cidade as city,
                 np.nota_media as score,
                 np.auditorias,
                 np.auditorias_perfeitas
             FROM public.data_nota_perfeita np
+            LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
+            LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
+            CROSS JOIN LATERAL (
+                SELECT COALESCE(
+                    CASE
+                        WHEN rri.tipo = ''promotor'' THEN rri.cod_involves
+                        WHEN rri.tipo = ''rca'' THEN dv_rca.nome
+                    END,
+                    np.pesquisador
+                ) as researcher_name
+            ) final_researcher
             LEFT JOIN public.data_clients dc ON np.codigo_cliente = dc.codigo_cliente
             LEFT JOIN public.config_city_branches cb ON dc.cidade = cb.cidade
             LEFT JOIN client_mapping cm ON np.codigo_cliente = cm.codcli
@@ -4610,7 +4642,8 @@ CREATE OR REPLACE FUNCTION public.search_loja_perfeita_clients(
     p_cidade text[] DEFAULT NULL,
     p_supervisor text[] DEFAULT NULL,
     p_vendedor text[] DEFAULT NULL,
-    p_rede text[] DEFAULT NULL
+    p_rede text[] DEFAULT NULL,
+    p_pesquisador text[] DEFAULT NULL
 )
 RETURNS TABLE (
     codigo_cliente text,
@@ -4652,7 +4685,8 @@ BEGIN
     -- Only add joins if specific filters are provided
     IF (p_filial IS NOT NULL AND array_length(p_filial, 1) > 0) OR
        (p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0) OR
-       (p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0) THEN
+       (p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0) OR
+       (p_pesquisador IS NOT NULL AND array_length(p_pesquisador, 1) > 0) THEN
 
        v_needs_join := true;
 
@@ -4692,6 +4726,18 @@ BEGIN
             INNER JOIN client_mapping cm ON dc.codigo_cliente = cm.codcli
             LEFT JOIN public.dim_vendedores dv ON cm.codusur = dv.codigo
             LEFT JOIN public.dim_supervisores ds ON cm.codsupervisor = ds.codigo
+            LEFT JOIN public.data_nota_perfeita np ON dc.codigo_cliente = np.codigo_cliente
+            LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
+            LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
+            CROSS JOIN LATERAL (
+                SELECT COALESCE(
+                    CASE
+                        WHEN rri.tipo = ''promotor'' THEN rri.cod_involves
+                        WHEN rri.tipo = ''rca'' THEN dv_rca.nome
+                    END,
+                    np.pesquisador
+                ) as researcher_name
+            ) final_researcher
             WHERE %s
             LIMIT 20
         ', v_where);
@@ -4704,6 +4750,18 @@ BEGIN
                 dc.cidade,
                 dc.cnpj
             FROM public.data_clients dc
+            LEFT JOIN public.data_nota_perfeita np ON dc.codigo_cliente = np.codigo_cliente
+            LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
+            LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
+            CROSS JOIN LATERAL (
+                SELECT COALESCE(
+                    CASE
+                        WHEN rri.tipo = ''promotor'' THEN rri.cod_involves
+                        WHEN rri.tipo = ''rca'' THEN dv_rca.nome
+                    END,
+                    np.pesquisador
+                ) as researcher_name
+            ) final_researcher
             WHERE %s
             LIMIT 20
         ', v_where);
@@ -4712,7 +4770,7 @@ BEGIN
     RETURN QUERY EXECUTE v_sql;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION public.search_loja_perfeita_clients(text, text[], text[], text[], text[], text[]) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.search_loja_perfeita_clients(text, text[], text[], text[], text[], text[], text[]) TO anon, authenticated;
 
 
 
@@ -4722,9 +4780,9 @@ ALTER FUNCTION public.sync_chunk_v2(p_table_name text, p_chunk_key text, p_rows 
 ALTER FUNCTION public.update_products_stock(p_stock_data jsonb) SET search_path = public;
 ALTER FUNCTION public.classify_product_mix() SET search_path = public;
 
-ALTER FUNCTION public.get_loja_perfeita_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[], p_codcli text, p_ano integer, p_mes integer) SET search_path = public;
+ALTER FUNCTION public.get_loja_perfeita_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[], p_codcli text, p_ano integer, p_mes integer, p_pesquisador text[]) SET search_path = public;
 ALTER FUNCTION public.search_clients(p_search text) SET search_path = public;
-ALTER FUNCTION public.search_loja_perfeita_clients(p_search text, p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[]) SET search_path = public;
+ALTER FUNCTION public.search_loja_perfeita_clients(p_search text, p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[], p_pesquisador text[]) SET search_path = public;
 CREATE OR REPLACE FUNCTION get_mix_salty_foods_data(
     p_ano text default null,
     p_mes text default null,
@@ -6049,6 +6107,22 @@ BEGIN
                    -- Mantendo compatibilidade com teu código atual:
                    AND f2.codfor IS NOT NULL
             ) sub
+        ),
+        'pesquisadores', (
+            SELECT json_agg(DISTINCT researcher_name)
+            FROM (
+                SELECT COALESCE(
+                    CASE
+                        WHEN rri.tipo = 'promotor' THEN rri.cod_involves
+                        WHEN rri.tipo = 'rca' THEN dv_rca.nome
+                    END,
+                    np.pesquisador
+                ) as researcher_name
+                FROM public.data_nota_perfeita np
+                LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = 'promotor' THEN rri.cod_system ELSE rri.cod_involves END)
+                LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = 'rca' AND rri.cod_system = dv_rca.codigo
+                WHERE researcher_name IS NOT NULL
+            ) subq
         )
     ) INTO v_result
     FROM public.cache_filters

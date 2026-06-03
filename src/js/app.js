@@ -223,6 +223,7 @@ let lpSelectedFiliais = [];
 let lpSelectedSupervisors = [];
 let lpSelectedVendedores = [];
 let lpSelectedRedes = [];
+let lpSelectedPesquisadores = [];
 
 let lpSelectedCidades = [];
 
@@ -7895,6 +7896,12 @@ async function loadLojaPerfeitaFilters(forceClear = false) {
 
         if (lpRedeBtn) setupDefaultMultiSelect(lpRedeBtn, lpRedeDropdown, lpRedeList, lpRedesArray, lpSelectedRedes, lpRedeSearch);
 
+        const lpPesquisadorBtn = document.getElementById("lp-pesquisador-filter-btn");
+        const lpPesquisadorDropdown = document.getElementById("lp-pesquisador-filter-dropdown");
+        const lpPesquisadorList = document.getElementById("lp-pesquisador-filter-list");
+        const lpPesquisadorSearch = document.getElementById("lp-pesquisador-filter-search");
+        if (lpPesquisadorBtn) setupDefaultMultiSelect(lpPesquisadorBtn, lpPesquisadorDropdown, lpPesquisadorList, filterData.pesquisadores || [], lpSelectedPesquisadores, lpPesquisadorSearch);
+
 
 
         const lpCidadeBtn = document.getElementById("lp-cidade-filter-btn");
@@ -7933,14 +7940,16 @@ document.addEventListener('click', (e) => {
         document.getElementById('lp-supervisor-filter-dropdown'),
         document.getElementById('lp-vendedor-filter-dropdown'),
         document.getElementById('lp-rede-filter-dropdown'),
-        document.getElementById('lp-cidade-filter-dropdown')
+        document.getElementById('lp-cidade-filter-dropdown'),
+        document.getElementById('lp-pesquisador-filter-dropdown')
     ];
     const btns = [
         document.getElementById('lp-filial-filter-btn'),
         document.getElementById('lp-supervisor-filter-btn'),
         document.getElementById('lp-vendedor-filter-btn'),
         document.getElementById('lp-rede-filter-btn'),
-        document.getElementById('lp-cidade-filter-btn')
+        document.getElementById('lp-cidade-filter-btn'),
+        document.getElementById('lp-pesquisador-filter-btn')
     ];
     let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
 
@@ -8066,7 +8075,8 @@ async function updateLojaPerfeitaView() {
         p_filial: lpSelectedFiliais,
         p_supervisor: lpSelectedSupervisors,
         p_vendedor: lpSelectedVendedores,
-        p_rede: lpSelectedRedes
+        p_rede: lpSelectedRedes,
+        p_pesquisador: lpSelectedPesquisadores
     };
 
     const rpcFilters = {
@@ -8076,6 +8086,7 @@ async function updateLojaPerfeitaView() {
         p_supervisor: filters.p_supervisor.length ? filters.p_supervisor : null,
         p_vendedor: filters.p_vendedor.length ? filters.p_vendedor : null,
         p_rede: filters.p_rede.length ? filters.p_rede : null,
+        p_pesquisador: filters.p_pesquisador.length ? filters.p_pesquisador : null,
         p_ano: document.getElementById('lp-ano-filter')?.value && document.getElementById('lp-ano-filter')?.value !== 'todos' ? parseInt(document.getElementById('lp-ano-filter').value, 10) : null,
         p_mes: document.getElementById('lp-mes-filter')?.value && document.getElementById('lp-mes-filter')?.value !== 'todos' ? parseInt(document.getElementById('lp-mes-filter').value, 10) : null
     };
@@ -8492,9 +8503,9 @@ window.clearAllFilters = async function(prefix) {
             mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
-        clearArrays(lpSelectedCidades, lpSelectedFiliais, lpSelectedSupervisors, lpSelectedVendedores, lpSelectedRedes);
+        clearArrays(lpSelectedCidades, lpSelectedFiliais, lpSelectedSupervisors, lpSelectedVendedores, lpSelectedRedes, lpSelectedPesquisadores);
         
-        ['lp-supervisor', 'lp-vendedor', 'lp-rede', 'lp-cidade'].forEach(prefix => {
+        ['lp-supervisor', 'lp-vendedor', 'lp-rede', 'lp-cidade', 'lp-pesquisador'].forEach(prefix => {
             const btn = document.getElementById(`${prefix}-filter-btn`);
             if (btn) {
                 btn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
