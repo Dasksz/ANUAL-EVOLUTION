@@ -4551,13 +4551,13 @@ BEGIN
                 np.auditorias,
                 np.auditorias_perfeitas
             FROM public.data_nota_perfeita np
-            LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = 'promotor' THEN rri.cod_system ELSE rri.cod_involves END)
-            LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = 'rca' AND rri.cod_system = dv_rca.codigo
+            LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
+            LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
             CROSS JOIN LATERAL (
                 SELECT COALESCE(
                     CASE
-                        WHEN rri.tipo = 'promotor' THEN rri.cod_involves
-                        WHEN rri.tipo = 'rca' THEN dv_rca.nome
+                        WHEN rri.tipo = ''promotor'' THEN rri.cod_involves
+                        WHEN rri.tipo = ''rca'' THEN dv_rca.nome
                     END,
                     np.pesquisador
                 ) as researcher_name
