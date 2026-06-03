@@ -612,15 +612,15 @@ self.onmessage = async (event) => {
     try {
         self.postMessage({ type: 'progress', status: 'Lendo arquivos...', percentage: 5 });
         let [salesPrevYearDataRaw, salesCurrYearHistDataRaw, salesCurrMonthDataRaw, clientsDataRaw, productsDataRaw, innovationsDataRaw, nota1DataRaw, nota2DataRaw, metaEstrelasDataRaw] = await Promise.all([
-            readFile(salesPrevYearFile),
-            readFile(salesCurrYearFile),
-            readFile(salesCurrMonthFile),
-            readFile(clientsFile),
-            readFile(productsFile),
-            readFile(innovationsFile),
-            readFile(notaInvolvesFile1),
-            readFile(notaInvolvesFile2),
-            readFile(metaEstrelasFile)
+            salesPrevYearFile ? readFile(salesPrevYearFile) : Promise.resolve([]),
+            salesCurrYearFile ? readFile(salesCurrYearFile) : Promise.resolve([]),
+            salesCurrMonthFile ? readFile(salesCurrMonthFile) : Promise.resolve([]),
+            clientsFile ? readFile(clientsFile) : Promise.resolve([]),
+            productsFile ? readFile(productsFile) : Promise.resolve([]),
+            innovationsFile ? readFile(innovationsFile) : Promise.resolve([]),
+            notaInvolvesFile1 ? readFile(notaInvolvesFile1) : Promise.resolve([]),
+            notaInvolvesFile2 ? readFile(notaInvolvesFile2) : Promise.resolve([]),
+            metaEstrelasFile ? readFile(metaEstrelasFile) : Promise.resolve([])
         ]);
 
         self.postMessage({ type: 'progress', status: 'Filtrando vendas Pepsico e linhas inválidas...', percentage: 15 });
@@ -633,9 +633,9 @@ self.onmessage = async (event) => {
 
         const combinedFilter = (sale) => pepsicoFilter(sale) && validRowFilter(sale);
 
-        salesPrevYearDataRaw = salesPrevYearDataRaw.filter(combinedFilter);
-        salesCurrYearHistDataRaw = salesCurrYearHistDataRaw.filter(combinedFilter);
-        salesCurrMonthDataRaw = salesCurrMonthDataRaw.filter(combinedFilter);
+        salesPrevYearDataRaw = (salesPrevYearDataRaw || []).filter(combinedFilter);
+        salesCurrYearHistDataRaw = (salesCurrYearHistDataRaw || []).filter(combinedFilter);
+        salesCurrMonthDataRaw = (salesCurrMonthDataRaw || []).filter(combinedFilter);
 
         // ⚡ Bolt Optimization: Pre-compute the combined array once using optimized Array.prototype.concat
         // to avoid repeatedly copying 100k+ objects into new memory blocks via [...a, ...b, ...c] spreads down the line.
@@ -699,7 +699,7 @@ self.onmessage = async (event) => {
         const clientsToInsert = [];
 
         // ⚡ Bolt Optimization: Parallelize client hashing to avoid sequential await bottleneck.
-        const processedClients = await Promise.all(clientsDataRaw.map(async (client) => {
+        const processedClients = await Promise.all((clientsDataRaw || []).map(async (client) => {
             const codCli = String(client['Código'] || '').trim();
             if (!codCli) return null;
 
@@ -1187,7 +1187,7 @@ self.onmessage = async (event) => {
         };
 
         const historyChunks = await chunkData([...processedPrevYear, ...processedCurrYearHist], true);
-        const detailedChunks = await chunkData(processedCurrMonth, false);
+        const detailedChunks = salesCurrMonthFile ? await chunkData(processedCurrMonth, false) : null;
 
         self.postMessage({ type: 'progress', status: 'Preparando dados para envio...', percentage: 90 });
 
@@ -1214,7 +1214,7 @@ self.onmessage = async (event) => {
         if ((nota1DataRaw && nota1DataRaw.length > 0) || (nota2DataRaw && nota2DataRaw.length > 0)) {
              // Create clientCNPJMap for Loja Perfeita helper
              const clientCnpjMap = new Map();
-             for (const client of clientsDataRaw) {
+             for (const client of (clientsDataRaw || [])) {
                  const codCli = String(client['Código'] || '').trim();
                  const cnpjRaw = client['CNPJ/CPF'] || client['Cpf/Cnpj'];
                  if (codCli && cnpjRaw) {
@@ -1238,7 +1238,7 @@ self.onmessage = async (event) => {
         const resultPayload = {
             historyChunks: finalHistoryChunks,
             detailedChunks: detailedChunks,
-            clients: clientsToInsert,
+            clients: clientsFile ? clientsToInsert : null,
             newCities: Array.from(newCitiesSet),
             newSupervisors: mapToObjArray(dimSupervisors),
             newVendors: mapToObjArray(dimVendors),

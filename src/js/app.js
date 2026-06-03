@@ -2047,12 +2047,12 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     // --- Uploader Logic ---
     let files = {};
     const checkFiles = () => {
-        const hasFiles = files.salesCurrMonthFile && files.clientsFile;
+        const hasFiles = Object.values(files).some(file => file !== null && file !== undefined);
         generateBtn.disabled = !hasFiles;
         if (generateBtn.disabled) {
-            generateBtn.setAttribute('title', 'Selecione os arquivos obrigatórios (Vendas e Clientes) para habilitar');
+            generateBtn.setAttribute('title', 'Selecione pelo menos um arquivo para habilitar o upload');
         } else {
-            generateBtn.setAttribute('title', 'Iniciar upload dos arquivos');
+            generateBtn.setAttribute('title', 'Iniciar upload dos arquivos selecionados');
         }
     };
 
@@ -2174,7 +2174,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     // Vamos apenas assegurar de mesclar a chamada de checkMissingBranches() que havia aqui.
 
     if(generateBtn) generateBtn.addEventListener('click', async () => {
-        if (!files.salesCurrMonthFile || !files.clientsFile) return;
+        const hasAnyFile = Object.values(files).some(file => file !== null && file !== undefined);
+        if (!hasAnyFile) return;
 
         generateBtn.disabled = true;
         statusContainer.classList.remove('hidden');
@@ -2504,7 +2505,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             if (data.detailedChunks) await syncSalesChunks('data_detailed', data.detailedChunks, 40, 70);
             
             // Clients Table (Use Row Sync)
-            if (data.clients) await syncTable('data_clients', data.clients, 70, 75);
+            if (data.clients && data.clients.length > 0) await syncTable('data_clients', data.clients, 70, 75);
 
             // New Tables
             if (data.innovations && data.innovations.length > 0) {
@@ -2548,7 +2549,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             }
 
             // CHUNKED CACHE REFRESH LOGIC
-            updateStatus('Iniciando processamento do resumo...', 80);
+            if (data.historyChunks || data.detailedChunks || (data.clients && data.clients.length > 0)) {
+                updateStatus('Iniciando processamento do resumo...', 80);
             
             // 1. Explicitly clear Summary Table
             await clearTable('data_summary');
@@ -2629,6 +2631,9 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 }
 
                 updateStatus('Finalizando...', 98);
+            }
+            } else {
+                updateStatus('Processamento de resumo ignorado (nenhuma venda/cliente enviado).', 100);
             }
 
 
@@ -5797,8 +5802,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                         p_search: term,
                         p_filial: jbpSelectedFiliais.length > 0 ? jbpSelectedFiliais : null,
                         p_cidade: jbpSelectedCidades.length > 0 ? jbpSelectedCidades : null,
-                        p_rede: jbpSelectedRedes.length > 0 ? jbpSelectedRedes : null,
-                        p_pesquisador: null
+                        p_rede: jbpSelectedRedes.length > 0 ? jbpSelectedRedes : null
                     };
 
                     const { data, error } = await supabase.rpc("search_loja_perfeita_clients", params); 
@@ -8009,8 +8013,7 @@ function setupLpClientSearchAutocomplete() {
                     p_cidade: lpSelectedCidades.length > 0 ? lpSelectedCidades : null,
                     p_supervisor: lpSelectedSupervisors.length > 0 ? lpSelectedSupervisors : null,
                     p_vendedor: lpSelectedVendedores.length > 0 ? lpSelectedVendedores : null,
-                    p_rede: lpSelectedRedes.length > 0 ? lpSelectedRedes : null,
-                    p_pesquisador: typeof lpSelectedPesquisadores !== "undefined" && lpSelectedPesquisadores.length > 0 ? lpSelectedPesquisadores : null
+                    p_rede: lpSelectedRedes.length > 0 ? lpSelectedRedes : null
                 };
                 const { data, error } = await supabase.rpc('search_loja_perfeita_clients', searchParams);
                 
