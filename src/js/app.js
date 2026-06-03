@@ -5797,7 +5797,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                         p_search: term,
                         p_filial: jbpSelectedFiliais.length > 0 ? jbpSelectedFiliais : null,
                         p_cidade: jbpSelectedCidades.length > 0 ? jbpSelectedCidades : null,
-                        p_rede: jbpSelectedRedes.length > 0 ? jbpSelectedRedes : null
+                        p_rede: jbpSelectedRedes.length > 0 ? jbpSelectedRedes : null,
+                        p_pesquisador: null
                     };
 
                     const { data, error } = await supabase.rpc("search_loja_perfeita_clients", params); 
@@ -8008,7 +8009,8 @@ function setupLpClientSearchAutocomplete() {
                     p_cidade: lpSelectedCidades.length > 0 ? lpSelectedCidades : null,
                     p_supervisor: lpSelectedSupervisors.length > 0 ? lpSelectedSupervisors : null,
                     p_vendedor: lpSelectedVendedores.length > 0 ? lpSelectedVendedores : null,
-                    p_rede: lpSelectedRedes.length > 0 ? lpSelectedRedes : null
+                    p_rede: lpSelectedRedes.length > 0 ? lpSelectedRedes : null,
+                    p_pesquisador: typeof lpSelectedPesquisadores !== "undefined" && lpSelectedPesquisadores.length > 0 ? lpSelectedPesquisadores : null
                 };
                 const { data, error } = await supabase.rpc('search_loja_perfeita_clients', searchParams);
                 
