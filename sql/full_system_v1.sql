@@ -2361,8 +2361,8 @@ BEGIN
                 FROM public.data_nota_perfeita np
                 LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
                 LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
-                WHERE researcher_name IS NOT NULL
             ) subq
+            WHERE researcher_name IS NOT NULL
         ),
         ''produtos'', (
             SELECT json_agg(jsonb_build_object(''cod'', codigo, ''name'', descricao))
@@ -4203,17 +4203,19 @@ ALTER TABLE public.data_nota_perfeita ENABLE ROW LEVEL SECURITY;
 create index if not exists idx_nota_perfeita_codcli on public.data_nota_perfeita (codigo_cliente);
 
 -- Tabela de Relação Rota Involves
+DROP TABLE IF EXISTS public.relacao_rota_involves;
 create table if not exists public.relacao_rota_involves (
   id uuid default uuid_generate_v4 () primary key,
-  seller_code text, -- Código do Vendedor
-  involves_code text, -- Código na tabela de notas
+  tipo text,
+  cod_system text,
+  cod_involves text,
   created_at timestamp with time zone default now()
 );
 ALTER TABLE public.relacao_rota_involves ENABLE ROW LEVEL SECURITY;
 
 -- Index for fast lookup
-create index if not exists idx_relacao_rota_involves_seller on public.relacao_rota_involves (seller_code);
-create index if not exists idx_relacao_rota_involves_involves on public.relacao_rota_involves (involves_code);
+create index if not exists idx_relacao_rota_involves_system on public.relacao_rota_involves (cod_system);
+create index if not exists idx_relacao_rota_involves_involves on public.relacao_rota_involves (cod_involves);
 
 -- 1. Metadata Table for Chunk-Based Sync
 CREATE TABLE IF NOT EXISTS public.data_metadata (
@@ -6121,8 +6123,8 @@ BEGIN
                 FROM public.data_nota_perfeita np
                 LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = 'promotor' THEN rri.cod_system ELSE rri.cod_involves END)
                 LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = 'rca' AND rri.cod_system = dv_rca.codigo
-                WHERE researcher_name IS NOT NULL
             ) subq
+            WHERE researcher_name IS NOT NULL
         )
     ) INTO v_result
     FROM public.cache_filters
