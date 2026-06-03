@@ -551,7 +551,7 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
 
                 uniqueClientsFound.add(codCli);
 
-                const pesquisador = String(getVal(row, 'Pesquisador') || '').trim().toUpperCase();
+                const pesquisador = String(getVal(row, 'Pesquisador') || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '').toLowerCase();
                 const key = `${codCli}_${pesquisador}`;
 
                 const notaRaw = getVal(row, 'Nota Média') || getVal(row, 'Nota Media');

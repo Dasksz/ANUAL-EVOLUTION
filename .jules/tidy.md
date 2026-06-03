@@ -15,3 +15,5 @@
 ## 2026-06-02 - ES Modules Import Statement Location
 **Learning:** All `import` statements in ES Modules must be at the very top level of the file, before any logic or variable declarations. Failing to do so causes browser syntax errors and prevents variables exported from other modules from initializing correctly.
 **Action:** Always ensure any refactoring or insertions place `import` statements at the top of the file, above any other statements (except comments).
+
+## 2025/06/03 : (Refatorar Tabela Loja Perfeita) **Aprendizado:** A tabela de mapeamento original limitava a correlação direta apenas aos vendedores (RCA), o que não contemplava a necessidade de também dar nomes reais para os próprios promotores da pesquisa, mantendo um log centralizado em data_nota_perfeita. **Ação:** O schema foi padronizado em um mapping genérico `relacao_rota_involves` com `tipo` e as chaves de sistema vs exibição, e no `sql/full_system_v1.sql` foi criado um `CROSS JOIN LATERAL` na consulta base para unificar essa lógica independentemente do tipo, deixando o acesso mais fácil e o banco preparado para futuras extensões de perfis.
