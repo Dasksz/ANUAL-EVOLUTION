@@ -607,7 +607,7 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
 if (typeof self !== 'undefined') {
 self.onmessage = async (event) => {
     // Removed credential requirements since worker no longer interacts with Supabase
-    const { salesPrevYearFile, salesCurrYearFile, salesCurrMonthFile, clientsFile, productsFile, innovationsFile, notaInvolvesFile1, notaInvolvesFile2, cityBranchMap, metaEstrelasFile, metaEstrelasMes, metaEstrelasAno } = event.data;
+    const { salesPrevYearFile, salesCurrYearFile, salesCurrMonthFile, clientsFile, productsFile, innovationsFile, notaInvolvesFile1, notaInvolvesFile2, cityBranchMap, metaEstrelasFile, metaEstrelasMes, metaEstrelasAno, existingClientsMap } = event.data;
 
     try {
         self.postMessage({ type: 'progress', status: 'Lendo arquivos...', percentage: 5 });
@@ -1073,7 +1073,7 @@ self.onmessage = async (event) => {
                 }
             }
         });
-        const finalProductStock = Array.from(productStockMap.values());
+        const finalProductStock = salesCurrMonthFile ? Array.from(productStockMap.values()) : null;
 
         // --- Collect Dimensions (Supervisors, Vendors, Providers) ---
         self.postMessage({ type: 'progress', status: 'Extraindo dimensões (Supervisores, Vendedores)...', percentage: 80 });
@@ -1214,12 +1214,23 @@ self.onmessage = async (event) => {
         if ((nota1DataRaw && nota1DataRaw.length > 0) || (nota2DataRaw && nota2DataRaw.length > 0)) {
              // Create clientCNPJMap for Loja Perfeita helper
              const clientCnpjMap = new Map();
-             for (const client of (clientsDataRaw || [])) {
-                 const codCli = String(client['Código'] || '').trim();
-                 const cnpjRaw = client['CNPJ/CPF'] || client['Cpf/Cnpj'];
-                 if (codCli && cnpjRaw) {
-                     let cnpjStr = String(cnpjRaw).replace(/[^0-9]/g, '');
-                     if (cnpjStr) clientCnpjMap.set(cnpjStr, codCli);
+             if (clientsDataRaw && clientsDataRaw.length > 0) {
+                 for (const client of clientsDataRaw) {
+                     const codCli = String(client['Código'] || '').trim();
+                     const cnpjRaw = client['CNPJ/CPF'] || client['Cpf/Cnpj'];
+                     if (codCli && cnpjRaw) {
+                         let cnpjStr = String(cnpjRaw).replace(/[^0-9]/g, '');
+                         if (cnpjStr) clientCnpjMap.set(cnpjStr, codCli);
+                     }
+                 }
+             } else if (existingClientsMap && existingClientsMap.length > 0) {
+                 for (const client of existingClientsMap) {
+                     const codCli = String(client.codigo_cliente || '').trim();
+                     const cnpjRaw = client.cnpj_cpf;
+                     if (codCli && cnpjRaw) {
+                         let cnpjStr = String(cnpjRaw).replace(/[^0-9]/g, '');
+                         if (cnpjStr) clientCnpjMap.set(cnpjStr, codCli);
+                     }
                  }
              }
              const notaResult = processLojaPerfeita([nota1DataRaw, nota2DataRaw], clientCnpjMap);
@@ -1240,9 +1251,9 @@ self.onmessage = async (event) => {
             detailedChunks: detailedChunks,
             clients: clientsFile ? clientsToInsert : null,
             newCities: Array.from(newCitiesSet),
-            newSupervisors: mapToObjArray(dimSupervisors),
-            newVendors: mapToObjArray(dimVendors),
-            newProviders: mapToObjArray(dimProviders),
+            newSupervisors: (salesPrevYearFile || salesCurrYearFile || salesCurrMonthFile) ? mapToObjArray(dimSupervisors) : null,
+            newVendors: (salesPrevYearFile || salesCurrYearFile || salesCurrMonthFile) ? mapToObjArray(dimVendors) : null,
+            newProviders: (salesPrevYearFile || salesCurrYearFile || salesCurrMonthFile) ? mapToObjArray(dimProviders) : null,
             newProducts: finalProducts,
             productStock: finalProductStock,
             innovations: finalInnovations,
