@@ -2185,11 +2185,38 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         // Fetch current city map
         const cityBranchMap = await fetchCityBranchMap();
 
+        // Fetch existing clients if Nota Involves is uploaded without the Clients file
+        let existingClientsMap = null;
+        if (!files.clientsFile && (files.notaInvolvesFile1 || files.notaInvolvesFile2)) {
+             statusText.textContent = 'Buscando clientes existentes...';
+             progressBar.style.width = '10%';
+             existingClientsMap = [];
+             let hasMore = true;
+             let offset = 0;
+             const limit = 1000;
+             while(hasMore) {
+                 const { data, error } = await supabase.from('data_clients')
+                    .select('codigo_cliente, cnpj_cpf')
+                    .range(offset, offset + limit - 1);
+                 
+                 if (error) {
+                     AppLog.error("Erro buscar clientes:", error);
+                     break;
+                 }
+                 if (data && data.length > 0) {
+                     existingClientsMap.push(...data);
+                     offset += limit;
+                 } else {
+                     hasMore = false;
+                 }
+             }
+        }
+
         statusText.textContent = 'Processando...';
         
         const worker = new Worker('src/js/worker.js?v=4');
-        // Pass files AND the city map
-        worker.postMessage({ ...files, cityBranchMap });
+        // Pass files, city map, and conditionally fetched clients
+        worker.postMessage({ ...files, cityBranchMap, existingClientsMap });
 
         worker.onmessage = async (event) => {
             const { type, data, status, percentage, message } = event.data;
