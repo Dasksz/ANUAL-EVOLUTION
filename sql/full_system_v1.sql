@@ -4487,47 +4487,57 @@ DECLARE
     v_result json;
     
     v_where_base text := '1=1';
+    v_where_chart text := '1=1';
     v_sql text;
 BEGIN
     -- Base Filters
     IF p_codcli IS NOT NULL THEN
-        v_where_base := v_where_base || format(' AND np.codigo_cliente = %L', p_codcli);
+        v_where_base := v_where_base || format(' AND codcli = %L', p_codcli);
+        v_where_chart := v_where_chart || format(' AND codcli = %L', p_codcli);
     END IF;
 
     IF p_ano IS NOT NULL THEN
-        v_where_base := v_where_base || format(' AND np.ano = %L', p_ano);
+        v_where_base := v_where_base || format(' AND ano = %L', p_ano);
+        v_where_chart := v_where_chart || format(' AND ano = %L', p_ano);
     END IF;
 
     IF p_mes IS NOT NULL THEN
-        v_where_base := v_where_base || format(' AND np.mes = %L', p_mes);
+        v_where_base := v_where_base || format(' AND mes = %L', p_mes);
     END IF;
 
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND dc.cidade = ANY(%L::text[])', p_cidade);
+        v_where_base := v_where_base || format(' AND city = ANY(%L::text[])', p_cidade);
+        v_where_chart := v_where_chart || format(' AND city = ANY(%L::text[])', p_cidade);
     END IF;
 
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
         IF 'S/ REDE' = ANY(p_rede) THEN
-            v_where_base := v_where_base || format(' AND (dc.ramo = ANY(%L::text[]) OR dc.ramo IS NULL OR dc.ramo IN (''N/A'', ''N/D''))', p_rede);
+            v_where_base := v_where_base || format(' AND (ramo = ANY(%L::text[]) OR ramo IS NULL OR ramo IN (''N/A'', ''N/D''))', p_rede);
+            v_where_chart := v_where_chart || format(' AND (ramo = ANY(%L::text[]) OR ramo IS NULL OR ramo IN (''N/A'', ''N/D''))', p_rede);
         ELSE
-            v_where_base := v_where_base || format(' AND dc.ramo = ANY(%L::text[])', p_rede);
+            v_where_base := v_where_base || format(' AND ramo = ANY(%L::text[])', p_rede);
+            v_where_chart := v_where_chart || format(' AND ramo = ANY(%L::text[])', p_rede);
         END IF;
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND dv.nome = ANY(%L::text[])', p_vendedor);
+        v_where_base := v_where_base || format(' AND vendedor = ANY(%L::text[])', p_vendedor);
+        v_where_chart := v_where_chart || format(' AND vendedor = ANY(%L::text[])', p_vendedor);
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND ds.nome = ANY(%L::text[])', p_supervisor);
+        v_where_base := v_where_base || format(' AND supervisor = ANY(%L::text[])', p_supervisor);
+        v_where_chart := v_where_chart || format(' AND supervisor = ANY(%L::text[])', p_supervisor);
     END IF;
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND cb.filial = ANY(%L::text[])', p_filial);
+        v_where_base := v_where_base || format(' AND filial = ANY(%L::text[])', p_filial);
+        v_where_chart := v_where_chart || format(' AND filial = ANY(%L::text[])', p_filial);
     END IF;
 
     IF p_pesquisador IS NOT NULL AND array_length(p_pesquisador, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND final_researcher.researcher_name = ANY(%L::text[])', p_pesquisador);
+        v_where_base := v_where_base || format(' AND researcher = ANY(%L::text[])', p_pesquisador);
+        v_where_chart := v_where_chart || format(' AND researcher = ANY(%L::text[])', p_pesquisador);
     END IF;
 
     v_sql := format('
@@ -4543,15 +4553,21 @@ BEGIN
             FROM latest_sales
             WHERE rn = 1
         ),
-        filtered_data AS (
+        base_data AS (
             SELECT 
                 np.codigo_cliente as codcli,
                 dc.nomecliente as client_name,
                 final_researcher.researcher_name as researcher,
                 dc.cidade as city,
+                dc.ramo,
+                dv.nome as vendedor,
+                ds.nome as supervisor,
+                cb.filial,
                 np.nota_media as score,
                 np.auditorias,
-                np.auditorias_perfeitas
+                np.auditorias_perfeitas,
+                np.mes,
+                np.ano
             FROM public.data_nota_perfeita np
             LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
             LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
@@ -4569,7 +4585,12 @@ BEGIN
             LEFT JOIN client_mapping cm ON np.codigo_cliente = cm.codcli
             LEFT JOIN public.dim_vendedores dv ON cm.codusur = dv.codigo
             LEFT JOIN public.dim_supervisores ds ON cm.codsupervisor = ds.codigo
-            WHERE %s
+        ),
+        filtered_data AS (
+            SELECT * FROM base_data WHERE %s
+        ),
+        chart_filtered_data AS (
+            SELECT * FROM base_data WHERE %s
         ),
         kpis AS (
             SELECT 
@@ -4577,6 +4598,25 @@ BEGIN
                 COUNT(DISTINCT codcli) as total_audits,
                 COUNT(DISTINCT CASE WHEN score >= 80 THEN codcli END) as perfect_stores
             FROM filtered_data
+        ),
+        chart_data AS (
+            SELECT
+                mes,
+                COUNT(DISTINCT codcli) as total_audits,
+                COUNT(DISTINCT CASE WHEN score >= 80 THEN codcli END) as perfect_stores
+            FROM chart_filtered_data
+            GROUP BY mes
+            ORDER BY mes
+        ),
+        chart_json AS (
+            SELECT json_agg(
+                json_build_object(
+                    ''mes'', mes,
+                    ''total_audits'', total_audits,
+                    ''perfect_stores'', perfect_stores
+                )
+            ) as chart_array
+            FROM chart_data
         ),
         clients_json AS (
             SELECT json_agg(
@@ -4592,9 +4632,10 @@ BEGIN
         )
         SELECT json_build_object(
             ''kpis'', (SELECT row_to_json(kpis.*) FROM kpis),
+            ''chart_data'', COALESCE((SELECT chart_array FROM chart_json), ''[]''::json),
             ''clients'', COALESCE((SELECT clients_array FROM clients_json), ''[]''::json)
         )
-    ', v_where_base);
+    ', v_where_base, v_where_chart);
 
     EXECUTE v_sql INTO v_result;
 
