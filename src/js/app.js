@@ -8145,12 +8145,145 @@ async function updateLojaPerfeitaView() {
 
         renderLpKPIs(data.kpis);
         renderLpTable(data.clients);
+        renderLpEvolutionChart(data.chart_data);
 
     } catch (err) {
         AppLog.error('Exception fetching Loja Perfeita data:', err);
     } finally {
         window.hideDashboardLoading();
     }
+}
+
+let lpEvolutionChartInstance = null;
+function renderLpEvolutionChart(chartData) {
+    const container = document.getElementById('lpEvolutionChartContainer');
+    if (!container) return;
+
+    // Clear existing
+    container.innerHTML = '<canvas id="lpEvolutionCanvas"></canvas>';
+    const canvas = document.getElementById('lpEvolutionCanvas');
+
+    if (lpEvolutionChartInstance) {
+        lpEvolutionChartInstance.destroy();
+    }
+
+    if (!chartData || chartData.length === 0) {
+        return;
+    }
+
+    const monthInitials = MONTHS_PT_INITIALS;
+
+    // Find max month in data
+    let maxMonth = 0;
+    chartData.forEach(d => {
+        if (d.mes > maxMonth) maxMonth = d.mes;
+    });
+
+    // If we have no data, fallback to 12 months, otherwise limit to max month
+    const displayMonths = maxMonth > 0 ? maxMonth : 12;
+    const labels = monthInitials.slice(0, displayMonths);
+
+    const auditsData = new Array(displayMonths).fill(null);
+    const storesData = new Array(displayMonths).fill(null);
+
+    chartData.forEach(row => {
+        const mIdx = row.mes - 1;
+        if (mIdx >= 0 && mIdx < displayMonths) {
+            auditsData[mIdx] = row.total_audits || 0;
+            storesData[mIdx] = row.perfect_stores || 0;
+        }
+    });
+
+    lpEvolutionChartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Total Auditorias',
+                    data: auditsData,
+                    borderColor: '#3B82F6', // Blue 500
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#3B82F6',
+                    pointBorderColor: '#1a1c23',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                },
+                {
+                    label: 'Lojas Perfeitas',
+                    data: storesData,
+                    borderColor: '#22C55E', // Green 500
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#22C55E',
+                    pointBorderColor: '#1a1c23',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    titleColor: '#fff',
+                    bodyColor: '#cbd5e1',
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    borderWidth: 1,
+                    padding: 10,
+                    boxPadding: 4,
+                    usePointStyle: true,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += context.parsed.y;
+                            }
+                            return label;
+                        }
+                    }
+                },
+                datalabels: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+                    ticks: { color: '#94a3b8', font: { size: 10 } }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+                    ticks: {
+                        color: '#64748b',
+                        font: { size: 10 },
+                        maxTicksLimit: 5,
+                        callback: function(value) {
+                            if (Math.floor(value) === value) {
+                                return value;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
 }
 
 function renderLpKPIs(kpis) {

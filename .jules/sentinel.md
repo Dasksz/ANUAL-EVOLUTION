@@ -18,3 +18,5 @@
 **Learning:** Updating SVG icons by replacing the entire `innerHTML` of the `<svg>` element is less efficient and more risky than targeting specific attributes. Simple UI toggles often only need to change the `d` attribute of a `<path>` element.
 **Prevention:** Always prefer granular DOM API methods like `setAttribute()` or `textContent` over `innerHTML`. For SVG icon state changes, target the `<path>` element and update its `d` attribute directly. If the number of paths changes, consider pre-defining them in the HTML and toggling their visibility or clearing their `d` attribute.
 **Refined Action:** Introduced a centralized `updateSvgPaths` utility that uses `document.createElementNS` to manage path elements safely, ensuring consistent styling (attributes) and avoiding `innerHTML` entirely.
+## 2025-06-05 - Avoid SQL Injection via Direct Parameter usage
+The new `chart_data` return block inside `get_loja_perfeita_data` relies safely on predefined string patterns `p_codcli` arrays instead of allowing unescaped text input natively into the formatting via `$1`.
