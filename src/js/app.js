@@ -2196,7 +2196,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
              const limit = 1000;
              while(hasMore) {
                  const { data, error } = await supabase.from('data_clients')
-                    .select('codigo_cliente, cnpj_cpf')
+                    .select('codigo_cliente, cnpj')
                     .range(offset, offset + limit - 1);
                  
                  if (error) {
