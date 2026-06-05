@@ -4492,52 +4492,52 @@ DECLARE
 BEGIN
     -- Base Filters
     IF p_codcli IS NOT NULL THEN
-        v_where_base := v_where_base || format(' AND np.codigo_cliente = %L', p_codcli);
-        v_where_chart := v_where_chart || format(' AND np.codigo_cliente = %L', p_codcli);
+        v_where_base := v_where_base || format(' AND codcli = %L', p_codcli);
+        v_where_chart := v_where_chart || format(' AND codcli = %L', p_codcli);
     END IF;
 
     IF p_ano IS NOT NULL THEN
-        v_where_base := v_where_base || format(' AND np.ano = %L', p_ano);
-        v_where_chart := v_where_chart || format(' AND np.ano = %L', p_ano);
+        v_where_base := v_where_base || format(' AND ano = %L', p_ano);
+        v_where_chart := v_where_chart || format(' AND ano = %L', p_ano);
     END IF;
 
     IF p_mes IS NOT NULL THEN
-        v_where_base := v_where_base || format(' AND np.mes = %L', p_mes);
+        v_where_base := v_where_base || format(' AND mes = %L', p_mes);
     END IF;
 
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND dc.cidade = ANY(%L::text[])', p_cidade);
-        v_where_chart := v_where_chart || format(' AND dc.cidade = ANY(%L::text[])', p_cidade);
+        v_where_base := v_where_base || format(' AND city = ANY(%L::text[])', p_cidade);
+        v_where_chart := v_where_chart || format(' AND city = ANY(%L::text[])', p_cidade);
     END IF;
 
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
         IF 'S/ REDE' = ANY(p_rede) THEN
-            v_where_base := v_where_base || format(' AND (dc.ramo = ANY(%L::text[]) OR dc.ramo IS NULL OR dc.ramo IN (''N/A'', ''N/D''))', p_rede);
-            v_where_chart := v_where_chart || format(' AND (dc.ramo = ANY(%L::text[]) OR dc.ramo IS NULL OR dc.ramo IN (''N/A'', ''N/D''))', p_rede);
+            v_where_base := v_where_base || format(' AND (ramo = ANY(%L::text[]) OR ramo IS NULL OR ramo IN (''N/A'', ''N/D''))', p_rede);
+            v_where_chart := v_where_chart || format(' AND (ramo = ANY(%L::text[]) OR ramo IS NULL OR ramo IN (''N/A'', ''N/D''))', p_rede);
         ELSE
-            v_where_base := v_where_base || format(' AND dc.ramo = ANY(%L::text[])', p_rede);
-            v_where_chart := v_where_chart || format(' AND dc.ramo = ANY(%L::text[])', p_rede);
+            v_where_base := v_where_base || format(' AND ramo = ANY(%L::text[])', p_rede);
+            v_where_chart := v_where_chart || format(' AND ramo = ANY(%L::text[])', p_rede);
         END IF;
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND dv.nome = ANY(%L::text[])', p_vendedor);
-        v_where_chart := v_where_chart || format(' AND dv.nome = ANY(%L::text[])', p_vendedor);
+        v_where_base := v_where_base || format(' AND vendedor = ANY(%L::text[])', p_vendedor);
+        v_where_chart := v_where_chart || format(' AND vendedor = ANY(%L::text[])', p_vendedor);
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND ds.nome = ANY(%L::text[])', p_supervisor);
-        v_where_chart := v_where_chart || format(' AND ds.nome = ANY(%L::text[])', p_supervisor);
+        v_where_base := v_where_base || format(' AND supervisor = ANY(%L::text[])', p_supervisor);
+        v_where_chart := v_where_chart || format(' AND supervisor = ANY(%L::text[])', p_supervisor);
     END IF;
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND cb.filial = ANY(%L::text[])', p_filial);
-        v_where_chart := v_where_chart || format(' AND cb.filial = ANY(%L::text[])', p_filial);
+        v_where_base := v_where_base || format(' AND filial = ANY(%L::text[])', p_filial);
+        v_where_chart := v_where_chart || format(' AND filial = ANY(%L::text[])', p_filial);
     END IF;
 
     IF p_pesquisador IS NOT NULL AND array_length(p_pesquisador, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND final_researcher.researcher_name = ANY(%L::text[])', p_pesquisador);
-        v_where_chart := v_where_chart || format(' AND final_researcher.researcher_name = ANY(%L::text[])', p_pesquisador);
+        v_where_base := v_where_base || format(' AND researcher = ANY(%L::text[])', p_pesquisador);
+        v_where_chart := v_where_chart || format(' AND researcher = ANY(%L::text[])', p_pesquisador);
     END IF;
 
     v_sql := format('
@@ -4559,12 +4559,15 @@ BEGIN
                 dc.nomecliente as client_name,
                 final_researcher.researcher_name as researcher,
                 dc.cidade as city,
+                dc.ramo,
+                dv.nome as vendedor,
+                ds.nome as supervisor,
+                cb.filial,
                 np.nota_media as score,
                 np.auditorias,
                 np.auditorias_perfeitas,
                 np.mes,
-                np.ano,
-                np.codigo_cliente
+                np.ano
             FROM public.data_nota_perfeita np
             LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
             LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
