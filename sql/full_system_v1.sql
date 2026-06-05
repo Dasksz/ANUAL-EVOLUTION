@@ -4203,7 +4203,6 @@ ALTER TABLE public.data_nota_perfeita ENABLE ROW LEVEL SECURITY;
 create index if not exists idx_nota_perfeita_codcli on public.data_nota_perfeita (codigo_cliente);
 
 -- Tabela de Relação Rota Involves
-DROP TABLE IF EXISTS public.relacao_rota_involves;
 create table if not exists public.relacao_rota_involves (
   id uuid default uuid_generate_v4 () primary key,
   tipo text,
