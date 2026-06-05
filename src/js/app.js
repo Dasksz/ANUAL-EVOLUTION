@@ -2576,7 +2576,9 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             }
 
             // CHUNKED CACHE REFRESH LOGIC
-            if (data.historyChunks || data.detailedChunks || (data.clients && data.clients.length > 0)) {
+            if ((data.historyChunks && data.historyChunks.length > 0) || 
+                (data.detailedChunks && data.detailedChunks.length > 0) || 
+                (data.clients && data.clients.length > 0)) {
                 updateStatus('Iniciando processamento do resumo...', 80);
             
             // 1. Explicitly clear Summary Table
