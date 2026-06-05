@@ -1226,7 +1226,7 @@ self.onmessage = async (event) => {
              } else if (existingClientsMap && existingClientsMap.length > 0) {
                  for (const client of existingClientsMap) {
                      const codCli = String(client.codigo_cliente || '').trim();
-                     const cnpjRaw = client.cnpj_cpf;
+                     const cnpjRaw = client.cnpj || client.cnpj_cpf;
                      if (codCli && cnpjRaw) {
                          let cnpjStr = String(cnpjRaw).replace(/[^0-9]/g, '');
                          if (cnpjStr) clientCnpjMap.set(cnpjStr, codCli);
