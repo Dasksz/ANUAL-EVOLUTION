@@ -1186,7 +1186,7 @@ self.onmessage = async (event) => {
              return chunks;
         };
 
-        const historyChunks = await chunkData([...processedPrevYear, ...processedCurrYearHist], true);
+        const historyChunks = (salesPrevYearFile || salesCurrYearFile) ? await chunkData([...processedPrevYear, ...processedCurrYearHist], true) : null;
         const detailedChunks = salesCurrMonthFile ? await chunkData(processedCurrMonth, false) : null;
 
         self.postMessage({ type: 'progress', status: 'Preparando dados para envio...', percentage: 90 });
@@ -1195,7 +1195,7 @@ self.onmessage = async (event) => {
         const mapToObjArray = (map) => Array.from(map.entries()).map(([codigo, nome]) => ({ codigo, nome }));
 
         // If history files were omitted, do not send historyChunks to prevent sync/wiping behavior
-        const finalHistoryChunks = (salesPrevYearFile || salesCurrYearFile) ? historyChunks : null;
+        const finalHistoryChunks = historyChunks;
 
         // Only return newProducts if productsFile was provided to avoid overwriting table with partial data from sales
         const finalProducts = productsFile ? Array.from(dimProducts.entries()).map(([codigo, val]) => ({ codigo, descricao: val.descricao, codfor: val.codfor, qtde_embalagem_master: val.qtde_embalagem_master })) : null;
