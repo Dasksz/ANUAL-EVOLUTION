@@ -2585,16 +2585,25 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             await clearTable('data_summary');
             await clearTable('data_summary_frequency');
 
-            // 2. Get Years
-            const { data: years, error: yearErr } = await supabase.rpc('get_available_years');
-            if (yearErr) throw new Error(`Erro ao buscar anos: ${yearErr.message}`);
+            // 2. Get Years dynamically based on what was sent
+            let yearsToProcess = [];
+            // If history chunks exist, process all years found in the db to re-align
+            if (data.historyChunks && data.historyChunks.length > 0) {
+                const { data: years, error: yearErr } = await supabase.rpc('get_available_years');
+                if (yearErr) throw new Error(`Erro ao buscar anos: ${yearErr.message}`);
+                yearsToProcess = (years || []).map(y => y.ano || y);
+            } else {
+                // If only detailed chunks (current month) were sent, we only need to process the current year
+                const currentYear = new Date().getFullYear();
+                yearsToProcess = [currentYear];
+            }
 
-            if (years && years.length > 0) {
+            if (yearsToProcess && yearsToProcess.length > 0) {
                 // 2.5 Batch clear all months concurrently to improve throughput
                 updateStatus('Limpando dados antigos...', 80);
                 const clearPromises = [];
-                for (let i = 0; i < years.length; i++) {
-                    const year = years[i];
+                for (let i = 0; i < yearsToProcess.length; i++) {
+                    const year = yearsToProcess[i];
                     for (let m = 1; m <= 12; m++) {
                         clearPromises.push(
                             supabase.rpc('clear_summary_month', { p_year: year, p_month: m })
@@ -2607,11 +2616,11 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 await Promise.all(clearPromises);
 
                 // 3. Loop and Process Each Year and Month (Granular to avoid timeout)
-                for (let i = 0; i < years.length; i++) {
-                    const year = years[i];
+                for (let i = 0; i < yearsToProcess.length; i++) {
+                    const year = yearsToProcess[i];
                     for (let m = 1; m <= 12; m++) {
                         // Calculate progress
-                        const yearStep = 15 / years.length;
+                        const yearStep = 15 / yearsToProcess.length;
                         const monthStep = yearStep / 12;
                         const progress = 80 + Math.round((i * yearStep) + (m * monthStep));
 
