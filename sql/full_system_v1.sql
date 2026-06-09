@@ -2142,6 +2142,7 @@ $$;
 
 -- 5. Update Get Filters
 DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[]);
+DROP FUNCTION IF EXISTS get_dashboard_filters(text,text,text[],text[],text[],text[],text[],text[],text[],text[]);
 
 
 -- ==========================================
@@ -2359,7 +2360,7 @@ BEGIN
                     np.pesquisador
                 ) as researcher_name
                 FROM public.data_nota_perfeita np
-                LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
+                LEFT JOIN (SELECT DISTINCT tipo, cod_system, cod_involves FROM public.relacao_rota_involves) rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
                 LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
             ) subq
             WHERE researcher_name IS NOT NULL
@@ -4466,6 +4467,9 @@ DROP FUNCTION IF EXISTS get_innovations_data(text[], text[], text[], text[], tex
 -- FUNÇÃO: get_loja_perfeita_data
 -- DESCRIÇÃO: Retorna os KPIs e tabela detalhada da Loja Perfeita.
 -- =========================================================================================
+DROP FUNCTION IF EXISTS get_loja_perfeita_data(text[],text[],text[],text[],text[]);
+DROP FUNCTION IF EXISTS get_loja_perfeita_data(text[],text[],text[],text[],text[],text,integer,integer);
+DROP FUNCTION IF EXISTS get_loja_perfeita_data(text[],text[],text[],text[],text[],text,integer,integer,text[]);
 CREATE OR REPLACE FUNCTION get_loja_perfeita_data(
     p_filial text[] DEFAULT NULL,
     p_cidade text[] DEFAULT NULL,
@@ -4568,7 +4572,7 @@ BEGIN
                 np.mes,
                 np.ano
             FROM public.data_nota_perfeita np
-            LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
+            LEFT JOIN (SELECT DISTINCT tipo, cod_system, cod_involves FROM public.relacao_rota_involves) rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
             LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
             CROSS JOIN LATERAL (
                 SELECT COALESCE(
@@ -4769,7 +4773,7 @@ BEGIN
             LEFT JOIN public.dim_vendedores dv ON cm.codusur = dv.codigo
             LEFT JOIN public.dim_supervisores ds ON cm.codsupervisor = ds.codigo
             LEFT JOIN public.data_nota_perfeita np ON dc.codigo_cliente = np.codigo_cliente
-            LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
+            LEFT JOIN (SELECT DISTINCT tipo, cod_system, cod_involves FROM public.relacao_rota_involves) rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
             LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
             CROSS JOIN LATERAL (
                 SELECT COALESCE(
@@ -4793,7 +4797,7 @@ BEGIN
                 dc.cnpj
             FROM public.data_clients dc
             LEFT JOIN public.data_nota_perfeita np ON dc.codigo_cliente = np.codigo_cliente
-            LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
+            LEFT JOIN (SELECT DISTINCT tipo, cod_system, cod_involves FROM public.relacao_rota_involves) rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
             LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
             CROSS JOIN LATERAL (
                 SELECT COALESCE(
@@ -6161,7 +6165,7 @@ BEGIN
                     np.pesquisador
                 ) as researcher_name
                 FROM public.data_nota_perfeita np
-                LEFT JOIN public.relacao_rota_involves rri ON np.pesquisador = (CASE WHEN rri.tipo = 'promotor' THEN rri.cod_system ELSE rri.cod_involves END)
+                LEFT JOIN (SELECT DISTINCT tipo, cod_system, cod_involves FROM public.relacao_rota_involves) rri ON np.pesquisador = (CASE WHEN rri.tipo = 'promotor' THEN rri.cod_system ELSE rri.cod_involves END)
                 LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = 'rca' AND rri.cod_system = dv_rca.codigo
             ) subq
             WHERE researcher_name IS NOT NULL
