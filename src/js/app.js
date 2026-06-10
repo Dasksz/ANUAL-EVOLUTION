@@ -2576,8 +2576,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             }
 
             // CHUNKED CACHE REFRESH LOGIC
-            if ((data.historyChunks && data.historyChunks.length > 0) || 
-                (data.detailedChunks && data.detailedChunks.length > 0) || 
+            if ((data.historyChunks && Object.keys(data.historyChunks).length > 0) ||
+                (data.detailedChunks && Object.keys(data.detailedChunks).length > 0) ||
                 (data.clients && data.clients.length > 0)) {
                 updateStatus('Iniciando processamento do resumo...', 80);
             
@@ -2588,7 +2588,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             // 2. Get Years dynamically based on what was sent
             let yearsToProcess = [];
             // If history chunks exist, process all years found in the db to re-align
-            if (data.historyChunks && data.historyChunks.length > 0) {
+            if (data.historyChunks && Object.keys(data.historyChunks).length > 0) {
                 const { data: years, error: yearErr } = await supabase.rpc('get_available_years');
                 if (yearErr) throw new Error(`Erro ao buscar anos: ${yearErr.message}`);
                 yearsToProcess = (years || []).map(y => y.ano || y);
