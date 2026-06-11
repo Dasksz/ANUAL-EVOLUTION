@@ -4188,6 +4188,8 @@ create table if not exists public.data_nota_perfeita (
   id uuid default uuid_generate_v4 () primary key,
   codigo_cliente text,
   mes_ano text,
+  mes integer,
+  ano integer,
   semana text,
   pesquisador text,
   cnpj_origem text,
@@ -4199,6 +4201,17 @@ create table if not exists public.data_nota_perfeita (
   updated_at timestamp with time zone default now()
 );
 ALTER TABLE public.data_nota_perfeita ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_nota_perfeita' AND column_name = 'mes') THEN
+        ALTER TABLE public.data_nota_perfeita ADD COLUMN mes integer;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_nota_perfeita' AND column_name = 'ano') THEN
+        ALTER TABLE public.data_nota_perfeita ADD COLUMN ano integer;
+    END IF;
+END $$;
+
 
 -- Index for fast client lookup in Loja Perfeita
 create index if not exists idx_nota_perfeita_codcli on public.data_nota_perfeita (codigo_cliente);

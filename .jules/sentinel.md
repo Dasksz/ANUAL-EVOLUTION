@@ -20,3 +20,7 @@
 **Refined Action:** Introduced a centralized `updateSvgPaths` utility that uses `document.createElementNS` to manage path elements safely, ensuring consistent styling (attributes) and avoiding `innerHTML` entirely.
 ## 2025-06-05 - Avoid SQL Injection via Direct Parameter usage
 The new `chart_data` return block inside `get_loja_perfeita_data` relies safely on predefined string patterns `p_codcli` arrays instead of allowing unescaped text input natively into the formatting via `$1`.
+## 2025-06-10 - Ensure SQL schemas use specific columns instead of relying only on parsed text variables
+
+**Learning:** When altering existing schemas for new business requirements (like filtering data by `mes` and `ano` on `data_nota_perfeita`), ensure the respective SQL columns exist and are safely added with `IF NOT EXISTS` in the schema definitions, avoiding assumptions that raw text parsed date columns (like `mes_ano`) are sufficient for integer operations and filtering.
+**Action:** When errors like "column np.mes does not exist" occur, check the initial schema definition, and then alter the database tables using safe migration blocks (`DO $$ BEGIN ... END $$;`) instead of modifying just the function/rpc queries that rely on them.
