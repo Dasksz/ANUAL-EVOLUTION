@@ -3536,6 +3536,171 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         }
     }
 
+
+    /**
+     * Helper wrapper for setupMultiSelect that provides a no-op labelCallback.
+     * @param {HTMLElement} btn - The button element.
+     * @param {HTMLElement} dropdown - The dropdown element.
+     * @param {HTMLElement} container - The container for event delegation.
+     * @param {Array} items - The items to populate.
+     * @param {Array} selectedArray - The array holding selected values.
+     * @param {HTMLElement} [searchInput=null] - Optional search input element.
+     * @param {boolean} [isObject=false] - Whether items are objects with cod/name properties.
+     * @returns {Function} Cleanup function.
+     */
+    function setupDefaultMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
+    return window.setupMultiSelect(btn, dropdown, container, items, selectedArray, () => {}, isObject, searchInput);
+}
+
+    /**
+     * Specific setup for Branch Filter to strictly enforce a maximum of 2 selections.
+     * Defaults to the first 2 items if nothing is selected.
+     * @param {HTMLElement} btn - The button element.
+     * @param {HTMLElement} dropdown - The dropdown element.
+     * @param {HTMLElement} container - The container for event delegation.
+     * @param {Array} items - The items to populate.
+     * @param {Array} selectedArray - The array holding selected values.
+     */
+    function setupBranchFilialSelect(btn, dropdown, container, items, selectedArray) {
+        // If nothing selected, default to first 2
+        if (selectedArray.length === 0 && items && items.length > 0) {
+            selectedArray.push(String(items[0]));
+            if(items.length > 1) selectedArray.push(String(items[1]));
+        }
+
+        btn.onclick = (e) => {
+        e.stopPropagation();
+        const isHidden = dropdown.classList.contains('hidden');
+        // Close all dropdowns
+        closeAllDropdowns();
+        // Restore this one if it was hidden
+        if (isHidden) {
+            dropdown.classList.remove('hidden');
+        }
+    };
+
+        const selectedSet = new Set(selectedArray);
+
+        // ⚡ Bolt Optimization: Attach event listener to container once (Event Delegation)
+        container.onclick = (e) => {
+            const div = e.target.closest('.filter-item-row');
+            if (!div) return;
+            e.stopPropagation();
+            const checkbox = div.querySelector('input');
+            if (!checkbox) return;
+            const val = div.getAttribute('data-value');
+
+            // Toggle logic
+            if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
+
+            if (checkbox.checked) {
+                if (!selectedSet.has(val)) {
+                    selectedSet.add(val);
+                    selectedArray.push(val);
+                    // Enforce max 2: remove first added
+                    if (selectedArray.length > 2) {
+                        const removed = selectedArray.shift();
+                        selectedSet.delete(removed);
+                    }
+
+                    // Re-sync UI: uncheck any boxes not in selectedArray
+                    const allCheckboxes = container.querySelectorAll('input');
+                    allCheckboxes.forEach(cb => {
+                        const cbVal = cb.closest('.filter-item-row').getAttribute('data-value');
+                        if (!selectedSet.has(cbVal)) {
+                            cb.checked = false;
+                        }
+                    });
+                }
+            } else {
+                if (selectedSet.has(val)) {
+                    selectedSet.delete(val);
+                    const idx = selectedArray.indexOf(val);
+                    if (idx > -1) selectedArray.splice(idx, 1);
+                }
+            }
+
+            // Update label
+            const span = btn.querySelector('span');
+            if (selectedArray.length === 0) {
+                span.textContent = 'Todas';
+            } else if (selectedArray.length === 1) {
+                span.textContent = selectedArray[0];
+            } else {
+                span.textContent = selectedArray.length + ' selecionados';
+            }
+            // Add blue highlight class if filtered
+            if (selectedArray.length > 0) {
+                btn.classList.add('border-blue-500', 'bg-blue-500/10');
+            } else {
+                btn.classList.remove('border-blue-500', 'bg-blue-500/10');
+            }
+        };
+
+        // Click away event
+        document.addEventListener('click', (e) => {
+            if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+                if (!dropdown.classList.contains('hidden')) {
+                    dropdown.classList.add('hidden');
+                    // Ensure max 2 is strictly applied visually before triggering updates
+                    const allCheckboxes = container.querySelectorAll('input');
+                    allCheckboxes.forEach(cb => {
+                        const cbVal = cb.closest('.filter-item-row').getAttribute('data-value');
+                        cb.checked = selectedSet.has(cbVal);
+                    });
+
+                    const span = btn.querySelector('span');
+                    if (selectedArray.length === 0) {
+                        span.textContent = 'Todas';
+                    } else if (selectedArray.length === 1) {
+                        span.textContent = selectedArray[0];
+                    } else {
+                        span.textContent = selectedArray.length + ' selecionados';
+                    }
+                    if (selectedArray.length > 0) {
+                        btn.classList.add('border-blue-500', 'bg-blue-500/10');
+                    } else {
+                        btn.classList.remove('border-blue-500', 'bg-blue-500/10');
+                    }
+                    btn.dispatchEvent(new CustomEvent('ui:dropdowns_closed', { bubbles: true }));
+                }
+            }
+        });
+
+        // Listen to the custom event to trigger logic ONLY when dropdown actually closes
+        btn.addEventListener('ui:dropdowns_closed', () => {
+            // Re-sync UI (just in case)
+            const allCheckboxes = container.querySelectorAll('input');
+            allCheckboxes.forEach(cb => {
+                const cbVal = cb.closest('.filter-item-row').getAttribute('data-value');
+                cb.checked = selectedSet.has(cbVal);
+            });
+
+            // Note: Update logic must be bound in the parent context where this is used (e.g. handleBranchFilterChange)
+            // But we can dispatch a change event on the button if needed, or rely on clickaway logic to catch the custom event.
+        });
+
+        // Add to global listener structure so it closes when others open
+        const originalOnclick = btn.onclick;
+        btn.onclick = (e) => {
+            if(typeof closeAllDropdowns === 'function') closeAllDropdowns();
+            if(originalOnclick) originalOnclick(e);
+        };
+
+        // Add a method to programmatically close it to be hooked by global closeAllDropdowns
+        if (!dropdown.hasAttribute('data-close-hook')) {
+            dropdown.setAttribute('data-close-hook', 'true');
+            // Monkey patch close to emit event
+            const origClassListAdd = dropdown.classList.add;
+            dropdown.classList.add = function() {
+                const wasHidden = this.contains('hidden');
+                origClassListAdd.apply(this, arguments);
+                if(!wasHidden && this.contains('hidden')) {
+                    btn.dispatchEvent(new CustomEvent('ui:dropdowns_closed', { bubbles: true }));
+                }
+            };
+        }
+    }
     window.enhanceSelectToCustomDropdown = function(selectElement) {
         if (!selectElement) return;
 
@@ -4655,9 +4820,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         }
     });
 
-    function setupDefaultMultiSelect(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
-    return window.setupMultiSelect(btn, dropdown, container, items, selectedArray, () => {}, isObject, searchInput);
-}
+
 
     async function initCityFilters() {
         const filters = {
@@ -4914,88 +5077,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     }
     
     // Specific setup for Branch Filter to enforce 2 selections
-    function setupBranchFilialSelect(btn, dropdown, container, items, selectedArray) {
-        // If nothing selected, default to first 2
-        if (selectedArray.length === 0 && items && items.length > 0) {
-            selectedArray.push(String(items[0]));
-            if(items.length > 1) selectedArray.push(String(items[1]));
-        }
 
-        btn.onclick = (e) => {
-        e.stopPropagation();
-        const isHidden = dropdown.classList.contains('hidden');
-        // Close all dropdowns
-        closeAllDropdowns();
-        // Restore this one if it was hidden
-        if (isHidden) {
-            dropdown.classList.remove('hidden');
-        }
-    };
-        
-        const selectedSet = new Set(selectedArray);
-
-        // ⚡ Bolt Optimization: Attach event listener to container once (Event Delegation)
-        container.onclick = (e) => {
-            const div = e.target.closest('.filter-item-row');
-            if (!div) return;
-            e.stopPropagation();
-            const checkbox = div.querySelector('input');
-            if (!checkbox) return;
-            const val = div.getAttribute('data-value');
-
-            // Toggle logic
-            if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
-
-            if (checkbox.checked) {
-                if (!selectedSet.has(val)) {
-                    selectedSet.add(val);
-                    selectedArray.push(val);
-                    // Enforce max 2: remove first added
-                    if (selectedArray.length > 2) {
-                        const removed = selectedArray.shift();
-                        selectedSet.delete(removed);
-                    }
-                }
-            } else {
-                if (selectedSet.has(val)) {
-                    selectedSet.delete(val);
-                    const idx = selectedArray.indexOf(val);
-                    if (idx > -1) selectedArray.splice(idx, 1);
-                }
-            }
-
-            renderItems(); // Re-render to update checks visually (e.g. if one was auto-removed)
-            updateBtnLabel();
-        };
-
-        const renderItems = () => {
-            // ⚡ Bolt Optimization: Use template strings instead of multiple document.createElement calls
-            container.innerHTML = (items || []).map(item => {
-                const val = String(item);
-                const isSelected = selectedSet.has(val);
-                return `
-                    <div class="flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded filter-item-row" data-value="${escapeHtml(val)}">
-                        <input type="checkbox" value="${escapeHtml(val)}" class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2" ${isSelected ? 'checked' : ''}>
-                        <label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${escapeHtml(val)}</label>
-                    </div>
-                `;
-            }).join('');
-
-            // ⚡ Bolt Optimization: Use event delegation instead of attaching N listeners inside the loop
-            // Event delegation is set up once outside renderItems
-
-            if (!items || items.length === 0) container.innerHTML = '<div class="p-2 text-sm text-slate-500 text-center">Nenhum item encontrado</div>';
-        };
-        
-        const updateBtnLabel = () => {
-            const span = btn.querySelector('span');
-            if (selectedArray.length === 0) span.textContent = 'Selecione 2';
-            else span.textContent = `${selectedArray.length} selecionadas`;
-        };
-        
-        renderItems();
-        updateBtnLabel();
-    }
 
 
 
