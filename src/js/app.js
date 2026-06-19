@@ -8926,8 +8926,8 @@ async function updateEstrelasView() {
         updateEl('pontos-possiveis-acel', data.base_clientes);
 
         // Progress Bars
-        let pctPos = data.base_clientes > 0 ? (data.positivacao_salty / data.base_clientes) * 100 : 0;
-        let pctAcel = data.base_clientes > 0 ? (data.aceleradores_realizado / data.base_clientes) * 100 : 0;
+        let pctPos = metaPos > 0 ? (data.positivacao_salty / metaPos) * 100 : (data.positivacao_salty > 0 ? 100 : 0);
+        let pctAcel = metaAcel > 0 ? (data.aceleradores_realizado / metaAcel) * 100 : (data.aceleradores_realizado > 0 ? 100 : 0);
         
         let realizedSellout = data.sellout_salty + data.sellout_foods;
         let pctSellout = metaSellout > 0 ? (realizedSellout / metaSellout) * 100 : (realizedSellout > 0 ? 100 : 0);
