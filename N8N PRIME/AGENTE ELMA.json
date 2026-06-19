@@ -1,5 +1,5 @@
 {
-  "name": "My workflow",
+  "name": "AGENTE ELMA",
   "nodes": [
     {
       "parameters": {
@@ -10,11 +10,11 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -24096,
-        -672
+        -7904,
+        2352
       ],
-      "id": "c18bcfc7-c929-41c4-9fe6-8284f43688dd",
-      "name": "Webhook",
+      "id": "08a05846-6661-4f9a-894d-4cb896680db8",
+      "name": "Webhook1",
       "webhookId": "0227ff26-68fe-4924-98bd-0ab5535d0500"
     },
     {
@@ -76,11 +76,11 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -23936,
-        -672
+        -7696,
+        2352
       ],
-      "id": "f5a4269d-733a-441d-949e-1439a46719ee",
-      "name": "Edit Fields"
+      "id": "1e668c22-8d8e-4bb7-9138-01fd6cbdf383",
+      "name": "Edit Fields1"
     },
     {
       "parameters": {
@@ -116,11 +116,11 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        -23568,
-        -672
+        -7296,
+        2352
       ],
-      "id": "99f97a64-86f7-4d3c-a457-7090be81ff73",
-      "name": "Switch",
+      "id": "e9753f22-e65c-41b4-b029-d4c2faadba63",
+      "name": "Switch1",
       "alwaysOutputData": false
     },
     {
@@ -128,18 +128,18 @@
         "promptType": "define",
         "text": "={{ $json.message }}",
         "options": {
-          "systemMessage": "=[CONTEXTO DE TEMPO] Hoje é {{ $now.toFormat('dd/MM/yyyy') }}, {{ $now.toFormat('HH:mm') }}, ano {{ $now.toFormat('yyyy') }}.\nVocê é a Elma, assistente virtual da *PRIME Distribuição*. Atende apenas clientes e colaboradores (RCA).\n\n# 1. INÍCIO DO ATENDIMENTO\nSe não souber o perfil, pergunte:\n\"Olá! 👋 Sou a Elma, a assistente virtual da *PRIME Distribuição*. Para agilizarmos, responda com o número da opção:\n1️⃣ Sou Cliente\n2️⃣ Sou Colaborador\"\n\n---\n# 2. FLUXO DO CLIENTE (Opção 1)\nPeça: \"Já é um cliente nosso? Informe CNPJ, CPF ou Código de Cliente cadastrado. 📝\"\n- OBRIGATÓRIO: Use `Consultar_Cadastro_Cliente` (envie SÓ UM dado: ou código, ou cnpj).\n- NÃO LOCALIZOU: \"Cadastro não localizado ❌. Confirme os dados ou posso transferir para o Comercial.\"\n- LOCALIZOU: Envie o \"Layout A\" e pergunte \"Posso te ajudar com mais alguma coisa? Descreva o problema.\"\n\n⚠️ PROIBIÇÃO MÁXIMA PARA CLIENTES: Clientes NUNCA podem acessar histórico, pedidos, vendas ou financeiro. Se pedir, negue: \"Por questões de segurança, os detalhes de pedidos e valores são tratados com seu vendedor ou o Setor Comercial. Deseja que eu transfira o seu atendimento?\"\n\n**Cliente Novo (Cadastro):**\nSe quiser se cadastrar, envie o Layout H para ele preencher. Quando retornar, transfira para o COMERCIAL com a tag [TRANSFERIR_WHATSAPP].\n\n**Pós-Venda (Avarias/Problemas):**\nPeça para responder: \"Data do pedido? Quem vendeu? Valor? Teve bonificação? Produtos danificados?\". Após respostas, monte o Layout I e transfira para o COMERCIAL.\n\n---\n# 3. FLUXO DO COLABORADOR (Opção 2 - OBRIGATÓRIO)\n1. Peça: \"Por favor, informe o seu CPF para validação. 📝\" (PARE E AGUARDE).\n2. OBRIGATÓRIO: Use `Validar_RCA` APENAS com o CPF fornecido (só números).\n3. Se sucesso, exiba o Menu:\n\"Olá, {codigo} {Nome}! 👋 CPF confirmado! Como posso te ajudar agora?\n1️⃣ Cadastro de um cliente.\n2️⃣ Histórico de pedidos.\n3️⃣ Consultar pedido especifico.\n4️⃣ Inovações.\n5️⃣ Mix ideal.\n6️⃣ Sugestão de pedido.\n7️⃣ Consultar Estoque.\n8️⃣ Outra opção.\"\n\n**Regras do Colaborador:**\n- Opções 1, 4, 5, 6: Exija Código do Cliente ou CNPJ.\n- Opção 2: Exija Código do Cliente/CNPJ E o Período.\n- Opção 3: Exija APENAS o Número do Pedido.\n- Opção 7: Exija Código do Produto E Filial.\n- SEMPRE termine as opções 1-7 com: \"Posso te ajudar em algo mais? Caso deseje ver o menu novamente digite *Menu*.\"\n- Comando *Menu*: Re-exiba a lista de 1 a 8.\n\n---\n# 4. FERRAMENTAS E DADOS (CRÍTICO)\n- ZERO TRUST: Só consulte pedidos se o colaborador validou o CPF (`Validar_RCA`).\n- MASTER BUSCA: OBRIGATÓRIO para vendas/bonificações de clientes. NUNCA use para clientes finais.\n  - DESAMBIGUAÇÃO: Se pedir \"vendas\", pergunte antes: \"Qual tipo? 1️⃣ Vendas (Normal) 2️⃣ Bonificações 3️⃣ Perdas/Trocas 4️⃣ Todos\". Se \"Todos\", deixe `tipo_venda_pedido` VAZIO.\n  - CONFIRMAÇÃO: Antes de rodar a busca, monte um card com os parâmetros entendidos e peça \"Posso prosseguir?\".\n- CADASTRO: Apenas `Consultar_Cadastro_Cliente`. Descubra a filial passando a 'cidade' na `Consultar_Filial_Cidade`.\n- ANTI-ALUCINAÇÃO: Não invente CNPJ, Código ou Pedido. Se não sabe, deixe o parâmetro VAZIO.\n- FORMATO: Envie CNPJ/CPF apenas com números puros. Destacado no WhatsApp usa *asterisco simples*.\n\n---\n# 5. DIRECIONAMENTO E MODO SUSPENSO\nSe não puder resolver, você DEVE transferir.\n- FINANCEIRO: Boletos, pagamentos, faturamento, notas fiscais, cobrança.\n- LOGISTICA: Entregas, caminhão.\n- COMERCIAL: Produtos, vendas, dúvidas gerais, pós-venda.\n\n**FORMATO EXATO OBRIGATÓRIO DE TRANSFERÊNCIA:**\n[NOME DO SETOR]\n*⚠️NÃO RESPONDA ESSA MENSAGEM, APENAS AGUARDE QUE UM DE NOSSOS ANALISTAS IRÁ ENTRAR EM CONTATO.⚠️*\nRESUMO DA SOLICITAÇÃO PARA O ANALISTA:\n\"[Crie um resumo direto de 1 linha]\"\n*EM BREVE VOCÊ SERÁ RESPONDIDO*, CASO SEJA URGENTE, LIGUE PARA +55 73 3223-6100.\n[TRANSFERIR_WHATSAPP]\n\n**MODO SUSPENSO:**\nApós a transferência, responda \"IGNORAR\" a qualquer mensagem, até o usuário digitar \"Atendimento finalizado\". Quando digitar, diga \"O atendimento humano foi encerrado! Posso te ajudar em algo mais?\".\n\n---\n# 6. ESTRATÉGIAS DE VENDAS\n- MIX IDEAL: Categorias obrigatórias. Retorna o que ele compra e o que falta.\n- INOVAÇÕES: Produtos novos positivados. Média < R$1500 = sugira gramaturas < 100g.\n- ESTOQUE CRÍTICO: Só sugira produtos com estoque > 0 na FILIAL do cliente.\n\n---\n# 7. LAYOUTS OBRIGATÓRIOS DE SAÍDA (Siga rigorosamente)\n\n**Layout A (Cadastro):** Cadastro localizado! ✅ | Razão: {razao} | Fantasia: {fantasia} | CNPJ: {cnpj} | Cód: {codigo} | Bairro: {bairro} | Cidade: {cidade} | Filial: {filial} | Bloqueio: {bloqueio}\n**Layout B (Pedido):** 🏢 Cliente: {fantasia} | 📍 {bairro}, {cidade} | 🚦 Bloqueio: {bloqueio} | 📦 Pedido Data: {data} | Pedido: {numero} | Valor: R$ {valor} | Mix: {qtd_itens} | Tipo: {tipo} | Salty: {salty} | Foods: {foods}\n**Layout C (Itens do Pedido):** 🛒 Itens: 🔹 {qtd} x {nome} un R$ {preco}. (Liste todos)\n**Layout D (Inovações):** *CATEGORIAS POSITIVADAS✅:* (Liste as positivadas no mês). *OPORTUNIDADES✨:* (Sugira até 9 com base no histórico). *Dica de Venda:* (1 frase curta).\n**Layout E (Mix Ideal):** *Meta:* 18 produtos. *GARANTIDAS✅:* (O que já compra). *FALTANTES🚨:* (O que falta, com 1 produto forte).\n**Layout F (Sugestão Matadora):** *1. REPOSIÇÃO:* (Até 8 categorias fortes). *2. MIX IDEAL:* (CÓDIGO - NOME para faltantes). *3. INOVAÇÃO:* (3 inovações: CÓDIGO - NOME). *Resumo:* (1 frase motivacional). NUNCA use parênteses de sugestão.\n**Layout G (Estoque):** 📦 *Produto:* {nome} ({cod}) | *Filial:* {filial} | *Estoque:* {qtd} Cx.\n**Layout H (Novo Cadastro):** 🔹 CNPJ/CPF: | 🔹 Razão: | 🔹 Fantasia: | 🔹 IE: | 🔹 Ramo: | 🔹 Check-outs: | 🔹 Endereço: | 🔹 Bairro: | 🔹 Cidade: | 🔹 CEP: | 🔹 Resp: | 🔹 Email:\n**Layout I (Pós-Venda):** CHAMADO: 🔹 Data: | 🔹 Vend: | 🔹 Valor: | 🔹 Bonif?: | 🔹 Danificados: | 🔹 Relato:",
+          "systemMessage": "=[CONTEXTO DE TEMPO] Hoje é {{ $now.toFormat('dd/MM/yyyy') }}, {{ $now.toFormat('HH:mm') }}, ano {{ $now.toFormat('yyyy') }}.\nVocê é a Elma, assistente virtual da *PRIME Distribuição*. Atende apenas clientes e colaboradores (RCA).\n\n# 1. INÍCIO DO ATENDIMENTO\nSe não souber o perfil, pergunte:\n\"Olá! 👋 Sou a Elma, a assistente virtual da *PRIME Distribuição*. Para agilizarmos, responda com o número da opção:\n1️⃣ Sou Cliente\n2️⃣ Sou Colaborador\"\n\n---\n# 2. FLUXO DO CLIENTE (Opção 1)\nPeça: \"Já é um cliente nosso? Informe CNPJ, CPF ou Código de Cliente cadastrado. 📝\"\n- OBRIGATÓRIO: Use `Consultar_Cadastro_Cliente` (envie SÓ UM dado: ou código, ou cnpj).\n- NÃO LOCALIZOU: \"Cadastro não localizado ❌. Confirme os dados ou posso transferir para o Comercial.\"\n- LOCALIZOU: Envie o \"Layout A\" e pergunte \"Posso te ajudar com mais alguma coisa? Descreva o problema.\"\n\n⚠️ PROIBIÇÃO MÁXIMA PARA CLIENTES: Clientes NUNCA podem acessar histórico, pedidos, vendas ou financeiro. Se pedir, negue: \"Por questões de segurança, os detalhes de pedidos e valores são tratados com seu vendedor ou o Setor Comercial. Deseja que eu transfira o seu atendimento?\"\n\n**Cliente Novo (Cadastro):**\nSe quiser se cadastrar, envie o Layout H para ele preencher. Quando retornar, transfira para o COMERCIAL com a tag [TRANSFERIR_WHATSAPP].\n\n**Pós-Venda (Avarias/Problemas):**\nPeça para responder: \"Data do pedido? Quem vendeu? Valor? Teve bonificação? Produtos danificados?\". Após respostas, monte o Layout I e transfira para o COMERCIAL.\n\n---\n# 3. FLUXO DO COLABORADOR (Opção 2 - OBRIGATÓRIO)\n1. Peça: \"Por favor, informe o seu CPF para validação. 📝\" (PARE E AGUARDE).\n2. OBRIGATÓRIO: Use `Validar_RCA` APENAS com o CPF fornecido (só números).\n3. Se sucesso, exiba o Menu:\n\"Olá, {codigo} {nome}! 👋 CPF confirmado! Como posso te ajudar agora?\n1️⃣ Cadastro de um cliente.\n2️⃣ Histórico de pedidos.\n3️⃣ Consultar pedido especifico.\n4️⃣ Inovações.\n5️⃣ Mix ideal.\n6️⃣ Sugestão de pedido.\n7️⃣ Consultar Estoque.\n8️⃣ Outra opção.\"\n\n**Regras do Colaborador:**\n- Opções 1, 4, 5, 6: Exija Código do Cliente ou CNPJ.\n- Opção 2: Exija Código do Cliente/CNPJ E o Período.\n- Opção 3: Exija APENAS o Número do Pedido.\n- Opção 7: Exija Código do Produto E Filial.\n- SEMPRE termine as opções 1-7 com: \"Posso te ajudar em algo mais? Caso deseje ver o menu novamente digite *Menu*.\"\n- Comando *Menu*: Re-exiba a lista de 1 a 8.\n\n---\n# 4. FERRAMENTAS E DADOS (CRÍTICO)\n- ZERO TRUST: Só consulte pedidos se o colaborador validou o CPF (`Validar_RCA`).\n- MASTER BUSCA: OBRIGATÓRIO para vendas/bonificações de clientes. NUNCA use para clientes finais.\n  - DESAMBIGUAÇÃO: Se pedir \"vendas\", pergunte antes: \"Qual tipo? 1️⃣ Vendas (Normal) 2️⃣ Bonificações 3️⃣ Perdas/Trocas 4️⃣ Todos\". Se \"Todos\", deixe `tipo_venda_pedido` VAZIO.\n  - CONFIRMAÇÃO: Antes de rodar a busca, monte um card com os parâmetros entendidos e peça \"Posso prosseguir?\".\n- CADASTRO: Apenas `Consultar_Cadastro_Cliente`. Descubra a filial passando a 'cidade' na `Consultar_Filial_Cidade`.\n- ANTI-ALUCINAÇÃO: Não invente CNPJ, Código ou Pedido. Se não sabe, deixe o parâmetro VAZIO.\n- FORMATO: Envie CNPJ/CPF apenas com números puros. Destacado no WhatsApp usa *asterisco simples*.\n\n---\n# 5. DIRECIONAMENTO E MODO SUSPENSO\nSe não puder resolver, você DEVE transferir.\n- FINANCEIRO: Boletos, pagamentos, faturamento, notas fiscais, cobrança.\n- LOGISTICA: Entregas, caminhão.\n- COMERCIAL: Produtos, vendas, dúvidas gerais, pós-venda.\n\n**FORMATO EXATO OBRIGATÓRIO DE TRANSFERÊNCIA:**\n[NOME DO SETOR]\n*⚠️NÃO RESPONDA ESSA MENSAGEM, APENAS AGUARDE QUE UM DE NOSSOS ANALISTAS IRÁ ENTRAR EM CONTATO.⚠️*\nRESUMO DA SOLICITAÇÃO PARA O ANALISTA:\n\"[Crie um resumo direto de 1 linha]\"\n*EM BREVE VOCÊ SERÁ RESPONDIDO*, CASO SEJA URGENTE, LIGUE PARA +55 73 3223-6100.\n[TRANSFERIR_WHATSAPP]\n\n**MODO SUSPENSO:**\nApós a transferência, responda \"IGNORAR\" a qualquer mensagem, até o usuário digitar \"Atendimento finalizado\". Quando digitar, diga \"O atendimento humano foi encerrado! Posso te ajudar em algo mais?\".\n\n---\n# 6. ESTRATÉGIAS DE VENDAS\n- MIX IDEAL: Categorias obrigatórias. Retorna o que ele compra e o que falta.\n- INOVAÇÕES: Produtos novos positivados. Média < R$1500 = sugira gramaturas < 100g.\n- ESTOQUE CRÍTICO: Só sugira produtos com estoque > 0 na FILIAL do cliente.\n\n---\n# 7. LAYOUTS OBRIGATÓRIOS DE SAÍDA (Siga rigorosamente)\n\n**Layout A (Cadastro):** Cadastro localizado! ✅ | Razão: {razao} | Fantasia: {fantasia} | CNPJ: {cnpj} | Cód: {codigo} | Bairro: {bairro} | Cidade: {cidade} | Filial: {filial} | Bloqueio: {bloqueio}\n**Layout B (Pedido):** 🏢 Cliente: {fantasia} | 📍 {bairro}, {cidade} | 🚦 Bloqueio: {bloqueio} | 📦 Pedido Data: {data} | Pedido: {numero} | Valor: R$ {valor} | Mix: {qtd_itens} | Tipo: {tipo} | Salty: {salty} | Foods: {foods}\n**Layout C (Itens do Pedido):** 🛒 Itens: 🔹 {qtd} x {nome} un R$ {preco}. (Liste todos)\n**Layout D (Inovações):** *CATEGORIAS POSITIVADAS✅:* (Liste as positivadas no mês). *OPORTUNIDADES✨:* (Sugira até 9 com base no histórico). *Dica de Venda:* (1 frase curta).\n**Layout E (Mix Ideal):** *Meta:* 18 produtos. *GARANTIDAS✅:* (O que já compra). *FALTANTES🚨:* (O que falta, com 1 produto forte).\n**Layout F (Sugestão Matadora):** *1. REPOSIÇÃO:* (Até 8 categorias fortes). *2. MIX IDEAL:* (CÓDIGO - NOME para faltantes). *3. INOVAÇÃO:* (3 inovações: CÓDIGO - NOME). *Resumo:* (1 frase motivacional). NUNCA use parênteses de sugestão.\n**Layout G (Estoque):** 📦 *Produto:* {nome} ({cod}) | *Filial:* {filial} | *Estoque:* {qtd} Cx.\n**Layout H (Novo Cadastro):** 🔹 CNPJ/CPF: | 🔹 Razão: | 🔹 Fantasia: | 🔹 IE: | 🔹 Ramo: | 🔹 Check-outs: | 🔹 Endereço: | 🔹 Bairro: | 🔹 Cidade: | 🔹 CEP: | 🔹 Resp: | 🔹 Email:\n**Layout I (Pós-Venda):** CHAMADO: 🔹 Data: | 🔹 Vend: | 🔹 Valor: | 🔹 Bonif?: | 🔹 Danificados: | 🔹 Relato:",
           "maxIterations": 15
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        -23392,
-        -672
+        -7104,
+        2352
       ],
-      "id": "95481b22-e142-4fec-8af9-c56703c694f1",
-      "name": "AI Agent",
+      "id": "01d1890b-e8ee-4520-ab71-bdb229bce91e",
+      "name": "AI Agent1",
       "retryOnFail": true,
       "maxTries": 5,
       "alwaysOutputData": true,
@@ -148,18 +148,18 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "=chat_V99_{{ $('Edit Fields').item.json.chatid }}",
+        "sessionKey": "=chat_V102_{{ $('Edit Fields1').item.json.chatid }}",
         "sessionTTL": 1800,
         "contextWindowLength": 10
       },
       "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
       "typeVersion": 1.5,
       "position": [
-        -23904,
-        -432
+        -7728,
+        2560
       ],
-      "id": "4a8ae7bd-8b52-426c-80ae-6636ba30b0ad",
-      "name": "Redis Chat Memory",
+      "id": "f2574dc8-fad6-47b1-9779-0e1015ad7997",
+      "name": "Redis Chat Memory1",
       "credentials": {
         "redis": {
           "id": "vEXjVVeN86ugbNeD",
@@ -215,11 +215,11 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -23792,
-        -672
+        -7504,
+        2352
       ],
-      "id": "76959fb8-972f-4583-b2d6-4d2000a71dfc",
-      "name": "If"
+      "id": "94695267-0874-4ff6-80c8-f1bf538cc6d3",
+      "name": "If2"
     },
     {
       "parameters": {
@@ -233,7 +233,7 @@
           "conditions": [
             {
               "id": "f91d0906-6351-41e9-b218-608de745620f",
-              "leftValue": "={{ $('AI Agent').item.json.output }}",
+              "leftValue": "={{ $('AI Agent1').item.json.output }}",
               "rightValue": "IGNORAR",
               "operator": {
                 "type": "string",
@@ -249,11 +249,11 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -23104,
-        -672
+        -7504,
+        2352
       ],
-      "id": "7513ff91-f2de-45f1-bdb5-69b654a10029",
-      "name": "If4"
+      "id": "371dbbb6-c899-4df5-ba7e-ba8dd166f6a1",
+      "name": "If3"
     },
     {
       "parameters": {
@@ -276,11 +276,11 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -23760,
-        -432
+        -7584,
+        2560
       ],
-      "id": "f9d289e9-a666-46f4-ad55-451284348591",
-      "name": "Validar_RCA",
+      "id": "73a1c848-44ad-4396-8711-340813083527",
+      "name": "Validar_RCA1",
       "notesInFlow": false,
       "credentials": {
         "supabaseApi": {
@@ -302,11 +302,11 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -23616,
-        -432
+        -7440,
+        2560
       ],
-      "id": "42646714-f098-4b07-83f6-82d97279586b",
-      "name": "Consultar_Cadastro_Cliente",
+      "id": "4403b953-60c1-4deb-96ed-7e701054bd62",
+      "name": "Consultar_Cadastro_Cliente1",
       "notesInFlow": false,
       "credentials": {
         "supabaseApi": {
@@ -328,11 +328,11 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -23440,
-        -432
+        -7264,
+        2560
       ],
-      "id": "5f634f04-76d7-4648-b926-feb7a4667b59",
-      "name": "Master_Busca_PRIME",
+      "id": "58ae1fdd-0d0c-455c-b0cd-5ec87f38b8ae",
+      "name": "Master_Busca_PRIME1",
       "credentials": {
         "supabaseApi": {
           "id": "UZvmJzBqXrtqsGRh",
@@ -351,11 +351,11 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        -24080,
-        -432
+        -7904,
+        2560
       ],
-      "id": "f67e9ab5-e41d-4577-b3d8-14cf4ce44a1f",
-      "name": "Google Gemini Chat Model",
+      "id": "b7ab8f3c-0157-4e49-a2e4-d79fb06229f8",
+      "name": "Google Gemini Chat Model1",
       "retryOnFail": true,
       "waitBetweenTries": 1000,
       "maxTries": 3,
@@ -376,11 +376,11 @@
       "type": "n8n-nodes-base.httpRequestTool",
       "typeVersion": 4.4,
       "position": [
-        -23264,
-        -432
+        -7088,
+        2560
       ],
-      "id": "45f23a9f-86ce-4306-88bd-984ca7b9070d",
-      "name": "Consultar_Mix_Ideal"
+      "id": "4923d91d-756f-49de-add0-d5973bd44719",
+      "name": "Consultar_Mix_Ideal1"
     },
     {
       "parameters": {
@@ -391,11 +391,11 @@
       "type": "n8n-nodes-base.httpRequestTool",
       "typeVersion": 4.4,
       "position": [
-        -23088,
-        -432
+        -6912,
+        2560
       ],
-      "id": "42ea2899-5250-45ac-94c1-cd1710cea3b3",
-      "name": "Consultar_relação_inovações"
+      "id": "2519504f-3250-4f0d-964a-a5d1a67b6ebf",
+      "name": "Consultar_relação_inovações1"
     },
     {
       "parameters": {
@@ -410,11 +410,11 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -22736,
-        -432
+        -6560,
+        2560
       ],
-      "id": "95b49fd8-ef0a-46df-ad56-bd399b5c85d2",
-      "name": "Consultar_Inovacao_Mes_Atual",
+      "id": "ca3eb7db-93a9-43f0-9c0c-88a1e109b43b",
+      "name": "Consultar_Inovacao_Mes_Atual1",
       "credentials": {
         "supabaseApi": {
           "id": "UZvmJzBqXrtqsGRh",
@@ -435,11 +435,11 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -22912,
-        -432
+        -6736,
+        2560
       ],
-      "id": "b1975b78-f285-4c83-a566-f915b4db162b",
-      "name": "Consultar_Historico_Frequencia",
+      "id": "32c44330-1a87-4e38-b41b-5d89d227fb70",
+      "name": "Consultar_Historico_Frequencia1",
       "credentials": {
         "supabaseApi": {
           "id": "UZvmJzBqXrtqsGRh",
@@ -460,11 +460,11 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -22384,
-        -432
+        -6208,
+        2560
       ],
-      "id": "5c474f73-a8a3-48d4-b34d-f6e5bb4562da",
-      "name": "Consultar_Catalogo_Produtos",
+      "id": "131cba77-4eb1-44ad-b890-604af2a39740",
+      "name": "Consultar_Catalogo_Produtos1",
       "credentials": {
         "supabaseApi": {
           "id": "UZvmJzBqXrtqsGRh",
@@ -476,19 +476,19 @@
       "parameters": {
         "resource": "Chatting",
         "operation": "Send Seen",
-        "session": "={{ $('Edit Fields').item.json.session }}",
-        "chatId": "={{ $('Edit Fields').item.json.chatid }}",
-        "messageId": "={{ $('Edit Fields').item.json.payload_id }}",
+        "session": "={{ $('Edit Fields1').item.json.session }}",
+        "chatId": "={{ $('Edit Fields1').item.json.chatid }}",
+        "messageId": "={{ $('Edit Fields1').item.json.payload_id }}",
         "requestOptions": {}
       },
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -22720,
-        -672
+        -6496,
+        2352
       ],
-      "id": "e74bf5ba-c7c2-4b90-ae21-b2149f31b0d9",
-      "name": "Send Seen1",
+      "id": "53d7e65f-5f0b-490e-8ed1-5b80ca2c831c",
+      "name": "Send Seen",
       "credentials": {
         "wahaApi": {
           "id": "6m9bOZKBFPGzNFwS",
@@ -500,20 +500,20 @@
       "parameters": {
         "resource": "Chatting",
         "operation": "Send Text",
-        "session": "={{ $('Edit Fields').item.json.session }}",
-        "chatId": "={{ $('Edit Fields').item.json.chatid }}",
-        "text": "={{ $('Limpar Mensagem IA1 Ajustado1').item.json.output_limpo }}",
+        "session": "={{ $('Edit Fields1').item.json.session }}",
+        "chatId": "={{ $('Edit Fields1').item.json.chatid }}",
+        "text": "={{ $('Limpar Mensagem IA1 Ajustado').item.json.output_limpo }}",
         "linkPreview": "",
         "requestOptions": {}
       },
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -22576,
-        -672
+        -6304,
+        2352
       ],
-      "id": "2e5620ca-976c-4999-843f-eba963490de1",
-      "name": "Send a text message",
+      "id": "ed2f0e62-378a-4228-ae6e-f4c22c7ce932",
+      "name": "Send a text message1",
       "credentials": {
         "wahaApi": {
           "id": "6m9bOZKBFPGzNFwS",
@@ -528,7 +528,7 @@
             {
               "id": "clean_output_id",
               "name": "output_limpo",
-              "value": "={{ $('AI Agent').item.json.output.includes('[TRANSFERIR_WHATSAPP]') ? '⚠️ *Seu atendimento foi encaminhado para a nossa equipe de analistas.*\n\nPor favor, aguarde um instante. Um de nossos analistas entrará em contato por aqui mesmo em breve.\n\n_Caso seja uma situação urgente e não obtenha retorno em até 1 hora, ligue para +55 73 3223-6100._' : $('AI Agent').item.json.output }}",
+              "value": "={{ $('AI Agent1').item.json.output.includes('[TRANSFERIR_WHATSAPP]') ? '⚠️ *Seu atendimento foi encaminhado para a nossa equipe de analistas.*\\n\\nPor favor, aguarde um instante. Um de nossos analistas entrará em contato por aqui mesmo em breve.\\n\\n_Caso seja uma situação urgente e não obtenha retorno em até 1 hora, ligue para +55 73 3223-6100._' : $('AI Agent1').item.json.output.replace('[TRANSFERIR_WHATSAPP]', '').trim() }}",
               "type": "string"
             }
           ]
@@ -538,11 +538,11 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -22880,
-        -672
+        -6704,
+        2352
       ],
-      "id": "964cb98b-c15c-40aa-825e-69edcbd3f4f3",
-      "name": "Limpar Mensagem IA1 Ajustado1"
+      "id": "e40f5166-6a9d-4eb8-9e80-e17325afba8a",
+      "name": "Limpar Mensagem IA1 Ajustado"
     },
     {
       "parameters": {
@@ -557,11 +557,11 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -22560,
-        -432
+        -6384,
+        2560
       ],
-      "id": "ce306b13-927f-4504-a4df-59c47d76eafe",
-      "name": "Consultar_Filial_Cidade",
+      "id": "d6642196-fcc6-4e32-a262-a5ad45b33720",
+      "name": "Consultar_Filial_Cidade1",
       "notesInFlow": false,
       "credentials": {
         "supabaseApi": {
@@ -582,7 +582,7 @@
           "conditions": [
             {
               "id": "check_transfer_tag",
-              "leftValue": "={{ $('AI Agent').item.json.output }}",
+              "leftValue": "={{ $('AI Agent1').item.json.output }}",
               "rightValue": "[TRANSFERIR_WHATSAPP]",
               "operator": {
                 "type": "string",
@@ -598,11 +598,11 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -22384,
-        -672
+        -6096,
+        2352
       ],
-      "id": "97d301b2-8a57-40f5-b057-d6d3bae64e97",
-      "name": "If Transferencia1"
+      "id": "94b6c2b7-1fc8-4f14-91e0-ebb96292c901",
+      "name": "If Transferencia"
     },
     {
       "parameters": {
@@ -618,7 +618,7 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ $('AI Agent').item.json.output }}",
+                    "leftValue": "={{ $('AI Agent1').item.json.output }}",
                     "rightValue": "FINANCEIRO",
                     "operator": {
                       "type": "string",
@@ -640,7 +640,7 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ $('AI Agent').item.json.output }}",
+                    "leftValue": "={{ $('AI Agent1').item.json.output }}",
                     "rightValue": "LOGISTICA",
                     "operator": {
                       "type": "string",
@@ -662,7 +662,7 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ $('AI Agent').item.json.output }}",
+                    "leftValue": "={{ $('AI Agent1').item.json.output }}",
                     "rightValue": "COMERCIAL",
                     "operator": {
                       "type": "string",
@@ -682,31 +682,31 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        -22160,
-        -688
+        -5904,
+        2352
       ],
-      "id": "98c5e18f-e132-45f2-be1d-e7fe04207169",
-      "name": "Switch Setor1",
+      "id": "fd930644-4d14-43c2-a26e-a55b5879fea4",
+      "name": "Switch Setor",
       "alwaysOutputData": false
     },
     {
       "parameters": {
         "resource": "Chatting",
         "operation": "Send Text",
-        "session": "={{ $('Edit Fields').item.json.session }}",
+        "session": "={{ $('Edit Fields1').item.json.session }}",
         "chatId": "120363408812619689@g.us",
-        "text": "=🚨 *NOVO ATENDIMENTO TRANSFERIDO* 🚨\n\n*Cliente / Contato:* {{ $('Edit Fields').item.json.pushname || 'Não identificado' }}\n*Telefone:* {{ $('Edit Fields').item.json.phone_number }}\n\n*Resumo da IA:*\n{{ $('AI Agent').item.json.output.split('RESUMO DA SOLICITAÇÃO PARA O ANALISTA:')[1].split('EM BREVE VOCÊ SERÁ RESPONDIDO')[0].replace('[TRANSFERIR_WHATSAPP]', '').trim() }}\n\n🔗 *Clique aqui para falar com ele:* https://wa.me/55{{ $('Edit Fields').item.json.phone_number }}",
+        "text": "=🚨 *NOVO ATENDIMENTO TRANSFERIDO* 🚨\n\n*Cliente / Contato:* {{ $('Edit Fields1').item.json.pushname || 'Não identificado' }}\n*Telefone:* {{ $('Edit Fields1').item.json.phone_number }}\n\n*Resumo da IA:*\n{{ $('AI Agent1').item.json.output.split('RESUMO DA SOLICITAÇÃO PARA O ANALISTA:')[1].split('EM BREVE VOCÊ SERÁ RESPONDIDO')[0].replace('[TRANSFERIR_WHATSAPP]', '').trim() }}\n\n🔗 *Clique aqui para falar com ele:* https://wa.me/55{{ $('Edit Fields1').item.json.phone_number }}",
         "linkPreview": "",
         "requestOptions": {}
       },
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -21888,
-        -832
+        -5696,
+        2208
       ],
-      "id": "b515d9b1-a483-4675-9232-d0e0cd8fd991",
-      "name": "Alerta Grupo Financeiro1",
+      "id": "b25ec02f-3708-427e-829c-08a36579e7e3",
+      "name": "Alerta Grupo Financeiro",
       "credentials": {
         "wahaApi": {
           "id": "6m9bOZKBFPGzNFwS",
@@ -718,20 +718,20 @@
       "parameters": {
         "resource": "Chatting",
         "operation": "Send Text",
-        "session": "={{ $('Edit Fields').item.json.session }}",
+        "session": "={{ $('Edit Fields1').item.json.session }}",
         "chatId": "120363409205169298@g.us",
-        "text": "=🚨 *NOVO ATENDIMENTO TRANSFERIDO* 🚨\n\n*Cliente / Contato:* {{ $('Edit Fields').item.json.pushname || 'Não identificado' }}\n*Telefone:* {{ $('Edit Fields').item.json.phone_number }}\n\n*Resumo da IA:*\n{{ $('AI Agent').item.json.output.split('RESUMO DA SOLICITAÇÃO PARA O ANALISTA:')[1].split('EM BREVE VOCÊ SERÁ RESPONDIDO')[0].replace('[TRANSFERIR_WHATSAPP]', '').trim() }}\n\n🔗 *Clique aqui para falar com ele:* https://wa.me/55{{ $('Edit Fields').item.json.phone_number }}",
+        "text": "=🚨 *NOVO ATENDIMENTO TRANSFERIDO* 🚨\n\n*Cliente / Contato:* {{ $('Edit Fields1').item.json.pushname || 'Não identificado' }}\n*Telefone:* {{ $('Edit Fields1').item.json.phone_number }}\n\n*Resumo da IA:*\n{{ $('AI Agent1').item.json.output.split('RESUMO DA SOLICITAÇÃO PARA O ANALISTA:')[1].split('EM BREVE VOCÊ SERÁ RESPONDIDO')[0].replace('[TRANSFERIR_WHATSAPP]', '').trim() }}\n\n🔗 *Clique aqui para falar com ele:* https://wa.me/55{{ $('Edit Fields1').item.json.phone_number }}",
         "linkPreview": "",
         "requestOptions": {}
       },
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -21888,
-        -672
+        -5696,
+        2352
       ],
-      "id": "fd65bab9-bee8-44f9-a2be-1ace886bf8a9",
-      "name": "Alerta Grupo Logistica1",
+      "id": "b38229bd-dc7d-4940-91b4-3b468be104f1",
+      "name": "Alerta Grupo Logistica",
       "credentials": {
         "wahaApi": {
           "id": "6m9bOZKBFPGzNFwS",
@@ -743,20 +743,20 @@
       "parameters": {
         "resource": "Chatting",
         "operation": "Send Text",
-        "session": "={{ $('Edit Fields').item.json.session }}",
+        "session": "={{ $('Edit Fields1').item.json.session }}",
         "chatId": "120363410461305895@g.us",
-        "text": "=🚨 *NOVO ATENDIMENTO TRANSFERIDO* 🚨\n\n*Cliente / Contato:* {{ $('Edit Fields').item.json.pushname || 'Não identificado' }}\n*Telefone:* {{ $('Edit Fields').item.json.phone_number }}\n\n*Resumo da IA:*\n{{ $('AI Agent').item.json.output.split('RESUMO DA SOLICITAÇÃO PARA O ANALISTA:')[1].split('EM BREVE VOCÊ SERÁ RESPONDIDO')[0].replace('[TRANSFERIR_WHATSAPP]', '').trim() }}\n\n🔗 *Clique aqui para falar com ele:* https://wa.me/55{{ $('Edit Fields').item.json.phone_number }}",
+        "text": "=🚨 *NOVO ATENDIMENTO TRANSFERIDO* 🚨\n\n*Cliente / Contato:* {{ $('Edit Fields1').item.json.pushname || 'Não identificado' }}\n*Telefone:* {{ $('Edit Fields1').item.json.phone_number }}\n\n*Resumo da IA:*\n{{ $('AI Agent1').item.json.output.split('RESUMO DA SOLICITAÇÃO PARA O ANALISTA:')[1].split('EM BREVE VOCÊ SERÁ RESPONDIDO')[0].replace('[TRANSFERIR_WHATSAPP]', '').trim() }}\n\n🔗 *Clique aqui para falar com ele:* https://wa.me/55{{ $('Edit Fields1').item.json.phone_number }}",
         "linkPreview": "",
         "requestOptions": {}
       },
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -21888,
-        -512
+        -5696,
+        2512
       ],
-      "id": "dd697ba6-ea8b-4086-95d3-e799816a9464",
-      "name": "Alerta Grupo Comercial1",
+      "id": "6cdc676d-9058-4924-94bf-af166e2b84c1",
+      "name": "Alerta Grupo Comercial",
       "credentials": {
         "wahaApi": {
           "id": "6m9bOZKBFPGzNFwS",
@@ -766,7 +766,7 @@
     }
   ],
   "pinData": {
-    "Webhook": [
+    "Webhook1": [
       {
         "json": {
           "headers": {
@@ -920,256 +920,256 @@
     ]
   },
   "connections": {
-    "Webhook": {
+    "Webhook1": {
       "main": [
         [
           {
-            "node": "Edit Fields",
+            "node": "Edit Fields1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Edit Fields": {
+    "Edit Fields1": {
       "main": [
         [
           {
-            "node": "If",
+            "node": "If2",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Switch": {
+    "Switch1": {
       "main": [
         [
           {
-            "node": "AI Agent",
+            "node": "AI Agent1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI Agent": {
+    "AI Agent1": {
       "main": [
         [
           {
-            "node": "If4",
+            "node": "If3",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Redis Chat Memory": {
+    "Redis Chat Memory1": {
       "ai_memory": [
         [
           {
-            "node": "AI Agent",
+            "node": "AI Agent1",
             "type": "ai_memory",
             "index": 0
           }
         ]
       ]
     },
-    "If": {
+    "If2": {
       "main": [
         [
           {
-            "node": "Switch",
+            "node": "Switch1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "If4": {
+    "If3": {
       "main": [
         [
           {
-            "node": "Limpar Mensagem IA1 Ajustado1",
+            "node": "Limpar Mensagem IA1 Ajustado",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Validar_RCA": {
+    "Validar_RCA1": {
       "ai_tool": [
         [
           {
-            "node": "AI Agent",
+            "node": "AI Agent1",
             "type": "ai_tool",
             "index": 0
           }
         ]
       ]
     },
-    "Consultar_Cadastro_Cliente": {
+    "Consultar_Cadastro_Cliente1": {
       "ai_tool": [
         [
           {
-            "node": "AI Agent",
+            "node": "AI Agent1",
             "type": "ai_tool",
             "index": 0
           }
         ]
       ]
     },
-    "Master_Busca_PRIME": {
+    "Master_Busca_PRIME1": {
       "ai_tool": [
         [
           {
-            "node": "AI Agent",
+            "node": "AI Agent1",
             "type": "ai_tool",
             "index": 0
           }
         ]
       ]
     },
-    "Google Gemini Chat Model": {
+    "Google Gemini Chat Model1": {
       "ai_languageModel": [
         [
           {
-            "node": "AI Agent",
+            "node": "AI Agent1",
             "type": "ai_languageModel",
             "index": 0
           }
         ]
       ]
     },
-    "Consultar_Mix_Ideal": {
+    "Consultar_Mix_Ideal1": {
       "ai_tool": [
         [
           {
-            "node": "AI Agent",
+            "node": "AI Agent1",
             "type": "ai_tool",
             "index": 0
           }
         ]
       ]
     },
-    "Consultar_relação_inovações": {
+    "Consultar_relação_inovações1": {
       "ai_tool": [
         [
           {
-            "node": "AI Agent",
+            "node": "AI Agent1",
             "type": "ai_tool",
             "index": 0
           }
         ]
       ]
     },
-    "Consultar_Inovacao_Mes_Atual": {
+    "Consultar_Inovacao_Mes_Atual1": {
       "ai_tool": [
         [
           {
-            "node": "AI Agent",
+            "node": "AI Agent1",
             "type": "ai_tool",
             "index": 0
           }
         ]
       ]
     },
-    "Consultar_Historico_Frequencia": {
+    "Consultar_Historico_Frequencia1": {
       "ai_tool": [
         [
           {
-            "node": "AI Agent",
+            "node": "AI Agent1",
             "type": "ai_tool",
             "index": 0
           }
         ]
       ]
     },
-    "Consultar_Catalogo_Produtos": {
+    "Consultar_Catalogo_Produtos1": {
       "ai_tool": [
         [
           {
-            "node": "AI Agent",
+            "node": "AI Agent1",
             "type": "ai_tool",
             "index": 0
           }
         ]
       ]
     },
-    "Send Seen1": {
+    "Send Seen": {
       "main": [
         [
           {
-            "node": "Send a text message",
+            "node": "Send a text message1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send a text message": {
+    "Limpar Mensagem IA1 Ajustado": {
       "main": [
         [
           {
-            "node": "If Transferencia1",
+            "node": "Send Seen",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Limpar Mensagem IA1 Ajustado1": {
-      "main": [
-        [
-          {
-            "node": "Send Seen1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Consultar_Filial_Cidade": {
+    "Consultar_Filial_Cidade1": {
       "ai_tool": [
         [
           {
-            "node": "AI Agent",
+            "node": "AI Agent1",
             "type": "ai_tool",
             "index": 0
           }
         ]
       ]
     },
-    "If Transferencia1": {
+    "Send a text message1": {
       "main": [
         [
           {
-            "node": "Switch Setor1",
+            "node": "If Transferencia",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Switch Setor1": {
+    "If Transferencia": {
       "main": [
         [
           {
-            "node": "Alerta Grupo Financeiro1",
+            "node": "Switch Setor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Setor": {
+      "main": [
+        [
+          {
+            "node": "Alerta Grupo Financeiro",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Alerta Grupo Logistica1",
+            "node": "Alerta Grupo Logistica",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Alerta Grupo Comercial1",
+            "node": "Alerta Grupo Comercial",
             "type": "main",
             "index": 0
           }
@@ -1183,7 +1183,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "d04cd3ab-8980-4bf3-9d6f-2d72c15e22fe",
+  "versionId": "7a56a9b4-a7f5-4540-88a2-7d645cf7baf4",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "794d69bc5dcc6fb73a707f64e2447ab911b7d0bd698a31ab742115dede7cc9cb"
