@@ -1,0 +1,268 @@
+{
+  "name": "WAHA para Chatwoot",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "waha-inbox",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "id": "webhook-waha-inbox",
+      "name": "Webhook do WAHA"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "filter-from-me",
+              "leftValue": "={{ $json.body.payload.fromMe }}",
+              "rightValue": "false",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "filter-event",
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "message",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        400,
+        300
+      ],
+      "id": "if-is-customer-message",
+      "name": "É msg de cliente?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "set-phone",
+              "name": "phone",
+              "value": "={{ '+' + $json.body.payload.from.split('@')[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "set-name",
+              "name": "name",
+              "value": "={{ $json.body.payload._data.notifyName || $json.body.payload.from.split('@')[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "set-message",
+              "name": "message",
+              "value": "={{ $json.body.payload.body }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        600,
+        280
+      ],
+      "id": "set-variables",
+      "name": "Extrair Dados"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://chatwoot_web:3000/public/api/v1/inboxes/3XLpsoWf7MRgVPNUsFhuSKGq/contacts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "HQ7arNczJPemhkrAyHQ2NPHY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone_number",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "name",
+              "value": "={{ $json.name }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        280
+      ],
+      "id": "create-contact",
+      "name": "Criar/Buscar Contato"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://chatwoot_web:3000/public/api/v1/inboxes/3XLpsoWf7MRgVPNUsFhuSKGq/contacts/{{ $json.source_id }}/conversations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "HQ7arNczJPemhkrAyHQ2NPHY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source_id",
+              "value": "={{ $('Extrair Dados').item.json.phone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        280
+      ],
+      "id": "create-conversation",
+      "name": "Criar Conversa"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://chatwoot_web:3000/public/api/v1/inboxes/3XLpsoWf7MRgVPNUsFhuSKGq/contacts/{{ $('Criar/Buscar Contato').item.json.source_id }}/conversations/{{ $json.id || $('Criar Conversa').item.json.id }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api_access_token",
+              "value": "HQ7arNczJPemhkrAyHQ2NPHY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "={{ $('Extrair Dados').item.json.message }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        280
+      ],
+      "id": "send-message",
+      "name": "Enviar Mensagem pro Chatwoot"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook do WAHA": {
+      "main": [
+        [
+          {
+            "node": "É msg de cliente?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É msg de cliente?": {
+      "main": [
+        [
+          {
+            "node": "Extrair Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Dados": {
+      "main": [
+        [
+          {
+            "node": "Criar/Buscar Contato",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar/Buscar Contato": {
+      "main": [
+        [
+          {
+            "node": "Criar Conversa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Conversa": {
+      "main": [
+        [
+          {
+            "node": "Enviar Mensagem pro Chatwoot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f78d91a2-c1b5-4a6f-b2c4-8c9d0f1e2a3b",
+  "id": "waha-to-chatwoot",
+  "meta": {
+    "instanceId": "local"
+  },
+  "tags": []
+}
