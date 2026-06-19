@@ -24,3 +24,7 @@ The new `chart_data` return block inside `get_loja_perfeita_data` relies safely 
 
 **Learning:** When altering existing schemas for new business requirements (like filtering data by `mes` and `ano` on `data_nota_perfeita`), ensure the respective SQL columns exist and are safely added with `IF NOT EXISTS` in the schema definitions, avoiding assumptions that raw text parsed date columns (like `mes_ano`) are sufficient for integer operations and filtering.
 **Action:** When errors like "column np.mes does not exist" occur, check the initial schema definition, and then alter the database tables using safe migration blocks (`DO $$ BEGIN ... END $$;`) instead of modifying just the function/rpc queries that rely on them.
+
+## 2025-02-24 - [Update N8N Agent Transfer Logic]
+**Aprendizado:** The transfer tags used in the N8N prompt configuration need to match the logic implemented within the actual workflow steps. In this case, `[TRANSFERIR_WHATSAPP]` was present in the logic instead of `[TRANSFERIR_FINANCEIRO]` or `[TRANSFERIR_COMERCIAL]`. Also, the string extraction logic must match the prompt layout, else the downstream message sent to operators will be missing important context.
+**Ação:** Updated the `AGENTE ELMA.json` workflow using `regex` to catch dynamic tags (like `[TRANSFERIR_.*]`) instead of hardcoding, increasing robustness. Updated the summary text extraction to align with the prompt Layout J, ensuring that all client and summary details are effectively passed onto the human agent.
