@@ -1,7 +1,7 @@
 # N8N PRIME - Fluxo de Transferência Chatwoot
 
 Este diretório contém a versão mais recente e corrigida do seu fluxo de atendimento (n8n + Chatwoot + WhatsApp).
-As mudanças a seguir foram implementadas no arquivo `My workflow (51).json` para sanar erros antigos e otimizar o atendimento.
+As mudanças a seguir foram implementadas no arquivo `AGENT_ELMA.json` para sanar erros antigos e otimizar o atendimento.
 
 ## Problemas Resolvidos
 
@@ -22,11 +22,11 @@ As mudanças a seguir foram implementadas no arquivo `My workflow (51).json` par
 
 ### 4. Limite de Ações do Agente AI (Max Iterations Reached)
 **O Problema Anterior:** O limite padrão do nó do agente (10 passos) era ultrapassado porque a instrução do prompt é muito detalhada e utiliza as ferramentas do Supabase múltiplas vezes de forma sequencial (validar perfil, buscar estoque, etc).
-**A Solução:** A propriedade interna `maxIterations` da IA foi subida manualmente no JSON para 30, dando tempo/margem de sobra para a IA analisar, buscar dados e processar todo o comando sem o sistema do n8n matar a execução precocemente.
+**A Solução:** A propriedade interna `maxIterations` da IA foi subida manualmente no JSON para 15, dando tempo/margem de sobra para a IA analisar, buscar dados e processar todo o comando sem o sistema do n8n matar a execução precocemente.
 
 ---
 
 ### Como utilizar
-Basta acessar o seu projeto no n8n, limpar seu canvas (ou abrir um novo workflow limpo) e fazer a **importação** deste arquivo `My workflow (51).json`.
+Basta acessar o seu projeto no n8n, limpar seu canvas (ou abrir um novo workflow limpo) e fazer a **importação** deste arquivo `AGENT_ELMA.json`.
 
 Todos os IDs do seu Chatwoot (como contas, URLs) e credenciais de APIs (OpenAI, Supabase, WAHA, Redis) estão mantidas da versão original. Nenhuma configuração base ou lógica de negócios do Agente AI foi alterada.
