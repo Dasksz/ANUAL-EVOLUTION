@@ -66,9 +66,8 @@
     },
     {
       "parameters": {
-        "modelName": "models/gemma-4-26b-a4b-it",
+        "modelName": "models/gemma-4-31b-it",
         "options": {
-          "maxOutputTokens": 20000,
           "temperature": 0.5
         }
       },
@@ -1030,7 +1029,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "833d516b-6dc2-4a0c-bf1a-8f2e90fefb27",
+  "versionId": "75da0124-8bca-46f0-978a-68c34f5b9303",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "794d69bc5dcc6fb73a707f64e2447ab911b7d0bd698a31ab742115dede7cc9cb"
