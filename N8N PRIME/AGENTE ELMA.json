@@ -304,7 +304,7 @@
             {
               "id": "clean_output_id",
               "name": "output_limpo",
-              "value": "={{ $('AI Agent').item.json.output.includes('[TRANSFERIR_WHATSAPP]') ? '⚠️ *Seu atendimento foi encaminhado para a nossa equipe de analistas.*\\n\\nPor favor, aguarde um instante. Um de nossos analistas entrará em contato por aqui mesmo em breve.\\n\\n_Caso seja uma situação urgente e não obtenha retorno em até 1 hora, ligue para +55 73 3223-6100._' : $('AI Agent').item.json.output.replace('[TRANSFERIR_WHATSAPP]', '').trim() }}",
+              "value": "={{ $('AI Agent').item.json.output.includes('[TRANSFERIR_') ? '⚠️ *Seu atendimento foi encaminhado para a nossa equipe de analistas.*\\n\\nPor favor, aguarde um instante. Um de nossos analistas entrará em contato por aqui mesmo em breve.\\n\\n_Caso seja uma situação urgente e não obtenha retorno em até 1 hora, ligue para +55 73 3223-6100._' : $('AI Agent').item.json.output.replace(/\\[TRANSFERIR_.*?\\]/g, '').trim() }}",
               "type": "string"
             }
           ]
@@ -551,7 +551,7 @@
         "operation": "Send Text",
         "session": "={{ $('Edit Fields').item.json.session }}",
         "chatId": "120363410461305895@g.us",
-        "text": "=🚨 *NOVO ATENDIMENTO TRANSFERIDO* 🚨\n\n*Cliente / Contato:* {{ $('Edit Fields').item.json.pushname || 'Não identificado' }}\n*Telefone:* {{ $('Edit Fields').item.json.phone_number }}\n\n*Resumo da IA:*\n{{ $('AI Agent').item.json.output.split('RESUMO DA SOLICITAÇÃO PARA O ANALISTA:')[1].split('EM BREVE VOCÊ SERÁ RESPONDIDO')[0].replace('[TRANSFERIR_WHATSAPP]', '').trim() }}\n\n🔗 *Clique aqui para falar com ele:* https://wa.me/55{{ $('Edit Fields').item.json.phone_number }}",
+        "text": "=🚨 *NOVO ATENDIMENTO TRANSFERIDO* 🚨\n\n*Usuário (WhatsApp):* {{ $('Edit Fields').item.json.pushname || 'Não identificado' }} - {{ $('Edit Fields').item.json.phone_number }}\n🔗 *Link da conversa:* https://wa.me/55{{ $('Edit Fields').item.json.phone_number }}\n\n*Resumo da IA:*\n{{ $('AI Agent').item.json.output }}",
         "linkPreview": "",
         "requestOptions": {}
       },
@@ -576,7 +576,7 @@
         "operation": "Send Text",
         "session": "={{ $('Edit Fields').item.json.session }}",
         "chatId": "120363409205169298@g.us",
-        "text": "=🚨 *NOVO ATENDIMENTO TRANSFERIDO* 🚨\n\n*Cliente / Contato:* {{ $('Edit Fields').item.json.pushname || 'Não identificado' }}\n*Telefone:* {{ $('Edit Fields').item.json.phone_number }}\n\n*Resumo da IA:*\n{{ $('AI Agent').item.json.output.split('RESUMO DA SOLICITAÇÃO PARA O ANALISTA:')[1].split('EM BREVE VOCÊ SERÁ RESPONDIDO')[0].replace('[TRANSFERIR_WHATSAPP]', '').trim() }}\n\n🔗 *Clique aqui para falar com ele:* https://wa.me/55{{ $('Edit Fields').item.json.phone_number }}",
+        "text": "=🚨 *NOVO ATENDIMENTO TRANSFERIDO* 🚨\n\n*Usuário (WhatsApp):* {{ $('Edit Fields').item.json.pushname || 'Não identificado' }} - {{ $('Edit Fields').item.json.phone_number }}\n🔗 *Link da conversa:* https://wa.me/55{{ $('Edit Fields').item.json.phone_number }}\n\n*Resumo da IA:*\n{{ $('AI Agent').item.json.output }}",
         "linkPreview": "",
         "requestOptions": {}
       },
@@ -601,7 +601,7 @@
         "operation": "Send Text",
         "session": "={{ $('Edit Fields').item.json.session }}",
         "chatId": "120363408812619689@g.us",
-        "text": "=🚨 *NOVO ATENDIMENTO TRANSFERIDO* 🚨\n\n*Cliente / Contato:* {{ $('Edit Fields').item.json.pushname || 'Não identificado' }}\n*Telefone:* {{ $('Edit Fields').item.json.phone_number }}\n\n*Resumo da IA:*\n{{ $('AI Agent').item.json.output.split('RESUMO DA SOLICITAÇÃO PARA O ANALISTA:')[1].split('EM BREVE VOCÊ SERÁ RESPONDIDO')[0].replace('[TRANSFERIR_WHATSAPP]', '').trim() }}\n\n🔗 *Clique aqui para falar com ele:* https://wa.me/55{{ $('Edit Fields').item.json.phone_number }}",
+        "text": "=🚨 *NOVO ATENDIMENTO TRANSFERIDO* 🚨\n\n*Usuário (WhatsApp):* {{ $('Edit Fields').item.json.pushname || 'Não identificado' }} - {{ $('Edit Fields').item.json.phone_number }}\n🔗 *Link da conversa:* https://wa.me/55{{ $('Edit Fields').item.json.phone_number }}\n\n*Resumo da IA:*\n{{ $('AI Agent').item.json.output }}",
         "linkPreview": "",
         "requestOptions": {}
       },
@@ -718,7 +718,7 @@
             {
               "id": "check_transfer_tag",
               "leftValue": "={{ $('AI Agent').item.json.output }}",
-              "rightValue": "[TRANSFERIR_WHATSAPP]",
+              "rightValue": "[TRANSFERIR_",
               "operator": {
                 "type": "string",
                 "operation": "contains"
