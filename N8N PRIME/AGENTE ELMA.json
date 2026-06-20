@@ -145,7 +145,7 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -10256,
+        -10240,
         1696
       ],
       "id": "9fdf85f5-a7a7-48c4-a3b5-ef1231038d97",
@@ -166,7 +166,7 @@
       "type": "n8n-nodes-base.httpRequestTool",
       "typeVersion": 4.4,
       "position": [
-        -10080,
+        -10048,
         1696
       ],
       "id": "1af5b54a-62b5-4f2c-910b-9a66fc37d356",
@@ -181,7 +181,7 @@
       "type": "n8n-nodes-base.httpRequestTool",
       "typeVersion": 4.4,
       "position": [
-        -9888,
+        -9840,
         1696
       ],
       "id": "31d06949-45e8-4dbf-b985-20e6d7f41a3b",
@@ -200,7 +200,7 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -9696,
+        -9648,
         1696
       ],
       "id": "fad02dc0-2090-46c5-aa84-e5bfc0362537",
@@ -225,7 +225,7 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -9504,
+        -9456,
         1696
       ],
       "id": "5556468d-534c-4406-8fa5-24b05f8be1ba",
@@ -250,7 +250,7 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -9136,
+        -9072,
         1696
       ],
       "id": "9637e3a2-fb2c-4847-9010-82cd59e80f83",
@@ -276,7 +276,7 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -9328,
+        -9264,
         1696
       ],
       "id": "ab1db7d9-5fcb-4c4f-bc24-00832f4174eb",
@@ -1044,7 +1044,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "91f25bf3-0134-4f74-a673-96db01bd0943",
+  "versionId": "e8716fd1-bec2-434d-aac9-69ba3b99e686",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "794d69bc5dcc6fb73a707f64e2447ab911b7d0bd698a31ab742115dede7cc9cb"
