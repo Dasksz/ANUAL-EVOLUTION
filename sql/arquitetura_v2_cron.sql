@@ -1,0 +1,11 @@
+-- Para rodar no pg_cron a cada 12h
+-- SELECT cron.schedule(
+--   'sync_mix_ideal_12h',
+--   '0 */12 * * *',
+--   $$
+--   SELECT net.http_post(
+--       url:='https://YOUR_PROJECT_REF.supabase.co/functions/v1/sync_mix_ideal',
+--       headers:='{"Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb
+--   )
+--   $$
+-- );

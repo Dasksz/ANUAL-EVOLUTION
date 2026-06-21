@@ -1,0 +1,3 @@
+-- Edge functions em Supabase são scripts TypeScript (Deno) hospedados no backend.
+-- Como estamos criando os artefatos localmente, vou criar o código fonte da Edge Function
+-- que será usado na infra do usuário.

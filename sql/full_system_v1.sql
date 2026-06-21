@@ -17,6 +17,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     v_current_year int;
@@ -281,6 +282,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     v_current_year int;
@@ -1240,6 +1242,7 @@ CREATE INDEX IF NOT EXISTS idx_cache_filters_rede_lookup ON public.cache_filters
 -- Helper Functions
 CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean
 SET search_path = public
+SECURITY INVOKER
 AS $$
 BEGIN
   IF (select auth.role()) = 'service_role' THEN RETURN true; END IF;
@@ -1249,6 +1252,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.is_approved() RETURNS boolean
 SET search_path = public
+SECURITY INVOKER
 AS $$
 BEGIN
   IF (select auth.role()) = 'service_role' THEN RETURN true; END IF;
@@ -1394,6 +1398,8 @@ END $$;
 CREATE OR REPLACE FUNCTION classify_product_mix()
 RETURNS trigger
 LANGUAGE plpgsql
+SET search_path = public
+SECURITY INVOKER
 AS $$
 BEGIN
     -- 1. Legacy Mix Logic (Keep for backward compatibility)
@@ -1475,6 +1481,7 @@ CREATE OR REPLACE FUNCTION clear_all_data()
 RETURNS void
 LANGUAGE plpgsql
 SET search_path = public
+SECURITY INVOKER
 AS $$
 BEGIN
     DELETE FROM public.data_detailed;
@@ -1491,6 +1498,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.truncate_table(table_name text)
 RETURNS void
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
   v_table_name text := table_name;
@@ -1518,6 +1526,7 @@ RETURNS int[]
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     min_year int;
@@ -1566,6 +1575,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 BEGIN
     SET LOCAL statement_timeout = '600s';
@@ -1785,6 +1795,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 BEGIN
     DELETE FROM public.data_summary WHERE ano = p_year AND mes = p_month;
@@ -1798,6 +1809,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     v_year int;
@@ -2030,6 +2042,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     r RECORD;
@@ -2205,6 +2218,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     v_where_filial text := ' WHERE 1=1 ';
@@ -2387,6 +2401,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     r_year int;
@@ -2412,6 +2427,7 @@ RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 BEGIN
     SET LOCAL statement_timeout = '600s'; -- 10 minutes to allow index rebuilding without API timeout
@@ -2462,6 +2478,7 @@ RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN
@@ -2484,6 +2501,7 @@ RETURNS int
 LANGUAGE plpgsql
 STABLE
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     days int;
@@ -2504,6 +2522,7 @@ RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     v_last_update timestamp with time zone;
@@ -2547,6 +2566,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     v_current_year int;
@@ -2975,6 +2995,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     v_current_year int;
@@ -3399,6 +3420,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     v_current_year int;
@@ -3562,6 +3584,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     v_current_year int;
@@ -3806,6 +3829,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     -- Date Ranges
@@ -4277,6 +4301,7 @@ RETURNS TABLE (row_hash text)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
@@ -4295,6 +4320,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
@@ -4319,6 +4345,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     v_start_date date;
@@ -4379,6 +4406,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     v_start_date date;
@@ -4421,6 +4449,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
@@ -4455,6 +4484,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 BEGIN
     IF NOT public.is_admin() THEN RAISE EXCEPTION 'Acesso negado.'; END IF;
@@ -4498,6 +4528,7 @@ RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     v_result json;
@@ -4859,6 +4890,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     v_current_year int;
@@ -5728,6 +5760,7 @@ RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     v_current_year int;

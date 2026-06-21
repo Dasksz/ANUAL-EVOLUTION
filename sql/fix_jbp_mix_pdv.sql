@@ -13,6 +13,8 @@ CREATE OR REPLACE FUNCTION get_jbp_data(
 )
 RETURNS json
 LANGUAGE plpgsql
+SET search_path = public
+SECURITY INVOKER
 AS $$
 DECLARE
     v_sql text;
