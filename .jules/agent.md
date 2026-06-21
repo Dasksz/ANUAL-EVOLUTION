@@ -1,0 +1,3 @@
+## 2024-05-20 - Fix AI Agent "Ignorar" bug
+**Insight:** The AI agent in n8n was replying literally with "ignorar" to short user inputs like "1" or "2" because the system prompt's "Prevenção de Eco" rule classified them as empty technical confirmations. The subsequent `If1` node failed to trap the output because it checked for `notEquals` "IGNORAR" with strict case sensitivity, while the AI occasionally output "ignorar" in lowercase.
+**Action:** Updated the `If1` node options to `caseSensitive: false` and explicitly modified the "Prevenção de Eco" rule in the system prompt to state that numbered menu choices (e.g., "1", "2") are valid inputs and should not trigger the ignore rule.
