@@ -4747,6 +4747,11 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
         const activeClients = Array.isArray(data.active_clients) ? data.active_clients : mapRows(data.active_clients);
         const cityRanking = data.city_ranking ? (Array.isArray(data.city_ranking) ? data.city_ranking : mapRows(data.city_ranking)) : [];
+        const categoryRanking = data.category_ranking ? (Array.isArray(data.category_ranking) ? data.category_ranking : mapRows(data.category_ranking)) : [];
+        const totalSaltyPos = data.total_salty_pos || 0;
+
+        const elTotalSalty = document.getElementById('city-total-salty-pos');
+        if(elTotalSalty) elTotalSalty.textContent = totalSaltyPos;
 
         // Refactored to use declarative template literals and innerHTML instead of verbose document.createElement logic.
         // This improves readability, maintainability, and significantly reduces code size while preserving XSS safety via escapeHtml.
@@ -4794,8 +4799,28 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             }
         };
 
+        const renderCategoryRankingTable = (bodyId, items) => {
+            const body = document.getElementById(bodyId);
+            if (!body) return;
+
+            if (items && items.length > 0) {
+                body.innerHTML = items.map(c => {
+                    return `
+                        <tr class="table-row">
+                            <td class="p-2 font-semibold">${escapeHtml(c['Categoria'] || '')}</td>
+                            <td class="p-2 text-right font-bold">${escapeHtml(c['Positivação'] || 0)}</td>
+                            <td class="p-2 text-right text-emerald-400 font-bold">${escapeHtml(formatPercentage(c['% Share Salty'] || 0, 2))}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } else {
+                body.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>`;
+            }
+        };
+
         renderTable('city-active-detail-table-body', activeClients);
         renderRankingTable('city-ranking-table-body', cityRanking);
+        renderCategoryRankingTable('city-category-ranking-table-body', categoryRanking);
 
         renderCityPaginationControls();
     }

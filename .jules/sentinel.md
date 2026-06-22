@@ -24,3 +24,9 @@ The new `chart_data` return block inside `get_loja_perfeita_data` relies safely 
 
 **Learning:** When altering existing schemas for new business requirements (like filtering data by `mes` and `ano` on `data_nota_perfeita`), ensure the respective SQL columns exist and are safely added with `IF NOT EXISTS` in the schema definitions, avoiding assumptions that raw text parsed date columns (like `mes_ano`) are sufficient for integer operations and filtering.
 **Action:** When errors like "column np.mes does not exist" occur, check the initial schema definition, and then alter the database tables using safe migration blocks (`DO $$ BEGIN ... END $$;`) instead of modifying just the function/rpc queries that rely on them.
+## 2026-06-22 - Add Category Ranking and Total Salty Positivação in Share View
+**Learning:** Understand how  and  are used to map specific business logic like 'Salty Positivação' using pure SQL aggregated via JSON to the frontend. Validated that  must wrap string interpolations inside HTML mappings.
+**Action:** Always verify  constraints when adding global positive indicators (e.g. Salty vs general foods).
+## 2026-06-22 - Add Category Ranking and Total Salty Positivação in Share View
+**Learning:** Understand how `vlvenda >= 1` and `codfor IN (...)` are used to map specific business logic like 'Salty Positivação' using pure SQL aggregated via JSON to the frontend. Validated that `escapeHtml` must wrap string interpolations inside HTML mappings.
+**Action:** Always verify `codfor` constraints when adding global positive indicators (e.g. Salty vs general foods).
