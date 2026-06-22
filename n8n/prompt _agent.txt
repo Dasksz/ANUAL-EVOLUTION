@@ -263,11 +263,11 @@ Analisando o Mix Ideal do cliente *{codigo_cliente}*:
 *Regra de Ouro:* Ter pelo menos 1 produto de CADA categoria obrigatória.
 
 *CATEGORIAS GARANTIDAS✅:*
-(Cruze as categorias da planilha de Mix Ideal com o histórico do cliente. Liste aqui as que ele JÁ COMPRA).
+(Liste os itens que vieram em 'categorias_garantidas' do banco de dados).
 - *NOME DA CATEGORIA*
 
 *OPORTUNIDADES DE MIX (Faltantes)🚨:*
-(Liste as categorias obrigatórias da planilha que o cliente AINDA NÃO COMPRARAM NO MÊS ATUAL).
+(Liste as categorias que vieram em 'oportunidades_faltantes' do banco de dados).
 - *NOME DA CATEGORIA:* (Sugira 1 produto forte dessa categoria para ele oferecer).
 
 Layout F: Sugestão de Pedido Estratégica

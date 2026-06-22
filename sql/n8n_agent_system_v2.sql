@@ -1,77 +1,46 @@
--- =========================================================================================
--- FUNÇÕES DE CONSULTA VIA AGENTE (V2) - OTIMIZADAS PARA O N8N
--- As funções abaixo agora são "STABLE" em vez de voltarem valores por padrão sem cash.
--- Isso previne chamadas duplicadas por linha na View de Agente e melhora performance.
--- =========================================================================================
+DROP FUNCTION IF EXISTS public.sp_inovacoes_cliente(text) CASCADE;
+DROP FUNCTION IF EXISTS public.sp_sugestao_pedido(text) CASCADE;
+DROP VIEW IF EXISTS public.n8n_agent_view_v2 CASCADE;
 
--- Função 1: Resumo Cliente
-CREATE OR REPLACE FUNCTION public.sp_resumo_cliente(p_cod_cliente TEXT)
+CREATE OR REPLACE FUNCTION public.sp_inovacoes_cliente(p_cod_cliente TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql STABLE
 AS $$
 DECLARE
-    v_resumo JSONB;
+    v_inovacoes JSONB;
 BEGIN
-    SELECT jsonb_build_object(
-        'codigo', c.codigo_cliente,
-        'fantasia', c.fantasia,
-        'cidade', c.cidade,
-        'filial', c.ramo,
-        'bloqueio_sefaz', c.bloqueio,
-        'dias_sem_compra', EXTRACT(DAY FROM (NOW() - c.ultimacompra)),
-        'status_compra', public.get_status_recencia(c.ultimacompra)
-    ) INTO v_resumo
-    FROM public.data_clients c
-    WHERE c.codigo_cliente = p_cod_cliente;
-
-    RETURN v_resumo;
-END;
-$$;
-
--- Função 2: Mix Ideal
-CREATE OR REPLACE FUNCTION public.sp_mix_ideal_cliente(p_cod_cliente TEXT)
-RETURNS JSONB
-LANGUAGE plpgsql STABLE
-AS $$
-DECLARE
-    v_mix JSONB;
-BEGIN
-    WITH categorias_obrigatorias AS (
-        SELECT DISTINCT nome_categoria FROM public.mix_ideal WHERE ativo = TRUE
+    WITH inovacoes_mes_atual AS (
+        SELECT DISTINCT s.produto
+        FROM public.data_detailed s
+        WHERE s.codcli = p_cod_cliente
+          AND s.dtped >= date_trunc('month', CURRENT_DATE)
+          AND s.tipovenda IN ('1','9')
+          AND s.vlvenda >= 1
     ),
-    historico_cliente AS (
-        SELECT unnest(marcas_compradas) as marca_comprada
-        FROM public.mv_frequencia_cliente
-        WHERE codcli = p_cod_cliente
-    ),
-    cruzamento AS (
-        SELECT
-            co.nome_categoria,
-            CASE WHEN hc.marca_comprada IS NOT NULL THEN TRUE ELSE FALSE END as comprado
-        FROM categorias_obrigatorias co
-        LEFT JOIN historico_cliente hc ON co.nome_categoria ILIKE '%' || hc.marca_comprada || '%'
+    catalogo_inovacoes AS (
+        SELECT i.codigo as cod_produto, p.descricao as nome_produto, i.inovacoes as categoria_inovacao
+        FROM public.data_innovations i
+        JOIN public.dim_produtos p ON p.codigo = i.codigo
     )
     SELECT jsonb_build_object(
-        'meta_pedido', 18,
-        'garantidas', (SELECT jsonb_agg(nome_categoria) FROM cruzamento WHERE comprado = TRUE),
-        'oportunidades_faltantes', (SELECT jsonb_agg(nome_categoria) FROM cruzamento WHERE comprado = FALSE)
-    ) INTO v_mix;
+        'positivadas', COALESCE((
+            SELECT jsonb_agg(jsonb_build_object('categoria', i.categoria_inovacao, 'produto', i.nome_produto))
+            FROM catalogo_inovacoes i
+            JOIN inovacoes_mes_atual m ON i.cod_produto = m.produto
+        ), '[]'::jsonb),
+        'oportunidades', COALESCE((
+            SELECT jsonb_agg(jsonb_build_object('categoria', i.categoria_inovacao, 'produto', i.nome_produto))
+            FROM catalogo_inovacoes i
+            LEFT JOIN inovacoes_mes_atual m ON i.cod_produto = m.produto
+            WHERE m.produto IS NULL
+        ), '[]'::jsonb)
+    ) INTO v_inovacoes;
 
-    RETURN v_mix;
+    RETURN v_inovacoes;
 END;
 $$;
 
--- Função 3: Inovações
 
-
--- Função 4: Sugestão de Pedido
-
-
-
-
-
-
--- Função 4: Sugestão de Pedido
 CREATE OR REPLACE FUNCTION public.sp_sugestao_pedido(p_cod_cliente TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql STABLE
@@ -125,53 +94,7 @@ END;
 $$;
 
 
-CREATE OR REPLACE FUNCTION public.sp_inovacoes_cliente(p_cod_cliente TEXT)
-RETURNS JSONB
-LANGUAGE plpgsql STABLE
-AS $$
-DECLARE
-    v_inovacoes JSONB;
-BEGIN
-    WITH inovacoes_mes_atual AS (
-        SELECT DISTINCT s.produto
-        FROM public.data_detailed s
-        WHERE s.codcli = p_cod_cliente
-          AND s.dtped >= date_trunc('month', CURRENT_DATE)
-          AND s.tipovenda IN ('1','9')
-          AND s.vlvenda >= 1
-    ),
-    catalogo_inovacoes AS (
-        SELECT i.codigo as cod_produto, p.descricao as nome_produto, i.inovacoes as categoria_inovacao
-        FROM public.data_innovations i
-        JOIN public.dim_produtos p ON p.codigo = i.codigo
-    )
-    SELECT jsonb_build_object(
-        'positivadas', COALESCE((
-            SELECT jsonb_agg(jsonb_build_object('categoria', i.categoria_inovacao, 'produto', i.nome_produto))
-            FROM catalogo_inovacoes i
-            JOIN inovacoes_mes_atual m ON i.cod_produto = m.produto
-        ), '[]'::jsonb),
-        'oportunidades', COALESCE((
-            SELECT jsonb_agg(jsonb_build_object('categoria', i.categoria_inovacao, 'produto', i.nome_produto))
-            FROM catalogo_inovacoes i
-            LEFT JOIN inovacoes_mes_atual m ON i.cod_produto = m.produto
-            WHERE m.produto IS NULL
-        ), '[]'::jsonb)
-    ) INTO v_inovacoes;
-
-    RETURN v_inovacoes;
-END;
-$$;
-
--- =========================================================================================
--- VIEW: n8n_agent_view_v2 (SUPER VIEW CONSOLIDADA PARA O AGENTE ELMA V2)
--- DESCRIÇÃO: "Super View" para consulta unificada por opção.
--- =========================================================================================
-
-DROP VIEW IF EXISTS public.n8n_agent_view_v2 CASCADE;
-
 CREATE VIEW public.n8n_agent_view_v2 WITH (security_invoker = true) AS
--- OPCAO 1: Cadastro de Cliente
 SELECT '1'::text AS opcao,
        NULL::text AS cpf,
        c.codigo_cliente,
@@ -197,7 +120,6 @@ FROM data_clients c
 
 UNION ALL
 
--- OPCAO 2: Historico de Pedidos (Agrupado)
 SELECT '2'::text AS opcao,
        NULL::text AS cpf,
        v.codcli AS codigo_cliente,
@@ -227,8 +149,8 @@ FROM (
         MAX(s.dtped) as data_pedido,
         SUM(s.vlvenda) as valor_total,
         COUNT(s.produto) as contagem_de_itens,
-        MAX(CASE WHEN dp.mix_categoria = 'SALTY' THEN TRUE ELSE FALSE END) as has_salty_mix,
-        MAX(CASE WHEN dp.mix_categoria = 'FOODS' THEN TRUE ELSE FALSE END) as has_foods_mix
+        bool_or(dp.mix_categoria = 'SALTY') as has_salty_mix,
+        bool_or(dp.mix_categoria = 'FOODS') as has_foods_mix
     FROM (SELECT pedido, codcli, tipovenda, dtped, vlvenda, produto FROM data_history UNION ALL SELECT pedido, codcli, tipovenda, dtped, vlvenda, produto FROM data_detailed) s
     LEFT JOIN dim_produtos dp ON dp.codigo = s.produto
     GROUP BY s.pedido
@@ -236,7 +158,6 @@ FROM (
 
 UNION ALL
 
--- OPCAO 3: Detalhamento de Pedido Específico (Agrupado por Produto)
 SELECT '3'::text AS opcao,
        NULL::text AS cpf,
        v.codcli AS codigo_cliente,
@@ -279,7 +200,6 @@ FROM (
 
 UNION ALL
 
--- OPCAO 4: Inovacoes
 SELECT '4'::text AS opcao,
        NULL::text AS cpf,
        c.codigo_cliente,
@@ -297,7 +217,6 @@ FROM data_clients c
 
 UNION ALL
 
--- OPCAO 5: Mix Ideal
 SELECT '5'::text AS opcao,
        NULL::text AS cpf,
        c.codigo_cliente,
@@ -315,7 +234,6 @@ FROM data_clients c
 
 UNION ALL
 
--- OPCAO 6: Sugestao de Pedido
 SELECT '6'::text AS opcao,
        NULL::text AS cpf,
        c.codigo_cliente,
@@ -333,7 +251,6 @@ FROM data_clients c
 
 UNION ALL
 
--- OPCAO 7: Consulta Estoque
 SELECT '7'::text AS opcao,
        NULL::text AS cpf,
        NULL::text AS codigo_cliente,
@@ -356,7 +273,6 @@ FROM dim_produtos dp
 
 UNION ALL
 
--- OPCAO 8: Transferir Atendimento
 SELECT '8'::text AS opcao,
        NULL::text AS cpf,
        NULL::text AS codigo_cliente,
@@ -371,5 +287,4 @@ SELECT '8'::text AS opcao,
        NULL::text AS termo_busca,
        jsonb_build_object('mensagem', 'Atendimento será transferido para Suporte', 'setor', 'Suporte') AS dados;
 
-REVOKE ALL ON public.n8n_agent_view_v2 FROM anon, authenticated;
 GRANT SELECT ON public.n8n_agent_view_v2 TO service_role;
