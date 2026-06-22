@@ -3802,12 +3802,18 @@ BEGIN
         ),
         cat_pos AS (
             SELECT
-                COALESCE(categoria_produto, ''SEM CATEGORIA'') as categoria,
+                categoria,
                 COUNT(DISTINCT codcli) as pos_cat
-            FROM public.data_summary
-            ' || v_where || '
-            GROUP BY COALESCE(categoria_produto, ''SEM CATEGORIA'')
-            HAVING SUM(vlvenda) >= 1
+            FROM (
+                SELECT
+                    codcli,
+                    COALESCE(categoria_produto, ''SEM CATEGORIA'') as categoria
+                FROM public.data_summary
+                ' || v_where || '
+                GROUP BY codcli, COALESCE(categoria_produto, ''SEM CATEGORIA'')
+                HAVING SUM(vlvenda) >= 1
+            ) sub
+            GROUP BY categoria
         ),
         ranking AS (
             SELECT
