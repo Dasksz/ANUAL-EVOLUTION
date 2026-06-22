@@ -3577,6 +3577,10 @@ DECLARE
     v_total_inactive_count int;
     v_where_trend text := ' WHERE 1=1 ';
 
+    -- Variables for category ranking
+    v_category_ranking json;
+    v_total_salty_pos int;
+
     -- Rede Logic Vars
     v_has_com_rede boolean;
     v_has_sem_rede boolean;
@@ -3783,11 +3787,8 @@ BEGIN
     -- User confirmed to use logic: codfor IN ('707', '708', '752') with vlvenda >= 1 to count unique clients
 
     -- In 'Share' view we count positivacao as unique clients. Let's use the provided logic:
-    DECLARE
-        v_category_ranking json;
-        v_total_salty_pos int;
-    BEGIN
-        v_sql := '
+
+    v_sql := '
         WITH base_salty AS (
             SELECT codcli
             FROM public.data_summary
@@ -3831,7 +3832,6 @@ BEGIN
         ';
 
         EXECUTE v_sql INTO v_total_salty_pos, v_category_ranking;
-    END;
 
     RETURN json_build_object(
         'active_clients', v_active_clients,
