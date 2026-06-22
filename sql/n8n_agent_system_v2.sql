@@ -1,34 +1,7 @@
+-- Drop the existing view since it references the function we want to recreate
 DROP VIEW IF EXISTS public.n8n_agent_view_v2 CASCADE;
-DROP FUNCTION IF EXISTS public.sp_resumo_cliente(text) CASCADE;
 DROP FUNCTION IF EXISTS public.sp_mix_ideal_cliente(text) CASCADE;
-DROP FUNCTION IF EXISTS public.sp_inovacoes_cliente(text) CASCADE;
-DROP FUNCTION IF EXISTS public.sp_sugestao_pedido(text) CASCADE;
 
--- Função 1: Resumo Cliente
-CREATE OR REPLACE FUNCTION public.sp_resumo_cliente(p_cod_cliente TEXT)
-RETURNS JSONB
-LANGUAGE plpgsql STABLE
-AS $$
-DECLARE
-    v_resumo JSONB;
-BEGIN
-    SELECT jsonb_build_object(
-        'codigo', c.codigo_cliente,
-        'fantasia', c.fantasia,
-        'cidade', c.cidade,
-        'filial', c.ramo,
-        'bloqueio_sefaz', c.bloqueio,
-        'dias_sem_compra', EXTRACT(DAY FROM (NOW() - c.ultimacompra)),
-        'status_compra', public.get_status_recencia(c.ultimacompra)
-    ) INTO v_resumo
-    FROM public.data_clients c
-    WHERE c.codigo_cliente = p_cod_cliente;
-
-    RETURN v_resumo;
-END;
-$$;
-
--- Função 2: Mix Ideal
 CREATE OR REPLACE FUNCTION public.sp_mix_ideal_cliente(p_cod_cliente TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql STABLE
@@ -37,7 +10,9 @@ DECLARE
     v_mix JSONB;
 BEGIN
     WITH categorias_obrigatorias AS (
-        SELECT DISTINCT nome_categoria FROM public.mix_ideal WHERE ativo = TRUE
+        SELECT DISTINCT nome_categoria, produto_obrigatorio
+        FROM public.mix_ideal
+        WHERE ativo = TRUE
     ),
     historico_cliente_mes_atual AS (
         SELECT DISTINCT p.mix_marca as marca_comprada
@@ -58,6 +33,7 @@ BEGIN
     cruzamento AS (
         SELECT
             co.nome_categoria,
+            co.produto_obrigatorio,
             CASE WHEN hc.marca_comprada IS NOT NULL THEN TRUE ELSE FALSE END as comprado_mes_atual,
             CASE WHEN h3.marca_comprada IS NOT NULL THEN TRUE ELSE FALSE END as comprado_ultimos_3_meses
         FROM categorias_obrigatorias co
@@ -67,70 +43,14 @@ BEGIN
     SELECT jsonb_build_object(
         'meta_pedido', 18,
         'categorias_garantidas_este_mes', (SELECT jsonb_agg(nome_categoria) FROM cruzamento WHERE comprado_mes_atual = TRUE),
-        'oportunidades_faltantes_este_mes_mas_compradas_antes', (SELECT jsonb_agg(nome_categoria) FROM cruzamento WHERE comprado_mes_atual = FALSE AND comprado_ultimos_3_meses = TRUE),
-        'oportunidades_faltantes_nunca_compradas', (SELECT jsonb_agg(nome_categoria) FROM cruzamento WHERE comprado_mes_atual = FALSE AND comprado_ultimos_3_meses = FALSE)
+        'oportunidades_faltantes_este_mes_mas_compradas_antes', (SELECT jsonb_agg(CASE WHEN produto_obrigatorio IS NOT NULL AND produto_obrigatorio != '' THEN nome_categoria || ' (' || produto_obrigatorio || ')' ELSE nome_categoria END) FROM cruzamento WHERE comprado_mes_atual = FALSE AND comprado_ultimos_3_meses = TRUE),
+        'oportunidades_faltantes_nunca_compradas', (SELECT jsonb_agg(CASE WHEN produto_obrigatorio IS NOT NULL AND produto_obrigatorio != '' THEN nome_categoria || ' (' || produto_obrigatorio || ')' ELSE nome_categoria END) FROM cruzamento WHERE comprado_mes_atual = FALSE AND comprado_ultimos_3_meses = FALSE)
     ) INTO v_mix;
 
     RETURN v_mix;
 END;
 $$;
-
--- Função 3: Inovações
-CREATE OR REPLACE FUNCTION public.sp_inovacoes_cliente(p_cod_cliente TEXT)
-RETURNS JSONB
-LANGUAGE plpgsql STABLE
-AS $$
-DECLARE
-    v_inovacoes JSONB;
-BEGIN
-    WITH inovacoes_mes_atual AS (
-        SELECT DISTINCT s.produto
-        FROM public.data_detailed s
-        WHERE s.codcli = p_cod_cliente
-          AND s.dtped >= date_trunc('month', CURRENT_DATE)
-          AND s.tipovenda IN ('1','9')
-          AND s.vlvenda >= 1
-    ),
-    inovacoes_3_meses AS (
-        SELECT DISTINCT s.produto
-        FROM public.data_detailed s
-        WHERE s.codcli = p_cod_cliente
-          AND s.dtped >= date_trunc('month', CURRENT_DATE - INTERVAL '3 months')
-          AND s.dtped < date_trunc('month', CURRENT_DATE)
-          AND s.tipovenda IN ('1','9')
-          AND s.vlvenda >= 1
-    ),
-    catalogo_inovacoes AS (
-        SELECT i.codigo as cod_produto, p.descricao as nome_produto, i.inovacoes as categoria_inovacao
-        FROM public.data_innovations i
-        JOIN public.dim_produtos p ON p.codigo = i.codigo
-    )
-    SELECT jsonb_build_object(
-        'positivadas_este_mes', COALESCE((
-            SELECT jsonb_agg(jsonb_build_object('categoria', i.categoria_inovacao, 'produto', i.nome_produto))
-            FROM catalogo_inovacoes i
-            JOIN inovacoes_mes_atual m ON i.cod_produto = m.produto
-        ), '[]'::jsonb),
-        'oportunidades_compradas_ultimos_3_meses_mas_nao_agora', COALESCE((
-            SELECT jsonb_agg(jsonb_build_object('categoria', i.categoria_inovacao, 'produto', i.nome_produto))
-            FROM catalogo_inovacoes i
-            JOIN inovacoes_3_meses m ON i.cod_produto = m.produto
-            LEFT JOIN inovacoes_mes_atual a ON i.cod_produto = a.produto
-            WHERE a.produto IS NULL
-        ), '[]'::jsonb),
-        'oportunidades_nunca_compradas', COALESCE((
-            SELECT jsonb_agg(jsonb_build_object('categoria', i.categoria_inovacao, 'produto', i.nome_produto))
-            FROM catalogo_inovacoes i
-            LEFT JOIN inovacoes_mes_atual a ON i.cod_produto = a.produto
-            LEFT JOIN inovacoes_3_meses m ON i.cod_produto = m.produto
-            WHERE a.produto IS NULL AND m.produto IS NULL
-        ), '[]'::jsonb)
-    ) INTO v_inovacoes;
-
-    RETURN v_inovacoes;
-END;
-$$;
-
+DROP FUNCTION IF EXISTS public.sp_sugestao_pedido(text) CASCADE;
 
 -- Função 4: Sugestão de Pedido
 CREATE OR REPLACE FUNCTION public.sp_sugestao_pedido(p_cod_cliente TEXT)
@@ -154,9 +74,10 @@ BEGIN
           AND s.tipovenda IN ('1','9')
     ),
     mix_ideal_falta AS (
-        SELECT nome_categoria FROM public.mix_ideal WHERE ativo = TRUE
+        SELECT nome_categoria, produto_obrigatorio
+        FROM public.mix_ideal WHERE ativo = TRUE
         EXCEPT
-        SELECT marca_comprada FROM historico_cliente_mes_atual
+        SELECT marca_comprada, NULL FROM historico_cliente_mes_atual
     ),
     produtos_cliente_comprava_3_meses_mix AS (
         SELECT DISTINCT p.codigo, p.descricao as nome, p.mix_marca
@@ -167,10 +88,17 @@ BEGIN
           AND s.dtped < date_trunc('month', CURRENT_DATE)
           AND s.tipovenda IN ('1','9')
     ),
-    cobertura_mix AS (
+    cobertura_mix_historico AS (
         SELECT DISTINCT pe.codigo, pe.nome, pe.mix_marca
         FROM produtos_cliente_comprava_3_meses_mix pe
         JOIN mix_ideal_falta mi ON pe.mix_marca ILIKE '%' || mi.nome_categoria || '%'
+        LIMIT 3
+    ),
+    cobertura_mix_codigo AS (
+        SELECT DISTINCT p.codigo, p.descricao as nome, mi.nome_categoria as mix_marca
+        FROM dim_produtos p
+        JOIN mix_ideal_falta mi ON p.codigo = mi.produto_obrigatorio
+        WHERE mi.produto_obrigatorio IS NOT NULL AND mi.produto_obrigatorio != ''
         LIMIT 3
     ),
     inovacoes_falta AS (
@@ -186,7 +114,7 @@ BEGIN
 
     SELECT jsonb_build_object(
         'reposicao_garantida_ja_compradas_este_mes', COALESCE((SELECT jsonb_agg(marca_comprada) FROM (SELECT marca_comprada FROM historico_cliente_mes_atual LIMIT 5) t), '[]'::jsonb),
-        'cobertura_mix_sugestao_com_base_no_historico_3m', COALESCE((SELECT jsonb_agg(codigo || ' - ' || nome) FROM cobertura_mix), '[]'::jsonb),
+        'cobertura_mix_sugestao_com_base_no_historico_3m', COALESCE((SELECT jsonb_agg(codigo || ' - ' || nome) FROM (SELECT codigo, nome FROM cobertura_mix_historico UNION SELECT codigo, nome FROM cobertura_mix_codigo LIMIT 3) sub), '[]'::jsonb),
         'inovacoes_sugestao', COALESCE((SELECT jsonb_agg(cod_produto || ' - ' || nome_produto) FROM inovacoes_falta), '[]'::jsonb),
         'dica_venda', CASE
             WHEN v_media < 1500 THEN 'Ofereça as opções de cobertura de Mix que ele já levou meses anteriores em pacotes menores para garantir giro!'
@@ -197,7 +125,6 @@ BEGIN
     RETURN v_sugestao;
 END;
 $$;
-
 
 CREATE VIEW public.n8n_agent_view_v2 WITH (security_invoker = true) AS
 SELECT '1'::text AS opcao,
