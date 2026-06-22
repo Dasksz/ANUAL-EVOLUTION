@@ -3577,6 +3577,10 @@ DECLARE
     v_total_inactive_count int;
     v_where_trend text := ' WHERE 1=1 ';
 
+    -- Variables for category ranking
+    v_category_ranking json;
+    v_total_salty_pos int;
+
     -- Rede Logic Vars
     v_has_com_rede boolean;
     v_has_sem_rede boolean;
@@ -3779,15 +3783,12 @@ BEGIN
 
     -- CATEGORY RANKING QUERY (Salty Positivação Logic)
     -- We need to calculate total Salty Positivação first
-    -- Salty Positivação logic: Bought all salty skus OR based on codfor in ('707', '708', '752')?
+    -- Salty Positivação logic: Bought all salty skus OR based on codfor in ('707', '708', '752')? 
     -- User confirmed to use logic: codfor IN ('707', '708', '752') with vlvenda >= 1 to count unique clients
-
+    
     -- In 'Share' view we count positivacao as unique clients. Let's use the provided logic:
-    DECLARE
-        v_category_ranking json;
-        v_total_salty_pos int;
-    BEGIN
-        v_sql := '
+    
+    v_sql := '
         WITH base_salty AS (
             SELECT codcli
             FROM public.data_summary
@@ -3800,28 +3801,34 @@ BEGIN
             SELECT COUNT(1) as total FROM base_salty
         ),
         cat_pos AS (
-            SELECT
-                COALESCE(categoria_produto, ''SEM CATEGORIA'') as categoria,
+            SELECT 
+                categoria,
                 COUNT(DISTINCT codcli) as pos_cat
-            FROM public.data_summary
-            ' || v_where || '
-            GROUP BY COALESCE(categoria_produto, ''SEM CATEGORIA'')
-            HAVING SUM(vlvenda) >= 1
+            FROM (
+                SELECT 
+                    codcli,
+                    COALESCE(categoria_produto, ''SEM CATEGORIA'') as categoria
+                FROM public.data_summary
+                ' || v_where || '
+                GROUP BY codcli, COALESCE(categoria_produto, ''SEM CATEGORIA'')
+                HAVING SUM(vlvenda) >= 1
+            ) sub
+            GROUP BY categoria
         ),
         ranking AS (
-            SELECT
+            SELECT 
                 c.categoria,
                 c.pos_cat,
                 t.total,
-                CASE
-                    WHEN t.total > 0 THEN (c.pos_cat::numeric / t.total::numeric) * 100
-                    ELSE 0
+                CASE 
+                    WHEN t.total > 0 THEN (c.pos_cat::numeric / t.total::numeric) * 100 
+                    ELSE 0 
                 END as share_salty
             FROM cat_pos c
             CROSS JOIN total_salty t
             ORDER BY c.pos_cat DESC, c.categoria
         )
-        SELECT
+        SELECT 
             (SELECT total FROM total_salty),
             json_build_object(
                 ''cols'', json_build_array(''Categoria'', ''Positivação'', ''% Share Salty''),
@@ -3829,9 +3836,8 @@ BEGIN
             )
         FROM ranking r;
         ';
-
+        
         EXECUTE v_sql INTO v_total_salty_pos, v_category_ranking;
-    END;
 
     RETURN json_build_object(
         'active_clients', v_active_clients,

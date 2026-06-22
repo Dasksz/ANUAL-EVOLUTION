@@ -4749,7 +4749,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         const cityRanking = data.city_ranking ? (Array.isArray(data.city_ranking) ? data.city_ranking : mapRows(data.city_ranking)) : [];
         const categoryRanking = data.category_ranking ? (Array.isArray(data.category_ranking) ? data.category_ranking : mapRows(data.category_ranking)) : [];
         const totalSaltyPos = data.total_salty_pos || 0;
-
+        
         const elTotalSalty = document.getElementById('city-total-salty-pos');
         if(elTotalSalty) elTotalSalty.textContent = totalSaltyPos;
 
@@ -4764,7 +4764,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                     <tr class="table-row">
                         <td class="p-2">${escapeHtml(c['Código'] || '')}</td>
                         <td class="p-2">${escapeHtml(c.fantasia || c.razaoSocial || '')}</td>
-                        ${c.totalFaturamento !== undefined ? `<td class="p-2 text-right">${escapeHtml(formatCurrency(c.totalFaturamento))}</td>` : ''}
+                        ${c.totalFaturamento !== undefined ? `<td class="p-2 text-right text-emerald-400 font-bold">${escapeHtml(formatCurrency(c.totalFaturamento))}</td>` : ''}
                         <td class="p-2">${escapeHtml(c.cidade || '')}</td>
                         <td class="p-2">${escapeHtml(c.bairro || '')}</td>
                         ${c.ultimaCompra ? `<td class="p-2 text-center">${escapeHtml(new Date(c.ultimaCompra).toLocaleDateString('pt-BR'))}</td>` : ''}
@@ -4805,11 +4805,21 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
             if (items && items.length > 0) {
                 body.innerHTML = items.map(c => {
+                    const pct = c['% Share Salty'] || 0;
                     return `
                         <tr class="table-row">
                             <td class="p-2 font-semibold">${escapeHtml(c['Categoria'] || '')}</td>
                             <td class="p-2 text-right font-bold">${escapeHtml(c['Positivação'] || 0)}</td>
-                            <td class="p-2 text-right text-emerald-400 font-bold">${escapeHtml(formatPercentage(c['% Share Salty'] || 0, 2))}</td>
+                            <td class="p-2 w-1/2">
+                                <div class="flex items-center justify-end h-full w-full">
+                                    <div class="relative w-full h-6 bg-slate-800 rounded-sm overflow-hidden border border-white/5 mr-2">
+                                        <div class="absolute top-0 left-0 h-full bg-[#1c84c6] transition-all duration-500" style="width: ${pct}%;"></div>
+                                        <div class="absolute inset-0 flex items-center justify-end pr-2 text-xs font-bold text-white drop-shadow-md z-10">
+                                            ${escapeHtml(formatPercentage(pct, 1))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
                         </tr>
                     `;
                 }).join('');
