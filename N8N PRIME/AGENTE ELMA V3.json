@@ -35,33 +35,36 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        -16016,
-        736
+        -16080,
+        208
       ],
-      "id": "2037032f-1649-4ba6-84b8-4859326a38f8",
+      "id": "0e7549bd-d9ac-481b-92ed-720691693e19",
       "name": "Switch",
       "alwaysOutputData": false
     },
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "=chat_V116_{{ $('Edit Fields').item.json.chatid }}",
-        "sessionTTL": 1800
+        "sessionKey": "=chat_V1_{{ $('Edit Fields').item.json.chatid }}",
+        "sessionTTL": 1800,
+        "contextWindowLength": 8
       },
       "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
       "typeVersion": 1.5,
       "position": [
-        -15856,
-        960
+        -15920,
+        432
       ],
-      "id": "4562432d-0f1f-4da7-8a0e-260b8b371a68",
+      "id": "88d87d60-7723-4d07-8c30-9607b073d44a",
       "name": "Redis Chat Memory",
+      "alwaysOutputData": true,
       "credentials": {
         "redis": {
           "id": "vEXjVVeN86ugbNeD",
           "name": "Redis account"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -76,10 +79,10 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -14624,
-        736
+        -14688,
+        208
       ],
-      "id": "625ac058-2003-4f99-b3d4-8ceccb0de58b",
+      "id": "2cd32cda-50dd-486c-9271-35e93b128db2",
       "name": "Send a text message",
       "credentials": {
         "wahaApi": {
@@ -105,10 +108,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -14976,
-        736
+        -15040,
+        208
       ],
-      "id": "414615ce-e563-4634-8ab5-3a53bbf2dbbb",
+      "id": "a99622f8-ed90-47b3-a44a-68a5c55f46f3",
       "name": "Limpar Mensagem IA Ajustado"
     },
     {
@@ -122,10 +125,10 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        -15648,
-        736
+        -15712,
+        208
       ],
-      "id": "1a112816-91f2-42cf-9ca5-8ceb3a151845",
+      "id": "f8dec8b6-9a56-4632-be2d-92c410e60c0b",
       "name": "AI Agent",
       "retryOnFail": true,
       "maxTries": 4,
@@ -161,10 +164,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -15168,
-        736
+        -15232,
+        208
       ],
-      "id": "455fb903-4a5f-4432-9365-5271ee4c737c",
+      "id": "a2d298a5-6e49-453e-b84d-49ca636d12ab",
       "name": "If1"
     },
     {
@@ -176,10 +179,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -16624,
-        736
+        -16688,
+        208
       ],
-      "id": "f454d446-42e8-42ed-b950-5e456432637c",
+      "id": "6e78cc7d-295b-4495-946c-43b1457fba8d",
       "name": "Webhook",
       "webhookId": "0227ff26-68fe-4924-98bd-0ab5535d0500"
     },
@@ -204,10 +207,10 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -15696,
-        960
+        -15760,
+        432
       ],
-      "id": "d3bafe1a-2fa0-4ecb-940e-64be42af6ec0",
+      "id": "355f6572-6530-44c5-bf86-ecbba5a21543",
       "name": "Validar_RCA",
       "notesInFlow": false,
       "credentials": {
@@ -230,10 +233,10 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -14016,
-        880
+        -14080,
+        352
       ],
-      "id": "c182b376-3abc-4bd5-8c52-d7b2c9ebaea3",
+      "id": "6117dc20-8644-466a-8ccc-ee17aa297b40",
       "name": "Alerta Grupo Comercial",
       "credentials": {
         "wahaApi": {
@@ -255,10 +258,10 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -14016,
-        736
+        -14080,
+        208
       ],
-      "id": "db50f1ff-4276-4eed-9178-a2a5dafda2b4",
+      "id": "322a7f79-1406-4358-90f7-5d8e8757c23b",
       "name": "Alerta Grupo Logistica",
       "credentials": {
         "wahaApi": {
@@ -280,10 +283,10 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -14016,
-        592
+        -14080,
+        64
       ],
-      "id": "e06f0648-d533-4f8d-aeb3-eddd54c59900",
+      "id": "6a028d24-37cd-4a6b-8e48-91988892e60e",
       "name": "Alerta Grupo Financeiro",
       "credentials": {
         "wahaApi": {
@@ -370,10 +373,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        -14224,
-        720
+        -14288,
+        192
       ],
-      "id": "39e661f7-df3a-4d15-9500-d306795725cc",
+      "id": "d13795ab-ac21-4b6c-8188-f7bdf9d53df3",
       "name": "Switch Setor",
       "alwaysOutputData": false
     },
@@ -405,10 +408,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -14416,
-        736
+        -14480,
+        208
       ],
-      "id": "21b80d86-c7d7-4daf-b36f-c6b5f5009735",
+      "id": "ee2b0bb0-072b-4762-8e72-cec210dbb51d",
       "name": "If Transferencia"
     },
     {
@@ -423,10 +426,10 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -14816,
-        736
+        -14880,
+        208
       ],
-      "id": "0c14aa40-ef60-482a-8780-50b63af7a163",
+      "id": "c95af677-39d8-41f7-9edb-d777799c1228",
       "name": "Send Seen",
       "credentials": {
         "wahaApi": {
@@ -446,10 +449,10 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -15840,
-        736
+        -15904,
+        208
       ],
-      "id": "9a6c5eeb-a14d-4372-ac0b-d4e17348d727",
+      "id": "0ea3cdfb-e0d0-4361-becc-41870f4169b4",
       "name": "Start Typing",
       "credentials": {
         "wahaApi": {
@@ -469,10 +472,10 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -15328,
-        736
+        -15392,
+        208
       ],
-      "id": "bea89598-dffd-425f-bed2-56bf27f0de71",
+      "id": "4fbae21f-0cd4-4ed6-81da-f59a79c900cb",
       "name": "Stop Typing",
       "credentials": {
         "wahaApi": {
@@ -493,10 +496,10 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -15552,
-        960
+        -15616,
+        432
       ],
-      "id": "ea238855-8f76-4f8f-9676-a1cf1a045178",
+      "id": "ea757d8e-1a79-4215-803d-eb10b721f4d1",
       "name": "Mestre_Busca_PRIME",
       "credentials": {
         "supabaseApi": {
@@ -507,7 +510,7 @@
     },
     {
       "parameters": {
-        "model": "deepseek-chat",
+        "model": "deepseek-v4-flash",
         "options": {
           "temperature": 0.5
         }
@@ -515,10 +518,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
       "typeVersion": 1,
       "position": [
-        -16016,
-        960
+        -16080,
+        432
       ],
-      "id": "2ec4243d-f135-446e-99be-a7a4fc8f3bc0",
+      "id": "5c58ff81-2cb6-43ae-8fc7-64b59234b153",
       "name": "DeepSeek Chat Model",
       "credentials": {
         "deepSeekApi": {
@@ -536,11 +539,11 @@
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        -16800,
-        560
+        -16880,
+        32
       ],
       "typeVersion": 1,
-      "id": "1bc3b4b7-5f97-4d41-8c3f-b20a98bf4dc9",
+      "id": "4b2293b3-a781-4ab1-b6ab-2359f359f413",
       "name": "Sticky Note"
     },
     {
@@ -591,10 +594,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -16224,
-        736
+        -16288,
+        208
       ],
-      "id": "4a3463ac-2f85-4df6-86a0-13d6e305d64e",
+      "id": "f37c9b18-2d7b-428f-a87f-59be28d19622",
       "name": "If"
     },
     {
@@ -656,10 +659,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -16416,
-        736
+        -16480,
+        208
       ],
-      "id": "daa461a1-7220-4ea9-92ce-d29477ad0600",
+      "id": "13f062fd-93cd-4076-9a36-c65c65965828",
       "name": "Edit Fields"
     }
   ],
@@ -671,9 +674,9 @@
             "accept": "application/json, text/plain, */*",
             "content-type": "application/json",
             "user-agent": "WAHA/2026.5.1",
-            "x-webhook-request-id": "3zxak8mqobwpis",
-            "x-webhook-timestamp": "1782079140914",
-            "content-length": "2453",
+            "x-webhook-request-id": "3zxak8mqp53z4y",
+            "x-webhook-timestamp": "1782128188833",
+            "content-length": "2537",
             "accept-encoding": "gzip, compress, deflate, br",
             "host": "host.docker.internal:5678",
             "connection": "keep-alive"
@@ -681,8 +684,8 @@
           "params": {},
           "query": {},
           "body": {
-            "id": "evt_01kvp33d1jsp6hr6vv5a5j2zdc",
-            "timestamp": 1782079140914,
+            "id": "evt_01kvqhw7d0vwxq01gzhaesyd2e",
+            "timestamp": 1782128188833,
             "event": "message.any",
             "session": "default",
             "metadata": {},
@@ -693,12 +696,12 @@
               "jid": "557332236100:4@s.whatsapp.net"
             },
             "payload": {
-              "id": "false_65713167446078@lid_3EB0D8C9136FC80770EF9B",
-              "timestamp": 1782079140,
+              "id": "false_65713167446078@lid_3EB04A8108CA8E8B1B7937",
+              "timestamp": 1782128188,
               "from": "65713167446078@lid",
               "fromMe": false,
               "source": "app",
-              "body": "oi",
+              "body": "gostaria de ver o detalhamento",
               "to": null,
               "participant": null,
               "hasMedia": false,
@@ -711,19 +714,19 @@
               "_data": {
                 "Info": {
                   "Chat": "65713167446078@lid",
-                  "Sender": "65713167446078:55@lid",
+                  "Sender": "65713167446078:48@lid",
                   "IsFromMe": false,
                   "IsGroup": false,
                   "AddressingMode": "",
-                  "SenderAlt": "557381941146:55@s.whatsapp.net",
+                  "SenderAlt": "557381941146:48@s.whatsapp.net",
                   "RecipientAlt": "",
                   "BroadcastListOwner": "",
                   "BroadcastRecipients": null,
-                  "ID": "3EB0D8C9136FC80770EF9B",
+                  "ID": "3EB04A8108CA8E8B1B7937",
                   "ServerID": 0,
                   "Type": "text",
                   "PushName": "Daniel César",
-                  "Timestamp": "2026-06-21T21:59:00Z",
+                  "Timestamp": "2026-06-22T11:36:28Z",
                   "Category": "",
                   "Multicast": false,
                   "MediaType": "",
@@ -745,7 +748,7 @@
                   "DeviceSentMeta": null
                 },
                 "Message": {
-                  "conversation": "oi",
+                  "conversation": "gostaria de ver o detalhamento",
                   "messageContextInfo": {
                     "deviceListMetadata": {
                       "senderKeyHash": "bvAroOwyQAFRpQ==",
@@ -756,7 +759,7 @@
                       "recipientTimestamp": 1781729471
                     },
                     "deviceListMetadataVersion": 2,
-                    "messageSecret": "k8qKR3rZE0AHOD8QC6IFrSXXXE7gpMcg8jOw2nJOcuU=",
+                    "messageSecret": "tDKDHoJafEZtk1aRGM6nNHYROlNhmcVWSHAMm4doBas=",
                     "limitSharingV2": {
                       "trigger": 0,
                       "initiatedByMe": false
@@ -776,7 +779,7 @@
                 "RetryCount": 0,
                 "NewsletterMeta": null,
                 "RawMessage": {
-                  "conversation": "oi",
+                  "conversation": "gostaria de ver o detalhamento",
                   "messageContextInfo": {
                     "deviceListMetadata": {
                       "senderKeyHash": "bvAroOwyQAFRpQ==",
@@ -787,7 +790,7 @@
                       "recipientTimestamp": 1781729471
                     },
                     "deviceListMetadataVersion": 2,
-                    "messageSecret": "k8qKR3rZE0AHOD8QC6IFrSXXXE7gpMcg8jOw2nJOcuU=",
+                    "messageSecret": "tDKDHoJafEZtk1aRGM6nNHYROlNhmcVWSHAMm4doBas=",
                     "limitSharingV2": {
                       "trigger": 0,
                       "initiatedByMe": false
@@ -1026,7 +1029,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "61d3e7b3-26a5-495c-95d9-5005f568cdc9",
+  "versionId": "59664640-6b7a-4e27-90e2-be80a8d2ac48",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "794d69bc5dcc6fb73a707f64e2447ab911b7d0bd698a31ab742115dede7cc9cb"
