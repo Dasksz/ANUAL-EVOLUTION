@@ -35,10 +35,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        -16080,
-        208
+        -17536,
+        -1040
       ],
-      "id": "0e7549bd-d9ac-481b-92ed-720691693e19",
+      "id": "2dca35d7-c12e-464c-80a5-6f58affdf39d",
       "name": "Switch",
       "alwaysOutputData": false
     },
@@ -52,10 +52,10 @@
       "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
       "typeVersion": 1.5,
       "position": [
-        -15920,
-        432
+        -17376,
+        -816
       ],
-      "id": "88d87d60-7723-4d07-8c30-9607b073d44a",
+      "id": "30d23f98-15cc-47a2-b419-6a6beb042ab5",
       "name": "Redis Chat Memory",
       "alwaysOutputData": true,
       "credentials": {
@@ -79,10 +79,10 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -14688,
-        208
+        -16144,
+        -1040
       ],
-      "id": "2cd32cda-50dd-486c-9271-35e93b128db2",
+      "id": "87b53dc8-5384-446a-b980-c5d2d3a15b2d",
       "name": "Send a text message",
       "credentials": {
         "wahaApi": {
@@ -108,10 +108,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -15040,
-        208
+        -16496,
+        -1040
       ],
-      "id": "a99622f8-ed90-47b3-a44a-68a5c55f46f3",
+      "id": "a1608e23-ec2a-40d9-8e1c-06383065e1ab",
       "name": "Limpar Mensagem IA Ajustado"
     },
     {
@@ -125,10 +125,10 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        -15712,
-        208
+        -17168,
+        -1040
       ],
-      "id": "f8dec8b6-9a56-4632-be2d-92c410e60c0b",
+      "id": "f092c4b2-9862-4790-9e3c-87b4b681f2a9",
       "name": "AI Agent",
       "retryOnFail": true,
       "maxTries": 4,
@@ -164,10 +164,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -15232,
-        208
+        -16688,
+        -1040
       ],
-      "id": "a2d298a5-6e49-453e-b84d-49ca636d12ab",
+      "id": "f10ed4a5-b057-45ff-9a69-2e6df196ab83",
       "name": "If1"
     },
     {
@@ -179,10 +179,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -16688,
-        208
+        -18144,
+        -1040
       ],
-      "id": "6e78cc7d-295b-4495-946c-43b1457fba8d",
+      "id": "a9ce3fd0-7a50-4bd9-a6a9-c624efebb20b",
       "name": "Webhook",
       "webhookId": "0227ff26-68fe-4924-98bd-0ab5535d0500"
     },
@@ -207,10 +207,10 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -15760,
-        432
+        -17216,
+        -816
       ],
-      "id": "355f6572-6530-44c5-bf86-ecbba5a21543",
+      "id": "6461af2e-dbf5-49d0-a576-e77af19c8a5a",
       "name": "Validar_RCA",
       "notesInFlow": false,
       "credentials": {
@@ -233,10 +233,10 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -14080,
-        352
+        -15536,
+        -896
       ],
-      "id": "6117dc20-8644-466a-8ccc-ee17aa297b40",
+      "id": "0440750e-c29e-4ae1-8a0e-f9969c545848",
       "name": "Alerta Grupo Comercial",
       "credentials": {
         "wahaApi": {
@@ -258,10 +258,10 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -14080,
-        208
+        -15536,
+        -1040
       ],
-      "id": "322a7f79-1406-4358-90f7-5d8e8757c23b",
+      "id": "56c680a0-bc43-488c-8f8b-27fde42d7682",
       "name": "Alerta Grupo Logistica",
       "credentials": {
         "wahaApi": {
@@ -283,10 +283,10 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -14080,
-        64
+        -15536,
+        -1184
       ],
-      "id": "6a028d24-37cd-4a6b-8e48-91988892e60e",
+      "id": "ea93bc33-2ce6-4e0c-8359-415b66e8bdcb",
       "name": "Alerta Grupo Financeiro",
       "credentials": {
         "wahaApi": {
@@ -373,10 +373,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        -14288,
-        192
+        -15744,
+        -1056
       ],
-      "id": "d13795ab-ac21-4b6c-8188-f7bdf9d53df3",
+      "id": "4e7f1273-5b02-4afe-835d-f9ea6fa4c8d1",
       "name": "Switch Setor",
       "alwaysOutputData": false
     },
@@ -408,10 +408,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -14480,
-        208
+        -15936,
+        -1040
       ],
-      "id": "ee2b0bb0-072b-4762-8e72-cec210dbb51d",
+      "id": "ca63fb24-134d-4915-9b21-9d676421ce90",
       "name": "If Transferencia"
     },
     {
@@ -426,10 +426,10 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -14880,
-        208
+        -16336,
+        -1040
       ],
-      "id": "c95af677-39d8-41f7-9edb-d777799c1228",
+      "id": "e3870c97-6970-4257-aba7-0b36cf5f6195",
       "name": "Send Seen",
       "credentials": {
         "wahaApi": {
@@ -449,10 +449,10 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -15904,
-        208
+        -17360,
+        -1040
       ],
-      "id": "0ea3cdfb-e0d0-4361-becc-41870f4169b4",
+      "id": "bd600cde-7873-4a41-a9cd-5a837360030f",
       "name": "Start Typing",
       "credentials": {
         "wahaApi": {
@@ -472,10 +472,10 @@
       "type": "n8n-nodes-waha.WAHA",
       "typeVersion": 202411,
       "position": [
-        -15392,
-        208
+        -16848,
+        -1040
       ],
-      "id": "4fbae21f-0cd4-4ed6-81da-f59a79c900cb",
+      "id": "6506c48f-2a3e-4e43-951e-6243e5d788e2",
       "name": "Stop Typing",
       "credentials": {
         "wahaApi": {
@@ -496,10 +496,10 @@
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
       "position": [
-        -15616,
-        432
+        -17072,
+        -816
       ],
-      "id": "ea757d8e-1a79-4215-803d-eb10b721f4d1",
+      "id": "4d83577c-74f2-4bdc-babc-5426c2db9d12",
       "name": "Mestre_Busca_PRIME",
       "credentials": {
         "supabaseApi": {
@@ -512,16 +512,16 @@
       "parameters": {
         "model": "deepseek-v4-flash",
         "options": {
-          "temperature": 0.5
+          "temperature": 0.4
         }
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
       "typeVersion": 1,
       "position": [
-        -16080,
-        432
+        -17536,
+        -816
       ],
-      "id": "5c58ff81-2cb6-43ae-8fc7-64b59234b153",
+      "id": "116d68a2-d400-4ac8-ba1c-5777b2601cd9",
       "name": "DeepSeek Chat Model",
       "credentials": {
         "deepSeekApi": {
@@ -539,11 +539,11 @@
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        -16880,
-        32
+        -18336,
+        -1216
       ],
       "typeVersion": 1,
-      "id": "4b2293b3-a781-4ab1-b6ab-2359f359f413",
+      "id": "3aa23710-4998-4776-acbd-1f34434781b4",
       "name": "Sticky Note"
     },
     {
@@ -594,10 +594,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -16288,
-        208
+        -17744,
+        -1040
       ],
-      "id": "f37c9b18-2d7b-428f-a87f-59be28d19622",
+      "id": "8a0fc304-7dfa-483b-af05-c36a6a53353f",
       "name": "If"
     },
     {
@@ -659,10 +659,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -16480,
-        208
+        -17936,
+        -1040
       ],
-      "id": "13f062fd-93cd-4076-9a36-c65c65965828",
+      "id": "ce1dd753-b800-4bf7-8504-141fc927150b",
       "name": "Edit Fields"
     }
   ],
@@ -1029,7 +1029,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "59664640-6b7a-4e27-90e2-be80a8d2ac48",
+  "versionId": "504d74da-482b-4c34-933e-b86e69039462",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "794d69bc5dcc6fb73a707f64e2447ab911b7d0bd698a31ab742115dede7cc9cb"
