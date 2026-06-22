@@ -3777,12 +3777,70 @@ BEGIN
 
     EXECUTE v_sql INTO v_total_inactive_count, v_inactive_clients USING p_inactive_limit, p_inactive_page;
 
+    -- CATEGORY RANKING QUERY (Salty Positivação Logic)
+    -- We need to calculate total Salty Positivação first
+    -- Salty Positivação logic: Bought all salty skus OR based on codfor in ('707', '708', '752')?
+    -- User confirmed to use logic: codfor IN ('707', '708', '752') with vlvenda >= 1 to count unique clients
+
+    -- In 'Share' view we count positivacao as unique clients. Let's use the provided logic:
+    DECLARE
+        v_category_ranking json;
+        v_total_salty_pos int;
+    BEGIN
+        v_sql := '
+        WITH base_salty AS (
+            SELECT codcli
+            FROM public.data_summary
+            ' || v_where || '
+            AND codfor IN (''707'', ''708'', ''752'')
+            GROUP BY codcli
+            HAVING SUM(vlvenda) >= 1
+        ),
+        total_salty AS (
+            SELECT COUNT(1) as total FROM base_salty
+        ),
+        cat_pos AS (
+            SELECT
+                COALESCE(categoria_produto, ''SEM CATEGORIA'') as categoria,
+                COUNT(DISTINCT codcli) as pos_cat
+            FROM public.data_summary
+            ' || v_where || '
+            GROUP BY COALESCE(categoria_produto, ''SEM CATEGORIA'')
+            HAVING SUM(vlvenda) >= 1
+        ),
+        ranking AS (
+            SELECT
+                c.categoria,
+                c.pos_cat,
+                t.total,
+                CASE
+                    WHEN t.total > 0 THEN (c.pos_cat::numeric / t.total::numeric) * 100
+                    ELSE 0
+                END as share_salty
+            FROM cat_pos c
+            CROSS JOIN total_salty t
+            ORDER BY c.pos_cat DESC, c.categoria
+        )
+        SELECT
+            (SELECT total FROM total_salty),
+            json_build_object(
+                ''cols'', json_build_array(''Categoria'', ''Positivação'', ''% Share Salty''),
+                ''rows'', COALESCE(json_agg(json_build_array(r.categoria, r.pos_cat, r.share_salty)), ''[]''::json)
+            )
+        FROM ranking r;
+        ';
+
+        EXECUTE v_sql INTO v_total_salty_pos, v_category_ranking;
+    END;
+
     RETURN json_build_object(
         'active_clients', v_active_clients,
         'total_active_count', COALESCE(v_total_active_count, 0),
         'inactive_clients', v_inactive_clients,
         'total_inactive_count', COALESCE(v_total_inactive_count, 0),
-        'city_ranking', COALESCE(v_city_ranking, '{"cols":[], "rows":[]}'::json)
+        'city_ranking', COALESCE(v_city_ranking, '{"cols":[], "rows":[]}'::json),
+        'category_ranking', COALESCE(v_category_ranking, '{"cols":[], "rows":[]}'::json),
+        'total_salty_pos', COALESCE(v_total_salty_pos, 0)
     );
 END;
 $$;
