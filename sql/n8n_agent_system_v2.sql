@@ -62,42 +62,14 @@ END;
 $$;
 
 -- Função 3: Inovações
-CREATE OR REPLACE FUNCTION public.sp_inovacoes_cliente(p_cod_cliente TEXT)
-RETURNS JSONB
-LANGUAGE plpgsql STABLE
-AS $$
-DECLARE
-    v_inovacoes JSONB;
-BEGIN
-    WITH inovacoes_mes_atual AS (
-        SELECT DISTINCT s.produto
-        FROM public.data_detailed s
-        WHERE s.codcli = p_cod_cliente
-          AND s.dtped >= date_trunc('month', CURRENT_DATE)
-          AND s.tipovenda IN ('1','9')
-          AND s.vlvenda >= 1
-    ),
-    catalogo_inovacoes AS (
-        SELECT cod_produto, nome_produto, categoria_inovacao
-        FROM public.inovacoes WHERE ativo = TRUE
-    )
-    SELECT jsonb_build_object(
-        'positivadas', COALESCE((
-            SELECT jsonb_agg(jsonb_build_object('categoria', i.categoria_inovacao, 'produto', i.nome_produto))
-            FROM catalogo_inovacoes i
-            JOIN inovacoes_mes_atual m ON i.cod_produto = m.produto
-        ), '[]'::jsonb),
-        'oportunidades', COALESCE((
-            SELECT jsonb_agg(jsonb_build_object('categoria', i.categoria_inovacao, 'produto', i.nome_produto))
-            FROM catalogo_inovacoes i
-            LEFT JOIN inovacoes_mes_atual m ON i.cod_produto = m.produto
-            WHERE m.produto IS NULL
-        ), '[]'::jsonb)
-    ) INTO v_inovacoes;
 
-    RETURN v_inovacoes;
-END;
-$$;
+
+-- Função 4: Sugestão de Pedido
+
+
+
+
+
 
 -- Função 4: Sugestão de Pedido
 CREATE OR REPLACE FUNCTION public.sp_sugestao_pedido(p_cod_cliente TEXT)
@@ -128,11 +100,12 @@ BEGIN
         LIMIT 5
     ),
     inovacoes_falta AS (
-        SELECT i.cod_produto, i.nome_produto, i.categoria_inovacao
-        FROM public.inovacoes i
+        SELECT i.codigo as cod_produto, p.descricao as nome_produto, i.inovacoes as categoria_inovacao
+        FROM public.data_innovations i
+        JOIN public.dim_produtos p ON p.codigo = i.codigo
         WHERE NOT EXISTS (
             SELECT 1 FROM public.data_detailed s
-            WHERE s.produto = i.cod_produto AND s.codcli = p_cod_cliente AND s.dtped >= date_trunc('month', CURRENT_DATE)
+            WHERE s.produto = i.codigo AND s.codcli = p_cod_cliente AND s.dtped >= date_trunc('month', CURRENT_DATE)
         )
         LIMIT 4
     )
@@ -151,6 +124,44 @@ BEGIN
 END;
 $$;
 
+
+CREATE OR REPLACE FUNCTION public.sp_inovacoes_cliente(p_cod_cliente TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql STABLE
+AS $$
+DECLARE
+    v_inovacoes JSONB;
+BEGIN
+    WITH inovacoes_mes_atual AS (
+        SELECT DISTINCT s.produto
+        FROM public.data_detailed s
+        WHERE s.codcli = p_cod_cliente
+          AND s.dtped >= date_trunc('month', CURRENT_DATE)
+          AND s.tipovenda IN ('1','9')
+          AND s.vlvenda >= 1
+    ),
+    catalogo_inovacoes AS (
+        SELECT i.codigo as cod_produto, p.descricao as nome_produto, i.inovacoes as categoria_inovacao
+        FROM public.data_innovations i
+        JOIN public.dim_produtos p ON p.codigo = i.codigo
+    )
+    SELECT jsonb_build_object(
+        'positivadas', COALESCE((
+            SELECT jsonb_agg(jsonb_build_object('categoria', i.categoria_inovacao, 'produto', i.nome_produto))
+            FROM catalogo_inovacoes i
+            JOIN inovacoes_mes_atual m ON i.cod_produto = m.produto
+        ), '[]'::jsonb),
+        'oportunidades', COALESCE((
+            SELECT jsonb_agg(jsonb_build_object('categoria', i.categoria_inovacao, 'produto', i.nome_produto))
+            FROM catalogo_inovacoes i
+            LEFT JOIN inovacoes_mes_atual m ON i.cod_produto = m.produto
+            WHERE m.produto IS NULL
+        ), '[]'::jsonb)
+    ) INTO v_inovacoes;
+
+    RETURN v_inovacoes;
+END;
+$$;
 
 -- =========================================================================================
 -- VIEW: n8n_agent_view_v2 (SUPER VIEW CONSOLIDADA PARA O AGENTE ELMA V2)
