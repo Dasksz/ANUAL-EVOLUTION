@@ -842,6 +842,7 @@ create table if not exists public.data_clients (
   razaosocial text,
   fantasia text,
   ramo text,
+  ramo_atividade text,
   ultimacompra timestamp with time zone,
   bloqueio text,
   created_at timestamp with time zone default now()
@@ -863,6 +864,15 @@ BEGIN
         ALTER TABLE public.data_clients ADD COLUMN ramo text;
     END IF;
 END $$;
+
+-- Add Ramo Atividade column if it does not exist (Schema Migration)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_clients' AND column_name = 'ramo_atividade') THEN
+        ALTER TABLE public.data_clients ADD COLUMN ramo_atividade text;
+    END IF;
+END $$;
+
 
 -- Holidays Table
 create table if not exists public.data_holidays (
