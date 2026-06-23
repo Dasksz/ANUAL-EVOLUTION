@@ -29,6 +29,12 @@ DECLARE
 
     v_result json;
     v_sql text;
+
+    v_fornecedor_salty_cond text := 's.codfor IN (''707'', ''708'', ''752'')';
+    v_fornecedor_foods_cond text := 's.codfor = ''1119''';
+    v_code text;
+    v_salty_codes text[] := '{}';
+    v_foods_conds text[] := '{}';
 BEGIN
     SET LOCAL work_mem = '90MB';
 
@@ -95,17 +101,8 @@ BEGIN
     -- To ensure both KPIs always function properly independently, we will NOT filter out the base
     -- CTE by p_fornecedor here. We'll handle the p_fornecedor condition dynamically in the metrics calculation!
 
-    DECLARE
-        v_fornecedor_salty_cond text := 's.codfor IN (''707'', ''708'', ''752'')';
-        v_fornecedor_foods_cond text := 's.codfor = ''1119''';
-    BEGIN
         IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-            DECLARE
-                v_code text;
-                v_salty_codes text[] := '{}';
-                v_foods_conds text[] := '{}';
-            BEGIN
-                FOREACH v_code IN ARRAY p_fornecedor LOOP
+            FOREACH v_code IN ARRAY p_fornecedor LOOP
                     IF v_code IN ('707', '708', '752') THEN
                         v_salty_codes := array_append(v_salty_codes, v_code);
                     ELSIF v_code = '1119_TODDYNHO' THEN
@@ -135,9 +132,7 @@ BEGIN
                     -- If filtering and NO foods codes were selected, foods metrics should be strictly zeroed out
                     v_fornecedor_foods_cond := 'FALSE';
                 END IF;
-            END;
         END IF;
-    END;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.categorias) c WHERE c = ANY(%L::text[])) ', p_categoria);
