@@ -727,6 +727,7 @@ self.onmessage = async (event) => {
                 razaosocial: String(client['Cliente'] || 'N/A'),
                 fantasia: String(client['Fantasia'] || 'N/A'),
                 ramo: (client['Descricao'] && String(client['Descricao']).trim().toUpperCase() !== 'N/A' && String(client['Descricao']).trim().toUpperCase() !== 'N/D') ? String(client['Descricao']).trim().toUpperCase() : null,
+                ramo_atividade: (client['Ramo Atividade'] && String(client['Ramo Atividade']).trim().toUpperCase() !== 'N/A' && String(client['Ramo Atividade']).trim().toUpperCase() !== 'N/D') ? String(client['Ramo Atividade']).trim().toUpperCase() : null,
                 ultimacompra: ultimaCompra ? ultimaCompra.toISOString() : null,
                 bloqueio: String(client['Bloqueio'] || '').trim().toUpperCase(),
             };
