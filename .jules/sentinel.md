@@ -30,3 +30,8 @@ The new `chart_data` return block inside `get_loja_perfeita_data` relies safely 
 ## 2026-06-22 - Add Category Ranking and Total Salty Positivação in Share View
 **Learning:** Understand how `vlvenda >= 1` and `codfor IN (...)` are used to map specific business logic like 'Salty Positivação' using pure SQL aggregated via JSON to the frontend. Validated that `escapeHtml` must wrap string interpolations inside HTML mappings.
 **Action:** Always verify `codfor` constraints when adding global positive indicators (e.g. Salty vs general foods).
+## 2026-06-23 - LLM Agent Prompt State Tracking
+
+**Vulnerability:** In stateful LLM conversational flows (like the n8n Agent), strict string matching for exiting state loops (like a "Suspended" mode) can fail if the LLM interprets subsequent messages (like "You're welcome!") as invalidating the exit condition. This causes the agent to become stuck in an infinite loop of denial (e.g., repeatedly outputting "IGNORAR").
+**Learning:** LLMs analyze the *entire* recent context window. If a trigger string ("Atendimento finalizado") appears, but is immediately followed by standard conversational pleasantries, the LLM might hallucinate that the "exit" command was superseded.
+**Prevention:** Prompt instructions for exiting suspended states must explicitly instruct the LLM to search the *entire recent history* for the trigger phrase, and state that once the trigger is found, the state is *permanently* canceled for that session, regardless of any subsequent messages.
