@@ -554,7 +554,7 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                 const pesquisador = String(getVal(row, 'Pesquisador') || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '').toLowerCase();
                 const key = `${codCli}_${pesquisador}`;
 
-                const notaRaw = getVal(row, 'Nota Média') || getVal(row, 'Nota Media');
+                const notaRaw = getVal(row, 'Nota Média Total Alavancada') || getVal(row, 'Nota Media Total Alavancada') || getVal(row, 'Nota Média') || getVal(row, 'Nota Media');
                 const nota = typeof notaRaw === 'number' ? notaRaw : parseFloat(String(notaRaw || '0').replace(',', '.'));
 
                 if (isNaN(nota)) return;
