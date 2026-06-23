@@ -3,3 +3,7 @@
 **Action:** Use existing class composition and Tailwind `min-h-[value]` to create proportional empty state/chart containers alongside glass-cards styling.
 ## 2026-06-22 - Add Category Ranking and Total Salty Positivação in Share View
 Implemented a tooltip to the "Positivação Salty Total" indicator using standard Tailwind group-hover and title properties to improve clarity on what the metric signifies.
+
+## 2024-05-18 - [Styling Excel Exports using xlsx-js-style]
+**Learning:** The default SheetJS (xlsx) Community Edition doesn't support styling (like bold text, background colors, custom column width). However, replacing the default CDN import with `xlsx-js-style` allows applying rich styling formatting via the `.s` property on cells.
+**Action:** Always prefer `xlsx-js-style` if users request Excel formatting without having a paid SheetJS Pro license, and implement standard style-applying helper functions for consistency across multiple export scenarios.

@@ -389,7 +389,118 @@ let estrelasSelectedCategorias = [];
         });
     });
 
-    function getActiveExportView() {
+
+// Utility function to apply consistent styling to Excel worksheets
+
+    // Utility function to apply consistent styling to Excel worksheets
+function applyExcelStyles(ws) {
+    if (!ws['!ref']) return;
+    const range = XLSX.utils.decode_range(ws['!ref']);
+
+    // Auto-fit columns logic
+    const colWidths = [];
+
+    let titleRowIndex = -1;
+    let headerRowIndex = range.s.r;
+
+    // Check if first row is a title row (like Positivação Salty Total)
+    const firstCell = ws[XLSX.utils.encode_cell({ r: range.s.r, c: range.s.c })];
+    if (firstCell && typeof firstCell.v === 'string' && firstCell.v.includes("Positivação Salty Total")) {
+        titleRowIndex = range.s.r;
+        headerRowIndex = range.s.r + 1;
+    }
+
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+        let maxLen = 0;
+
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+            const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+            const cell = ws[cellAddress];
+
+            if (!cell) continue;
+
+            if (R === titleRowIndex) {
+                // Title row for Ranking de Categorias
+                cell.s = {
+                    font: { bold: true, sz: 14, color: { rgb: "333333" } },
+                    alignment: { vertical: "center", horizontal: "center" }
+                };
+            } else if (R === headerRowIndex) {
+                // Header row
+                cell.s = {
+                    font: { bold: true, color: { rgb: "FFFFFF" } },
+                    fill: { fgColor: { rgb: "4F81BD" } },
+                    alignment: { vertical: "center", horizontal: "center" },
+                    border: {
+                        top: { style: "thin", color: { rgb: "CCCCCC" } },
+                        bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+                        left: { style: "thin", color: { rgb: "CCCCCC" } },
+                        right: { style: "thin", color: { rgb: "CCCCCC" } }
+                    }
+                };
+            } else {
+                // Data rows
+                let isNumber = typeof cell.v === 'number';
+                let isPercentage = false;
+
+                if (typeof cell.v === 'string') {
+                    // Try to coerce strings that are percentages
+                    if (cell.v.endsWith('%')) {
+                        const parsed = parseFloat(cell.v.replace('%', '').replace(',', '.'));
+                        if (!isNaN(parsed)) {
+                            isNumber = true;
+                            isPercentage = true;
+                            cell.v = parsed / 100;
+                            cell.t = 'n';
+                        }
+                    } else if (/^[0-9.,-]+$/.test(cell.v.trim())) {
+                         if (!isNaN(parseFloat(cell.v.replace(/\\./g, '').replace(',', '.'))) && !isNaN(cell.v.replace(/[.,]/g, ''))) {
+                             isNumber = true;
+                         }
+                    }
+                }
+
+                // Base style for data cell
+                let cellStyle = {
+                    alignment: { vertical: "center" },
+                    border: {
+                        top: { style: "thin", color: { rgb: "E5E7EB" } },
+                        bottom: { style: "thin", color: { rgb: "E5E7EB" } },
+                        left: { style: "thin", color: { rgb: "E5E7EB" } },
+                        right: { style: "thin", color: { rgb: "E5E7EB" } }
+                    }
+                };
+
+                if (isNumber) {
+                    cellStyle.font = { italic: true, color: { rgb: "333333" } };
+                    cellStyle.alignment.horizontal = "right";
+                } else if (typeof cell.v === 'string') {
+                    cellStyle.font = { bold: true, color: { rgb: "1F2937" } };
+                    cellStyle.alignment.horizontal = "left";
+                }
+
+                if(isPercentage) {
+                   cellStyle.numFmt = "0.0%";
+                }
+
+                cell.s = cellStyle;
+            }
+
+            // Calculate column width based on content length
+            let cellText = cell.v ? String(cell.v) : "";
+            if (R === titleRowIndex) cellText = ""; // Don't let title row define column width
+            if (cellText.length > maxLen) {
+                maxLen = cellText.length;
+            }
+        }
+
+        // Add some padding to the width
+        colWidths[C] = { wch: maxLen + 2 };
+    }
+
+    ws['!cols'] = colWidths;
+}
+function getActiveExportView() {
         let activeView = null;
         let viewName = 'Export';
         const views = [
@@ -449,6 +560,25 @@ let estrelasSelectedCategorias = [];
                     const hiddenRows = clonedTable.querySelectorAll('.hidden, [style*="display: none"]');
                     hiddenRows.forEach(row => row.parentNode.removeChild(row));
                     
+
+                    // Add "Positivação Salty Total" for Ranking de Categorias
+                    if (table.id === 'city-category-ranking-table') {
+                        const elTotalSalty = document.getElementById('city-total-salty-pos');
+                        if (elTotalSalty && elTotalSalty.textContent) {
+                            const thead = clonedTable.querySelector('thead');
+                            if (thead) {
+                                const tr = document.createElement('tr');
+                                const th = document.createElement('th');
+                                th.colSpan = 3; // There are 3 columns in this table
+                                th.textContent = `Positivação Salty Total: ${elTotalSalty.textContent}`;
+                                // Let's add a special class so we can style it in applyExcelStyles
+                                th.className = 'excel-title-row';
+                                tr.appendChild(th);
+                                thead.insertBefore(tr, thead.firstChild);
+                            }
+                        }
+                    }
+
                     // Sanitize text if there are icons or complex formatting
                     const thTdElements = clonedTable.querySelectorAll('th, td');
                     thTdElements.forEach(cell => {
@@ -462,6 +592,9 @@ let estrelasSelectedCategorias = [];
                     // Generate worksheet
                     const ws = XLSX.utils.table_to_sheet(clonedTable, { raw: true });
                     
+                    // Apply styles
+                    applyExcelStyles(ws);
+
                     // Name the sheet
                     let sheetName = `Tabela ${sheetCounter}`;
                     // Attempt to find a title above the table
@@ -2845,6 +2978,9 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             
             // Append Data starting at row after filters
             XLSX.utils.sheet_add_json(ws, reportData, { origin: -1 });
+
+            // Apply styles
+            applyExcelStyles(ws);
 
             // Append sheet
             XLSX.utils.book_append_sheet(wb, ws, "Produtos");
