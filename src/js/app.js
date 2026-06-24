@@ -1,5 +1,7 @@
 import supabase from './supabase.js?v=3';
-import { SUPABASE_KEY } from "./config.js";
+// import { SUPABASE_KEY } from "./config.js";
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhd3JkcXJlaWJobGZzZnZ4YnB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwNzg1MTAsImV4cCI6MjA4MjY1NDUxMH0.-mAobZK_dc3QOwey3Z8NbrtybWPoPRfBqW_IN0gehl8';
+
 import {
     generateYearOptionsHtml,
     generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
@@ -9901,13 +9903,19 @@ async function syncIbgePopulations() {
         }
 
         const ibgeSeries = data[0].resultados[0].series;
-        const normalizeStr = (str) => str.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
+        const normalizeStr = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
 
         const updates = [];
         for (const city of staleCities) {
             const normalizedCityName = normalizeStr(city.cidade);
             // find in IBGE
-            const ibgeMatch = ibgeSeries.find(s => normalizeStr(s.localidade.nome) === normalizedCityName);
+            const ibgeMatch = ibgeSeries.find(s => {
+                let ibgeName = normalizeStr(s.localidade.nome);
+                if (ibgeName.endsWith(" - BA")) {
+                    ibgeName = ibgeName.substring(0, ibgeName.length - 5);
+                }
+                return ibgeName === normalizedCityName;
+            });
             if (ibgeMatch && ibgeMatch.serie && ibgeMatch.serie['2022']) {
                 updates.push({
                     id: city.id,
