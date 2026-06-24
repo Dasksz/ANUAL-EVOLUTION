@@ -985,12 +985,30 @@ CREATE INDEX IF NOT EXISTS idx_freq_partial_agg_metrics ON public.data_summary_f
 CREATE INDEX IF NOT EXISTS idx_freq_partial_skus ON public.data_summary_frequency (ano, mes, codusur, codcli) INCLUDE (produtos, tipovenda) WHERE tipovenda NOT IN ('5', '11');
 CREATE INDEX IF NOT EXISTS idx_freq_chart_metrics ON public.data_summary_frequency (ano, mes) INCLUDE (pedido, codcli, vlvenda, tipovenda) WHERE tipovenda NOT IN ('5', '11');
 
+
+CREATE TABLE IF NOT EXISTS public.config_magic_number (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    magic_number numeric NOT NULL DEFAULT 700,
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+-- Inserir um registro inicial se não existir
+INSERT INTO public.config_magic_number (magic_number)
+SELECT 700
+WHERE NOT EXISTS (SELECT 1 FROM public.config_magic_number);
+
+ALTER TABLE public.config_magic_number ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.config_magic_number TO authenticated;
+GRANT SELECT ON public.config_magic_number TO anon;
+
 CREATE TABLE IF NOT EXISTS public.config_city_branches (
     id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
     cidade text NOT NULL UNIQUE,
     filial text, 
     updated_at timestamp with time zone DEFAULT now(),
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    population INTEGER DEFAULT 0,
+    population_updated_at TIMESTAMP WITH TIME ZONE
 );
 ALTER TABLE public.config_city_branches ENABLE ROW LEVEL SECURITY;
 
@@ -5603,6 +5621,79 @@ LEFT JOIN mix_mensal mm ON pa.codcli = mm.codcli AND pa.ano = mm.ano AND pa.mes 
 LEFT JOIN public.dim_vendedores v ON pa.vendedor_cod = v.codigo
 LEFT JOIN public.dim_supervisores s ON pa.supervisor_cod = s.codigo;
 
+
+CREATE OR REPLACE FUNCTION get_city_positivity_table(
+    p_ano text,
+    p_quarter int
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_magic_number numeric;
+    v_mes_1 text;
+    v_mes_2 text;
+    v_mes_3 text;
+BEGIN
+    SELECT magic_number INTO v_magic_number FROM public.config_magic_number LIMIT 1;
+    IF v_magic_number IS NULL OR v_magic_number = 0 THEN
+        v_magic_number := 700;
+    END IF;
+
+    IF p_quarter = 1 THEN
+        v_mes_1 := '01'; v_mes_2 := '02'; v_mes_3 := '03';
+    ELSIF p_quarter = 2 THEN
+        v_mes_1 := '04'; v_mes_2 := '05'; v_mes_3 := '06';
+    ELSIF p_quarter = 3 THEN
+        v_mes_1 := '07'; v_mes_2 := '08'; v_mes_3 := '09';
+    ELSE
+        v_mes_1 := '10'; v_mes_2 := '11'; v_mes_3 := '12';
+    END IF;
+
+    RETURN (
+        WITH base_vendas AS (
+            SELECT
+                dc.cidade,
+                ds.mes,
+                ds.codcli
+            FROM public.data_summary ds
+            JOIN public.data_clients dc ON ds.codcli = dc.codigo_cliente
+            WHERE ds.ano = p_ano
+              AND ds.mes IN (v_mes_1, v_mes_2, v_mes_3)
+              AND ds.tipovenda NOT IN ('5', '11')
+              AND ds.codfor NOT IN ('707', '708', '752')
+            GROUP BY dc.cidade, ds.mes, ds.codcli
+            HAVING SUM(ds.vlvenda) >= 1
+        ),
+        pos_por_cidade_mes AS (
+            SELECT
+                cidade,
+                mes,
+                COUNT(DISTINCT codcli) as pos
+            FROM base_vendas
+            GROUP BY cidade, mes
+        )
+        SELECT json_agg(row_to_json(final_data))
+        FROM (
+            SELECT
+                cb.cidade,
+                COALESCE(cb.population, 0) as population,
+                v_magic_number as magic_number_divisor,
+                CASE WHEN COALESCE(cb.population, 0) > 0 THEN ROUND(cb.population / v_magic_number) ELSE 0 END as magic_number,
+                COALESCE(MAX(CASE WHEN pos.mes = v_mes_1 THEN pos.pos ELSE 0 END), 0) as m1_pos,
+                COALESCE(MAX(CASE WHEN pos.mes = v_mes_2 THEN pos.pos ELSE 0 END), 0) as m2_pos,
+                COALESCE(MAX(CASE WHEN pos.mes = v_mes_3 THEN pos.pos ELSE 0 END), 0) as m3_pos
+            FROM public.config_city_branches cb
+            LEFT JOIN pos_por_cidade_mes pos ON cb.cidade = pos.cidade
+            GROUP BY cb.cidade, cb.population
+            ORDER BY cb.cidade
+        ) final_data
+    );
+END;
+$$;
+
 REVOKE ALL ON public.n8n_agent_view FROM anon, authenticated;
 GRANT SELECT ON public.n8n_agent_view TO service_role;
 
@@ -5750,6 +5841,79 @@ CREATE INDEX IF NOT EXISTS idx_n8n_agent_view_pedido ON public.n8n_agent_view (n
 CREATE INDEX IF NOT EXISTS idx_n8n_agent_view_tipo ON public.n8n_agent_view (tipo_venda_pedido);
 
 /* Permissoes */
+
+CREATE OR REPLACE FUNCTION get_city_positivity_table(
+    p_ano text,
+    p_quarter int
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_magic_number numeric;
+    v_mes_1 text;
+    v_mes_2 text;
+    v_mes_3 text;
+BEGIN
+    SELECT magic_number INTO v_magic_number FROM public.config_magic_number LIMIT 1;
+    IF v_magic_number IS NULL OR v_magic_number = 0 THEN
+        v_magic_number := 700;
+    END IF;
+
+    IF p_quarter = 1 THEN
+        v_mes_1 := '01'; v_mes_2 := '02'; v_mes_3 := '03';
+    ELSIF p_quarter = 2 THEN
+        v_mes_1 := '04'; v_mes_2 := '05'; v_mes_3 := '06';
+    ELSIF p_quarter = 3 THEN
+        v_mes_1 := '07'; v_mes_2 := '08'; v_mes_3 := '09';
+    ELSE
+        v_mes_1 := '10'; v_mes_2 := '11'; v_mes_3 := '12';
+    END IF;
+
+    RETURN (
+        WITH base_vendas AS (
+            SELECT
+                dc.cidade,
+                ds.mes,
+                ds.codcli
+            FROM public.data_summary ds
+            JOIN public.data_clients dc ON ds.codcli = dc.codigo_cliente
+            WHERE ds.ano = p_ano
+              AND ds.mes IN (v_mes_1, v_mes_2, v_mes_3)
+              AND ds.tipovenda NOT IN ('5', '11')
+              AND ds.codfor NOT IN ('707', '708', '752')
+            GROUP BY dc.cidade, ds.mes, ds.codcli
+            HAVING SUM(ds.vlvenda) >= 1
+        ),
+        pos_por_cidade_mes AS (
+            SELECT
+                cidade,
+                mes,
+                COUNT(DISTINCT codcli) as pos
+            FROM base_vendas
+            GROUP BY cidade, mes
+        )
+        SELECT json_agg(row_to_json(final_data))
+        FROM (
+            SELECT
+                cb.cidade,
+                COALESCE(cb.population, 0) as population,
+                v_magic_number as magic_number_divisor,
+                CASE WHEN COALESCE(cb.population, 0) > 0 THEN ROUND(cb.population / v_magic_number) ELSE 0 END as magic_number,
+                COALESCE(MAX(CASE WHEN pos.mes = v_mes_1 THEN pos.pos ELSE 0 END), 0) as m1_pos,
+                COALESCE(MAX(CASE WHEN pos.mes = v_mes_2 THEN pos.pos ELSE 0 END), 0) as m2_pos,
+                COALESCE(MAX(CASE WHEN pos.mes = v_mes_3 THEN pos.pos ELSE 0 END), 0) as m3_pos
+            FROM public.config_city_branches cb
+            LEFT JOIN pos_por_cidade_mes pos ON cb.cidade = pos.cidade
+            GROUP BY cb.cidade, cb.population
+            ORDER BY cb.cidade
+        ) final_data
+    );
+END;
+$$;
+
 REVOKE ALL ON public.n8n_agent_view FROM anon, authenticated;
 GRANT SELECT ON public.n8n_agent_view TO service_role;
 

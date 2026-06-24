@@ -30,3 +30,5 @@ The new `chart_data` return block inside `get_loja_perfeita_data` relies safely 
 ## 2026-06-22 - Add Category Ranking and Total Salty Positivação in Share View
 **Learning:** Understand how `vlvenda >= 1` and `codfor IN (...)` are used to map specific business logic like 'Salty Positivação' using pure SQL aggregated via JSON to the frontend. Validated that `escapeHtml` must wrap string interpolations inside HTML mappings.
 **Action:** Always verify `codfor` constraints when adding global positive indicators (e.g. Salty vs general foods).
+## 2024-06-23 - Edge/API Function Safety
+**Learnings:** When adding synchronization features to external APIs (e.g. IBGE populations), ensure fallbacks exist and the sync operates gracefully even if the external service fails or rate-limits requests, maintaining app usability and respecting error states.
