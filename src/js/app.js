@@ -1,4 +1,4 @@
-import supabase from './supabase.js?v=3';
+import supabase from './supabase.js?v=3'; 
 import { SUPABASE_KEY } from "./config.js";
 import {
     generateYearOptionsHtml,
