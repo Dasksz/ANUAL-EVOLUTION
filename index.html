@@ -1823,9 +1823,11 @@
                             </div>
                          </div>
 
-                         <!-- Ranking de Categorias -->
-                         <div class="grid grid-cols-10 gap-4 mt-6">
-                            <div class="col-span-10 lg:col-span-7 bg-[#151419] p-4 rounded-lg border border-white/10 flex flex-col">
+
+                         <!-- Ranking de Categorias e Positivação por Cidades -->
+                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
+                            <!-- Ranking de Categorias -->
+                            <div class="bg-[#151419] p-4 rounded-lg border border-white/10 flex flex-col">
                              <div class="flex justify-between items-center mb-4 px-4">
                                  <h3 class="text-lg font-semibold text-white">Ranking de Categorias</h3>
                                  <div class="text-sm font-medium text-slate-300 flex items-center group relative cursor-help" title="Total de clientes distintos que compraram produtos Salty no período (Faturamento >= 1).">
@@ -1847,7 +1849,46 @@
                                  </table>
                              </div>
                             </div>
+                            
+                            <!-- Positivação por Cidades -->
+                            <div class="bg-[#151419] p-4 rounded-lg border border-white/10 flex flex-col">
+                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 px-4 gap-2">
+                                 <h3 class="text-lg font-semibold text-white">Positivação por Cidades</h3>
+                                 <div class="flex items-center space-x-2">
+                                     <label for="city-positivity-quarter" class="text-sm text-slate-400">Quarter:</label>
+                                     <select id="city-positivity-quarter" class="bg-[#1c1b22] border border-white/10 rounded-md text-sm text-white py-1 px-2 focus:ring-[#1c84c6] focus:border-[#1c84c6] transition-colors">
+                                         <option value="1">1º Quarter (Jan-Mar)</option>
+                                         <option value="2">2º Quarter (Abr-Jun)</option>
+                                         <option value="3">3º Quarter (Jul-Set)</option>
+                                         <option value="4">4º Quarter (Out-Dez)</option>
+                                     </select>
+                                 </div>
+                             </div>
+                             <div class="overflow-x-auto custom-scrollbar flex-1" style="max-height: 40vh;">
+                                 <table id="city-positivity-table" class="min-w-full text-sm text-left text-slate-300">
+                                     <thead class="text-xs text-slate-300 uppercase sticky-header bg-[#1c1b22]">
+                                         <tr>
+                                             <th rowspan="2" class="px-4 py-3 border-r border-white/10 align-middle">Cidade</th>
+                                             <th rowspan="2" class="px-4 py-3 text-right border-r border-white/10 align-middle" title="População">POP</th>
+                                             <th colspan="2" class="px-4 py-1 text-center border-b border-r border-white/10">Número Mágico</th>
+                                             <th colspan="3" class="px-4 py-1 text-center border-b border-white/10">Meses</th>
+                                         </tr>
+                                         <tr>
+                                             <th class="px-2 py-2 text-right">PRIME</th>
+                                             <th id="th-magic-number" class="px-2 py-2 text-right border-r border-white/10" title="Divisor">PEP 700</th>
+                                             <th id="th-m1" class="px-2 py-2 text-center w-12">M1</th>
+                                             <th id="th-m2" class="px-2 py-2 text-center w-12">M2</th>
+                                             <th id="th-m3" class="px-2 py-2 text-center w-12">M3</th>
+                                         </tr>
+                                     </thead>
+                                     <tbody id="city-positivity-table-body" class="divide-y divide-slate-700">
+                                        <tr><td colspan="7" class="p-4 text-center text-slate-500">Carregando...</td></tr>
+                                     </tbody>
+                                 </table>
+                             </div>
+                            </div>
                          </div>
+
                     </div>
                 <!-- INNOVATIONS VIEW PLACEHOLDER -->
 <div id="innovations-month-view" class="hidden container mx-auto p-4 max-w-7xl animate-fade-in-up">

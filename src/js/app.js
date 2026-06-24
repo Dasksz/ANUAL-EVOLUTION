@@ -4768,7 +4768,16 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         }, 500);
     };
 
-    if (cityAnoFilter) cityAnoFilter.addEventListener('change', handleCityFilterChange);
+    if (cityAnoFilter) 
+        const quarterSelect = document.getElementById('city-positivity-quarter');
+        if (quarterSelect) {
+            const currentMonth = new Date().getMonth();
+            const currentQuarter = Math.floor(currentMonth / 3) + 1;
+            quarterSelect.value = currentQuarter.toString();
+            quarterSelect.addEventListener('change', () => loadCityPositivityTable());
+        }
+
+        cityAnoFilter.addEventListener('change', handleCityFilterChange);
     if (cityMesFilter) cityMesFilter.addEventListener('change', handleCityFilterChange);
 
     if (cityClearFiltersBtn) {
@@ -4967,6 +4976,9 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         renderTable('city-active-detail-table-body', activeClients);
         renderRankingTable('city-ranking-table-body', cityRanking);
         renderCategoryRankingTable('city-category-ranking-table-body', categoryRanking);
+
+        loadCityPositivityTable();
+
 
         renderCityPaginationControls();
     }
@@ -9854,5 +9866,76 @@ async function updateAgendaView() {
     } finally {
         const overlay = document.getElementById('dashboard-loading-overlay');
         if (overlay) overlay.classList.add('hidden');
+    }
+}
+
+
+// --- CITIES POSITIVITY TABLE & IBGE SYNC ---
+async function syncIbgePopulations() {
+    try {
+        const { data: cities, error } = await supabase
+            .from('config_city_branches')
+            .select('id, cidade, population, population_updated_at');
+        
+        if (error) {
+            AppLog.error('Error fetching cities for IBGE sync:', error);
+            return;
+        }
+
+        if (!cities || cities.length === 0) return;
+
+        const now = new Date();
+        const staleCities = cities.filter(c => !c.population_updated_at || (now - new Date(c.population_updated_at)) > (60 * 24 * 60 * 60 * 1000));
+        
+        if (staleCities.length === 0) return; // All up to date
+        
+        AppLog.info(`Syncing population for ${staleCities.length} cities via IBGE...`);
+        
+        // Fetch from IBGE (Bahia -> 29, using the most recent census 2022 aggregate 4709)
+        const response = await fetch('https://servicodados.ibge.gov.br/api/v3/agregados/4709/periodos/2022/variaveis/93?localidades=N6[N3[29]]');
+        if (!response.ok) throw new Error('Failed to fetch IBGE data');
+        const data = await response.json();
+        
+        if (!data || !data[0] || !data[0].resultados || !data[0].resultados[0] || !data[0].resultados[0].series) {
+             throw new Error('Unexpected IBGE data format');
+        }
+
+        const ibgeSeries = data[0].resultados[0].series;
+        const normalizeStr = (str) => str.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
+        
+        const updates = [];
+        for (const city of staleCities) {
+            const normalizedCityName = normalizeStr(city.cidade);
+            // find in IBGE
+            const ibgeMatch = ibgeSeries.find(s => normalizeStr(s.localidade.nome.split(' - ')[0]) === normalizedCityName);
+            if (ibgeMatch && ibgeMatch.serie && ibgeMatch.serie['2022']) {
+                updates.push({
+                    id: city.id,
+                    cidade: city.cidade,
+                    population: parseInt(ibgeMatch.serie['2022'], 10) || 0,
+                    population_updated_at: new Date().toISOString()
+                });
+            } else {
+                 updates.push({
+                    id: city.id,
+                    cidade: city.cidade,
+                    population_updated_at: new Date().toISOString() // mark as updated even if not found to prevent constant retries
+                });
+            }
+        }
+
+        if (updates.length > 0) {
+            // Upsert in batches of 100 to avoid limits
+            const BATCH_SIZE = 100;
+            for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+                const batch = updates.slice(i, i + BATCH_SIZE);
+                const { error: upsertErr } = await supabase.from('config_city_branches').upsert(batch, { onConflict: 'id' });
+                if (upsertErr) AppLog.error('Error updating IBGE populations batch:', upsertErr);
+            }
+            AppLog.info('IBGE population sync completed.');
+        }
+
+    } catch(e) {
+        AppLog.error('Error in syncIbgePopulations', e);
     }
 }
