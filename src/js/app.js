@@ -4768,16 +4768,16 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         }, 500);
     };
 
-    if (cityAnoFilter) 
-        const quarterSelect = document.getElementById('city-positivity-quarter');
-        if (quarterSelect) {
-            const currentMonth = new Date().getMonth();
-            const currentQuarter = Math.floor(currentMonth / 3) + 1;
-            quarterSelect.value = currentQuarter.toString();
-            quarterSelect.addEventListener('change', () => loadCityPositivityTable());
-        }
-
+    if (cityAnoFilter) {
         cityAnoFilter.addEventListener('change', handleCityFilterChange);
+    }
+    const quarterSelect = document.getElementById('city-positivity-quarter');
+    if (quarterSelect) {
+        const currentMonth = new Date().getMonth();
+        const currentQuarter = Math.floor(currentMonth / 3) + 1;
+        quarterSelect.value = currentQuarter.toString();
+        quarterSelect.addEventListener('change', () => loadCityPositivityTable());
+    }
     if (cityMesFilter) cityMesFilter.addEventListener('change', handleCityFilterChange);
 
     if (cityClearFiltersBtn) {
