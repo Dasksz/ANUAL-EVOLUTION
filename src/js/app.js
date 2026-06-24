@@ -1,5 +1,5 @@
 import supabase from './supabase.js?v=3';
-import { SUPABASE_KEY } from "./config.js"; 
+import { SUPABASE_KEY } from "./config.js";
 import {
     generateYearOptionsHtml,
     generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
@@ -9907,7 +9907,7 @@ async function syncIbgePopulations() {
         for (const city of staleCities) {
             const normalizedCityName = normalizeStr(city.cidade);
             // find in IBGE
-            const ibgeMatch = ibgeSeries.find(s => normalizeStr(s.localidade.nome.split(' - ')[0]) === normalizedCityName);
+            const ibgeMatch = ibgeSeries.find(s => normalizeStr(s.localidade.nome) === normalizedCityName);
             if (ibgeMatch && ibgeMatch.serie && ibgeMatch.serie['2022']) {
                 updates.push({
                     id: city.id,
@@ -9939,3 +9939,99 @@ async function syncIbgePopulations() {
         AppLog.error('Error in syncIbgePopulations', e);
     }
 }
+
+
+    // --- Positivação por Cidades ---
+    async function loadCityPositivityTable() {
+        const quarterSelect = document.getElementById('city-positivity-quarter');
+        const yearSelect = document.getElementById('city-filter-ano');
+        const body = document.getElementById('city-positivity-table-body');
+        const thMagic = document.getElementById('th-magic-number');
+        const thM1 = document.getElementById('th-m1');
+        const thM2 = document.getElementById('th-m2');
+        const thM3 = document.getElementById('th-m3');
+
+        if (!quarterSelect || !yearSelect || !body) return;
+
+        const quarter = parseInt(quarterSelect.value, 10);
+        const year = yearSelect.value || new Date().getFullYear().toString();
+        
+        if (year === 'todos') {
+            body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Selecione um ano específico para ver a positivação.</td></tr>';
+            return;
+        }
+
+        body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Carregando...</td></tr>';
+
+        const monthNames = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+        const startMonthIdx = (quarter - 1) * 3;
+        
+        thM1.textContent = monthNames[startMonthIdx];
+        thM2.textContent = monthNames[startMonthIdx + 1];
+        thM3.textContent = monthNames[startMonthIdx + 2];
+
+        try {
+            const { data, error } = await supabase.rpc('get_city_positivity_table', {
+                p_ano: year,
+                p_quarter: quarter
+            });
+
+            if (error) {
+                AppLog.error('Error fetching city positivity data:', error);
+                body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-red-500">Erro ao carregar dados.</td></tr>';
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum dado encontrado para o período.</td></tr>';
+                return;
+            }
+
+            let divisor = 700;
+            if (data[0] && data[0].magic_number_divisor) {
+                 divisor = data[0].magic_number_divisor;
+                 thMagic.textContent = `PEP ${divisor}`;
+                 thMagic.title = `Divisor: ${divisor}`;
+            }
+
+            let totalM1 = 0, totalM2 = 0, totalM3 = 0, totalMagic = 0, totalPrime = 0;
+
+            const rowsHtml = data.map(row => {
+                totalM1 += row.m1_pos || 0;
+                totalM2 += row.m2_pos || 0;
+                totalM3 += row.m3_pos || 0;
+                totalMagic += row.magic_number || 0;
+                totalPrime += row.m1_pos + row.m2_pos + row.m3_pos; // simple sum for prime, or just use 0 if not needed
+                
+                return `
+                    <tr class="hover:bg-white/5 transition-colors group">
+                        <td class="px-4 py-2 border-r border-white/10 font-medium text-white">${escapeHtml(row.cidade)}</td>
+                        <td class="px-4 py-2 text-right border-r border-white/10 text-slate-300">${(row.population || 0).toLocaleString('pt-BR')}</td>
+                        <td class="px-4 py-2 text-right text-slate-400">0</td>
+                        <td class="px-4 py-2 text-right border-r border-white/10 font-medium text-emerald-400">${(row.magic_number || 0).toLocaleString('pt-BR')}</td>
+                        <td class="px-4 py-2 text-center text-slate-300">${row.m1_pos || 0}</td>
+                        <td class="px-4 py-2 text-center text-slate-300">${row.m2_pos || 0}</td>
+                        <td class="px-4 py-2 text-center text-slate-300">${row.m3_pos || 0}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const totalHtml = `
+                <tr class="bg-[#1c1b22] font-bold text-white">
+                    <td class="px-4 py-3 border-r border-white/10 text-right uppercase">Total:</td>
+                    <td class="px-4 py-3 text-right border-r border-white/10"></td>
+                    <td class="px-4 py-3 text-right">0</td>
+                    <td class="px-4 py-3 text-right border-r border-white/10 text-emerald-400">${totalMagic.toLocaleString('pt-BR')}</td>
+                    <td class="px-4 py-3 text-center">${totalM1.toLocaleString('pt-BR')}</td>
+                    <td class="px-4 py-3 text-center">${totalM2.toLocaleString('pt-BR')}</td>
+                    <td class="px-4 py-3 text-center">${totalM3.toLocaleString('pt-BR')}</td>
+                </tr>
+            `;
+
+            body.innerHTML = rowsHtml + totalHtml;
+
+        } catch (e) {
+            AppLog.error('Exception loading city positivity table:', e);
+            body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-red-500">Erro inesperado.</td></tr>';
+        }
+    }
