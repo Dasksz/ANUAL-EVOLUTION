@@ -355,3 +355,26 @@ export function showToast(type, message, title = '') {
 
     container.appendChild(toast);
 };
+
+/**
+ * Resets date dropdowns to a specified year and month.
+ * Checks if the year option exists before setting it.
+ * Dispatches change events.
+ *
+ * @param {HTMLSelectElement} anoSelect - The year select element
+ * @param {HTMLSelectElement} mesSelect - The month select element
+ * @param {string} currentYear - The target year
+ * @param {string} currentMonth - The target month
+ * @param {string} defaultYear - The fallback year if target is not found (default 'todos')
+ */
+export function resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMonth, defaultYear = 'todos') {
+    if (anoSelect) {
+        let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
+        anoSelect.value = hasYear ? currentYear : defaultYear;
+        anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (mesSelect) {
+        mesSelect.value = currentMonth;
+        mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+}
