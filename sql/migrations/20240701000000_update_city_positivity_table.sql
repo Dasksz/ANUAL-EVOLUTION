@@ -7,6 +7,7 @@ CREATE OR REPLACE FUNCTION public.get_city_positivity_table(
     p_vendedor text[] default null,
     p_fornecedor text[] default null,
     p_tipovenda text[] default null,
+    p_segmentacao text[] default null,
     p_rede text[] default null,
     p_categoria text[] default null
 )
@@ -28,7 +29,7 @@ DECLARE
     v_rede_condition text := '';
     v_sql text;
     v_result json;
-    v_has_filters boolean := false;
+    v_has_filters_no_city boolean := false;
 BEGIN
     SELECT magic_number INTO v_magic_number FROM public.config_magic_number LIMIT 1;
     IF v_magic_number IS NULL OR v_magic_number = 0 THEN
@@ -58,37 +59,41 @@ BEGIN
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where := v_where || format(' AND ds.filial = ANY(%L) ', p_filial);
         v_where_base_cidades := v_where_base_cidades || format(' AND ds.filial = ANY(%L) ', p_filial);
-        v_has_filters := true;
+        v_has_filters_no_city := true;
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where := v_where || format(' AND dc.cidade = ANY(%L) ', p_cidade);
         v_where_base_cidades := v_where_base_cidades || format(' AND dc.cidade = ANY(%L) ', p_cidade);
-        v_has_filters := true;
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where := v_where || format(' AND ds.codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
         v_where_base_cidades := v_where_base_cidades || format(' AND ds.codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
-        v_has_filters := true;
+        v_has_filters_no_city := true;
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
         v_where := v_where || format(' AND ds.codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
         v_where_base_cidades := v_where_base_cidades || format(' AND ds.codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
-        v_has_filters := true;
+        v_has_filters_no_city := true;
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_where := v_where || format(' AND ds.codfor = ANY(%L) ', p_fornecedor);
         v_where_base_cidades := v_where_base_cidades || format(' AND ds.codfor = ANY(%L) ', p_fornecedor);
-        v_has_filters := true;
+        v_has_filters_no_city := true;
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where := v_where || format(' AND ds.tipovenda = ANY(%L) ', p_tipovenda);
         v_where_base_cidades := v_where_base_cidades || format(' AND ds.tipovenda = ANY(%L) ', p_tipovenda);
-        v_has_filters := true;
+        v_has_filters_no_city := true;
+    END IF;
+    IF p_segmentacao IS NOT NULL AND array_length(p_segmentacao, 1) > 0 THEN
+        v_where := v_where || format(' AND dc.ramo_atividade = ANY(%L) ', p_segmentacao);
+        v_where_base_cidades := v_where_base_cidades || format(' AND dc.ramo_atividade = ANY(%L) ', p_segmentacao);
+        v_has_filters_no_city := true;
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where := v_where || format(' AND ds.categoria_produto = ANY(%L) ', p_categoria);
         v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto = ANY(%L) ', p_categoria);
-        v_has_filters := true;
+        v_has_filters_no_city := true;
     END IF;
 
     -- REDE Logic
@@ -115,7 +120,7 @@ BEGIN
            v_where := v_where || ' AND (' || v_rede_condition || ') ';
            v_where_base_cidades := v_where_base_cidades || ' AND (' || v_rede_condition || ') ';
        END IF;
-       v_has_filters := true;
+       v_has_filters_no_city := true;
     END IF;
 
     -- Add Quarter month filters ONLY to v_where
@@ -125,7 +130,7 @@ BEGIN
         WITH base_cidades AS (
             SELECT cb.cidade, COALESCE(cb.population, 0) as population
             FROM public.config_city_branches cb
-            ' || CASE WHEN v_has_filters THEN '
+            ' || CASE WHEN v_has_filters_no_city OR (p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0) THEN '
             WHERE cb.cidade IN (
                 SELECT DISTINCT dc.cidade
                 FROM public.data_summary ds
@@ -152,6 +157,13 @@ BEGIN
                 COUNT(DISTINCT codcli) as pos
             FROM base_vendas
             GROUP BY cidade, mes
+        ),
+        pos_acumulada_por_cidade AS (
+            SELECT
+                cidade,
+                COUNT(DISTINCT codcli) as acm
+            FROM base_vendas
+            GROUP BY cidade
         )
         SELECT COALESCE(json_agg(row_to_json(final_data)), ''[]''::json)
         FROM (
@@ -160,12 +172,15 @@ BEGIN
                 bc.population,
                 ' || v_magic_number || ' as magic_number_divisor,
                 CASE WHEN bc.population > 0 THEN ROUND(bc.population / ' || v_magic_number || ') ELSE 0 END as magic_number,
+                COALESCE(acm.acm, 0) as acm,
                 COALESCE(MAX(CASE WHEN pos.mes = ''' || v_mes_1 || ''' THEN pos.pos ELSE 0 END), 0) as m1_pos,
                 COALESCE(MAX(CASE WHEN pos.mes = ''' || v_mes_2 || ''' THEN pos.pos ELSE 0 END), 0) as m2_pos,
                 COALESCE(MAX(CASE WHEN pos.mes = ''' || v_mes_3 || ''' THEN pos.pos ELSE 0 END), 0) as m3_pos
             FROM base_cidades bc
             LEFT JOIN pos_por_cidade_mes pos ON bc.cidade = pos.cidade
-            GROUP BY bc.cidade, bc.population
+            LEFT JOIN pos_acumulada_por_cidade acm ON bc.cidade = acm.cidade
+            GROUP BY bc.cidade, bc.population, acm.acm
+            ' || CASE WHEN v_has_filters_no_city THEN 'HAVING COALESCE(MAX(CASE WHEN pos.mes = ''' || v_mes_1 || ''' THEN pos.pos ELSE 0 END), 0) > 0 OR COALESCE(MAX(CASE WHEN pos.mes = ''' || v_mes_2 || ''' THEN pos.pos ELSE 0 END), 0) > 0 OR COALESCE(MAX(CASE WHEN pos.mes = ''' || v_mes_3 || ''' THEN pos.pos ELSE 0 END), 0) > 0' ELSE '' END || '
             ORDER BY bc.cidade
         ) final_data;
     ';
