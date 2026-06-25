@@ -4893,7 +4893,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         const year = yearSelect.value || new Date().getFullYear().toString();
         
         if (year === 'todos') {
-            body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Selecione um ano específico para ver a positivação.</td></tr>';
+            body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Selecione um ano específico para ver a positivação.</td></tr>';
             return;
         }
 
@@ -4925,12 +4925,12 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
             if (error) {
                 AppLog.error('Error fetching city positivity data:', error);
-                body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-red-500">Erro ao carregar dados.</td></tr>';
+                body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-red-500">Erro ao carregar dados.</td></tr>';
                 return;
             }
 
             if (!data || data.length === 0) {
-                body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Nenhum dado encontrado para o período.</td></tr>';
+                body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum dado encontrado para o período.</td></tr>';
                 return;
             }
 
@@ -4941,7 +4941,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                  thMagic.title = `Divisor: ${divisor}`;
             }
 
-            let totalM1 = 0, totalM2 = 0, totalM3 = 0, totalMagic = 0, totalPop = 0;
+            let totalM1 = 0, totalM2 = 0, totalM3 = 0, totalMagic = 0, totalPop = 0, totalAcm = 0;
 
             const rowsHtml = data.map(row => {
                 totalM1 += row.m1_pos || 0;
@@ -4949,12 +4949,14 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 totalM3 += row.m3_pos || 0;
                 totalMagic += row.magic_number || 0;
                 totalPop += row.population || 0;
+                totalAcm += row.acm || 0;
                 
                 return `
                     <tr class="hover:bg-white/5 transition-colors group">
                         <td class="px-4 py-2 border-r border-white/10 font-medium text-white">${escapeHtml(row.cidade)}</td>
                         <td class="px-4 py-2 text-center border-r border-white/10 text-slate-300">${(row.population || 0).toLocaleString('pt-BR')}</td>
                         <td class="px-4 py-2 text-center border-r border-white/10 font-medium text-cyan-400">${(row.magic_number || 0).toLocaleString('pt-BR')}</td>
+                        <td class="px-4 py-2 text-center border-r border-white/10 text-purple-400">${row.acm || 0}</td>
                         <td class="px-4 py-2 text-center text-slate-300">${row.m1_pos || 0}</td>
                         <td class="px-4 py-2 text-center text-slate-300">${row.m2_pos || 0}</td>
                         <td class="px-4 py-2 text-center text-slate-300">${row.m3_pos || 0}</td>
@@ -4967,6 +4969,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                     <td class="px-4 py-3 border-r border-white/10 text-left uppercase text-emerald-400">Total:</td>
                     <td class="px-4 py-3 text-center border-r border-white/10 text-emerald-400">${totalPop.toLocaleString('pt-BR')}</td>
                     <td class="px-4 py-3 text-center border-r border-white/10 text-cyan-400">${totalMagic.toLocaleString('pt-BR')}</td>
+                    <td class="px-4 py-3 text-center border-r border-white/10 text-purple-400">${totalAcm.toLocaleString('pt-BR')}</td>
                     <td class="px-4 py-3 text-center text-emerald-400">${totalM1.toLocaleString('pt-BR')}</td>
                     <td class="px-4 py-3 text-center text-emerald-400">${totalM2.toLocaleString('pt-BR')}</td>
                     <td class="px-4 py-3 text-center text-emerald-400">${totalM3.toLocaleString('pt-BR')}</td>
@@ -4977,7 +4980,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
         } catch (e) {
             AppLog.error('Exception loading city positivity table:', e);
-            body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-red-500">Erro inesperado.</td></tr>';
+            body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-red-500">Erro inesperado.</td></tr>';
         } finally {
             body.classList.remove('opacity-50', 'pointer-events-none');
         }

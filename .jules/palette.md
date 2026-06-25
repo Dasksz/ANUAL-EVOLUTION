@@ -7,3 +7,6 @@ Implemented a tooltip to the "Positivação Salty Total" indicator using standar
 ## 2024-05-18 - [Styling Excel Exports using xlsx-js-style]
 **Learning:** The default SheetJS (xlsx) Community Edition doesn't support styling (like bold text, background colors, custom column width). However, replacing the default CDN import with `xlsx-js-style` allows applying rich styling formatting via the `.s` property on cells.
 **Action:** Always prefer `xlsx-js-style` if users request Excel formatting without having a paid SheetJS Pro license, and implement standard style-applying helper functions for consistency across multiple export scenarios.
+## 2026-06-25 - [Add ACM Column with Custom Color in Pos. Populacional]
+**Learning:** Adding new data columns within complex visual tables requires updating headers, content rows, totals rows, and the `colspan` of loading/error state rows. Using a distinct color like `text-purple-400` helps the new "Acumulado" metric stand out against the existing cyan/emerald data points without breaking the existing dark-mode design system.
+**Action:** When adding columns, systematically update all five areas of a table (Header, Loading State, Error State, Empty State, Data Rows, and Totals Row) and utilize unique semantic colors for clear differentiation.
