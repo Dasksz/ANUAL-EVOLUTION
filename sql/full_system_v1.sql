@@ -5653,6 +5653,7 @@ DECLARE
     v_mes_2 text;
     v_mes_3 text;
     v_where text := ' WHERE 1=1 ';
+    v_where_cb text := ' WHERE 1=1 ';
     v_has_com_rede boolean;
     v_has_sem_rede boolean;
     v_specific_redes text[];
@@ -5685,9 +5686,11 @@ BEGIN
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where := v_where || format(' AND ds.filial = ANY(%L) ', p_filial);
+        v_where_cb := v_where_cb || format(' AND cb.filial = ANY(%L) ', p_filial);
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where := v_where || format(' AND dc.cidade = ANY(%L) ', p_cidade);
+        v_where_cb := v_where_cb || format(' AND cb.cidade = ANY(%L) ', p_cidade);
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where := v_where || format(' AND ds.codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
@@ -5765,6 +5768,7 @@ BEGIN
                 COALESCE(MAX(CASE WHEN pos.mes = ''' || v_mes_3 || ''' THEN pos.pos ELSE 0 END), 0) as m3_pos
             FROM public.config_city_branches cb
             LEFT JOIN pos_por_cidade_mes pos ON cb.cidade = pos.cidade
+            ' || v_where_cb || '
             GROUP BY cb.cidade, cb.population
             ORDER BY cb.cidade
         ) final_data;
@@ -5947,6 +5951,7 @@ DECLARE
     v_mes_2 text;
     v_mes_3 text;
     v_where text := ' WHERE 1=1 ';
+    v_where_cb text := ' WHERE 1=1 ';
     v_has_com_rede boolean;
     v_has_sem_rede boolean;
     v_specific_redes text[];
@@ -5979,9 +5984,11 @@ BEGIN
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where := v_where || format(' AND ds.filial = ANY(%L) ', p_filial);
+        v_where_cb := v_where_cb || format(' AND cb.filial = ANY(%L) ', p_filial);
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where := v_where || format(' AND dc.cidade = ANY(%L) ', p_cidade);
+        v_where_cb := v_where_cb || format(' AND cb.cidade = ANY(%L) ', p_cidade);
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where := v_where || format(' AND ds.codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
@@ -6059,6 +6066,7 @@ BEGIN
                 COALESCE(MAX(CASE WHEN pos.mes = ''' || v_mes_3 || ''' THEN pos.pos ELSE 0 END), 0) as m3_pos
             FROM public.config_city_branches cb
             LEFT JOIN pos_por_cidade_mes pos ON cb.cidade = pos.cidade
+            ' || v_where_cb || '
             GROUP BY cb.cidade, cb.population
             ORDER BY cb.cidade
         ) final_data;
