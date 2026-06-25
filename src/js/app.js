@@ -876,6 +876,10 @@ function getActiveExportView() {
     const cityFornecedorFilterDropdown = document.getElementById('city-fornecedor-filter-dropdown');
     const cityFornecedorFilterList = document.getElementById('city-fornecedor-filter-list');
     const cityFornecedorFilterSearch = document.getElementById('city-fornecedor-filter-search');
+    const citySegmentacaoFilterBtn = document.getElementById('city-segmentacao-filter-btn');
+    const citySegmentacaoFilterDropdown = document.getElementById('city-segmentacao-filter-dropdown');
+    const citySegmentacaoFilterList = document.getElementById('city-segmentacao-filter-list');
+    const citySegmentacaoFilterSearch = document.getElementById('city-segmentacao-filter-search');
     const cityRedeFilterBtn = document.getElementById('city-rede-filter-btn');
     const cityRedeFilterDropdown = document.getElementById('city-rede-filter-dropdown');
     const cityRedeFilterList = document.getElementById('city-rede-filter-list');
@@ -1068,6 +1072,7 @@ function getActiveExportView() {
             state.vendedores = citySelectedVendedores;
             state.fornecedores = citySelectedFornecedores;
             state.tiposvenda = citySelectedTiposVenda;
+            state.segmentacoes = citySelectedSegmentacoes;
             state.redes = citySelectedRedes;
         } else if (view === 'boxes') {
             state.ano = boxesAnoFilter.value;
@@ -1183,6 +1188,7 @@ function getActiveExportView() {
             citySelectedVendedores = getList('vendedores');
             citySelectedFornecedores = getList('fornecedores');
             citySelectedTiposVenda = getList('tiposvenda');
+            citySelectedSegmentacoes = getList('segmentacoes');
             citySelectedRedes = getList('redes');
 
         } else if (view === 'boxes') {
@@ -4735,116 +4741,13 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     }
 
 
-    // --- Positivação por Cidades ---
-    async function loadCityPositivityTable() {
-        const quarterSelect = document.getElementById('city-positivity-quarter');
-        const yearSelect = document.getElementById('city-ano-filter');
-        const body = document.getElementById('city-positivity-table-body');
-        const thMagic = document.getElementById('th-magic-number');
-        const thM1 = document.getElementById('th-m1');
-        const thM2 = document.getElementById('th-m2');
-        const thM3 = document.getElementById('th-m3');
-
-        if (!quarterSelect || !yearSelect || !body) return;
-
-        const quarter = parseInt(quarterSelect.value, 10);
-        const year = yearSelect.value || new Date().getFullYear().toString();
-        
-        if (year === 'todos') {
-            body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Selecione um ano específico para ver a positivação.</td></tr>';
-            return;
-        }
-
-        // Apply a subtle loading effect instead of replacing the entire content
-        body.classList.add('opacity-50', 'pointer-events-none', 'transition-opacity');
-        // We do NOT clear innerHTML to prevent the table from "blinking"
-
-        const monthNames = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-        const startMonthIdx = (quarter - 1) * 3;
-        
-        thM1.textContent = monthNames[startMonthIdx];
-        thM2.textContent = monthNames[startMonthIdx + 1];
-        thM3.textContent = monthNames[startMonthIdx + 2];
-
-        try {
-            const { data, error } = await supabase.rpc('get_city_positivity_table', {
-                p_ano: year,
-                p_quarter: quarter,
-                p_filial: citySelectedFiliais.length > 0 ? citySelectedFiliais : null,
-                p_cidade: citySelectedCidades.length > 0 ? citySelectedCidades : null,
-                p_supervisor: citySelectedSupervisores.length > 0 ? citySelectedSupervisores : null,
-                p_vendedor: citySelectedVendedores.length > 0 ? citySelectedVendedores : null,
-                p_fornecedor: citySelectedFornecedores.length > 0 ? citySelectedFornecedores : null,
-                p_tipovenda: citySelectedTiposVenda.length > 0 ? citySelectedTiposVenda : null,
-                p_rede: citySelectedRedes.length > 0 ? citySelectedRedes : null,
-                p_categoria: citySelectedCategorias.length > 0 ? citySelectedCategorias : null
-            });
-
-            if (error) {
-                AppLog.error('Error fetching city positivity data:', error);
-                body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-red-500">Erro ao carregar dados.</td></tr>';
-                return;
-            }
-
-            if (!data || data.length === 0) {
-                body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Nenhum dado encontrado para o período.</td></tr>';
-                return;
-            }
-
-            let divisor = 700;
-            if (data[0] && data[0].magic_number_divisor) {
-                 divisor = data[0].magic_number_divisor;
-                 thMagic.textContent = `Magic`;
-                 thMagic.title = `Divisor: ${divisor}`;
-            }
-
-            let totalM1 = 0, totalM2 = 0, totalM3 = 0, totalMagic = 0;
-
-            const rowsHtml = data.map(row => {
-                totalM1 += row.m1_pos || 0;
-                totalM2 += row.m2_pos || 0;
-                totalM3 += row.m3_pos || 0;
-                totalMagic += row.magic_number || 0;
-                
-                return `
-                    <tr class="hover:bg-white/5 transition-colors group">
-                        <td class="px-4 py-2 border-r border-white/10 font-medium text-white">${escapeHtml(row.cidade)}</td>
-                        <td class="px-4 py-2 text-center border-r border-white/10 text-slate-300">${(row.population || 0).toLocaleString('pt-BR')}</td>
-                        <td class="px-4 py-2 text-center border-r border-white/10 font-medium text-cyan-400">${(row.magic_number || 0).toLocaleString('pt-BR')}</td>
-                        <td class="px-4 py-2 text-center text-slate-300">${row.m1_pos || 0}</td>
-                        <td class="px-4 py-2 text-center text-slate-300">${row.m2_pos || 0}</td>
-                        <td class="px-4 py-2 text-center text-slate-300">${row.m3_pos || 0}</td>
-                    </tr>
-                `;
-            }).join('');
-
-            const totalHtml = `
-                <tr class="bg-[#1c1b22] font-bold text-white">
-                    <td class="px-4 py-3 border-r border-white/10 text-right uppercase">Total:</td>
-                    <td class="px-4 py-3 text-center border-r border-white/10"></td>
-                    <td class="px-4 py-3 text-center border-r border-white/10 text-cyan-400">${totalMagic.toLocaleString('pt-BR')}</td>
-                    <td class="px-4 py-3 text-center">${totalM1.toLocaleString('pt-BR')}</td>
-                    <td class="px-4 py-3 text-center">${totalM2.toLocaleString('pt-BR')}</td>
-                    <td class="px-4 py-3 text-center">${totalM3.toLocaleString('pt-BR')}</td>
-                </tr>
-            `;
-
-            body.innerHTML = rowsHtml + totalHtml;
-
-        } catch (e) {
-            AppLog.error('Exception loading city positivity table:', e);
-            body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-red-500">Erro inesperado.</td></tr>';
-        } finally {
-            body.classList.remove('opacity-50', 'pointer-events-none');
-        }
-    }
-
     let citySelectedFiliais = [];
     let citySelectedCidades = [];
     let citySelectedSupervisores = [];
     let citySelectedVendedores = [];
     let citySelectedFornecedores = [];
     let citySelectedTiposVenda = [];
+    let citySelectedSegmentacoes = [];
     let citySelectedRedes = [];
     let citySelectedCategorias = [];
 
@@ -4858,6 +4761,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             p_vendedor: citySelectedVendedores.length > 0 ? citySelectedVendedores : null,
             p_fornecedor: citySelectedFornecedores.length > 0 ? citySelectedFornecedores : null,
             p_tipovenda: citySelectedTiposVenda.length > 0 ? citySelectedTiposVenda : null,
+            p_segmentacao: citySelectedSegmentacoes.length > 0 ? citySelectedSegmentacoes : null,
             p_rede: citySelectedRedes.length > 0 ? citySelectedRedes : null,
             p_categoria: citySelectedCategorias.length > 0 ? citySelectedCategorias : null,
             p_ano: cityAnoFilter.value === 'todos' ? null : cityAnoFilter.value,
@@ -4892,7 +4796,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
              cityAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
              cityMesFilter.value = '';
              cityMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
-             clearArrays(citySelectedFiliais, citySelectedCidades, citySelectedSupervisores, citySelectedVendedores, citySelectedFornecedores, citySelectedTiposVenda, citySelectedRedes, citySelectedCategorias);
+             clearArrays(citySelectedFiliais, citySelectedCidades, citySelectedSupervisores, citySelectedVendedores, citySelectedFornecedores, citySelectedTiposVenda, citySelectedSegmentacoes, citySelectedRedes, citySelectedCategorias);
              initCityFilters().then(loadCityView);
         });
     }
@@ -4949,8 +4853,122 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         setupDefaultMultiSelect(cityTipovendaFilterBtn, cityTipovendaFilterDropdown, cityTipovendaFilterDropdown, filterData.tipos_venda, citySelectedTiposVenda);
         setupDefaultMultiSelect(cityCategoriaFilterBtn, cityCategoriaFilterDropdown, cityCategoriaFilterList, filterData.categorias || [], citySelectedCategorias, cityCategoriaFilterSearch);
 
+        
+        // Fetch Segmentacoes
+        let segmentacoes = [];
+        try {
+            const { data: segData, error: segErr } = await supabase.from('data_clients')
+                .select('ramo_atividade')
+                .not('ramo_atividade', 'is', null)
+                .neq('ramo_atividade', '')
+                .neq('ramo_atividade', 'N/D')
+                .neq('ramo_atividade', 'N/A');
+                
+            if (!segErr && segData) {
+                const uniqueSegs = new Set(segData.map(d => d.ramo_atividade));
+                segmentacoes = Array.from(uniqueSegs).sort();
+            }
+        } catch (e) {
+            console.error("Error fetching segmentacoes", e);
+        }
+        setupDefaultMultiSelect(citySegmentacaoFilterBtn, citySegmentacaoFilterDropdown, citySegmentacaoFilterList, segmentacoes, citySelectedSegmentacoes, citySegmentacaoFilterSearch);
+
         const redes = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
         setupDefaultMultiSelect(cityRedeFilterBtn, cityRedeFilterDropdown, cityRedeFilterList, redes, citySelectedRedes, cityRedeFilterSearch);
+    }
+
+    
+    // --- Performance - Segmentação ---
+    async function loadCitySegmentationTable() {
+        const yearSelect = document.getElementById('city-ano-filter');
+        const monthSelect = document.getElementById('city-mes-filter');
+        const body = document.getElementById('city-segmentation-table-body');
+        const thAcumulado = document.getElementById('th-seg-acumulado');
+
+        if (!yearSelect || !body) return;
+
+        const year = yearSelect.value || new Date().getFullYear().toString();
+        
+        if (year === 'todos') {
+            body.innerHTML = '<tr><td colspan="14" class="p-4 text-center text-slate-500">Selecione um ano específico para ver a performance por segmentação.</td></tr>';
+            return;
+        }
+
+        thAcumulado.textContent = year;
+
+        body.classList.add('opacity-50', 'pointer-events-none', 'transition-opacity');
+
+        try {
+            const { data, error } = await supabase.rpc('get_city_segmentation_positivity_table', {
+                p_ano: year,
+                p_mes: monthSelect ? monthSelect.value : null,
+                p_filial: citySelectedFiliais.length > 0 ? citySelectedFiliais : null,
+                p_cidade: citySelectedCidades.length > 0 ? citySelectedCidades : null,
+                p_supervisor: citySelectedSupervisores.length > 0 ? citySelectedSupervisores : null,
+                p_vendedor: citySelectedVendedores.length > 0 ? citySelectedVendedores : null,
+                p_fornecedor: citySelectedFornecedores.length > 0 ? citySelectedFornecedores : null,
+                p_tipovenda: citySelectedTiposVenda.length > 0 ? citySelectedTiposVenda : null,
+                p_segmentacao: citySelectedSegmentacoes.length > 0 ? citySelectedSegmentacoes : null,
+                p_rede: citySelectedRedes.length > 0 ? citySelectedRedes : null,
+                p_categoria: citySelectedCategorias.length > 0 ? citySelectedCategorias : null
+            });
+
+            if (error) {
+                AppLog.error('Error fetching city segmentation data:', error);
+                body.innerHTML = '<tr><td colspan="14" class="p-4 text-center text-red-500">Erro ao carregar dados.</td></tr>';
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                body.innerHTML = '<tr><td colspan="14" class="p-4 text-center text-slate-500">Nenhum dado encontrado para o período.</td></tr>';
+                return;
+            }
+
+            let totalAcumulado = 0;
+            let totalM = new Array(12).fill(0);
+
+            const rowsHtml = data.map(row => {
+                totalAcumulado += row.pos_acumulado || 0;
+                for (let i = 1; i <= 12; i++) {
+                    totalM[i-1] += row[`m${i}_pos`] || 0;
+                }
+                
+                let monthsHtml = '';
+                for (let i = 1; i <= 12; i++) {
+                    const val = row[`m${i}_pos`];
+                    monthsHtml += `<td class="px-3 py-2 text-center text-slate-300">${val && val > 0 ? formatInteger(val) : '-'}</td>`;
+                }
+
+                return `
+                    <tr class="hover:bg-white/5 transition-colors group border-b border-white/5">
+                        <td class="px-4 py-2 border-r border-white/10 font-medium text-white">${escapeHtml(row.segmentacao || 'OUTROS')}</td>
+                        <td class="px-4 py-2 text-center border-r border-white/10 font-bold text-cyan-400">${formatInteger(row.pos_acumulado || 0)}</td>
+                        ${monthsHtml}
+                    </tr>
+                `;
+            }).join('');
+
+            let totalMonthsHtml = '';
+            for (let i = 0; i < 12; i++) {
+                totalMonthsHtml += `<td class="px-3 py-3 text-center text-emerald-400">${totalM[i] > 0 ? formatInteger(totalM[i]) : '-'}</td>`;
+            }
+
+            const totalHtml = `
+                <tr class="bg-[#1c1b22] font-bold text-white">
+                    <td class="px-4 py-3 border-r border-white/10 text-right uppercase">Total:</td>
+                    <td class="px-4 py-3 text-center border-r border-white/10 text-cyan-400">${formatInteger(totalAcumulado)}</td>
+                    ${totalMonthsHtml}
+                </tr>
+            `;
+
+            body.innerHTML = totalHtml + rowsHtml;
+
+        } catch (e) {
+            AppLog.error('Exception loading city segmentation table:', e);
+            body.innerHTML = '<tr><td colspan="14" class="p-4 text-center text-red-500">Erro inesperado.</td></tr>';
+        } finally {
+            body.classList.remove('opacity-50', 'pointer-events-none', 'transition-opacity');
+        }
     }
 
     async function loadCityView() {
@@ -4967,6 +4985,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             p_vendedor: citySelectedVendedores.length > 0 ? citySelectedVendedores : null,
             p_fornecedor: citySelectedFornecedores.length > 0 ? citySelectedFornecedores : null,
             p_tipovenda: citySelectedTiposVenda.length > 0 ? citySelectedTiposVenda : null,
+            p_segmentacao: citySelectedSegmentacoes.length > 0 ? citySelectedSegmentacoes : null,
             p_rede: citySelectedRedes.length > 0 ? citySelectedRedes : null,
             p_categoria: citySelectedCategorias.length > 0 ? citySelectedCategorias : null,
             p_ano: cityAnoFilter.value === 'todos' ? null : cityAnoFilter.value,
@@ -5084,6 +5103,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         renderCategoryRankingTable('city-category-ranking-table-body', categoryRanking);
 
         loadCityPositivityTable();
+        loadCitySegmentationTable();
 
 
         renderCityPaginationControls();
@@ -10053,4 +10073,107 @@ async function syncIbgePopulations() {
 }
 
 
+    // --- Positivação por Cidades ---
+    async function loadCityPositivityTable() {
+        const quarterSelect = document.getElementById('city-positivity-quarter');
+        const yearSelect = document.getElementById('city-ano-filter');
+        const body = document.getElementById('city-positivity-table-body');
+        const thMagic = document.getElementById('th-magic-number');
+        const thM1 = document.getElementById('th-m1');
+        const thM2 = document.getElementById('th-m2');
+        const thM3 = document.getElementById('th-m3');
 
+        if (!quarterSelect || !yearSelect || !body) return;
+
+        const quarter = parseInt(quarterSelect.value, 10);
+        const year = yearSelect.value || new Date().getFullYear().toString();
+        
+        if (year === 'todos') {
+            body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Selecione um ano específico para ver a positivação.</td></tr>';
+            return;
+        }
+
+        // Apply a subtle loading effect instead of replacing the entire content
+        body.classList.add('opacity-50', 'pointer-events-none', 'transition-opacity');
+        // We do NOT clear innerHTML to prevent the table from "blinking"
+
+        const monthNames = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+        const startMonthIdx = (quarter - 1) * 3;
+        
+        thM1.textContent = monthNames[startMonthIdx];
+        thM2.textContent = monthNames[startMonthIdx + 1];
+        thM3.textContent = monthNames[startMonthIdx + 2];
+
+        try {
+            const { data, error } = await supabase.rpc('get_city_positivity_table', {
+                p_ano: year,
+                p_quarter: quarter,
+                p_filial: citySelectedFiliais.length > 0 ? citySelectedFiliais : null,
+                p_cidade: citySelectedCidades.length > 0 ? citySelectedCidades : null,
+                p_supervisor: citySelectedSupervisores.length > 0 ? citySelectedSupervisores : null,
+                p_vendedor: citySelectedVendedores.length > 0 ? citySelectedVendedores : null,
+                p_fornecedor: citySelectedFornecedores.length > 0 ? citySelectedFornecedores : null,
+                p_tipovenda: citySelectedTiposVenda.length > 0 ? citySelectedTiposVenda : null,
+                p_segmentacao: citySelectedSegmentacoes.length > 0 ? citySelectedSegmentacoes : null,
+            p_rede: citySelectedRedes.length > 0 ? citySelectedRedes : null,
+                p_categoria: citySelectedCategorias.length > 0 ? citySelectedCategorias : null
+            });
+
+            if (error) {
+                AppLog.error('Error fetching city positivity data:', error);
+                body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-red-500">Erro ao carregar dados.</td></tr>';
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Nenhum dado encontrado para o período.</td></tr>';
+                return;
+            }
+
+            let divisor = 700;
+            if (data[0] && data[0].magic_number_divisor) {
+                 divisor = data[0].magic_number_divisor;
+                 thMagic.textContent = `Magic`;
+                 thMagic.title = `Divisor: ${divisor}`;
+            }
+
+            let totalM1 = 0, totalM2 = 0, totalM3 = 0, totalMagic = 0;
+
+            const rowsHtml = data.map(row => {
+                totalM1 += row.m1_pos || 0;
+                totalM2 += row.m2_pos || 0;
+                totalM3 += row.m3_pos || 0;
+                totalMagic += row.magic_number || 0;
+                
+                return `
+                    <tr class="hover:bg-white/5 transition-colors group">
+                        <td class="px-4 py-2 border-r border-white/10 font-medium text-white">${escapeHtml(row.cidade)}</td>
+                        <td class="px-4 py-2 text-center border-r border-white/10 text-slate-300">${(row.population || 0).toLocaleString('pt-BR')}</td>
+                        <td class="px-4 py-2 text-center border-r border-white/10 font-medium text-cyan-400">${(row.magic_number || 0).toLocaleString('pt-BR')}</td>
+                        <td class="px-4 py-2 text-center text-slate-300">${row.m1_pos || 0}</td>
+                        <td class="px-4 py-2 text-center text-slate-300">${row.m2_pos || 0}</td>
+                        <td class="px-4 py-2 text-center text-slate-300">${row.m3_pos || 0}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const totalHtml = `
+                <tr class="bg-[#1c1b22] font-bold text-white">
+                    <td class="px-4 py-3 border-r border-white/10 text-right uppercase">Total:</td>
+                    <td class="px-4 py-3 text-center border-r border-white/10"></td>
+                    <td class="px-4 py-3 text-center border-r border-white/10 text-cyan-400">${totalMagic.toLocaleString('pt-BR')}</td>
+                    <td class="px-4 py-3 text-center">${totalM1.toLocaleString('pt-BR')}</td>
+                    <td class="px-4 py-3 text-center">${totalM2.toLocaleString('pt-BR')}</td>
+                    <td class="px-4 py-3 text-center">${totalM3.toLocaleString('pt-BR')}</td>
+                </tr>
+            `;
+
+            body.innerHTML = rowsHtml + totalHtml;
+
+        } catch (e) {
+            AppLog.error('Exception loading city positivity table:', e);
+            body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-red-500">Erro inesperado.</td></tr>';
+        } finally {
+            body.classList.remove('opacity-50', 'pointer-events-none');
+        }
+    }
