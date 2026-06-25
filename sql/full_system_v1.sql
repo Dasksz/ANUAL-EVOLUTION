@@ -5638,6 +5638,7 @@ CREATE OR REPLACE FUNCTION public.get_city_positivity_table(
     p_vendedor text[] default null,
     p_fornecedor text[] default null,
     p_tipovenda text[] default null,
+    p_segmentacao text[] default null,
     p_rede text[] default null,
     p_categoria text[] default null
 )
@@ -5702,6 +5703,9 @@ BEGIN
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where := v_where || format(' AND ds.categoria_produto = ANY(%L) ', p_categoria);
+    END IF;
+    IF p_segmentacao IS NOT NULL AND array_length(p_segmentacao, 1) > 0 THEN
+        v_where := v_where || format(' AND dc.ramo_atividade = ANY(%L) ', p_segmentacao);
     END IF;
 
     -- REDE Logic
@@ -5928,6 +5932,7 @@ CREATE OR REPLACE FUNCTION public.get_city_positivity_table(
     p_vendedor text[] default null,
     p_fornecedor text[] default null,
     p_tipovenda text[] default null,
+    p_segmentacao text[] default null,
     p_rede text[] default null,
     p_categoria text[] default null
 )
@@ -5992,6 +5997,9 @@ BEGIN
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where := v_where || format(' AND ds.categoria_produto = ANY(%L) ', p_categoria);
+    END IF;
+    IF p_segmentacao IS NOT NULL AND array_length(p_segmentacao, 1) > 0 THEN
+        v_where := v_where || format(' AND dc.ramo_atividade = ANY(%L) ', p_segmentacao);
     END IF;
 
     -- REDE Logic
