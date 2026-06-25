@@ -4941,13 +4941,14 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                  thMagic.title = `Divisor: ${divisor}`;
             }
 
-            let totalM1 = 0, totalM2 = 0, totalM3 = 0, totalMagic = 0;
+            let totalM1 = 0, totalM2 = 0, totalM3 = 0, totalMagic = 0, totalPop = 0;
 
             const rowsHtml = data.map(row => {
                 totalM1 += row.m1_pos || 0;
                 totalM2 += row.m2_pos || 0;
                 totalM3 += row.m3_pos || 0;
                 totalMagic += row.magic_number || 0;
+                totalPop += row.population || 0;
                 
                 return `
                     <tr class="hover:bg-white/5 transition-colors group">
@@ -4964,7 +4965,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             const totalHtml = `
                 <tr class="bg-[#1c1b22] font-bold text-white">
                     <td class="px-4 py-3 border-r border-white/10 text-left uppercase text-emerald-400">Total:</td>
-                    <td class="px-4 py-3 text-center border-r border-white/10"></td>
+                    <td class="px-4 py-3 text-center border-r border-white/10 text-emerald-400">${totalPop.toLocaleString('pt-BR')}</td>
                     <td class="px-4 py-3 text-center border-r border-white/10 text-cyan-400">${totalMagic.toLocaleString('pt-BR')}</td>
                     <td class="px-4 py-3 text-center text-emerald-400">${totalM1.toLocaleString('pt-BR')}</td>
                     <td class="px-4 py-3 text-center text-emerald-400">${totalM2.toLocaleString('pt-BR')}</td>
