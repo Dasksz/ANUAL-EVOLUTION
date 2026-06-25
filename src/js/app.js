@@ -9969,7 +9969,9 @@ async function syncIbgePopulations() {
             return;
         }
 
-        body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Carregando...</td></tr>';
+        // Apply a subtle loading effect instead of replacing the entire content
+        body.classList.add('opacity-50', 'pointer-events-none', 'transition-opacity');
+        // We do NOT clear innerHTML to prevent the table from "blinking"
 
         const monthNames = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
         const startMonthIdx = (quarter - 1) * 3;
@@ -9981,7 +9983,15 @@ async function syncIbgePopulations() {
         try {
             const { data, error } = await supabase.rpc('get_city_positivity_table', {
                 p_ano: year,
-                p_quarter: quarter
+                p_quarter: quarter,
+                p_filial: citySelectedFiliais.length > 0 ? citySelectedFiliais : null,
+                p_cidade: citySelectedCidades.length > 0 ? citySelectedCidades : null,
+                p_supervisor: citySelectedSupervisores.length > 0 ? citySelectedSupervisores : null,
+                p_vendedor: citySelectedVendedores.length > 0 ? citySelectedVendedores : null,
+                p_fornecedor: citySelectedFornecedores.length > 0 ? citySelectedFornecedores : null,
+                p_tipovenda: citySelectedTiposVenda.length > 0 ? citySelectedTiposVenda : null,
+                p_rede: citySelectedRedes.length > 0 ? citySelectedRedes : null,
+                p_categoria: citySelectedCategorias.length > 0 ? citySelectedCategorias : null
             });
 
             if (error) {
@@ -10038,5 +10048,7 @@ async function syncIbgePopulations() {
         } catch (e) {
             AppLog.error('Exception loading city positivity table:', e);
             body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-red-500">Erro inesperado.</td></tr>';
+        } finally {
+            body.classList.remove('opacity-50', 'pointer-events-none');
         }
     }
