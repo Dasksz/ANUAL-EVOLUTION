@@ -4985,8 +4985,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     async function loadCitySegmentationTable() {
         const yearSelect = document.getElementById('city-ano-filter');
         const monthSelect = document.getElementById('city-mes-filter');
-        const body = document.getElementById('city-segmentation-table-body');
-        const thAcumulado = document.getElementById('th-seg-acumulado');
+                const thead = document.getElementById('city-segmentation-table-head');
+const body = document.getElementById('city-segmentation-table-body');
 
         if (!yearSelect || !body) return;
 
@@ -4997,7 +4997,26 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             return;
         }
 
-        thAcumulado.textContent = year;
+        const theadHtml = `
+            <tr>
+                <th class="px-4 py-3 border-r border-white/10 align-middle text-left">Segmento do PDV</th>
+                <th id="th-seg-acumulado" class="px-4 py-3 text-center border-r border-white/10 align-middle" title="Acumulado">${year}</th>
+                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">J</th>
+                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">F</th>
+                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">M</th>
+                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">A</th>
+                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">M</th>
+                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">J</th>
+                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">J</th>
+                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">A</th>
+                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">S</th>
+                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">O</th>
+                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">N</th>
+                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">D</th>
+            </tr>
+        `;
+        if (thead) thead.innerHTML = theadHtml;
+
 
         body.classList.add('opacity-50', 'pointer-events-none', 'transition-opacity');
 
@@ -5039,7 +5058,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 let monthsHtml = '';
                 for (let i = 1; i <= 12; i++) {
                     const val = row[`m${i}_pos`];
-                    monthsHtml += `<td class="px-3 py-2 text-center text-slate-300">${val && val > 0 ? formatInteger(val) : '-'}</td>`;
+                                        monthsHtml += `<td class="px-0 py-2 text-center align-middle w-[5%] min-w-[50px] text-slate-300">${val && val > 0 ? formatInteger(val) : '-'}</td>`;
                 }
 
                 return `
@@ -5053,7 +5072,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
             let totalMonthsHtml = '';
             for (let i = 0; i < 12; i++) {
-                totalMonthsHtml += `<td class="px-3 py-3 text-center text-emerald-400">${totalM[i] > 0 ? formatInteger(totalM[i]) : '-'}</td>`;
+                                totalMonthsHtml += `<td class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px] text-emerald-400">${totalM[i] > 0 ? formatInteger(totalM[i]) : '-'}</td>`;
             }
 
             const totalHtml = `
