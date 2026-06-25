@@ -52,8 +52,8 @@ BEGIN
     END IF;
 
     -- Base filters
-    v_where := v_where || ' AND ds.tipovenda NOT IN (''5'', ''11'') AND ds.codfor NOT IN (''707'', ''708'', ''752'') ';
-    v_where_base_cidades := v_where_base_cidades || ' AND ds.tipovenda NOT IN (''5'', ''11'') AND ds.codfor NOT IN (''707'', ''708'', ''752'') ';
+    v_where := v_where || ' AND ds.tipovenda NOT IN (''5'', ''11'') ';
+    v_where_base_cidades := v_where_base_cidades || ' AND ds.tipovenda NOT IN (''5'', ''11'') ';
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where := v_where || format(' AND ds.filial = ANY(%L) ', p_filial);

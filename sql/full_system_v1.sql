@@ -5682,7 +5682,7 @@ BEGIN
     END IF;
 
     v_where := v_where || format(' AND ds.mes IN (%L, %L, %L) ', v_mes_1, v_mes_2, v_mes_3);
-    v_where := v_where || ' AND ds.tipovenda NOT IN (''5'', ''11'') AND ds.codfor NOT IN (''707'', ''708'', ''752'') ';
+    v_where := v_where || ' AND ds.tipovenda NOT IN (''5'', ''11'') ';
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where := v_where || format(' AND ds.filial = ANY(%L) ', p_filial);
@@ -5980,7 +5980,7 @@ BEGIN
     END IF;
 
     v_where := v_where || format(' AND ds.mes IN (%L, %L, %L) ', v_mes_1, v_mes_2, v_mes_3);
-    v_where := v_where || ' AND ds.tipovenda NOT IN (''5'', ''11'') AND ds.codfor NOT IN (''707'', ''708'', ''752'') ';
+    v_where := v_where || ' AND ds.tipovenda NOT IN (''5'', ''11'') ';
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where := v_where || format(' AND ds.filial = ANY(%L) ', p_filial);
