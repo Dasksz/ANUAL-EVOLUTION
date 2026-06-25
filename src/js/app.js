@@ -9894,7 +9894,7 @@ async function syncIbgePopulations() {
         AppLog.info(`Syncing population for ${staleCities.length} cities via IBGE...`);
         
         // Fetch from IBGE (Bahia -> 29, using the most recent census 2022 aggregate 4709)
-        const response = await fetch('https://servicodados.ibge.gov.br/api/v3/agregados/4709/periodos/2022/variaveis/93?localidades=N6[N3[29]]');
+        const response = await fetch('https://servicodados.ibge.gov.br/api/v3/agregados/6579/periodos/2025/variaveis/9324?localidades=N6[N3[29]]');
         if (!response.ok) throw new Error('Failed to fetch IBGE data');
         const data = await response.json();
         
@@ -9916,11 +9916,11 @@ async function syncIbgePopulations() {
                 }
                 return ibgeName === normalizedCityName;
             });
-            if (ibgeMatch && ibgeMatch.serie && ibgeMatch.serie['2022']) {
+            if (ibgeMatch && ibgeMatch.serie && ibgeMatch.serie['2025']) {
                 updates.push({
                     id: city.id,
                     cidade: city.cidade,
-                    population: parseInt(ibgeMatch.serie['2022'], 10) || 0,
+                    population: parseInt(ibgeMatch.serie['2025'], 10) || 0,
                     population_updated_at: new Date().toISOString()
                 });
             } else {
