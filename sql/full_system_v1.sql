@@ -3593,6 +3593,7 @@ CREATE OR REPLACE FUNCTION get_city_view_data(
     p_ano text default null,
     p_mes text default null,
     p_tipovenda text[] default null,
+    p_segmentacao text[] default null,
     p_rede text[] default null,
     p_page int default 0,
     p_limit int default 50,
@@ -3669,6 +3670,12 @@ BEGIN
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where := v_where || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
         v_where_trend := v_where_trend || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+    END IF;
+
+    IF p_segmentacao IS NOT NULL AND array_length(p_segmentacao, 1) > 0 THEN
+        v_where := v_where || format(' AND ramo_atividade = ANY(%L) ', p_segmentacao);
+        v_where_trend := v_where_trend || format(' AND ramo_atividade = ANY(%L) ', p_segmentacao);
+        v_where_clients := v_where_clients || format(' AND ramo_atividade = ANY(%L) ', p_segmentacao);
     END IF;
     
     -- Category Filter
