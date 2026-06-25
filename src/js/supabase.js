@@ -1,5 +1,5 @@
 // Supabase Configuration
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=5';
 
 if (!SUPABASE_URL || !SUPABASE_KEY || SUPABASE_URL.includes('YOUR_SUPABASE_URL_HERE')) {
     console.error('CRITICAL: Supabase credentials missing or invalid. Please check src/js/config.js');
