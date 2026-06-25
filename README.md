@@ -4,7 +4,7 @@ Sistema de acompanhamento de evolução anual.
 
 ## Configuração
 
-Este projeto utiliza o [Supabase](https://supabase.com/) como backend. Para garantir a segurança, as credenciais não estão incluídas no código fonte.
+Este projeto utiliza o [Supabase](https://supabase.com/) como backend. Para garantir a segurança.
 
 ### Configuração Local
 
