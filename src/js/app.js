@@ -9952,7 +9952,7 @@ async function syncIbgePopulations() {
     // --- Positivação por Cidades ---
     async function loadCityPositivityTable() {
         const quarterSelect = document.getElementById('city-positivity-quarter');
-        const yearSelect = document.getElementById('city-filter-ano');
+        const yearSelect = document.getElementById('city-ano-filter');
         const body = document.getElementById('city-positivity-table-body');
         const thMagic = document.getElementById('th-magic-number');
         const thM1 = document.getElementById('th-m1');
