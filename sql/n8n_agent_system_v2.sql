@@ -43,8 +43,46 @@ BEGIN
     SELECT jsonb_build_object(
         'meta_pedido', 18,
         'categorias_garantidas_este_mes', (SELECT jsonb_agg(nome_categoria) FROM cruzamento WHERE comprado_mes_atual = TRUE),
-        'oportunidades_faltantes_este_mes_mas_compradas_antes', (SELECT jsonb_agg(CASE WHEN produto_obrigatorio IS NOT NULL AND produto_obrigatorio != '' THEN nome_categoria || ' (' || produto_obrigatorio || ')' ELSE nome_categoria END) FROM cruzamento WHERE comprado_mes_atual = FALSE AND comprado_ultimos_3_meses = TRUE),
-        'oportunidades_faltantes_nunca_compradas', (SELECT jsonb_agg(CASE WHEN produto_obrigatorio IS NOT NULL AND produto_obrigatorio != '' THEN nome_categoria || ' (' || produto_obrigatorio || ')' ELSE nome_categoria END) FROM cruzamento WHERE comprado_mes_atual = FALSE AND comprado_ultimos_3_meses = FALSE)
+        'oportunidades_faltantes_este_mes_mas_compradas_antes', (
+            SELECT jsonb_agg(
+                jsonb_build_object(
+                    'categoria', nome_categoria,
+                    'produto_sugerido_codigo', p.codigo,
+                    'produto_sugerido_nome', p.descricao,
+                    'estoque_filial', p.estoque_filial
+                )
+            )
+            FROM cruzamento
+            LEFT JOIN LATERAL (
+                SELECT codigo, descricao, estoque_filial
+                FROM public.dim_produtos dp
+                WHERE dp.mix_marca ILIKE '%' || cruzamento.nome_categoria || '%'
+                  AND (cruzamento.produto_obrigatorio IS NULL OR cruzamento.produto_obrigatorio = '' OR dp.codigo = cruzamento.produto_obrigatorio)
+                ORDER BY dp.codigo
+                LIMIT 1
+            ) p ON true
+            WHERE comprado_mes_atual = FALSE AND comprado_ultimos_3_meses = TRUE
+        ),
+        'oportunidades_faltantes_nunca_compradas', (
+            SELECT jsonb_agg(
+                jsonb_build_object(
+                    'categoria', nome_categoria,
+                    'produto_sugerido_codigo', p.codigo,
+                    'produto_sugerido_nome', p.descricao,
+                    'estoque_filial', p.estoque_filial
+                )
+            )
+            FROM cruzamento
+            LEFT JOIN LATERAL (
+                SELECT codigo, descricao, estoque_filial
+                FROM public.dim_produtos dp
+                WHERE dp.mix_marca ILIKE '%' || cruzamento.nome_categoria || '%'
+                  AND (cruzamento.produto_obrigatorio IS NULL OR cruzamento.produto_obrigatorio = '' OR dp.codigo = cruzamento.produto_obrigatorio)
+                ORDER BY dp.codigo
+                LIMIT 1
+            ) p ON true
+            WHERE comprado_mes_atual = FALSE AND comprado_ultimos_3_meses = FALSE
+        )
     ) INTO v_mix;
 
     RETURN v_mix;
@@ -125,6 +163,64 @@ BEGIN
     RETURN v_sugestao;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION public.sp_inovacoes_cliente(p_cod_cliente TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql STABLE
+AS $$
+DECLARE
+    v_inovacoes JSONB;
+BEGIN
+    WITH inovacoes_ativas AS (
+        SELECT DISTINCT i.codigo as cod_produto, p.descricao as nome_produto, i.inovacoes as categoria_inovacao, p.mix_marca
+        FROM public.data_innovations i
+        JOIN public.dim_produtos p ON p.codigo = i.codigo
+    ),
+    historico_cliente_mes_atual AS (
+        SELECT DISTINCT s.produto as produto_comprado
+        FROM public.data_detailed s
+        WHERE s.codcli = p_cod_cliente
+          AND s.dtped >= date_trunc('month', CURRENT_DATE)
+          AND s.tipovenda IN ('1','9')
+    ),
+    cruzamento AS (
+        SELECT
+            i.categoria_inovacao,
+            i.cod_produto,
+            i.nome_produto,
+            i.mix_marca,
+            CASE WHEN hc.produto_comprado IS NOT NULL THEN TRUE ELSE FALSE END as comprado_mes_atual
+        FROM inovacoes_ativas i
+        LEFT JOIN historico_cliente_mes_atual hc ON hc.produto_comprado = i.cod_produto
+    )
+    SELECT jsonb_build_object(
+        'inovacoes_positivadas_mes_atual', (
+            SELECT COALESCE(jsonb_agg(
+                jsonb_build_object(
+                    'categoria_inovacao', categoria_inovacao,
+                    'codigo_produto', cod_produto,
+                    'nome_produto', nome_produto
+                )
+            ), '[]'::jsonb)
+            FROM cruzamento WHERE comprado_mes_atual = TRUE
+        ),
+        'oportunidades_sugestoes_inovacoes', (
+            SELECT COALESCE(jsonb_agg(
+                jsonb_build_object(
+                    'categoria_inovacao', categoria_inovacao,
+                    'codigo_produto', cod_produto,
+                    'nome_produto', nome_produto,
+                    'justificativa', 'Cliente não comprou esta inovação da marca ' || COALESCE(mix_marca, 'Diversos') || ' neste mês'
+                )
+            ), '[]'::jsonb)
+            FROM (SELECT * FROM cruzamento WHERE comprado_mes_atual = FALSE LIMIT 9) t
+        )
+    ) INTO v_inovacoes;
+
+    RETURN v_inovacoes;
+END;
+$$;
+
 
 CREATE VIEW public.n8n_agent_view_v2 WITH (security_invoker = true) AS
 SELECT '1'::text AS opcao,
