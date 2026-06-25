@@ -9965,13 +9965,13 @@ async function syncIbgePopulations() {
         const year = yearSelect.value || new Date().getFullYear().toString();
         
         if (year === 'todos') {
-            body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Selecione um ano específico para ver a positivação.</td></tr>';
+            body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Selecione um ano específico para ver a positivação.</td></tr>';
             return;
         }
 
-        body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Carregando...</td></tr>';
+        body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Carregando...</td></tr>';
 
-        const monthNames = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+        const monthNames = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
         const startMonthIdx = (quarter - 1) * 3;
         
         thM1.textContent = monthNames[startMonthIdx];
@@ -9986,37 +9986,35 @@ async function syncIbgePopulations() {
 
             if (error) {
                 AppLog.error('Error fetching city positivity data:', error);
-                body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-red-500">Erro ao carregar dados.</td></tr>';
+                body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-red-500">Erro ao carregar dados.</td></tr>';
                 return;
             }
 
             if (!data || data.length === 0) {
-                body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum dado encontrado para o período.</td></tr>';
+                body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Nenhum dado encontrado para o período.</td></tr>';
                 return;
             }
 
             let divisor = 700;
             if (data[0] && data[0].magic_number_divisor) {
                  divisor = data[0].magic_number_divisor;
-                 thMagic.textContent = `PEP ${divisor}`;
+                 thMagic.textContent = `Magic`;
                  thMagic.title = `Divisor: ${divisor}`;
             }
 
-            let totalM1 = 0, totalM2 = 0, totalM3 = 0, totalMagic = 0, totalPrime = 0;
+            let totalM1 = 0, totalM2 = 0, totalM3 = 0, totalMagic = 0;
 
             const rowsHtml = data.map(row => {
                 totalM1 += row.m1_pos || 0;
                 totalM2 += row.m2_pos || 0;
                 totalM3 += row.m3_pos || 0;
                 totalMagic += row.magic_number || 0;
-                totalPrime += row.m1_pos + row.m2_pos + row.m3_pos; // simple sum for prime, or just use 0 if not needed
                 
                 return `
                     <tr class="hover:bg-white/5 transition-colors group">
                         <td class="px-4 py-2 border-r border-white/10 font-medium text-white">${escapeHtml(row.cidade)}</td>
-                        <td class="px-4 py-2 text-right border-r border-white/10 text-slate-300">${(row.population || 0).toLocaleString('pt-BR')}</td>
-                        <td class="px-4 py-2 text-right text-slate-400">0</td>
-                        <td class="px-4 py-2 text-right border-r border-white/10 font-medium text-emerald-400">${(row.magic_number || 0).toLocaleString('pt-BR')}</td>
+                        <td class="px-4 py-2 text-center border-r border-white/10 text-slate-300">${(row.population || 0).toLocaleString('pt-BR')}</td>
+                        <td class="px-4 py-2 text-center border-r border-white/10 font-medium text-cyan-400">${(row.magic_number || 0).toLocaleString('pt-BR')}</td>
                         <td class="px-4 py-2 text-center text-slate-300">${row.m1_pos || 0}</td>
                         <td class="px-4 py-2 text-center text-slate-300">${row.m2_pos || 0}</td>
                         <td class="px-4 py-2 text-center text-slate-300">${row.m3_pos || 0}</td>
@@ -10027,9 +10025,8 @@ async function syncIbgePopulations() {
             const totalHtml = `
                 <tr class="bg-[#1c1b22] font-bold text-white">
                     <td class="px-4 py-3 border-r border-white/10 text-right uppercase">Total:</td>
-                    <td class="px-4 py-3 text-right border-r border-white/10"></td>
-                    <td class="px-4 py-3 text-right">0</td>
-                    <td class="px-4 py-3 text-right border-r border-white/10 text-emerald-400">${totalMagic.toLocaleString('pt-BR')}</td>
+                    <td class="px-4 py-3 text-center border-r border-white/10"></td>
+                    <td class="px-4 py-3 text-center border-r border-white/10 text-cyan-400">${totalMagic.toLocaleString('pt-BR')}</td>
                     <td class="px-4 py-3 text-center">${totalM1.toLocaleString('pt-BR')}</td>
                     <td class="px-4 py-3 text-center">${totalM2.toLocaleString('pt-BR')}</td>
                     <td class="px-4 py-3 text-center">${totalM3.toLocaleString('pt-BR')}</td>
@@ -10040,6 +10037,6 @@ async function syncIbgePopulations() {
 
         } catch (e) {
             AppLog.error('Exception loading city positivity table:', e);
-            body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-red-500">Erro inesperado.</td></tr>';
+            body.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-red-500">Erro inesperado.</td></tr>';
         }
     }
