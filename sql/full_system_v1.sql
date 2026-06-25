@@ -5755,6 +5755,13 @@ BEGIN
                 COUNT(DISTINCT codcli) as pos
             FROM base_vendas
             GROUP BY cidade, mes
+        ),
+        pos_acumulada_por_cidade AS (
+            SELECT
+                cidade,
+                COUNT(DISTINCT codcli) as acm
+            FROM base_vendas
+            GROUP BY cidade
         )
         SELECT COALESCE(json_agg(row_to_json(final_data)), ''[]''::json)
         FROM (
@@ -5763,13 +5770,15 @@ BEGIN
                 COALESCE(cb.population, 0) as population,
                 ' || v_magic_number || ' as magic_number_divisor,
                 CASE WHEN COALESCE(cb.population, 0) > 0 THEN ROUND(cb.population / ' || v_magic_number || ') ELSE 0 END as magic_number,
+                COALESCE(acm.acm, 0) as acm,
                 COALESCE(MAX(CASE WHEN pos.mes = ''' || v_mes_1 || ''' THEN pos.pos ELSE 0 END), 0) as m1_pos,
                 COALESCE(MAX(CASE WHEN pos.mes = ''' || v_mes_2 || ''' THEN pos.pos ELSE 0 END), 0) as m2_pos,
                 COALESCE(MAX(CASE WHEN pos.mes = ''' || v_mes_3 || ''' THEN pos.pos ELSE 0 END), 0) as m3_pos
             FROM public.config_city_branches cb
             LEFT JOIN pos_por_cidade_mes pos ON cb.cidade = pos.cidade
+            LEFT JOIN pos_acumulada_por_cidade acm ON cb.cidade = acm.cidade
             ' || v_where_cb || '
-            GROUP BY cb.cidade, cb.population
+            GROUP BY cb.cidade, cb.population, acm.acm
             ORDER BY cb.cidade
         ) final_data;
     ';
@@ -6053,6 +6062,13 @@ BEGIN
                 COUNT(DISTINCT codcli) as pos
             FROM base_vendas
             GROUP BY cidade, mes
+        ),
+        pos_acumulada_por_cidade AS (
+            SELECT
+                cidade,
+                COUNT(DISTINCT codcli) as acm
+            FROM base_vendas
+            GROUP BY cidade
         )
         SELECT COALESCE(json_agg(row_to_json(final_data)), ''[]''::json)
         FROM (
@@ -6061,13 +6077,15 @@ BEGIN
                 COALESCE(cb.population, 0) as population,
                 ' || v_magic_number || ' as magic_number_divisor,
                 CASE WHEN COALESCE(cb.population, 0) > 0 THEN ROUND(cb.population / ' || v_magic_number || ') ELSE 0 END as magic_number,
+                COALESCE(acm.acm, 0) as acm,
                 COALESCE(MAX(CASE WHEN pos.mes = ''' || v_mes_1 || ''' THEN pos.pos ELSE 0 END), 0) as m1_pos,
                 COALESCE(MAX(CASE WHEN pos.mes = ''' || v_mes_2 || ''' THEN pos.pos ELSE 0 END), 0) as m2_pos,
                 COALESCE(MAX(CASE WHEN pos.mes = ''' || v_mes_3 || ''' THEN pos.pos ELSE 0 END), 0) as m3_pos
             FROM public.config_city_branches cb
             LEFT JOIN pos_por_cidade_mes pos ON cb.cidade = pos.cidade
+            LEFT JOIN pos_acumulada_por_cidade acm ON cb.cidade = acm.cidade
             ' || v_where_cb || '
-            GROUP BY cb.cidade, cb.population
+            GROUP BY cb.cidade, cb.population, acm.acm
             ORDER BY cb.cidade
         ) final_data;
     ';
