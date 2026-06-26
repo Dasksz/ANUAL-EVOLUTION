@@ -343,7 +343,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.sp_clientes_sem_venda_rca(p_rca TEXT)
+CREATE OR REPLACE FUNCTION public.sp_clientes_sem_venda_rca(p_rca TEXT, p_cidade TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql STABLE
 AS $$
@@ -358,15 +358,16 @@ BEGIN
     ) INTO v_lista_clientes
     FROM data_clients
     WHERE rca1 = p_rca 
+      AND unaccent(cidade) ILIKE unaccent('%' || p_cidade || '%')
       AND (ultimacompra IS NULL OR ultimacompra < date_trunc('month', CURRENT_DATE));
 
     IF v_lista_clientes IS NULL OR v_lista_clientes = '' THEN
-        v_lista_clientes := 'Nenhum cliente sem venda encontrado para este RCA.';
+        v_lista_clientes := 'Nenhum cliente sem venda encontrado para este RCA na cidade informada (' || p_cidade || '). Verifique a grafia da cidade e tente novamente.';
     END IF;
 
-    v_texto_pronto := '"Segue lista de clientes sem venda do RCA ' || p_rca || E'\n\n' ||
+    v_texto_pronto := '📋 Segue lista de clientes sem venda do RCA ' || p_rca || ' em ' || p_cidade || E'\n\n' ||
                       'Mês: ' || to_char(CURRENT_DATE, 'MM/YYYY') || E'\n\n' ||
-                      v_lista_clientes || '"';
+                      v_lista_clientes;
 
     SELECT jsonb_build_object(
         'texto_pronto_para_enviar', v_texto_pronto
@@ -631,12 +632,13 @@ SELECT '10'::text AS opcao,
        NULL::text AS data_inicio,
        NULL::text AS data_fim,
        NULL::text AS lista_produtos,
-       NULL::text AS cidade,
+       ci.cidade AS cidade,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
        c.rca AS rca,
        NULL::text AS filial,
-       public.sp_clientes_sem_venda_rca(c.rca) AS dados
-FROM (SELECT DISTINCT rca1 as rca FROM data_clients WHERE rca1 IS NOT NULL) c;
+       public.sp_clientes_sem_venda_rca(c.rca, ci.cidade) AS dados
+FROM (SELECT DISTINCT rca1 as rca FROM data_clients WHERE rca1 IS NOT NULL) c
+CROSS JOIN (SELECT DISTINCT cidade FROM data_clients WHERE cidade IS NOT NULL) ci;
 
 GRANT SELECT ON public.n8n_agent_view_v2 TO service_role;

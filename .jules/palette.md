@@ -9,3 +9,5 @@
 ## 2024-05-15 - [Centering Table Headers with Visual Transforms]
 **Learning:** Use visual transforms (`transform: translateX()`) rather than padding manipulation for precise, pixel-perfect text shifts within tight table cells. Padding alters the box-model width, often causing layout flow disruption or wrapping, while transform only alters the visual render.
 **Action:** Add `style="transform: translateX(Xpx);"` directly on elements that require small sub-10px centering tweaks.
+## 2026-06-26 - Time-based greeting logic in n8n
+A learned lesson: n8n LLM agents often fail at simple relative time greetings ("Bom dia") when instructed "use context" unless given explicit rules or time bounds.
