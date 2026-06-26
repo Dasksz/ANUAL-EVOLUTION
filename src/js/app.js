@@ -5005,18 +5005,18 @@ const body = document.getElementById('city-segmentation-table-body');
             <tr>
                 <th class="px-4 py-3 border-r border-white/10 align-middle text-left">Segmento do PDV</th>
                 <th id="th-seg-acumulado" class="px-4 py-3 text-center border-r border-white/10 align-middle" title="Acumulado">${year}</th>
-                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">J</th>
-                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">F</th>
-                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">M</th>
-                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">A</th>
-                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">M</th>
-                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">J</th>
-                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">J</th>
-                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">A</th>
-                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">S</th>
-                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">O</th>
-                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">N</th>
-                <th class="px-0 py-3 text-center align-middle w-[5%] min-w-[50px]">D</th>
+                <th class="pl-4 pr-0 py-3 text-center align-middle w-[5%] min-w-[50px]">J</th>
+                <th class="pl-4 pr-0 py-3 text-center align-middle w-[5%] min-w-[50px]">F</th>
+                <th class="pl-4 pr-0 py-3 text-center align-middle w-[5%] min-w-[50px]">M</th>
+                <th class="pl-4 pr-0 py-3 text-center align-middle w-[5%] min-w-[50px]">A</th>
+                <th class="pl-4 pr-0 py-3 text-center align-middle w-[5%] min-w-[50px]">M</th>
+                <th class="pl-4 pr-0 py-3 text-center align-middle w-[5%] min-w-[50px]">J</th>
+                <th class="pl-4 pr-0 py-3 text-center align-middle w-[5%] min-w-[50px]">J</th>
+                <th class="pl-4 pr-0 py-3 text-center align-middle w-[5%] min-w-[50px]">A</th>
+                <th class="pl-4 pr-0 py-3 text-center align-middle w-[5%] min-w-[50px]">S</th>
+                <th class="pl-4 pr-0 py-3 text-center align-middle w-[5%] min-w-[50px]">O</th>
+                <th class="pl-4 pr-0 py-3 text-center align-middle w-[5%] min-w-[50px]">N</th>
+                <th class="pl-4 pr-0 py-3 text-center align-middle w-[5%] min-w-[50px]">D</th>
             </tr>
         `;
         if (thead) thead.innerHTML = theadHtml;
