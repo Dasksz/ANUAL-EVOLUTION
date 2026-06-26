@@ -8,7 +8,19 @@ LANGUAGE plpgsql STABLE
 AS $$
 DECLARE
     v_mix JSONB;
+    v_texto_pronto TEXT;
+    v_garantidas TEXT := '';
+    v_faltantes TEXT := '';
+    v_cliente_fantasia TEXT := '';
+    v_cliente_cidade TEXT := '';
+    v_cliente_ramo TEXT := '';
+    v_estoque_text TEXT := '';
 BEGIN
+    -- Obter os dados básicos do cliente
+    SELECT fantasia, cidade, ramo INTO v_cliente_fantasia, v_cliente_cidade, v_cliente_ramo
+    FROM data_clients
+    WHERE codigo_cliente = p_cod_cliente LIMIT 1;
+
     WITH categorias_obrigatorias AS (
         SELECT DISTINCT nome_categoria, produto_obrigatorio 
         FROM public.mix_ideal 
@@ -40,54 +52,58 @@ BEGIN
         LEFT JOIN historico_cliente_mes_atual hc ON hc.marca_comprada ILIKE '%' || co.nome_categoria || '%'
         LEFT JOIN historico_cliente_3_meses h3 ON h3.marca_comprada ILIKE '%' || co.nome_categoria || '%'
     )
+    SELECT
+        string_agg(DISTINCT '- *' || nome_categoria || '*', E'\n') INTO v_garantidas
+    FROM cruzamento WHERE comprado_mes_atual = TRUE;
+
+    SELECT
+        string_agg(
+            CASE
+                WHEN p.codigo IS NOT NULL AND p.estoque_filial_num > 0 THEN
+                    '- *' || cruzamento.nome_categoria || ':* (Sugira *' || p.descricao || '* - Cód. ' || p.codigo || ')'
+                ELSE NULL
+            END, E'\n'
+        ) INTO v_faltantes
+    FROM cruzamento
+    LEFT JOIN LATERAL (
+        SELECT codigo, descricao,
+               COALESCE((estoque_filial->>v_cliente_ramo)::numeric, 0) as estoque_filial_num
+        FROM public.dim_produtos dp
+        WHERE dp.mix_marca ILIKE '%' || cruzamento.nome_categoria || '%'
+          AND (cruzamento.produto_obrigatorio IS NULL OR cruzamento.produto_obrigatorio = '' OR dp.codigo = cruzamento.produto_obrigatorio)
+        ORDER BY dp.codigo
+        LIMIT 1
+    ) p ON true
+    WHERE comprado_mes_atual = FALSE AND (p.codigo IS NOT NULL AND p.estoque_filial_num > 0);
+
+    -- Se não houver nada, setar um fallback amigável
+    IF v_garantidas IS NULL OR v_garantidas = '' THEN
+        v_garantidas := 'Nenhuma categoria garantida ainda neste mês. O cliente precisa construir o mix!';
+    END IF;
+
+    IF v_faltantes IS NULL OR v_faltantes = '' THEN
+        v_faltantes := 'Sem produtos obrigatórios com estoque disponível no momento ou o Mix já está 100%!';
+    END IF;
+
+    -- Construção manual do Layout para poupar tokens do Agente
+    v_texto_pronto := 'Analisando o Mix Ideal do cliente *' || p_cod_cliente || '*:' || E'\n\n' ||
+                      '🏢 *Cliente:* ' || COALESCE(v_cliente_fantasia, 'Não Encontrado') || E'\n' ||
+                      '📍 *Localização:* ' || COALESCE(v_cliente_cidade, 'Não Encontrada') || E'\n\n' ||
+                      '*Meta do Pedido:* 18 produtos diferentes no total.' || E'\n' ||
+                      '*Regra de Ouro:* Ter pelo menos 1 produto de CADA categoria obrigatória.' || E'\n\n' ||
+                      '*CATEGORIAS GARANTIDAS✅:*' || E'\n' ||
+                      v_garantidas || E'\n\n' ||
+                      '*OPORTUNIDADES DE MIX (Faltantes)🚨:*' || E'\n' ||
+                      v_faltantes;
+
     SELECT jsonb_build_object(
-        'meta_pedido', 18,
-        'categorias_garantidas_este_mes', (SELECT jsonb_agg(nome_categoria) FROM cruzamento WHERE comprado_mes_atual = TRUE),
-        'oportunidades_faltantes_este_mes_mas_compradas_antes', (
-            SELECT jsonb_agg(
-                jsonb_build_object(
-                    'categoria', nome_categoria,
-                    'produto_sugerido_codigo', p.codigo,
-                    'produto_sugerido_nome', p.descricao,
-                    'estoque_filial', p.estoque_filial
-                )
-            )
-            FROM cruzamento
-            LEFT JOIN LATERAL (
-                SELECT codigo, descricao, estoque_filial
-                FROM public.dim_produtos dp
-                WHERE dp.mix_marca ILIKE '%' || cruzamento.nome_categoria || '%'
-                  AND (cruzamento.produto_obrigatorio IS NULL OR cruzamento.produto_obrigatorio = '' OR dp.codigo = cruzamento.produto_obrigatorio)
-                ORDER BY dp.codigo
-                LIMIT 1
-            ) p ON true
-            WHERE comprado_mes_atual = FALSE AND comprado_ultimos_3_meses = TRUE
-        ),
-        'oportunidades_faltantes_nunca_compradas', (
-            SELECT jsonb_agg(
-                jsonb_build_object(
-                    'categoria', nome_categoria,
-                    'produto_sugerido_codigo', p.codigo,
-                    'produto_sugerido_nome', p.descricao,
-                    'estoque_filial', p.estoque_filial
-                )
-            )
-            FROM cruzamento
-            LEFT JOIN LATERAL (
-                SELECT codigo, descricao, estoque_filial
-                FROM public.dim_produtos dp
-                WHERE dp.mix_marca ILIKE '%' || cruzamento.nome_categoria || '%'
-                  AND (cruzamento.produto_obrigatorio IS NULL OR cruzamento.produto_obrigatorio = '' OR dp.codigo = cruzamento.produto_obrigatorio)
-                ORDER BY dp.codigo
-                LIMIT 1
-            ) p ON true
-            WHERE comprado_mes_atual = FALSE AND comprado_ultimos_3_meses = FALSE
-        )
+        'texto_pronto_para_enviar', v_texto_pronto
     ) INTO v_mix;
 
     RETURN v_mix;
 END;
 $$;
+
 DROP FUNCTION IF EXISTS public.sp_sugestao_pedido(text) CASCADE;
 
 -- Função 4: Sugestão de Pedido
@@ -170,6 +186,9 @@ LANGUAGE plpgsql STABLE
 AS $$
 DECLARE
     v_inovacoes JSONB;
+    v_texto_pronto TEXT;
+    v_positivadas TEXT := '';
+    v_sugestoes TEXT := '';
 BEGIN
     WITH inovacoes_ativas AS (
         SELECT DISTINCT i.codigo as cod_produto, p.descricao as nome_produto, i.inovacoes as categoria_inovacao, p.mix_marca
@@ -193,28 +212,30 @@ BEGIN
         FROM inovacoes_ativas i
         LEFT JOIN historico_cliente_mes_atual hc ON hc.produto_comprado = i.cod_produto
     )
+    SELECT string_agg(DISTINCT '- *' || categoria_inovacao || '* - ' || cod_produto || ' - ' || nome_produto, E'\n') INTO v_positivadas
+    FROM cruzamento WHERE comprado_mes_atual = TRUE;
+
+    SELECT string_agg(DISTINCT '- *' || categoria_inovacao || ':* Sugira o produto ' || nome_produto || ' (Cód. ' || cod_produto || '). Cliente ainda não comprou esta inovação no mês atual.', E'\n') INTO v_sugestoes
+    FROM (SELECT * FROM cruzamento WHERE comprado_mes_atual = FALSE LIMIT 9) t;
+
+    IF v_positivadas IS NULL OR v_positivadas = '' THEN
+        v_positivadas := 'Nenhuma inovação positivada ainda neste mês.';
+    END IF;
+
+    IF v_sugestoes IS NULL OR v_sugestoes = '' THEN
+        v_sugestoes := 'Nenhuma sugestão de inovação restante ou falta de estoque.';
+    END IF;
+
+    v_texto_pronto := 'Analisando a situação de inovações do cliente *' || p_cod_cliente || '* no mês atual, temos:' || E'\n\n' ||
+                      '*CATEGORIAS POSITIVADAS✅:*' || E'\n' ||
+                      v_positivadas || E'\n\n' ||
+                      '*OPORTUNIDADES✨:*' || E'\n' ||
+                      'Baseado no histórico do cliente, estas são as sugestões mais certeiras🎯' || E'\n' ||
+                      v_sugestoes || E'\n\n' ||
+                      '*Dica de Venda:* Aumentar inovações garante exclusividade e diferenciação do PDV frente aos concorrentes!';
+
     SELECT jsonb_build_object(
-        'inovacoes_positivadas_mes_atual', (
-            SELECT COALESCE(jsonb_agg(
-                jsonb_build_object(
-                    'categoria_inovacao', categoria_inovacao,
-                    'codigo_produto', cod_produto,
-                    'nome_produto', nome_produto
-                )
-            ), '[]'::jsonb)
-            FROM cruzamento WHERE comprado_mes_atual = TRUE
-        ),
-        'oportunidades_sugestoes_inovacoes', (
-            SELECT COALESCE(jsonb_agg(
-                jsonb_build_object(
-                    'categoria_inovacao', categoria_inovacao,
-                    'codigo_produto', cod_produto,
-                    'nome_produto', nome_produto,
-                    'justificativa', 'Cliente não comprou esta inovação da marca ' || COALESCE(mix_marca, 'Diversos') || ' neste mês'
-                )
-            ), '[]'::jsonb)
-            FROM (SELECT * FROM cruzamento WHERE comprado_mes_atual = FALSE LIMIT 9) t
-        )
+        'texto_pronto_para_enviar', v_texto_pronto
     ) INTO v_inovacoes;
 
     RETURN v_inovacoes;
