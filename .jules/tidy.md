@@ -10,3 +10,4 @@
 ## 2024-06-26 : Fix layout leakage for table
 **Aprendizado:** A stray closing `</div>` tag can prematurely close a view container (like `#city-view`), causing subsequent sibling elements (like the "Performance - Segmentação" table) to leak out and render globally across other views within the parent layout.
 **Ação:** Always verify DOM nesting mathematically (`count(<div) == count(</div>)`) within specific component boundaries when elements appear on unintended pages.
+## 2026-06-26 - Fix sp_mix_ideal_cliente

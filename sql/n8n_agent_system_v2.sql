@@ -9,12 +9,13 @@ DECLARE
     v_faltantes TEXT := '';
     v_cliente_fantasia TEXT := '';
     v_cliente_cidade TEXT := '';
-    v_cliente_ramo TEXT := '';
+    v_cliente_filial TEXT := '';
 BEGIN
     -- Obter os dados básicos do cliente
-    SELECT fantasia, cidade, ramo INTO v_cliente_fantasia, v_cliente_cidade, v_cliente_ramo 
-    FROM data_clients 
-    WHERE codigo_cliente = p_cod_cliente LIMIT 1;
+    SELECT c.fantasia, c.cidade, b.filial INTO v_cliente_fantasia, v_cliente_cidade, v_cliente_filial
+    FROM data_clients c
+    LEFT JOIN config_city_branches b ON c.cidade = b.cidade
+    WHERE c.codigo_cliente = p_cod_cliente LIMIT 1;
 
     WITH categorias_obrigatorias AS (
         SELECT DISTINCT nome_categoria, produto_obrigatorio 
@@ -59,7 +60,7 @@ BEGIN
         FROM cruzamento 
         LEFT JOIN LATERAL (
             SELECT codigo, descricao, 
-                   COALESCE((estoque_filial->>v_cliente_ramo)::numeric, 0) as estoque_filial_num
+                   COALESCE((estoque_filial->>v_cliente_filial)::numeric, 0) as estoque_filial_num
             FROM public.dim_produtos dp
             WHERE dp.mix_marca ILIKE '%' || cruzamento.nome_categoria || '%' 
               AND (cruzamento.produto_obrigatorio IS NULL OR cruzamento.produto_obrigatorio = '' OR dp.codigo = cruzamento.produto_obrigatorio)
