@@ -9,10 +9,11 @@ DECLARE
     v_faltantes TEXT := '';
     v_cliente_fantasia TEXT := '';
     v_cliente_cidade TEXT := '';
+    v_cliente_bairro TEXT := '';
     v_cliente_filial TEXT := '';
 BEGIN
     -- Obter os dados básicos do cliente
-    SELECT c.fantasia, c.cidade, b.filial INTO v_cliente_fantasia, v_cliente_cidade, v_cliente_filial
+    SELECT c.fantasia, c.cidade, c.bairro, b.filial INTO v_cliente_fantasia, v_cliente_cidade, v_cliente_bairro, v_cliente_filial
     FROM data_clients c
     LEFT JOIN config_city_branches b ON c.cidade = b.cidade
     WHERE c.codigo_cliente = p_cod_cliente LIMIT 1;
@@ -49,11 +50,11 @@ BEGIN
         LEFT JOIN historico_cliente_3_meses h3 ON h3.marca_comprada ILIKE '%' || co.nome_categoria || '%'
     )
     SELECT 
-        (SELECT string_agg(DISTINCT '- *' || nome_categoria || '*', E'\n') FROM cruzamento WHERE comprado_mes_atual = TRUE),
+        (SELECT string_agg(DISTINCT '*' || nome_categoria || '*', ', ') FROM cruzamento WHERE comprado_mes_atual = TRUE),
         (SELECT string_agg(
             CASE 
                 WHEN p.codigo IS NOT NULL AND p.estoque_filial_num > 0 THEN 
-                    '- *' || cruzamento.nome_categoria || ':* (Sugira *' || p.descricao || '* - Cód. ' || p.codigo || ')'
+                    '- ' || p.codigo || ' - ' || p.descricao
                 ELSE NULL 
             END, E'\n'
         ) 
@@ -80,15 +81,16 @@ BEGIN
     END IF;
 
     -- Construção manual do Layout para poupar tokens do Agente
-    v_texto_pronto := 'Analisando o Mix Ideal do cliente *' || p_cod_cliente || '*:' || E'\n\n' ||
-                      '🏢 *Cliente:* ' || COALESCE(v_cliente_fantasia, 'Não Encontrado') || E'\n' ||
-                      '📍 *Localização:* ' || COALESCE(v_cliente_cidade, 'Não Encontrada') || E'\n\n' ||
-                      '*Meta do Pedido:* 18 produtos diferentes no total.' || E'\n' ||
-                      '*Regra de Ouro:* Ter pelo menos 1 produto de CADA categoria obrigatória.' || E'\n\n' ||
-                      '*CATEGORIAS GARANTIDAS✅:*' || E'\n' ||
-                      v_garantidas || E'\n\n' ||
-                      '*OPORTUNIDADES DE MIX (Faltantes)🚨:*' || E'\n' ||
-                      v_faltantes;
+    v_texto_pronto := 'Analisando o Mix Ideal do cliente ' || p_cod_cliente || ':' || E'\n\n' ||
+                      '🏢 Cliente: ' || COALESCE(v_cliente_fantasia, 'Não Encontrado') || ' 📍 ' || E'\n\n' ||
+                      'Localização: ' || COALESCE(v_cliente_cidade, 'Não Encontrada') || ', ' || COALESCE(v_cliente_bairro, '') || '.' || E'\n\n' ||
+                      'Meta do Pedido: 18 produtos diferentes no total.' || E'\n\n' ||
+                      'Regra de Ouro: Ter pelo menos 1 produto de CADA categoria obrigatória.' || E'\n\n' ||
+                      'CATEGORIAS GARANTIDAS✅: ' || v_garantidas || E'\n\n' ||
+                      'OPORTUNIDADES DE MIX (Faltantes)🚨: ' || E'\n\n' ||
+                      'Sugestões de compra' || E'\n\n' ||
+                      v_faltantes || E'\n\n\n' ||
+                      '"Posso te ajudar em algo mais? Se desejar ver a lista de opções novamente digite ""Menu""."';
 
     SELECT jsonb_build_object(
         'texto_pronto_para_enviar', v_texto_pronto
