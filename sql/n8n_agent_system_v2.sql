@@ -1,14 +1,21 @@
--- Drop the existing view since it references the function we want to recreate
-DROP VIEW IF EXISTS public.n8n_agent_view_v2 CASCADE;
-DROP FUNCTION IF EXISTS public.sp_mix_ideal_cliente(text) CASCADE;
-
 CREATE OR REPLACE FUNCTION public.sp_mix_ideal_cliente(p_cod_cliente TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql STABLE
 AS $$
 DECLARE
     v_mix JSONB;
+    v_texto_pronto TEXT;
+    v_garantidas TEXT := '';
+    v_faltantes TEXT := '';
+    v_cliente_fantasia TEXT := '';
+    v_cliente_cidade TEXT := '';
+    v_cliente_ramo TEXT := '';
 BEGIN
+    -- Obter os dados básicos do cliente
+    SELECT fantasia, cidade, ramo INTO v_cliente_fantasia, v_cliente_cidade, v_cliente_ramo
+    FROM data_clients
+    WHERE codigo_cliente = p_cod_cliente LIMIT 1;
+
     WITH categorias_obrigatorias AS (
         SELECT DISTINCT nome_categoria, produto_obrigatorio 
         FROM public.mix_ideal 
@@ -40,92 +47,434 @@ BEGIN
         LEFT JOIN historico_cliente_mes_atual hc ON hc.marca_comprada ILIKE '%' || co.nome_categoria || '%'
         LEFT JOIN historico_cliente_3_meses h3 ON h3.marca_comprada ILIKE '%' || co.nome_categoria || '%'
     )
+    SELECT
+        (SELECT string_agg(DISTINCT '- *' || nome_categoria || '*', E'\n') FROM cruzamento WHERE comprado_mes_atual = TRUE),
+        (SELECT string_agg(
+            CASE
+                WHEN p.codigo IS NOT NULL AND p.estoque_filial_num > 0 THEN
+                    '- *' || cruzamento.nome_categoria || ':* (Sugira *' || p.descricao || '* - Cód. ' || p.codigo || ')'
+                ELSE NULL
+            END, E'\n'
+        )
+        FROM cruzamento
+        LEFT JOIN LATERAL (
+            SELECT codigo, descricao,
+                   COALESCE((estoque_filial->>v_cliente_ramo)::numeric, 0) as estoque_filial_num
+            FROM public.dim_produtos dp
+            WHERE dp.mix_marca ILIKE '%' || cruzamento.nome_categoria || '%'
+              AND (cruzamento.produto_obrigatorio IS NULL OR cruzamento.produto_obrigatorio = '' OR dp.codigo = cruzamento.produto_obrigatorio)
+            ORDER BY dp.codigo
+            LIMIT 1
+        ) p ON true
+        WHERE comprado_mes_atual = FALSE AND (p.codigo IS NOT NULL AND p.estoque_filial_num > 0))
+    INTO v_garantidas, v_faltantes;
+
+    -- Se não houver nada, setar um fallback amigável
+    IF v_garantidas IS NULL OR v_garantidas = '' THEN
+        v_garantidas := 'Nenhuma categoria garantida ainda neste mês. O cliente precisa construir o mix!';
+    END IF;
+
+    IF v_faltantes IS NULL OR v_faltantes = '' THEN
+        v_faltantes := 'Sem produtos obrigatórios com estoque disponível no momento ou o Mix já está 100%!';
+    END IF;
+
+    -- Construção manual do Layout para poupar tokens do Agente
+    v_texto_pronto := 'Analisando o Mix Ideal do cliente *' || p_cod_cliente || '*:' || E'\n\n' ||
+                      '🏢 *Cliente:* ' || COALESCE(v_cliente_fantasia, 'Não Encontrado') || E'\n' ||
+                      '📍 *Localização:* ' || COALESCE(v_cliente_cidade, 'Não Encontrada') || E'\n\n' ||
+                      '*Meta do Pedido:* 18 produtos diferentes no total.' || E'\n' ||
+                      '*Regra de Ouro:* Ter pelo menos 1 produto de CADA categoria obrigatória.' || E'\n\n' ||
+                      '*CATEGORIAS GARANTIDAS✅:*' || E'\n' ||
+                      v_garantidas || E'\n\n' ||
+                      '*OPORTUNIDADES DE MIX (Faltantes)🚨:*' || E'\n' ||
+                      v_faltantes;
+
     SELECT jsonb_build_object(
-        'meta_pedido', 18,
-        'categorias_garantidas_este_mes', (SELECT jsonb_agg(nome_categoria) FROM cruzamento WHERE comprado_mes_atual = TRUE),
-        'oportunidades_faltantes_este_mes_mas_compradas_antes', (SELECT jsonb_agg(CASE WHEN produto_obrigatorio IS NOT NULL AND produto_obrigatorio != '' THEN nome_categoria || ' (' || produto_obrigatorio || ')' ELSE nome_categoria END) FROM cruzamento WHERE comprado_mes_atual = FALSE AND comprado_ultimos_3_meses = TRUE),
-        'oportunidades_faltantes_nunca_compradas', (SELECT jsonb_agg(CASE WHEN produto_obrigatorio IS NOT NULL AND produto_obrigatorio != '' THEN nome_categoria || ' (' || produto_obrigatorio || ')' ELSE nome_categoria END) FROM cruzamento WHERE comprado_mes_atual = FALSE AND comprado_ultimos_3_meses = FALSE)
+        'texto_pronto_para_enviar', v_texto_pronto
     ) INTO v_mix;
 
     RETURN v_mix;
 END;
 $$;
-DROP FUNCTION IF EXISTS public.sp_sugestao_pedido(text) CASCADE;
 
--- Função 4: Sugestão de Pedido
+
+CREATE OR REPLACE FUNCTION public.sp_inovacoes_cliente(p_cod_cliente TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql STABLE
+AS $$
+DECLARE
+    v_inovacoes JSONB;
+    v_texto_pronto TEXT;
+    v_positivadas TEXT := '';
+    v_sugestoes TEXT := '';
+BEGIN
+    WITH inovacoes_ativas AS (
+        SELECT DISTINCT i.codigo as cod_produto, p.descricao as nome_produto, i.inovacoes as categoria_inovacao, p.mix_marca
+        FROM public.data_innovations i
+        JOIN public.dim_produtos p ON p.codigo = i.codigo
+    ),
+    historico_cliente_mes_atual AS (
+        SELECT DISTINCT s.produto as produto_comprado
+        FROM public.data_detailed s
+        WHERE s.codcli = p_cod_cliente
+          AND s.dtped >= date_trunc('month', CURRENT_DATE)
+          AND s.tipovenda IN ('1','9')
+    ),
+    cruzamento AS (
+        SELECT
+            i.categoria_inovacao,
+            i.cod_produto,
+            i.nome_produto,
+            i.mix_marca,
+            CASE WHEN hc.produto_comprado IS NOT NULL THEN TRUE ELSE FALSE END as comprado_mes_atual
+        FROM inovacoes_ativas i
+        LEFT JOIN historico_cliente_mes_atual hc ON hc.produto_comprado = i.cod_produto
+    )
+    SELECT
+        (SELECT string_agg(DISTINCT '- *' || categoria_inovacao || '* - ' || cod_produto || ' - ' || nome_produto, E'\n') FROM cruzamento WHERE comprado_mes_atual = TRUE),
+        (SELECT string_agg(DISTINCT '- *' || categoria_inovacao || ':* Sugira o produto ' || nome_produto || ' (Cód. ' || cod_produto || '). Cliente ainda não comprou esta inovação no mês atual.', E'\n') FROM (SELECT * FROM cruzamento WHERE comprado_mes_atual = FALSE LIMIT 9) t)
+    INTO v_positivadas, v_sugestoes;
+
+    IF v_positivadas IS NULL OR v_positivadas = '' THEN
+        v_positivadas := 'Nenhuma inovação positivada ainda neste mês.';
+    END IF;
+
+    IF v_sugestoes IS NULL OR v_sugestoes = '' THEN
+        v_sugestoes := 'Nenhuma sugestão de inovação restante ou falta de estoque.';
+    END IF;
+
+    v_texto_pronto := 'Analisando a situação de inovações do cliente *' || p_cod_cliente || '* no mês atual, temos:' || E'\n\n' ||
+                      '*CATEGORIAS POSITIVADAS✅:*' || E'\n' ||
+                      v_positivadas || E'\n\n' ||
+                      '*OPORTUNIDADES✨:*' || E'\n' ||
+                      'Baseado no histórico do cliente, estas são as sugestões mais certeiras🎯' || E'\n' ||
+                      v_sugestoes || E'\n\n' ||
+                      '*Dica de Venda:* Aumentar inovações garante exclusividade e diferenciação do PDV frente aos concorrentes!';
+
+    SELECT jsonb_build_object(
+        'texto_pronto_para_enviar', v_texto_pronto
+    ) INTO v_inovacoes;
+
+    RETURN v_inovacoes;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION public.sp_cliente_cadastro(p_cod_cliente TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql STABLE
+AS $$
+DECLARE
+    v_cadastro JSONB;
+    v_texto_pronto TEXT;
+    v_fantasia TEXT;
+    v_razaosocial TEXT;
+    v_cnpj TEXT;
+    v_bairro TEXT;
+    v_cidade TEXT;
+    v_ramo TEXT;
+    v_bloqueio TEXT;
+BEGIN
+    SELECT fantasia, razaosocial, cnpj, bairro, cidade, ramo, bloqueio
+    INTO v_fantasia, v_razaosocial, v_cnpj, v_bairro, v_cidade, v_ramo, v_bloqueio
+    FROM data_clients
+    WHERE codigo_cliente = p_cod_cliente LIMIT 1;
+
+    IF v_fantasia IS NULL THEN
+        v_texto_pronto := 'Cliente não encontrado.';
+    ELSE
+        v_texto_pronto := 'Cadastro localizado! ✅' || E'\n\n' ||
+                          'Razão social: ' || COALESCE(v_razaosocial, '') || E'\n' ||
+                          'Fantasia: ' || COALESCE(v_fantasia, '') || E'\n' ||
+                          'CNPJ/CPF: ' || COALESCE(v_cnpj, '') || E'\n' ||
+                          'Código do Cliente: ' || p_cod_cliente || E'\n' ||
+                          'Bairro: ' || COALESCE(v_bairro, '') || E'\n' ||
+                          'Cidade: ' || COALESCE(v_cidade, '') || E'\n' ||
+                          'Filial: ' || COALESCE(v_ramo, '') || E'\n' ||
+                          'Bloqueio Sefaz: ' || COALESCE(v_bloqueio, '');
+    END IF;
+
+    SELECT jsonb_build_object(
+        'texto_pronto_para_enviar', v_texto_pronto
+    ) INTO v_cadastro;
+
+    RETURN v_cadastro;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION public.sp_historico_pedidos(p_cod_cliente TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql STABLE
+AS $$
+DECLARE
+    v_historico JSONB;
+    v_texto_pronto TEXT;
+    v_pedidos TEXT := '';
+    v_fantasia TEXT;
+    v_cidade TEXT;
+    v_bairro TEXT;
+    v_bloqueio TEXT;
+BEGIN
+    SELECT fantasia, cidade, bairro, bloqueio
+    INTO v_fantasia, v_cidade, v_bairro, v_bloqueio
+    FROM data_clients
+    WHERE codigo_cliente = p_cod_cliente LIMIT 1;
+
+    WITH ultimos_pedidos AS (
+        SELECT
+            s.pedido,
+            MAX(s.dtped) as data_pedido,
+            SUM(COALESCE(s.vlvenda, s.vlbonific, 0)) as valor_total,
+            MAX(s.tipovenda) as tipo_venda,
+            COUNT(s.produto) as contagem_itens,
+            bool_or(dp.mix_categoria = 'SALTY') as has_salty,
+            bool_or(dp.mix_categoria = 'FOODS') as has_foods
+        FROM (
+            SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, produto FROM data_history WHERE codcli = p_cod_cliente
+            UNION ALL
+            SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, produto FROM data_detailed WHERE codcli = p_cod_cliente
+        ) s
+        LEFT JOIN dim_produtos dp ON dp.codigo = s.produto
+        GROUP BY s.pedido
+        ORDER BY MAX(s.dtped) DESC
+        LIMIT 5
+    )
+    SELECT string_agg(
+        '📦 Pedido Analisado: Data: ' || to_char(data_pedido, 'DD/MM/YYYY') || E'\n' ||
+        'Pedido: ' || pedido || E'\n' ||
+        'Valor: R$ ' || round(valor_total, 2) || E'\n' ||
+        'Mix: ' || contagem_itens || E'\n' ||
+        'Tipo: ' || tipo_venda || ' 11=Bonif / 5=Perda' || E'\n' ||
+        'Salty: ' || CASE WHEN has_salty THEN 'SIM' ELSE 'NAO' END || ' | Foods: ' || CASE WHEN has_foods THEN 'SIM' ELSE 'NAO' END,
+        E'\n\n'
+    ) INTO v_pedidos
+    FROM ultimos_pedidos;
+
+    IF v_pedidos IS NULL OR v_pedidos = '' THEN
+        v_pedidos := 'Nenhum pedido encontrado no histórico recente.';
+    END IF;
+
+    v_texto_pronto := '🏢 Cliente: ' || COALESCE(v_fantasia, 'Não Encontrado') || E'\n' ||
+                      '📍 Localização: ' || COALESCE(v_bairro, '') || ', ' || COALESCE(v_cidade, '') || E'\n' ||
+                      '🚦 Bloqueio Sefaz: ' || COALESCE(v_bloqueio, '') || E'\n\n' ||
+                      v_pedidos;
+
+    SELECT jsonb_build_object(
+        'texto_pronto_para_enviar', v_texto_pronto
+    ) INTO v_historico;
+
+    RETURN v_historico;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION public.sp_consultar_pedido(p_num_pedido TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql STABLE
+AS $$
+DECLARE
+    v_pedido_detalhe JSONB;
+    v_texto_pronto TEXT;
+    v_itens TEXT := '';
+BEGIN
+    WITH itens_pedido AS (
+        SELECT
+            s.qtvenda,
+            COALESCE(dp.descricao, s.produto) as nome_produto,
+            CASE WHEN s.qtvenda > 0 THEN ROUND((COALESCE(s.vlvenda, s.vlbonific, 0) / s.qtvenda)::numeric, 2) ELSE 0 END as preco_unitario
+        FROM (
+            SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, qtvenda, produto FROM data_history WHERE pedido = p_num_pedido
+            UNION ALL
+            SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, qtvenda, produto FROM data_detailed WHERE pedido = p_num_pedido
+        ) s
+        LEFT JOIN dim_produtos dp ON dp.codigo = s.produto
+    )
+    SELECT string_agg(
+        '🔹 ' || qtvenda || ' x ' || nome_produto || ' un R$ ' || preco_unitario || '.',
+        E'\n'
+    ) INTO v_itens
+    FROM itens_pedido;
+
+    IF v_itens IS NULL OR v_itens = '' THEN
+        v_texto_pronto := 'Pedido ' || p_num_pedido || ' não encontrado.';
+    ELSE
+        v_texto_pronto := '🛒 Itens Comprados no Pedido ' || p_num_pedido || ':' || E'\n\n' || v_itens;
+    END IF;
+
+    SELECT jsonb_build_object(
+        'texto_pronto_para_enviar', v_texto_pronto
+    ) INTO v_pedido_detalhe;
+
+    RETURN v_pedido_detalhe;
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION public.sp_consultar_estoque(p_codigo_produto TEXT, p_filial TEXT DEFAULT '01')
+RETURNS JSONB
+LANGUAGE plpgsql STABLE
+AS $$
+DECLARE
+    v_estoque_json JSONB;
+    v_texto_pronto TEXT;
+    v_nome TEXT;
+    v_estoque_qtd NUMERIC;
+BEGIN
+    SELECT descricao, COALESCE((estoque_filial->>p_filial)::numeric, 0)
+    INTO v_nome, v_estoque_qtd
+    FROM dim_produtos
+    WHERE codigo = p_codigo_produto;
+
+    IF v_nome IS NULL THEN
+        v_texto_pronto := 'Produto não encontrado.';
+    ELSE
+        v_texto_pronto := '📦 *Consulta de Estoque*' || E'\n' ||
+                          '*Produto:* ' || v_nome || ' (' || p_codigo_produto || ')' || E'\n' ||
+                          '*Filial Consultada:* ' || p_filial || E'\n' ||
+                          '*Estoque Disponível:* ' || v_estoque_qtd || ' Cx.';
+    END IF;
+
+    SELECT jsonb_build_object(
+        'texto_pronto_para_enviar', v_texto_pronto
+    ) INTO v_estoque_json;
+
+    RETURN v_estoque_json;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.sp_clientes_sem_venda_rca(p_rca TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql STABLE
+AS $$
+DECLARE
+    v_sem_venda JSONB;
+    v_texto_pronto TEXT;
+    v_lista_clientes TEXT := '';
+BEGIN
+    WITH ultimas_compras AS (
+        SELECT codcli, MAX(dtped) as ultima_compra
+        FROM (
+            SELECT codcli, dtped FROM data_history WHERE rca1 = p_rca
+            UNION ALL
+            SELECT codcli, dtped FROM data_detailed WHERE codsupervisor = p_rca OR codusur = p_rca
+        ) s
+        GROUP BY codcli
+    ),
+    clientes_rca AS (
+        SELECT codigo_cliente, razaosocial, bairro, cidade
+        FROM data_clients
+        WHERE rca1 = p_rca
+    )
+    SELECT string_agg(
+        '🔹 ' || c.codigo_cliente || ' - ' || COALESCE(c.razaosocial, '') || ' - ' || COALESCE(c.bairro, '') || ', ' || COALESCE(c.cidade, '') || ' - Última compra: ' || COALESCE(to_char(u.ultima_compra, 'DD/MM/YYYY'), 'Sem compra'),
+        E'\n'
+    ) INTO v_lista_clientes
+    FROM clientes_rca c
+    LEFT JOIN ultimas_compras u ON u.codcli = c.codigo_cliente
+    WHERE u.ultima_compra IS NULL OR u.ultima_compra < date_trunc('month', CURRENT_DATE);
+
+    IF v_lista_clientes IS NULL OR v_lista_clientes = '' THEN
+        v_lista_clientes := 'Nenhum cliente sem venda encontrado para este RCA.';
+    END IF;
+
+    v_texto_pronto := '"Segue lista de clientes sem venda do RCA ' || p_rca || E'\n\n' ||
+                      'Mês: ' || to_char(CURRENT_DATE, 'MM/YYYY') || E'\n\n' ||
+                      v_lista_clientes || '"';
+
+    SELECT jsonb_build_object(
+        'texto_pronto_para_enviar', v_texto_pronto
+    ) INTO v_sem_venda;
+
+    RETURN v_sem_venda;
+END;
+$$;
+
+
 CREATE OR REPLACE FUNCTION public.sp_sugestao_pedido(p_cod_cliente TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql STABLE
 AS $$
 DECLARE
     v_sugestao JSONB;
+    v_texto_pronto TEXT;
     v_media NUMERIC;
-    v_filial TEXT;
+    v_cobertura TEXT := '';
+    v_inovacoes TEXT := '';
+    v_dica TEXT := '';
 BEGIN
-    SELECT media_mensal_valor, filial INTO v_media, v_filial 
-    FROM public.mv_frequencia_cliente WHERE codcli = p_cod_cliente;
+    SELECT COALESCE(AVG(vlvenda), 0) INTO v_media FROM data_history WHERE codcli = p_cod_cliente;
 
-    WITH historico_cliente_mes_atual AS (
-        SELECT DISTINCT p.mix_marca as marca_comprada 
+    WITH produtos_comprados_ultimo_trimestre AS (
+        SELECT DISTINCT p.codigo, p.descricao as nome
         FROM public.data_detailed s
         JOIN public.dim_produtos p ON p.codigo = s.produto
-        WHERE s.codcli = p_cod_cliente 
+        WHERE s.codcli = p_cod_cliente
+          AND s.dtped >= date_trunc('month', CURRENT_DATE - INTERVAL '3 months')
+          AND s.tipovenda IN ('1','9')
+    ),
+    produtos_comprados_mes_atual AS (
+        SELECT DISTINCT s.produto as codigo
+        FROM public.data_detailed s
+        WHERE s.codcli = p_cod_cliente
           AND s.dtped >= date_trunc('month', CURRENT_DATE)
           AND s.tipovenda IN ('1','9')
     ),
-    mix_ideal_falta AS (
-        SELECT nome_categoria, produto_obrigatorio 
-        FROM public.mix_ideal WHERE ativo = TRUE
-        EXCEPT
-        SELECT marca_comprada, NULL FROM historico_cliente_mes_atual
-    ),
-    produtos_cliente_comprava_3_meses_mix AS (
-        SELECT DISTINCT p.codigo, p.descricao as nome, p.mix_marca
-        FROM public.data_detailed s
-        JOIN public.dim_produtos p ON p.codigo = s.produto
-        WHERE s.codcli = p_cod_cliente 
-          AND s.dtped >= date_trunc('month', CURRENT_DATE - INTERVAL '3 months')
-          AND s.dtped < date_trunc('month', CURRENT_DATE)
-          AND s.tipovenda IN ('1','9')
-    ),
     cobertura_mix_historico AS (
-        SELECT DISTINCT pe.codigo, pe.nome, pe.mix_marca
-        FROM produtos_cliente_comprava_3_meses_mix pe
-        JOIN mix_ideal_falta mi ON pe.mix_marca ILIKE '%' || mi.nome_categoria || '%'
-        LIMIT 3
+        SELECT * FROM produtos_comprados_ultimo_trimestre
+        WHERE codigo NOT IN (SELECT codigo FROM produtos_comprados_mes_atual)
     ),
     cobertura_mix_codigo AS (
-        SELECT DISTINCT p.codigo, p.descricao as nome, mi.nome_categoria as mix_marca
-        FROM dim_produtos p
-        JOIN mix_ideal_falta mi ON p.codigo = mi.produto_obrigatorio
-        WHERE mi.produto_obrigatorio IS NOT NULL AND mi.produto_obrigatorio != ''
-        LIMIT 3
+        SELECT codigo, descricao as nome
+        FROM public.dim_produtos p
+        WHERE codigo NOT IN (SELECT codigo FROM produtos_comprados_mes_atual)
     ),
-    inovacoes_falta AS (
-        SELECT i.codigo as cod_produto, p.descricao as nome_produto, i.inovacoes as categoria_inovacao 
+    inovacoes_ativas AS (
+        SELECT DISTINCT i.codigo as cod_produto, p.descricao as nome_produto
         FROM public.data_innovations i
         JOIN public.dim_produtos p ON p.codigo = i.codigo
-        WHERE NOT EXISTS (
-            SELECT 1 FROM public.data_detailed s 
-            WHERE s.produto = i.codigo AND s.codcli = p_cod_cliente AND s.dtped >= date_trunc('month', CURRENT_DATE)
-        )
-        LIMIT 3
+    ),
+    inovacoes_falta AS (
+        SELECT * FROM inovacoes_ativas
+        WHERE cod_produto NOT IN (SELECT codigo FROM produtos_comprados_mes_atual)
+        LIMIT 5
     )
-    
+    SELECT
+        (SELECT string_agg('🔹 ' || codigo || ' - ' || nome, E'\n') FROM (SELECT codigo, nome FROM cobertura_mix_historico UNION SELECT codigo, nome FROM cobertura_mix_codigo LIMIT 3) sub),
+        (SELECT string_agg('🔹 ' || cod_produto || ' - ' || nome_produto, E'\n') FROM inovacoes_falta)
+    INTO v_cobertura, v_inovacoes;
+
+    IF v_media < 1500 THEN
+        v_dica := 'Ofereça as opções de cobertura de Mix que ele já levou meses anteriores em pacotes menores para garantir giro!';
+    ELSE
+        v_dica := 'O cliente tem bom potencial e faltam poucas categorias para o Mix Ideal. Insira as Inovações junto!';
+    END IF;
+
+    IF v_cobertura IS NULL OR v_cobertura = '' THEN
+         v_cobertura := 'Nenhuma sugestão de cobertura encontrada.';
+    END IF;
+
+    IF v_inovacoes IS NULL OR v_inovacoes = '' THEN
+         v_inovacoes := 'Nenhuma sugestão de inovações encontrada.';
+    END IF;
+
+    v_texto_pronto := '💡 *Sugestão de Pedido para o cliente ' || p_cod_cliente || '*:' || E'\n\n' ||
+                      '*Sugestões de Cobertura de Mix:*' || E'\n' ||
+                      v_cobertura || E'\n\n' ||
+                      '*Sugestões de Inovações:*' || E'\n' ||
+                      v_inovacoes || E'\n\n' ||
+                      '*Dica de Venda:* ' || v_dica;
+
     SELECT jsonb_build_object(
-        'reposicao_garantida_ja_compradas_este_mes', COALESCE((SELECT jsonb_agg(marca_comprada) FROM (SELECT marca_comprada FROM historico_cliente_mes_atual LIMIT 5) t), '[]'::jsonb),
-        'cobertura_mix_sugestao_com_base_no_historico_3m', COALESCE((SELECT jsonb_agg(codigo || ' - ' || nome) FROM (SELECT codigo, nome FROM cobertura_mix_historico UNION SELECT codigo, nome FROM cobertura_mix_codigo LIMIT 3) sub), '[]'::jsonb),
-        'inovacoes_sugestao', COALESCE((SELECT jsonb_agg(cod_produto || ' - ' || nome_produto) FROM inovacoes_falta), '[]'::jsonb),
-        'dica_venda', CASE 
-            WHEN v_media < 1500 THEN 'Ofereça as opções de cobertura de Mix que ele já levou meses anteriores em pacotes menores para garantir giro!'
-            ELSE 'O cliente tem bom potencial e faltam poucas categorias para o Mix Ideal. Insira as Inovações junto!'
-        END
+        'texto_pronto_para_enviar', v_texto_pronto
     ) INTO v_sugestao;
 
     RETURN v_sugestao;
 END;
 $$;
 
+
+DROP VIEW IF EXISTS public.n8n_agent_view_v2;
 CREATE VIEW public.n8n_agent_view_v2 WITH (security_invoker = true) AS
 SELECT '1'::text AS opcao,
        NULL::text AS cpf,
@@ -139,15 +488,8 @@ SELECT '1'::text AS opcao,
        NULL::text AS cidade,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
-       jsonb_build_object(
-           'fantasia', c.fantasia,
-           'razaosocial', c.razaosocial,
-           'cnpj', c.cnpj,
-           'bloqueio', c.bloqueio,
-           'bairro', c.bairro,
-           'cidade', c.cidade,
-           'filial', c.ramo
-       ) AS dados
+       NULL::text AS rca,
+       public.sp_cliente_cadastro(c.codigo_cliente) AS dados
 FROM data_clients c
 
 UNION ALL
@@ -156,49 +498,29 @@ SELECT '2'::text AS opcao,
        NULL::text AS cpf,
        v.codcli AS codigo_cliente,
        NULL::text AS setor_transferencia,
-       v.tipo_venda AS tipo_venda_pedido,
-       v.pedido AS numero_pedido,
+       NULL::text AS tipo_venda_pedido,
+       NULL::text AS numero_pedido,
        NULL::text AS data_inicio,
        NULL::text AS data_fim,
        NULL::text AS lista_produtos,
        NULL::text AS cidade,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
-       jsonb_build_object(
-           'numero_pedido', v.pedido,
-           'data_pedido', v.data_pedido,
-           'valor_total', v.valor_total,
-           'tipo', v.tipo_venda,
-           'contagem_de_itens', v.contagem_de_itens,
-           'mes_atingiu_mix_salty', CASE WHEN v.has_salty_mix THEN 'SIM' ELSE 'NAO' END,
-           'mes_atingiu_mix_foods', CASE WHEN v.has_foods_mix THEN 'SIM' ELSE 'NAO' END
-       ) AS dados
+       NULL::text AS rca,
+       public.sp_historico_pedidos(v.codcli) AS dados
 FROM (
-    SELECT 
-        s.pedido,
-        MAX(s.codcli) as codcli,
-        MAX(s.tipovenda) as tipo_venda,
-        MAX(s.dtped) as data_pedido,
-        SUM(COALESCE(s.vlvenda, s.vlbonific, 0)) as valor_total,
-        COUNT(s.produto) as contagem_de_itens,
-        bool_or(dp.mix_categoria = 'SALTY') as has_salty_mix,
-        bool_or(dp.mix_categoria = 'FOODS') as has_foods_mix
-    FROM (
-        SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, produto FROM data_history 
-        UNION ALL 
-        SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, produto FROM data_detailed
-    ) s
-    LEFT JOIN dim_produtos dp ON dp.codigo = s.produto
-    GROUP BY s.pedido
+    SELECT DISTINCT codcli FROM data_detailed
+    UNION
+    SELECT DISTINCT codcli FROM data_history
 ) v
 
 UNION ALL
 
 SELECT '3'::text AS opcao,
        NULL::text AS cpf,
-       v.codcli AS codigo_cliente,
+       NULL::text AS codigo_cliente,
        NULL::text AS setor_transferencia,
-       v.tipo_venda AS tipo_venda_pedido,
+       NULL::text AS tipo_venda_pedido,
        v.pedido AS numero_pedido,
        NULL::text AS data_inicio,
        NULL::text AS data_fim,
@@ -206,36 +528,12 @@ SELECT '3'::text AS opcao,
        NULL::text AS cidade,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
-       jsonb_build_object(
-           'numero_pedido', v.pedido,
-           'data_pedido', v.data_pedido,
-           'valor_total', v.valor_total,
-           'tipo', v.tipo_venda,
-           'lista_itens_comprados', v.itens
-       ) AS dados
+       NULL::text AS rca,
+       public.sp_consultar_pedido(v.pedido) AS dados
 FROM (
-    SELECT 
-        s.pedido,
-        MAX(s.codcli) as codcli,
-        MAX(s.tipovenda) as tipo_venda,
-        MAX(s.dtped) as data_pedido,
-        SUM(COALESCE(s.vlvenda, s.vlbonific, 0)) as valor_total,
-        jsonb_agg(
-            jsonb_build_object(
-                'produto', s.produto,
-                'nome_do_produto', COALESCE(dp.descricao, s.produto),
-                'quantidade', s.qtvenda,
-                'valor_total_R$', COALESCE(s.vlvenda, s.vlbonific, 0),
-                'preco_unitario_R$', CASE WHEN s.qtvenda > 0 THEN ROUND((COALESCE(s.vlvenda, s.vlbonific, 0) / s.qtvenda)::numeric, 2) ELSE 0 END
-            )
-        ) as itens
-    FROM (
-        SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, qtvenda, produto FROM data_history 
-        UNION ALL 
-        SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, qtvenda, produto FROM data_detailed
-    ) s
-    LEFT JOIN dim_produtos dp ON dp.codigo = s.produto
-    GROUP BY s.pedido
+    SELECT DISTINCT pedido FROM data_detailed
+    UNION
+    SELECT DISTINCT pedido FROM data_history
 ) v
 
 UNION ALL
@@ -252,6 +550,7 @@ SELECT '4'::text AS opcao,
        NULL::text AS cidade,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
+       NULL::text AS rca,
        public.sp_inovacoes_cliente(c.codigo_cliente) AS dados
 FROM data_clients c
 
@@ -269,6 +568,7 @@ SELECT '5'::text AS opcao,
        NULL::text AS cidade,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
+       NULL::text AS rca,
        public.sp_mix_ideal_cliente(c.codigo_cliente) AS dados
 FROM data_clients c
 
@@ -286,6 +586,7 @@ SELECT '6'::text AS opcao,
        NULL::text AS cidade,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
+       NULL::text AS rca,
        public.sp_sugestao_pedido(c.codigo_cliente) AS dados
 FROM data_clients c
 
@@ -303,12 +604,8 @@ SELECT '7'::text AS opcao,
        NULL::text AS cidade,
        dp.codigo AS codigo_produto,
        dp.mix_marca AS termo_busca,
-       jsonb_build_object(
-           'nome_do_produto', dp.descricao, 
-           'codigo_produto', dp.codigo, 
-           'estoque_filial', dp.estoque_filial,
-           'marca', dp.mix_marca
-       ) AS dados
+       NULL::text AS rca,
+       public.sp_consultar_estoque(dp.codigo, '01') AS dados
 FROM dim_produtos dp
 
 UNION ALL
@@ -325,6 +622,25 @@ SELECT '8'::text AS opcao,
        NULL::text AS cidade,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
-       jsonb_build_object('mensagem', 'Atendimento será transferido para Suporte', 'setor', 'Suporte') AS dados;
+       NULL::text AS rca,
+       jsonb_build_object('mensagem', 'Atendimento será transferido para Suporte', 'setor', 'Suporte') AS dados
+
+UNION ALL
+
+SELECT '10'::text AS opcao,
+       NULL::text AS cpf,
+       NULL::text AS codigo_cliente,
+       NULL::text AS setor_transferencia,
+       NULL::text AS tipo_venda_pedido,
+       NULL::text AS numero_pedido,
+       NULL::text AS data_inicio,
+       NULL::text AS data_fim,
+       NULL::text AS lista_produtos,
+       NULL::text AS cidade,
+       NULL::text AS codigo_produto,
+       NULL::text AS termo_busca,
+       c.rca AS rca,
+       public.sp_clientes_sem_venda_rca(c.rca) AS dados
+FROM (SELECT DISTINCT rca1 as rca FROM data_clients WHERE rca1 IS NOT NULL) c;
 
 GRANT SELECT ON public.n8n_agent_view_v2 TO service_role;
