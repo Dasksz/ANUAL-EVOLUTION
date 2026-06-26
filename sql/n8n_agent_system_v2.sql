@@ -352,27 +352,13 @@ DECLARE
     v_texto_pronto TEXT;
     v_lista_clientes TEXT := '';
 BEGIN
-    WITH ultimas_compras AS (
-        SELECT codcli, MAX(dtped) as ultima_compra
-        FROM (
-            SELECT codcli, dtped FROM data_history WHERE rca1 = p_rca
-            UNION ALL
-            SELECT codcli, dtped FROM data_detailed WHERE codsupervisor = p_rca OR codusur = p_rca
-        ) s
-        GROUP BY codcli
-    ),
-    clientes_rca AS (
-        SELECT codigo_cliente, razaosocial, bairro, cidade
-        FROM data_clients
-        WHERE rca1 = p_rca
-    )
     SELECT string_agg(
-        '🔹 ' || c.codigo_cliente || ' - ' || COALESCE(c.razaosocial, '') || ' - ' || COALESCE(c.bairro, '') || ', ' || COALESCE(c.cidade, '') || ' - Última compra: ' || COALESCE(to_char(u.ultima_compra, 'DD/MM/YYYY'), 'Sem compra'),
+        '🔹 ' || codigo_cliente || ' - ' || COALESCE(razaosocial, '') || ' - ' || COALESCE(bairro, '') || ', ' || COALESCE(cidade, '') || ' - Última compra: ' || COALESCE(to_char(ultimacompra, 'DD/MM/YYYY'), 'Sem compra'),
         E'\n'
     ) INTO v_lista_clientes
-    FROM clientes_rca c
-    LEFT JOIN ultimas_compras u ON u.codcli = c.codigo_cliente
-    WHERE u.ultima_compra IS NULL OR u.ultima_compra < date_trunc('month', CURRENT_DATE);
+    FROM data_clients
+    WHERE rca1 = p_rca
+      AND (ultimacompra IS NULL OR ultimacompra < date_trunc('month', CURRENT_DATE));
 
     IF v_lista_clientes IS NULL OR v_lista_clientes = '' THEN
         v_lista_clientes := 'Nenhum cliente sem venda encontrado para este RCA.';
@@ -489,6 +475,7 @@ SELECT '1'::text AS opcao,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
        NULL::text AS rca,
+       NULL::text AS filial,
        public.sp_cliente_cadastro(c.codigo_cliente) AS dados
 FROM data_clients c
 
@@ -507,6 +494,7 @@ SELECT '2'::text AS opcao,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
        NULL::text AS rca,
+       NULL::text AS filial,
        public.sp_historico_pedidos(v.codcli) AS dados
 FROM (
     SELECT DISTINCT codcli FROM data_detailed
@@ -529,6 +517,7 @@ SELECT '3'::text AS opcao,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
        NULL::text AS rca,
+       NULL::text AS filial,
        public.sp_consultar_pedido(v.pedido) AS dados
 FROM (
     SELECT DISTINCT pedido FROM data_detailed
@@ -551,6 +540,7 @@ SELECT '4'::text AS opcao,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
        NULL::text AS rca,
+       NULL::text AS filial,
        public.sp_inovacoes_cliente(c.codigo_cliente) AS dados
 FROM data_clients c
 
@@ -569,6 +559,7 @@ SELECT '5'::text AS opcao,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
        NULL::text AS rca,
+       NULL::text AS filial,
        public.sp_mix_ideal_cliente(c.codigo_cliente) AS dados
 FROM data_clients c
 
@@ -587,6 +578,7 @@ SELECT '6'::text AS opcao,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
        NULL::text AS rca,
+       NULL::text AS filial,
        public.sp_sugestao_pedido(c.codigo_cliente) AS dados
 FROM data_clients c
 
@@ -605,8 +597,10 @@ SELECT '7'::text AS opcao,
        dp.codigo AS codigo_produto,
        dp.mix_marca AS termo_busca,
        NULL::text AS rca,
-       public.sp_consultar_estoque(dp.codigo, '01') AS dados
+       f.key AS filial,
+       public.sp_consultar_estoque(dp.codigo, f.key) AS dados
 FROM dim_produtos dp
+CROSS JOIN LATERAL jsonb_each_text(dp.estoque_filial) f
 
 UNION ALL
 
@@ -623,6 +617,7 @@ SELECT '8'::text AS opcao,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
        NULL::text AS rca,
+       NULL::text AS filial,
        jsonb_build_object('mensagem', 'Atendimento será transferido para Suporte', 'setor', 'Suporte') AS dados
 
 UNION ALL
@@ -640,6 +635,7 @@ SELECT '10'::text AS opcao,
        NULL::text AS codigo_produto,
        NULL::text AS termo_busca,
        c.rca AS rca,
+       NULL::text AS filial,
        public.sp_clientes_sem_venda_rca(c.rca) AS dados
 FROM (SELECT DISTINCT rca1 as rca FROM data_clients WHERE rca1 IS NOT NULL) c;
 
