@@ -407,16 +407,12 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                 if (!val) return { text: '', mes: null, ano: null };
                 let dateObj = null;
 
-                // Check if Excel Serial Date
-                const numVal = Number(val);
-                if (!isNaN(numVal) && typeof val !== 'boolean') {
-                    if (numVal < 1000000) {
-                        dateObj = parseExcelDate(numVal);
-                    } else {
-                        dateObj = new Date(numVal);
-                    }
-                } else if (typeof val === 'string') {
-                    // Try parsing "abril de 2026" manually before Date.parse which might give NaNs
+                // Try standard global parseDate first, as it handles Excel Serial Dates (numbers)
+                // and standard strings like "01/06/2026" perfectly.
+                dateObj = parseDate(val);
+
+                // If it fails, fallback to the manual string matching for "abril de 2026"
+                if (!dateObj && typeof val === 'string') {
                     const strVal = val.trim().toLowerCase();
                     let foundMonth = -1;
                     let foundYear = null;
@@ -433,13 +429,7 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                     
                     if (foundMonth !== -1 && foundYear) {
                          dateObj = new Date(Date.UTC(foundYear, foundMonth, 1));
-                    } else {
-                         const parsed = Date.parse(val);
-                         if (!isNaN(parsed)) dateObj = new Date(parsed);
                     }
-                } else {
-                    const parsed = Date.parse(val);
-                    if (!isNaN(parsed)) dateObj = new Date(parsed);
                 }
 
                 if (dateObj && !isNaN(dateObj.getTime())) {
@@ -533,11 +523,8 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                 if (typeof cnpjRaw === 'number' && cnpjStr.includes('e')) {
                     try {
                        cnpjStr = cnpjRaw.toLocaleString('fullwide', { useGrouping: false });
-                    } catch (e) {
-                        // Fallback if toLocaleString fails; cnpjStr remains as String(cnpjRaw)
-                    }
+                    } catch(e) {}
                 }
-
                 const cnpjClean = cnpjStr.replace(/[^0-9]/g, '');
 
                 let codCli = clientCnpjMap.get(cnpjClean);
