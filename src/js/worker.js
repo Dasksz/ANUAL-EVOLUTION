@@ -81,9 +81,16 @@ function parseDate(dateString) {
                 isDigit(str.charCodeAt(6)) && isDigit(str.charCodeAt(7)) &&
                 isDigit(str.charCodeAt(8)) && isDigit(str.charCodeAt(9))
             ) {
-                const d = (str.charCodeAt(0) - 48) * 10 + (str.charCodeAt(1) - 48);
-                const m = (str.charCodeAt(3) - 48) * 10 + (str.charCodeAt(4) - 48);
+                let d = (str.charCodeAt(0) - 48) * 10 + (str.charCodeAt(1) - 48);
+                let m = (str.charCodeAt(3) - 48) * 10 + (str.charCodeAt(4) - 48);
                 const y = (str.charCodeAt(6) - 48) * 1000 + (str.charCodeAt(7) - 48) * 100 + (str.charCodeAt(8) - 48) * 10 + (str.charCodeAt(9) - 48);
+
+                if (m > 12 && d <= 12) {
+                    const temp = m;
+                    m = d;
+                    d = temp;
+                }
+
                 return createUTCDate(y, m, d);
             }
         }
@@ -108,9 +115,16 @@ function parseDate(dateString) {
             year = parts[2];
         }
 
-        const y = parseInt(year, 10);
-        const m = parseInt(month, 10);
-        const d = parseInt(day, 10);
+        let y = parseInt(year, 10);
+        let m = parseInt(month, 10);
+        let d = parseInt(day, 10);
+
+        // Se o mês for maior que 12 e o dia for menor ou igual a 12, as posições estão invertidas (MM/DD/YYYY)
+        if (m > 12 && d <= 12) {
+            const temp = m;
+            m = d;
+            d = temp;
+        }
 
         // Validate parts
         if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
