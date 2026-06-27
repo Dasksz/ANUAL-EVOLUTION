@@ -458,16 +458,20 @@ BEGIN
         LEFT JOIN historico_cliente_mes_atual_mix hc ON hc.marca_comprada ILIKE '%' || co.nome_categoria || '%'
         WHERE hc.marca_comprada IS NULL
     ),
-    mix_ideal_sugestao AS (
-        -- Pegar 2 produtos do mix ideal, de categorias faltantes, com estoque > 1 e que não estejam nas outras sugestões
-        SELECT DISTINCT dp.codigo, dp.descricao as nome, COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) as estoque
+    mix_ideal_sugestao_base AS (
+        -- Pegar produtos do mix ideal, de categorias faltantes, com estoque > 1 e que não estejam nas outras sugestões
+        SELECT DISTINCT ON (cf.nome_categoria) dp.codigo, dp.descricao as nome, COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) as estoque
         FROM public.dim_produtos dp
         JOIN categorias_faltantes cf ON dp.mix_marca ILIKE '%' || cf.nome_categoria || '%'
         WHERE COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) > 1
           AND dp.codigo NOT IN (SELECT codigo FROM cobertura_sugestao)
           AND dp.codigo NOT IN (SELECT cod_produto FROM inovacoes_sugestao)
           AND dp.codigo NOT IN (SELECT codigo FROM produtos_comprados_mes_atual)
-        ORDER BY estoque DESC
+        ORDER BY cf.nome_categoria, COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) DESC
+    ),
+    mix_ideal_sugestao AS (
+        SELECT DISTINCT ON (codigo) codigo, nome, estoque FROM mix_ideal_sugestao_base
+        ORDER BY codigo, estoque DESC
         LIMIT 2
     )
     SELECT 
