@@ -250,11 +250,54 @@ DECLARE
     v_cidade TEXT;
     v_bairro TEXT;
     v_bloqueio TEXT;
+    v_faltantes_salty TEXT;
+    v_faltantes_foods TEXT;
+    v_msg_salty TEXT;
+    v_msg_foods TEXT;
 BEGIN
     SELECT fantasia, cidade, bairro, bloqueio 
     INTO v_fantasia, v_cidade, v_bairro, v_bloqueio
     FROM data_clients 
     WHERE codigo_cliente = p_cod_cliente LIMIT 1;
+
+    -- Calcular Positivação Salty e Foods no mês corrente
+    WITH compras_mes AS (
+        SELECT DISTINCT dp.mix_marca
+        FROM data_detailed s
+        JOIN dim_produtos dp ON dp.codigo = s.produto
+        WHERE s.codcli = p_cod_cliente
+          AND s.dtped >= date_trunc('month', CURRENT_DATE)
+          AND s.tipovenda IN ('1', '9')
+    )
+    SELECT
+        string_agg(cat.marca, ', ') INTO v_faltantes_salty
+    FROM (VALUES ('FANDANGOS'), ('DORITOS'), ('CHEETOS'), ('RUFFLES'), ('TORCIDA')) AS cat(marca)
+    WHERE cat.marca NOT IN (SELECT mix_marca FROM compras_mes);
+
+    WITH compras_mes AS (
+        SELECT DISTINCT dp.mix_marca
+        FROM data_detailed s
+        JOIN dim_produtos dp ON dp.codigo = s.produto
+        WHERE s.codcli = p_cod_cliente
+          AND s.dtped >= date_trunc('month', CURRENT_DATE)
+          AND s.tipovenda IN ('1', '9')
+    )
+    SELECT
+        string_agg(cat.marca, ', ') INTO v_faltantes_foods
+    FROM (VALUES ('TODDYNHO'), ('TODDY'), ('QUAKER'), ('KERO COCO')) AS cat(marca)
+    WHERE cat.marca NOT IN (SELECT mix_marca FROM compras_mes);
+
+    IF v_faltantes_salty IS NULL OR v_faltantes_salty = '' THEN
+        v_msg_salty := '✅ Salty Positivado!';
+    ELSE
+        v_msg_salty := '❌ Faltam para Salty: ' || v_faltantes_salty;
+    END IF;
+
+    IF v_faltantes_foods IS NULL OR v_faltantes_foods = '' THEN
+        v_msg_foods := '✅ Foods Positivado!';
+    ELSE
+        v_msg_foods := '❌ Faltam para Foods: ' || v_faltantes_foods;
+    END IF;
 
     WITH ultimos_pedidos AS (
         SELECT 
@@ -262,9 +305,7 @@ BEGIN
             MAX(s.dtped) as data_pedido,
             SUM(COALESCE(s.vlvenda, s.vlbonific, 0)) as valor_total,
             MAX(s.tipovenda) as tipo_venda,
-            COUNT(s.produto) as contagem_itens,
-            bool_or(dp.mix_categoria = 'SALTY') as has_salty,
-            bool_or(dp.mix_categoria = 'FOODS') as has_foods
+            COUNT(s.produto) as contagem_itens
         FROM (
             SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, produto FROM data_history WHERE codcli = p_cod_cliente
             UNION ALL 
@@ -280,8 +321,13 @@ BEGIN
         'Pedido: ' || pedido || E'\n' ||
         'Valor: R$ ' || round(valor_total, 2) || E'\n' ||
         'Mix: ' || contagem_itens || E'\n' ||
-        'Tipo: ' || tipo_venda || ' 11=Bonif / 5=Perda' || E'\n' ||
-        'Salty: ' || CASE WHEN has_salty THEN 'SIM' ELSE 'NAO' END || ' | Foods: ' || CASE WHEN has_foods THEN 'SIM' ELSE 'NAO' END,
+        'Tipo: ' || CASE
+            WHEN tipo_venda = '1' THEN 'Normal'
+            WHEN tipo_venda = '5' THEN 'Perda'
+            WHEN tipo_venda = '9' THEN 'Venda'
+            WHEN tipo_venda = '11' THEN 'Bonificação'
+            ELSE tipo_venda
+        END,
         E'\n\n'
     ) INTO v_pedidos
     FROM ultimos_pedidos;
@@ -293,6 +339,9 @@ BEGIN
     v_texto_pronto := '🏢 Cliente: ' || COALESCE(v_fantasia, 'Não Encontrado') || E'\n' ||
                       '📍 Localização: ' || COALESCE(v_bairro, '') || ', ' || COALESCE(v_cidade, '') || E'\n' ||
                       '🚦 Bloqueio Sefaz: ' || COALESCE(v_bloqueio, '') || E'\n\n' ||
+                      '🏆 *Status de Positivação (Mês Atual):*' || E'\n' ||
+                      v_msg_salty || E'\n' ||
+                      v_msg_foods || E'\n\n' ||
                       v_pedidos;
 
     SELECT jsonb_build_object(
