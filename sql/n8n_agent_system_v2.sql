@@ -46,8 +46,8 @@ BEGIN
             CASE WHEN hc.marca_comprada IS NOT NULL THEN TRUE ELSE FALSE END as comprado_mes_atual,
             CASE WHEN h3.marca_comprada IS NOT NULL THEN TRUE ELSE FALSE END as comprado_ultimos_3_meses
         FROM categorias_obrigatorias co
-        LEFT JOIN historico_cliente_mes_atual hc ON hc.marca_comprada ILIKE '%' || co.nome_categoria || '%'
-        LEFT JOIN historico_cliente_3_meses h3 ON h3.marca_comprada ILIKE '%' || co.nome_categoria || '%'
+        LEFT JOIN historico_cliente_mes_atual hc ON hc.marca_comprada = co.nome_categoria
+        LEFT JOIN historico_cliente_3_meses h3 ON h3.marca_comprada = co.nome_categoria
     )
     SELECT 
         (SELECT string_agg(DISTINCT '*' || nome_categoria || '*', ', ') FROM cruzamento WHERE comprado_mes_atual = TRUE),
@@ -63,7 +63,7 @@ BEGIN
             SELECT codigo, descricao, 
                    COALESCE((estoque_filial->>v_cliente_filial)::numeric, 0) as estoque_filial_num
             FROM public.dim_produtos dp
-            WHERE dp.mix_marca ILIKE '%' || cruzamento.nome_categoria || '%' 
+            WHERE dp.mix_marca = cruzamento.nome_categoria
               AND (cruzamento.produto_obrigatorio IS NULL OR cruzamento.produto_obrigatorio = '' OR dp.codigo = cruzamento.produto_obrigatorio)
             ORDER BY dp.codigo
             LIMIT 1
@@ -463,7 +463,7 @@ BEGIN
           AND COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) > 0
     ),
     inovacoes_ativas AS (
-        SELECT i.codigo as cod_produto, p.descricao as nome_produto,
+        SELECT i.codigo as cod_produto, p.descricao as nome_produto, i.inovacoes as categoria_inovacao,
                COALESCE((p.estoque_filial->>v_cliente_filial)::numeric, 0) as estoque,
                COALESCE(v.total_vendido, 0) as ranking_vendas
         FROM public.data_innovations i
@@ -472,11 +472,12 @@ BEGIN
     ),
     inovacoes_sugestao AS (
         -- Inovações ativas que tenham estoque e ele não comprou este mês
-        SELECT cod_produto, nome_produto 
+        -- Limita a apenas 1 produto por categoria de inovação (o mais vendido)
+        SELECT DISTINCT ON (categoria_inovacao) cod_produto, nome_produto
         FROM inovacoes_ativas
         WHERE cod_produto NOT IN (SELECT codigo FROM produtos_comprados_mes_atual)
           AND estoque > 0
-        ORDER BY ranking_vendas DESC
+        ORDER BY categoria_inovacao, ranking_vendas DESC, estoque DESC
     ),
     categorias_obrigatorias AS (
         SELECT DISTINCT nome_categoria, produto_obrigatorio
@@ -494,14 +495,14 @@ BEGIN
     categorias_faltantes AS (
         SELECT co.nome_categoria
         FROM categorias_obrigatorias co
-        LEFT JOIN historico_cliente_mes_atual_mix hc ON hc.marca_comprada ILIKE '%' || co.nome_categoria || '%'
+        LEFT JOIN historico_cliente_mes_atual_mix hc ON hc.marca_comprada = co.nome_categoria
         WHERE hc.marca_comprada IS NULL
     ),
     mix_ideal_sugestao_base AS (
         -- Pegar o produto mais vendido da empresa de cada categoria faltante que tenha estoque
         SELECT DISTINCT ON (cf.nome_categoria) dp.codigo, dp.descricao as nome
         FROM public.dim_produtos dp
-        JOIN categorias_faltantes cf ON dp.mix_marca ILIKE '%' || cf.nome_categoria || '%'
+        JOIN categorias_faltantes cf ON dp.mix_marca = cf.nome_categoria
         LEFT JOIN vendas_empresa_12m v ON v.produto = dp.codigo
         WHERE COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) > 0
           AND dp.codigo NOT IN (SELECT codigo FROM cobertura_sugestao)
@@ -514,7 +515,7 @@ BEGIN
 ') FROM cobertura_sugestao),
         (SELECT string_agg('🔹 ' || cod_produto || ' - ' || nome_produto, E'
 ') FROM inovacoes_sugestao),
-        (SELECT string_agg('🔹 ' || codigo || ' - ' || nome, E'
+        (SELECT string_agg(DISTINCT '🔹 ' || codigo || ' - ' || nome, E'
 ') FROM mix_ideal_sugestao_base)
     INTO v_cobertura, v_inovacoes, v_mix_ideal;
 
