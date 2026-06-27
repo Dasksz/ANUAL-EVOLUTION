@@ -110,11 +110,30 @@ DECLARE
     v_texto_pronto TEXT;
     v_positivadas TEXT := '';
     v_sugestoes TEXT := '';
+    v_cliente_filial TEXT := '';
 BEGIN
-    WITH inovacoes_ativas AS (
-        SELECT DISTINCT i.codigo as cod_produto, p.descricao as nome_produto, i.inovacoes as categoria_inovacao, p.mix_marca 
+    -- Determinar filial do cliente
+    SELECT b.filial INTO v_cliente_filial
+    FROM data_clients c
+    LEFT JOIN config_city_branches b ON c.cidade = b.cidade
+    WHERE c.codigo_cliente = p_cod_cliente LIMIT 1;
+
+    WITH vendas_empresa_12m AS (
+        SELECT produto, SUM(qtvenda) as total_vendido
+        FROM (
+            SELECT produto, qtvenda FROM data_history WHERE dtped >= CURRENT_DATE - INTERVAL '12 months'
+            UNION ALL
+            SELECT produto, qtvenda FROM data_detailed WHERE dtped >= CURRENT_DATE - INTERVAL '12 months'
+        ) t
+        GROUP BY produto
+    ),
+    inovacoes_ativas AS (
+        SELECT DISTINCT i.codigo as cod_produto, p.descricao as nome_produto, i.inovacoes as categoria_inovacao, p.mix_marca,
+               COALESCE((p.estoque_filial->>v_cliente_filial)::numeric, 0) as estoque,
+               COALESCE(v.total_vendido, 0) as ranking_vendas
         FROM public.data_innovations i
         JOIN public.dim_produtos p ON p.codigo = i.codigo
+        LEFT JOIN vendas_empresa_12m v ON v.produto = i.codigo
     ),
     historico_cliente_mes_atual AS (
         SELECT DISTINCT s.produto as produto_comprado 
@@ -129,13 +148,18 @@ BEGIN
             i.cod_produto,
             i.nome_produto,
             i.mix_marca,
+            i.estoque,
+            i.ranking_vendas,
             CASE WHEN hc.produto_comprado IS NOT NULL THEN TRUE ELSE FALSE END as comprado_mes_atual
         FROM inovacoes_ativas i
         LEFT JOIN historico_cliente_mes_atual hc ON hc.produto_comprado = i.cod_produto
     )
     SELECT 
-        (SELECT string_agg(DISTINCT '- *' || categoria_inovacao || '* - ' || cod_produto || ' - ' || nome_produto, E'\n') FROM cruzamento WHERE comprado_mes_atual = TRUE),
-        (SELECT string_agg(DISTINCT '- *' || categoria_inovacao || ':* Sugira o produto ' || nome_produto || ' (Cód. ' || cod_produto || '). Cliente ainda não comprou esta inovação no mês atual.', E'\n') FROM (SELECT * FROM cruzamento WHERE comprado_mes_atual = FALSE LIMIT 9) t)
+        (SELECT string_agg(DISTINCT '- *' || categoria_inovacao || '* - ' || cod_produto || ' - ' || nome_produto, E'
+') FROM cruzamento WHERE comprado_mes_atual = TRUE),
+        (SELECT string_agg('- *' || categoria_inovacao || ':* Sugira o produto ' || nome_produto || ' (Cód. ' || cod_produto || '). Cliente ainda não comprou esta inovação no mês atual.', E'
+')
+         FROM (SELECT * FROM cruzamento WHERE comprado_mes_atual = FALSE AND estoque > 0 ORDER BY ranking_vendas DESC LIMIT 9) t)
     INTO v_positivadas, v_sugestoes;
 
     IF v_positivadas IS NULL OR v_positivadas = '' THEN
@@ -143,16 +167,24 @@ BEGIN
     END IF;
 
     IF v_sugestoes IS NULL OR v_sugestoes = '' THEN
-        v_sugestoes := 'Nenhuma sugestão de inovação restante ou falta de estoque.';
+        v_sugestoes := 'Todas as inovações com estoque já foram positivadas neste mês ou não há inovações com estoque disponível.';
     END IF;
 
-    v_texto_pronto := 'Analisando a situação de inovações do cliente *' || p_cod_cliente || '* no mês atual, temos:' || E'\n\n' ||
-                      '*CATEGORIAS POSITIVADAS✅:*' || E'\n' ||
-                      v_positivadas || E'\n\n' ||
-                      '*OPORTUNIDADES✨:*' || E'\n' ||
-                      'Baseado no histórico do cliente, estas são as sugestões mais certeiras🎯' || E'\n' ||
-                      v_sugestoes || E'\n\n' ||
-                      '*Dica de Venda:* Aumentar inovações garante exclusividade e diferenciação do PDV frente aos concorrentes!';
+    v_texto_pronto := '🚀 *Análise de Inovações para o cliente ' || p_cod_cliente || '*:' || E'
+
+' ||
+                      '✅ *Inovações já positivadas neste mês:*' || E'
+' ||
+                      v_positivadas || E'
+
+' ||
+                      '🚨 *Oportunidades de Inovações (Sem venda neste mês):*' || E'
+' ||
+                      v_sugestoes || E'
+
+
+' ||
+                      'Posso te ajudar em algo mais? Se desejar ver a lista de opções novamente digite "Menu".';
 
     SELECT jsonb_build_object(
         'texto_pronto_para_enviar', v_texto_pronto
@@ -388,11 +420,9 @@ AS $$
 DECLARE
     v_sugestao JSONB;
     v_texto_pronto TEXT;
-    v_media NUMERIC;
     v_cobertura TEXT := '';
     v_inovacoes TEXT := '';
     v_mix_ideal TEXT := '';
-    v_dica TEXT := '';
     v_cliente_filial TEXT := '';
 BEGIN
     -- Determinar filial do cliente
@@ -401,9 +431,16 @@ BEGIN
     LEFT JOIN config_city_branches b ON c.cidade = b.cidade
     WHERE c.codigo_cliente = p_cod_cliente LIMIT 1;
 
-    SELECT COALESCE(AVG(vlvenda), 0) INTO v_media FROM data_history WHERE codcli = p_cod_cliente;
-
-    WITH produtos_comprados_sempre AS (
+    WITH vendas_empresa_12m AS (
+        SELECT produto, SUM(qtvenda) as total_vendido
+        FROM (
+            SELECT produto, qtvenda FROM data_history WHERE dtped >= CURRENT_DATE - INTERVAL '12 months'
+            UNION ALL
+            SELECT produto, qtvenda FROM data_detailed WHERE dtped >= CURRENT_DATE - INTERVAL '12 months'
+        ) t
+        GROUP BY produto
+    ),
+    produtos_comprados_sempre AS (
         SELECT DISTINCT p.codigo, p.descricao as nome
         FROM public.data_detailed s
         JOIN public.dim_produtos p ON p.codigo = s.produto
@@ -418,29 +455,31 @@ BEGIN
           AND s.tipovenda IN ('1','9')
     ),
     cobertura_sugestao AS (
-        -- Todos os que ele já comprou na vida, mas que TEM estoque > 1 e NÃO comprou no mês atual
+        -- Todos os que ele já comprou na vida, mas que TEM estoque > 0 e NÃO comprou no mês atual
         SELECT p.codigo, p.nome 
         FROM produtos_comprados_sempre p
         JOIN public.dim_produtos dp ON dp.codigo = p.codigo
         WHERE p.codigo NOT IN (SELECT codigo FROM produtos_comprados_mes_atual)
-          AND COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) > 1
+          AND COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) > 0
     ),
     inovacoes_ativas AS (
         SELECT i.codigo as cod_produto, p.descricao as nome_produto,
-               COALESCE((p.estoque_filial->>v_cliente_filial)::numeric, 0) as estoque
+               COALESCE((p.estoque_filial->>v_cliente_filial)::numeric, 0) as estoque,
+               COALESCE(v.total_vendido, 0) as ranking_vendas
         FROM public.data_innovations i
         JOIN public.dim_produtos p ON p.codigo = i.codigo
+        LEFT JOIN vendas_empresa_12m v ON v.produto = i.codigo
     ),
     inovacoes_sugestao AS (
+        -- Inovações ativas que tenham estoque e ele não comprou este mês
         SELECT cod_produto, nome_produto 
         FROM inovacoes_ativas
         WHERE cod_produto NOT IN (SELECT codigo FROM produtos_comprados_mes_atual)
-          AND estoque > 1
-        ORDER BY estoque DESC
-        LIMIT 3
+          AND estoque > 0
+        ORDER BY ranking_vendas DESC
     ),
     categorias_obrigatorias AS (
-        SELECT DISTINCT nome_categoria 
+        SELECT DISTINCT nome_categoria, produto_obrigatorio
         FROM public.mix_ideal 
         WHERE ativo = TRUE
     ),
@@ -459,63 +498,72 @@ BEGIN
         WHERE hc.marca_comprada IS NULL
     ),
     mix_ideal_sugestao_base AS (
-        -- Pegar produtos do mix ideal, de categorias faltantes, com estoque > 1 e que não estejam nas outras sugestões
-        SELECT DISTINCT ON (cf.nome_categoria) dp.codigo, dp.descricao as nome, COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) as estoque
+        -- Pegar o produto mais vendido da empresa de cada categoria faltante que tenha estoque
+        SELECT DISTINCT ON (cf.nome_categoria) dp.codigo, dp.descricao as nome
         FROM public.dim_produtos dp
         JOIN categorias_faltantes cf ON dp.mix_marca ILIKE '%' || cf.nome_categoria || '%'
-        WHERE COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) > 1
+        LEFT JOIN vendas_empresa_12m v ON v.produto = dp.codigo
+        WHERE COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) > 0
           AND dp.codigo NOT IN (SELECT codigo FROM cobertura_sugestao)
           AND dp.codigo NOT IN (SELECT cod_produto FROM inovacoes_sugestao)
           AND dp.codigo NOT IN (SELECT codigo FROM produtos_comprados_mes_atual)
-        ORDER BY cf.nome_categoria, COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) DESC
-    ),
-    mix_ideal_sugestao AS (
-        SELECT codigo, nome, estoque FROM mix_ideal_sugestao_base
-        GROUP BY codigo, nome, estoque
-        ORDER BY estoque DESC
-        LIMIT 3
+        ORDER BY cf.nome_categoria, COALESCE(v.total_vendido, 0) DESC, COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) DESC
     )
     SELECT 
-        (SELECT string_agg('🔹 ' || codigo || ' - ' || nome, E'\n') FROM cobertura_sugestao),
-        (SELECT string_agg('🔹 ' || cod_produto || ' - ' || nome_produto, E'\n') FROM inovacoes_sugestao),
-        (SELECT string_agg('🔹 ' || codigo || ' - ' || nome, E'\n') FROM mix_ideal_sugestao)
+        (SELECT string_agg('🔹 ' || codigo || ' - ' || nome, E'
+') FROM cobertura_sugestao),
+        (SELECT string_agg('🔹 ' || cod_produto || ' - ' || nome_produto, E'
+') FROM inovacoes_sugestao),
+        (SELECT string_agg('🔹 ' || codigo || ' - ' || nome, E'
+') FROM mix_ideal_sugestao_base)
     INTO v_cobertura, v_inovacoes, v_mix_ideal;
-
-    IF v_media < 1500 THEN
-        v_dica := 'Ofereça as opções de cobertura de Mix que ele já levou meses anteriores em pacotes menores para garantir giro!';
-    ELSE
-        v_dica := 'O cliente tem bom potencial e faltam poucas categorias para o Mix Ideal. Insira as Inovações junto!';
-    END IF;
 
     IF (v_cobertura IS NULL OR v_cobertura = '') AND 
        (v_inovacoes IS NULL OR v_inovacoes = '') AND 
        (v_mix_ideal IS NULL OR v_mix_ideal = '') THEN
-         v_texto_pronto := 'Realizei a consulta de *Sugestão de Pedido* para o cliente de código *' || p_cod_cliente || '*, mas não foram encontrados dados disponíveis no momento.' || E'\n\n' ||
-                           'Isso pode ocorrer porque:' || E'\n' ||
-                           '・ O cliente não possui um histórico de compras recente suficiente para gerar uma sugestão;' || E'\n' ||
-                           '・ O código do cliente pode estar incorreto.' || E'\n\n' ||
+         v_texto_pronto := 'Realizei a consulta de *Sugestão de Pedido* para o cliente de código *' || p_cod_cliente || '*, mas não foram encontrados dados disponíveis no momento.' || E'
+
+' ||
+                           'Isso pode ocorrer porque:' || E'
+' ||
+                           '・ O cliente não possui um histórico de compras recente suficiente para gerar uma sugestão;' || E'
+' ||
+                           '・ O código do cliente pode estar incorreto.' || E'
+
+' ||
                            'Deseja que eu verifique o *cadastro* ou o *histórico de pedidos* desse cliente para ajudar? Ou posso te auxiliar com algo mais?';
     ELSE
         IF v_cobertura IS NULL OR v_cobertura = '' THEN
-             v_cobertura := 'Nenhuma sugestão de cobertura encontrada.';
+             v_cobertura := 'Nenhuma sugestão de cobertura encontrada (cliente já comprou todo o histórico no mês ou falta estoque).';
         END IF;
 
         IF v_inovacoes IS NULL OR v_inovacoes = '' THEN
-             v_inovacoes := 'Nenhuma sugestão de inovações encontrada.';
+             v_inovacoes := 'Nenhuma sugestão de inovações encontrada no momento (sem inovações faltantes com estoque).';
         END IF;
         
         IF v_mix_ideal IS NULL OR v_mix_ideal = '' THEN
-             v_mix_ideal := 'Nenhum produto de Mix Ideal pendente com estoque encontrado.';
+             v_mix_ideal := 'Mix Ideal 100% ou nenhum produto das categorias faltantes com estoque.';
         END IF;
 
-        v_texto_pronto := '💡 *Sugestão de Pedido para o cliente ' || p_cod_cliente || '*:' || E'\n\n' ||
-                          '*Sugestões de Cobertura de Mix:*' || E'\n' ||
-                          v_cobertura || E'\n\n' ||
-                          '*Sugestões de Inovações:*' || E'\n' ||
-                          v_inovacoes || E'\n\n' ||
-                          '*Sugestões de Mix Ideal:*' || E'\n' ||
-                          v_mix_ideal || E'\n\n' ||
-                          '*Dica de Venda:* ' || v_dica || E'\n\n\n' ||
+        v_texto_pronto := '💡 *Sugestão de Pedido para o cliente ' || p_cod_cliente || '*:' || E'
+
+' ||
+                          '*Mix Ideal Faltante:*' || E'
+' ||
+                          v_mix_ideal || E'
+
+' ||
+                          '*Inovações:*' || E'
+' ||
+                          v_inovacoes || E'
+
+' ||
+                          '*Histórico (Cobertura):*' || E'
+' ||
+                          v_cobertura || E'
+
+
+' ||
                           'Posso te ajudar em algo mais? Se desejar ver a lista de opções novamente digite "Menu".';
     END IF;
 
@@ -612,24 +660,7 @@ SELECT '4'::text AS opcao,
        public.sp_inovacoes_cliente(c.codigo_cliente) AS dados
 FROM data_clients c
 
-UNION ALL
 
-SELECT '5'::text AS opcao,
-       NULL::text AS cpf,
-       c.codigo_cliente,
-       NULL::text AS setor_transferencia,
-       NULL::text AS tipo_venda_pedido,
-       NULL::text AS numero_pedido,
-       NULL::text AS data_inicio,
-       NULL::text AS data_fim,
-       NULL::text AS lista_produtos,
-       NULL::text AS cidade,
-       NULL::text AS codigo_produto,
-       NULL::text AS termo_busca,
-       NULL::text AS rca,
-       NULL::text AS filial,
-       public.sp_mix_ideal_cliente(c.codigo_cliente) AS dados
-FROM data_clients c
 
 UNION ALL
 
