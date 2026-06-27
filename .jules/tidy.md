@@ -11,3 +11,4 @@
 **Aprendizado:** A stray closing `</div>` tag can prematurely close a view container (like `#city-view`), causing subsequent sibling elements (like the "Performance - Segmentação" table) to leak out and render globally across other views within the parent layout.
 **Ação:** Always verify DOM nesting mathematically (`count(<div) == count(</div>)`) within specific component boundaries when elements appear on unintended pages.
 ## 2026-06-26 - Fix sp_mix_ideal_cliente
+## 2026/06/27 : (Refactor repeated date dropdown assignment) **Aprendizado:** (The exact same validation, conditional assignment, and event dispatch logic for year and month dropdowns was repeated verbatim inside multiple reset/clear filter routines.) **Ação:** (Extracted this generic logic into `resetDateDropdowns` inside `utils.js` to reduce visual noise and standardise element updates.)

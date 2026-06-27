@@ -355,3 +355,24 @@ export function showToast(type, message, title = '') {
 
     container.appendChild(toast);
 };
+
+/**
+ * Resets date dropdowns and dispatches change events.
+ * Helps avoid repeating the year validation, assignment, and dispatch logic across views.
+ * @param {HTMLElement} anoSelect - The year select element.
+ * @param {HTMLElement} mesSelect - The month select element.
+ * @param {string} currentYear - The target year to select.
+ * @param {string} currentMonth - The target month to select.
+ * @param {string} defaultYear - The fallback year if target is not found (e.g., 'todos').
+ */
+export function resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMonth, defaultYear = 'todos') {
+    if (anoSelect) {
+        let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
+        anoSelect.value = hasYear ? currentYear : defaultYear;
+        anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (mesSelect) {
+        mesSelect.value = currentMonth;
+        mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+}
