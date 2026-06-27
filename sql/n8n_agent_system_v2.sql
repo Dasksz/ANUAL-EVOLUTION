@@ -470,9 +470,10 @@ BEGIN
         ORDER BY cf.nome_categoria, COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) DESC
     ),
     mix_ideal_sugestao AS (
-        SELECT DISTINCT ON (codigo) codigo, nome, estoque FROM mix_ideal_sugestao_base
-        ORDER BY codigo, estoque DESC
-        LIMIT 2
+        SELECT codigo, nome, estoque FROM mix_ideal_sugestao_base
+        GROUP BY codigo, nome, estoque
+        ORDER BY estoque DESC
+        LIMIT 3
     )
     SELECT 
         (SELECT string_agg('🔹 ' || codigo || ' - ' || nome, E'\n') FROM cobertura_sugestao),
@@ -506,7 +507,7 @@ BEGIN
                       '*Sugestões de Mix Ideal:*' || E'\n' ||
                       v_mix_ideal || E'\n\n' ||
                       '*Dica de Venda:* ' || v_dica || E'\n\n\n' ||
-                      '"Posso te ajudar em algo mais? Se desejar ver a lista de opções novamente digite ""Menu""."';
+                      'Posso te ajudar em algo mais? Se desejar ver a lista de opções novamente digite "Menu".';
 
     SELECT jsonb_build_object(
         'texto_pronto_para_enviar', v_texto_pronto
