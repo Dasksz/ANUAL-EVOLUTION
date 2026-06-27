@@ -11,3 +11,4 @@
 **Aprendizado:** A stray closing `</div>` tag can prematurely close a view container (like `#city-view`), causing subsequent sibling elements (like the "Performance - Segmentação" table) to leak out and render globally across other views within the parent layout.
 **Ação:** Always verify DOM nesting mathematically (`count(<div) == count(</div>)`) within specific component boundaries when elements appear on unintended pages.
 ## 2026-06-26 - Fix sp_mix_ideal_cliente
+## 2026/06/27 : (Refining SQL Logic for Innovation Suggestions) **Aprendizado:** (When suggesting new products based on unpurchased items, ensure that if a parent category is already covered ("positivada"), we skip all other products in that category to avoid redundant suggestions and maximize variety). **Ação:** (Added a `categoria_inovacao NOT IN (SELECT categoria_inovacao FROM cruzamento WHERE comprado_mes_atual = TRUE)` filter clause inside the `v_sugestoes` CTE of `sp_inovacoes_cliente`).

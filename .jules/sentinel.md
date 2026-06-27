@@ -42,3 +42,6 @@ The new `chart_data` return block inside `get_loja_perfeita_data` relies safely 
 
 **Learning:** Calculating "positivation" status over an entire month using aggregate queries inside `sp_historico_pedidos` is more accurate for business goals (e.g. tracking Salty and Foods targets) than evaluating positivity on a per-order basis, which is how it was originally implemented.
 **Action:** When implementing complex business rules like "must buy at least one item from 5 specific categories to be considered positivado", use exact category matches against the transaction history for the time period (e.g. `WHERE cat.marca NOT IN (...)`) and generate a clear summary (e.g. "Faltam: X, Y"). Always verify the exact string values expected for those categories (like `KERO COCO` vs `KEROCOCO`) in `dim_produtos`.
+## 2026-06-27 - N8N AI Agent Prompt Updates
+**Insight:** When interacting with rigid database tools (e.g. tools accepting exactly one order number via `sp_consultar_pedido`), the AI must be explicitly instructed on how to handle plural requests (like "these two orders").
+**Action:** Added explicit instructions to the N8N prompt: "Se o usuário pedir para consultar mais de um pedido... VOCÊ DEVE CHAMAR A FERRAMENTA DE BUSCA MÚLTIPLAS VEZES".

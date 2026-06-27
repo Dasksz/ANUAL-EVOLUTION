@@ -159,7 +159,16 @@ BEGIN
 ') FROM cruzamento WHERE comprado_mes_atual = TRUE),
         (SELECT string_agg('- *' || categoria_inovacao || ':* Sugira o produto ' || nome_produto || ' (Cód. ' || cod_produto || '). Cliente ainda não comprou esta inovação no mês atual.', E'
 ')
-         FROM (SELECT * FROM cruzamento WHERE comprado_mes_atual = FALSE AND estoque > 0 ORDER BY ranking_vendas DESC LIMIT 9) t)
+         FROM (
+             SELECT * FROM cruzamento
+             WHERE comprado_mes_atual = FALSE
+               AND estoque > 0
+               AND categoria_inovacao NOT IN (
+                   SELECT categoria_inovacao FROM cruzamento WHERE comprado_mes_atual = TRUE
+               )
+             ORDER BY ranking_vendas DESC
+             LIMIT 9
+         ) t)
     INTO v_positivadas, v_sugestoes;
 
     IF v_positivadas IS NULL OR v_positivadas = '' THEN
