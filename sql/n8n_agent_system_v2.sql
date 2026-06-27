@@ -280,7 +280,13 @@ BEGIN
         'Pedido: ' || pedido || E'\n' ||
         'Valor: R$ ' || round(valor_total, 2) || E'\n' ||
         'Mix: ' || contagem_itens || E'\n' ||
-        'Tipo: ' || tipo_venda || ' 11=Bonif / 5=Perda' || E'\n' ||
+        'Tipo: ' || CASE
+            WHEN tipo_venda = '1' THEN 'Normal'
+            WHEN tipo_venda = '5' THEN 'Perda'
+            WHEN tipo_venda = '9' THEN 'Venda'
+            WHEN tipo_venda = '11' THEN 'Bonificação'
+            ELSE tipo_venda
+        END || E'\n' ||
         'Salty: ' || CASE WHEN has_salty THEN 'SIM' ELSE 'NAO' END || ' | Foods: ' || CASE WHEN has_foods THEN 'SIM' ELSE 'NAO' END,
         E'\n\n'
     ) INTO v_pedidos
