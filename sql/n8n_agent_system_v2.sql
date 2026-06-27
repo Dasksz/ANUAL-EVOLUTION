@@ -487,27 +487,37 @@ BEGIN
         v_dica := 'O cliente tem bom potencial e faltam poucas categorias para o Mix Ideal. Insira as Inovações junto!';
     END IF;
 
-    IF v_cobertura IS NULL OR v_cobertura = '' THEN
-         v_cobertura := 'Nenhuma sugestão de cobertura encontrada.';
-    END IF;
+    IF (v_cobertura IS NULL OR v_cobertura = '') AND
+       (v_inovacoes IS NULL OR v_inovacoes = '') AND
+       (v_mix_ideal IS NULL OR v_mix_ideal = '') THEN
+         v_texto_pronto := 'Realizei a consulta de *Sugestão de Pedido* para o cliente de código *' || p_cod_cliente || '*, mas não foram encontrados dados disponíveis no momento.' || E'\n\n' ||
+                           'Isso pode ocorrer porque:' || E'\n' ||
+                           '・ O cliente não possui um histórico de compras recente suficiente para gerar uma sugestão;' || E'\n' ||
+                           '・ O código do cliente pode estar incorreto.' || E'\n\n' ||
+                           'Deseja que eu verifique o *cadastro* ou o *histórico de pedidos* desse cliente para ajudar? Ou posso te auxiliar com algo mais?';
+    ELSE
+        IF v_cobertura IS NULL OR v_cobertura = '' THEN
+             v_cobertura := 'Nenhuma sugestão de cobertura encontrada.';
+        END IF;
 
-    IF v_inovacoes IS NULL OR v_inovacoes = '' THEN
-         v_inovacoes := 'Nenhuma sugestão de inovações encontrada.';
-    END IF;
+        IF v_inovacoes IS NULL OR v_inovacoes = '' THEN
+             v_inovacoes := 'Nenhuma sugestão de inovações encontrada.';
+        END IF;
 
-    IF v_mix_ideal IS NULL OR v_mix_ideal = '' THEN
-         v_mix_ideal := 'Nenhum produto de Mix Ideal pendente com estoque encontrado.';
-    END IF;
+        IF v_mix_ideal IS NULL OR v_mix_ideal = '' THEN
+             v_mix_ideal := 'Nenhum produto de Mix Ideal pendente com estoque encontrado.';
+        END IF;
 
-    v_texto_pronto := '💡 *Sugestão de Pedido para o cliente ' || p_cod_cliente || '*:' || E'\n\n' ||
-                      '*Sugestões de Cobertura de Mix:*' || E'\n' ||
-                      v_cobertura || E'\n\n' ||
-                      '*Sugestões de Inovações:*' || E'\n' ||
-                      v_inovacoes || E'\n\n' ||
-                      '*Sugestões de Mix Ideal:*' || E'\n' ||
-                      v_mix_ideal || E'\n\n' ||
-                      '*Dica de Venda:* ' || v_dica || E'\n\n\n' ||
-                      'Posso te ajudar em algo mais? Se desejar ver a lista de opções novamente digite "Menu".';
+        v_texto_pronto := '💡 *Sugestão de Pedido para o cliente ' || p_cod_cliente || '*:' || E'\n\n' ||
+                          '*Sugestões de Cobertura de Mix:*' || E'\n' ||
+                          v_cobertura || E'\n\n' ||
+                          '*Sugestões de Inovações:*' || E'\n' ||
+                          v_inovacoes || E'\n\n' ||
+                          '*Sugestões de Mix Ideal:*' || E'\n' ||
+                          v_mix_ideal || E'\n\n' ||
+                          '*Dica de Venda:* ' || v_dica || E'\n\n\n' ||
+                          'Posso te ajudar em algo mais? Se desejar ver a lista de opções novamente digite "Menu".';
+    END IF;
 
     SELECT jsonb_build_object(
         'texto_pronto_para_enviar', v_texto_pronto
