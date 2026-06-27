@@ -460,7 +460,7 @@ BEGIN
     ),
     mix_ideal_sugestao AS (
         -- Pegar 2 produtos do mix ideal, de categorias faltantes, com estoque > 1 e que não estejam nas outras sugestões
-        SELECT dp.codigo, dp.descricao as nome, COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) as estoque
+        SELECT DISTINCT dp.codigo, dp.descricao as nome, COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) as estoque
         FROM public.dim_produtos dp
         JOIN categorias_faltantes cf ON dp.mix_marca ILIKE '%' || cf.nome_categoria || '%'
         WHERE COALESCE((dp.estoque_filial->>v_cliente_filial)::numeric, 0) > 1
@@ -501,7 +501,8 @@ BEGIN
                       v_inovacoes || E'\n\n' ||
                       '*Sugestões de Mix Ideal:*' || E'\n' ||
                       v_mix_ideal || E'\n\n' ||
-                      '*Dica de Venda:* ' || v_dica;
+                      '*Dica de Venda:* ' || v_dica || E'\n\n\n' ||
+                      '"Posso te ajudar em algo mais? Se desejar ver a lista de opções novamente digite ""Menu""."';
 
     SELECT jsonb_build_object(
         'texto_pronto_para_enviar', v_texto_pronto

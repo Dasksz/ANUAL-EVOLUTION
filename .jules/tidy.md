@@ -11,3 +11,7 @@
 **Aprendizado:** A stray closing `</div>` tag can prematurely close a view container (like `#city-view`), causing subsequent sibling elements (like the "Performance - Segmentação" table) to leak out and render globally across other views within the parent layout.
 **Ação:** Always verify DOM nesting mathematically (`count(<div) == count(</div>)`) within specific component boundaries when elements appear on unintended pages.
 ## 2026-06-26 - Fix sp_mix_ideal_cliente
+## 2026-06-27 - Fix sp_sugestao_pedido duplicate and layout
+## 2026-06-26 : Fix sp_sugestao_pedido duplicate and layout
+**Aprendizado:** When joining generic dimensions (like `mix_marca ILIKE`) against a list of grouped tags (like `categorias_faltantes`), multiple tags may match the same physical dimension key (e.g., both "TODDYNHO" and "TODDY" hitting the same root brand category in fuzzy searches). This causes the `JOIN` to output the exact same row multiple times, leading to duplicate items in lists.
+**Ação:** Always append `DISTINCT` to the `SELECT` clause when pulling specific item codes out of fuzzy category or tag-based joins (e.g. `ILIKE '%' || tag || '%'`) to guarantee unique presentation.
