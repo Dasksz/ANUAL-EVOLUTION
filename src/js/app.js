@@ -2,7 +2,7 @@ import supabase from './supabase.js?v=5';
 
 import {
     generateYearOptionsHtml,
-    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
+    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast, resetDateDropdowns} from './utils.js';
 
 
 let estrelasDetailedData = [];
@@ -8857,16 +8857,7 @@ window.clearAllFilters = async function(prefix) {
         await fetchLastSalesDate();
         const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
 
-        if (anoSelect) {
-            // Check if currentYear is in options, if not default to 'todos'
-            let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
-            anoSelect.value = hasYear ? currentYear : 'todos';
-            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        if (mesSelect) {
-            mesSelect.value = currentMonth;
-            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        }
+        resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMonth);
         
         clearArrays(innovationsSelectedSupervisors, innovationsSelectedVendedores, innovationsSelectedCidades, innovationsSelectedTiposVenda, innovationsSelectedRedes, innovationsSelectedFiliais, innovationsSelectedCategorias);
         
@@ -8984,15 +8975,7 @@ window.clearAllFilters = async function(prefix) {
         if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
         const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
 
-        if (anoSelect) {
-            let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
-            anoSelect.value = hasYear ? currentYear : 'todos';
-            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        if (mesSelect) {
-            mesSelect.value = currentMonth;
-            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        }
+        resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMonth);
 
         clearArrays(estrelasSelectedSupervisors, estrelasSelectedVendedores, estrelasSelectedCidades, estrelasSelectedTiposVenda, estrelasSelectedRedes, estrelasSelectedFiliais, estrelasSelectedCategorias, estrelasSelectedFornecedores);
 
@@ -9090,15 +9073,7 @@ window.clearAllFilters = async function(prefix) {
         const currentYear = new Date().getFullYear().toString();
         const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
 
-        if (anoSelect) {
-            let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
-            anoSelect.value = hasYear ? currentYear : 'todos';
-            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        if (mesSelect) {
-            mesSelect.value = currentMonth;
-            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        }
+        resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMonth);
         
         // No need to call updateAgendaView directly, as the dispatchEvent('change') on ano/mes selects will trigger handleAgendaFilterChange if they are attached, OR the user might not have them.
         // Actually, let's call it just to be safe, but wait, if dispatchEvent triggers debounce, and we call it, it might trigger twice.
@@ -9110,15 +9085,7 @@ window.clearAllFilters = async function(prefix) {
         const currentYear = new Date().getFullYear().toString();
         const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
         
-        if (anoSelect) {
-            let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
-            anoSelect.value = hasYear ? currentYear : 'todos';
-            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        if (mesSelect) {
-            mesSelect.value = currentMonth;
-            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        }
+        resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMonth);
 
         clearArrays(lpSelectedCidades, lpSelectedFiliais, lpSelectedSupervisors, lpSelectedVendedores, lpSelectedRedes, lpSelectedPesquisadores);
         
