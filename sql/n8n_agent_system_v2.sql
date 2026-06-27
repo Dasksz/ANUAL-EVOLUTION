@@ -529,7 +529,7 @@ $$;
 
 
 DROP VIEW IF EXISTS public.n8n_agent_view_v2;
-CREATE VIEW public.n8n_agent_view_v2 WITH (security_invoker = true) AS
+CREATE VIEW public.n8n_agent_view_v2 AS
 SELECT '1'::text AS opcao,
        NULL::text AS cpf,
        c.codigo_cliente,
