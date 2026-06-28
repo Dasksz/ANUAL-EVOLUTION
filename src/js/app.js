@@ -2962,6 +2962,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             "Faturamento": row.faturamento,
             "Peso (kg)": row.peso,
             "Posit.": row.clientes || 0,
+            "Estoque (cx)": row.estoque || 0,
+            "Tend. EstQ (dias)": row.tend_estq || 0,
             "Última Venda": row.ultima_venda ? new Date(row.ultima_venda).toLocaleDateString('pt-BR') : '-'
         }));
 
@@ -3017,13 +3019,15 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             // Table
             doc.autoTable({
                 startY: yPos + 5,
-                head: [['Código', 'Descrição', 'Caixas', 'Faturamento', 'Peso (kg)', 'Última Venda']],
+                head: [['Código', 'Descrição', 'Caixas', 'Faturamento', 'Peso (kg)', 'Estoque', 'Tend.', 'Última Venda']],
                 body: reportData.map(r => [
                     r["Código"],
                     r["Descrição"],
                     formatInteger(r["Caixas"]),
                     formatCurrency(r["Faturamento"]),
                     formatTons(r["Peso (kg)"], 1),
+                    formatInteger(r["Estoque (cx)"]) + " cx",
+                    formatInteger(r["Tend. EstQ (dias)"]) + " d",
                     r["Última Venda"]
                 ]),
                 theme: 'striped',
@@ -3395,11 +3399,17 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                     <td class="p-2 text-right">${escapeHtml(formatCurrency(safeVal(p.faturamento)))}</td>
                     <td class="p-2 text-right">${escapeHtml(formatTons(safeVal(p.peso), 2))}</td>
                     <td class="p-2 text-right text-slate-300 font-bold">${escapeHtml(formatInteger(safeVal(p.clientes)))}</td>
+                    <td class="p-2 text-right text-slate-400 font-bold">${escapeHtml(formatInteger(safeVal(p.estoque)))} cx</td>
+                    <td class="p-2 text-center font-bold ${
+                        safeVal(p.tend_estq) <= 14 ? 'text-red-400' :
+                        safeVal(p.tend_estq) <= 21 ? 'text-yellow-400' :
+                        'text-emerald-400'
+                    }">${escapeHtml(formatInteger(safeVal(p.tend_estq)))} d</td>
                     <td class="p-2 text-center text-slate-400">${escapeHtml(p.ultima_venda ? new Date(p.ultima_venda).toLocaleDateString('pt-BR') : '-')}</td>
                 </tr>
             `).join('');
         } else {
-            tableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum produto encontrado.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="9" class="p-4 text-center text-slate-500">Nenhum produto encontrado.</td></tr>';
         }
     }
 

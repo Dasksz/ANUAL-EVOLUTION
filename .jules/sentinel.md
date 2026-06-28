@@ -34,3 +34,5 @@ The new `chart_data` return block inside `get_loja_perfeita_data` relies safely 
 ## 2024-06-26 - [Fix sp_mix_ideal_cliente JSON lookup logic]
 **Aprendizado:** When pulling nested properties from a dynamic JSON column in PostgreSQL like `estoque_filial->>v_cliente_ramo`, it's critical to ensure the lookup key corresponds exactly to the actual logical key stored inside the JSON blob. Looking up the stock count using `ramo` (industry sector) instead of the `filial` (branch) will always return `NULL`, breaking the logic that depends on `estoque_filial_num > 0`.
 **Ação:** When querying JSONB maps with variable keys, double check the origin table of the target object to ensure the data domain of the key variable correctly matches the data domain of the stored JSON object keys. Always test JSON extraction boundaries manually against production-like schemas before deploying.
+## 2025-02-27 - Validating Data Origin
+Added support to calculate trend for box coverage taking account of historical business days mapping.
