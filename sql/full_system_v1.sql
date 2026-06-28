@@ -1243,6 +1243,9 @@ CREATE INDEX IF NOT EXISTS idx_clients_busca ON public.data_clients (codigo_clie
 -- NEW OPTIMIZATION INDEXES
 CREATE INDEX IF NOT EXISTS idx_dim_produtos_mix_marca ON public.dim_produtos (mix_marca);
 CREATE INDEX IF NOT EXISTS idx_dim_produtos_mix_categoria ON public.dim_produtos (mix_categoria);
+CREATE INDEX IF NOT EXISTS idx_dim_produtos_categoria_produto ON public.dim_produtos (categoria_produto);
+CREATE INDEX IF NOT EXISTS idx_detailed_produto ON public.data_detailed (produto);
+CREATE INDEX IF NOT EXISTS idx_history_produto ON public.data_history (produto);
 CREATE INDEX IF NOT EXISTS idx_data_clients_rede_lookup ON public.data_clients (codigo_cliente, ramo);
 
 -- OPTIMIZATION FOR BOXES DASHBOARD (Product Table Speed)

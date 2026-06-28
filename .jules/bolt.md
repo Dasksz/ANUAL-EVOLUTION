@@ -51,3 +51,6 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## 2025-02-27 - Inline HTML Updates
 **Learning:** For rendering long lists or tables in DOM, mapping an array to string `<tr>...</tr>` and applying innerHTML once is much faster than creating separate rows and columns.
 **Action:** Kept the optimization and applied formatting correctly for new properties directly.
+## 2025-02-27 - Fast Lookups for Joins
+**Learning:** Joining raw data tables (`data_detailed` and `data_history`) against `dim_produtos` over product code columns degrades significantly when no indexes exist, especially when grouping and ordering.
+**Action:** Added generic indexes for `produto` on both detailed/history raw sales tables and an index on `categoria_produto` inside `dim_produtos` for dynamic queries.
