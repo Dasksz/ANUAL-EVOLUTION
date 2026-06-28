@@ -373,9 +373,14 @@ DECLARE
     v_pedido_detalhe JSONB;
     v_texto_pronto TEXT;
     v_itens TEXT := '';
+    v_pedidos_array TEXT[];
 BEGIN
+    -- Split input into an array of order numbers
+    v_pedidos_array := string_to_array(replace(p_num_pedido, ' ', ''), ',');
+
     WITH itens_pedido AS (
         SELECT 
+            s.pedido,
             s.qtvenda,
             COALESCE(dp.descricao, s.produto) as nome_produto,
             CASE 
@@ -384,22 +389,29 @@ BEGIN
                 ELSE 0 
             END as preco_unitario
         FROM (
-            SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, qtvenda, produto FROM data_history WHERE pedido = p_num_pedido
+            SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, qtvenda, produto FROM data_history WHERE pedido = ANY(v_pedidos_array)
             UNION ALL 
-            SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, qtvenda, produto FROM data_detailed WHERE pedido = p_num_pedido
+            SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, qtvenda, produto FROM data_detailed WHERE pedido = ANY(v_pedidos_array)
         ) s
         LEFT JOIN dim_produtos dp ON dp.codigo = s.produto
+    ),
+    pedidos_agrupados AS (
+        SELECT 
+            pedido,
+            string_agg('🔹 ' || qtvenda || ' x ' || nome_produto || ' un R$ ' || preco_unitario || '.', E'\n') as itens_str
+        FROM itens_pedido
+        GROUP BY pedido
     )
     SELECT string_agg(
-        '🔹 ' || qtvenda || ' x ' || nome_produto || ' un R$ ' || preco_unitario || '.',
-        E'\n'
+        '🛒 Itens do Pedido ' || pedido || ':' || E'\n' || itens_str,
+        E'\n\n'
     ) INTO v_itens
-    FROM itens_pedido;
+    FROM pedidos_agrupados;
 
     IF v_itens IS NULL OR v_itens = '' THEN
-        v_texto_pronto := 'Pedido ' || p_num_pedido || ' não encontrado.';
+        v_texto_pronto := 'Pedido(s) ' || p_num_pedido || ' não encontrado(s).';
     ELSE
-        v_texto_pronto := '🛒 Itens Comprados no Pedido ' || p_num_pedido || ':' || E'\n\n' || v_itens;
+        v_texto_pronto := v_itens;
     END IF;
 
     SELECT jsonb_build_object(
