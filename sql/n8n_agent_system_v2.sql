@@ -368,7 +368,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.sp_consultar_pedido(p_num_pedido TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql STABLE
-AS $
+AS $$
 DECLARE
     v_pedido_detalhe JSONB;
     v_texto_pronto TEXT;
@@ -420,7 +420,7 @@ BEGIN
 
     RETURN v_pedido_detalhe;
 END;
-$;
+$$;
 
 
 CREATE OR REPLACE FUNCTION public.sp_consultar_estoque(p_codigo_produto TEXT, p_filial TEXT DEFAULT '01')
