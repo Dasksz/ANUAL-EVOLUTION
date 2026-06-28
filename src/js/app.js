@@ -2,7 +2,7 @@ import supabase from './supabase.js?v=5';
 
 import {
     generateYearOptionsHtml,
-    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast, resetDateDropdowns} from './utils.js';
+    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
 
 
 let estrelasDetailedData = [];
@@ -3393,8 +3393,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
             tableBody.innerHTML = products.map(p => `
                 <tr class="table-row">
-                    <td class="p-2">${escapeHtml(p.produto)}</td>
-                    <td class="p-2">${escapeHtml(p.descricao)}</td>
+                    <td class="p-2 text-left">${escapeHtml(p.produto)}</td>
+                    <td class="p-2 text-left">${escapeHtml(p.descricao)}</td>
                     <td class="p-2 text-right font-bold text-emerald-400">${escapeHtml(formatInteger(safeVal(p.caixas)))}</td>
                     <td class="p-2 text-right">${escapeHtml(formatCurrency(safeVal(p.faturamento)))}</td>
                     <td class="p-2 text-right">${escapeHtml(formatTons(safeVal(p.peso), 2))}</td>
@@ -3551,15 +3551,6 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         await saveToCache(cacheKey, data);
         applyFiltersData(data);
     }
-
-    /**
-     * Helper for default multi-select dropdowns that do not require an immediate visual callback.
-     * Hoisted to global scope to reduce repetition across view initialization logic.
-     */
-    window.setupDefaultMultiSelect = function(btn, dropdown, container, items, selectedArray, searchInput = null, isObject = false) {
-        return window.setupMultiSelect(btn, dropdown, container, items, selectedArray, () => {}, isObject, searchInput);
-    };
-
 
     /**
      * Helper for default multi-select dropdowns that do not require an immediate visual callback.
@@ -3895,12 +3886,12 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         if (mesFilter.options.length <= 1) { 
             mesFilter.innerHTML = generateMonthOptionsHtml('Todos', '', false);
         }
-        window.setupDefaultMultiSelect(filialFilterBtn, filialFilterDropdown, filialFilterDropdown, data.filiais, selectedFiliais);
-        window.setupDefaultMultiSelect(cidadeFilterBtn, cidadeFilterDropdown, cidadeFilterList, data.cidades, selectedCidades, cidadeFilterSearch);
-        window.setupDefaultMultiSelect(supervisorFilterBtn, supervisorFilterDropdown, supervisorFilterDropdown, data.supervisors, selectedSupervisores);
-        window.setupDefaultMultiSelect(vendedorFilterBtn, vendedorFilterDropdown, vendedorFilterList, data.vendedores, selectedVendedores, vendedorFilterSearch);
-        window.setupDefaultMultiSelect(fornecedorFilterBtn, fornecedorFilterDropdown, fornecedorFilterList, data.fornecedores, selectedFornecedores, fornecedorFilterSearch, true);
-        window.setupDefaultMultiSelect(tipovendaFilterBtn, tipovendaFilterDropdown, tipovendaFilterDropdown, data.tipos_venda, selectedTiposVenda);
+        window.setupMultiSelect(filialFilterBtn, filialFilterDropdown, filialFilterDropdown, data.filiais, selectedFiliais, () => {});
+        window.setupMultiSelect(cidadeFilterBtn, cidadeFilterDropdown, cidadeFilterList, data.cidades, selectedCidades, () => {}, false, cidadeFilterSearch);
+        window.setupMultiSelect(supervisorFilterBtn, supervisorFilterDropdown, supervisorFilterDropdown, data.supervisors, selectedSupervisores, () => {});
+        window.setupMultiSelect(vendedorFilterBtn, vendedorFilterDropdown, vendedorFilterList, data.vendedores, selectedVendedores, () => {}, false, vendedorFilterSearch);
+        window.setupMultiSelect(fornecedorFilterBtn, fornecedorFilterDropdown, fornecedorFilterList, data.fornecedores, selectedFornecedores, () => {}, true, fornecedorFilterSearch);
+        window.setupMultiSelect(tipovendaFilterBtn, tipovendaFilterDropdown, tipovendaFilterDropdown, data.tipos_venda, selectedTiposVenda, () => {});
         // Enhance select filters to match multi-select appearance
         const selectsToEnhance = [
             document.getElementById('ano-filter'),
@@ -3919,11 +3910,11 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             if (el) enhanceSelectToCustomDropdown(el);
         });
 
-        window.setupDefaultMultiSelect(categoriaFilterBtn, categoriaFilterDropdown, categoriaFilterList, data.categorias, selectedCategorias, categoriaFilterSearch);
+        window.setupMultiSelect(categoriaFilterBtn, categoriaFilterDropdown, categoriaFilterList, data.categorias, selectedCategorias, () => {}, false, categoriaFilterSearch);
 
         // Rede Logic with "Com Rede" and "Sem Rede"
         const redes = ['C/ REDE', 'S/ REDE', ...(data.redes || [])];
-        window.setupDefaultMultiSelect(redeFilterBtn, redeFilterDropdown, redeFilterList, redes, selectedRedes, redeFilterSearch);
+        window.setupMultiSelect(redeFilterBtn, redeFilterDropdown, redeFilterList, redes, selectedRedes, () => {}, false, redeFilterSearch);
     }
 
     document.addEventListener('click', (e) => {
@@ -6187,22 +6178,22 @@ const body = document.getElementById('city-segmentation-table-body');
                 jbpSelectedProdutos = currentFilters.p_produto || [];
                 jbpSelectedInovacoes = []; // New array
 
-                window.setupDefaultMultiSelect(jbpFilialFilterBtn, jbpFilialFilterDropdown, jbpFilialFilterDropdown, filterData.filiais || [], jbpSelectedFiliais);
+                window.setupMultiSelect(jbpFilialFilterBtn, jbpFilialFilterDropdown, jbpFilialFilterDropdown, filterData.filiais || [], jbpSelectedFiliais, () => {});
                 const jbpCidadeFilterList = document.getElementById("jbp-cidade-filter-list");
-                if(jbpCidadeFilterList) window.setupDefaultMultiSelect(jbpCidadeFilterBtn, jbpCidadeFilterDropdown, jbpCidadeFilterList, filterData.cidades || [], jbpSelectedCidades, document.getElementById("jbp-cidade-search"));
+                if(jbpCidadeFilterList) window.setupMultiSelect(jbpCidadeFilterBtn, jbpCidadeFilterDropdown, jbpCidadeFilterList, filterData.cidades || [], jbpSelectedCidades, () => {}, false, document.getElementById("jbp-cidade-search"));
                 const jbpFornecedorFilterList = document.getElementById("jbp-fornecedor-filter-list");
-                if(jbpFornecedorFilterList) window.setupDefaultMultiSelect(jbpFornecedorFilterBtn, jbpFornecedorFilterDropdown, jbpFornecedorFilterList, filterData.fornecedores || [], jbpSelectedFornecedores, document.getElementById("jbp-fornecedor-search"), true);
-                window.setupDefaultMultiSelect(jbpRedeFilterBtn, jbpRedeFilterDropdown, jbpRedeFilterDropdown, filterData.redes || [], jbpSelectedRedes);
-                window.setupDefaultMultiSelect(jbpCategoriaFilterBtn, jbpCategoriaFilterDropdown, jbpCategoriaFilterDropdown, filterData.categorias || [], jbpSelectedCategorias);
+                if(jbpFornecedorFilterList) window.setupMultiSelect(jbpFornecedorFilterBtn, jbpFornecedorFilterDropdown, jbpFornecedorFilterList, filterData.fornecedores || [], jbpSelectedFornecedores, () => {}, true, document.getElementById("jbp-fornecedor-search"));
+                window.setupMultiSelect(jbpRedeFilterBtn, jbpRedeFilterDropdown, jbpRedeFilterDropdown, filterData.redes || [], jbpSelectedRedes, () => {}, false, null);
+                window.setupMultiSelect(jbpCategoriaFilterBtn, jbpCategoriaFilterDropdown, jbpCategoriaFilterDropdown, filterData.categorias || [], jbpSelectedCategorias, () => {}, false, null);
 
-                if(jbpProdutoFilterList) window.setupDefaultMultiSelect(jbpProdutoFilterBtn, jbpProdutoFilterDropdown, jbpProdutoFilterList, filterData.produtos || [], jbpSelectedProdutos, document.getElementById("jbp-produto-search"), true);
+                if(jbpProdutoFilterList) window.setupMultiSelect(jbpProdutoFilterBtn, jbpProdutoFilterDropdown, jbpProdutoFilterList, filterData.produtos || [], jbpSelectedProdutos, () => {}, true, document.getElementById("jbp-produto-search"));
 
                 // Load Inovações Categories for JBP
                 try {
                     const { data: inovacData } = await supabase.from('data_innovations').select('inovacoes').order('inovacoes', { ascending: true });
                     if (inovacData) {
                         const uniqueInovacoes = [...new Set(inovacData.map(i => i.inovacoes).filter(i => i))];
-                        window.setupDefaultMultiSelect(jbpInovacoesFilterBtn, jbpInovacoesFilterDropdown, jbpInovacoesFilterDropdown, uniqueInovacoes, jbpSelectedInovacoes);
+                        window.setupMultiSelect(jbpInovacoesFilterBtn, jbpInovacoesFilterDropdown, jbpInovacoesFilterDropdown, uniqueInovacoes, jbpSelectedInovacoes, () => {}, false, null);
                     }
                 } catch (e) {
                     AppLog.error("Error loading inovacoes categories for JBP", e);
@@ -8876,7 +8867,16 @@ window.clearAllFilters = async function(prefix) {
         await fetchLastSalesDate();
         const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
 
-        resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMonth);
+        if (anoSelect) {
+            // Check if currentYear is in options, if not default to 'todos'
+            let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
+            anoSelect.value = hasYear ? currentYear : 'todos';
+            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (mesSelect) {
+            mesSelect.value = currentMonth;
+            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
         
         clearArrays(innovationsSelectedSupervisors, innovationsSelectedVendedores, innovationsSelectedCidades, innovationsSelectedTiposVenda, innovationsSelectedRedes, innovationsSelectedFiliais, innovationsSelectedCategorias);
         
@@ -8994,7 +8994,15 @@ window.clearAllFilters = async function(prefix) {
         if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
         const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
 
-        resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMonth);
+        if (anoSelect) {
+            let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
+            anoSelect.value = hasYear ? currentYear : 'todos';
+            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (mesSelect) {
+            mesSelect.value = currentMonth;
+            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
 
         clearArrays(estrelasSelectedSupervisors, estrelasSelectedVendedores, estrelasSelectedCidades, estrelasSelectedTiposVenda, estrelasSelectedRedes, estrelasSelectedFiliais, estrelasSelectedCategorias, estrelasSelectedFornecedores);
 
@@ -9092,7 +9100,15 @@ window.clearAllFilters = async function(prefix) {
         const currentYear = new Date().getFullYear().toString();
         const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
 
-        resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMonth);
+        if (anoSelect) {
+            let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
+            anoSelect.value = hasYear ? currentYear : 'todos';
+            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (mesSelect) {
+            mesSelect.value = currentMonth;
+            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
         
         // No need to call updateAgendaView directly, as the dispatchEvent('change') on ano/mes selects will trigger handleAgendaFilterChange if they are attached, OR the user might not have them.
         // Actually, let's call it just to be safe, but wait, if dispatchEvent triggers debounce, and we call it, it might trigger twice.
@@ -9104,7 +9120,15 @@ window.clearAllFilters = async function(prefix) {
         const currentYear = new Date().getFullYear().toString();
         const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
         
-        resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMonth);
+        if (anoSelect) {
+            let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
+            anoSelect.value = hasYear ? currentYear : 'todos';
+            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (mesSelect) {
+            mesSelect.value = currentMonth;
+            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
 
         clearArrays(lpSelectedCidades, lpSelectedFiliais, lpSelectedSupervisors, lpSelectedVendedores, lpSelectedRedes, lpSelectedPesquisadores);
         
@@ -9931,17 +9955,17 @@ const loadAgendaFilters = async () => {
         const supervisors = [...new Set(routeData.map(r => r.supervisor).filter(Boolean))].sort();
         const supBtn = document.getElementById('agenda-supervisor-filter-btn');
         const supDd = document.getElementById('agenda-supervisor-filter-dropdown');
-        window.setupDefaultMultiSelect(supBtn, supDd, supDd, supervisors, agendaSelectedSupervisors);
+        window.setupMultiSelect(supBtn, supDd, supDd, supervisors, agendaSelectedSupervisors, () => {});
         
         const rotas = [...new Set(routeData.map(r => r.rota_dia).filter(Boolean))].sort();
         const rotasBtn = document.getElementById('agenda-rota-filter-btn');
         const rotasDd = document.getElementById('agenda-rota-filter-dropdown');
-        window.setupDefaultMultiSelect(rotasBtn, rotasDd, rotasDd, rotas, agendaSelectedRotas);
+        window.setupMultiSelect(rotasBtn, rotasDd, rotasDd, rotas, agendaSelectedRotas, () => {});
 
         const focos = [...new Set(routeData.map(r => r.foco_dia).filter(Boolean))].sort();
         const focoBtn = document.getElementById('agenda-foco-filter-btn');
         const focoDd = document.getElementById('agenda-foco-filter-dropdown');
-        window.setupDefaultMultiSelect(focoBtn, focoDd, focoDd, focos, agendaSelectedFoco);
+        window.setupMultiSelect(focoBtn, focoDd, focoDd, focos, agendaSelectedFoco, () => {});
 
     } catch (err) {
         AppLog.error("Erro ao carregar filtros da Agenda:", err);
