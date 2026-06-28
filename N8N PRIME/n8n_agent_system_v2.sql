@@ -818,3 +818,26 @@ FROM (SELECT DISTINCT rca1 as rca FROM data_clients WHERE rca1 IS NOT NULL) c
 CROSS JOIN (SELECT DISTINCT cidade FROM data_clients WHERE cidade IS NOT NULL) ci;
 
 GRANT SELECT ON public.n8n_agent_view_v2 TO service_role;
+
+
+-- View para unificar a validação de identidade (Colaborador / Cliente)
+DROP VIEW IF EXISTS public.n8n_vw_validar_identidade;
+CREATE VIEW public.n8n_vw_validar_identidade AS
+SELECT
+    cpf AS documento,
+    'colaborador' AS tipo,
+    nome,
+    NULL AS codigo_cliente
+FROM public.n8n_auth_colaboradores
+
+UNION ALL
+
+SELECT
+    cnpj AS documento,
+    'cliente' AS tipo,
+    fantasia AS nome,
+    codigo_cliente
+FROM public.data_clients
+WHERE cnpj IS NOT NULL;
+
+GRANT SELECT ON public.n8n_vw_validar_identidade TO service_role;
