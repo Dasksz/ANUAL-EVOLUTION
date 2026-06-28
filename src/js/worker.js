@@ -786,8 +786,16 @@ self.onmessage = async (event) => {
             if (isNaN(qtdeMaster) || qtdeMaster <= 0) qtdeMaster = 1;
             productMasterMap.set(productCode, qtdeMaster);
 
+            const dtCadastroRaw = prod['Dt.Cadastro'];
+            const dtCadastro = parseDate(dtCadastroRaw);
+
             const desc = String(prod['Descrição'] || '').trim();
-            dimProducts.set(productCode, { descricao: desc, codfor: codFor, qtde_embalagem_master: qtdeMaster });
+            dimProducts.set(productCode, {
+                descricao: desc,
+                codfor: codFor,
+                qtde_embalagem_master: qtdeMaster,
+                dt_cadastro: dtCadastro ? dtCadastro.toISOString().split('T')[0] : null
+            });
         });
 
         // --- Logic for Inactive Clients (City -> Filial -> Supervisor) ---
@@ -1093,7 +1101,7 @@ self.onmessage = async (event) => {
                 if (sale.produto && !dimProducts.has(sale.produto)) {
                     // Strict Filter: Only add if supplier is allowed
                     if (allowedSuppliers.has(sale.codfor)) {
-                        dimProducts.set(sale.produto, { descricao: sale.descricao, codfor: sale.codfor });
+                        dimProducts.set(sale.produto, { descricao: sale.descricao, codfor: sale.codfor, qtde_embalagem_master: 1, dt_cadastro: null });
                     }
                 }
             });
@@ -1200,7 +1208,7 @@ self.onmessage = async (event) => {
         const finalHistoryChunks = historyChunks;
 
         // Only return newProducts if productsFile was provided to avoid overwriting table with partial data from sales
-        const finalProducts = productsFile ? Array.from(dimProducts.entries()).map(([codigo, val]) => ({ codigo, descricao: val.descricao, codfor: val.codfor, qtde_embalagem_master: val.qtde_embalagem_master })) : null;
+        const finalProducts = productsFile ? Array.from(dimProducts.entries()).map(([codigo, val]) => ({ codigo, descricao: val.descricao, codfor: val.codfor, qtde_embalagem_master: val.qtde_embalagem_master, dt_cadastro: val.dt_cadastro })) : null;
 
         // Process Innovations
         let finalInnovations = null;

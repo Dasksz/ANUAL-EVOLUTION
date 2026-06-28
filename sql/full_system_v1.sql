@@ -1077,6 +1077,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'estoque_filial') THEN
         ALTER TABLE public.dim_produtos ADD COLUMN estoque_filial jsonb DEFAULT '{}'::jsonb;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'dim_produtos' AND column_name = 'dt_cadastro') THEN
+        ALTER TABLE public.dim_produtos ADD COLUMN dt_cadastro date;
+    END IF;
 END $$;
 
 -- Update Products Stock Helper
@@ -3406,6 +3409,55 @@ BEGIN
         v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
+    END IF;
+
+    -- Enrich products_table with trend_estq
+    IF v_products_table IS NOT NULL AND json_array_length(v_products_table) > 0 THEN
+        SELECT json_agg(
+            json_build_object(
+                'produto', p->>'produto',
+                'descricao', p->>'descricao',
+                'caixas', (p->>'caixas')::numeric,
+                'faturamento', (p->>'faturamento')::numeric,
+                'peso', (p->>'peso')::numeric,
+                'clientes', (p->>'clientes')::numeric,
+                'ultima_venda', p->>'ultima_venda',
+                'estoque', COALESCE(sub.estoque, 0),
+                'tend_estq', CASE
+                    WHEN COALESCE(sub.estoque, 0) = 0 THEN 0
+                    WHEN COALESCE(sub.business_days, 0) = 0 THEN 0
+                    WHEN COALESCE(sub.total_caixas_6m, 0) = 0 THEN 0
+                    ELSE ROUND((COALESCE(sub.estoque, 0) / (sub.total_caixas_6m / sub.business_days))::numeric, 0)
+                END
+            )
+        )
+        INTO v_products_table
+        FROM json_array_elements(v_products_table) p
+        LEFT JOIN LATERAL (
+            SELECT
+                (
+                    SELECT SUM(val::numeric)
+                    FROM jsonb_each_text(dp.estoque_filial) AS f(key, val)
+                    WHERE (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR key = ANY(p_filial))
+                ) as estoque,
+                public.calc_working_days(
+                    GREATEST(dp.dt_cadastro, (v_max_sale_date - interval '6 months')::date),
+                    v_max_sale_date
+                ) as business_days,
+                (
+                    SELECT SUM(COALESCE(s.qtvenda, 0) / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1))
+                    FROM (
+                        SELECT qtvenda, dtped, filial FROM public.data_detailed WHERE produto = p->>'produto'
+                        UNION ALL
+                        SELECT qtvenda, dtped, filial FROM public.data_history WHERE produto = p->>'produto'
+                    ) s
+                    WHERE s.dtped >= GREATEST(dp.dt_cadastro, (v_max_sale_date - interval '6 months')::date)
+                    AND s.dtped <= v_max_sale_date
+                    AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR s.filial = ANY(p_filial))
+                ) as total_caixas_6m
+            FROM dim_produtos dp
+            WHERE dp.codigo = p->>'produto'
+        ) sub ON true;
     END IF;
 
     RETURN json_build_object(

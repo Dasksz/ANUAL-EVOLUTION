@@ -48,3 +48,6 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## 2026-06-26 - [Robust Date Parsing from Excel/Sheets]
 **Learning:** Spreadsheets often provide dates either as integer serial numbers (e.g., 45293) or strings that might look like "junho de 2026" but contain underlying date values like "01/06/2026" when edited. Manual string matching logic fails on the real underlying strings, breaking downstream backend sync operations.
 **Action:** Always attempt to parse date values with a robust global function that handles both Excel Serial Dates and standard strings before falling back to manual string interpretation (like Portuguese month matching).
+## 2025-02-27 - Inline HTML Updates
+**Learning:** For rendering long lists or tables in DOM, mapping an array to string `<tr>...</tr>` and applying innerHTML once is much faster than creating separate rows and columns.
+**Action:** Kept the optimization and applied formatting correctly for new properties directly.
