@@ -3393,19 +3393,19 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
             tableBody.innerHTML = products.map(p => `
                 <tr class="table-row">
-                    <td class="p-2 text-left">${escapeHtml(p.produto)}</td>
-                    <td class="p-2 text-left">${escapeHtml(p.descricao)}</td>
-                    <td class="p-2 text-right font-bold text-emerald-400">${escapeHtml(formatInteger(safeVal(p.caixas)))}</td>
-                    <td class="p-2 text-right">${escapeHtml(formatCurrency(safeVal(p.faturamento)))}</td>
-                    <td class="p-2 text-right">${escapeHtml(formatTons(safeVal(p.peso), 2))}</td>
-                    <td class="p-2 text-right text-slate-300 font-bold">${escapeHtml(formatInteger(safeVal(p.clientes)))}</td>
-                    <td class="p-2 text-right text-slate-400 font-bold">${escapeHtml(formatInteger(safeVal(p.estoque)))} cx</td>
-                    <td class="p-2 text-center font-bold ${
+                    <td class="px-4 py-3 text-left">${escapeHtml(p.produto)}</td>
+                    <td class="px-4 py-3 text-left">${escapeHtml(p.descricao)}</td>
+                    <td class="px-4 py-3 text-right font-bold text-emerald-400">${escapeHtml(formatInteger(safeVal(p.caixas)))}</td>
+                    <td class="px-4 py-3 text-right">${escapeHtml(formatCurrency(safeVal(p.faturamento)))}</td>
+                    <td class="px-4 py-3 text-right">${escapeHtml(formatTons(safeVal(p.peso), 2))}</td>
+                    <td class="px-4 py-3 text-right text-slate-300 font-bold">${escapeHtml(formatInteger(safeVal(p.clientes)))}</td>
+                    <td class="px-4 py-3 text-right text-slate-400 font-bold">${escapeHtml(formatInteger(safeVal(p.estoque)))} cx</td>
+                    <td class="px-4 py-3 text-center font-bold ${
                         safeVal(p.tend_estq) <= 14 ? 'text-red-400' :
                         safeVal(p.tend_estq) <= 21 ? 'text-yellow-400' :
                         'text-emerald-400'
                     }">${escapeHtml(formatInteger(safeVal(p.tend_estq)))} d</td>
-                    <td class="p-2 text-center text-slate-400">${escapeHtml(p.ultima_venda ? new Date(p.ultima_venda).toLocaleDateString('pt-BR') : '-')}</td>
+                    <td class="px-4 py-3 text-center text-slate-400">${escapeHtml(p.ultima_venda ? new Date(p.ultima_venda).toLocaleDateString('pt-BR') : '-')}</td>
                 </tr>
             `).join('');
         } else {
