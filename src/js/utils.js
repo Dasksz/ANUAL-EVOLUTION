@@ -355,3 +355,23 @@ export function showToast(type, message, title = '') {
 
     container.appendChild(toast);
 };
+
+/**
+ * Resets year and month select dropdowns to current dates and dispatches change events.
+ * Extracted from app.js to reduce repetition when clearing filters.
+ * @param {HTMLElement} anoSelect - The year select element.
+ * @param {HTMLElement} mesSelect - The month select element.
+ * @param {string|number} currentYear - The current year value.
+ * @param {string|number} currentMonth - The current month value.
+ */
+export function resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMonth) {
+    if (anoSelect) {
+        let hasYear = Array.from(anoSelect.options).some(opt => opt.value === String(currentYear));
+        anoSelect.value = hasYear ? String(currentYear) : 'todos';
+        anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (mesSelect) {
+        mesSelect.value = String(currentMonth);
+        mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+}
