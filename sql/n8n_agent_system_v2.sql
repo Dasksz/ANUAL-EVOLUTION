@@ -312,7 +312,10 @@ BEGIN
         SELECT 
             s.pedido,
             MAX(s.dtped) as data_pedido,
-            SUM(COALESCE(s.vlvenda, s.vlbonific, 0)) as valor_total,
+            SUM(CASE
+                WHEN s.tipovenda IN ('5', '11') THEN COALESCE(s.vlbonific, 0)
+                ELSE COALESCE(s.vlvenda, 0)
+            END) as valor_total,
             MAX(s.tipovenda) as tipo_venda,
             COUNT(s.produto) as contagem_itens
         FROM (
@@ -321,7 +324,7 @@ BEGIN
             SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, produto FROM data_detailed WHERE codcli = p_cod_cliente
         ) s
         LEFT JOIN dim_produtos dp ON dp.codigo = s.produto
-        GROUP BY s.pedido
+        GROUP BY s.pedido, s.tipovenda
         ORDER BY MAX(s.dtped) DESC
         LIMIT 5
     )
@@ -375,7 +378,11 @@ BEGIN
         SELECT 
             s.qtvenda,
             COALESCE(dp.descricao, s.produto) as nome_produto,
-            CASE WHEN s.qtvenda > 0 THEN ROUND((COALESCE(s.vlvenda, s.vlbonific, 0) / s.qtvenda)::numeric, 2) ELSE 0 END as preco_unitario
+            CASE
+                WHEN s.qtvenda > 0 AND s.tipovenda IN ('5', '11') THEN ROUND((COALESCE(s.vlbonific, 0) / s.qtvenda)::numeric, 2)
+                WHEN s.qtvenda > 0 THEN ROUND((COALESCE(s.vlvenda, 0) / s.qtvenda)::numeric, 2)
+                ELSE 0
+            END as preco_unitario
         FROM (
             SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, qtvenda, produto FROM data_history WHERE pedido = p_num_pedido
             UNION ALL 
