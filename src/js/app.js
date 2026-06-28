@@ -3393,8 +3393,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
             tableBody.innerHTML = products.map(p => `
                 <tr class="table-row">
-                    <td class="p-2">${escapeHtml(p.produto)}</td>
-                    <td class="p-2">${escapeHtml(p.descricao)}</td>
+                    <td class="p-2 text-left">${escapeHtml(p.produto)}</td>
+                    <td class="p-2 text-left">${escapeHtml(p.descricao)}</td>
                     <td class="p-2 text-right font-bold text-emerald-400">${escapeHtml(formatInteger(safeVal(p.caixas)))}</td>
                     <td class="p-2 text-right">${escapeHtml(formatCurrency(safeVal(p.faturamento)))}</td>
                     <td class="p-2 text-right">${escapeHtml(formatTons(safeVal(p.peso), 2))}</td>

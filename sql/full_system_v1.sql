@@ -2368,15 +2368,15 @@ BEGIN
 
     -- Categoria
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_filial := v_where_filial || format(' AND categoria_produto = ANY(%L) ', p_categoria);
-        v_where_cidade := v_where_cidade || format(' AND categoria_produto = ANY(%L) ', p_categoria);
-        v_where_supervisor := v_where_supervisor || format(' AND categoria_produto = ANY(%L) ', p_categoria);
-        v_where_vendedor := v_where_vendedor || format(' AND categoria_produto = ANY(%L) ', p_categoria);
-        v_where_fornecedor := v_where_fornecedor || format(' AND categoria_produto = ANY(%L) ', p_categoria);
-        v_where_tipovenda := v_where_tipovenda || format(' AND categoria_produto = ANY(%L) ', p_categoria);
-        v_where_rede := v_where_rede || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where_filial := v_where_filial || format(' AND mix_marca = ANY(%L) ', p_categoria);
+        v_where_cidade := v_where_cidade || format(' AND mix_marca = ANY(%L) ', p_categoria);
+        v_where_supervisor := v_where_supervisor || format(' AND mix_marca = ANY(%L) ', p_categoria);
+        v_where_vendedor := v_where_vendedor || format(' AND mix_marca = ANY(%L) ', p_categoria);
+        v_where_fornecedor := v_where_fornecedor || format(' AND mix_marca = ANY(%L) ', p_categoria);
+        v_where_tipovenda := v_where_tipovenda || format(' AND mix_marca = ANY(%L) ', p_categoria);
+        v_where_rede := v_where_rede || format(' AND mix_marca = ANY(%L) ', p_categoria);
 
-        v_where_prod := v_where_prod || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where_prod := v_where_prod || format(' AND mix_marca = ANY(%L) ', p_categoria);
     END IF;
 
     -- Execute with dynamic JSON construction
@@ -2707,7 +2707,7 @@ BEGIN
         v_where_base := v_where_base || format(' AND codfor = ANY(%L) ', p_fornecedor);
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where_base := v_where_base || format(' AND mix_marca = ANY(%L) ', p_categoria);
     END IF;
     
     -- REDE Logic
@@ -3158,7 +3158,7 @@ BEGIN
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where_summary := v_where_summary || format(' AND categoria_produto = ANY(%L) ', p_categoria);
-        v_where_raw := v_where_raw || format(' AND dp.categoria_produto = ANY(%L) ', p_categoria);
+        v_where_raw := v_where_raw || format(' AND dp.mix_marca = ANY(%L) ', p_categoria);
     END IF;
     
     -- Fornecedor Logic
@@ -3447,13 +3447,14 @@ BEGIN
                 (
                     SELECT SUM(COALESCE(s.qtvenda, 0) / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1))
                     FROM (
-                        SELECT qtvenda, dtped, filial FROM public.data_detailed WHERE produto = p->>'produto'
+                        SELECT qtvenda, dtped, filial, tipovenda FROM public.data_detailed WHERE produto = p->>'produto'
                         UNION ALL
-                        SELECT qtvenda, dtped, filial FROM public.data_history WHERE produto = p->>'produto'
+                        SELECT qtvenda, dtped, filial, tipovenda FROM public.data_history WHERE produto = p->>'produto'
                     ) s
                     WHERE s.dtped >= GREATEST(dp.dt_cadastro, (v_max_sale_date - interval '6 months')::date)
                     AND s.dtped <= v_max_sale_date
                     AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR s.filial = ANY(p_filial))
+                    AND s.tipovenda NOT IN ('5', '11')
                 ) as total_caixas_6m
             FROM dim_produtos dp
             WHERE dp.codigo = p->>'produto'
@@ -3567,7 +3568,7 @@ BEGIN
     
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where := v_where || format(' AND mix_marca = ANY(%L) ', p_categoria);
     END IF;
 
     -- REDE Logic
@@ -3732,8 +3733,8 @@ BEGIN
     
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND categoria_produto = ANY(%L) ', p_categoria);
-        v_where_trend := v_where_trend || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where := v_where || format(' AND mix_marca = ANY(%L) ', p_categoria);
+        v_where_trend := v_where_trend || format(' AND mix_marca = ANY(%L) ', p_categoria);
     END IF;
 
     -- REDE Logic
@@ -4112,7 +4113,7 @@ BEGIN
     
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND dp.categoria_produto = ANY(%L) ', p_categoria);
+        v_where := v_where || format(' AND dp.mix_marca = ANY(%L) ', p_categoria);
     END IF;
 
     -- REDE Logic
@@ -7099,7 +7100,7 @@ BEGIN
     END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where := v_where || format(' AND dp.mix_marca = ANY(%L::text[]) ', p_categoria);
     END IF;
 
     -- REDE Logic
