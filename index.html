@@ -1674,19 +1674,29 @@
                                 <table class="min-w-full text-sm text-left text-slate-300" id="boxes-products-table">
                                     <thead class="text-xs text-slate-400 uppercase sticky-header">
                                         <tr>
-                                            <th class="px-4 py-3 text-left">Código</th>
-                                            <th class="px-4 py-3 text-left">Descrição</th>
-                                            <th class="px-4 py-3 text-right">Caixas</th>
-                                            <th class="px-4 py-3 text-right">Faturamento</th>
-                                            <th class="px-4 py-3 text-right">Peso</th>
-                                            <th class="px-4 py-3 text-right">Posit.</th>
-                                            <th class="px-4 py-3 text-right">Estoque</th>
-                                            <th class="px-4 py-3 text-center">Tend. EstQ.</th>
-                                            <th class="px-4 py-3 text-center">Última Venda</th>
+                                            <th class="px-4 py-3 text-left cursor-pointer hover:text-white transition-colors" data-sort="produto">Código <span class="sort-icon inline-block w-3"></span></th>
+                                            <th class="px-4 py-3 text-left cursor-pointer hover:text-white transition-colors" data-sort="descricao">Descrição <span class="sort-icon inline-block w-3"></span></th>
+                                            <th class="px-4 py-3 text-right cursor-pointer hover:text-white transition-colors" data-sort="caixas">Caixas <span class="sort-icon inline-block w-3"></span></th>
+                                            <th class="px-4 py-3 text-right cursor-pointer hover:text-white transition-colors" data-sort="faturamento">Faturamento <span class="sort-icon inline-block w-3"></span></th>
+                                            <th class="px-4 py-3 text-right cursor-pointer hover:text-white transition-colors" data-sort="peso">Peso <span class="sort-icon inline-block w-3"></span></th>
+                                            <th class="px-4 py-3 text-right cursor-pointer hover:text-white transition-colors" data-sort="clientes">Posit. <span class="sort-icon inline-block w-3"></span></th>
+                                            <th class="px-4 py-3 text-right cursor-pointer hover:text-white transition-colors" data-sort="estoque">Estoque <span class="sort-icon inline-block w-3"></span></th>
+                                            <th class="px-4 py-3 text-center cursor-pointer hover:text-white transition-colors" data-sort="tend_estq">Tend. EstQ. <span class="sort-icon inline-block w-3"></span></th>
+                                            <th class="px-4 py-3 text-center cursor-pointer hover:text-white transition-colors" data-sort="ultima_venda">Última Venda <span class="sort-icon inline-block w-3"></span></th>
                                         </tr>
                                     </thead>
                                     <tbody id="boxesProductTableBody" class="divide-y divide-slate-700"></tbody>
                                 </table>
+                            </div>
+
+                            <!-- Pagination Controls -->
+                            <div class="flex items-center justify-between mt-4 px-2">
+                                <div class="text-sm text-slate-400">
+                                    Mostrando <span id="boxes-page-start" class="font-medium text-white">0</span> a <span id="boxes-page-end" class="font-medium text-white">0</span> de <span id="boxes-page-total" class="font-medium text-white">0</span> resultados
+                                </div>
+                                <div class="flex gap-1" id="boxes-pagination-controls">
+                                    <!-- Populated by JS -->
+                                </div>
                             </div>
                         </div>
                     </div>

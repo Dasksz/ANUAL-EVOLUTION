@@ -3165,6 +3165,154 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         renderBoxesDashboard(data);
     }
 
+
+    // Boxes Pagination & Sorting State
+    let boxesProductsData = [];
+    let boxesCurrentPage = 1;
+    const boxesItemsPerPage = 50;
+    let boxesSortCol = 'caixas';
+    let boxesSortDir = 'desc'; // 'desc', 'asc', 'default'
+
+
+    function renderBoxesProductsTable() {
+        const tableBody = document.getElementById('boxesProductTableBody');
+        if (!tableBody) return;
+
+        let displayData = [...boxesProductsData];
+
+        // 1. Sorting
+        if (boxesSortDir !== 'default') {
+            displayData.sort((a, b) => {
+                let valA = a[boxesSortCol];
+                let valB = b[boxesSortCol];
+
+                // Handle nulls
+                if (valA === null || valA === undefined) valA = '';
+                if (valB === null || valB === undefined) valB = '';
+
+                // Handle strings vs numbers
+                if (typeof valA === 'string' && typeof valB === 'string') {
+                    valA = valA.toLowerCase();
+                    valB = valB.toLowerCase();
+                } else {
+                    valA = Number(valA) || 0;
+                    valB = Number(valB) || 0;
+                }
+
+                if (valA < valB) return boxesSortDir === 'asc' ? -1 : 1;
+                if (valA > valB) return boxesSortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        // Update headers to show sort direction
+        document.querySelectorAll('#boxes-products-table th[data-sort]').forEach(th => {
+            const col = th.getAttribute('data-sort');
+            const iconSpan = th.querySelector('.sort-icon');
+            if (iconSpan) {
+                if (col === boxesSortCol && boxesSortDir !== 'default') {
+                    iconSpan.innerHTML = boxesSortDir === 'asc' ? '↑' : '↓';
+                } else {
+                    iconSpan.innerHTML = '';
+                }
+            }
+        });
+
+        // 2. Pagination
+        const totalItems = displayData.length;
+        const totalPages = Math.ceil(totalItems / boxesItemsPerPage) || 1;
+        if (boxesCurrentPage > totalPages) boxesCurrentPage = totalPages;
+        if (boxesCurrentPage < 1) boxesCurrentPage = 1;
+
+        const startIndex = (boxesCurrentPage - 1) * boxesItemsPerPage;
+        const endIndex = Math.min(startIndex + boxesItemsPerPage, totalItems);
+
+        const pageData = displayData.slice(startIndex, endIndex);
+
+        // Update pagination UI text
+        document.getElementById('boxes-page-start').textContent = totalItems > 0 ? startIndex + 1 : 0;
+        document.getElementById('boxes-page-end').textContent = endIndex;
+        document.getElementById('boxes-page-total').textContent = totalItems;
+
+        // Render rows
+        if (pageData.length > 0) {
+            tableBody.innerHTML = pageData.map(p => `
+                <tr class="table-row">
+                    <td class="p-2 text-left">${escapeHtml(p.produto)}</td>
+                    <td class="p-2 text-left">${escapeHtml(p.descricao)}</td>
+                    <td class="p-2 text-right font-bold text-emerald-400">${escapeHtml(formatInteger(p.caixas || 0))}</td>
+                    <td class="p-2 text-right">${escapeHtml(formatCurrency(p.faturamento || 0))}</td>
+                    <td class="p-2 text-right">${escapeHtml(formatTons(p.peso || 0, 2))}</td>
+                    <td class="p-2 text-right text-slate-300 font-bold">${escapeHtml(formatInteger(p.clientes || 0))}</td>
+                    <td class="p-2 text-right text-slate-400 font-bold">${escapeHtml(formatInteger(p.estoque || 0))} cx</td>
+                    <td class="p-2 text-center font-bold ${
+                        (p.tend_estq || 0) <= 14 ? 'text-red-400' :
+                        (p.tend_estq || 0) <= 21 ? 'text-yellow-400' :
+                        'text-emerald-400'
+                    }">${escapeHtml(formatInteger(p.tend_estq || 0))} d</td>
+                    <td class="p-2 text-center text-slate-400">${escapeHtml(p.ultima_venda ? new Date(p.ultima_venda).toLocaleDateString('pt-BR') : '-')}</td>
+                </tr>
+            `).join('');
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="9" class="p-4 text-center text-slate-500">Nenhum produto encontrado.</td></tr>';
+        }
+
+        // Render pagination controls
+        const paginationContainer = document.getElementById('boxes-pagination-controls');
+        if (paginationContainer) {
+            let html = '';
+
+            // Prev Button
+            html += `<button class="px-2 py-1 bg-slate-800 text-slate-300 rounded hover:bg-slate-700 disabled:opacity-50" ${boxesCurrentPage === 1 ? 'disabled' : ''} onclick="window.changeBoxesPage(${boxesCurrentPage - 1})">Anterior</button>`;
+
+            // Pages
+            for (let i = 1; i <= totalPages; i++) {
+                // Show a limited number of pages around current (e.g., current - 2 to current + 2)
+                if (i === 1 || i === totalPages || (i >= boxesCurrentPage - 2 && i <= boxesCurrentPage + 2)) {
+                    const isCurrent = i === boxesCurrentPage;
+                    html += `<button class="px-2 py-1 rounded ${isCurrent ? 'bg-orange-500 text-white font-bold' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}" onclick="window.changeBoxesPage(${i})">${i}</button>`;
+                } else if (i === boxesCurrentPage - 3 || i === boxesCurrentPage + 3) {
+                    html += `<span class="px-2 py-1 text-slate-500">...</span>`;
+                }
+            }
+
+            // Next Button
+            html += `<button class="px-2 py-1 bg-slate-800 text-slate-300 rounded hover:bg-slate-700 disabled:opacity-50" ${boxesCurrentPage === totalPages ? 'disabled' : ''} onclick="window.changeBoxesPage(${boxesCurrentPage + 1})">Próximo</button>`;
+
+            paginationContainer.innerHTML = html;
+        }
+    }
+
+    window.changeBoxesPage = function(page) {
+        boxesCurrentPage = page;
+        renderBoxesProductsTable();
+    };
+
+    // Sorting Click Handlers
+    document.addEventListener('DOMContentLoaded', () => {
+        // ... hook this into an existing DOMContentLoaded if possible, or just attach event delegation to the table header.
+        const thead = document.querySelector('#boxes-products-table thead');
+        if(thead) {
+            thead.addEventListener('click', (e) => {
+                const th = e.target.closest('th[data-sort]');
+                if (!th) return;
+
+                const col = th.getAttribute('data-sort');
+                if (boxesSortCol === col) {
+                    // Cycle: desc -> asc -> default
+                    if (boxesSortDir === 'desc') boxesSortDir = 'asc';
+                    else if (boxesSortDir === 'asc') boxesSortDir = 'default';
+                    else boxesSortDir = 'desc';
+                } else {
+                    boxesSortCol = col;
+                    boxesSortDir = 'desc';
+                }
+                boxesCurrentPage = 1; // Reset to page 1 on sort
+                renderBoxesProductsTable();
+            });
+        }
+    });
+
     window.renderBoxesDashboard = function renderBoxesDashboard(data) {
         // Trend Data Extraction
         const trendInfo = data.trend_info || { allowed: false, factor: 1, current_month_index: -1 };
@@ -3385,33 +3533,14 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         createChart('boxesChart', 'bar', labels, datasets, (v) => formatChartLabel(v));
 
         // Table
-        const products = data.products_table || [];
-        currentBoxesTableData = products; // Store for export
+        boxesProductsData = data.products_table || [];
+        currentBoxesTableData = boxesProductsData; // Store for export
+        boxesCurrentPage = 1; // reset page on new data
+        // default sorting on new data
+        boxesSortCol = 'caixas';
+        boxesSortDir = 'desc';
+        renderBoxesProductsTable();
 
-        const tableBody = document.getElementById('boxesProductTableBody');
-        if (products.length > 0) {
-            // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
-            tableBody.innerHTML = products.map(p => `
-                <tr class="table-row">
-                    <td class="p-2 text-left">${escapeHtml(p.produto)}</td>
-                    <td class="p-2 text-left">${escapeHtml(p.descricao)}</td>
-                    <td class="p-2 text-right font-bold text-emerald-400">${escapeHtml(formatInteger(safeVal(p.caixas)))}</td>
-                    <td class="p-2 text-right">${escapeHtml(formatCurrency(safeVal(p.faturamento)))}</td>
-                    <td class="p-2 text-right">${escapeHtml(formatTons(safeVal(p.peso), 2))}</td>
-                    <td class="p-2 text-right text-slate-300 font-bold">${escapeHtml(formatInteger(safeVal(p.clientes)))}</td>
-                    <td class="p-2 text-right text-slate-400 font-bold">${escapeHtml(formatInteger(safeVal(p.estoque)))} cx</td>
-                    <td class="p-2 text-center font-bold ${
-                        safeVal(p.tend_estq) <= 14 ? 'text-red-400' :
-                        safeVal(p.tend_estq) <= 21 ? 'text-yellow-400' :
-                        'text-emerald-400'
-                    }">${escapeHtml(formatInteger(safeVal(p.tend_estq)))} d</td>
-                    <td class="p-2 text-center text-slate-400">${escapeHtml(p.ultima_venda ? new Date(p.ultima_venda).toLocaleDateString('pt-BR') : '-')}</td>
-                </tr>
-            `).join('');
-        } else {
-            tableBody.innerHTML = '<tr><td colspan="9" class="p-4 text-center text-slate-500">Nenhum produto encontrado.</td></tr>';
-        }
-    }
 
     // Boxes Filter Elements - MOVED UP
 
