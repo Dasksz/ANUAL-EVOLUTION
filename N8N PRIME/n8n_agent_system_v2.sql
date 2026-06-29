@@ -297,15 +297,15 @@ BEGIN
     WHERE cat.marca NOT IN (SELECT mix_marca FROM compras_mes);
 
     IF v_faltantes_salty IS NULL OR v_faltantes_salty = '' THEN
-        v_msg_salty := '✅ Salty Positivado!';
+        v_msg_salty := '✅ Salty Positivado';
     ELSE
-        v_msg_salty := '❌ Faltam para Salty: ' || v_faltantes_salty;
+        v_msg_salty := '❌ Salty - Faltou ' || v_faltantes_salty;
     END IF;
 
     IF v_faltantes_foods IS NULL OR v_faltantes_foods = '' THEN
-        v_msg_foods := '✅ Foods Positivado!';
+        v_msg_foods := '✅ Foods Positivado';
     ELSE
-        v_msg_foods := '❌ Faltam para Foods: ' || v_faltantes_foods;
+        v_msg_foods := '❌ Foods - Faltou ' || v_faltantes_foods;
     END IF;
 
     v_texto_pronto := '🏢 Cliente: ' || COALESCE(v_fantasia, 'Não Encontrado') || E'\n' ||
@@ -325,7 +325,7 @@ $$;
 
 
 CREATE OR REPLACE FUNCTION public.sp_historico_pedido_linha(
-    p_pedido TEXT, p_dtped DATE, p_valor_total NUMERIC, p_tipo_venda TEXT, p_contagem_itens INT
+    p_pedido TEXT, p_dtped DATE, p_valor_total NUMERIC, p_tipo_venda TEXT, p_contagem_itens INT, p_marcas_compradas TEXT
 )
 RETURNS JSONB
 LANGUAGE plpgsql STABLE
@@ -333,6 +333,11 @@ AS $$
 DECLARE
     v_texto_pronto TEXT;
     v_tipo_desc TEXT;
+    v_marcas_arr TEXT[];
+    v_faltantes_salty TEXT;
+    v_faltantes_foods TEXT;
+    v_msg_salty TEXT;
+    v_msg_foods TEXT;
 BEGIN
     v_tipo_desc := CASE 
         WHEN p_tipo_venda = '1' THEN 'Normal'
@@ -342,11 +347,37 @@ BEGIN
         ELSE p_tipo_venda 
     END;
 
+    v_marcas_arr := string_to_array(COALESCE(p_marcas_compradas, ''), ',');
+
+    -- Salty check
+    SELECT string_agg(cat.marca, ', ') INTO v_faltantes_salty
+    FROM (VALUES ('FANDANGOS'), ('DORITOS'), ('CHEETOS'), ('RUFFLES'), ('TORCIDA')) AS cat(marca)
+    WHERE cat.marca NOT IN (SELECT unnest(v_marcas_arr));
+
+    -- Foods check
+    SELECT string_agg(cat.marca, ', ') INTO v_faltantes_foods
+    FROM (VALUES ('TODDYNHO'), ('TODDY'), ('QUAKER'), ('KERO COCO')) AS cat(marca)
+    WHERE cat.marca NOT IN (SELECT unnest(v_marcas_arr));
+
+    IF v_faltantes_salty IS NULL OR v_faltantes_salty = '' THEN
+        v_msg_salty := 'Salty: ✅ Completo';
+    ELSE
+        v_msg_salty := 'Salty: ❌ (falta ' || v_faltantes_salty || ')';
+    END IF;
+
+    IF v_faltantes_foods IS NULL OR v_faltantes_foods = '' THEN
+        v_msg_foods := 'Foods: ✅ Completo';
+    ELSE
+        v_msg_foods := 'Foods: ❌ (falta ' || v_faltantes_foods || ')';
+    END IF;
+
     v_texto_pronto := '📦 Pedido Analisado: Data: ' || to_char(p_dtped, 'DD/MM/YYYY') || E'\n' ||
                       'Pedido: ' || p_pedido || E'\n' ||
                       'Valor: R$ ' || round(p_valor_total, 2) || E'\n' ||
                       'Mix: ' || p_contagem_itens || E'\n' ||
-                      'Tipo: ' || v_tipo_desc;
+                      'Tipo: ' || v_tipo_desc || E'\n' ||
+                      v_msg_salty || E'\n' ||
+                      v_msg_foods;
 
     RETURN jsonb_build_object('texto_pronto_para_enviar', v_texto_pronto);
 END;
@@ -701,7 +732,7 @@ SELECT '2_pedido'::text AS opcao,
        NULL::text AS termo_busca,
        NULL::text AS rca,
        NULL::text AS filial,
-       public.sp_historico_pedido_linha(v.pedido, v.data_pedido::date, v.valor_total, v.tipo_venda, v.contagem_itens) AS dados
+       public.sp_historico_pedido_linha(v.pedido, v.data_pedido::date, v.valor_total, v.tipo_venda, v.contagem_itens, v.marcas_compradas) AS dados
 FROM (
     SELECT 
         s.codcli,
@@ -712,12 +743,14 @@ FROM (
             ELSE COALESCE(s.vlvenda, 0)
         END) as valor_total,
         MAX(s.tipovenda) as tipo_venda,
-        COUNT(s.produto)::int as contagem_itens
+        COUNT(s.produto)::int as contagem_itens,
+        string_agg(DISTINCT dp.mix_marca, ',') as marcas_compradas
     FROM (
         SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, produto FROM data_history
         UNION ALL 
         SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, produto FROM data_detailed
     ) s
+    LEFT JOIN dim_produtos dp ON dp.codigo = s.produto
     GROUP BY s.codcli, s.pedido
 ) v
 
