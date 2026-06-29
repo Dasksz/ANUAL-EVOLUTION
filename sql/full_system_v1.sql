@@ -1243,6 +1243,9 @@ CREATE INDEX IF NOT EXISTS idx_clients_busca ON public.data_clients (codigo_clie
 -- NEW OPTIMIZATION INDEXES
 CREATE INDEX IF NOT EXISTS idx_dim_produtos_mix_marca ON public.dim_produtos (mix_marca);
 CREATE INDEX IF NOT EXISTS idx_dim_produtos_mix_categoria ON public.dim_produtos (mix_categoria);
+CREATE INDEX IF NOT EXISTS idx_dim_produtos_categoria_produto ON public.dim_produtos (categoria_produto);
+CREATE INDEX IF NOT EXISTS idx_detailed_produto ON public.data_detailed (produto);
+CREATE INDEX IF NOT EXISTS idx_history_produto ON public.data_history (produto);
 CREATE INDEX IF NOT EXISTS idx_data_clients_rede_lookup ON public.data_clients (codigo_cliente, ramo);
 
 -- OPTIMIZATION FOR BOXES DASHBOARD (Product Table Speed)
@@ -3423,7 +3426,7 @@ BEGIN
                 'clientes', (p->>'clientes')::numeric,
                 'ultima_venda', p->>'ultima_venda',
                 'estoque', COALESCE(sub.estoque, 0),
-                'tend_estq', CASE
+                'tend_estq', CASE 
                     WHEN COALESCE(sub.estoque, 0) = 0 THEN 0
                     WHEN COALESCE(sub.business_days, 0) = 0 THEN 0
                     WHEN COALESCE(sub.total_caixas_6m, 0) = 0 THEN 0
@@ -3434,7 +3437,7 @@ BEGIN
         INTO v_products_table
         FROM json_array_elements(v_products_table) p
         LEFT JOIN LATERAL (
-            SELECT
+            SELECT 
                 (
                     SELECT SUM(val::numeric)
                     FROM jsonb_each_text(dp.estoque_filial) AS f(key, val)
@@ -3447,13 +3450,14 @@ BEGIN
                 (
                     SELECT SUM(COALESCE(s.qtvenda, 0) / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1))
                     FROM (
-                        SELECT qtvenda, dtped, filial FROM public.data_detailed WHERE produto = p->>'produto'
+                        SELECT qtvenda, dtped, filial, tipovenda FROM public.data_detailed WHERE produto = p->>'produto'
                         UNION ALL
-                        SELECT qtvenda, dtped, filial FROM public.data_history WHERE produto = p->>'produto'
+                        SELECT qtvenda, dtped, filial, tipovenda FROM public.data_history WHERE produto = p->>'produto'
                     ) s
                     WHERE s.dtped >= GREATEST(dp.dt_cadastro, (v_max_sale_date - interval '6 months')::date)
                     AND s.dtped <= v_max_sale_date
                     AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR s.filial = ANY(p_filial))
+                    AND s.tipovenda NOT IN ('5', '11')
                 ) as total_caixas_6m
             FROM dim_produtos dp
             WHERE dp.codigo = p->>'produto'
@@ -7099,7 +7103,7 @@ BEGIN
     END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where := v_where || format(' AND dp.mix_marca = ANY(%L::text[]) ', p_categoria);
     END IF;
 
     -- REDE Logic
