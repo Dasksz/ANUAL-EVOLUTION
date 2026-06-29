@@ -701,7 +701,7 @@ SELECT '2_pedido'::text AS opcao,
        NULL::text AS termo_busca,
        NULL::text AS rca,
        NULL::text AS filial,
-       public.sp_historico_pedido_linha(v.pedido, v.data_pedido, v.valor_total, v.tipo_venda, v.contagem_itens) AS dados
+       public.sp_historico_pedido_linha(v.pedido, v.data_pedido::date, v.valor_total, v.tipo_venda, v.contagem_itens) AS dados
 FROM (
     SELECT
         s.codcli,
