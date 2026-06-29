@@ -247,14 +247,14 @@ END;
 $$;
 
 
-CREATE OR REPLACE FUNCTION public.sp_historico_pedidos(p_cod_cliente TEXT)
+
+CREATE OR REPLACE FUNCTION public.sp_historico_resumo_cliente(p_cod_cliente TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql STABLE
 AS $$
 DECLARE
     v_historico JSONB;
     v_texto_pronto TEXT;
-    v_pedidos TEXT := '';
     v_fantasia TEXT;
     v_cidade TEXT;
     v_bairro TEXT;
@@ -308,53 +308,12 @@ BEGIN
         v_msg_foods := '❌ Faltam para Foods: ' || v_faltantes_foods;
     END IF;
 
-    WITH ultimos_pedidos AS (
-        SELECT 
-            s.pedido,
-            MAX(s.dtped) as data_pedido,
-            SUM(CASE 
-                WHEN s.tipovenda IN ('5', '11') THEN COALESCE(s.vlbonific, 0)
-                ELSE COALESCE(s.vlvenda, 0)
-            END) as valor_total,
-            MAX(s.tipovenda) as tipo_venda,
-            COUNT(s.produto) as contagem_itens
-        FROM (
-            SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, produto FROM data_history WHERE codcli = p_cod_cliente
-            UNION ALL 
-            SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, produto FROM data_detailed WHERE codcli = p_cod_cliente
-        ) s
-        LEFT JOIN dim_produtos dp ON dp.codigo = s.produto
-        GROUP BY s.pedido, s.tipovenda
-        ORDER BY MAX(s.dtped) DESC
-        LIMIT 5
-    )
-    SELECT string_agg(
-        '📦 Pedido Analisado: Data: ' || to_char(data_pedido, 'DD/MM/YYYY') || E'\n' ||
-        'Pedido: ' || pedido || E'\n' ||
-        'Valor: R$ ' || round(valor_total, 2) || E'\n' ||
-        'Mix: ' || contagem_itens || E'\n' ||
-        'Tipo: ' || CASE 
-            WHEN tipo_venda = '1' THEN 'Normal'
-            WHEN tipo_venda = '5' THEN 'Perda'
-            WHEN tipo_venda = '9' THEN 'Venda'
-            WHEN tipo_venda = '11' THEN 'Bonificação'
-            ELSE tipo_venda 
-        END,
-        E'\n\n'
-    ) INTO v_pedidos
-    FROM ultimos_pedidos;
-
-    IF v_pedidos IS NULL OR v_pedidos = '' THEN
-        v_pedidos := 'Nenhum pedido encontrado no histórico recente.';
-    END IF;
-
     v_texto_pronto := '🏢 Cliente: ' || COALESCE(v_fantasia, 'Não Encontrado') || E'\n' ||
                       '📍 Localização: ' || COALESCE(v_bairro, '') || ', ' || COALESCE(v_cidade, '') || E'\n' ||
                       '🚦 Bloqueio Sefaz: ' || COALESCE(v_bloqueio, '') || E'\n\n' ||
                       '🏆 *Status de Positivação (Mês Atual):*' || E'\n' ||
                       v_msg_salty || E'\n' ||
-                      v_msg_foods || E'\n\n' ||
-                      v_pedidos;
+                      v_msg_foods || E'\n';
 
     SELECT jsonb_build_object(
         'texto_pronto_para_enviar', v_texto_pronto
@@ -363,6 +322,36 @@ BEGIN
     RETURN v_historico;
 END;
 $$;
+
+
+CREATE OR REPLACE FUNCTION public.sp_historico_pedido_linha(
+    p_pedido TEXT, p_dtped DATE, p_valor_total NUMERIC, p_tipo_venda TEXT, p_contagem_itens INT
+)
+RETURNS JSONB
+LANGUAGE plpgsql STABLE
+AS $$
+DECLARE
+    v_texto_pronto TEXT;
+    v_tipo_desc TEXT;
+BEGIN
+    v_tipo_desc := CASE 
+        WHEN p_tipo_venda = '1' THEN 'Normal'
+        WHEN p_tipo_venda = '5' THEN 'Perda'
+        WHEN p_tipo_venda = '9' THEN 'Venda'
+        WHEN p_tipo_venda = '11' THEN 'Bonificação'
+        ELSE p_tipo_venda 
+    END;
+
+    v_texto_pronto := '📦 Pedido Analisado: Data: ' || to_char(p_dtped, 'DD/MM/YYYY') || E'\n' ||
+                      'Pedido: ' || p_pedido || E'\n' ||
+                      'Valor: R$ ' || round(p_valor_total, 2) || E'\n' ||
+                      'Mix: ' || p_contagem_itens || E'\n' ||
+                      'Tipo: ' || v_tipo_desc;
+
+    RETURN jsonb_build_object('texto_pronto_para_enviar', v_texto_pronto);
+END;
+$$;
+
 
 
 CREATE OR REPLACE FUNCTION public.sp_consultar_pedido(p_num_pedido TEXT)
@@ -675,7 +664,7 @@ FROM data_clients c
 
 UNION ALL
 
-SELECT '2'::text AS opcao,
+SELECT '2_summary'::text AS opcao,
        NULL::text AS cpf,
        v.codcli AS codigo_cliente,
        NULL::text AS setor_transferencia,
@@ -689,11 +678,47 @@ SELECT '2'::text AS opcao,
        NULL::text AS termo_busca,
        NULL::text AS rca,
        NULL::text AS filial,
-       public.sp_historico_pedidos(v.codcli) AS dados
+       public.sp_historico_resumo_cliente(v.codcli) AS dados
 FROM (
     SELECT DISTINCT codcli FROM data_detailed
     UNION
     SELECT DISTINCT codcli FROM data_history
+) v
+
+UNION ALL
+
+SELECT '2_pedido'::text AS opcao,
+       NULL::text AS cpf,
+       v.codcli AS codigo_cliente,
+       NULL::text AS setor_transferencia,
+       NULL::text AS tipo_venda_pedido,
+       v.pedido AS numero_pedido,
+       to_char(v.data_pedido, 'YYYY-MM-DD') AS data_inicio, -- Overloading for filtering
+       to_char(v.data_pedido, 'YYYY-MM-DD') AS data_fim,
+       NULL::text AS lista_produtos,
+       NULL::text AS cidade,
+       NULL::text AS codigo_produto,
+       NULL::text AS termo_busca,
+       NULL::text AS rca,
+       NULL::text AS filial,
+       public.sp_historico_pedido_linha(v.pedido, v.data_pedido::date, v.valor_total, v.tipo_venda, v.contagem_itens) AS dados
+FROM (
+    SELECT 
+        s.codcli,
+        s.pedido,
+        MAX(s.dtped) as data_pedido,
+        SUM(CASE 
+            WHEN s.tipovenda IN ('5', '11') THEN COALESCE(s.vlbonific, 0)
+            ELSE COALESCE(s.vlvenda, 0)
+        END) as valor_total,
+        MAX(s.tipovenda) as tipo_venda,
+        COUNT(s.produto)::int as contagem_itens
+    FROM (
+        SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, produto FROM data_history
+        UNION ALL 
+        SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, produto FROM data_detailed
+    ) s
+    GROUP BY s.codcli, s.pedido
 ) v
 
 UNION ALL
@@ -818,3 +843,26 @@ FROM (SELECT DISTINCT rca1 as rca FROM data_clients WHERE rca1 IS NOT NULL) c
 CROSS JOIN (SELECT DISTINCT cidade FROM data_clients WHERE cidade IS NOT NULL) ci;
 
 GRANT SELECT ON public.n8n_agent_view_v2 TO service_role;
+
+
+-- View para unificar a validação de identidade (Colaborador / Cliente)
+DROP VIEW IF EXISTS public.n8n_vw_validar_identidade;
+CREATE VIEW public.n8n_vw_validar_identidade AS
+SELECT 
+    cpf AS documento,
+    'colaborador' AS tipo,
+    nome,
+    NULL AS codigo_cliente
+FROM public.n8n_auth_colaboradores
+
+UNION ALL
+
+SELECT 
+    cnpj AS documento,
+    'cliente' AS tipo,
+    fantasia AS nome,
+    codigo_cliente
+FROM public.data_clients
+WHERE cnpj IS NOT NULL;
+
+GRANT SELECT ON public.n8n_vw_validar_identidade TO service_role;
