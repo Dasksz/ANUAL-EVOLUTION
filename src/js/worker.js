@@ -273,7 +273,7 @@ const readFile = (file) => {
                     const workbook = XLSX.read(new Uint8Array(data), {type: 'array'});
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
-                    jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false, cellDates: true });
+                    jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true, cellDates: true });
                 }
                 resolve(jsonData);
             } catch (error) {
