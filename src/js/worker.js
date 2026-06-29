@@ -571,8 +571,6 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                 const canal = getVal(row, 'Canal');
                 const subcanal = getVal(row, 'Subcanal');
                 const audits = parseInt(getVal(row, 'Auditorias Distintas') || 0);
-                // Calculate dynamically based on score since column is removed
-                const perfectAudits = nota >= 80 ? audits : 0;
 
                 if (!current) {
                     grouped.set(key, {
@@ -583,26 +581,37 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                         cnpj_origem: finalCnpj,
                         canal: canal,
                         subcanal: subcanal,
-                        nota_media: nota,
+                        nota_media: 0, // will be calculated at the end
                         auditorias: audits,
-                        auditorias_perfeitas: perfectAudits,
+                        auditorias_perfeitas: 0, // will be calculated at the end
                         mes: mesNum,
-                        ano: anoNum
+                        ano: anoNum,
+                        soma_notas: nota,
+                        quantidade_notas: 1
                     });
                 } else {
-                    if (nota > current.nota_media) {
-                        current.nota_media = nota;
-                        current.mes_ano = mesAno;
-                        current.semana = semana;
-                        current.canal = canal;
-                        current.subcanal = subcanal;
-                    }
+                    current.soma_notas += nota;
+                    current.quantidade_notas += 1;
                     current.auditorias += audits;
-                    current.auditorias_perfeitas += perfectAudits;
+                    // We keep the first mes_ano, semana, canal, subcanal or we could update it
+                    // Leaving it as the first one encountered for this group, as replacing max logic removes the distinct 'winner'
                 }
             });
 
-            return { data: Array.from(grouped.values()), uniqueCount: uniqueClientsFound.size };
+            // Calculate final averages and perfect audits
+            const finalData = Array.from(grouped.values()).map(item => {
+                if (item.quantidade_notas > 0) {
+                    item.nota_media = Number((item.soma_notas / item.quantidade_notas).toFixed(2));
+                }
+                item.auditorias_perfeitas = item.nota_media >= 80 ? item.auditorias : 0;
+
+                // Cleanup temporary fields
+                delete item.soma_notas;
+                delete item.quantidade_notas;
+                return item;
+            });
+
+            return { data: finalData, uniqueCount: uniqueClientsFound.size };
         }
 
 if (typeof self !== 'undefined') {
