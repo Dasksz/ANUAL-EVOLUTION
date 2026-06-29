@@ -1238,7 +1238,11 @@ self.onmessage = async (event) => {
                      const codCli = String(client['Código'] || '').trim();
                      const cnpjRaw = client['CNPJ/CPF'] || client['Cpf/Cnpj'];
                      if (codCli && cnpjRaw) {
-                         let cnpjStr = String(cnpjRaw).replace(/[^0-9]/g, '');
+                         let cnpjStr = String(cnpjRaw);
+                         if (typeof cnpjRaw === 'number' && cnpjStr.includes('e')) {
+                             try { cnpjStr = cnpjRaw.toLocaleString('fullwide', { useGrouping: false }); } catch(e) {}
+                         }
+                         cnpjStr = cnpjStr.replace(/[^0-9]/g, '');
                          if (cnpjStr) clientCnpjMap.set(cnpjStr, codCli);
                      }
                  }
@@ -1247,7 +1251,11 @@ self.onmessage = async (event) => {
                      const codCli = String(client.codigo_cliente || '').trim();
                      const cnpjRaw = client.cnpj || client.cnpj_cpf;
                      if (codCli && cnpjRaw) {
-                         let cnpjStr = String(cnpjRaw).replace(/[^0-9]/g, '');
+                         let cnpjStr = String(cnpjRaw);
+                         if (typeof cnpjRaw === 'number' && cnpjStr.includes('e')) {
+                             try { cnpjStr = cnpjRaw.toLocaleString('fullwide', { useGrouping: false }); } catch(e) {}
+                         }
+                         cnpjStr = cnpjStr.replace(/[^0-9]/g, '');
                          if (cnpjStr) clientCnpjMap.set(cnpjStr, codCli);
                      }
                  }
