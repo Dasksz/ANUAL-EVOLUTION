@@ -11,3 +11,4 @@
 **Aprendizado:** A stray closing `</div>` tag can prematurely close a view container (like `#city-view`), causing subsequent sibling elements (like the "Performance - Segmentação" table) to leak out and render globally across other views within the parent layout.
 **Ação:** Always verify DOM nesting mathematically (`count(<div) == count(</div>)`) within specific component boundaries when elements appear on unintended pages.
 ## 2026-06-26 - Fix sp_mix_ideal_cliente
+## 2024/06/29 : (Fix Category Bug) **Aprendizado:** (When refactoring `categoria_produto` filtering or indices, ensure that all dynamic SQL variables refer to `categoria_produto` or `dp.categoria_produto` rather than mistakenly mapping them to `mix_marca` which leads to empty cache filter aggregations and empty dashboards.) **Ação:** (Used Python to safely run mass text replacements in string queries avoiding syntax errors.)
