@@ -3540,6 +3540,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         boxesSortCol = 'caixas';
         boxesSortDir = 'desc';
         renderBoxesProductsTable();
+    };
 
 
     // Boxes Filter Elements - MOVED UP
@@ -10343,3 +10344,4 @@ async function syncIbgePopulations() {
 }
 
 
+});
