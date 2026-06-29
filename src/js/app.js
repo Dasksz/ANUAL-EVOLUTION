@@ -9529,7 +9529,6 @@ async function updateEstrelasView() {
     }
 }
 
-});
 async function loadFrequencyTable(filters) {
     const tableBody = document.getElementById('frequency-table-body');
     const tableFooter = document.getElementById('frequency-table-footer');
