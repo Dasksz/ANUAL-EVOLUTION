@@ -3301,7 +3301,6 @@ BEGIN
                 FROM prod_base
                 GROUP BY 1
                 ORDER BY caixas DESC
-                LIMIT 50
             )
             SELECT 
                 (SELECT json_agg(json_build_object(''month_index'', m_idx, ''year'', yr, ''faturamento'', fat, ''peso'', peso, ''caixas'', caixas, ''clientes'', clientes)) FROM chart_agg),
@@ -3394,7 +3393,6 @@ BEGIN
                 WHERE EXTRACT(YEAR FROM dtped) = %L %s
                 GROUP BY 1
                 ORDER BY caixas DESC
-                LIMIT 50
             )
             SELECT 
                 (SELECT json_agg(json_build_object(''month_index'', m_idx, ''year'', yr, ''faturamento'', fat, ''peso'', peso, ''caixas'', caixas, ''clientes'', clientes)) FROM chart_agg),
