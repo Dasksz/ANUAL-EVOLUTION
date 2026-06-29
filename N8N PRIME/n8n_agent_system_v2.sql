@@ -712,7 +712,7 @@ FROM (
             ELSE COALESCE(s.vlvenda, 0)
         END) as valor_total,
         MAX(s.tipovenda) as tipo_venda,
-        COUNT(s.produto) as contagem_itens::int
+        COUNT(s.produto)::int as contagem_itens
     FROM (
         SELECT pedido, codcli, tipovenda, dtped, vlvenda, vlbonific, produto FROM data_history
         UNION ALL
