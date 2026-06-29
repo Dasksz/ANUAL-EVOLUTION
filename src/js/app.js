@@ -2324,9 +2324,10 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         // Fetch current city map
         const cityBranchMap = await fetchCityBranchMap();
 
-        // Fetch existing clients if Nota Involves is uploaded without the Clients file
+        // Fetch existing clients if Nota Involves is uploaded
+        // Always fetch to ensure we have a fallback mapping in case the uploaded clients file is missing some mapping keys
         let existingClientsMap = null;
-        if (!files.clientsFile && (files.notaInvolvesFile1 || files.notaInvolvesFile2)) {
+        if (files.notaInvolvesFile1 || files.notaInvolvesFile2) {
              statusText.textContent = 'Buscando clientes existentes...';
              progressBar.style.width = '10%';
              existingClientsMap = [];

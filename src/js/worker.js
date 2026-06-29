@@ -1233,21 +1233,37 @@ self.onmessage = async (event) => {
         if ((nota1DataRaw && nota1DataRaw.length > 0) || (nota2DataRaw && nota2DataRaw.length > 0)) {
              // Create clientCNPJMap for Loja Perfeita helper
              const clientCnpjMap = new Map();
-             if (clientsDataRaw && clientsDataRaw.length > 0) {
-                 for (const client of clientsDataRaw) {
-                     const codCli = String(client['Código'] || '').trim();
-                     const cnpjRaw = client['CNPJ/CPF'] || client['Cpf/Cnpj'];
-                     if (codCli && cnpjRaw) {
-                         let cnpjStr = String(cnpjRaw).replace(/[^0-9]/g, '');
-                         if (cnpjStr) clientCnpjMap.set(cnpjStr, codCli);
-                     }
-                 }
-             } else if (existingClientsMap && existingClientsMap.length > 0) {
+             if (existingClientsMap && existingClientsMap.length > 0) {
                  for (const client of existingClientsMap) {
                      const codCli = String(client.codigo_cliente || '').trim();
                      const cnpjRaw = client.cnpj || client.cnpj_cpf;
                      if (codCli && cnpjRaw) {
-                         let cnpjStr = String(cnpjRaw).replace(/[^0-9]/g, '');
+                         let cnpjStr = String(cnpjRaw);
+                         if (typeof cnpjRaw === 'number' && cnpjStr.includes('e')) {
+                             try { cnpjStr = cnpjRaw.toLocaleString('fullwide', { useGrouping: false }); } catch(e) {}
+                         }
+                         cnpjStr = cnpjStr.replace(/[^0-9]/g, '');
+                         if (cnpjStr) clientCnpjMap.set(cnpjStr, codCli);
+                     }
+                 }
+             }
+             if (clientsDataRaw && clientsDataRaw.length > 0) {
+                 for (const client of clientsDataRaw) {
+                     const codCli = String(client['Código'] || client['Codigo'] || client['codigo'] || '').trim();
+                     const getClientVal = (row, keyPart) => {
+                         const keyUpper = keyPart.toUpperCase();
+                         for (const k in row) {
+                             if (k.toUpperCase().includes(keyUpper)) return row[k];
+                         }
+                         return undefined;
+                     };
+                     const cnpjRaw = getClientVal(client, 'CNPJ') || getClientVal(client, 'CPF');
+                     if (codCli && cnpjRaw) {
+                         let cnpjStr = String(cnpjRaw);
+                         if (typeof cnpjRaw === 'number' && cnpjStr.includes('e')) {
+                             try { cnpjStr = cnpjRaw.toLocaleString('fullwide', { useGrouping: false }); } catch(e) {}
+                         }
+                         cnpjStr = cnpjStr.replace(/[^0-9]/g, '');
                          if (cnpjStr) clientCnpjMap.set(cnpjStr, codCli);
                      }
                  }
