@@ -3295,7 +3295,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         boxesThead.addEventListener('click', (e) => {
             const th = e.target.closest('th[data-sort]');
             if (!th) return;
-            
+
             const col = th.getAttribute('data-sort');
             if (boxesSortCol === col) {
                 // Cycle: asc -> desc -> asc...
