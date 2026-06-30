@@ -3289,27 +3289,25 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     };
 
     // Sorting Click Handlers
-    document.addEventListener('DOMContentLoaded', () => {
-        // ... hook this into an existing DOMContentLoaded if possible, or just attach event delegation to the table header.
-        const thead = document.querySelector('#boxes-products-table thead');
-        if(thead) {
-            thead.addEventListener('click', (e) => {
-                const th = e.target.closest('th[data-sort]');
-                if (!th) return;
-                
-                const col = th.getAttribute('data-sort');
-                if (boxesSortCol === col) {
-                    // Cycle: asc -> desc -> asc...
-                    boxesSortDir = boxesSortDir === 'asc' ? 'desc' : 'asc';
-                } else {
-                    boxesSortCol = col;
-                    boxesSortDir = 'asc'; // First click starts ascending
-                }
-                boxesCurrentPage = 1; // Reset to page 1 on sort
-                renderBoxesProductsTable();
-            });
-        }
-    });
+    // Attaching event directly since we are already inside DOMContentLoaded or similar setup scope
+    const boxesThead = document.querySelector('#boxes-products-table thead');
+    if(boxesThead) {
+        boxesThead.addEventListener('click', (e) => {
+            const th = e.target.closest('th[data-sort]');
+            if (!th) return;
+
+            const col = th.getAttribute('data-sort');
+            if (boxesSortCol === col) {
+                // Cycle: asc -> desc -> asc...
+                boxesSortDir = boxesSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                boxesSortCol = col;
+                boxesSortDir = 'asc'; // First click starts ascending
+            }
+            boxesCurrentPage = 1; // Reset to page 1 on sort
+            renderBoxesProductsTable();
+        });
+    }
 
     window.renderBoxesDashboard = function renderBoxesDashboard(data) {
         // Trend Data Extraction
