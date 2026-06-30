@@ -51,3 +51,6 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## 2025-02-27 - Inline HTML Updates
 **Learning:** For rendering long lists or tables in DOM, mapping an array to string `<tr>...</tr>` and applying innerHTML once is much faster than creating separate rows and columns.
 **Action:** Kept the optimization and applied formatting correctly for new properties directly.
+## $(date +%Y-%m-%d) - [Otimização de Índices e Datas no PostgreSQL]
+**Learning:** Utilizar funções nativas como `EXTRACT(YEAR FROM coluna_data)` ou `EXTRACT(MONTH FROM coluna_data)` em cláusulas `WHERE` impede o PostgreSQL de utilizar índices (B-Tree) de forma eficiente, forçando uma varredura sequencial completa (Seq Scan) que causa lentidão e timeouts em bases de dados grandes.
+**Action:** Para garantir máxima performance e o uso de índices em grandes volumes, sempre substitua funções extrativas por checagem de limites exatos (ex: `coluna_data >= '2024-01-01' AND coluna_data <= '2024-12-31'`). Em filtros textuais complexos, prefira utilizar a cláusula `IN (SELECT ...)` com subqueries baseadas em tabelas dimensionais já indexadas.
