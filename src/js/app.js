@@ -3171,7 +3171,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     let boxesCurrentPage = 1;
     const boxesItemsPerPage = 50;
     let boxesSortCol = 'caixas';
-    let boxesSortDir = 'desc'; // 'desc', 'asc', 'default'
+    let boxesSortDir = 'desc'; // 'desc', 'asc'
 
 
     function renderBoxesProductsTable() {
@@ -3181,7 +3181,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         let displayData = [...boxesProductsData];
 
         // 1. Sorting
-        if (boxesSortDir !== 'default') {
+        if (boxesSortDir !== 'default') { // Kept for safety if initialized to default
             displayData.sort((a, b) => {
                 let valA = a[boxesSortCol];
                 let valB = b[boxesSortCol];
@@ -3210,7 +3210,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             const col = th.getAttribute('data-sort');
             const iconSpan = th.querySelector('.sort-icon');
             if (iconSpan) {
-                if (col === boxesSortCol && boxesSortDir !== 'default') {
+                if (col === boxesSortCol) {
                     iconSpan.innerHTML = boxesSortDir === 'asc' ? '↑' : '↓';
                 } else {
                     iconSpan.innerHTML = '';
@@ -3299,13 +3299,11 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 
                 const col = th.getAttribute('data-sort');
                 if (boxesSortCol === col) {
-                    // Cycle: desc -> asc -> default
-                    if (boxesSortDir === 'desc') boxesSortDir = 'asc';
-                    else if (boxesSortDir === 'asc') boxesSortDir = 'default';
-                    else boxesSortDir = 'desc';
+                    // Cycle: asc -> desc -> asc...
+                    boxesSortDir = boxesSortDir === 'asc' ? 'desc' : 'asc';
                 } else {
                     boxesSortCol = col;
-                    boxesSortDir = 'desc';
+                    boxesSortDir = 'asc'; // First click starts ascending
                 }
                 boxesCurrentPage = 1; // Reset to page 1 on sort
                 renderBoxesProductsTable();
