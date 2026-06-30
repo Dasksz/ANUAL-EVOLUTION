@@ -3414,6 +3414,26 @@ BEGIN
 
     -- Enrich products_table with trend_estq
     IF v_products_table IS NOT NULL AND json_array_length(v_products_table) > 0 THEN
+        WITH prod_keys AS (
+            SELECT p->>'produto' as produto
+            FROM json_array_elements(v_products_table) p
+        ),
+        prod_6m_agg AS (
+            SELECT 
+                s.produto,
+                SUM(COALESCE(s.qtvenda, 0) / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)) as total_caixas_6m
+            FROM (
+                SELECT qtvenda, dtped, filial, tipovenda, produto FROM public.data_detailed WHERE produto IN (SELECT produto FROM prod_keys)
+                UNION ALL
+                SELECT qtvenda, dtped, filial, tipovenda, produto FROM public.data_history WHERE produto IN (SELECT produto FROM prod_keys)
+            ) s
+            JOIN dim_produtos dp ON dp.codigo = s.produto
+            WHERE s.dtped >= GREATEST(dp.dt_cadastro, (v_max_sale_date - interval '6 months')::date)
+            AND s.dtped <= v_max_sale_date
+            AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR s.filial = ANY(p_filial))
+            AND s.tipovenda NOT IN ('5', '11')
+            GROUP BY s.produto
+        )
         SELECT json_agg(
             json_build_object(
                 'produto', p->>'produto',
@@ -3427,8 +3447,8 @@ BEGIN
                 'tend_estq', CASE 
                     WHEN COALESCE(sub.estoque, 0) = 0 THEN 0
                     WHEN COALESCE(sub.business_days, 0) = 0 THEN 0
-                    WHEN COALESCE(sub.total_caixas_6m, 0) = 0 THEN 0
-                    ELSE ROUND((COALESCE(sub.estoque, 0) / (sub.total_caixas_6m / sub.business_days))::numeric, 0)
+                    WHEN COALESCE(agg.total_caixas_6m, 0) = 0 THEN 0
+                    ELSE ROUND((COALESCE(sub.estoque, 0) / (agg.total_caixas_6m / sub.business_days))::numeric, 0)
                 END
             )
         )
@@ -3444,22 +3464,11 @@ BEGIN
                 public.calc_working_days(
                     GREATEST(dp.dt_cadastro, (v_max_sale_date - interval '6 months')::date),
                     v_max_sale_date
-                ) as business_days,
-                (
-                    SELECT SUM(COALESCE(s.qtvenda, 0) / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1))
-                    FROM (
-                        SELECT qtvenda, dtped, filial, tipovenda FROM public.data_detailed WHERE produto = p->>'produto'
-                        UNION ALL
-                        SELECT qtvenda, dtped, filial, tipovenda FROM public.data_history WHERE produto = p->>'produto'
-                    ) s
-                    WHERE s.dtped >= GREATEST(dp.dt_cadastro, (v_max_sale_date - interval '6 months')::date)
-                    AND s.dtped <= v_max_sale_date
-                    AND (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR s.filial = ANY(p_filial))
-                    AND s.tipovenda NOT IN ('5', '11')
-                ) as total_caixas_6m
+                ) as business_days
             FROM dim_produtos dp
             WHERE dp.codigo = p->>'produto'
-        ) sub ON true;
+        ) sub ON true
+        LEFT JOIN prod_6m_agg agg ON agg.produto = p->>'produto';
     END IF;
 
     RETURN json_build_object(
