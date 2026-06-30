@@ -4771,9 +4771,8 @@ BEGIN
                 dv.nome as vendedor,
                 ds.nome as supervisor,
                 cb.filial,
-                np.nota_media as score,
+                np.nota_media as raw_score,
                 np.auditorias,
-                np.auditorias_perfeitas,
                 np.mes,
                 np.ano
             FROM public.data_nota_perfeita np
@@ -4800,19 +4799,37 @@ BEGIN
         chart_filtered_data AS (
             SELECT * FROM base_data WHERE %s
         ),
+        client_aggregates AS (
+            SELECT
+                codcli,
+                MAX(client_name) as client_name,
+                STRING_AGG(DISTINCT researcher, '', '') as researcher,
+                MAX(city) as city,
+                ROUND(AVG(raw_score)::numeric, 2) as score
+            FROM filtered_data
+            GROUP BY codcli
+        ),
         kpis AS (
             SELECT 
                 COALESCE(AVG(score), 0) as avg_score,
                 COUNT(DISTINCT codcli) as total_audits,
                 COUNT(DISTINCT CASE WHEN score >= 80 THEN codcli END) as perfect_stores
-            FROM filtered_data
+            FROM client_aggregates
+        ),
+        chart_client_aggregates AS (
+            SELECT
+                mes,
+                codcli,
+                ROUND(AVG(raw_score)::numeric, 2) as score
+            FROM chart_filtered_data
+            GROUP BY mes, codcli
         ),
         chart_data AS (
             SELECT
                 mes,
                 COUNT(DISTINCT codcli) as total_audits,
                 COUNT(DISTINCT CASE WHEN score >= 80 THEN codcli END) as perfect_stores
-            FROM chart_filtered_data
+            FROM chart_client_aggregates
             GROUP BY mes
             ORDER BY mes
         ),
@@ -4836,7 +4853,7 @@ BEGIN
                     ''score'', score
                 ) ORDER BY score DESC
             ) as clients_array
-            FROM filtered_data
+            FROM client_aggregates
         )
         SELECT json_build_object(
             ''kpis'', (SELECT row_to_json(kpis.*) FROM kpis),
