@@ -3025,6 +3025,10 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+    v_curr_year_start date;
+    v_curr_year_end date;
+    v_prev_year_start date;
+    v_prev_year_end date;
     v_current_year int;
     v_previous_year int;
     v_target_month int;
@@ -3075,15 +3079,24 @@ BEGIN
     END IF;
     v_previous_year := v_current_year - 1;
 
+    -- Define start and end dates based on year and month
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_target_month := p_mes::int + 1;
         v_ref_date := make_date(v_current_year, v_target_month, 1);
+        v_curr_year_start := v_ref_date;
+        v_curr_year_end := (v_curr_year_start + interval '1 month' - interval '1 day')::date;
+        v_prev_year_start := make_date(v_previous_year, v_target_month, 1);
+        v_prev_year_end := (v_prev_year_start + interval '1 month' - interval '1 day')::date;
     ELSE
         IF v_current_year < EXTRACT(YEAR FROM CURRENT_DATE)::int THEN
             v_ref_date := make_date(v_current_year, 12, 1);
         ELSE
              v_ref_date := date_trunc('month', CURRENT_DATE)::date;
         END IF;
+        v_curr_year_start := make_date(v_current_year, 1, 1);
+        v_curr_year_end := make_date(v_current_year, 12, 31);
+        v_prev_year_start := make_date(v_previous_year, 1, 1);
+        v_prev_year_end := make_date(v_previous_year, 12, 31);
     END IF;
 
     v_tri_end := (v_ref_date - interval '1 day')::date;
@@ -3161,7 +3174,7 @@ BEGIN
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where_summary := v_where_summary || format(' AND categoria_produto = ANY(%L) ', p_categoria);
-        v_where_raw := v_where_raw || format(' AND dp.categoria_produto = ANY(%L) ', p_categoria);
+        v_where_raw := v_where_raw || format(' AND s.produto IN (SELECT codigo FROM dim_produtos WHERE categoria_produto = ANY(%L)) ', p_categoria);
     END IF;
     
     -- Fornecedor Logic
@@ -3176,15 +3189,15 @@ BEGIN
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
                 IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%TODDYNHO%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.produto IN (SELECT codigo FROM dim_produtos WHERE mix_marca = ''TODDYNHO''))');
                 ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%TODDY %'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.produto IN (SELECT codigo FROM dim_produtos WHERE mix_marca = ''TODDY''))');
                 ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%QUAKER%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.produto IN (SELECT codigo FROM dim_produtos WHERE mix_marca = ''QUAKER''))');
                 ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao ILIKE ''%KEROCOCO%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.produto IN (SELECT codigo FROM dim_produtos WHERE mix_marca = ''KERO COCO''))');
                 ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.descricao NOT ILIKE ''%TODDYNHO%'' AND dp.descricao NOT ILIKE ''%TODDY %'' AND dp.descricao NOT ILIKE ''%QUAKER%'' AND dp.descricao NOT ILIKE ''%KEROCOCO%'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.produto IN (SELECT codigo FROM dim_produtos WHERE mix_marca NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KERO COCO'')))');
                 ELSE
                     v_simple_codes := array_append(v_simple_codes, v_code);
                 END IF;
@@ -3220,7 +3233,7 @@ BEGIN
        
        IF v_rede_condition != '' THEN
            v_where_summary := v_where_summary || ' AND (' || v_rede_condition || ') ';
-           v_where_raw := v_where_raw || ' AND EXISTS (SELECT 1 FROM public.data_clients c WHERE c.codigo_cliente = s.codcli AND (' || v_rede_condition || ')) ';
+           v_where_raw := v_where_raw || ' AND s.codcli IN (SELECT codigo_cliente FROM public.data_clients WHERE ' || v_rede_condition || ') ';
        END IF;
     END IF;
 
@@ -3239,7 +3252,7 @@ BEGIN
                     SUM(COALESCE(caixas, 0)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM public.data_summary
-                %s AND ano IN (%L, %L)
+                %s AND (ano = %L OR ano = %L)
                 GROUP BY 1, 2
             ),
             kpi_curr AS (
@@ -3282,12 +3295,12 @@ BEGIN
                 SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master, s.codcli, s.tipovenda
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
+                %s AND dtped >= %L AND dtped <= %L
                 UNION ALL
                 SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master, s.codcli, s.tipovenda
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
+                %s AND dtped >= %L AND dtped <= %L
             ),
             prod_agg AS (
                 SELECT
@@ -3313,8 +3326,8 @@ BEGIN
         v_active_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
         v_active_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
         v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
-        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
-        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
+        v_where_raw, v_curr_year_start, v_curr_year_end, -- Prod
+        v_where_raw, v_curr_year_start, v_curr_year_end, -- Prod
         v_active_client_cond_slow -- Prod Agg
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
@@ -3326,12 +3339,12 @@ BEGIN
                 SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                %s AND s.dtped >= make_date(%L, 1, 1)
+                %s AND s.dtped >= %L
                 UNION ALL
                 SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                %s AND s.dtped >= make_date(%L, 1, 1)
+                %s AND s.dtped >= %L
             ),
             chart_agg AS (
                 SELECT 
@@ -3342,7 +3355,7 @@ BEGIN
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM base_data
-                WHERE EXTRACT(YEAR FROM dtped) IN (%L, %L)
+                WHERE (dtped >= %L AND dtped <= %L) OR (dtped >= %L AND dtped <= %L)
                 GROUP BY 1, 2
             ),
             kpi_curr AS (
@@ -3352,7 +3365,7 @@ BEGIN
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM base_data
-                WHERE EXTRACT(YEAR FROM dtped) = %L %s
+                WHERE dtped >= %L AND dtped <= %L
             ),
             kpi_prev AS (
                 SELECT 
@@ -3361,7 +3374,7 @@ BEGIN
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM base_data
-                WHERE EXTRACT(YEAR FROM dtped) = %L %s
+                WHERE dtped >= %L AND dtped <= %L
             ),
             kpi_tri AS (
                 SELECT 
@@ -3390,7 +3403,7 @@ BEGIN
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
                     MAX(dtped) as ultima_venda
                 FROM base_data
-                WHERE EXTRACT(YEAR FROM dtped) = %L %s
+                WHERE dtped >= %L AND dtped <= %L
                 GROUP BY 1
                 ORDER BY caixas DESC
             )
@@ -3401,13 +3414,13 @@ BEGIN
                 (SELECT row_to_json(t) FROM kpi_tri t),
                 (SELECT json_agg(pa) FROM prod_agg pa)
         ', 
-        v_where_raw, v_previous_year,
-        v_where_raw, v_previous_year,
-        v_active_client_cond_slow, v_current_year, v_previous_year,
-        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
-        v_active_client_cond_slow, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
+        v_where_raw, v_prev_year_start,
+        v_where_raw, v_prev_year_start,
+        v_active_client_cond_slow, v_curr_year_start, v_curr_year_end, v_prev_year_start, v_prev_year_end,
+        v_active_client_cond_slow, v_curr_year_start, v_curr_year_end,
+        v_active_client_cond_slow, v_prev_year_start, v_prev_year_end,
         v_active_client_cond_slow, v_tri_start, v_tri_end, v_tri_start, v_tri_end,
-        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END
+        v_active_client_cond_slow, v_curr_year_start, v_curr_year_end
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     END IF;
@@ -3485,6 +3498,9 @@ BEGIN
     );
 END;
 $$;
+
+
+
 
 -- F. Branch Comparison (Update to use Codes)
 CREATE OR REPLACE FUNCTION get_branch_comparison_data(
