@@ -270,31 +270,29 @@ BEGIN
     WHERE codigo_cliente = p_cod_cliente LIMIT 1;
 
     -- Calcular Positivação Salty e Foods no mês corrente
-    WITH compras_mes AS (
-        SELECT DISTINCT dp.mix_marca
-        FROM data_detailed s
-        JOIN dim_produtos dp ON dp.codigo = s.produto
-        WHERE s.codcli = p_cod_cliente
-          AND s.dtped >= date_trunc('month', CURRENT_DATE)
-          AND s.tipovenda IN ('1', '9')
-    )
     SELECT 
         string_agg(cat.marca, ', ') INTO v_faltantes_salty
     FROM (VALUES ('FANDANGOS'), ('DORITOS'), ('CHEETOS'), ('RUFFLES'), ('TORCIDA')) AS cat(marca)
-    WHERE cat.marca NOT IN (SELECT mix_marca FROM compras_mes);
-
-    WITH compras_mes AS (
-        SELECT DISTINCT dp.mix_marca
+    WHERE cat.marca NOT IN (
+        SELECT dp.mix_marca
         FROM data_detailed s
         JOIN dim_produtos dp ON dp.codigo = s.produto
         WHERE s.codcli = p_cod_cliente
           AND s.dtped >= date_trunc('month', CURRENT_DATE)
           AND s.tipovenda IN ('1', '9')
-    )
+    );
+
     SELECT 
         string_agg(cat.marca, ', ') INTO v_faltantes_foods
-    FROM (VALUES ('TODDYNHO'), ('TODDY'), ('QUAKER'), ('KERO COCO')) AS cat(marca)
-    WHERE cat.marca NOT IN (SELECT mix_marca FROM compras_mes);
+    FROM (VALUES ('TODDYNHO'), ('TODDY'), ('QUAKER'), ('KEROCOCO')) AS cat(marca)
+    WHERE cat.marca NOT IN (
+        SELECT dp.mix_marca
+        FROM data_detailed s
+        JOIN dim_produtos dp ON dp.codigo = s.produto
+        WHERE s.codcli = p_cod_cliente
+          AND s.dtped >= date_trunc('month', CURRENT_DATE)
+          AND s.tipovenda IN ('1', '9')
+    );
 
     IF v_faltantes_salty IS NULL OR v_faltantes_salty = '' THEN
         v_msg_salty := '✅ Salty Positivado';
@@ -349,26 +347,31 @@ BEGIN
 
     v_marcas_arr := string_to_array(COALESCE(p_marcas_compradas, ''), ',');
 
-    -- Salty check
-    SELECT string_agg(cat.marca, ', ') INTO v_faltantes_salty
-    FROM (VALUES ('FANDANGOS'), ('DORITOS'), ('CHEETOS'), ('RUFFLES'), ('TORCIDA')) AS cat(marca)
-    WHERE cat.marca NOT IN (SELECT unnest(v_marcas_arr));
-
-    -- Foods check
-    SELECT string_agg(cat.marca, ', ') INTO v_faltantes_foods
-    FROM (VALUES ('TODDYNHO'), ('TODDY'), ('QUAKER'), ('KERO COCO')) AS cat(marca)
-    WHERE cat.marca NOT IN (SELECT unnest(v_marcas_arr));
-
-    IF v_faltantes_salty IS NULL OR v_faltantes_salty = '' THEN
-        v_msg_salty := 'Salty: ✅ Completo';
+    IF p_tipo_venda NOT IN ('1', '9') THEN
+        v_msg_salty := 'Salty: ❌ (Não contabiliza por ser ' || v_tipo_desc || ')';
+        v_msg_foods := 'Foods: ❌ (Não contabiliza por ser ' || v_tipo_desc || ')';
     ELSE
-        v_msg_salty := 'Salty: ❌ (falta ' || v_faltantes_salty || ')';
-    END IF;
+        -- Salty check
+        SELECT string_agg(cat.marca, ', ') INTO v_faltantes_salty
+        FROM (VALUES ('FANDANGOS'), ('DORITOS'), ('CHEETOS'), ('RUFFLES'), ('TORCIDA')) AS cat(marca)
+        WHERE cat.marca NOT IN (SELECT unnest(v_marcas_arr));
 
-    IF v_faltantes_foods IS NULL OR v_faltantes_foods = '' THEN
-        v_msg_foods := 'Foods: ✅ Completo';
-    ELSE
-        v_msg_foods := 'Foods: ❌ (falta ' || v_faltantes_foods || ')';
+        -- Foods check
+        SELECT string_agg(cat.marca, ', ') INTO v_faltantes_foods
+        FROM (VALUES ('TODDYNHO'), ('TODDY'), ('QUAKER'), ('KEROCOCO')) AS cat(marca)
+        WHERE cat.marca NOT IN (SELECT unnest(v_marcas_arr));
+
+        IF v_faltantes_salty IS NULL OR v_faltantes_salty = '' THEN
+            v_msg_salty := 'Salty: ✅ Completo';
+        ELSE
+            v_msg_salty := 'Salty: ❌ (falta ' || v_faltantes_salty || ')';
+        END IF;
+
+        IF v_faltantes_foods IS NULL OR v_faltantes_foods = '' THEN
+            v_msg_foods := 'Foods: ✅ Completo';
+        ELSE
+            v_msg_foods := 'Foods: ❌ (falta ' || v_faltantes_foods || ')';
+        END IF;
     END IF;
 
     v_texto_pronto := '📦 Pedido Analisado: Data: ' || to_char(p_dtped, 'DD/MM/YYYY') || E'\n' ||
