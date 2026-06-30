@@ -396,7 +396,7 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
 
         function processLojaPerfeita(filesData, clientCnpjMap) {
             const combined = filesData.flat();
-            const grouped = new Map(); // Key: CodCli_Pesquisador
+            const finalData = [];
             const uniqueClientsFound = new Set();
 
             // Month names in Portuguese
@@ -463,8 +463,6 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                 }
 
                 // 3. Fast exit for known missing keys
-                // Bolt Optimization: Only check for new keys once per row reference to avoid
-                // redundant O(N) object key iterations for every missing property lookup.
                 if (row !== lastProcessedRow) {
                     let hasNewKeys = false;
                     for (const k in row) {
@@ -553,14 +551,12 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                 uniqueClientsFound.add(codCli);
 
                 const pesquisador = String(getVal(row, 'Pesquisador') || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '').toLowerCase();
-                const key = `${codCli}_${pesquisador}`;
 
                 const notaRaw = getVal(row, 'Nota Média Total Alavancada') || getVal(row, 'Nota Media Total Alavancada') || getVal(row, 'Nota Média') || getVal(row, 'Nota Media');
                 const nota = typeof notaRaw === 'number' ? notaRaw : parseFloat(String(notaRaw || '0').replace(',', '.'));
 
                 if (isNaN(nota)) return;
 
-                const current = grouped.get(key);
                 const mesAnoRaw = getVal(row, 'Mês') || getVal(row, 'Mes');
                 const parsedMesAno = formatMonthYear(mesAnoRaw);
                 const mesAno = parsedMesAno.text;
@@ -572,43 +568,20 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                 const subcanal = getVal(row, 'Subcanal');
                 const audits = parseInt(getVal(row, 'Auditorias Distintas') || 0);
 
-                if (!current) {
-                    grouped.set(key, {
-                        codigo_cliente: codCli,
-                        mes_ano: mesAno,
-                        semana: semana,
-                        pesquisador: pesquisador,
-                        cnpj_origem: finalCnpj,
-                        canal: canal,
-                        subcanal: subcanal,
-                        nota_media: 0, // will be calculated at the end
-                        auditorias: audits,
-                        auditorias_perfeitas: 0, // will be calculated at the end
-                        mes: mesNum,
-                        ano: anoNum,
-                        soma_notas: nota,
-                        quantidade_notas: 1
-                    });
-                } else {
-                    current.soma_notas += nota;
-                    current.quantidade_notas += 1;
-                    current.auditorias += audits;
-                    // We keep the first mes_ano, semana, canal, subcanal or we could update it
-                    // Leaving it as the first one encountered for this group, as replacing max logic removes the distinct 'winner'
-                }
-            });
-
-            // Calculate final averages and perfect audits
-            const finalData = Array.from(grouped.values()).map(item => {
-                if (item.quantidade_notas > 0) {
-                    item.nota_media = Number((item.soma_notas / item.quantidade_notas).toFixed(2));
-                }
-                item.auditorias_perfeitas = item.nota_media >= 80 ? item.auditorias : 0;
-                
-                // Cleanup temporary fields
-                delete item.soma_notas;
-                delete item.quantidade_notas;
-                return item;
+                finalData.push({
+                    codigo_cliente: codCli,
+                    mes_ano: mesAno,
+                    semana: semana,
+                    pesquisador: pesquisador,
+                    cnpj_origem: finalCnpj,
+                    canal: canal,
+                    subcanal: subcanal,
+                    nota_media: Number(nota.toFixed(2)),
+                    auditorias: audits,
+                    auditorias_perfeitas: 0, // No longer pre-calculated, will be computed in SQL
+                    mes: mesNum,
+                    ano: anoNum
+                });
             });
 
             return { data: finalData, uniqueCount: uniqueClientsFound.size };
