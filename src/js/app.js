@@ -2771,8 +2771,15 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                             nextYear++;
                         }
 
-                        // We split the month into 15 chunks (every 2 days) to prevent statement timeout on extremely large datasets (e.g., month 7)
-                        const chunkDays = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29];
+                        // Get the last day of the current month safely
+                        const lastDayOfMonth = new Date(year, m, 0).getDate();
+                        
+                        // Dynamically build chunk days (every 2 days) up to the last day of the month
+                        const chunkDays = [];
+                        for (let d = 1; d <= lastDayOfMonth; d += 2) {
+                            chunkDays.push(d);
+                        }
+
                         for (let j = 0; j < chunkDays.length; j++) {
                             const startDay = chunkDays[j];
                             let endDay, endMonth, endYear;
