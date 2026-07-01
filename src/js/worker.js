@@ -623,6 +623,45 @@ self.onmessage = async (event) => {
         // ⚡ Bolt Optimization: Pre-compute the combined array once using optimized Array.prototype.concat
         // to avoid repeatedly copying 100k+ objects into new memory blocks via [...a, ...b, ...c] spreads down the line.
         const allSalesRaw = salesPrevYearDataRaw.concat(salesCurrYearHistDataRaw, salesCurrMonthDataRaw);
+        // --- Product Code Normalization (De-Para) ---
+        self.postMessage({ type: 'progress', status: 'Normalizando códigos de produtos...', percentage: 16 });
+        
+        const latestProductCodes = new Map(); // DESCRICAO -> { code, date }
+        
+        allSalesRaw.forEach(row => {
+            const desc = String(row['DESCRICAO'] || '').trim().toUpperCase();
+            const code = String(row['PRODUTO'] || '').trim();
+            if (!desc || !code) return;
+            
+            const rawDate = row['DTPED'];
+            let parsedDate = null;
+            if (rawDate) {
+                if (typeof rawDate === 'number') parsedDate = parseExcelDate(rawDate);
+                else parsedDate = new Date(rawDate);
+            }
+            
+            const saleTime = parsedDate ? parsedDate.getTime() : 0;
+            
+            if (!latestProductCodes.has(desc)) {
+                latestProductCodes.set(desc, { code: code, time: saleTime });
+            } else {
+                const current = latestProductCodes.get(desc);
+                if (saleTime > current.time) {
+                    latestProductCodes.set(desc, { code: code, time: saleTime });
+                }
+            }
+        });
+
+        // Apply normalized codes
+        allSalesRaw.forEach(row => {
+            const desc = String(row['DESCRICAO'] || '').trim().toUpperCase();
+            if (desc && latestProductCodes.has(desc)) {
+                row['PRODUTO'] = latestProductCodes.get(desc).code;
+            }
+        });
+        
+        // Also apply to products dimension parsing if needed (which reads from sales anyway)
+
 
         // --- IBGE Code Resolution ---
         self.postMessage({ type: 'progress', status: 'Verificando códigos IBGE...', percentage: 18 });
