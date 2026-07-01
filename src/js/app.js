@@ -2771,8 +2771,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                             nextYear++;
                         }
 
-                        // We split the month into 6 chunks (every 5-6 days) to prevent statement timeout on large data
-                        const chunkDays = [1, 6, 11, 16, 21, 26];
+                        // We split the month into 15 chunks (every 2 days) to prevent statement timeout on extremely large datasets (e.g., month 7)
+                        const chunkDays = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29];
                         for (let j = 0; j < chunkDays.length; j++) {
                             const startDay = chunkDays[j];
                             let endDay, endMonth, endYear;
@@ -2791,7 +2791,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                             const chunkStartDate = `${year}-${String(m).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
                             const chunkEndDate = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
 
-                            updateStatus(`Processando ${m}/${year} (Parte ${j + 1}/6)...`, progress + Math.round(monthStep * ((j + 1) / 6) * 0.80));
+                            updateStatus(`Processando ${m}/${year} (Parte ${j + 1}/${chunkDays.length})...`, progress + Math.round(monthStep * ((j + 1) / chunkDays.length) * 0.80));
                             await retryOperation(async () => {
                                 const res = await supabase.rpc('refresh_summary_chunk', { p_start_date: chunkStartDate, p_end_date: chunkEndDate });
                                 if (res.error) throw new Error(`Erro processando ${m}/${year} (Parte ${j + 1}): ${res.error.message}`);
