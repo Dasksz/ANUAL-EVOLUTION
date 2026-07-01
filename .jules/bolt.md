@@ -61,3 +61,7 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## $(date +%Y-%m-%d) - Supabase PostgREST 15s API Timeout on Chunks
 **Learning:** Even with `statement_timeout` increased inside PostgreSQL, the free tier of Supabase uses an API Gateway that hard-kills HTTP connections at 15 seconds. Large JSONB/Array aggregations over 5-6 days of heavy sales data will breach this network limit.
 **Action:** Sharded the frontend's batch uploader logic (`src/js/app.js`) to submit 2-day intervals (15 chunks per month instead of 6). Removed `DISTINCT` from `jsonb_agg` and `array_agg` within `refresh_summary_chunk` SQL, as pre-grouping CTEs already guaranteed distinctness, drastically accelerating the hash aggregation step natively.
+
+## $(date +%Y-%m-%d) - JS Date Iteration for Month Chunking
+**Learning:** Hardcoding a static array of days (e.g. `[1, 3, ..., 29]`) for month intervals will crash PostgreSQL with a `date/time field value out of range` exception when traversing February in non-leap years.
+**Action:** Replaced static array with dynamic calculation using `new Date(year, month, 0).getDate()` to safely find the exact bound of days for any given month/year pairing before constructing SQL boundary dates.
