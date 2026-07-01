@@ -2998,6 +2998,7 @@ DECLARE
     v_tri_end date;
 
     v_where_summary text := ' WHERE 1=1 ';
+    -- In get_boxes_dashboard, we use data_summary_produtos for all KPIs now.
     v_where_produtos text := ' WHERE 1=1 ';
 
     v_chart_data json;
@@ -3094,45 +3095,45 @@ BEGIN
     END IF;
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where_summary := v_where_summary || format(' AND filial = ANY(%L) ', p_filial);
+
         v_where_produtos := v_where_produtos || format(' AND filial = ANY(%L) ', p_filial);
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_summary := v_where_summary || format(' AND cidade = ANY(%L) ', p_cidade);
+
         v_where_produtos := v_where_produtos || format(' AND cidade = ANY(%L) ', p_cidade);
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-         v_where_summary := v_where_summary || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
+
          v_where_produtos := v_where_produtos || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-         v_where_summary := v_where_summary || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
+
          v_where_produtos := v_where_produtos || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_summary := v_where_summary || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
+
         v_where_produtos := v_where_produtos || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
         v_tipovenda_client_cond := format('tipovenda = ANY(%L)', p_tipovenda);
         IF p_tipovenda <@ ARRAY['5','11'] THEN
-            v_active_client_cond := format('tipovenda = ANY(%L) AND bonificacao > 0', p_tipovenda);
+            v_active_client_cond := format('tipovenda = ANY(%L) AND caixas > 0', p_tipovenda);
         ELSE
-            v_active_client_cond := format('tipovenda = ANY(%L) AND tipovenda NOT IN (''5'', ''11'') AND pre_positivacao_val >= 1', p_tipovenda);
+            v_active_client_cond := format('tipovenda = ANY(%L) AND tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1', p_tipovenda);
         END IF;
     ELSE
         v_tipovenda_client_cond := 'tipovenda IN (''1'', ''9'')';
-        v_active_client_cond := 'tipovenda NOT IN (''5'', ''11'') AND pre_positivacao_val >= 1';
+        v_active_client_cond := 'tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1';
     END IF;
 
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_summary := v_where_summary || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+
         v_where_produtos := v_where_produtos || format(' AND categoria_produto = ANY(%L) ', p_categoria);
     END IF;
 
     -- Fornecedor Logic
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where_summary := v_where_summary || format(' AND codfor = ANY(%L) ', p_fornecedor);
+
         v_where_produtos := v_where_produtos || format(' AND codfor = ANY(%L) ', p_fornecedor);
     END IF;
 
@@ -3157,7 +3158,7 @@ BEGIN
        END IF;
 
        IF v_rede_condition != '' THEN
-           v_where_summary := v_where_summary || ' AND (' || v_rede_condition || ') ';
+
            v_where_produtos := v_where_produtos || ' AND (' || v_rede_condition || ') ';
        END IF;
     END IF;
@@ -3174,7 +3175,7 @@ BEGIN
                 SUM(peso) as peso,
                 SUM(COALESCE(caixas, 0)) as caixas,
                 COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
-            FROM public.data_summary
+            FROM public.data_summary_produtos
             %s AND (ano = %L OR ano = %L)
             GROUP BY 1, 2
         ),
@@ -3184,7 +3185,7 @@ BEGIN
                 SUM(peso) as peso,
                 SUM(COALESCE(caixas, 0)) as caixas,
                 COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
-            FROM public.data_summary
+            FROM public.data_summary_produtos
             %s AND ano = %L %s
         ),
         kpi_prev AS (
@@ -3193,7 +3194,7 @@ BEGIN
                 SUM(peso) as peso,
                 SUM(COALESCE(caixas, 0)) as caixas,
                 COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
-            FROM public.data_summary
+            FROM public.data_summary_produtos
             %s AND ano = %L %s
         ),
         kpi_tri AS (
@@ -3205,12 +3206,12 @@ BEGIN
                     SELECT SUM(monthly_clients) / 3
                     FROM (
                         SELECT COUNT(DISTINCT CASE WHEN %s THEN codcli END) as monthly_clients
-                        FROM public.data_summary
+                        FROM public.data_summary_produtos
                         %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
                         GROUP BY ano, mes
                     ) sub
                 ), 0) as clientes
-            FROM public.data_summary
+            FROM public.data_summary_produtos
             %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
         ),
         -- Products Table Using the NEW summary table
@@ -3236,10 +3237,10 @@ BEGIN
             (SELECT row_to_json(t) FROM kpi_tri t),
             (SELECT json_agg(pa) FROM prod_agg pa)
     ',
-    v_active_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
-    v_active_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
-    v_active_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
-    v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
+    v_active_client_cond, v_where_produtos, v_current_year, v_previous_year, -- Chart
+    v_active_client_cond, v_where_produtos, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
+    v_active_client_cond, v_where_produtos, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
+    v_active_client_cond, v_where_produtos, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_produtos, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
     v_where_produtos, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND sp.mes = %L ', v_target_month) ELSE '' END -- Prod Agg
     )
     INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
@@ -6403,10 +6404,10 @@ BEGIN
         ramo, caixas
     )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
         FROM public.data_detailed
         UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
         FROM public.data_history
     ),
     augmented_data AS (
@@ -6443,7 +6444,7 @@ BEGIN
             SUM(totpesoliq) as prod_peso,
             SUM(vlbonific) as prod_bonific,
             SUM(COALESCE(vldevolucao, 0)) as prod_devol,
-            SUM(COALESCE(qtvenda_embalagem_master, 0)) as prod_caixas
+            SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as prod_caixas
         FROM augmented_data
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
     ),
@@ -6488,7 +6489,7 @@ BEGIN
         ramo, caixas
     )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
         FROM public.data_detailed
     ),
     augmented_data AS (
@@ -6525,7 +6526,7 @@ BEGIN
             SUM(totpesoliq) as prod_peso,
             SUM(vlbonific) as prod_bonific,
             SUM(COALESCE(vldevolucao, 0)) as prod_devol,
-            SUM(COALESCE(qtvenda_embalagem_master, 0)) as prod_caixas
+            SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as prod_caixas
         FROM augmented_data
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
     ),
@@ -6572,7 +6573,7 @@ BEGIN
         ramo, caixas
     )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
         FROM public.data_history
     ),
     augmented_data AS (
@@ -6609,7 +6610,7 @@ BEGIN
             SUM(totpesoliq) as prod_peso,
             SUM(vlbonific) as prod_bonific,
             SUM(COALESCE(vldevolucao, 0)) as prod_devol,
-            SUM(COALESCE(qtvenda_embalagem_master, 0)) as prod_caixas
+            SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as prod_caixas
         FROM augmented_data
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
     ),
