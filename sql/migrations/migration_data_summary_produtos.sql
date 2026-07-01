@@ -181,7 +181,7 @@ BEGIN
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao,
         pre_mix_count, pre_positivacao_val,
-        ramo, caixas, categoria_produto
+        ramo, caixas, categoria_produto, cnpj
     )
     SELECT
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
@@ -193,7 +193,8 @@ BEGIN
         CASE WHEN SUM(prod_val) >= 1 THEN 1 ELSE 0 END as pos_calc,
         ramo,
         SUM(prod_caixas) as total_caixas,
-        categoria_produto
+        categoria_produto,
+        NULL::text as cnpj
     FROM tmp_product_agg
     GROUP BY ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, categoria_produto;
 
@@ -218,7 +219,7 @@ BEGIN
     -- STEP C: Insert into data_summary_frequency
     INSERT INTO public.data_summary_frequency (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede,
-        produtos_arr, categorias_arr, has_cheetos, has_doritos, has_fandangos, has_ruffles, has_torcida, has_toddynho, has_toddy, has_quaker, has_kerococo
+        produtos_arr, categorias_arr, has_cheetos, has_doritos, has_fandangos, has_ruffles, has_torcida, has_toddynho, has_toddy, has_quaker, has_kerococo, cnpj
     )
     SELECT
         ano,
@@ -235,6 +236,7 @@ BEGIN
         SUM(prod_peso) as peso,
         jsonb_agg(DISTINCT produto) as produtos,
         jsonb_agg(DISTINCT categoria_produto) FILTER (WHERE categoria_produto IS NOT NULL) as categorias,
+        NULL::text as rede,
         array_agg(DISTINCT produto) as produtos_arr,
         array_agg(DISTINCT categoria_produto) FILTER (WHERE categoria_produto IS NOT NULL) as categorias_arr,
         MAX(CASE WHEN mix_marca = 'CHEETOS' AND prod_val >= 1 THEN 1 ELSE 0 END) as has_cheetos,
@@ -245,7 +247,8 @@ BEGIN
         MAX(CASE WHEN mix_marca = 'TODDYNHO' AND prod_val >= 1 THEN 1 ELSE 0 END) as has_toddynho,
         MAX(CASE WHEN mix_marca = 'TODDY' AND prod_val >= 1 THEN 1 ELSE 0 END) as has_toddy,
         MAX(CASE WHEN mix_marca = 'QUAKER' AND prod_val >= 1 THEN 1 ELSE 0 END) as has_quaker,
-        MAX(CASE WHEN mix_marca = 'KEROCOCO' AND prod_val >= 1 THEN 1 ELSE 0 END) as has_kerococo
+        MAX(CASE WHEN mix_marca = 'KEROCOCO' AND prod_val >= 1 THEN 1 ELSE 0 END) as has_kerococo,
+        NULL::text as cnpj
     FROM tmp_product_agg
     GROUP BY
         ano,

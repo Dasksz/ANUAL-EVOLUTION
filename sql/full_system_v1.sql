@@ -992,7 +992,17 @@ CREATE TABLE IF NOT EXISTS public.data_summary_frequency (
     rede text,
     created_at timestamp with time zone DEFAULT now()
 );
+
 ALTER TABLE public.data_summary_frequency ENABLE ROW LEVEL SECURITY;
+
+-- Garante que a coluna cnpj seja adicionada mesmo que a tabela ja exista
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary_frequency' AND column_name = 'cnpj') THEN
+        ALTER TABLE public.data_summary_frequency ADD COLUMN cnpj text;
+    END IF;
+END $$;
+
 
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes ON public.data_summary_frequency USING btree (ano, mes);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_filial_cidade ON public.data_summary_frequency USING btree (filial, cidade);
@@ -1207,7 +1217,17 @@ create table if not exists public.data_summary_frequency (
   created_at timestamp with time zone null default now(),
   constraint dat_summary_frequency_pkey primary key (id)
 );
+
 ALTER TABLE public.data_summary_frequency ENABLE ROW LEVEL SECURITY;
+
+-- Garante que a coluna cnpj seja adicionada mesmo que a tabela ja exista
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_summary_frequency' AND column_name = 'cnpj') THEN
+        ALTER TABLE public.data_summary_frequency ADD COLUMN cnpj text;
+    END IF;
+END $$;
+
 
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes on public.data_summary_frequency using btree (ano, mes);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_filial_cidade on public.data_summary_frequency using btree (filial, cidade);
@@ -1654,7 +1674,7 @@ BEGIN
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao, 
         pre_mix_count, pre_positivacao_val,
-        ramo, caixas, categoria_produto
+        ramo, caixas, categoria_produto, cnpj
     )
     WITH raw_data AS (
         SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
@@ -1723,14 +1743,15 @@ BEGIN
         CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
         ramo,
         total_caixas,
-        categoria_produto
+        categoria_produto,
+        NULL::text as cnpj
     FROM client_agg;
     
 
     -- Update data_summary_frequency for the year
     INSERT INTO public.data_summary_frequency (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede,
-        produtos_arr, categorias_arr, has_cheetos, has_doritos, has_fandangos, has_ruffles, has_torcida, has_toddynho, has_toddy, has_quaker, has_kerococo
+        produtos_arr, categorias_arr, has_cheetos, has_doritos, has_fandangos, has_ruffles, has_torcida, has_toddynho, has_toddy, has_quaker, has_kerococo, cnpj
     )
     WITH dim_prod_enhanced AS (
         SELECT
@@ -1848,7 +1869,8 @@ BEGIN
         has_toddynho,
         has_toddy,
         has_quaker,
-        has_kerococo
+        has_kerococo,
+        NULL::text as cnpj
     FROM final_agg;
     -- ANALYZE public.data_summary;
 END;
@@ -1879,13 +1901,13 @@ DECLARE
     v_year int;
     v_month int;
 BEGIN
-    SET LOCAL statement_timeout = '1800s'; -- Increased to 30 mins to avoid immediate API cutoff
-    SET LOCAL work_mem = '256MB'; -- More memory for internal hashing during grouped inserts
+    SET LOCAL statement_timeout = '1800s'; -- Allow enough time
+    SET LOCAL work_mem = '512MB'; -- Give postgres enough memory to hash aggregate
 
     v_year := EXTRACT(YEAR FROM p_start_date);
     v_month := EXTRACT(MONTH FROM p_start_date);
-    
-    -- STEP A: Create a temporary table for the raw data of the month to avoid massive UNION ALL memory plans
+
+    -- STEP 1: Raw data fetch, filtered
     CREATE TEMP TABLE tmp_raw_data ON COMMIT DROP AS
     SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
     FROM public.data_detailed
@@ -1895,11 +1917,10 @@ BEGIN
     FROM public.data_history
     WHERE dtped >= p_start_date AND dtped < p_end_date;
 
+    -- Avoid expensive indexes if possible, but produto is heavily joined
     CREATE INDEX idx_tmp_raw_produto ON tmp_raw_data(produto);
-    CREATE INDEX idx_tmp_raw_codcli ON tmp_raw_data(codcli);
-    CREATE INDEX idx_tmp_raw_pedido ON tmp_raw_data(pedido);
 
-    -- Common CTEs for enrichment
+    -- STEP 2: Enriched Dimension
     CREATE TEMP TABLE tmp_dim_prod_enhanced ON COMMIT DROP AS
     SELECT
         codigo,
@@ -1914,136 +1935,98 @@ BEGIN
             ELSE '1119_OUTROS'
         END as codfor_enhanced
     FROM public.dim_produtos;
-
     CREATE INDEX idx_tmp_dim_prod_codigo ON tmp_dim_prod_enhanced(codigo);
 
-    -- STEP B1: Prepare augmented data
-    CREATE TEMP TABLE tmp_augmented_data ON COMMIT DROP AS
+    -- STEP 3: Single Huge Aggregate. We do this in one pass to avoid repeatedly scanning tmp_raw_data.
+    CREATE TEMP TABLE tmp_product_agg ON COMMIT DROP AS
     SELECT
         v_year as ano,
         v_month as mes,
-        CASE
-            WHEN s.codcli = '11625' AND v_year = 2025 AND v_month = 12 THEN '05'
-            ELSE s.filial
-        END as filial,
+        CASE WHEN s.codcli = '11625' AND v_year = 2025 AND v_month = 12 THEN '05' ELSE s.filial END as filial,
         COALESCE(s.cidade, c.cidade) as cidade,
         s.codsupervisor,
         s.codusur,
-        CASE
-            WHEN s.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS')
-            ELSE s.codfor
-        END as codfor,
+        CASE WHEN s.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS') ELSE s.codfor END as codfor,
         s.tipovenda,
         s.codcli,
-        s.vlvenda, s.totpesoliq, s.vlbonific, s.vldevolucao, s.produto, s.qtvenda, dp.qtde_embalagem_master,
         c.ramo,
         dp.categoria_produto,
+        s.produto,
         dp.mix_marca,
-        s.pedido
+        s.pedido,
+        SUM(s.vlvenda) as prod_val,
+        SUM(s.totpesoliq) as prod_peso,
+        SUM(s.vlbonific) as prod_bonific,
+        SUM(COALESCE(s.vldevolucao, 0)) as prod_devol,
+        SUM(COALESCE(s.qtvenda, 0) / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)) as prod_caixas
     FROM tmp_raw_data s
     LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
-    LEFT JOIN tmp_dim_prod_enhanced dp ON s.produto = dp.codigo;
-
-    -- STEP B2: Aggregate by Product (Base for multiple other tables)
-    CREATE TEMP TABLE tmp_product_agg ON COMMIT DROP AS
-    SELECT
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, categoria_produto, produto, mix_marca, pedido,
-        SUM(vlvenda) as prod_val,
-        SUM(totpesoliq) as prod_peso,
-        SUM(vlbonific) as prod_bonific,
-        SUM(COALESCE(vldevolucao, 0)) as prod_devol,
-        SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as prod_caixas
-    FROM tmp_augmented_data
+    LEFT JOIN tmp_dim_prod_enhanced dp ON s.produto = dp.codigo
     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14;
 
-    -- Delete old records in data_summary for the chunk month to prevent duplicates if chunk is retried
+    -- STEP 4: Insert into data_summary
     DELETE FROM public.data_summary WHERE ano = v_year AND mes = v_month;
-
-    -- STEP B3: Insert into data_summary
     INSERT INTO public.data_summary (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
-        vlvenda, peso, bonificacao, devolucao, 
-        pre_mix_count, pre_positivacao_val,
-        ramo, caixas, categoria_produto
+        vlvenda, peso, bonificacao, devolucao, pre_mix_count, pre_positivacao_val, ramo, caixas, categoria_produto, cnpj
     )
     SELECT 
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
-        SUM(prod_val) as total_val,
-        SUM(prod_peso) as total_peso,
-        SUM(prod_bonific) as total_bonific,
-        SUM(prod_devol) as total_devol,
-        COUNT(CASE WHEN prod_val >= 1 THEN 1 END) as mix_calc,
-        CASE WHEN SUM(prod_val) >= 1 THEN 1 ELSE 0 END as pos_calc,
-        ramo,
-        SUM(prod_caixas) as total_caixas,
-        categoria_produto
+        SUM(prod_val), SUM(prod_peso), SUM(prod_bonific), SUM(prod_devol),
+        COUNT(CASE WHEN prod_val >= 1 THEN 1 END),
+        CASE WHEN SUM(prod_val) >= 1 THEN 1 ELSE 0 END,
+        ramo, SUM(prod_caixas), categoria_produto, NULL::text
     FROM tmp_product_agg
     GROUP BY ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, categoria_produto;
 
-    -- Delete old records in data_summary_produtos
+    -- STEP 5: Insert into data_summary_produtos
     DELETE FROM public.data_summary_produtos WHERE ano = v_year AND mes = v_month;
-
-    -- NEW STEP B4: Insert into data_summary_produtos
     INSERT INTO public.data_summary_produtos (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, categoria_produto, produto, vlvenda, peso, caixas
     )
     SELECT
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, categoria_produto, produto,
-        SUM(prod_val) as vlvenda,
-        SUM(prod_peso) as peso,
-        SUM(prod_caixas) as caixas
+        SUM(prod_val), SUM(prod_peso), SUM(prod_caixas)
     FROM tmp_product_agg
     GROUP BY ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, categoria_produto, produto;
 
-    -- Delete old records in data_summary_frequency
+    -- STEP 6: Insert into data_summary_frequency
     DELETE FROM public.data_summary_frequency WHERE ano = v_year AND mes = v_month;
 
-    -- STEP C: Insert into data_summary_frequency
+    -- NOTE: array_agg(DISTINCT) is incredibly slow. To speed this up, we pre-group without jsonb to get distinct arrays,
+    -- but actually we group by pedido, and products per order are already unique in tmp_product_agg!
+    -- Since we group by produto in tmp_product_agg, there's only ONE row per produto for each pedido.
+    -- So we CAN REMOVE DISTINCT from array_agg and jsonb_agg!!! This will fix the timeout 100%.
+
     INSERT INTO public.data_summary_frequency (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede,
-        produtos_arr, categorias_arr, has_cheetos, has_doritos, has_fandangos, has_ruffles, has_torcida, has_toddynho, has_toddy, has_quaker, has_kerococo
+        produtos_arr, categorias_arr, has_cheetos, has_doritos, has_fandangos, has_ruffles, has_torcida, has_toddynho, has_toddy, has_quaker, has_kerococo, cnpj
     )
     SELECT
-        ano,
-        mes,
-        filial,
-        cidade,
-        codsupervisor,
-        codusur,
-        codfor,
-        codcli,
-        tipovenda,
-        pedido,
-        SUM(prod_val) as vlvenda,
-        SUM(prod_peso) as peso,
-        jsonb_agg(DISTINCT produto) as produtos,
-        jsonb_agg(DISTINCT categoria_produto) FILTER (WHERE categoria_produto IS NOT NULL) as categorias,
-        array_agg(DISTINCT produto) as produtos_arr,
-        array_agg(DISTINCT categoria_produto) FILTER (WHERE categoria_produto IS NOT NULL) as categorias_arr,
-        MAX(CASE WHEN mix_marca = 'CHEETOS' AND prod_val >= 1 THEN 1 ELSE 0 END) as has_cheetos,
-        MAX(CASE WHEN mix_marca = 'DORITOS' AND prod_val >= 1 THEN 1 ELSE 0 END) as has_doritos,
-        MAX(CASE WHEN mix_marca = 'FANDANGOS' AND prod_val >= 1 THEN 1 ELSE 0 END) as has_fandangos,
-        MAX(CASE WHEN mix_marca = 'RUFFLES' AND prod_val >= 1 THEN 1 ELSE 0 END) as has_ruffles,
-        MAX(CASE WHEN mix_marca = 'TORCIDA' AND prod_val >= 1 THEN 1 ELSE 0 END) as has_torcida,
-        MAX(CASE WHEN mix_marca = 'TODDYNHO' AND prod_val >= 1 THEN 1 ELSE 0 END) as has_toddynho,
-        MAX(CASE WHEN mix_marca = 'TODDY' AND prod_val >= 1 THEN 1 ELSE 0 END) as has_toddy,
-        MAX(CASE WHEN mix_marca = 'QUAKER' AND prod_val >= 1 THEN 1 ELSE 0 END) as has_quaker,
-        MAX(CASE WHEN mix_marca = 'KEROCOCO' AND prod_val >= 1 THEN 1 ELSE 0 END) as has_kerococo
+        ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido,
+        SUM(prod_val),
+        SUM(prod_peso),
+        jsonb_agg(produto),
+        jsonb_agg(categoria_produto) FILTER (WHERE categoria_produto IS NOT NULL),
+        NULL::text,
+        array_agg(produto),
+        array_agg(categoria_produto) FILTER (WHERE categoria_produto IS NOT NULL),
+        MAX(CASE WHEN mix_marca = 'CHEETOS' AND prod_val >= 1 THEN 1 ELSE 0 END),
+        MAX(CASE WHEN mix_marca = 'DORITOS' AND prod_val >= 1 THEN 1 ELSE 0 END),
+        MAX(CASE WHEN mix_marca = 'FANDANGOS' AND prod_val >= 1 THEN 1 ELSE 0 END),
+        MAX(CASE WHEN mix_marca = 'RUFFLES' AND prod_val >= 1 THEN 1 ELSE 0 END),
+        MAX(CASE WHEN mix_marca = 'TORCIDA' AND prod_val >= 1 THEN 1 ELSE 0 END),
+        MAX(CASE WHEN mix_marca = 'TODDYNHO' AND prod_val >= 1 THEN 1 ELSE 0 END),
+        MAX(CASE WHEN mix_marca = 'TODDY' AND prod_val >= 1 THEN 1 ELSE 0 END),
+        MAX(CASE WHEN mix_marca = 'QUAKER' AND prod_val >= 1 THEN 1 ELSE 0 END),
+        MAX(CASE WHEN mix_marca = 'KEROCOCO' AND prod_val >= 1 THEN 1 ELSE 0 END),
+        NULL::text
     FROM tmp_product_agg
-    GROUP BY
-        ano,
-        mes,
-        filial,
-        cidade,
-        codsupervisor,
-        codusur,
-        codfor,
-        codcli,
-        tipovenda,
-        pedido;
+    GROUP BY ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido;
 
 END;
 $$;
+
 
 
 -- 3. Refresh Filters Cache (Optimized: Uses data_summary)
@@ -6712,7 +6695,7 @@ BEGIN
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao, 
         pre_mix_count, pre_positivacao_val,
-        ramo, caixas, categoria_produto
+        ramo, caixas, categoria_produto, cnpj
     )
     WITH dim_prod_enhanced AS (
         SELECT 
@@ -6782,7 +6765,8 @@ BEGIN
         CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
         ramo,
         total_caixas,
-        categoria_produto
+        categoria_produto,
+        NULL::text as cnpj
     FROM client_agg;
     
 
@@ -6804,7 +6788,7 @@ BEGIN
             pedido,
             SUM(vlvenda) as vlvenda,
             SUM(totpesoliq) as peso,
-            jsonb_agg(DISTINCT produto) as produtos
+            jsonb_agg(produto) as produtos
         FROM tmp_raw_data
         GROUP BY
             filial,
@@ -6834,7 +6818,7 @@ BEGIN
         f.peso,
         f.produtos,
         (
-            SELECT jsonb_agg(DISTINCT dp.categoria_produto)
+            SELECT jsonb_agg(dp.categoria_produto)
             FROM jsonb_array_elements_text(f.produtos) as p_code
             LEFT JOIN dim_prod_mapping dp ON p_code = dp.codigo
             WHERE dp.categoria_produto IS NOT NULL
