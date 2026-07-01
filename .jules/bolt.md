@@ -54,3 +54,10 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## $(date +%Y-%m-%d) - [Otimização de Índices e Datas no PostgreSQL]
 **Learning:** Utilizar funções nativas como `EXTRACT(YEAR FROM coluna_data)` ou `EXTRACT(MONTH FROM coluna_data)` em cláusulas `WHERE` impede o PostgreSQL de utilizar índices (B-Tree) de forma eficiente, forçando uma varredura sequencial completa (Seq Scan) que causa lentidão e timeouts em bases de dados grandes.
 **Action:** Para garantir máxima performance e o uso de índices em grandes volumes, sempre substitua funções extrativas por checagem de limites exatos (ex: `coluna_data >= '2024-01-01' AND coluna_data <= '2024-12-31'`). Em filtros textuais complexos, prefira utilizar a cláusula `IN (SELECT ...)` com subqueries baseadas em tabelas dimensionais já indexadas.
+## $(date +%Y-%m-%d) - PostgreSQL RPC Timeout on Large Datasets
+**Learning:** Using `LEFT JOIN` and massive `UNION ALL` across raw fact tables (`data_detailed` and `data_history`) in a cached CTE (`prod_base`) blocks performance, causing a 500 error due to statement timeouts on large filters (e.g., categories).
+**Action:** Created a specific pre-aggregated summary table (`data_summary_produtos`) grouping quantities by product and dynamically populated it during the upload ingest (`refresh_summary_chunk`). Refactored the dashboard RPC (`get_boxes_dashboard_data`) to query this summary table, totally eliminating the expensive raw table joins and resolving the timeout.
+
+## $(date +%Y-%m-%d) - Supabase PostgREST 15s API Timeout on Chunks
+**Learning:** Even with `statement_timeout` increased inside PostgreSQL, the free tier of Supabase uses an API Gateway that hard-kills HTTP connections at 15 seconds. Large JSONB/Array aggregations over 5-6 days of heavy sales data will breach this network limit.
+**Action:** Sharded the frontend's batch uploader logic (`src/js/app.js`) to submit 2-day intervals (15 chunks per month instead of 6). Removed `DISTINCT` from `jsonb_agg` and `array_agg` within `refresh_summary_chunk` SQL, as pre-grouping CTEs already guaranteed distinctness, drastically accelerating the hash aggregation step natively.
