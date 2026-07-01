@@ -623,45 +623,6 @@ self.onmessage = async (event) => {
         // ⚡ Bolt Optimization: Pre-compute the combined array once using optimized Array.prototype.concat
         // to avoid repeatedly copying 100k+ objects into new memory blocks via [...a, ...b, ...c] spreads down the line.
         const allSalesRaw = salesPrevYearDataRaw.concat(salesCurrYearHistDataRaw, salesCurrMonthDataRaw);
-        // --- Product Code Normalization (De-Para) ---
-        self.postMessage({ type: 'progress', status: 'Normalizando códigos de produtos...', percentage: 16 });
-        
-        const latestProductCodes = new Map(); // DESCRICAO -> { code, date }
-        
-        allSalesRaw.forEach(row => {
-            const desc = String(row['DESCRICAO'] || '').trim().toUpperCase();
-            const code = String(row['PRODUTO'] || '').trim();
-            if (!desc || !code) return;
-            
-            const rawDate = row['DTPED'];
-            let parsedDate = null;
-            if (rawDate) {
-                if (typeof rawDate === 'number') parsedDate = parseExcelDate(rawDate);
-                else parsedDate = new Date(rawDate);
-            }
-            
-            const saleTime = parsedDate ? parsedDate.getTime() : 0;
-            
-            if (!latestProductCodes.has(desc)) {
-                latestProductCodes.set(desc, { code: code, time: saleTime });
-            } else {
-                const current = latestProductCodes.get(desc);
-                if (saleTime > current.time) {
-                    latestProductCodes.set(desc, { code: code, time: saleTime });
-                }
-            }
-        });
-
-        // Apply normalized codes
-        allSalesRaw.forEach(row => {
-            const desc = String(row['DESCRICAO'] || '').trim().toUpperCase();
-            if (desc && latestProductCodes.has(desc)) {
-                row['PRODUTO'] = latestProductCodes.get(desc).code;
-            }
-        });
-        
-        // Also apply to products dimension parsing if needed (which reads from sales anyway)
-
 
         // --- IBGE Code Resolution ---
         self.postMessage({ type: 'progress', status: 'Verificando códigos IBGE...', percentage: 18 });
@@ -778,6 +739,58 @@ self.onmessage = async (event) => {
             clientsToInsert.push(clientData);
         }
 
+
+        // Pre-compute timestamps for dates to avoid calling parseDate repeatedly
+        for (let i = 0; i < allSalesRaw.length; i++) {
+            const parsed = parseDate(allSalesRaw[i].DTPED);
+            allSalesRaw[i]._dtped_ts = parsed ? parsed.getTime() : 0;
+        }
+
+        // --- Unificar Códigos de Produto por Descrição (De-Para) ---
+        self.postMessage({ type: 'progress', status: 'Unificando códigos de produtos...', percentage: 25 });
+        
+        const descToCodeMap = new Map(); // "DESCRICAO" -> { code: "123", time: 123456, dtStr: "" }
+        
+        allSalesRaw.forEach(row => {
+            const desc = String(row['DESCRICAO'] || '').trim().toUpperCase();
+            const productCode = String(row['PRODUTO'] || '').trim();
+            const dtPedRaw = row['DTPED'];
+            
+            if (desc && productCode && desc !== 'N/D' && desc !== 'N/A') {
+                const saleTime = row._dtped_ts || 0;
+                
+                if (!descToCodeMap.has(desc)) {
+                    descToCodeMap.set(desc, { code: productCode, time: saleTime, dtStr: String(dtPedRaw) });
+                } else {
+                    const current = descToCodeMap.get(desc);
+                    // Crucial fix: >= to ensure we override if date is the same but we encounter a new code
+                    // Wait, we only want to override if the code is actually NEWER.
+                    // If times are exactly equal (e.g. they both sold on the same day and time precision is day only),
+                    // how do we tie break? Maybe the code itself?
+                    // Actually, if we just use > it favors the first one it sees.
+                    // If we use >= it favors the last one it sees.
+                    if (saleTime > current.time) {
+                        descToCodeMap.set(desc, { code: productCode, time: saleTime, dtStr: String(dtPedRaw) });
+                    } else if (saleTime === current.time && productCode !== current.code) {
+                        // Tie-break for identical dates: favor the higher product code numerically (assuming newer codes are higher)
+                        const p1 = parseInt(productCode, 10);
+                        const p2 = parseInt(current.code, 10);
+                        if (!isNaN(p1) && !isNaN(p2) && p1 > p2) {
+                            descToCodeMap.set(desc, { code: productCode, time: saleTime, dtStr: String(dtPedRaw) });
+                        }
+                    }
+                }
+            }
+        });
+
+        // Apply Unification (Objects in allSalesRaw are references to the ones in salesPrevYearDataRaw etc.)
+        allSalesRaw.forEach(row => {
+            const desc = String(row['DESCRICAO'] || '').trim().toUpperCase();
+            if (desc && descToCodeMap.has(desc)) {
+                row['PRODUTO'] = descToCodeMap.get(desc).code;
+            }
+        });
+
         self.postMessage({ type: 'progress', status: 'Mapeando produtos...', percentage: 30 });
         const productMasterMap = new Map();
         const dimProducts = new Map();
@@ -880,11 +893,7 @@ self.onmessage = async (event) => {
         const clientLastVendorMap = new Map(); // CODCLI -> CODUSUR
         const vendorCitiesMap = new Map(); // CODUSUR -> Set(MUNICIPIO)
 
-        // Pre-compute timestamps to avoid calling parseDate repeatedly in sort comparator
-        for (let i = 0; i < allSalesRaw.length; i++) {
-            const parsed = parseDate(allSalesRaw[i].DTPED);
-            allSalesRaw[i]._dtped_ts = parsed ? parsed.getTime() : 0;
-        }
+
 
         // Sort all sales by date for RCA owner determination
         allSalesRaw.sort((a, b) => {
