@@ -3196,20 +3196,18 @@ BEGIN
             FROM public.data_summary ds
             %s AND ds.ano = %L %s
         ),
+        kpi_tri_clientes AS (
+            SELECT COUNT(DISTINCT CASE WHEN %s THEN codcli END) as monthly_clients
+            FROM public.data_summary ds
+            %s AND make_date(ds.ano, ds.mes, 1) >= %L AND make_date(ds.ano, ds.mes, 1) <= %L
+            GROUP BY ds.ano, ds.mes
+        ),
         kpi_tri AS (
             SELECT
                 SUM(vlvenda) / 3 as fat,
                 SUM(peso) / 3 as peso,
                 SUM(COALESCE(caixas, 0)) / 3 as caixas,
-                COALESCE((
-                    SELECT SUM(monthly_clients) / 3
-                    FROM (
-                        SELECT COUNT(DISTINCT CASE WHEN %s THEN codcli END) as monthly_clients
-                        FROM public.data_summary
-                        %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
-                        GROUP BY ano, mes
-                    ) sub
-                ), 0) as clientes
+                COALESCE((SELECT SUM(monthly_clients) / 3 FROM kpi_tri_clientes), 0) as clientes
             FROM public.data_summary ds
             %s AND make_date(ds.ano, ds.mes, 1) >= %L AND make_date(ds.ano, ds.mes, 1) <= %L
         ),
