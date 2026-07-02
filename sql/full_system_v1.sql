@@ -3174,8 +3174,8 @@ BEGIN
                 SUM(peso) as peso,
                 SUM(COALESCE(caixas, 0)) as caixas,
                 COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
-            FROM public.data_summary
-            %s AND (ano = %L OR ano = %L)
+            FROM public.data_summary ds
+            %s AND (ds.ano = %L OR ds.ano = %L)
             GROUP BY 1, 2
         ),
         kpi_curr AS (
