@@ -3090,50 +3090,50 @@ BEGIN
 
     -- 2. Build FILTERS
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
-        v_where_produtos := v_where_produtos || format(' AND produto = ANY(%L) ', p_produto);
+        v_where_produtos := v_where_produtos || format(' AND sp.produto = ANY(%L) ', p_produto);
     END IF;
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where_summary := v_where_summary || format(' AND filial = ANY(%L) ', p_filial);
-        v_where_produtos := v_where_produtos || format(' AND filial = ANY(%L) ', p_filial);
+        v_where_summary := v_where_summary || format(' AND ds.filial = ANY(%L) ', p_filial);
+        v_where_produtos := v_where_produtos || format(' AND sp.filial = ANY(%L) ', p_filial);
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_summary := v_where_summary || format(' AND cidade = ANY(%L) ', p_cidade);
-        v_where_produtos := v_where_produtos || format(' AND cidade = ANY(%L) ', p_cidade);
+        v_where_summary := v_where_summary || format(' AND ds.cidade = ANY(%L) ', p_cidade);
+        v_where_produtos := v_where_produtos || format(' AND sp.cidade = ANY(%L) ', p_cidade);
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-         v_where_summary := v_where_summary || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
-         v_where_produtos := v_where_produtos || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
+         v_where_summary := v_where_summary || format(' AND ds.codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
+         v_where_produtos := v_where_produtos || format(' AND sp.codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L)) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-         v_where_summary := v_where_summary || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
-         v_where_produtos := v_where_produtos || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
+         v_where_summary := v_where_summary || format(' AND ds.codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
+         v_where_produtos := v_where_produtos || format(' AND sp.codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L)) ', p_vendedor);
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_summary := v_where_summary || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
-        v_where_produtos := v_where_produtos || format(' AND tipovenda = ANY(%L) ', p_tipovenda);
-        v_tipovenda_client_cond := format('tipovenda = ANY(%L)', p_tipovenda);
+        v_where_summary := v_where_summary || format(' AND ds.tipovenda = ANY(%L) ', p_tipovenda);
+        v_where_produtos := v_where_produtos || format(' AND sp.tipovenda = ANY(%L) ', p_tipovenda);
+        v_tipovenda_client_cond := format('ds.tipovenda = ANY(%L)', p_tipovenda);
         IF p_tipovenda <@ ARRAY['5','11'] THEN
-            v_active_client_cond := format('tipovenda = ANY(%L) AND bonificacao > 0', p_tipovenda);
+            v_active_client_cond := format('ds.tipovenda = ANY(%L) AND ds.bonificacao > 0', p_tipovenda);
         ELSE
-            v_active_client_cond := format('tipovenda = ANY(%L) AND tipovenda NOT IN (''5'', ''11'') AND pre_positivacao_val >= 1', p_tipovenda);
+            v_active_client_cond := format('ds.tipovenda = ANY(%L) AND ds.tipovenda NOT IN (''5'', ''11'') AND ds.pre_positivacao_val >= 1', p_tipovenda);
         END IF;
     ELSE
-        v_tipovenda_client_cond := 'tipovenda IN (''1'', ''9'')';
-        v_active_client_cond := 'tipovenda NOT IN (''5'', ''11'') AND pre_positivacao_val >= 1';
+        v_tipovenda_client_cond := 'ds.tipovenda IN (''1'', ''9'')';
+        v_active_client_cond := 'ds.tipovenda NOT IN (''5'', ''11'') AND ds.pre_positivacao_val >= 1';
     END IF;
 
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_summary := v_where_summary || format(' AND categoria_produto = ANY(%L) ', p_categoria);
-        v_where_produtos := v_where_produtos || format(' AND categoria_produto = ANY(%L) ', p_categoria);
+        v_where_summary := v_where_summary || format(' AND ds.categoria_produto = ANY(%L) ', p_categoria);
+        v_where_produtos := v_where_produtos || format(' AND sp.categoria_produto = ANY(%L) ', p_categoria);
     END IF;
 
     -- Fornecedor Logic
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where_summary := v_where_summary || format(' AND codfor = ANY(%L) ', p_fornecedor);
-        v_where_produtos := v_where_produtos || format(' AND codfor = ANY(%L) ', p_fornecedor);
+        v_where_summary := v_where_summary || format(' AND ds.codfor = ANY(%L) ', p_fornecedor);
+        v_where_produtos := v_where_produtos || format(' AND sp.codfor = ANY(%L) ', p_fornecedor);
     END IF;
 
     -- REDE Logic
@@ -3184,8 +3184,8 @@ BEGIN
                 SUM(peso) as peso,
                 SUM(COALESCE(caixas, 0)) as caixas,
                 COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
-            FROM public.data_summary
-            %s AND ano = %L %s
+            FROM public.data_summary ds
+            %s AND ds.ano = %L %s
         ),
         kpi_prev AS (
             SELECT
@@ -3193,8 +3193,8 @@ BEGIN
                 SUM(peso) as peso,
                 SUM(COALESCE(caixas, 0)) as caixas,
                 COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
-            FROM public.data_summary
-            %s AND ano = %L %s
+            FROM public.data_summary ds
+            %s AND ds.ano = %L %s
         ),
         kpi_tri AS (
             SELECT
@@ -3210,8 +3210,8 @@ BEGIN
                         GROUP BY ano, mes
                     ) sub
                 ), 0) as clientes
-            FROM public.data_summary
-            %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
+            FROM public.data_summary ds
+            %s AND make_date(ds.ano, ds.mes, 1) >= %L AND make_date(ds.ano, ds.mes, 1) <= %L
         ),
         -- Products Table Using the NEW summary table
         prod_agg AS (
@@ -3221,7 +3221,7 @@ BEGIN
                 SUM(COALESCE(sp.caixas, 0)) as caixas,
                 SUM(sp.vlvenda) as faturamento,
                 SUM(sp.peso) as peso,
-                COUNT(DISTINCT CASE WHEN tipovenda NOT IN (''5'', ''11'') AND sp.vlvenda >= 1 THEN sp.codcli END) as clientes,
+                COUNT(DISTINCT CASE WHEN sp.tipovenda NOT IN (''5'', ''11'') AND sp.vlvenda >= 1 THEN sp.codcli END) as clientes,
                 (SELECT MAX(dtped) FROM public.data_detailed WHERE produto = sp.produto LIMIT 1) as ultima_venda
             FROM public.data_summary_produtos sp
             LEFT JOIN public.dim_produtos dp ON sp.produto = dp.codigo
@@ -3237,8 +3237,8 @@ BEGIN
             (SELECT json_agg(pa) FROM prod_agg pa)
     ',
     v_active_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
-    v_active_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
-    v_active_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
+    v_active_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND ds.mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
+    v_active_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND ds.mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
     v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
     v_where_produtos, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND sp.mes = %L ', v_target_month) ELSE '' END -- Prod Agg
     )
@@ -3291,10 +3291,7 @@ BEGIN
                     FROM jsonb_each_text(dp.estoque_filial) AS f(key, val)
                     WHERE (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR key = ANY(p_filial))
                 ) as estoque,
-                public.calc_working_days(
-                    GREATEST(dp.dt_cadastro, (v_max_sale_date - interval '6 months')::date),
-                    v_max_sale_date
-                ) as business_days
+                (v_max_sale_date - GREATEST(dp.dt_cadastro, (v_max_sale_date - interval '6 months')::date) + 1) as calendar_days
             FROM dim_produtos dp
             WHERE dp.codigo = p->>'produto'
         ) sub ON true
