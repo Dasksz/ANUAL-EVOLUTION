@@ -1228,6 +1228,9 @@ ALTER TABLE public.cache_filters ENABLE ROW LEVEL SECURITY;
 -- ==============================================================================
 
 -- Sales Table Indexes
+
+CREATE INDEX IF NOT EXISTS idx_detailed_dashboard_perf ON public.data_detailed (dtped, tipovenda, vlvenda);
+CREATE INDEX IF NOT EXISTS idx_history_dashboard_perf ON public.data_history (dtped, tipovenda, vlvenda);
 CREATE INDEX IF NOT EXISTS idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, codsupervisor, codusur, codfor);
 CREATE INDEX IF NOT EXISTS idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, codsupervisor, codusur, codfor);
 CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
@@ -3313,7 +3316,7 @@ BEGIN
         v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
         v_where_raw, v_previous_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
-        v_active_client_cond_slow -- Prod Agg
+        v_active_client_cond -- Prod Agg
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     
@@ -3402,11 +3405,11 @@ BEGIN
         ', 
         v_where_raw, v_previous_year,
         v_where_raw, v_previous_year,
-        v_active_client_cond_slow, v_current_year, v_previous_year,
-        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
-        v_active_client_cond_slow, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
-        v_active_client_cond_slow, v_tri_start, v_tri_end, v_tri_start, v_tri_end,
-        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END
+        v_active_client_cond, v_current_year, v_previous_year,
+        v_active_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
+        v_active_client_cond, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
+        v_active_client_cond, v_tri_start, v_tri_end, v_tri_start, v_tri_end,
+        v_active_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     END IF;
