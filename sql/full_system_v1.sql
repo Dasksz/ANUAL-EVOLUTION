@@ -3147,7 +3147,7 @@ BEGIN
         v_tipovenda_client_cond := format('tipovenda = ANY(%L::text[])', p_tipovenda);
         IF p_tipovenda <@ ARRAY['5','11'] THEN
             v_active_client_cond := format('tipovenda = ANY(%L::text[]) AND bonificacao > 0', p_tipovenda);
-            v_active_client_cond_slow := format('tipovenda = ANY(%L::text[]) AND vlbonific > 0', p_tipovenda);
+            v_active_client_cond_slow := format('tipovenda = ANY(%L::text[]) AND vlvenda > 0', p_tipovenda);
         ELSE
             v_active_client_cond := format('tipovenda = ANY(%L::text[]) AND tipovenda NOT IN (''5'', ''11'') AND pre_positivacao_val >= 1', p_tipovenda);
             v_active_client_cond_slow := format('tipovenda = ANY(%L::text[]) AND tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1', p_tipovenda);
@@ -3316,7 +3316,7 @@ BEGIN
         v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
         v_where_raw, v_previous_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
-        v_active_client_cond -- Prod Agg
+        v_active_client_cond_slow -- Prod Agg
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     
@@ -3405,11 +3405,11 @@ BEGIN
         ', 
         v_where_raw, v_previous_year,
         v_where_raw, v_previous_year,
-        v_active_client_cond, v_current_year, v_previous_year,
-        v_active_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
-        v_active_client_cond, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
-        v_active_client_cond, v_tri_start, v_tri_end, v_tri_start, v_tri_end,
-        v_active_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END
+        v_active_client_cond_slow, v_current_year, v_previous_year,
+        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
+        v_active_client_cond_slow, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END,
+        v_active_client_cond_slow, v_tri_start, v_tri_end, v_tri_start, v_tri_end,
+        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     END IF;
