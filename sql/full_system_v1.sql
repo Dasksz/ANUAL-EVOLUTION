@@ -3231,7 +3231,7 @@ BEGIN
                 SELECT 
                     mes - 1 as m_idx,
                     ano as yr,
-                    SUM(vlvenda) as fat,
+                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN bonificacao ELSE vlvenda END) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3241,7 +3241,7 @@ BEGIN
             ),
             kpi_curr AS (
                 SELECT 
-                    SUM(vlvenda) as fat,
+                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN bonificacao ELSE vlvenda END) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3250,7 +3250,7 @@ BEGIN
             ),
             kpi_prev AS (
                 SELECT 
-                    SUM(vlvenda) as fat,
+                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN bonificacao ELSE vlvenda END) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3259,7 +3259,7 @@ BEGIN
             ),
             kpi_tri AS (
                 SELECT 
-                    SUM(vlvenda) / 3 as fat,
+                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN bonificacao ELSE vlvenda END) / 3 as fat,
                     SUM(peso) / 3 as peso,
                     SUM(COALESCE(caixas, 0)) / 3 as caixas,
                     COALESCE((
@@ -3276,12 +3276,12 @@ BEGIN
             ),
             -- Products Table (Updated to JOIN dim_produtos)
             prod_base AS (
-                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master, s.codcli, s.tipovenda
+                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
                 UNION ALL
-                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master, s.codcli, s.tipovenda
+                SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
@@ -3291,7 +3291,7 @@ BEGIN
                     produto,
                     MAX(descricao) as descricao,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    SUM(vlvenda) as faturamento,
+                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN bonificacao ELSE vlvenda END) as faturamento,
                     SUM(totpesoliq) as peso,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
                     MAX(dtped) as ultima_venda
@@ -3321,12 +3321,12 @@ BEGIN
         -- SLOW PATH (Full Raw Data with dim_produtos join)
         EXECUTE format('
             WITH base_data AS (
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= make_date(%L, 1, 1)
                 UNION ALL
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= make_date(%L, 1, 1)
@@ -3335,7 +3335,7 @@ BEGIN
                 SELECT 
                     EXTRACT(MONTH FROM dtped)::int - 1 as m_idx,
                     EXTRACT(YEAR FROM dtped)::int as yr,
-                    SUM(vlvenda) as fat,
+                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN vlbonific ELSE vlvenda END) as fat,
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3345,7 +3345,7 @@ BEGIN
             ),
             kpi_curr AS (
                 SELECT 
-                    SUM(vlvenda) as fat,
+                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN vlbonific ELSE vlvenda END) as fat,
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3354,7 +3354,7 @@ BEGIN
             ),
             kpi_prev AS (
                 SELECT 
-                    SUM(vlvenda) as fat,
+                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN vlbonific ELSE vlvenda END) as fat,
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3363,7 +3363,7 @@ BEGIN
             ),
             kpi_tri AS (
                 SELECT 
-                    SUM(vlvenda) / 3 as fat,
+                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN vlbonific ELSE vlvenda END) / 3 as fat,
                     SUM(totpesoliq) / 3 as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) / 3 as caixas,
                     COALESCE((
@@ -3383,7 +3383,7 @@ BEGIN
                     produto,
                     MAX(descricao) as descricao,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    SUM(vlvenda) as faturamento,
+                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN vlbonific ELSE vlvenda END) as faturamento,
                     SUM(totpesoliq) as peso,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
                     MAX(dtped) as ultima_venda
