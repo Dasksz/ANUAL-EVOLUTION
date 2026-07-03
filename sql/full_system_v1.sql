@@ -1228,6 +1228,9 @@ ALTER TABLE public.cache_filters ENABLE ROW LEVEL SECURITY;
 -- ==============================================================================
 
 -- Sales Table Indexes
+
+CREATE INDEX IF NOT EXISTS idx_detailed_dashboard_perf ON public.data_detailed (dtped, tipovenda, vlvenda);
+CREATE INDEX IF NOT EXISTS idx_history_dashboard_perf ON public.data_history (dtped, tipovenda, vlvenda);
 CREATE INDEX IF NOT EXISTS idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, codsupervisor, codusur, codfor);
 CREATE INDEX IF NOT EXISTS idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, codsupervisor, codusur, codfor);
 CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
@@ -3144,7 +3147,7 @@ BEGIN
         v_tipovenda_client_cond := format('tipovenda = ANY(%L::text[])', p_tipovenda);
         IF p_tipovenda <@ ARRAY['5','11'] THEN
             v_active_client_cond := format('tipovenda = ANY(%L::text[]) AND bonificacao > 0', p_tipovenda);
-            v_active_client_cond_slow := format('tipovenda = ANY(%L::text[]) AND vlbonific > 0', p_tipovenda);
+            v_active_client_cond_slow := format('tipovenda = ANY(%L::text[]) AND vlvenda > 0', p_tipovenda);
         ELSE
             v_active_client_cond := format('tipovenda = ANY(%L::text[]) AND tipovenda NOT IN (''5'', ''11'') AND pre_positivacao_val >= 1', p_tipovenda);
             v_active_client_cond_slow := format('tipovenda = ANY(%L::text[]) AND tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1', p_tipovenda);
