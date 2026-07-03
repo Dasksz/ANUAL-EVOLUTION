@@ -1,8 +1,7 @@
 import supabase from './supabase.js?v=5';
 
-import {
-    generateYearOptionsHtml,
-    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
+import { updateEl, generateYearOptionsHtml,
+    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast } from './utils.js';
 
 
 let estrelasDetailedData = [];
@@ -1475,8 +1474,7 @@ function getActiveExportView() {
             } else {
                 showScreen('tela-pendente');
                 if (status === 'bloqueado') {
-                        const statusMsg = document.getElementById('status-text-pendente'); 
-                        if(statusMsg) statusMsg.textContent = "Acesso Bloqueado";
+                        updateEl('status-text-pendente', "Acesso Bloqueado");
                 }
                 startStatusListener(user.id);
             }
@@ -3069,8 +3067,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             boxesMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
             clearArrays(boxesSelectedFiliais, boxesSelectedProducts, boxesSelectedSupervisores, boxesSelectedVendedores, boxesSelectedFornecedores, boxesSelectedCidades, boxesSelectedTiposVenda, boxesSelectedCategorias);
             boxesTrendActive = false; // Reset Trend
-            const span = document.getElementById('boxes-trend-text');
-            if(span) span.textContent = 'Calcular Tendência';
+            updateEl('boxes-trend-text', 'Calcular Tendência');
             if(boxesTrendToggleBtn) {
                 boxesTrendToggleBtn.classList.remove('text-purple-500', 'hover:text-purple-400');
                 boxesTrendToggleBtn.classList.add('text-orange-500', 'hover:text-orange-400');
@@ -3237,9 +3234,9 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         const pageData = displayData.slice(startIndex, endIndex);
 
         // Update pagination UI text
-        document.getElementById('boxes-page-start').textContent = totalItems > 0 ? startIndex + 1 : 0;
-        document.getElementById('boxes-page-end').textContent = endIndex;
-        document.getElementById('boxes-page-total').textContent = totalItems;
+        updateEl('boxes-page-start', totalItems > 0 ? startIndex + 1 : 0);
+        updateEl('boxes-page-end', endIndex);
+        updateEl('boxes-page-total', totalItems);
 
         // Render rows
         if (pageData.length > 0) {
@@ -4339,7 +4336,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         holidays = data.holidays || [];
         // Calendar is now rendered on modal open
 
-        document.getElementById('kpi-clients-attended').textContent = formatInteger(data.kpi_clients_attended);
+        updateEl('kpi-clients-attended', formatInteger(data.kpi_clients_attended));
         const baseEl = document.getElementById('kpi-clients-base');
         if (data.kpi_clients_base > 0) {
             baseEl.textContent = `de ${formatInteger(data.kpi_clients_base)} na base`;
@@ -4516,46 +4513,46 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             const fmtPerc = (v) => `${formatPercentage((isNaN(v) ? 0 : v), 1)}`;
 
             // 1. Bonification
-            document.getElementById('kpi-bonif-val').textContent = fmtBRL(kpiBonifCurr);
+            updateEl('kpi-bonif-val', fmtBRL(kpiBonifCurr));
             const elBonifPerc = document.getElementById('kpi-bonif-perc');
             elBonifPerc.textContent = fmtPerc(percBonif);
             elBonifPerc.className = `text-lg font-bold ${percBonif <= 1.5 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-bonif-sec').textContent = fmtBRL(kpiTotalSoldBaseCurr);
+            updateEl('kpi-bonif-sec', fmtBRL(kpiTotalSoldBaseCurr));
 
             // Update Corner Types (05, 11) - Defensive check
             const safeTypes = (typeof selectedTiposVenda !== 'undefined' && Array.isArray(selectedTiposVenda)) ? selectedTiposVenda : [];
             const types = safeTypes.filter(t => t === '5' || t === '11').sort().join(' e ');
             const typeLabel = types ? types : '05 e 11';
-            document.getElementById('kpi-bonif-types').textContent = typeLabel;
-            document.getElementById('kpi-bonif-var-types').textContent = typeLabel;
+            updateEl('kpi-bonif-types', typeLabel);
+            updateEl('kpi-bonif-var-types', typeLabel);
 
             // 2. Bonification Variation
-            document.getElementById('kpi-bonif-var-val').textContent = fmtBRL(kpiBonifCurr);
+            updateEl('kpi-bonif-var-val', fmtBRL(kpiBonifCurr));
             const elBonifVarPerc = document.getElementById('kpi-bonif-var-perc');
             elBonifVarPerc.textContent = `${varBonif > 0 ? '+' : ''}${formatPercentage(varBonif, 1)}`;
             elBonifVarPerc.className = `text-lg font-bold ${varBonif <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-bonif-var-sec').textContent = fmtBRL(kpiBonifPrev);
+            updateEl('kpi-bonif-var-sec', fmtBRL(kpiBonifPrev));
 
             // 3. Devolução
-            document.getElementById('kpi-devol-val').textContent = fmtBRL(kpiDevolCurr);
+            updateEl('kpi-devol-val', fmtBRL(kpiDevolCurr));
             const elDevolPerc = document.getElementById('kpi-devol-perc');
             elDevolPerc.textContent = fmtPerc(percDevol);
             elDevolPerc.className = `text-lg font-bold ${percDevol > 0 ? 'text-red-400' : 'text-emerald-400'}`;
-            document.getElementById('kpi-devol-sec').textContent = fmtBRL(kpiTotalSoldBaseCurr);
+            updateEl('kpi-devol-sec', fmtBRL(kpiTotalSoldBaseCurr));
 
             // 4. Devolução Variation
-            document.getElementById('kpi-devol-var-val').textContent = fmtBRL(kpiDevolCurr);
+            updateEl('kpi-devol-var-val', fmtBRL(kpiDevolCurr));
             const elDevolVarPerc = document.getElementById('kpi-devol-var-perc');
             elDevolVarPerc.textContent = `${varDevol > 0 ? '+' : ''}${formatPercentage(varDevol, 1)}`;
             elDevolVarPerc.className = `text-lg font-bold ${varDevol <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-devol-var-sec').textContent = fmtBRL(kpiDevolPrev);
+            updateEl('kpi-devol-var-sec', fmtBRL(kpiDevolPrev));
 
             // 5. Mix PDV
-            document.getElementById('kpi-mix-val').textContent = formatNumber(avgMixCurr, 2);
+            updateEl('kpi-mix-val', formatNumber(avgMixCurr, 2));
             const elMixPerc = document.getElementById('kpi-mix-perc');
             elMixPerc.textContent = `${varMix > 0 ? '+' : ''}${formatPercentage(varMix, 1)}`;
             elMixPerc.className = `text-lg font-bold ${varMix >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-mix-sec').textContent = formatNumber(avgMixPrev, 2);
+            updateEl('kpi-mix-sec', formatNumber(avgMixPrev, 2));
         } catch (err) {
             AppLog.error('Error updating new KPIs:', err);
         }
@@ -4630,10 +4627,10 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         const mName = monthNames[targetIndex]?.toUpperCase() || "";
         
         // Update Titles
-        document.getElementById('kpi-title-evo-ano-fat').textContent = kpiTitleFat;
-        document.getElementById('kpi-title-evo-ano-kg').textContent = kpiTitleKg;
-        document.getElementById('kpi-title-evo-tri-fat').textContent = `Tend. FAT ${mName} vs Trim. Ant.`;
-        document.getElementById('kpi-title-evo-tri-kg').textContent = `Tend. TON ${mName} vs Trim. Ant.`;
+        updateEl('kpi-title-evo-ano-fat', kpiTitleFat);
+        updateEl('kpi-title-evo-ano-kg', kpiTitleKg);
+        updateEl('kpi-title-evo-tri-fat', `Tend. FAT ${mName} vs Trim. Ant.`);
+        updateEl('kpi-title-evo-tri-kg', `Tend. TON ${mName} vs Trim. Ant.`);
 
         // --- CHART PREP (Responsive to Mode) ---
         const mainChartTitle = document.getElementById('main-chart-title');
@@ -5295,8 +5292,7 @@ const body = document.getElementById('city-segmentation-table-body');
         const categoryRanking = data.category_ranking ? (Array.isArray(data.category_ranking) ? data.category_ranking : mapRows(data.category_ranking)) : [];
         const totalSaltyPos = data.total_salty_pos || 0;
         
-        const elTotalSalty = document.getElementById('city-total-salty-pos');
-        if(elTotalSalty) elTotalSalty.textContent = totalSaltyPos;
+        updateEl('city-total-salty-pos', totalSaltyPos);
 
         // Refactored to use declarative template literals and innerHTML instead of verbose document.createElement logic.
         // This improves readability, maintainability, and significantly reduces code size while preserving XSS safety via escapeHtml.
@@ -5716,10 +5712,10 @@ const body = document.getElementById('city-segmentation-table-body');
          const val1Kg = kpiBranches[b1]?.peso || 0;
          const val2Kg = kpiBranches[b2]?.peso || 0;
 
-         const elB1Name = document.getElementById('branch-name-1'); if(elB1Name) elB1Name.textContent = b1;
-         const elB2Name = document.getElementById('branch-name-2'); if(elB2Name) elB2Name.textContent = b2;
-         const elVal1Fat = document.getElementById('branch-val-1-fat'); if(elVal1Fat) elVal1Fat.textContent = formatCurrency(val1Fat);
-         const elVal2Fat = document.getElementById('branch-val-2-fat'); if(elVal2Fat) elVal2Fat.textContent = formatCurrency(val2Fat);
+         updateEl('branch-name-1', b1);
+         updateEl('branch-name-2', b2);
+         updateEl('branch-val-1-fat', formatCurrency(val1Fat));
+         updateEl('branch-val-2-fat', formatCurrency(val2Fat));
          
          // Variations Logic
          // Share of Total (Val / Total)
@@ -5745,10 +5741,10 @@ const body = document.getElementById('city-segmentation-table-body');
          }
 
 
-         const elB1NameKg = document.getElementById('branch-name-1-kg'); if(elB1NameKg) elB1NameKg.textContent = b1;
-         const elB2NameKg = document.getElementById('branch-name-2-kg'); if(elB2NameKg) elB2NameKg.textContent = b2;
-         const elVal1Kg = document.getElementById('branch-val-1-kg'); if(elVal1Kg) elVal1Kg.textContent = formatTons(val1Kg, 1);
-         const elVal2Kg = document.getElementById('branch-val-2-kg'); if(elVal2Kg) elVal2Kg.textContent = formatTons(val2Kg, 1);
+         updateEl('branch-name-1-kg', b1);
+         updateEl('branch-name-2-kg', b2);
+         updateEl('branch-val-1-kg', formatTons(val1Kg, 1));
+         updateEl('branch-val-2-kg', formatTons(val2Kg, 1));
 
          const totalKg = val1Kg + val2Kg;
          const share1Kg = calcShare(val1Kg, totalKg);
@@ -5776,14 +5772,14 @@ const body = document.getElementById('city-segmentation-table-body');
                  kpiContext = `Ano ${selectedYear}`;
              }
          }
-         const elTitleFat = document.getElementById('branch-kpi-title-fat'); if(elTitleFat) elTitleFat.textContent = `Faturamento (${kpiContext})`;
-         const elTitleKg = document.getElementById('branch-kpi-title-kg'); if(elTitleKg) elTitleKg.textContent = `Tonelagem (${kpiContext})`;
+         updateEl('branch-kpi-title-fat', `Faturamento (${kpiContext})`);
+         updateEl('branch-kpi-title-kg', `Tonelagem (${kpiContext})`);
 
-         const elTotalTitleFat = document.getElementById('branch-total-kpi-title-fat'); if(elTotalTitleFat) elTotalTitleFat.textContent = `Faturamento Total (${kpiContext})`;
-         const elTotalTitleKg = document.getElementById('branch-total-kpi-title-kg'); if(elTotalTitleKg) elTotalTitleKg.textContent = `Tonelagem Total (${kpiContext})`;
+         updateEl('branch-total-kpi-title-fat', `Faturamento Total (${kpiContext})`);
+         updateEl('branch-total-kpi-title-kg', `Tonelagem Total (${kpiContext})`);
 
-         const elTotalValFat = document.getElementById('branch-total-fat-val'); if(elTotalValFat) elTotalValFat.textContent = formatCurrency(totalFat);
-         const elTotalValKg = document.getElementById('branch-total-kg-val'); if(elTotalValKg) elTotalValKg.textContent = formatTons(totalKg, 1);
+         updateEl('branch-total-fat-val', formatCurrency(totalFat));
+         updateEl('branch-total-kg-val', formatTons(totalKg, 1));
 
 
          // --- Chart Rendering ---
@@ -7876,8 +7872,7 @@ function renderInnovationsKPIs(data) {
     const baseClients = data.kpi_clients_base || 0;
 
     // Total Clients (Base Total)
-    const activeClientsEl = document.getElementById('innovations-month-active-clients-kpi');
-    if (activeClientsEl) activeClientsEl.textContent = formatNumber(baseClients, 0);
+    updateEl('innovations-month-active-clients-kpi', formatNumber(baseClients, 0));
 
     // Calculate Best Coverage & Avg Per Client
     let bestCategory = null;
@@ -8884,8 +8879,7 @@ function renderLpKPIs(kpis) {
     if (perfStoresEl) {
         let pct = kpis.total_audits > 0 ? (kpis.perfect_stores / kpis.total_audits) * 100 : 0;
         perfStoresEl.textContent = formatPercentage(pct, 1);
-        const sub = document.getElementById('lp-kpi-perfect-stores-sub');
-        if (sub) sub.textContent = formatNumber(kpis.perfect_stores, 0) + ' Auditorias';
+        updateEl('lp-kpi-perfect-stores-sub', formatNumber(kpis.perfect_stores, 0) + ' Auditorias');
     }
 }
 
@@ -9474,16 +9468,7 @@ async function updateEstrelasView() {
         const metaPos = data.positivacao_meta || 0;
         const metaAcel = data.aceleradores_meta || 0;
 
-        // Helper function to safely update DOM
-        const updateEl = (id, val, isStyle = false) => {
-            const el = document.getElementById(id);
-            if (el) {
-                if (isStyle) el.style.width = val;
-                else el.textContent = val;
-            }
-        };
-
-        // Update UI
+// Update UI
         updateEl('sellout-meta-val', `${metaSellout.toFixed(2)} tons`);
         updateEl('sellout-meta-salty-val', `${metaSelloutSalty.toFixed(2)} tons`);
         updateEl('sellout-meta-foods-val', `${metaSelloutFoods.toFixed(2)} tons`);
@@ -9778,8 +9763,8 @@ function renderFrequencyChart(data) {
     const currentYear = data.current_year;
     const previousYear = data.previous_year;
 
-    document.getElementById('freq-chart-legend-curr').textContent = currentYear;
-    document.getElementById('freq-chart-legend-prev').textContent = previousYear;
+    updateEl('freq-chart-legend-curr', currentYear);
+    updateEl('freq-chart-legend-prev', previousYear);
 
     const monthInitials = MONTHS_PT_INITIALS;
 
@@ -10197,15 +10182,15 @@ async function updateAgendaView() {
         
         const calcPct = (val, total) => total > 0 ? Math.round((val / total) * 100) : 0;
         
-        document.getElementById('agenda-kpi-total-dias').textContent = formatInteger(totalDias);
-        document.getElementById('agenda-kpi-preenchidos').textContent = formatInteger(preenchidos);
-        document.getElementById('agenda-kpi-preenchidos-pct').textContent = `${calcPct(preenchidos, totalDias)}%`;
+        updateEl('agenda-kpi-total-dias', formatInteger(totalDias));
+        updateEl('agenda-kpi-preenchidos', formatInteger(preenchidos));
+        updateEl('agenda-kpi-preenchidos-pct', `${calcPct(preenchidos, totalDias)}%`);
         
-        document.getElementById('agenda-kpi-pendentes').textContent = formatInteger(pendentes);
-        document.getElementById('agenda-kpi-pendentes-pct').textContent = `${calcPct(pendentes, totalDias)}%`;
+        updateEl('agenda-kpi-pendentes', formatInteger(pendentes));
+        updateEl('agenda-kpi-pendentes-pct', `${calcPct(pendentes, totalDias)}%`);
         
-        document.getElementById('agenda-kpi-foco').textContent = formatInteger(foco);
-        document.getElementById('agenda-kpi-foco-pct').textContent = `${calcPct(foco, totalDias)}%`;
+        updateEl('agenda-kpi-foco', formatInteger(foco));
+        updateEl('agenda-kpi-foco-pct', `${calcPct(foco, totalDias)}%`);
         
         // Render Table
         const tbody = document.getElementById('agenda-table-body');
