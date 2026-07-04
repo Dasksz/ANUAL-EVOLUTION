@@ -375,3 +375,11 @@ export function resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMon
         mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
     }
 }
+
+export function updateEl(id, val, isStyle = false) {
+    const el = document.getElementById(id);
+    if (el) {
+        if (isStyle) el.style.width = val;
+        else el.textContent = val;
+    }
+}

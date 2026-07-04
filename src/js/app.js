@@ -2,7 +2,7 @@ import supabase from './supabase.js?v=5';
 
 import {
     generateYearOptionsHtml,
-    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
+    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast, updateEl} from './utils.js';
 
 
 let estrelasDetailedData = [];
@@ -4701,12 +4701,9 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     function updateKpiCard({ prefix, trendVal, prevVal, fmt, calcEvo }) {
         const evo = calcEvo(trendVal, prevVal);
         
-        const elTrend = document.getElementById(`kpi-value-trend-${prefix}`);
-        const elPrev = document.getElementById(`kpi-value-prev-${prefix}`);
+        updateEl(`kpi-value-trend-${prefix}`, fmt(trendVal));
+        updateEl(`kpi-value-prev-${prefix}`, fmt(prevVal));
         const elVar = document.getElementById(`kpi-var-${prefix}`);
-
-        if (elTrend) elTrend.textContent = fmt(trendVal);
-        if (elPrev) elPrev.textContent = fmt(prevVal);
         if (elVar) {
             elVar.textContent = `${evo > 0 ? '+' : ''}${formatPercentage(evo, 1)}`;
             elVar.className = `font-bold ${evo >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
@@ -7876,8 +7873,7 @@ function renderInnovationsKPIs(data) {
     const baseClients = data.kpi_clients_base || 0;
 
     // Total Clients (Base Total)
-    const activeClientsEl = document.getElementById('innovations-month-active-clients-kpi');
-    if (activeClientsEl) activeClientsEl.textContent = formatNumber(baseClients, 0);
+    updateEl('innovations-month-active-clients-kpi', formatNumber(baseClients, 0));
 
     // Calculate Best Coverage & Avg Per Client
     let bestCategory = null;
@@ -7903,23 +7899,16 @@ function renderInnovationsKPIs(data) {
         totalSelectionPos += cat.pos_current;
     });
 
-    const topCovTitle = document.getElementById('innovations-month-top-coverage-title');
-    const topCovKpi = document.getElementById('innovations-month-top-coverage-kpi');
-    const topCovCount = document.getElementById('innovations-month-top-coverage-count-kpi');
-    const topCovValue = document.getElementById('innovations-month-top-coverage-value-kpi');
-    const topCovLabel = document.getElementById('innovations-month-top-coverage-label');
-
-    if (topCovTitle) topCovTitle.textContent = bestCategory || 'N/A';
-    if (topCovLabel) topCovLabel.textContent = 'Melhor Categoria';
+    updateEl('innovations-month-top-coverage-title', bestCategory || 'N/A');
+    updateEl('innovations-month-top-coverage-label', 'Melhor Categoria');
     
     // Changing the count label to the calculated average
-    if (topCovKpi) topCovKpi.textContent = bestAvgPerClient > 0 ? bestAvgPerClient.toFixed(2) : '0.00';
-    if (topCovCount) topCovCount.textContent = 'Média Produtos';
+    updateEl('innovations-month-top-coverage-kpi', bestAvgPerClient > 0 ? bestAvgPerClient.toFixed(2) : '0.00');
+    updateEl('innovations-month-top-coverage-count-kpi', 'Média Produtos');
     
-    if (topCovValue) topCovValue.textContent = '';
+    updateEl('innovations-month-top-coverage-value-kpi', '');
 
     // Selection Percent
-    const selCovValue = document.getElementById('innovations-month-selection-coverage-value-kpi');
     let selPercent = 0;
 
     // Check if we have the new direct counts
@@ -7929,7 +7918,7 @@ function renderInnovationsKPIs(data) {
         // Fallback logic
         selPercent = activeClients > 0 ? (totalSelectionPos / (activeClients * (categories.length > 0 ? categories.length : 1))) * 100 : 0;
     }
-    if (selCovValue) selCovValue.textContent = formatPercentage(selPercent, 2);
+    updateEl('innovations-month-selection-coverage-value-kpi', formatPercentage(selPercent, 2));
 
     // Selection Count
     const selCovCount = document.getElementById('innovations-month-selection-coverage-count-kpi');
@@ -8873,20 +8862,14 @@ function renderLpEvolutionChart(chartData) {
 function renderLpKPIs(kpis) {
     if (!kpis) return;
 
-    const avgScoreEl = document.getElementById('lp-kpi-avg-score');
-    const totalAuditsEl = document.getElementById('lp-kpi-total-audits');
-    const perfStoresEl = document.getElementById('lp-kpi-perfect-stores');
     const avgScoreCircle = document.getElementById('lp-avg-score-circle'); // Pode precisar do chart
 
-    if (avgScoreEl) avgScoreEl.textContent = formatNumber(kpis.avg_score, 1);
-    if (totalAuditsEl) totalAuditsEl.textContent = formatNumber(kpis.total_audits, 0);
+    updateEl('lp-kpi-avg-score', formatNumber(kpis.avg_score, 1));
+    updateEl('lp-kpi-total-audits', formatNumber(kpis.total_audits, 0));
 
-    if (perfStoresEl) {
-        let pct = kpis.total_audits > 0 ? (kpis.perfect_stores / kpis.total_audits) * 100 : 0;
-        perfStoresEl.textContent = formatPercentage(pct, 1);
-        const sub = document.getElementById('lp-kpi-perfect-stores-sub');
-        if (sub) sub.textContent = formatNumber(kpis.perfect_stores, 0) + ' Auditorias';
-    }
+    let pct = kpis.total_audits > 0 ? (kpis.perfect_stores / kpis.total_audits) * 100 : 0;
+    updateEl('lp-kpi-perfect-stores', formatPercentage(pct, 1));
+    updateEl('lp-kpi-perfect-stores-sub', formatNumber(kpis.perfect_stores, 0) + ' Auditorias');
 }
 
 window.prevLpPage = function() {
@@ -9474,14 +9457,7 @@ async function updateEstrelasView() {
         const metaPos = data.positivacao_meta || 0;
         const metaAcel = data.aceleradores_meta || 0;
 
-        // Helper function to safely update DOM
-        const updateEl = (id, val, isStyle = false) => {
-            const el = document.getElementById(id);
-            if (el) {
-                if (isStyle) el.style.width = val;
-                else el.textContent = val;
-            }
-        };
+
 
         // Update UI
         updateEl('sellout-meta-val', `${metaSellout.toFixed(2)} tons`);
