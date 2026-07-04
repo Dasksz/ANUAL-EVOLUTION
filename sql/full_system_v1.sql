@@ -3231,7 +3231,7 @@ BEGIN
                 SELECT 
                     mes - 1 as m_idx,
                     ano as yr,
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3241,7 +3241,7 @@ BEGIN
             ),
             kpi_curr AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3250,7 +3250,7 @@ BEGIN
             ),
             kpi_prev AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3259,7 +3259,7 @@ BEGIN
             ),
             kpi_tri AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN bonificacao::numeric ELSE vlvenda::numeric END) / 3 as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao::numeric ELSE vlvenda::numeric END) / 3 as fat,
                     SUM(peso) / 3 as peso,
                     SUM(COALESCE(caixas, 0)) / 3 as caixas,
                     COALESCE((
@@ -3291,7 +3291,7 @@ BEGIN
                     produto,
                     MAX(descricao) as descricao,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN bonificacao::numeric ELSE vlvenda::numeric END) as faturamento,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as faturamento,
                     SUM(totpesoliq) as peso,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
                     MAX(dtped) as ultima_venda
@@ -3312,7 +3312,7 @@ BEGIN
         v_active_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
         v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
-        v_where_raw, v_previous_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
+        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
         v_active_client_cond_slow -- Prod Agg
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
@@ -3335,7 +3335,7 @@ BEGIN
                 SELECT 
                     EXTRACT(MONTH FROM dtped)::int - 1 as m_idx,
                     EXTRACT(YEAR FROM dtped)::int as yr,
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3345,7 +3345,7 @@ BEGIN
             ),
             kpi_curr AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3354,7 +3354,7 @@ BEGIN
             ),
             kpi_prev AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3363,7 +3363,7 @@ BEGIN
             ),
             kpi_tri AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN vlbonific::numeric ELSE vlvenda::numeric END) / 3 as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) / 3 as fat,
                     SUM(totpesoliq) / 3 as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) / 3 as caixas,
                     COALESCE((
@@ -3383,7 +3383,7 @@ BEGIN
                     produto,
                     MAX(descricao) as descricao,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN vlbonific::numeric ELSE vlvenda::numeric END) as faturamento,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as faturamento,
                     SUM(totpesoliq) as peso,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
                     MAX(dtped) as ultima_venda
