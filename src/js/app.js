@@ -2,7 +2,7 @@ import supabase from './supabase.js?v=5';
 
 import {
     generateYearOptionsHtml,
-    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
+    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, resetDateDropdowns, clearArrays , showToast} from './utils.js';
 
 
 let estrelasDetailedData = [];
@@ -2135,10 +2135,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
     clearFiltersBtn.addEventListener('click', async () => {
         // Reset Single Selects
-        anoFilter.value = 'todos';
-        anoFilter.dispatchEvent(new Event('change', { bubbles: true }));
-        mesFilter.value = '';
-        mesFilter.dispatchEvent(new Event('change', { bubbles: true }));
+        resetDateDropdowns(anoFilter, mesFilter, 'todos', '');
 
         // Update custom dropdown visual text
         if (anoFilter.nextElementSibling && anoFilter.nextElementSibling.tagName === 'BUTTON') {
@@ -3063,10 +3060,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
     if (boxesClearFiltersBtn) {
         boxesClearFiltersBtn.addEventListener('click', () => {
-            boxesAnoFilter.value = 'todos';
-            boxesAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
-            boxesMesFilter.value = '';
-            boxesMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
+            resetDateDropdowns(boxesAnoFilter, boxesMesFilter, 'todos', '');
             clearArrays(boxesSelectedFiliais, boxesSelectedProducts, boxesSelectedSupervisores, boxesSelectedVendedores, boxesSelectedFornecedores, boxesSelectedCidades, boxesSelectedTiposVenda, boxesSelectedCategorias);
             boxesTrendActive = false; // Reset Trend
             const span = document.getElementById('boxes-trend-text');
@@ -4941,10 +4935,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
     if (cityClearFiltersBtn) {
         cityClearFiltersBtn.addEventListener('click', () => {
-             cityAnoFilter.value = 'todos';
-             cityAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
-             cityMesFilter.value = '';
-             cityMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
+             resetDateDropdowns(cityAnoFilter, cityMesFilter, 'todos', '');
              clearArrays(citySelectedFiliais, citySelectedCidades, citySelectedSupervisores, citySelectedVendedores, citySelectedFornecedores, citySelectedTiposVenda, citySelectedSegmentacoes, citySelectedRedes, citySelectedCategorias);
              initCityFilters().then(loadCityView);
         });
@@ -5439,10 +5430,7 @@ const body = document.getElementById('city-segmentation-table-body');
     });
     
     branchClearFiltersBtn?.addEventListener('click', () => {
-         branchAnoFilter.value = 'todos';
-         branchAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
-         branchMesFilter.value = '';
-         branchMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
+         resetDateDropdowns(branchAnoFilter, branchMesFilter, 'todos', '');
          clearArrays(branchSelectedFiliais, branchSelectedCidades, branchSelectedSupervisores, branchSelectedVendedores, branchSelectedFornecedores, branchSelectedTiposVenda, branchSelectedRedes, branchSelectedCategorias); // // Reset but re-init will likely pick first 2
          // Re-init filters to update UI
          initBranchFilters().then(loadBranchView);
