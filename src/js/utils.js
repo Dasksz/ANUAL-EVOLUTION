@@ -375,3 +375,23 @@ export function resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMon
         mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
     }
 }
+
+
+/**
+ * Toggles a dropdown menu, ensuring all other dropdowns are closed.
+ * Centralizes the repeated logic for opening/closing dropdowns in app.js.
+ * @param {Event} e - The click event from the button.
+ * @param {HTMLElement} dropdown - The dropdown element to toggle.
+ * @param {Function} [onOpenCallback] - Optional callback to run just before opening the dropdown.
+ */
+export function toggleDropdown(e, dropdown, onOpenCallback = null, onCloseCallback = null) {
+    if (e) e.stopPropagation();
+    const isHidden = dropdown.classList.contains('hidden');
+    closeAllDropdowns();
+    if (isHidden) {
+        if (typeof onOpenCallback === 'function') onOpenCallback();
+        dropdown.classList.remove('hidden');
+    } else {
+        if (typeof onCloseCallback === 'function') onCloseCallback();
+    }
+}

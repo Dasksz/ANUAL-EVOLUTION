@@ -2,7 +2,7 @@ import supabase from './supabase.js?v=5';
 
 import {
     generateYearOptionsHtml,
-    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
+    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast, toggleDropdown} from './utils.js';
 
 
 let estrelasDetailedData = [];
@@ -3710,16 +3710,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         }
 
         const MAX_ITEMS = 100;
-        btn.onclick = (e) => {
-        e.stopPropagation();
-        const isHidden = dropdown.classList.contains('hidden');
-        // Close all dropdowns
-        closeAllDropdowns();
-        // Restore this one if it was hidden
-        if (isHidden) {
-            dropdown.classList.remove('hidden');
-        }
-    };
+        btn.onclick = (e) => toggleDropdown(e, dropdown);
         
         // ⚡ Bolt Optimization: Attach event listener to container once (Event Delegation)
         // to avoid O(N) DOM queries and listener overhead on every render.
@@ -3938,23 +3929,19 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
         // Handle button click
         btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isHidden = dropdown.classList.contains('hidden');
-
-            // Close all dropdowns
-            closeAllDropdowns();
-
-            if (isHidden) {
-                updateVisualState(); // Sync visuals just before opening
-                dropdown.classList.remove('hidden');
-                initialValueOnOpen = selectElement.value; // Store value when opened
-            } else {
-                dropdown.classList.add('hidden');
-                // Trigger change if value changed while open
-                if (selectElement.value !== initialValueOnOpen) {
-                    selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+            toggleDropdown(e, dropdown,
+                () => { // onOpen
+                    updateVisualState(); // Sync visuals just before opening
+                    initialValueOnOpen = selectElement.value; // Store value when opened
+                },
+                () => { // onClose
+                    dropdown.classList.add('hidden');
+                    // Trigger change if value changed while open
+                    if (selectElement.value !== initialValueOnOpen) {
+                        selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
                 }
-            }
+            );
         });
 
         // Close on click outside
@@ -5505,16 +5492,7 @@ const body = document.getElementById('city-segmentation-table-body');
             if(items.length > 1) selectedArray.push(String(items[1]));
         }
 
-        btn.onclick = (e) => {
-        e.stopPropagation();
-        const isHidden = dropdown.classList.contains('hidden');
-        // Close all dropdowns
-        closeAllDropdowns();
-        // Restore this one if it was hidden
-        if (isHidden) {
-            dropdown.classList.remove('hidden');
-        }
-    };
+        btn.onclick = (e) => toggleDropdown(e, dropdown);
         
         const selectedSet = new Set(selectedArray);
 
