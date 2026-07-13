@@ -2,7 +2,7 @@ import supabase from './supabase.js?v=5';
 
 import {
     generateYearOptionsHtml,
-    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
+    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast, updateEl} from './utils.js';
 
 
 let estrelasDetailedData = [];
@@ -3237,9 +3237,9 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         const pageData = displayData.slice(startIndex, endIndex);
 
         // Update pagination UI text
-        document.getElementById('boxes-page-start').textContent = totalItems > 0 ? startIndex + 1 : 0;
-        document.getElementById('boxes-page-end').textContent = endIndex;
-        document.getElementById('boxes-page-total').textContent = totalItems;
+        updateEl('boxes-page-start', totalItems > 0 ? startIndex + 1 : 0);
+        updateEl('boxes-page-end', endIndex);
+        updateEl('boxes-page-total', totalItems);
 
         // Render rows
         if (pageData.length > 0) {
@@ -4339,7 +4339,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         holidays = data.holidays || [];
         // Calendar is now rendered on modal open
 
-        document.getElementById('kpi-clients-attended').textContent = formatInteger(data.kpi_clients_attended);
+        updateEl('kpi-clients-attended', formatInteger(data.kpi_clients_attended));
         const baseEl = document.getElementById('kpi-clients-base');
         if (data.kpi_clients_base > 0) {
             baseEl.textContent = `de ${formatInteger(data.kpi_clients_base)} na base`;
@@ -4516,46 +4516,46 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             const fmtPerc = (v) => `${formatPercentage((isNaN(v) ? 0 : v), 1)}`;
 
             // 1. Bonification
-            document.getElementById('kpi-bonif-val').textContent = fmtBRL(kpiBonifCurr);
+            updateEl('kpi-bonif-val', fmtBRL(kpiBonifCurr));
             const elBonifPerc = document.getElementById('kpi-bonif-perc');
             elBonifPerc.textContent = fmtPerc(percBonif);
             elBonifPerc.className = `text-lg font-bold ${percBonif <= 1.5 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-bonif-sec').textContent = fmtBRL(kpiTotalSoldBaseCurr);
+            updateEl('kpi-bonif-sec', fmtBRL(kpiTotalSoldBaseCurr));
 
             // Update Corner Types (05, 11) - Defensive check
             const safeTypes = (typeof selectedTiposVenda !== 'undefined' && Array.isArray(selectedTiposVenda)) ? selectedTiposVenda : [];
             const types = safeTypes.filter(t => t === '5' || t === '11').sort().join(' e ');
             const typeLabel = types ? types : '05 e 11';
-            document.getElementById('kpi-bonif-types').textContent = typeLabel;
-            document.getElementById('kpi-bonif-var-types').textContent = typeLabel;
+            updateEl('kpi-bonif-types', typeLabel);
+            updateEl('kpi-bonif-var-types', typeLabel);
 
             // 2. Bonification Variation
-            document.getElementById('kpi-bonif-var-val').textContent = fmtBRL(kpiBonifCurr);
+            updateEl('kpi-bonif-var-val', fmtBRL(kpiBonifCurr));
             const elBonifVarPerc = document.getElementById('kpi-bonif-var-perc');
             elBonifVarPerc.textContent = `${varBonif > 0 ? '+' : ''}${formatPercentage(varBonif, 1)}`;
             elBonifVarPerc.className = `text-lg font-bold ${varBonif <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-bonif-var-sec').textContent = fmtBRL(kpiBonifPrev);
+            updateEl('kpi-bonif-var-sec', fmtBRL(kpiBonifPrev));
 
             // 3. Devolução
-            document.getElementById('kpi-devol-val').textContent = fmtBRL(kpiDevolCurr);
+            updateEl('kpi-devol-val', fmtBRL(kpiDevolCurr));
             const elDevolPerc = document.getElementById('kpi-devol-perc');
             elDevolPerc.textContent = fmtPerc(percDevol);
             elDevolPerc.className = `text-lg font-bold ${percDevol > 0 ? 'text-red-400' : 'text-emerald-400'}`;
-            document.getElementById('kpi-devol-sec').textContent = fmtBRL(kpiTotalSoldBaseCurr);
+            updateEl('kpi-devol-sec', fmtBRL(kpiTotalSoldBaseCurr));
 
             // 4. Devolução Variation
-            document.getElementById('kpi-devol-var-val').textContent = fmtBRL(kpiDevolCurr);
+            updateEl('kpi-devol-var-val', fmtBRL(kpiDevolCurr));
             const elDevolVarPerc = document.getElementById('kpi-devol-var-perc');
             elDevolVarPerc.textContent = `${varDevol > 0 ? '+' : ''}${formatPercentage(varDevol, 1)}`;
             elDevolVarPerc.className = `text-lg font-bold ${varDevol <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-devol-var-sec').textContent = fmtBRL(kpiDevolPrev);
+            updateEl('kpi-devol-var-sec', fmtBRL(kpiDevolPrev));
 
             // 5. Mix PDV
-            document.getElementById('kpi-mix-val').textContent = formatNumber(avgMixCurr, 2);
+            updateEl('kpi-mix-val', formatNumber(avgMixCurr, 2));
             const elMixPerc = document.getElementById('kpi-mix-perc');
             elMixPerc.textContent = `${varMix > 0 ? '+' : ''}${formatPercentage(varMix, 1)}`;
             elMixPerc.className = `text-lg font-bold ${varMix >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-mix-sec').textContent = formatNumber(avgMixPrev, 2);
+            updateEl('kpi-mix-sec', formatNumber(avgMixPrev, 2));
         } catch (err) {
             AppLog.error('Error updating new KPIs:', err);
         }
@@ -4630,10 +4630,10 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         const mName = monthNames[targetIndex]?.toUpperCase() || "";
         
         // Update Titles
-        document.getElementById('kpi-title-evo-ano-fat').textContent = kpiTitleFat;
-        document.getElementById('kpi-title-evo-ano-kg').textContent = kpiTitleKg;
-        document.getElementById('kpi-title-evo-tri-fat').textContent = `Tend. FAT ${mName} vs Trim. Ant.`;
-        document.getElementById('kpi-title-evo-tri-kg').textContent = `Tend. TON ${mName} vs Trim. Ant.`;
+        updateEl('kpi-title-evo-ano-fat', kpiTitleFat);
+        updateEl('kpi-title-evo-ano-kg', kpiTitleKg);
+        updateEl('kpi-title-evo-tri-fat', `Tend. FAT ${mName} vs Trim. Ant.`);
+        updateEl('kpi-title-evo-tri-kg', `Tend. TON ${mName} vs Trim. Ant.`);
 
         // --- CHART PREP (Responsive to Mode) ---
         const mainChartTitle = document.getElementById('main-chart-title');
@@ -9475,13 +9475,7 @@ async function updateEstrelasView() {
         const metaAcel = data.aceleradores_meta || 0;
 
         // Helper function to safely update DOM
-        const updateEl = (id, val, isStyle = false) => {
-            const el = document.getElementById(id);
-            if (el) {
-                if (isStyle) el.style.width = val;
-                else el.textContent = val;
-            }
-        };
+
 
         // Update UI
         updateEl('sellout-meta-val', `${metaSellout.toFixed(2)} tons`);
@@ -9778,8 +9772,8 @@ function renderFrequencyChart(data) {
     const currentYear = data.current_year;
     const previousYear = data.previous_year;
 
-    document.getElementById('freq-chart-legend-curr').textContent = currentYear;
-    document.getElementById('freq-chart-legend-prev').textContent = previousYear;
+    updateEl('freq-chart-legend-curr', currentYear);
+    updateEl('freq-chart-legend-prev', previousYear);
 
     const monthInitials = MONTHS_PT_INITIALS;
 
@@ -10197,15 +10191,15 @@ async function updateAgendaView() {
         
         const calcPct = (val, total) => total > 0 ? Math.round((val / total) * 100) : 0;
         
-        document.getElementById('agenda-kpi-total-dias').textContent = formatInteger(totalDias);
-        document.getElementById('agenda-kpi-preenchidos').textContent = formatInteger(preenchidos);
-        document.getElementById('agenda-kpi-preenchidos-pct').textContent = `${calcPct(preenchidos, totalDias)}%`;
+        updateEl('agenda-kpi-total-dias', formatInteger(totalDias));
+        updateEl('agenda-kpi-preenchidos', formatInteger(preenchidos));
+        updateEl('agenda-kpi-preenchidos-pct', `${calcPct(preenchidos, totalDias)}%`);
         
-        document.getElementById('agenda-kpi-pendentes').textContent = formatInteger(pendentes);
-        document.getElementById('agenda-kpi-pendentes-pct').textContent = `${calcPct(pendentes, totalDias)}%`;
+        updateEl('agenda-kpi-pendentes', formatInteger(pendentes));
+        updateEl('agenda-kpi-pendentes-pct', `${calcPct(pendentes, totalDias)}%`);
         
-        document.getElementById('agenda-kpi-foco').textContent = formatInteger(foco);
-        document.getElementById('agenda-kpi-foco-pct').textContent = `${calcPct(foco, totalDias)}%`;
+        updateEl('agenda-kpi-foco', formatInteger(foco));
+        updateEl('agenda-kpi-foco-pct', `${calcPct(foco, totalDias)}%`);
         
         // Render Table
         const tbody = document.getElementById('agenda-table-body');
