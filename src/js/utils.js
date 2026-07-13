@@ -375,3 +375,19 @@ export function resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMon
         mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
     }
 }
+
+
+/**
+ * Safely updates an element's textContent or style without throwing null errors.
+ * Improves readability by centralizing repetitive ID-based updates and null checks.
+ * @param {string} id - The DOM element ID.
+ * @param {string|number} val - The value to set.
+ * @param {boolean} isStyle - If true, updates style.width instead of textContent.
+ */
+export function updateEl(id, val, isStyle = false) {
+    const el = document.getElementById(id);
+    if (el) {
+        if (isStyle) el.style.width = val;
+        else el.textContent = val;
+    }
+}
