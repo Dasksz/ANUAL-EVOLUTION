@@ -375,3 +375,17 @@ export function resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMon
         mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
     }
 }
+
+/**
+ * Renders an empty or error state row for tables.
+ * Improves DRY by removing repetitive HTML string literals across the app.
+ * @param {number} colspan - The number of columns to span.
+ * @param {string} message - The message to display.
+ * @param {boolean} isError - If true, displays the text in red; otherwise, slate.
+ * @param {string} extraClasses - Extra padding or styling classes (default is 'p-4').
+ * @returns {string} The HTML string for the empty/error row.
+ */
+export function renderTableEmptyState(colspan, message = 'Nenhum dado encontrado.', isError = false, extraClasses = 'p-4') {
+    const textColorClass = isError ? 'text-red-500' : 'text-slate-500';
+    return `<tr><td colspan="${colspan}" class="${extraClasses} text-center ${textColorClass}">${escapeHtml(message)}</td></tr>`;
+}

@@ -2,7 +2,7 @@ import supabase from './supabase.js?v=5';
 
 import {
     generateYearOptionsHtml,
-    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
+    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast, renderTableEmptyState } from './utils.js';
 
 
 let estrelasDetailedData = [];
@@ -3261,7 +3261,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 </tr>
             `).join('');
         } else {
-            tableBody.innerHTML = '<tr><td colspan="9" class="p-4 text-center text-slate-500">Nenhum produto encontrado.</td></tr>';
+            tableBody.innerHTML = renderTableEmptyState(9, 'Nenhum produto encontrado.');
         }
 
         // Render pagination controls
@@ -5074,12 +5074,12 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
             if (error) {
                 AppLog.error('Error fetching city positivity data:', error);
-                body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-red-500">Erro ao carregar dados.</td></tr>';
+                body.innerHTML = renderTableEmptyState(7, 'Erro ao carregar dados.', true);
                 return;
             }
 
             if (!data || data.length === 0) {
-                body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum dado encontrado para o período.</td></tr>';
+                body.innerHTML = renderTableEmptyState(7, 'Nenhum dado encontrado para o período.');
                 return;
             }
 
@@ -5129,7 +5129,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
         } catch (e) {
             AppLog.error('Exception loading city positivity table:', e);
-            body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-red-500">Erro inesperado.</td></tr>';
+            body.innerHTML = renderTableEmptyState(7, 'Erro inesperado.', true);
         } finally {
             body.classList.remove('opacity-50', 'pointer-events-none');
         }
@@ -5190,12 +5190,12 @@ const body = document.getElementById('city-segmentation-table-body');
 
             if (error) {
                 AppLog.error('Error fetching city segmentation data:', error);
-                body.innerHTML = '<tr><td colspan="14" class="p-4 text-center text-red-500">Erro ao carregar dados.</td></tr>';
+                body.innerHTML = renderTableEmptyState(14, 'Erro ao carregar dados.', true);
                 return;
             }
 
             if (!data || data.length === 0) {
-                body.innerHTML = '<tr><td colspan="14" class="p-4 text-center text-slate-500">Nenhum dado encontrado para o período.</td></tr>';
+                body.innerHTML = renderTableEmptyState(14, 'Nenhum dado encontrado para o período.');
                 return;
             }
 
@@ -5240,7 +5240,7 @@ const body = document.getElementById('city-segmentation-table-body');
 
         } catch (e) {
             AppLog.error('Exception loading city segmentation table:', e);
-            body.innerHTML = '<tr><td colspan="14" class="p-4 text-center text-red-500">Erro inesperado.</td></tr>';
+            body.innerHTML = renderTableEmptyState(14, 'Erro inesperado.', true);
         } finally {
             body.classList.remove('opacity-50', 'pointer-events-none', 'transition-opacity');
         }
@@ -5317,7 +5317,7 @@ const body = document.getElementById('city-segmentation-table-body');
                     </tr>
                 `).join('');
             } else {
-                body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>`;
+                body.innerHTML = renderTableEmptyState(7, 'Nenhum registro encontrado.');
             }
         };
 
@@ -5340,7 +5340,7 @@ const body = document.getElementById('city-segmentation-table-body');
                     `;
                 }).join('');
             } else {
-                body.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>`;
+                body.innerHTML = renderTableEmptyState(3, 'Nenhum registro encontrado.');
             }
         };
 
@@ -5369,7 +5369,7 @@ const body = document.getElementById('city-segmentation-table-body');
                     `;
                 }).join('');
             } else {
-                body.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>`;
+                body.innerHTML = renderTableEmptyState(3, 'Nenhum registro encontrado.');
             }
         };
 
@@ -8181,7 +8181,7 @@ window.renderInnovationsTable = function(data) {
     });
 
     if (data.categories.length === 0) {
-        html = '<tr><td colspan="8" class="p-4 text-center text-slate-500">Nenhum dado encontrado para os filtros selecionados.</td></tr>';
+        html = renderTableEmptyState(8, 'Nenhum dado encontrado para os filtros selecionados.');
     }
 
     tbody.innerHTML = html;
@@ -9569,7 +9569,7 @@ async function loadFrequencyTable(filters) {
 
     } catch (err) {
         AppLog.error("Erro ao carregar tabela de frequência ou mix:", err);
-        tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500 text-xs">Erro ao carregar dados.</td></tr>';
+        tableBody.innerHTML = renderTableEmptyState(8, 'Erro ao carregar dados.', true);
     }
 }
 
@@ -9580,7 +9580,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
     const treeData = data.tree_data || [];
 
     if (treeData.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-slate-400 text-xs">Nenhum dado encontrado</td></tr>';
+        tableBody.innerHTML = renderTableEmptyState(8, 'Nenhum dado encontrado');
         return;
     }
 
@@ -10212,7 +10212,7 @@ async function updateAgendaView() {
         if (!tbody) return;
         
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-500">Nenhum dado encontrado para os filtros selecionados.</td></tr>`;
+            tbody.innerHTML = renderTableEmptyState(8, 'Nenhum dado encontrado para os filtros selecionados.');
         } else {
             const getIconStatus = (isPreenchido) => {
                 if (isPreenchido) {
