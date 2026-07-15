@@ -375,3 +375,18 @@ export function resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMon
         mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
     }
 }
+
+
+/**
+ * Renders an empty or error state row for a table.
+ * Centralizes the HTML generation for empty states and prevents XSS.
+ * @param {number|string} colspan - The number of columns the row should span.
+ * @param {string} message - The message to display.
+ * @param {boolean} [isError=false] - Whether the state is an error state (changes text color to red).
+ * @param {string} [extraClasses='p-4 text-center'] - Extra classes for the cell.
+ * @returns {string} The HTML string for the table row.
+ */
+export function renderTableEmptyState(colspan, message, isError = false, extraClasses = 'p-4 text-center') {
+    const textColor = isError ? 'text-red-500' : 'text-slate-500';
+    return `<tr><td colspan="${escapeHtml(String(colspan))}" class="${escapeHtml(extraClasses)} ${textColor}">${escapeHtml(message)}</td></tr>`;
+}
