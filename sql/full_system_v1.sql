@@ -2214,7 +2214,7 @@ ALTER TABLE public.meta_estrelas ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow authenticated full access meta_estrelas" ON public.meta_estrelas;
 CREATE POLICY "Allow authenticated full access meta_estrelas" ON public.meta_estrelas
-    FOR ALL USING (auth.role() = 'authenticated');
+    FOR ALL USING ((SELECT auth.role()) = 'authenticated');
 
 CREATE TABLE IF NOT EXISTS public.config_aceleradores (
     id SERIAL PRIMARY KEY,
@@ -6356,7 +6356,7 @@ CREATE POLICY "Enable read access for all users" ON public.supervisors_routes
 
 DROP POLICY IF EXISTS "Enable update/insert for authenticated users" ON public.supervisors_routes;
 CREATE POLICY "Enable update/insert for authenticated users" ON public.supervisors_routes
-    FOR ALL USING (auth.role() = 'authenticated');
+    FOR ALL USING ((SELECT auth.role()) = 'authenticated');
 
 
 -- =========================================================================
@@ -6413,7 +6413,7 @@ CREATE POLICY "Enable read access for all users" ON public.n8n_auth_colaboradore
 
 DROP POLICY IF EXISTS "Enable update/insert for authenticated users" ON public.n8n_auth_colaboradores;
 CREATE POLICY "Enable update/insert for authenticated users" ON public.n8n_auth_colaboradores
-    FOR ALL USING (auth.role() = 'authenticated');
+    FOR ALL USING ((SELECT auth.role()) = 'authenticated');
 
 
 CREATE OR REPLACE FUNCTION public._run_full_system()
@@ -7492,3 +7492,22 @@ BEGIN
     RETURN v_result;
 END;
 $$;
+
+-- ==============================================================================
+-- 99. SECURITY FIXES (Supabase Linter)
+-- ==============================================================================
+-- Ensure all SECURITY DEFINER functions have a set search_path
+DO $$
+DECLARE
+    func record;
+BEGIN
+    FOR func IN
+        SELECT p.oid::regprocedure::text AS signature
+        FROM pg_proc p
+        JOIN pg_namespace n ON p.pronamespace = n.oid
+        WHERE n.nspname = 'public'
+          AND p.prosecdef = true
+    LOOP
+        EXECUTE 'ALTER FUNCTION ' || func.signature || ' SET search_path = public';
+    END LOOP;
+END $$;
