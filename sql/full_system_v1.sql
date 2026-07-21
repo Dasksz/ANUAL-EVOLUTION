@@ -3343,9 +3343,9 @@ BEGIN
         ', 
         v_where_summary_base, -- salty_monthly CTE
         v_active_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
-        v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_active_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
-        v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_active_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
-        date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
+        v_active_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
+        v_active_client_cond, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
+        v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
         v_where_raw, v_previous_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
         v_active_client_cond_slow -- Prod Agg
@@ -3468,9 +3468,9 @@ BEGIN
         v_where_raw, v_previous_year,      -- base_data UNION 1
         v_where_raw, v_previous_year,      -- base_data UNION 2
         v_active_client_cond_slow, v_current_year, v_previous_year, -- Chart Base
-        v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr
-        v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_active_client_cond_slow, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev
-        v_tri_start, v_tri_end, v_active_client_cond_slow, v_tri_start, v_tri_end, v_tri_start, v_tri_end, -- KPI Tri
+        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr
+        v_active_client_cond_slow, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev
+        v_active_client_cond_slow, v_tri_start, v_tri_end, v_tri_start, v_tri_end, v_tri_start, v_tri_end, -- KPI Tri
         v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END -- Prod Agg
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
