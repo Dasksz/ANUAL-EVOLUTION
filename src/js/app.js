@@ -3468,6 +3468,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         updateBoxKpi('peso', 'peso', fmtKg);
         updateBoxKpi('caixas', 'caixas', fmtCaixas);
         updateBoxKpi('clientes', 'clientes', fmtCaixas);
+        updateBoxKpi('pos_salty', 'pos-salty', fmtCaixas);
 
         // Chart (2 datasets: Current vs Previous + Trend if active)
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
