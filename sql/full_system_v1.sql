@@ -1854,28 +1854,23 @@ BEGIN
     v_year := EXTRACT(YEAR FROM p_start_date);
     v_month := EXTRACT(MONTH FROM p_start_date);
     
-    -- STEP A: Create a temporary table for the raw data of the month to avoid massive UNION ALL memory plans
-    CREATE TEMP TABLE tmp_raw_data ON COMMIT DROP AS
-    SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
-    FROM public.data_detailed
-    WHERE dtped >= p_start_date AND dtped < p_end_date
-    UNION ALL
-    SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
-    FROM public.data_history
-    WHERE dtped >= p_start_date AND dtped < p_end_date;
-
-    CREATE INDEX idx_tmp_raw_produto ON tmp_raw_data(produto);
-    CREATE INDEX idx_tmp_raw_codcli ON tmp_raw_data(codcli);
-    CREATE INDEX idx_tmp_raw_pedido ON tmp_raw_data(pedido);
-
-    -- STEP B: Insert into data_summary using the temporary table
+    -- STEP B: Insert into data_summary using CTE
     INSERT INTO public.data_summary (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao, 
         pre_mix_count, pre_positivacao_val,
         ramo, caixas, categoria_produto
     )
-    WITH dim_prod_enhanced AS (
+    WITH tmp_raw_data AS (
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        FROM public.data_detailed
+        WHERE dtped >= p_start_date AND dtped < p_end_date
+        UNION ALL
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        FROM public.data_history
+        WHERE dtped >= p_start_date AND dtped < p_end_date
+    ),
+    dim_prod_enhanced AS (
         SELECT
             codigo,
             categoria_produto,
@@ -1947,12 +1942,21 @@ BEGIN
     FROM client_agg;
     
 
-    -- STEP C: Insert into data_summary_frequency using the temporary table
+    -- STEP C: Insert into data_summary_frequency using CTE
     INSERT INTO public.data_summary_frequency (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede,
         produtos_arr, categorias_arr, has_cheetos, has_doritos, has_fandangos, has_ruffles, has_torcida, has_toddynho, has_toddy, has_quaker, has_kerococo
     )
-    WITH dim_prod_enhanced AS (
+    WITH tmp_raw_data AS (
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        FROM public.data_detailed
+        WHERE dtped >= p_start_date AND dtped < p_end_date
+        UNION ALL
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        FROM public.data_history
+        WHERE dtped >= p_start_date AND dtped < p_end_date
+    ),
+    dim_prod_enhanced AS (
         SELECT
             codigo,
             categoria_produto,
@@ -2060,8 +2064,7 @@ BEGIN
     FROM freq_agg_base f
     LEFT JOIN public.data_clients c ON f.codcli = c.codigo_cliente;
 
-    -- STEP D: Cleanup
-    DROP TABLE IF EXISTS tmp_raw_data;
+    -- STEP D: Cleanup (No longer needed)
 END;
 $$;
 
@@ -3231,7 +3234,7 @@ BEGIN
                 SELECT 
                     mes - 1 as m_idx,
                     ano as yr,
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3241,7 +3244,7 @@ BEGIN
             ),
             kpi_curr AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3250,7 +3253,7 @@ BEGIN
             ),
             kpi_prev AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3259,7 +3262,7 @@ BEGIN
             ),
             kpi_tri AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN bonificacao::numeric ELSE vlvenda::numeric END) / 3 as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao::numeric ELSE vlvenda::numeric END) / 3 as fat,
                     SUM(peso) / 3 as peso,
                     SUM(COALESCE(caixas, 0)) / 3 as caixas,
                     COALESCE((
@@ -3291,7 +3294,7 @@ BEGIN
                     produto,
                     MAX(descricao) as descricao,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN bonificacao::numeric ELSE vlvenda::numeric END) as faturamento,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as faturamento,
                     SUM(totpesoliq) as peso,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
                     MAX(dtped) as ultima_venda
@@ -3335,7 +3338,7 @@ BEGIN
                 SELECT 
                     EXTRACT(MONTH FROM dtped)::int - 1 as m_idx,
                     EXTRACT(YEAR FROM dtped)::int as yr,
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3345,7 +3348,7 @@ BEGIN
             ),
             kpi_curr AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3354,7 +3357,7 @@ BEGIN
             ),
             kpi_prev AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
@@ -3363,7 +3366,7 @@ BEGIN
             ),
             kpi_tri AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN vlbonific::numeric ELSE vlvenda::numeric END) / 3 as fat,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) / 3 as fat,
                     SUM(totpesoliq) / 3 as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) / 3 as caixas,
                     COALESCE((
@@ -3383,7 +3386,7 @@ BEGIN
                     produto,
                     MAX(descricao) as descricao,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    SUM(CASE WHEN tipovenda IN ('5', '11') THEN vlbonific::numeric ELSE vlvenda::numeric END) as faturamento,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as faturamento,
                     SUM(totpesoliq) as peso,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
                     MAX(dtped) as ultima_venda
@@ -3425,9 +3428,9 @@ BEGIN
                 'estoque', COALESCE(sub.estoque, 0),
                 'tend_estq', CASE
                     WHEN COALESCE(sub.estoque, 0) = 0 THEN 0
-                    WHEN COALESCE(sub.business_days, 0) = 0 THEN 0
+                    WHEN COALESCE(sub.elapsed_days, 0) = 0 THEN 0
                     WHEN COALESCE(sub.total_caixas_6m, 0) = 0 THEN 0
-                    ELSE ROUND((COALESCE(sub.estoque, 0) / (sub.total_caixas_6m / sub.business_days))::numeric, 0)
+                    ELSE ROUND((COALESCE(sub.estoque, 0) / (sub.total_caixas_6m / sub.elapsed_days::numeric))::numeric, 0)
                 END
             )
         )
@@ -3440,10 +3443,7 @@ BEGIN
                     FROM jsonb_each_text(dp.estoque_filial) AS f(key, val)
                     WHERE (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR key = ANY(p_filial))
                 ) as estoque,
-                public.calc_working_days(
-                    GREATEST(dp.dt_cadastro, (v_max_sale_date - interval '6 months')::date),
-                    v_max_sale_date
-                ) as business_days,
+                (v_max_sale_date - GREATEST(dp.dt_cadastro, (v_max_sale_date - interval '6 months')::date) + 1) as elapsed_days,
                 (
                     SELECT SUM(COALESCE(s.qtvenda, 0) / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1))
                     FROM (
@@ -6815,28 +6815,23 @@ BEGIN
     DELETE FROM public.data_summary WHERE ano = p_year AND mes = p_month;
     DELETE FROM public.data_summary_frequency WHERE ano = p_year AND mes = p_month;
     
-    -- STEP A: Create a temporary table for the raw data of the month to avoid massive UNION ALL memory plans
-    CREATE TEMP TABLE tmp_raw_data ON COMMIT DROP AS
-    SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
-    FROM public.data_detailed
-    WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
-    UNION ALL
-    SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
-    FROM public.data_history
-    WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month');
-
-    CREATE INDEX idx_tmp_raw_produto ON tmp_raw_data(produto);
-    CREATE INDEX idx_tmp_raw_codcli ON tmp_raw_data(codcli);
-    CREATE INDEX idx_tmp_raw_pedido ON tmp_raw_data(pedido);
-
-    -- STEP B: Insert into data_summary using the temporary table
+    -- STEP B: Insert into data_summary using CTE
     INSERT INTO public.data_summary (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao, 
         pre_mix_count, pre_positivacao_val,
         ramo, caixas, categoria_produto
     )
-    WITH dim_prod_enhanced AS (
+    WITH tmp_raw_data AS (
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        FROM public.data_detailed
+        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
+        UNION ALL
+        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        FROM public.data_history
+        WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
+    ),
+    dim_prod_enhanced AS (
         SELECT 
             codigo,
             categoria_produto,
@@ -6965,8 +6960,7 @@ BEGIN
     FROM freq_agg_base f
     LEFT JOIN public.data_clients c ON f.codcli = c.codigo_cliente;
     
-    -- STEP D: Cleanup
-    DROP TABLE IF EXISTS tmp_raw_data;
+    -- STEP D: Cleanup (No longer needed)
 END;
 $function$;
 
