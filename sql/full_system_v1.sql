@@ -2214,7 +2214,7 @@ ALTER TABLE public.meta_estrelas ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow authenticated full access meta_estrelas" ON public.meta_estrelas;
 CREATE POLICY "Allow authenticated full access meta_estrelas" ON public.meta_estrelas
-    FOR ALL USING (auth.role() = 'authenticated');
+    FOR ALL USING ((SELECT auth.role()) = 'authenticated');
 
 CREATE TABLE IF NOT EXISTS public.config_aceleradores (
     id SERIAL PRIMARY KEY,
@@ -3247,7 +3247,7 @@ BEGIN
                 FROM (
                     SELECT ano, mes, codcli
                     FROM public.data_summary
-                    %s AND codfor IN (''707'', ''708'', ''752'') AND tipovenda IN (''1'', ''9'')
+                    %s AND LTRIM(codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(tipovenda, ''0'') IN (''1'', ''9'')
                     GROUP BY ano, mes, codcli
                     HAVING SUM(vlvenda) >= 1
                 ) sub
@@ -3313,12 +3313,12 @@ BEGIN
                 SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
+                %s AND dtped >= make_date(%L, 1, 1) AND dtped <= make_date(%L, 12, 31) %s
                 UNION ALL
                 SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                %s AND dtped >= make_date(%L, 1, 1) AND EXTRACT(YEAR FROM dtped) = %L %s
+                %s AND dtped >= make_date(%L, 1, 1) AND dtped <= make_date(%L, 12, 31) %s
             ),
             prod_agg AS (
                 SELECT
@@ -3343,11 +3343,11 @@ BEGIN
         ', 
         v_where_summary_base, -- salty_monthly CTE
         v_active_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
-        v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_active_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
-        v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_active_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
-        date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
+        v_active_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
+        v_active_client_cond, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
+        v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
-        v_where_raw, v_previous_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
+        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
         v_active_client_cond_slow -- Prod Agg
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
@@ -3359,11 +3359,11 @@ BEGIN
             salty_base AS (
                 SELECT s.dtped, s.codcli, s.vlvenda
                 FROM public.data_detailed s
-                %s AND s.dtped >= make_date(%L, 1, 1) AND s.codfor IN (''707'', ''708'', ''752'') AND s.tipovenda IN (''1'', ''9'')
+                %s AND s.dtped >= make_date(%L, 1, 1) AND LTRIM(s.codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(s.tipovenda, ''0'') IN (''1'', ''9'')
                 UNION ALL
                 SELECT s.dtped, s.codcli, s.vlvenda
                 FROM public.data_history s
-                %s AND s.dtped >= make_date(%L, 1, 1) AND s.codfor IN (''707'', ''708'', ''752'') AND s.tipovenda IN (''1'', ''9'')
+                %s AND s.dtped >= make_date(%L, 1, 1) AND LTRIM(s.codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(s.tipovenda, ''0'') IN (''1'', ''9'')
             ),
             salty_monthly AS (
                 SELECT EXTRACT(YEAR FROM dtped)::int as yr, (EXTRACT(MONTH FROM dtped)::int - 1) as m_idx, COUNT(DISTINCT codcli) as pos_salty
@@ -3468,9 +3468,9 @@ BEGIN
         v_where_raw, v_previous_year,      -- base_data UNION 1
         v_where_raw, v_previous_year,      -- base_data UNION 2
         v_active_client_cond_slow, v_current_year, v_previous_year, -- Chart Base
-        v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr
-        v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_active_client_cond_slow, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev
-        v_tri_start, v_tri_end, v_active_client_cond_slow, v_tri_start, v_tri_end, v_tri_start, v_tri_end, -- KPI Tri
+        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr
+        v_active_client_cond_slow, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev
+        v_active_client_cond_slow, v_tri_start, v_tri_end, v_tri_start, v_tri_end, v_tri_start, v_tri_end, -- KPI Tri
         v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END -- Prod Agg
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
@@ -6356,7 +6356,7 @@ CREATE POLICY "Enable read access for all users" ON public.supervisors_routes
 
 DROP POLICY IF EXISTS "Enable update/insert for authenticated users" ON public.supervisors_routes;
 CREATE POLICY "Enable update/insert for authenticated users" ON public.supervisors_routes
-    FOR ALL USING (auth.role() = 'authenticated');
+    FOR ALL USING ((SELECT auth.role()) = 'authenticated');
 
 
 -- =========================================================================
@@ -6413,7 +6413,7 @@ CREATE POLICY "Enable read access for all users" ON public.n8n_auth_colaboradore
 
 DROP POLICY IF EXISTS "Enable update/insert for authenticated users" ON public.n8n_auth_colaboradores;
 CREATE POLICY "Enable update/insert for authenticated users" ON public.n8n_auth_colaboradores
-    FOR ALL USING (auth.role() = 'authenticated');
+    FOR ALL USING ((SELECT auth.role()) = 'authenticated');
 
 
 CREATE OR REPLACE FUNCTION public._run_full_system()
@@ -7492,3 +7492,22 @@ BEGIN
     RETURN v_result;
 END;
 $$;
+
+-- ==============================================================================
+-- 99. SECURITY FIXES (Supabase Linter)
+-- ==============================================================================
+-- Ensure all SECURITY DEFINER functions have a set search_path
+DO $$
+DECLARE
+    func record;
+BEGIN
+    FOR func IN
+        SELECT p.oid::regprocedure::text AS signature
+        FROM pg_proc p
+        JOIN pg_namespace n ON p.pronamespace = n.oid
+        WHERE n.nspname = 'public'
+          AND p.prosecdef = true
+    LOOP
+        EXECUTE 'ALTER FUNCTION ' || func.signature || ' SET search_path = public';
+    END LOOP;
+END $$;
