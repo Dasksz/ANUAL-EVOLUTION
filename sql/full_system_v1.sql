@@ -3252,7 +3252,7 @@ BEGIN
                 FROM (
                     SELECT ano, mes, codcli
                     FROM public.data_summary
-                    %s AND LTRIM(codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(tipovenda, ''0'') IN (''1'', ''9'')
+                    %s AND ano IN (%L, %L) AND LTRIM(codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(tipovenda, ''0'') IN (''1'', ''9'')
                     GROUP BY ano, mes, codcli
                     HAVING SUM(vlvenda) >= 1
                 ) sub
@@ -3335,7 +3335,7 @@ BEGIN
                 ) as prod_base
                 GROUP BY 1
                 ORDER BY caixas DESC
-                LIMIT 50
+                LIMIT 1000
             )
             SELECT 
                 (SELECT json_agg(json_build_object(''month_index'', m_idx, ''year'', yr, ''faturamento'', fat, ''peso'', peso, ''caixas'', caixas, ''clientes'', clientes, ''pos_salty'', pos_salty)) FROM chart_agg),
@@ -3344,7 +3344,7 @@ BEGIN
                 (SELECT row_to_json(t) FROM kpi_tri t),
                 (SELECT json_agg(pa) FROM prod_agg pa)
         ', 
-        v_where_summary_base, -- salty_monthly CTE
+        v_where_summary_base, v_current_year, v_previous_year, -- salty_monthly CTE
         v_active_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
         v_active_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
         v_active_client_cond, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
@@ -3360,9 +3360,9 @@ BEGIN
         EXECUTE format('
             WITH 
             salty_monthly AS (
-                SELECT EXTRACT(YEAR FROM dtped)::int as yr, (EXTRACT(MONTH FROM dtped)::int - 1) as m_idx, COUNT(DISTINCT codcli) as pos_salty
+                SELECT yr, m_idx, COUNT(DISTINCT codcli) as pos_salty
                 FROM (
-                    SELECT dtped, codcli, SUM(vlvenda) as vlvenda
+                    SELECT EXTRACT(YEAR FROM dtped)::int as yr, (EXTRACT(MONTH FROM dtped)::int - 1) as m_idx, codcli
                     FROM (
                         SELECT dtped, codcli, vlvenda
                         FROM public.data_detailed s
@@ -3372,7 +3372,7 @@ BEGIN
                         FROM public.data_history s
                     %s AND s.dtped >= make_date(%L, 1, 1) AND LTRIM(s.codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(s.tipovenda, ''0'') IN (''1'', ''9'')
                     ) union_sub
-                    GROUP BY dtped, codcli
+                    GROUP BY EXTRACT(YEAR FROM dtped)::int, (EXTRACT(MONTH FROM dtped)::int - 1), codcli
                     HAVING SUM(vlvenda) >= 1
                 ) agg_sub
                 GROUP BY 1, 2
@@ -3499,7 +3499,7 @@ BEGIN
                 ) as base_data
                 GROUP BY 1
                 ORDER BY caixas DESC
-                LIMIT 50
+                LIMIT 1000
             )
             SELECT 
                 (SELECT json_agg(json_build_object(''month_index'', m_idx, ''year'', yr, ''faturamento'', fat, ''peso'', peso, ''caixas'', caixas, ''clientes'', clientes, ''pos_salty'', pos_salty)) FROM chart_agg),

@@ -2971,7 +2971,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             "Posit.": row.clientes || 0,
             "Estoque (cx)": row.estoque || 0,
             "Tend. EstQ (dias)": row.tend_estq || 0,
-            "Última Venda": row.ultima_venda ? new Date(row.ultima_venda).toLocaleDateString('pt-BR') : '-'
+            "Última Venda": row.ultima_venda ? row.ultima_venda.split('T')[0].split('-').reverse().join('/') : '-'
         }));
 
         if (format === 'excel') {
@@ -3257,7 +3257,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                         (p.tend_estq || 0) <= 21 ? 'text-yellow-400' :
                         'text-emerald-400'
                     }">${escapeHtml(formatInteger(p.tend_estq || 0))} d</td>
-                    <td class="p-2 text-center text-slate-400">${escapeHtml(p.ultima_venda ? new Date(p.ultima_venda).toLocaleDateString('pt-BR') : '-')}</td>
+                    <td class="p-2 text-center text-slate-400">${escapeHtml(p.ultima_venda ? p.ultima_venda.split('T')[0].split('-').reverse().join('/') : '-')}</td>
                 </tr>
             `).join('');
         } else {
