@@ -703,6 +703,7 @@ self.onmessage = async (event) => {
             const clientData = {
                 codigo_cliente: codCli,
                 rca1: rca1,
+                codsupervisor: null,
                 cnpj: cleanedCnpj,
                 cidade: salesCity || String(client['Nome da Cidade'] || client['Cidade'] || '').trim().toUpperCase() || null,
                 nomecliente: String(client['Fantasia'] || client['Cliente'] || 'N/A'),
@@ -733,6 +734,7 @@ self.onmessage = async (event) => {
                 cidade: clientData.cidade,
                 bairro: clientData.bairro,
                 rca1: rca1,
+                codsupervisor: null,
                 cnpj: cleanedCnpj,
                 razaosocial: clientData.razaosocial
             });
@@ -1082,7 +1084,7 @@ self.onmessage = async (event) => {
                 const supervNameFinal = newSale['SUPERV'];
                 const cityFinal = newSale['MUNICIPIO'];
                 const nameFinal = newSale['NOMECLIENTE'] || newSale['CLIENTE'] || 'FANTASMA';
-
+                
                 // Track clients we've already prepared to insert during this run to avoid duplicates in the array
                 if (!clientMap.has(codCliFinal) || !clientMap.get(codCliFinal)._hasScdUpdate) {
                     let cData = null;
@@ -1091,7 +1093,7 @@ self.onmessage = async (event) => {
                         cData.rca1 = vendFinal; // Atualiza com a inteligência (ex: inativos, etc)
                         cData.codsupervisor = supervCodeFinal;
                         cData._hasScdUpdate = true;
-
+                        
                         // Atualiza no array já existente
                         const existingIdx = clientsToInsert.findIndex(c => c.codigo_cliente === codCliFinal);
                         if(existingIdx >= 0){
