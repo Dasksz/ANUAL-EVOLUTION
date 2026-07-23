@@ -39,7 +39,7 @@ BEGIN
     SET LOCAL work_mem = '90MB';
 
     -- 1. Date Resolution
-    IF p_ano IS NULL OR p_s.ano = 'todos' THEN
+    IF p_ano IS NULL OR p_ano = 'todos' THEN
         v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary_frequency);
     ELSE
         v_current_year := p_ano::int;
@@ -317,7 +317,7 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Resolution
-    IF p_ano IS NULL OR p_s.ano = 'todos' THEN
+    IF p_ano IS NULL OR p_ano = 'todos' THEN
         v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary_frequency);
     ELSE
         v_current_year := p_ano::int;
@@ -2105,24 +2105,24 @@ BEGIN
         INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes, rede, categoria_produto)
         WITH distinct_codes AS (
             SELECT
-                filial,
-                cidade,
-                codsupervisor,
-                codusur,
-                codfor,
-                tipovenda,
-                ano,
-                mes,
-                ramo,
-                categoria_produto
+                s.filial,
+                s.cidade,
+                COALESCE(dc.codsupervisor, s.codsupervisor) as codsupervisor,
+                COALESCE(dc.rca1, s.codusur) as codusur,
+                s.codfor,
+                s.tipovenda,
+                s.ano,
+                s.mes,
+                s.ramo,
+                s.categoria_produto
             FROM public.data_summary s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente GROUP BY
-                filial, cidade, codsupervisor, codusur, codfor, tipovenda, ano, mes, ramo, categoria_produto
+                s.filial, s.cidade, COALESCE(dc.codsupervisor, s.codsupervisor), COALESCE(dc.rca1, s.codusur), s.codfor, s.tipovenda, s.ano, s.mes, s.ramo, s.categoria_produto
         )
         SELECT
             dc.filial,
             dc.cidade,
-            ds.nome as superv,
-            dv.nome as nome,
+            COALESCE(ds.nome, dc.codsupervisor) as superv,
+            COALESCE(dv.nome, dc.codusur) as nome,
             dc.codfor,
             CASE
                 WHEN dc.codfor = '707' THEN 'EXTRUSADOS'
@@ -2150,31 +2150,31 @@ BEGIN
     END IF;
 
     -- Target specific month to keep transaction small
-    DELETE FROM public.cache_filters WHERE s.ano = p_ano AND mes = p_mes;
+    DELETE FROM public.cache_filters WHERE ano = p_ano AND mes = p_mes;
     
     -- Optimize by getting distinct codes first, then joining dimensions
     INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes, rede, categoria_produto)
     WITH distinct_codes AS (
         SELECT 
-            filial, 
-            cidade, 
-            codsupervisor, 
-            codusur, 
-            codfor, 
-            tipovenda, 
-            ano, 
-            mes, 
-            ramo, 
-            categoria_produto
-        FROM public.data_summary s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente WHERE s.ano = p_ano AND mes = p_mes
+            s.filial, 
+            s.cidade, 
+            COALESCE(dc.codsupervisor, s.codsupervisor) as codsupervisor,
+            COALESCE(dc.rca1, s.codusur) as codusur,
+            s.codfor, 
+            s.tipovenda, 
+            s.ano, 
+            s.mes, 
+            s.ramo, 
+            s.categoria_produto
+        FROM public.data_summary s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente WHERE s.ano = p_ano AND s.mes = p_mes
         GROUP BY 
-            filial, cidade, codsupervisor, codusur, codfor, tipovenda, ano, mes, ramo, categoria_produto
+            s.filial, s.cidade, COALESCE(dc.codsupervisor, s.codsupervisor), COALESCE(dc.rca1, s.codusur), s.codfor, s.tipovenda, s.ano, s.mes, s.ramo, s.categoria_produto
     )
     SELECT 
         dc.filial, 
         dc.cidade, 
-        ds.nome as superv, 
-        dv.nome as nome, 
+        COALESCE(ds.nome, dc.codsupervisor) as superv, 
+        COALESCE(dv.nome, dc.codusur) as nome, 
         dc.codfor,
         CASE 
             WHEN dc.codfor = '707' THEN 'EXTRUSADOS'
@@ -2660,7 +2660,7 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     -- 1. Determine Date Ranges
-    IF p_ano IS NULL OR p_s.ano = 'todos' OR p_s.ano = '' THEN
+    IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
         v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE
         v_current_year := p_ano::int;
@@ -3082,7 +3082,7 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Logic
-    IF p_ano IS NULL OR p_s.ano = 'todos' OR p_s.ano = '' THEN
+    IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
         v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE
         v_current_year := p_ano::int;
@@ -3649,7 +3649,7 @@ BEGIN
     SET LOCAL work_mem = '90MB';
 
     -- 1. Date & Trend Setup
-    IF p_ano IS NULL OR p_s.ano = 'todos' OR p_s.ano = '' THEN
+    IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
         v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE v_current_year := p_ano::int; END IF;
 
@@ -3818,7 +3818,7 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     -- Date Logic
-    IF p_ano IS NULL OR p_s.ano = 'todos' OR p_s.ano = '' THEN
+    IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
          v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE v_current_year := p_ano::int; END IF;
 
@@ -5166,7 +5166,7 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Resolution
-    IF p_ano IS NULL OR p_s.ano = 'todos' THEN
+    IF p_ano IS NULL OR p_ano = 'todos' THEN
         v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary_frequency);
     ELSE
         v_current_year := p_ano::int;
@@ -5351,7 +5351,7 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Resolution
-    IF p_ano IS NULL OR p_s.ano = '' OR p_s.ano = 'todos' THEN
+    IF p_ano IS NULL OR p_ano = '' OR p_ano = 'todos' THEN
         v_current_year := (SELECT EXTRACT(YEAR FROM MAX(dtped)) FROM public.data_detailed);
         IF v_current_year IS NULL THEN
             v_current_year := EXTRACT(YEAR FROM CURRENT_DATE);
@@ -5360,7 +5360,7 @@ BEGIN
         v_current_year := p_ano::integer;
     END IF;
 
-    IF p_mes IS NULL OR p_s.mes = '' THEN
+    IF p_mes IS NULL OR p_mes = '' THEN
         -- If no month, use whole year
         v_curr_start := make_date(v_current_year, 1, 1);
         v_curr_end := make_date(v_current_year + 1, 1, 1);
@@ -6558,7 +6558,7 @@ BEGIN
     IF p_ano IS NOT NULL AND p_ano != '' AND p_ano != 'todos' THEN
         v_filter_year := p_ano::int;
     ELSE
-        IF p_s.ano = 'todos' THEN v_filter_year := NULL; 
+        IF p_ano = 'todos' THEN v_filter_year := NULL; 
         ELSE
             SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_filter_year FROM public.cache_filters;
         END IF;
