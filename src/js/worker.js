@@ -1038,6 +1038,7 @@ self.onmessage = async (event) => {
                     const sanitizedSupervisor = targetSupervisor.replace(/[^A-Z0-9]/g, ''); // Simple sanitization for code
 
                     newSale['SUPERV'] = targetSupervisor;
+                    newSale['CODSUPERVISOR'] = targetSupervisor; // Fallback to name if code is unknown
                     newSale['CODUSUR'] = `INAT_${sanitizedSupervisor}`;
                     newSale['NOME'] = `INATIVOS ${targetSupervisor}`;
 
