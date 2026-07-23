@@ -1074,6 +1074,48 @@ self.onmessage = async (event) => {
                     }
                 }
 
+                // UPDATED (SCD): Populate Upsert Fantasma and update data_clients payload
+                // Se o cliente não existir em clientMap, ou existir, devemos garantir que clientsToInsert tenha a última inteligência amarrada.
+                const codCliFinal = newSale['CODCLI'];
+                const vendFinal = newSale['CODUSUR'];
+                const supervCodeFinal = newSale['CODSUPERVISOR'];
+                const supervNameFinal = newSale['SUPERV'];
+                const cityFinal = newSale['MUNICIPIO'];
+                const nameFinal = newSale['NOMECLIENTE'] || newSale['CLIENTE'] || 'FANTASMA';
+
+                // Track clients we've already prepared to insert during this run to avoid duplicates in the array
+                if (!clientMap.has(codCliFinal) || !clientMap.get(codCliFinal)._hasScdUpdate) {
+                    let cData = null;
+                    if (clientMap.has(codCliFinal)) {
+                        cData = clientMap.get(codCliFinal);
+                        cData.rca1 = vendFinal; // Atualiza com a inteligência (ex: inativos, etc)
+                        cData.codsupervisor = supervCodeFinal;
+                        cData._hasScdUpdate = true;
+
+                        // Atualiza no array já existente
+                        const existingIdx = clientsToInsert.findIndex(c => c.codigo_cliente === codCliFinal);
+                        if(existingIdx >= 0){
+                            clientsToInsert[existingIdx].rca1 = vendFinal;
+                            clientsToInsert[existingIdx].codsupervisor = supervCodeFinal;
+                        }
+                    } else {
+                        // Fantasma
+                        cData = {
+                            codigo_cliente: codCliFinal,
+                            rca1: vendFinal,
+                            codsupervisor: supervCodeFinal,
+                            cnpj: null,
+                            cidade: normalizeCityName(cityFinal),
+                            nomecliente: nameFinal,
+                            bairro: 'N/A',
+                            razaosocial: nameFinal,
+                            _hasScdUpdate: true
+                        };
+                        clientMap.set(codCliFinal, cData);
+                        clientsToInsert.push(cData);
+                    }
+                }
+
                 return newSale;
             });
         };
@@ -1305,7 +1347,7 @@ self.onmessage = async (event) => {
         const resultPayload = {
             historyChunks: finalHistoryChunks,
             detailedChunks: detailedChunks,
-            clients: clientsFile ? clientsToInsert : null,
+            clients: clientsToInsert,
             newCities: Array.from(newCitiesSet),
             newSupervisors: (salesPrevYearFile || salesCurrYearFile || salesCurrMonthFile) ? mapToObjArray(dimSupervisors) : null,
             newVendors: (salesPrevYearFile || salesCurrYearFile || salesCurrMonthFile) ? mapToObjArray(dimVendors) : null,
