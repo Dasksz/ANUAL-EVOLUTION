@@ -3152,16 +3152,16 @@ BEGIN
     END IF;
     -- Map Name to Code
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-         v_where_raw := v_where_raw || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
-         v_where_summary := v_where_summary || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
-         v_where_raw_base := v_where_raw_base || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
-         v_where_summary_base := v_where_summary_base || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+         v_where_raw := v_where_raw || format(' AND COALESCE(c.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+         v_where_summary := v_where_summary || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+         v_where_raw_base := v_where_raw_base || format(' AND COALESCE(c.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+         v_where_summary_base := v_where_summary_base || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-         v_where_raw := v_where_raw || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-         v_where_summary := v_where_summary || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-         v_where_raw_base := v_where_raw_base || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-         v_where_summary_base := v_where_summary_base || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+         v_where_raw := v_where_raw || format(' AND COALESCE(c.rca1, s.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+         v_where_summary := v_where_summary || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+         v_where_raw_base := v_where_raw_base || format(' AND COALESCE(c.rca1, s.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+         v_where_summary_base := v_where_summary_base || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where_raw := v_where_raw || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
@@ -5875,13 +5875,13 @@ BEGIN
         v_where_base_cidades := v_where_base_cidades || format(' AND dc.cidade = ANY(%L::text[]) ', p_cidade);
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where := v_where || format(' AND COALESCE(dc.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
-        v_where_base_cidades := v_where_base_cidades || format(' AND COALESCE(dc.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where := v_where || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where_base_cidades := v_where_base_cidades || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
         v_has_filters_no_city := true;
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND COALESCE(dc.rca1, s.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-        v_where_base_cidades := v_where_base_cidades || format(' AND COALESCE(dc.rca1, s.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        v_where := v_where || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        v_where_base_cidades := v_where_base_cidades || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
         v_has_filters_no_city := true;
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
@@ -6211,13 +6211,13 @@ BEGIN
         v_where_base_cidades := v_where_base_cidades || format(' AND dc.cidade = ANY(%L::text[]) ', p_cidade);
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where := v_where || format(' AND COALESCE(dc.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
-        v_where_base_cidades := v_where_base_cidades || format(' AND COALESCE(dc.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where := v_where || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where_base_cidades := v_where_base_cidades || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
         v_has_filters_no_city := true;
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND COALESCE(dc.rca1, s.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-        v_where_base_cidades := v_where_base_cidades || format(' AND COALESCE(dc.rca1, s.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        v_where := v_where || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        v_where_base_cidades := v_where_base_cidades || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
         v_has_filters_no_city := true;
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN

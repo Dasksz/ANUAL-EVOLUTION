@@ -24,3 +24,4 @@
 ## 2024/07/23 : (SCD) Atualizadas RPCs de Relatórios com Join na data_clients
 **Aprendizado:** Para completar a arquitetura de Slowly Changing Dimensions, a tabela agregada `data_summary` não deve ditar a carteira, mas sim fazer LEFT JOIN com `data_clients`.
 **Ação:** Refatorado `get_main_dashboard_data`, `get_boxes_dashboard_data`, filtros e outros dashboards injetando `LEFT JOIN data_clients dc` nas CTEs base e usando `COALESCE(dc.codsupervisor, s.codsupervisor)` para retribuição de histórico no momento da visualização.
+## 2024/07/23 : Tidy SQL Aliases (3)\n**Aprendizado:** Fixed missing FROM-clause for 'c' and 'ds' inside raw paths of get_boxes_dashboard_data and city views.\n**Ação:** Updated sql/full_system_v1.sql with valid references and subquery grouping.
