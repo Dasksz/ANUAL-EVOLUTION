@@ -39,7 +39,7 @@ BEGIN
     SET LOCAL work_mem = '90MB';
 
     -- 1. Date Resolution
-    IF p_ano IS NULL OR p_ano = 'todos' THEN
+    IF p_ano IS NULL OR p_s.ano = 'todos' THEN
         v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary_frequency);
     ELSE
         v_current_year := p_ano::int;
@@ -52,13 +52,13 @@ BEGIN
         v_where_base := v_where_base || format(' AND s.ano = %L ', v_current_year);
     END IF;
 
-    v_eval_target_month := COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE ano = v_current_year));
+    v_eval_target_month := COALESCE(v_target_month, (SELECT COALESCE(MAX(mes), EXTRACT(MONTH FROM CURRENT_DATE)::int) FROM public.data_summary_frequency WHERE s.ano = v_current_year));
 
     -- 2. Build Where Clauses
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_filial)) THEN
             v_where_base := v_where_base || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
-            v_where_clients := v_where_clients || format(' AND dc.cidade IN (SELECT cidade FROM public.config_city_branches WHERE filial = ANY(%L::text[])) ', p_filial);
+            v_where_clients := v_where_clients || format(' AND dc.cidade IN (SELECT cidade FROM public.config_city_branches WHERE s.filial = ANY(%L::text[])) ', p_filial);
         END IF;
     END IF;
 
@@ -68,14 +68,14 @@ BEGIN
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
-        v_where_clients := v_where_clients || format(' AND EXISTS (SELECT 1 FROM public.data_summary_frequency sf WHERE sf.codcli = dc.codigo_cliente AND sf.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[]))) ', p_supervisor);
+        v_where_base := v_where_base || format(' AND COALESCE(dc.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where_clients := v_where_clients || format(' AND EXISTS (SELECT 1 FROM public.data_summary_frequency s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente WHERE sf.codcli = dc.codigo_cliente AND COALESCE(dc.codsupervisor, sf.codsupervisor) IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[]))) ', p_supervisor);
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        v_where_base := v_where_base || format(' AND COALESCE(dc.rca1, s.codusur) IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
         -- Client filtering logic simplified for exact matching where possible
-        v_where_clients := v_where_clients || format(' AND EXISTS (SELECT 1 FROM public.data_summary_frequency sf WHERE sf.codcli = dc.codigo_cliente AND sf.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[]))) ', p_vendedor);
+        v_where_clients := v_where_clients || format(' AND EXISTS (SELECT 1 FROM public.data_summary_frequency s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente WHERE sf.codcli = dc.codigo_cliente AND COALESCE(dc.rca1, sf.codusur) IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[]))) ', p_vendedor);
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
@@ -176,7 +176,7 @@ BEGIN
         ),
         target_sales AS (
             SELECT s.*
-            FROM public.data_summary_frequency s
+            FROM public.data_summary_frequency s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente
             LEFT JOIN public.data_clients c ON s.codcli = c.codigo_cliente
             %s
         ),
@@ -215,7 +215,7 @@ BEGIN
                 COALESCE(SUM(calibracao_foods), 0) as meta_foods,
                 COALESCE(SUM(calibracao_pos), 0) as meta_pos
             FROM public.meta_estrelas m
-            WHERE m.ano = %s AND m.mes = %s
+            WHERE m.s.ano = %s AND m.s.mes = %s
             %s
         ),
         detalhes_calc AS (
@@ -227,9 +227,9 @@ BEGIN
                 COUNT(DISTINCT CASE WHEN t.salty_venda >= 1 THEN t.codcli END) AS pos_salty,
                 COUNT(DISTINCT CASE WHEN t.foods_venda >= 1 AND (t.total_venda - t.foods_venda) < 1 THEN t.codcli END) AS pos_foods,
                 (SELECT COUNT(DISTINCT CASE WHEN s2.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s2.categorias)) THEN s2.codcli END) FROM target_sales s2 WHERE s2.codusur = t.codusur) AS acel_realizado,
-                COALESCE((SELECT SUM(m.calibracao_salty) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(t.codusur, ''0'') AND m.filial::text = LTRIM(t.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_salty,
-                COALESCE((SELECT SUM(m.calibracao_foods) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(t.codusur, ''0'') AND m.filial::text = LTRIM(t.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_foods,
-                COALESCE((SELECT SUM(m.calibracao_pos) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(t.codusur, ''0'') AND m.filial::text = LTRIM(t.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_pos
+                COALESCE((SELECT SUM(m.calibracao_salty) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(t.codusur, ''0'') AND m.filial::text = LTRIM(t.filial, ''0'') AND m.s.ano = %s AND m.s.mes = %s), 0) AS meta_salty,
+                COALESCE((SELECT SUM(m.calibracao_foods) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(t.codusur, ''0'') AND m.filial::text = LTRIM(t.filial, ''0'') AND m.s.ano = %s AND m.s.mes = %s), 0) AS meta_foods,
+                COALESCE((SELECT SUM(m.calibracao_pos) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(t.codusur, ''0'') AND m.filial::text = LTRIM(t.filial, ''0'') AND m.s.ano = %s AND m.s.mes = %s), 0) AS meta_pos
             FROM (
                 SELECT 
                     COALESCE(dv.nome, ''N/D'') AS vendedor_nome,
@@ -317,7 +317,7 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Resolution
-    IF p_ano IS NULL OR p_ano = 'todos' THEN
+    IF p_ano IS NULL OR p_s.ano = 'todos' THEN
         v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary_frequency);
     ELSE
         v_current_year := p_ano::int;
@@ -333,7 +333,7 @@ BEGIN
         v_where_base := v_where_base || ' AND s.ano = ' || v_current_year || ' ';
 
         -- PROPORTIONAL YAGO (Year-Ago): Se for o ano todo, o ano passado deve comparar apenas até o mês máximo que tem dados no ano atual.
-        SELECT COALESCE(MAX(mes), 12) INTO v_max_current_month FROM public.data_summary_frequency WHERE ano = v_current_year;
+        SELECT COALESCE(MAX(mes), 12) INTO v_max_current_month FROM public.data_summary_frequency WHERE s.ano = v_current_year;
 
         v_where_base_prev := v_where_base_prev || ' AND s.ano = ' || v_previous_year || ' AND s.mes <= ' || v_max_current_month || ' ';
     END IF;
@@ -344,8 +344,8 @@ BEGIN
     -- We apply regional filters (filial, cidade, vendedor) directly to v_where_base, v_where_base_prev, and v_where_clients
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_filial)) THEN
-            v_where_chart := v_where_chart || ' AND filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
-            v_where_clients := v_where_clients || ' AND cidade IN (SELECT cidade FROM public.config_city_branches WHERE filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || '''])) ';
+            v_where_chart := v_where_chart || ' AND s.filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
+            v_where_clients := v_where_clients || ' AND cidade IN (SELECT cidade FROM public.config_city_branches WHERE s.filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || '''])) ';
             v_where_base := v_where_base || ' AND s.filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
             v_where_base_prev := v_where_base_prev || ' AND s.filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
         END IF;
@@ -353,23 +353,23 @@ BEGIN
 
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where_clients := v_where_clients || ' AND dc.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
-        v_where_chart := v_where_chart || ' AND cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+        v_where_chart := v_where_chart || ' AND s.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
         v_where_base := v_where_base || ' AND s.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
         v_where_base_prev := v_where_base_prev || ' AND s.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_clients := v_where_clients || ' AND EXISTS (SELECT 1 FROM public.data_summary_frequency sf WHERE sf.codcli = dc.codigo_cliente AND sf.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || ''']))) ';
-        v_where_chart := v_where_chart || ' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
-        v_where_base := v_where_base || ' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
-        v_where_base_prev := v_where_base_prev || ' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+        v_where_clients := v_where_clients || ' AND EXISTS (SELECT 1 FROM public.data_summary_frequency s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente WHERE sf.codcli = dc.codigo_cliente AND COALESCE(dc.codsupervisor, sf.codsupervisor) IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || ''']))) ';
+        v_where_chart := v_where_chart || ' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+        v_where_base := v_where_base || ' AND COALESCE(dc.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND COALESCE(dc.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
         v_where_clients := v_where_clients || ' AND dv.nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || ''']) ';
-        v_where_chart := v_where_chart || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
-        v_where_base := v_where_base || ' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
-        v_where_base_prev := v_where_base_prev || ' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+        v_where_base := v_where_base || ' AND COALESCE(dc.rca1, s.codusur) IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND COALESCE(dc.rca1, s.codusur) IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
@@ -405,7 +405,7 @@ BEGIN
 
                 IF array_length(v_simple_codes, 1) > 0 THEN
                     v_conditions := array_append(v_conditions, format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
-                    v_unnested_conditions := array_append(v_unnested_conditions, format('dp.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
+                    v_unnested_conditions := array_append(v_unnested_conditions, format('dp.s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
                 END IF;
 
                 IF array_length(v_conditions, 1) > 0 THEN
@@ -442,7 +442,7 @@ BEGIN
         ELSE
             -- Treat as explicit array values if not our magic tags
             v_where_clients := v_where_clients || ' AND dc.ramo = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
-            v_where_chart := v_where_chart || ' AND rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
+            v_where_chart := v_where_chart || ' AND s.rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
             v_where_base := v_where_base || ' AND s.rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
             v_where_base_prev := v_where_base_prev || ' AND s.rede = ANY(ARRAY[''' || array_to_string(p_rede, ''',''') || ''']) ';
         END IF;
@@ -459,13 +459,13 @@ BEGIN
         v_where_base := v_where_base || ' AND s.categorias_arr && ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
         v_where_base_prev := v_where_base_prev || ' AND s.categorias_arr && ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
         v_where_chart := v_where_chart || ' AND categorias_arr && ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
-        v_where_unnested := v_where_unnested || ' AND dp.categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || ''']) ';
+        v_where_unnested := v_where_unnested || ' AND dp.s.categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || ''']) ';
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where_base := v_where_base || ' AND s.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
         v_where_base_prev := v_where_base_prev || ' AND s.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
-        v_where_chart := v_where_chart || ' AND tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
+        v_where_chart := v_where_chart || ' AND s.tipovenda = ANY(ARRAY[''' || array_to_string(p_tipovenda, ''',''') || ''']) ';
     END IF;
 
     IF v_where_unnested = ' ' OR v_where_unnested = '' THEN
@@ -520,7 +520,7 @@ BEGIN
             s.produtos,
             s.produtos_arr,
             s.categorias_arr
-        FROM public.data_summary_frequency s
+        FROM public.data_summary_frequency s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente
         ' || v_where_base || '
     ),
     previous_data AS (
@@ -532,7 +532,7 @@ BEGIN
             COALESCE(s.cidade, ''TOTAL_CIDADE'') as cidade,
             s.codusur as vendedor_cod,
             SUM(s.vlvenda) as faturamento_prev
-        FROM public.data_summary_frequency s
+        FROM public.data_summary_frequency s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente
         ' || v_where_base_prev || ' AND s.tipovenda NOT IN (''5'', ''11'')
         GROUP BY ROLLUP(s.filial, s.cidade, s.codusur)
     ),
@@ -700,7 +700,7 @@ BEGIN
         SELECT s.ano, s.mes, s.codcli,
                COUNT(DISTINCT s.pedido) FILTER (WHERE s.tipovenda NOT IN (''5'', ''11'')) as month_pedidos,
                COALESCE(SUM(s.vlvenda) FILTER (WHERE s.tipovenda NOT IN (''5'', ''11'')), 0) as sum_vlvenda
-        FROM public.data_summary_frequency s
+        FROM public.data_summary_frequency s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente
         ' || v_where_chart || '
         GROUP BY s.ano, s.mes, s.codcli
     ),
@@ -840,6 +840,7 @@ create table if not exists public.data_clients (
   id uuid default uuid_generate_v4 () primary key,
   codigo_cliente text unique,
   rca1 text,
+  codsupervisor text,
   cidade text,
   cnpj text,
   nomecliente text,
@@ -859,6 +860,14 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_clients' AND column_name = 'rca2') THEN
         ALTER TABLE public.data_clients DROP COLUMN rca2;
+    END IF;
+END $$;
+
+-- Ensure codsupervisor exists (migration support)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'data_clients' AND column_name = 'codsupervisor') THEN
+        ALTER TABLE public.data_clients ADD COLUMN codsupervisor text;
     END IF;
 END $$;
 
@@ -1621,8 +1630,8 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     -- Clear data for this year first (avoid duplicates)
-    DELETE FROM public.data_summary WHERE ano = p_year;
-    DELETE FROM public.data_summary_frequency WHERE ano = p_year;
+    DELETE FROM public.data_summary s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente WHERE s.ano = p_year;
+    DELETE FROM public.data_summary_frequency WHERE s.ano = p_year;
     
     INSERT INTO public.data_summary (
         ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
@@ -1837,8 +1846,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    DELETE FROM public.data_summary WHERE ano = p_year AND mes = p_month;
-    DELETE FROM public.data_summary_frequency WHERE ano = p_year AND mes = p_month;
+    DELETE FROM public.data_summary s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente WHERE s.ano = p_year AND s.mes = p_month;
+    DELETE FROM public.data_summary_frequency WHERE s.ano = p_year AND s.mes = p_month;
 END;
 $$;
 
@@ -2106,8 +2115,7 @@ BEGIN
                 mes,
                 ramo,
                 categoria_produto
-            FROM public.data_summary
-            GROUP BY
+            FROM public.data_summary s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente GROUP BY
                 filial, cidade, codsupervisor, codusur, codfor, tipovenda, ano, mes, ramo, categoria_produto
         )
         SELECT
@@ -2142,7 +2150,7 @@ BEGIN
     END IF;
 
     -- Target specific month to keep transaction small
-    DELETE FROM public.cache_filters WHERE ano = p_ano AND mes = p_mes;
+    DELETE FROM public.cache_filters WHERE s.ano = p_ano AND s.mes = p_mes;
     
     -- Optimize by getting distinct codes first, then joining dimensions
     INSERT INTO public.cache_filters (filial, cidade, superv, nome, codfor, fornecedor, tipovenda, ano, mes, rede, categoria_produto)
@@ -2158,8 +2166,7 @@ BEGIN
             mes, 
             ramo, 
             categoria_produto
-        FROM public.data_summary
-        WHERE ano = p_ano AND mes = p_mes
+        FROM public.data_summary s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente WHERE s.ano = p_ano AND s.mes = p_mes
         GROUP BY 
             filial, cidade, codsupervisor, codusur, codfor, tipovenda, ano, mes, ramo, categoria_produto
     )
@@ -2276,46 +2283,46 @@ BEGIN
 
     -- Ano and Mes affect all.
     IF p_ano IS NOT NULL AND p_ano != 'todos' THEN
-        v_where_filial := v_where_filial || format(' AND ano = %L ', p_ano::int);
-        v_where_cidade := v_where_cidade || format(' AND ano = %L ', p_ano::int);
-        v_where_supervisor := v_where_supervisor || format(' AND ano = %L ', p_ano::int);
-        v_where_vendedor := v_where_vendedor || format(' AND ano = %L ', p_ano::int);
-        v_where_fornecedor := v_where_fornecedor || format(' AND ano = %L ', p_ano::int);
-        v_where_tipovenda := v_where_tipovenda || format(' AND ano = %L ', p_ano::int);
-        v_where_rede := v_where_rede || format(' AND ano = %L ', p_ano::int);
-        v_where_cat := v_where_cat || format(' AND ano = %L ', p_ano::int);
+        v_where_filial := v_where_filial || format(' AND s.ano = %L ', p_ano::int);
+        v_where_cidade := v_where_cidade || format(' AND s.ano = %L ', p_ano::int);
+        v_where_supervisor := v_where_supervisor || format(' AND s.ano = %L ', p_ano::int);
+        v_where_vendedor := v_where_vendedor || format(' AND s.ano = %L ', p_ano::int);
+        v_where_fornecedor := v_where_fornecedor || format(' AND s.ano = %L ', p_ano::int);
+        v_where_tipovenda := v_where_tipovenda || format(' AND s.ano = %L ', p_ano::int);
+        v_where_rede := v_where_rede || format(' AND s.ano = %L ', p_ano::int);
+        v_where_cat := v_where_cat || format(' AND s.ano = %L ', p_ano::int);
     END IF;
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
-        v_where_filial := v_where_filial || format(' AND mes = %L ', p_mes::int + 1);
-        v_where_cidade := v_where_cidade || format(' AND mes = %L ', p_mes::int + 1);
-        v_where_supervisor := v_where_supervisor || format(' AND mes = %L ', p_mes::int + 1);
-        v_where_vendedor := v_where_vendedor || format(' AND mes = %L ', p_mes::int + 1);
-        v_where_fornecedor := v_where_fornecedor || format(' AND mes = %L ', p_mes::int + 1);
-        v_where_tipovenda := v_where_tipovenda || format(' AND mes = %L ', p_mes::int + 1);
-        v_where_rede := v_where_rede || format(' AND mes = %L ', p_mes::int + 1);
-        v_where_cat := v_where_cat || format(' AND mes = %L ', p_mes::int + 1);
+        v_where_filial := v_where_filial || format(' AND s.mes = %L ', p_mes::int + 1);
+        v_where_cidade := v_where_cidade || format(' AND s.mes = %L ', p_mes::int + 1);
+        v_where_supervisor := v_where_supervisor || format(' AND s.mes = %L ', p_mes::int + 1);
+        v_where_vendedor := v_where_vendedor || format(' AND s.mes = %L ', p_mes::int + 1);
+        v_where_fornecedor := v_where_fornecedor || format(' AND s.mes = %L ', p_mes::int + 1);
+        v_where_tipovenda := v_where_tipovenda || format(' AND s.mes = %L ', p_mes::int + 1);
+        v_where_rede := v_where_rede || format(' AND s.mes = %L ', p_mes::int + 1);
+        v_where_cat := v_where_cat || format(' AND s.mes = %L ', p_mes::int + 1);
     END IF;
 
     -- Filial
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where_cidade := v_where_cidade || format(' AND filial = ANY(%L::text[]) ', p_filial);
-        v_where_supervisor := v_where_supervisor || format(' AND filial = ANY(%L::text[]) ', p_filial);
-        v_where_vendedor := v_where_vendedor || format(' AND filial = ANY(%L::text[]) ', p_filial);
-        v_where_fornecedor := v_where_fornecedor || format(' AND filial = ANY(%L::text[]) ', p_filial);
-        v_where_tipovenda := v_where_tipovenda || format(' AND filial = ANY(%L::text[]) ', p_filial);
-        v_where_rede := v_where_rede || format(' AND filial = ANY(%L::text[]) ', p_filial);
-        v_where_cat := v_where_cat || format(' AND filial = ANY(%L::text[]) ', p_filial);
+        v_where_cidade := v_where_cidade || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
+        v_where_supervisor := v_where_supervisor || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
+        v_where_vendedor := v_where_vendedor || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
+        v_where_fornecedor := v_where_fornecedor || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
+        v_where_tipovenda := v_where_tipovenda || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
+        v_where_rede := v_where_rede || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
+        v_where_cat := v_where_cat || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
     END IF;
 
     -- Cidade
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_filial := v_where_filial || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
-        v_where_supervisor := v_where_supervisor || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
-        v_where_vendedor := v_where_vendedor || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
-        v_where_fornecedor := v_where_fornecedor || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
-        v_where_tipovenda := v_where_tipovenda || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
-        v_where_rede := v_where_rede || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
-        v_where_cat := v_where_cat || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_filial := v_where_filial || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_supervisor := v_where_supervisor || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_vendedor := v_where_vendedor || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_fornecedor := v_where_fornecedor || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_tipovenda := v_where_tipovenda || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_rede := v_where_rede || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_cat := v_where_cat || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
     END IF;
 
     -- Supervisor
@@ -2342,49 +2349,49 @@ BEGIN
 
     -- Fornecedor
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where_filial := v_where_filial || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_cidade := v_where_cidade || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_supervisor := v_where_supervisor || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_vendedor := v_where_vendedor || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_tipovenda := v_where_tipovenda || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_rede := v_where_rede || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_cat := v_where_cat || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_prod := v_where_prod || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where_filial := v_where_filial || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where_cidade := v_where_cidade || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where_supervisor := v_where_supervisor || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where_vendedor := v_where_vendedor || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where_tipovenda := v_where_tipovenda || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where_rede := v_where_rede || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where_cat := v_where_cat || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where_prod := v_where_prod || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
     END IF;
 
     -- Tipovenda
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_filial := v_where_filial || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
-        v_where_cidade := v_where_cidade || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
-        v_where_supervisor := v_where_supervisor || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
-        v_where_vendedor := v_where_vendedor || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
-        v_where_fornecedor := v_where_fornecedor || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
-        v_where_rede := v_where_rede || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
-        v_where_cat := v_where_cat || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where_filial := v_where_filial || format(' AND s.tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where_cidade := v_where_cidade || format(' AND s.tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where_supervisor := v_where_supervisor || format(' AND s.tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where_vendedor := v_where_vendedor || format(' AND s.tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where_fornecedor := v_where_fornecedor || format(' AND s.tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where_rede := v_where_rede || format(' AND s.tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where_cat := v_where_cat || format(' AND s.tipovenda = ANY(%L::text[]) ', p_tipovenda);
     END IF;
 
     -- Rede
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-        v_where_filial := v_where_filial || format(' AND rede = ANY(%L::text[]) ', p_rede);
-        v_where_cidade := v_where_cidade || format(' AND rede = ANY(%L::text[]) ', p_rede);
-        v_where_supervisor := v_where_supervisor || format(' AND rede = ANY(%L::text[]) ', p_rede);
-        v_where_vendedor := v_where_vendedor || format(' AND rede = ANY(%L::text[]) ', p_rede);
-        v_where_fornecedor := v_where_fornecedor || format(' AND rede = ANY(%L::text[]) ', p_rede);
-        v_where_tipovenda := v_where_tipovenda || format(' AND rede = ANY(%L::text[]) ', p_rede);
-        v_where_cat := v_where_cat || format(' AND rede = ANY(%L::text[]) ', p_rede);
+        v_where_filial := v_where_filial || format(' AND s.rede = ANY(%L::text[]) ', p_rede);
+        v_where_cidade := v_where_cidade || format(' AND s.rede = ANY(%L::text[]) ', p_rede);
+        v_where_supervisor := v_where_supervisor || format(' AND s.rede = ANY(%L::text[]) ', p_rede);
+        v_where_vendedor := v_where_vendedor || format(' AND s.rede = ANY(%L::text[]) ', p_rede);
+        v_where_fornecedor := v_where_fornecedor || format(' AND s.rede = ANY(%L::text[]) ', p_rede);
+        v_where_tipovenda := v_where_tipovenda || format(' AND s.rede = ANY(%L::text[]) ', p_rede);
+        v_where_cat := v_where_cat || format(' AND s.rede = ANY(%L::text[]) ', p_rede);
     END IF;
 
     -- Categoria
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_filial := v_where_filial || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_cidade := v_where_cidade || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_supervisor := v_where_supervisor || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_vendedor := v_where_vendedor || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_fornecedor := v_where_fornecedor || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_tipovenda := v_where_tipovenda || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_rede := v_where_rede || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_filial := v_where_filial || format(' AND s.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_cidade := v_where_cidade || format(' AND s.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_supervisor := v_where_supervisor || format(' AND s.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_vendedor := v_where_vendedor || format(' AND s.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_fornecedor := v_where_fornecedor || format(' AND s.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_tipovenda := v_where_tipovenda || format(' AND s.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_rede := v_where_rede || format(' AND s.categoria_produto = ANY(%L::text[]) ', p_categoria);
 
-        v_where_prod := v_where_prod || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_prod := v_where_prod || format(' AND s.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
 
     -- Execute with dynamic JSON construction
@@ -2653,7 +2660,7 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     -- 1. Determine Date Ranges
-    IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
+    IF p_ano IS NULL OR p_s.ano = 'todos' OR p_s.ano = '' THEN
         v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE
         v_current_year := p_ano::int;
@@ -2664,7 +2671,7 @@ BEGIN
         v_target_month := p_mes::int + 1;
         v_is_month_filtered := true;
     ELSE
-         v_target_month := (SELECT COALESCE(MAX(mes), 12) FROM public.data_summary WHERE ano = v_current_year);
+         v_target_month := (SELECT COALESCE(MAX(mes), 12) FROM public.data_summary s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente WHERE s.ano = v_current_year);
          v_is_month_filtered := false;
     END IF;
 
@@ -2700,22 +2707,22 @@ BEGIN
     v_where_base := v_where_base || format(' AND ano IN (%L, %L) ', v_current_year, v_previous_year);
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND filial = ANY(%L::text[]) ', p_filial);
+        v_where_base := v_where_base || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_base := v_where_base || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where_base := v_where_base || format(' AND COALESCE(dc.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-         v_where_base := v_where_base || format(' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+         v_where_base := v_where_base || format(' AND COALESCE(dc.rca1, s.codusur) IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where_base := v_where_base || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_base := v_where_base || format(' AND s.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
     
     -- REDE Logic
@@ -2753,7 +2760,7 @@ BEGIN
     -- KPI Base Filter (Table: data_clients)
     v_where_kpi := ' WHERE bloqueio != ''S'' ';
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_kpi := v_where_kpi || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_kpi := v_where_kpi || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
     END IF;
 
     -- FILIAL LOGIC FOR KPI
@@ -2761,10 +2768,10 @@ BEGIN
         IF NOT ('ambas' = ANY(p_filial)) THEN
             SELECT array_agg(DISTINCT cidade) INTO v_filial_cities
             FROM public.config_city_branches
-            WHERE filial = ANY(p_filial);
+            WHERE s.filial = ANY(p_filial);
 
             IF v_filial_cities IS NOT NULL THEN
-                 v_where_kpi := v_where_kpi || format(' AND cidade = ANY(%L::text[]) ', v_filial_cities);
+                 v_where_kpi := v_where_kpi || format(' AND s.cidade = ANY(%L::text[]) ', v_filial_cities);
             ELSE
                  v_where_kpi := v_where_kpi || ' AND 1=0 ';
             END IF;
@@ -2838,10 +2845,10 @@ BEGIN
             SELECT ano, mes, codcli, SUM(vlvenda) as total_vlvenda, SUM(bonificacao) as total_bonificacao
             FROM filtered_summary
             WHERE (
-                ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND tipovenda = ANY($1) )
+                ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND s.tipovenda = ANY($1) )
                 OR
                 ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND
-                  (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1) ELSE tipovenda NOT IN (''5'', ''11'') END)
+                  (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN s.tipovenda = ANY($1) ELSE tipovenda NOT IN (''5'', ''11'') END)
                 )
             )
             GROUP BY ano, mes, codcli
@@ -2913,13 +2920,13 @@ BEGIN
         FROM (
             SELECT codcli
             FROM filtered_summary
-            WHERE ano = $2
-            ' || CASE WHEN v_is_month_filtered THEN ' AND mes = $3 ' ELSE '' END || '
+            WHERE s.ano = $2
+            ' || CASE WHEN v_is_month_filtered THEN ' AND s.mes = $3 ' ELSE '' END || '
             AND (
-                ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND tipovenda = ANY($1) )
+                ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND s.tipovenda = ANY($1) )
                 OR
                 ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND
-                  (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1) ELSE tipovenda NOT IN (''5'', ''11'') END)
+                  (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN s.tipovenda = ANY($1) ELSE tipovenda NOT IN (''5'', ''11'') END)
                 )
             )
             GROUP BY codcli
@@ -2947,7 +2954,7 @@ BEGIN
             ''positivacao'', a.positivacao_count, 
             ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END, 
             ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
-        ) ORDER BY a.mes) FILTER (WHERE a.ano = $2), ''[]''::json),
+        ) ORDER BY a.mes) FILTER (WHERE a.s.ano = $2), ''[]''::json),
         
         COALESCE(json_agg(json_build_object(
             ''month_index'', a.mes - 1, 
@@ -2959,7 +2966,7 @@ BEGIN
             ''positivacao'', a.positivacao_count, 
             ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END, 
             ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
-        ) ORDER BY a.mes) FILTER (WHERE a.ano = $4), ''[]''::json)
+        ) ORDER BY a.mes) FILTER (WHERE a.s.ano = $4), ''[]''::json)
     FROM agg_data a
     ';
 
@@ -3075,7 +3082,7 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Logic
-    IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
+    IF p_ano IS NULL OR p_s.ano = 'todos' OR p_s.ano = '' THEN
         v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE
         v_current_year := p_ano::int;
@@ -3132,40 +3139,40 @@ BEGIN
     END IF;
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where_raw := v_where_raw || format(' AND filial = ANY(%L::text[]) ', p_filial);
-        v_where_summary := v_where_summary || format(' AND filial = ANY(%L::text[]) ', p_filial);
-        v_where_raw_base := v_where_raw_base || format(' AND filial = ANY(%L::text[]) ', p_filial);
-        v_where_summary_base := v_where_summary_base || format(' AND filial = ANY(%L::text[]) ', p_filial);
+        v_where_raw := v_where_raw || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
+        v_where_summary := v_where_summary || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
+        v_where_raw_base := v_where_raw_base || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
+        v_where_summary_base := v_where_summary_base || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_raw := v_where_raw || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
-        v_where_summary := v_where_summary || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
-        v_where_raw_base := v_where_raw_base || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
-        v_where_summary_base := v_where_summary_base || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_raw := v_where_raw || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_summary := v_where_summary || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_raw_base := v_where_raw_base || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_summary_base := v_where_summary_base || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
     END IF;
     -- Map Name to Code
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-         v_where_raw := v_where_raw || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
-         v_where_summary := v_where_summary || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
-         v_where_raw_base := v_where_raw_base || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
-         v_where_summary_base := v_where_summary_base || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+         v_where_raw := v_where_raw || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+         v_where_summary := v_where_summary || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+         v_where_raw_base := v_where_raw_base || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+         v_where_summary_base := v_where_summary_base || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-         v_where_raw := v_where_raw || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-         v_where_summary := v_where_summary || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-         v_where_raw_base := v_where_raw_base || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-         v_where_summary_base := v_where_summary_base || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+         v_where_raw := v_where_raw || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+         v_where_summary := v_where_summary || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+         v_where_raw_base := v_where_raw_base || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+         v_where_summary_base := v_where_summary_base || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_raw := v_where_raw || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
-        v_where_summary := v_where_summary || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
-        v_tipovenda_client_cond := format('tipovenda = ANY(%L::text[])', p_tipovenda);
+        v_where_raw := v_where_raw || format(' AND s.tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where_summary := v_where_summary || format(' AND s.tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_tipovenda_client_cond := format('s.tipovenda = ANY(%L::text[])', p_tipovenda);
         IF p_tipovenda <@ ARRAY['5','11'] THEN
-            v_active_client_cond := format('tipovenda = ANY(%L::text[]) AND bonificacao > 0', p_tipovenda);
-            v_active_client_cond_slow := format('tipovenda = ANY(%L::text[]) AND vlbonific > 0', p_tipovenda);
+            v_active_client_cond := format('s.tipovenda = ANY(%L::text[]) AND bonificacao > 0', p_tipovenda);
+            v_active_client_cond_slow := format('s.tipovenda = ANY(%L::text[]) AND vlbonific > 0', p_tipovenda);
         ELSE
-            v_active_client_cond := format('tipovenda = ANY(%L::text[]) AND tipovenda NOT IN (''5'', ''11'') AND pre_positivacao_val >= 1', p_tipovenda);
-            v_active_client_cond_slow := format('tipovenda = ANY(%L::text[]) AND tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1', p_tipovenda);
+            v_active_client_cond := format('s.tipovenda = ANY(%L::text[]) AND tipovenda NOT IN (''5'', ''11'') AND pre_positivacao_val >= 1', p_tipovenda);
+            v_active_client_cond_slow := format('s.tipovenda = ANY(%L::text[]) AND tipovenda NOT IN (''5'', ''11'') AND vlvenda >= 1', p_tipovenda);
         END IF;
     ELSE
         v_tipovenda_client_cond := 'tipovenda IN (''1'', ''9'')';
@@ -3175,13 +3182,13 @@ BEGIN
     
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_summary := v_where_summary || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_raw := v_where_raw || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_summary := v_where_summary || format(' AND s.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_raw := v_where_raw || format(' AND dp.s.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
     
     -- Fornecedor Logic
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where_summary := v_where_summary || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where_summary := v_where_summary || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
 
         -- Raw Logic (Complex OR/AND for mapped codes)
         DECLARE
@@ -3281,9 +3288,9 @@ BEGIN
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE ano = %L %s), 0) as pos_salty
+                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE s.ano = %L %s), 0) as pos_salty
                 FROM public.data_summary
-                %s AND ano = %L %s
+                %s AND s.ano = %L %s
             ),
             kpi_prev AS (
                 SELECT 
@@ -3291,9 +3298,9 @@ BEGIN
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE ano = %L %s), 0) as pos_salty
+                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE s.ano = %L %s), 0) as pos_salty
                 FROM public.data_summary
-                %s AND ano = %L %s
+                %s AND s.ano = %L %s
             ),
             kpi_tri AS (
                 SELECT 
@@ -3346,8 +3353,8 @@ BEGIN
         ', 
         v_where_summary_base, v_current_year, v_previous_year, -- salty_monthly CTE
         v_active_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
-        v_active_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
-        v_active_client_cond, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
+        v_active_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND s.mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND s.mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
+        v_active_client_cond, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND s.mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND s.mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
         v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
         v_active_client_cond_slow, -- Prod Agg Clientes Cond
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
@@ -3642,12 +3649,12 @@ BEGIN
     SET LOCAL work_mem = '90MB';
 
     -- 1. Date & Trend Setup
-    IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
+    IF p_ano IS NULL OR p_s.ano = 'todos' OR p_s.ano = '' THEN
         v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE v_current_year := p_ano::int; END IF;
 
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN v_target_month := p_mes::int + 1;
-    ELSE v_target_month := (SELECT COALESCE(MAX(mes), 12) FROM public.data_summary WHERE ano = v_current_year); END IF;
+    ELSE v_target_month := (SELECT COALESCE(MAX(mes), 12) FROM public.data_summary s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente WHERE s.ano = v_current_year); END IF;
 
     v_max_sale_date := (SELECT MAX(dtped)::date FROM public.data_detailed);
     IF v_max_sale_date IS NULL THEN v_max_sale_date := CURRENT_DATE; END IF;
@@ -3669,25 +3676,25 @@ BEGIN
     END IF;
 
     -- 2. Build Where
-    v_where := v_where || format(' AND ano = %L ', v_current_year);
+    v_where := v_where || format(' AND s.ano = %L ', v_current_year);
 
-    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN v_where := v_where || format(' AND filial = ANY(%L::text[]) ', p_filial); END IF;
-    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN v_where := v_where || format(' AND cidade = ANY(%L::text[]) ', p_cidade); END IF;
+    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN v_where := v_where || format(' AND s.filial = ANY(%L::text[]) ', p_filial); END IF;
+    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN v_where := v_where || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade); END IF;
 
     -- UPDATE: Codes
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where := v_where || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where := v_where || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        v_where := v_where || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
     END IF;
 
-    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN v_where := v_where || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor); END IF;
-    IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN v_where := v_where || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda); END IF;
+    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN v_where := v_where || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor); END IF;
+    IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN v_where := v_where || format(' AND s.tipovenda = ANY(%L::text[]) ', p_tipovenda); END IF;
     
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where := v_where || format(' AND s.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
 
     -- REDE Logic
@@ -3741,7 +3748,7 @@ BEGIN
             ''trend_data'', CASE WHEN $2 THEN
                  (SELECT json_build_object(''month_index'', mes - 1, ''faturamento'', faturamento * $3, ''peso'', peso * $3, ''bonificacao'', bonificacao * $3)
                   FROM agg_filial sub
-                  WHERE sub.filial = agg_filial.filial AND sub.mes = ($4 + 1))
+                  WHERE sub.filial = agg_filial.filial AND sub.s.mes = ($4 + 1))
             ELSE null END
         ) as data
         FROM agg_filial
@@ -3811,37 +3818,37 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     -- Date Logic
-    IF p_ano IS NULL OR p_ano = 'todos' OR p_ano = '' THEN
+    IF p_ano IS NULL OR p_s.ano = 'todos' OR p_s.ano = '' THEN
          v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary);
     ELSE v_current_year := p_ano::int; END IF;
 
     -- Dynamic Filters (Common for current and trend)
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where := v_where || format(' AND filial = ANY(%L::text[]) ', p_filial);
-        v_where_trend := v_where_trend || format(' AND filial = ANY(%L::text[]) ', p_filial);
+        v_where := v_where || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
+        v_where_trend := v_where_trend || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where := v_where || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
-        v_where_trend := v_where_trend || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
-        v_where_clients := v_where_clients || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
+        v_where := v_where || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_trend := v_where_trend || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_clients := v_where_clients || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
     END IF;
     -- UPDATE: Codes
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where := v_where || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
-        v_where_trend := v_where_trend || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where := v_where || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where_trend := v_where_trend || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-        v_where_trend := v_where_trend || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        v_where := v_where || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        v_where_trend := v_where_trend || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where := v_where || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_trend := v_where_trend || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where := v_where || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where_trend := v_where_trend || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where := v_where || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
-        v_where_trend := v_where_trend || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where := v_where || format(' AND s.tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where_trend := v_where_trend || format(' AND s.tipovenda = ANY(%L::text[]) ', p_tipovenda);
     END IF;
 
     IF p_segmentacao IS NOT NULL AND array_length(p_segmentacao, 1) > 0 THEN
@@ -3852,8 +3859,8 @@ BEGIN
     
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_trend := v_where_trend || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where := v_where || format(' AND s.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_trend := v_where_trend || format(' AND s.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
 
     -- REDE Logic
@@ -3884,13 +3891,13 @@ BEGIN
     END IF;
 
     -- Target month filter logic for summary
-    v_where := v_where || format(' AND ano = %L ', v_current_year);
+    v_where := v_where || format(' AND s.ano = %L ', v_current_year);
     IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
         v_target_month := p_mes::int + 1;
-        v_where := v_where || format(' AND mes = %L ', v_target_month);
+        v_where := v_where || format(' AND s.mes = %L ', v_target_month);
 
         -- Trend calculation logic (last 3 months from target month)
-        v_where_trend := v_where_trend || format(' AND ((ano = %L AND mes < %L AND mes >= %L) OR (ano = %L AND mes >= %L)) ',
+        v_where_trend := v_where_trend || format(' AND ((s.ano = %L AND mes < %L AND mes >= %L) OR (s.ano = %L AND mes >= %L)) ',
             v_current_year, v_target_month, GREATEST(1, v_target_month - 3),
             v_current_year - 1, LEAST(12, 12 + (v_target_month - 3))
         );
@@ -3898,7 +3905,7 @@ BEGIN
     ELSE
         -- Default to the entire year for 'todos' or null
         -- 'Todos' is selected: trend is the entire previous year
-        v_where_trend := v_where_trend || format(' AND ano = %L ', v_current_year - 1);
+        v_where_trend := v_where_trend || format(' AND s.ano = %L ', v_current_year - 1);
         v_trend_divisor := 1.0;
     END IF;
 
@@ -4178,16 +4185,16 @@ BEGIN
 
     -- 2. Build WHERE Clause
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where := v_where || format(' AND filial = ANY(%L::text[]) ', p_filial);
+        v_where := v_where || format(' AND s.filial = ANY(%L::text[]) ', p_filial);
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where := v_where || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
+        v_where := v_where || format(' AND s.cidade = ANY(%L::text[]) ', p_cidade);
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where := v_where || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where := v_where || format(' AND COALESCE(dc.codsupervisor, ds.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        v_where := v_where || format(' AND COALESCE(dc.rca1, ds.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
     END IF;
 
     -- FORNECEDOR LOGIC (Modified to check joined dim_produtos for description)
@@ -4224,7 +4231,7 @@ BEGIN
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where := v_where || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where := v_where || format(' AND s.tipovenda = ANY(%L::text[]) ', p_tipovenda);
     END IF;
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
         v_where := v_where || format(' AND produto = ANY(%L::text[]) ', p_produto);
@@ -4232,7 +4239,7 @@ BEGIN
     
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where := v_where || format(' AND dp.s.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
 
     -- REDE Logic
@@ -4798,12 +4805,12 @@ BEGIN
     END IF;
 
     IF p_ano IS NOT NULL THEN
-        v_where_base := v_where_base || format(' AND ano = %L', p_ano);
-        v_where_chart := v_where_chart || format(' AND ano = %L', p_ano);
+        v_where_base := v_where_base || format(' AND s.ano = %L', p_ano);
+        v_where_chart := v_where_chart || format(' AND s.ano = %L', p_ano);
     END IF;
 
     IF p_mes IS NOT NULL THEN
-        v_where_base := v_where_base || format(' AND mes = %L', p_mes);
+        v_where_base := v_where_base || format(' AND s.mes = %L', p_mes);
     END IF;
 
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
@@ -4832,8 +4839,8 @@ BEGIN
     END IF;
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND filial = ANY(%L::text[])', p_filial);
-        v_where_chart := v_where_chart || format(' AND filial = ANY(%L::text[])', p_filial);
+        v_where_base := v_where_base || format(' AND s.filial = ANY(%L::text[])', p_filial);
+        v_where_chart := v_where_chart || format(' AND s.filial = ANY(%L::text[])', p_filial);
     END IF;
 
     IF p_pesquisador IS NOT NULL AND array_length(p_pesquisador, 1) > 0 THEN
@@ -5035,7 +5042,7 @@ BEGIN
        v_needs_join := true;
 
        IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-           v_where := v_where || format(' AND cm.filial = ANY(%L::text[])', p_filial);
+           v_where := v_where || format(' AND cm.s.filial = ANY(%L::text[])', p_filial);
        END IF;
 
        IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
@@ -5159,7 +5166,7 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Resolution
-    IF p_ano IS NULL OR p_ano = 'todos' THEN
+    IF p_ano IS NULL OR p_s.ano = 'todos' THEN
         v_current_year := (SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) FROM public.data_summary_frequency);
     ELSE
         v_current_year := p_ano::int;
@@ -5179,11 +5186,11 @@ BEGIN
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND COALESCE(dc.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+        v_where_chart := v_where_chart || ' AND COALESCE(dc.rca1, s.codusur) IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
@@ -5261,7 +5268,7 @@ BEGIN
             MAX(has_toddy) as has_toddy,
             MAX(has_quaker) as has_quaker,
             MAX(has_kerococo) as has_kerococo
-        FROM public.data_summary_frequency s
+        FROM public.data_summary_frequency s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente
         ' || v_where_chart || ' AND s.tipovenda NOT IN (''5'', ''11'')
         GROUP BY 1, 2
     ),
@@ -5344,7 +5351,7 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
 
     -- 1. Date Resolution
-    IF p_ano IS NULL OR p_ano = '' OR p_ano = 'todos' THEN
+    IF p_ano IS NULL OR p_s.ano = '' OR p_s.ano = 'todos' THEN
         v_current_year := (SELECT EXTRACT(YEAR FROM MAX(dtped)) FROM public.data_detailed);
         IF v_current_year IS NULL THEN
             v_current_year := EXTRACT(YEAR FROM CURRENT_DATE);
@@ -5353,7 +5360,7 @@ BEGIN
         v_current_year := p_ano::integer;
     END IF;
 
-    IF p_mes IS NULL OR p_mes = '' THEN
+    IF p_mes IS NULL OR p_s.mes = '' THEN
         -- If no month, use whole year
         v_curr_start := make_date(v_current_year, 1, 1);
         v_curr_end := make_date(v_current_year + 1, 1, 1);
@@ -5379,11 +5386,11 @@ BEGIN
         IF NOT ('ambas' = ANY(p_filial)) THEN
             SELECT array_agg(DISTINCT cidade) INTO v_filial_cities
             FROM public.config_city_branches
-            WHERE filial = ANY(p_filial);
+            WHERE s.filial = ANY(p_filial);
 
             IF v_filial_cities IS NOT NULL THEN
-                v_where_base := v_where_base || ' AND c.cidade = ANY(ARRAY[''' || array_to_string(v_filial_cities, ''',''') || ''']) ';
-                v_where_client_base := v_where_client_base || ' AND cidade = ANY(ARRAY[''' || array_to_string(v_filial_cities, ''',''') || ''']) ';
+                v_where_base := v_where_base || ' AND c.s.cidade = ANY(ARRAY[''' || array_to_string(v_filial_cities, ''',''') || ''']) ';
+                v_where_client_base := v_where_client_base || ' AND s.cidade = ANY(ARRAY[''' || array_to_string(v_filial_cities, ''',''') || ''']) ';
             ELSE
                 v_where_base := v_where_base || ' AND 1=0 ';
                 v_where_client_base := v_where_client_base || ' AND 1=0 ';
@@ -5392,8 +5399,8 @@ BEGIN
     END IF;
 
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
-        v_where_base := v_where_base || ' AND c.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
-        v_where_client_base := v_where_client_base || ' AND cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+        v_where_base := v_where_base || ' AND c.s.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
+        v_where_client_base := v_where_client_base || ' AND s.cidade = ANY(ARRAY[''' || array_to_string(p_cidade, ''',''') || ''']) ';
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
@@ -5434,7 +5441,7 @@ BEGIN
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND d.tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where_base := v_where_base || format(' AND d.s.tipovenda = ANY(%L::text[]) ', p_tipovenda);
         v_where_client_tipo := ' ';
         IF p_tipovenda <@ ARRAY['5', '11'] THEN
             v_having_client_tipo := ' SUM(d.vlbonific) > 0 ';
@@ -5796,7 +5803,7 @@ SELECT
 FROM public.data_clients c
 -- JOIN pelas vendas consolidadas por pedido. Um cliente terá várias linhas, uma para cada pedido que fez.
 JOIN pedidos_agrupados pa ON c.codigo_cliente = pa.codcli
-LEFT JOIN mix_mensal mm ON pa.codcli = mm.codcli AND pa.ano = mm.ano AND pa.mes = mm.mes
+LEFT JOIN mix_mensal mm ON pa.codcli = mm.codcli AND pa.s.ano = mm.ano AND pa.s.mes = mm.mes
 LEFT JOIN public.dim_vendedores v ON pa.vendedor_cod = v.codigo
 LEFT JOIN public.dim_supervisores s ON pa.supervisor_cod = s.codigo;
 
@@ -5868,13 +5875,13 @@ BEGIN
         v_where_base_cidades := v_where_base_cidades || format(' AND dc.cidade = ANY(%L::text[]) ', p_cidade);
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where := v_where || format(' AND ds.codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
-        v_where_base_cidades := v_where_base_cidades || format(' AND ds.codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where := v_where || format(' AND COALESCE(dc.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where_base_cidades := v_where_base_cidades || format(' AND COALESCE(dc.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
         v_has_filters_no_city := true;
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND ds.codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-        v_where_base_cidades := v_where_base_cidades || format(' AND ds.codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        v_where := v_where || format(' AND COALESCE(dc.rca1, s.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        v_where_base_cidades := v_where_base_cidades || format(' AND COALESCE(dc.rca1, s.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
         v_has_filters_no_city := true;
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
@@ -6124,7 +6131,7 @@ SELECT
     pa.lista_itens_comprados
 FROM public.data_clients c
 JOIN pedidos_agrupados pa ON c.codigo_cliente = pa.codcli
-LEFT JOIN mix_mensal mm ON pa.codcli = mm.codcli AND pa.ano = mm.ano AND pa.mes = mm.mes
+LEFT JOIN mix_mensal mm ON pa.codcli = mm.codcli AND pa.s.ano = mm.ano AND pa.s.mes = mm.mes
 LEFT JOIN public.dim_vendedores v ON pa.vendedor_cod = v.codigo
 LEFT JOIN public.dim_supervisores s ON pa.supervisor_cod = s.codigo;
 
@@ -6204,13 +6211,13 @@ BEGIN
         v_where_base_cidades := v_where_base_cidades || format(' AND dc.cidade = ANY(%L::text[]) ', p_cidade);
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where := v_where || format(' AND ds.codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
-        v_where_base_cidades := v_where_base_cidades || format(' AND ds.codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where := v_where || format(' AND COALESCE(dc.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where_base_cidades := v_where_base_cidades || format(' AND COALESCE(dc.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
         v_has_filters_no_city := true;
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND ds.codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-        v_where_base_cidades := v_where_base_cidades || format(' AND ds.codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        v_where := v_where || format(' AND COALESCE(dc.rca1, s.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        v_where_base_cidades := v_where_base_cidades || format(' AND COALESCE(dc.rca1, s.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
         v_has_filters_no_city := true;
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
@@ -6551,7 +6558,7 @@ BEGIN
     IF p_ano IS NOT NULL AND p_ano != '' AND p_ano != 'todos' THEN
         v_filter_year := p_ano::int;
     ELSE
-        IF p_ano = 'todos' THEN v_filter_year := NULL; 
+        IF p_s.ano = 'todos' THEN v_filter_year := NULL;
         ELSE
             SELECT COALESCE(MAX(ano), EXTRACT(YEAR FROM CURRENT_DATE)::int) INTO v_filter_year FROM public.cache_filters;
         END IF;
@@ -6574,8 +6581,8 @@ BEGIN
                 SELECT DISTINCT codfor as cod, fornecedor as nome 
                 FROM public.cache_filters f2
                 WHERE 
-                   (v_filter_year IS NULL OR f2.ano = v_filter_year)
-                   AND (p_filial IS NULL OR f2.filial = ANY(p_filial))
+                   (v_filter_year IS NULL OR f2.s.ano = v_filter_year)
+                   AND (p_filial IS NULL OR f2.s.filial = ANY(p_filial))
                    -- ... (aplica mesmos filtros da query principal, ou simplifica para performance)
                    -- Nota: Para performance máxima, podemos simplificar a lista de fornecedores ou incluí-la no agg principal se não precisarmos do objeto {cod, name} complexo.
                    -- Mantendo compatibilidade com teu código atual:
@@ -6601,14 +6608,14 @@ BEGIN
     ) INTO v_result
     FROM public.cache_filters
     WHERE 
-        (v_filter_year IS NULL OR ano = v_filter_year)
-        AND (v_filter_month IS NULL OR mes = v_filter_month)
-        AND (p_filial IS NULL OR filial = ANY(p_filial))
-        AND (p_cidade IS NULL OR cidade = ANY(p_cidade))
+        (v_filter_year IS NULL OR s.ano = v_filter_year)
+        AND (v_filter_month IS NULL OR s.mes = v_filter_month)
+        AND (p_filial IS NULL OR s.filial = ANY(p_filial))
+        AND (p_cidade IS NULL OR s.cidade = ANY(p_cidade))
         AND (p_supervisor IS NULL OR superv = ANY(p_supervisor))
         AND (p_vendedor IS NULL OR nome = ANY(p_vendedor))
-        AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor))
-        AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda));
+        AND (p_fornecedor IS NULL OR s.codfor = ANY(p_fornecedor))
+        AND (p_tipovenda IS NULL OR s.tipovenda = ANY(p_tipovenda));
 
     RETURN v_result;
 END;
@@ -6916,8 +6923,7 @@ BEGIN
         SUM(bonificacao) as bonificacao,
         SUM(devolucao) as devolucao,
         SUM(pre_positivacao_val) as positivacao_count
-    FROM public.data_summary
-    GROUP BY 1, 2, 3, 4, 5, 6, 7, 8;
+    FROM public.data_summary s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente GROUP BY 1, 2, 3, 4, 5, 6, 7, 8;
 END;
 $function$;
 
@@ -6932,8 +6938,8 @@ BEGIN
     SET LOCAL work_mem = '128MB'; -- More memory for internal hashing during grouped inserts
 
     -- Clear data for this year/month first (avoid duplicates)
-    DELETE FROM public.data_summary WHERE ano = p_year AND mes = p_month;
-    DELETE FROM public.data_summary_frequency WHERE ano = p_year AND mes = p_month;
+    DELETE FROM public.data_summary s LEFT JOIN public.data_clients dc ON s.codcli = dc.codigo_cliente WHERE s.ano = p_year AND s.mes = p_month;
+    DELETE FROM public.data_summary_frequency WHERE s.ano = p_year AND s.mes = p_month;
     
     -- STEP B: Insert into data_summary using CTE
     INSERT INTO public.data_summary (
@@ -7197,11 +7203,11 @@ BEGIN
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where := v_where || format(' AND s.codsupervisor = ANY(%L::text[]) ', p_supervisor);
+        v_where := v_where || format(' AND COALESCE(dc.codsupervisor, s.codsupervisor) = ANY(%L::text[]) ', p_supervisor);
     END IF;
 
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND s.codusur = ANY(%L::text[]) ', p_vendedor);
+        v_where := v_where || format(' AND COALESCE(dc.rca1, s.codusur) = ANY(%L::text[]) ', p_vendedor);
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
@@ -7213,7 +7219,7 @@ BEGIN
     END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where := v_where || format(' AND dp.s.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
 
     -- REDE Logic
@@ -7452,10 +7458,10 @@ BEGIN
         v_where_acumulado := v_where_acumulado || format(' AND dc.cidade = ANY(%L::text[]) ', p_cidade);
     END IF;
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
-        v_where_acumulado := v_where_acumulado || format(' AND ds.codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
+        v_where_acumulado := v_where_acumulado || format(' AND COALESCE(dc.codsupervisor, s.codsupervisor) IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
     END IF;
     IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_acumulado := v_where_acumulado || format(' AND ds.codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        v_where_acumulado := v_where_acumulado || format(' AND COALESCE(dc.rca1, s.codusur) IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_where_acumulado := v_where_acumulado || format(' AND ds.codfor = ANY(%L::text[]) ', p_fornecedor);
