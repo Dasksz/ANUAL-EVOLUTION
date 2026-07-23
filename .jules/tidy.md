@@ -24,3 +24,6 @@
 ## 2024/07/23 : (SCD) Atualizadas RPCs de Relatórios com Join na data_clients
 **Aprendizado:** Para completar a arquitetura de Slowly Changing Dimensions, a tabela agregada `data_summary` não deve ditar a carteira, mas sim fazer LEFT JOIN com `data_clients`.
 **Ação:** Refatorado `get_main_dashboard_data`, `get_boxes_dashboard_data`, filtros e outros dashboards injetando `LEFT JOIN data_clients dc` nas CTEs base e usando `COALESCE(dc.codsupervisor, s.codsupervisor)` para retribuição de histórico no momento da visualização.
+## 2024/07/23 : (SCD) Correção de syntax error em aliases de CTE
+**Aprendizado:** A rotina de replace em massa anterior adicionou inadvertidamente o prefixo `.s.` em aliases de tabelas diferentes como `m` (meta_estrelas) ou `pa` (pedidos_agrupados), resultando em `m.s.ano` em vez de `m.ano`, gerando o erro `42P01: missing FROM-clause entry for table "s"`.
+**Ação:** Limpeza via regex convertendo toda ocorrência de `alias.s.column` de volta para `alias.column` nas views/consultas não relacionadas a data_summary.
