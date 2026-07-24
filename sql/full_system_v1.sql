@@ -3549,6 +3549,8 @@ BEGIN
                 'clientes', (p->>'clientes')::numeric,
                 'ultima_venda', p->>'ultima_venda',
                 'estoque', COALESCE(sub.estoque, 0),
+                'total_caixas_6m', COALESCE(sub.total_caixas_6m, 0),
+                'elapsed_days', COALESCE(sub.elapsed_days, 0),
                 'tend_estq', CASE
                     WHEN COALESCE(sub.estoque, 0) = 0 THEN 0
                     WHEN COALESCE(sub.elapsed_days, 0) = 0 THEN 0
