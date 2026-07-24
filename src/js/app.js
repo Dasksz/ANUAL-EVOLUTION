@@ -3131,33 +3131,37 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         const mergeKpi = (accKpi, newKpi) => {
             if (!accKpi) return newKpi;
             if (!newKpi) return accKpi;
-            accKpi.fat = (accKpi.fat || 0) + (newKpi.fat || 0);
-            accKpi.peso = (accKpi.peso || 0) + (newKpi.peso || 0);
-            accKpi.caixas = (accKpi.caixas || 0) + (newKpi.caixas || 0);
-            accKpi.clientes = (accKpi.clientes || 0) + (newKpi.clientes || 0);
+            accKpi.fat = (Number(accKpi.fat) || 0) + (Number(newKpi.fat) || 0);
+            accKpi.peso = (Number(accKpi.peso) || 0) + (Number(newKpi.peso) || 0);
+            accKpi.caixas = (Number(accKpi.caixas) || 0) + (Number(newKpi.caixas) || 0);
+            accKpi.clientes = (Number(accKpi.clientes) || 0) + (Number(newKpi.clientes) || 0);
             return accKpi;
         };
 
         accumulated.kpi_current = mergeKpi(accumulated.kpi_current, newData.kpi_current);
         accumulated.kpi_previous = mergeKpi(accumulated.kpi_previous, newData.kpi_previous);
-        // Note: kpi_tri_avg is an average, mathematically summing averages is wrong. We'd ideally sum the total and divide, but since we don't have the original denominator, summing the total is an approximation for branch aggregation.
         accumulated.kpi_tri_avg = mergeKpi(accumulated.kpi_tri_avg, newData.kpi_tri_avg);
 
         // 2. Merge Chart Data
         if (newData.chart_data && newData.chart_data.length > 0) {
             accumulated.chart_data = accumulated.chart_data || [];
             newData.chart_data.forEach(newRow => {
-                let existingRow = accumulated.chart_data.find(r => r.mes_ano === newRow.mes_ano);
+                // The API returns month_index and year for chart data
+                let existingRow = accumulated.chart_data.find(r => r.year === newRow.year && r.month_index === newRow.month_index);
                 if (existingRow) {
-                    existingRow.caixas = (existingRow.caixas || 0) + (newRow.caixas || 0);
+                    existingRow.caixas = (Number(existingRow.caixas) || 0) + (Number(newRow.caixas) || 0);
+                    existingRow.faturamento = (Number(existingRow.faturamento) || 0) + (Number(newRow.faturamento) || 0);
+                    existingRow.peso = (Number(existingRow.peso) || 0) + (Number(newRow.peso) || 0);
+                    existingRow.clientes = (Number(existingRow.clientes) || 0) + (Number(newRow.clientes) || 0);
+                    existingRow.pos_salty = (Number(existingRow.pos_salty) || 0) + (Number(newRow.pos_salty) || 0);
                 } else {
                     accumulated.chart_data.push({ ...newRow });
                 }
             });
-            // Ensure sorting remains correct (e.g. by ano/mes)
+            // Sort chronologically by year then month_index
             accumulated.chart_data.sort((a, b) => {
-                if (a.ano !== b.ano) return a.ano - b.ano;
-                return a.mes - b.mes;
+                if (a.year !== b.year) return (a.year || 0) - (b.year || 0);
+                return (a.month_index || 0) - (b.month_index || 0);
             });
         }
 
@@ -3167,16 +3171,15 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             newData.products_table.forEach(newProd => {
                 let existingProd = accumulated.products_table.find(p => p.produto === newProd.produto);
                 if (existingProd) {
-                    existingProd.faturamento = (existingProd.faturamento || 0) + (newProd.faturamento || 0);
-                    existingProd.peso = (existingProd.peso || 0) + (newProd.peso || 0);
-                    existingProd.caixas = (existingProd.caixas || 0) + (newProd.caixas || 0);
-                    existingProd.clientes = (existingProd.clientes || 0) + (newProd.clientes || 0);
-                    existingProd.estoque = (existingProd.estoque || 0) + (newProd.estoque || 0);
-                    existingProd.total_caixas_6m = (existingProd.total_caixas_6m || 0) + (newProd.total_caixas_6m || 0);
+                    existingProd.faturamento = (Number(existingProd.faturamento) || 0) + (Number(newProd.faturamento) || 0);
+                    existingProd.peso = (Number(existingProd.peso) || 0) + (Number(newProd.peso) || 0);
+                    existingProd.caixas = (Number(existingProd.caixas) || 0) + (Number(newProd.caixas) || 0);
+                    existingProd.clientes = (Number(existingProd.clientes) || 0) + (Number(newProd.clientes) || 0);
+                    existingProd.estoque = (Number(existingProd.estoque) || 0) + (Number(newProd.estoque) || 0);
+                    existingProd.total_caixas_6m = (Number(existingProd.total_caixas_6m) || 0) + (Number(newProd.total_caixas_6m) || 0);
 
                     // Re-calculate tend_estq: (estoque) / (total_caixas_6m / elapsed_days)
-                    // We don't have accurate merged elapsed_days, but assuming they are mostly equal. We'll use the max.
-                    existingProd.elapsed_days = Math.max(existingProd.elapsed_days || 1, newProd.elapsed_days || 1);
+                    existingProd.elapsed_days = Math.max(Number(existingProd.elapsed_days) || 1, Number(newProd.elapsed_days) || 1);
                     if (existingProd.total_caixas_6m > 0 && existingProd.elapsed_days > 0) {
                         let avg_daily = existingProd.total_caixas_6m / existingProd.elapsed_days;
                         existingProd.tend_estq = Math.floor(existingProd.estoque / avg_daily);
