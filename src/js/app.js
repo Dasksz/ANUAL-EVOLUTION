@@ -3243,32 +3243,27 @@ async function loadBoxesView() {
                 AppLog.log('Fetching Boxes View in chunks...');
                 const branches = availableFiltersState.filiais;
                 let accumulatedData = null;
-                const chunkSize = 2;
                 
-                for (let i = 0; i < branches.length; i += chunkSize) {
-                    const chunk = branches.slice(i, i + chunkSize);
-                    AppLog.log(`Boxes chunk ${i/chunkSize + 1}/${Math.ceil(branches.length/chunkSize)}...`);
+                for (let i = 0; i < branches.length; i++) {
+                    const branch = branches[i];
+                    AppLog.log(`Fetching Boxes branch ${i + 1}/${branches.length}...`);
+                    window.showDashboardLoading('boxes-view', `Carregando Filial ${i+1} de ${branches.length}...`);
                     
-                    const promises = chunk.map(branch => {
-                        const chunkFilters = { ...filters, p_filial: [branch] };
-                        return supabase.rpc('get_boxes_dashboard_data', chunkFilters);
-                    });
+                    const chunkFilters = { ...filters, p_filial: [branch] };
+                    const { data: resData, error: resError } = await supabase.rpc('get_boxes_dashboard_data', chunkFilters);
                     
-                    const results = await Promise.all(promises);
-                    
-                    for (const res of results) {
-                        if (res.error) {
-                            AppLog.error('API Error in boxes chunk:', res.error);
-                            if (res.error.message.includes('function get_boxes_dashboard_data') && res.error.message.includes('does not exist')) {
-                                window.hideDashboardLoading();
-                                window.showToast('error', "Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
-                                return;
-                            }
-                            continue;
+                    if (resError) {
+                        AppLog.error('API Error in boxes chunk:', resError);
+                        if (resError.message.includes('function get_boxes_dashboard_data') && resError.message.includes('does not exist')) {
+                            window.hideDashboardLoading();
+                            window.showToast('error', "Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
+                            return;
                         }
-                        if (res.data) {
-                            accumulatedData = mergeBoxesDashboardData(accumulatedData, res.data);
-                        }
+                        continue;
+                    }
+                    if (resData) {
+                        accumulatedData = mergeBoxesDashboardData(accumulatedData, resData);
+                        renderBoxesDashboard(accumulatedData);
                     }
                 }
                 data = accumulatedData;
@@ -3693,7 +3688,7 @@ async function loadBoxesView() {
     let isPrefetching = false;
 
     // --- Loading Helpers ---
-    window.showDashboardLoading = function(targetId = 'main-dashboard-view') {
+    window.showDashboardLoading = function(targetId = 'main-dashboard-view', loadingText = '') {
         const container = document.getElementById(targetId);
         let overlay = document.getElementById('dashboard-loading-overlay');
 
@@ -3707,13 +3702,23 @@ async function loadBoxesView() {
             overlay = document.createElement('div');
             overlay.id = 'dashboard-loading-overlay';
             overlay.className = 'dashboard-loading-overlay';
-            overlay.innerHTML = '<div class="dashboard-loading-spinner"></div>';
+            overlay.innerHTML = `<div class="dashboard-loading-spinner"></div>${loadingText ? `<div class="mt-2 text-sm text-slate-400 font-semibold">${loadingText}</div>` : ''}`;
             // Make sure container is relative for absolute positioning
             if (getComputedStyle(container).position === 'static') {
                 container.style.position = 'relative';
             }
             container.appendChild(overlay);
-        } else if (overlay) {
+        }
+
+        if (overlay && loadingText) {
+            const textDiv = overlay.querySelector('.mt-2');
+            if (textDiv) {
+                textDiv.textContent = loadingText;
+            } else {
+                overlay.innerHTML += `<div class="mt-2 text-sm text-slate-400 font-semibold">${loadingText}</div>`;
+            }
+        }
+ else if (overlay) {
             overlay.classList.remove('hidden');
         }
     }
@@ -4308,26 +4313,26 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             if (!isBackground) AppLog.log('Fetching all branches in chunks...');
             const branches = availableFiltersState.filiais;
             let accumulatedData = null;
-            const chunkSize = 2; // Process 2 branches concurrently
             
-            for (let i = 0; i < branches.length; i += chunkSize) {
-                const chunk = branches.slice(i, i + chunkSize);
-                if (!isBackground) AppLog.log(`Fetching chunk ${i/chunkSize + 1}/${Math.ceil(branches.length/chunkSize)}...`);
+            for (let i = 0; i < branches.length; i++) {
+                const branch = branches[i];
+                if (!isBackground) {
+                    AppLog.log(`Fetching branch ${i + 1}/${branches.length}...`);
+                    window.showDashboardLoading('main-dashboard-view', `Carregando Filial ${i+1} de ${branches.length}...`);
+                }
                 
-                const promises = chunk.map(branch => {
-                    const chunkFilters = { ...filters, p_filial: [branch] };
-                    return supabase.rpc('get_main_dashboard_data', chunkFilters);
-                });
+                const chunkFilters = { ...filters, p_filial: [branch] };
+                const { data: resData, error: resError } = await supabase.rpc('get_main_dashboard_data', chunkFilters);
                 
-                const results = await Promise.all(promises);
-                
-                for (const res of results) {
-                    if (res.error) {
-                        AppLog.error('API Error in chunk:', res.error);
-                        continue;
-                    }
-                    if (res.data) {
-                        accumulatedData = mergeMainDashboardData(accumulatedData, res.data);
+                if (resError) {
+                    AppLog.error('API Error in chunk:', resError);
+                    continue;
+                }
+                if (resData) {
+                    accumulatedData = mergeMainDashboardData(accumulatedData, resData);
+                    // Render progressively if not in background
+                    if (!isBackground) {
+                        renderDashboard(accumulatedData);
                     }
                 }
             }
@@ -9837,31 +9842,34 @@ async function loadFrequencyTable(filters) {
         if (needsChunking) {
             AppLog.log('Fetching Frequency & Mix in chunks...');
             const branches = availableFiltersState.filiais;
-            const chunkSize = 2;
 
-            for (let i = 0; i < branches.length; i += chunkSize) {
-                const chunk = branches.slice(i, i + chunkSize);
+            for (let i = 0; i < branches.length; i++) {
+                const branch = branches[i];
+                tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-slate-400 text-xs">Carregando ${branch} (${i+1}/${branches.length})...</td></tr>`;
                 
-                const chunkPromises = chunk.map(branch => {
-                    const chunkFilters = { ...reqFilters, p_filial: [branch] };
-                    return Promise.all([
-                        supabase.rpc("get_frequency_table_data", chunkFilters),
-                        supabase.rpc("get_mix_salty_foods_data", chunkFilters)
-                    ]);
-                });
+                const chunkFilters = { ...reqFilters, p_filial: [branch] };
+                const [freqRes, mixRes] = await Promise.all([
+                    supabase.rpc("get_frequency_table_data", chunkFilters),
+                    supabase.rpc("get_mix_salty_foods_data", chunkFilters)
+                ]);
 
-                const chunkResults = await Promise.all(chunkPromises);
-                
-                for (const [freqRes, mixRes] of chunkResults) {
-                    if (freqRes.error) throw freqRes.error;
-                    if (mixRes.error) throw mixRes.error;
+                if (freqRes.error) throw freqRes.error;
+                if (mixRes.error) throw mixRes.error;
 
-                    if (freqRes.data) {
-                        finalFreqData = mergeFrequencyData(finalFreqData, freqRes.data);
-                    }
-                    if (mixRes.data) {
-                        finalMixData = mergeMixData(finalMixData, mixRes.data);
-                    }
+                if (freqRes.data) {
+                    finalFreqData = mergeFrequencyData(finalFreqData, freqRes.data);
+                }
+                if (mixRes.data) {
+                    finalMixData = mergeMixData(finalMixData, mixRes.data);
+                }
+
+                // Render progressively
+                if (finalFreqData) {
+                    renderFrequencyTable(finalFreqData, tableBody, tableFooter);
+                    renderFrequencyChart(finalFreqData);
+                }
+                if (finalMixData) {
+                    renderMixSaltyFoodsChart(finalMixData);
                 }
             }
         } else {
