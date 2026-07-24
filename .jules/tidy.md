@@ -24,3 +24,4 @@
 ## 2024/07/23 : (SCD) Atualizadas RPCs de Relatórios com Join na data_clients
 **Aprendizado:** Para completar a arquitetura de Slowly Changing Dimensions, a tabela agregada `data_summary` não deve ditar a carteira, mas sim fazer LEFT JOIN com `data_clients`.
 **Ação:** Refatorado `get_main_dashboard_data`, `get_boxes_dashboard_data`, filtros e outros dashboards injetando `LEFT JOIN data_clients dc` nas CTEs base e usando `COALESCE(dc.codsupervisor, s.codsupervisor)` para retribuição de histórico no momento da visualização.
+## 2024/05/23 : Fix SQL variable error in get_boxes_dashboard_data **Aprendizado:** SQL dynamic queries with CTEs can easily fail if variables are misspelled or prefixes are wrong, especially after copy-pasting filter logic. **Ação:** Replaced undefined `v_prod_filter` with existing `v_where_raw` and `v_where_raw_base`, and changed table aliases `p.` to `s.` and `dp.` to match the context CTEs.
