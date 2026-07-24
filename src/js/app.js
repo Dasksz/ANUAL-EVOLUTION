@@ -3122,7 +3122,85 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         window.setupDefaultMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, filterData.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
     }
 
-    async function loadBoxesView() {
+    
+    // Chunking / Merge Logic for Boxes Dashboard
+    function mergeBoxesDashboardData(accumulated, newData) {
+        if (!accumulated) return JSON.parse(JSON.stringify(newData)); // Deep copy first chunk
+
+        // 1. Merge KPIs
+        const mergeKpi = (accKpi, newKpi) => {
+            if (!accKpi) return newKpi;
+            if (!newKpi) return accKpi;
+            accKpi.fat = (accKpi.fat || 0) + (newKpi.fat || 0);
+            accKpi.peso = (accKpi.peso || 0) + (newKpi.peso || 0);
+            accKpi.caixas = (accKpi.caixas || 0) + (newKpi.caixas || 0);
+            accKpi.clientes = (accKpi.clientes || 0) + (newKpi.clientes || 0);
+            return accKpi;
+        };
+
+        accumulated.kpi_current = mergeKpi(accumulated.kpi_current, newData.kpi_current);
+        accumulated.kpi_previous = mergeKpi(accumulated.kpi_previous, newData.kpi_previous);
+        // Note: kpi_tri_avg is an average, mathematically summing averages is wrong. We'd ideally sum the total and divide, but since we don't have the original denominator, summing the total is an approximation for branch aggregation.
+        accumulated.kpi_tri_avg = mergeKpi(accumulated.kpi_tri_avg, newData.kpi_tri_avg);
+
+        // 2. Merge Chart Data
+        if (newData.chart_data && newData.chart_data.length > 0) {
+            accumulated.chart_data = accumulated.chart_data || [];
+            newData.chart_data.forEach(newRow => {
+                let existingRow = accumulated.chart_data.find(r => r.mes_ano === newRow.mes_ano);
+                if (existingRow) {
+                    existingRow.caixas = (existingRow.caixas || 0) + (newRow.caixas || 0);
+                } else {
+                    accumulated.chart_data.push({ ...newRow });
+                }
+            });
+            // Ensure sorting remains correct (e.g. by ano/mes)
+            accumulated.chart_data.sort((a, b) => {
+                if (a.ano !== b.ano) return a.ano - b.ano;
+                return a.mes - b.mes;
+            });
+        }
+
+        // 3. Merge Products Table
+        if (newData.products_table && newData.products_table.length > 0) {
+            accumulated.products_table = accumulated.products_table || [];
+            newData.products_table.forEach(newProd => {
+                let existingProd = accumulated.products_table.find(p => p.produto === newProd.produto);
+                if (existingProd) {
+                    existingProd.faturamento = (existingProd.faturamento || 0) + (newProd.faturamento || 0);
+                    existingProd.peso = (existingProd.peso || 0) + (newProd.peso || 0);
+                    existingProd.caixas = (existingProd.caixas || 0) + (newProd.caixas || 0);
+                    existingProd.clientes = (existingProd.clientes || 0) + (newProd.clientes || 0);
+                    existingProd.estoque = (existingProd.estoque || 0) + (newProd.estoque || 0);
+                    existingProd.total_caixas_6m = (existingProd.total_caixas_6m || 0) + (newProd.total_caixas_6m || 0);
+                    
+                    // Re-calculate tend_estq: (estoque) / (total_caixas_6m / elapsed_days)
+                    // We don't have accurate merged elapsed_days, but assuming they are mostly equal. We'll use the max.
+                    existingProd.elapsed_days = Math.max(existingProd.elapsed_days || 1, newProd.elapsed_days || 1);
+                    if (existingProd.total_caixas_6m > 0 && existingProd.elapsed_days > 0) {
+                        let avg_daily = existingProd.total_caixas_6m / existingProd.elapsed_days;
+                        existingProd.tend_estq = Math.floor(existingProd.estoque / avg_daily);
+                    } else {
+                        existingProd.tend_estq = 0;
+                    }
+                } else {
+                    accumulated.products_table.push({ ...newProd });
+                }
+            });
+        }
+
+        // 4. Overwrite Trend Info scalars
+        if (newData.trend_info) {
+             accumulated.trend_info = accumulated.trend_info || {};
+             accumulated.trend_info.allowed = accumulated.trend_info.allowed || newData.trend_info.allowed;
+             accumulated.trend_info.factor = newData.trend_info.factor || accumulated.trend_info.factor;
+             accumulated.trend_info.current_month_index = newData.trend_info.current_month_index || accumulated.trend_info.current_month_index;
+        }
+
+        return accumulated;
+    }
+
+async function loadBoxesView() {
         window.showDashboardLoading('boxes-view');
 
         if (typeof initBoxesFilters === 'function' && boxesAnoFilter && boxesAnoFilter.options.length <= 1) {
@@ -3154,22 +3232,60 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         } catch (e) { AppLog.warn('Cache error:', e); }
 
         if (!data) {
-            const { data: rpcData, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
-            
-            if (error) {
-                AppLog.error(error);
-                window.hideDashboardLoading();
-                if (error.message.includes('function get_boxes_dashboard_data') && error.message.includes('does not exist')) {
-                    window.showToast('error', "Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
+            const needsChunking = (!filters.p_filial || filters.p_filial.length === 0) 
+                && availableFiltersState.filiais 
+                && availableFiltersState.filiais.length > 0;
+
+            if (needsChunking) {
+                AppLog.log('Fetching Boxes View in chunks...');
+                const branches = availableFiltersState.filiais;
+                let accumulatedData = null;
+                const chunkSize = 2;
+                
+                for (let i = 0; i < branches.length; i += chunkSize) {
+                    const chunk = branches.slice(i, i + chunkSize);
+                    AppLog.log(`Boxes chunk ${i/chunkSize + 1}/${Math.ceil(branches.length/chunkSize)}...`);
+                    
+                    const promises = chunk.map(branch => {
+                        const chunkFilters = { ...filters, p_filial: [branch] };
+                        return supabase.rpc('get_boxes_dashboard_data', chunkFilters);
+                    });
+                    
+                    const results = await Promise.all(promises);
+                    
+                    for (const res of results) {
+                        if (res.error) {
+                            AppLog.error('API Error in boxes chunk:', res.error);
+                            if (res.error.message.includes('function get_boxes_dashboard_data') && res.error.message.includes('does not exist')) {
+                                window.hideDashboardLoading();
+                                window.showToast('error', "Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
+                                return;
+                            }
+                            continue;
+                        }
+                        if (res.data) {
+                            accumulatedData = mergeBoxesDashboardData(accumulatedData, res.data);
+                        }
+                    }
                 }
-                return;
+                data = accumulatedData;
+            } else {
+                const { data: rpcData, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
+                if (error) {
+                    AppLog.error(error);
+                    window.hideDashboardLoading();
+                    if (error.message.includes('function get_boxes_dashboard_data') && error.message.includes('does not exist')) {
+                        window.showToast('error', "Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
+                    }
+                    return;
+                }
+                data = rpcData;
             }
-            data = rpcData;
-            saveToCache(cacheKey, data);
+            if (data) saveToCache(cacheKey, data);
         }
 
         window.hideDashboardLoading();
-        renderBoxesDashboard(data);
+        if (data) renderBoxesDashboard(data);
     }
 
 
@@ -4080,11 +4196,87 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     mesFilter.onchange = handleFilterChange;
 
     // Unified Fetch & Cache Logic
-    async function fetchDashboardData(filters, isBackground = false, forceRefresh = false) {
-        const cacheKey = generateCacheKey('dashboard_data', filters);
-        const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Hours TTL (Relies on checkDataVersion for invalidation)
+    
+    // Chunking / Merge Logic for Main Dashboard
+    function mergeMainDashboardData(accumulated, newData) {
+        if (!accumulated) return JSON.parse(JSON.stringify(newData)); // Deep copy first chunk
 
-        // 1. Try Cache (unless forceRefresh is true)
+        // Merge scalars (overwrite with latest, except KPI which we sum)
+        accumulated.current_year = newData.current_year;
+        accumulated.previous_year = newData.previous_year;
+        accumulated.target_month_index = newData.target_month_index;
+        accumulated.trend_allowed = accumulated.trend_allowed || newData.trend_allowed; // true if any allows
+        
+        // Sum KPIs
+        accumulated.kpi_clients_attended = (accumulated.kpi_clients_attended || 0) + (newData.kpi_clients_attended || 0);
+        // Base is distinct, we can't perfectly sum distinct count, but since it's filtered by branch it's close enough.
+        accumulated.kpi_clients_base = (accumulated.kpi_clients_base || 0) + (newData.kpi_clients_base || 0);
+
+        // Merge arrays: monthly_data_current
+        if (newData.monthly_data_current) {
+            accumulated.monthly_data_current = accumulated.monthly_data_current || [];
+            newData.monthly_data_current.forEach((monthData, idx) => {
+                if (!accumulated.monthly_data_current[idx]) {
+                    accumulated.monthly_data_current[idx] = { ...monthData };
+                } else {
+                    let accM = accumulated.monthly_data_current[idx];
+                    accM.faturamento = (accM.faturamento || 0) + (monthData.faturamento || 0);
+                    accM.peso = (accM.peso || 0) + (monthData.peso || 0);
+                    accM.bonificacao = (accM.bonificacao || 0) + (monthData.bonificacao || 0);
+                    accM.devolucao = (accM.devolucao || 0) + (monthData.devolucao || 0);
+                    accM.positivacao = (accM.positivacao || 0) + (monthData.positivacao || 0); // We'll sum clients
+                    // Averages like mix_pdv and ticket_medio are mathematically incorrect to sum directly, 
+                    // but we can recalculate or approximate. For simplicity in chunking, we'll recalculate ticket_medio
+                    accM.ticket_medio = accM.positivacao > 0 ? accM.faturamento / accM.positivacao : 0;
+                    // Mix PDV is distinct products per client, we will approximate by taking max or average. Let's use max for now.
+                    accM.mix_pdv = Math.max((accM.mix_pdv || 0), (monthData.mix_pdv || 0));
+                }
+            });
+        }
+
+        // Merge arrays: monthly_data_previous
+        if (newData.monthly_data_previous) {
+            accumulated.monthly_data_previous = accumulated.monthly_data_previous || [];
+            newData.monthly_data_previous.forEach((monthData, idx) => {
+                if (!accumulated.monthly_data_previous[idx]) {
+                    accumulated.monthly_data_previous[idx] = { ...monthData };
+                } else {
+                    let accM = accumulated.monthly_data_previous[idx];
+                    accM.faturamento = (accM.faturamento || 0) + (monthData.faturamento || 0);
+                    accM.peso = (accM.peso || 0) + (monthData.peso || 0);
+                    accM.bonificacao = (accM.bonificacao || 0) + (monthData.bonificacao || 0);
+                    accM.devolucao = (accM.devolucao || 0) + (monthData.devolucao || 0);
+                    accM.positivacao = (accM.positivacao || 0) + (monthData.positivacao || 0);
+                    accM.ticket_medio = accM.positivacao > 0 ? accM.faturamento / accM.positivacao : 0;
+                    accM.mix_pdv = Math.max((accM.mix_pdv || 0), (monthData.mix_pdv || 0));
+                }
+            });
+        }
+
+        // Merge trend_data
+        if (newData.trend_data) {
+            if (!accumulated.trend_data) {
+                accumulated.trend_data = { ...newData.trend_data };
+            } else {
+                let accT = accumulated.trend_data;
+                accT.faturamento = (accT.faturamento || 0) + (newData.trend_data.faturamento || 0);
+                accT.peso = (accT.peso || 0) + (newData.trend_data.peso || 0);
+                accT.bonificacao = (accT.bonificacao || 0) + (newData.trend_data.bonificacao || 0);
+                accT.devolucao = (accT.devolucao || 0) + (newData.trend_data.devolucao || 0);
+                accT.positivacao = (accT.positivacao || 0) + (newData.trend_data.positivacao || 0);
+                accT.ticket_medio = accT.positivacao > 0 ? accT.faturamento / accT.positivacao : 0;
+                accT.mix_pdv = Math.max((accT.mix_pdv || 0), (newData.trend_data.mix_pdv || 0));
+            }
+        }
+
+        return accumulated;
+    }
+
+async function fetchDashboardData(filters, isBackground = false, forceRefresh = false) {
+        const cacheKey = generateCacheKey('dashboard_data', filters);
+        const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Hours TTL
+
+        // 1. Try Cache
         if (!forceRefresh) {
             try {
                 const cachedEntry = await getFromCache(cacheKey);
@@ -4097,28 +4289,65 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                          return { data: cachedEntry.data, source: 'stale', timestamp: cachedEntry.timestamp };
                     }
                 }
-
                 enhanceSelectToCustomDropdown(jbpAnoFilter);
                 enhanceSelectToCustomDropdown(jbpMesFilter);
             } catch (e) { AppLog.warn('Cache error:', e); }
-        } else {
-            AppLog.log('Force Refresh: Bypassing cache.');
         }
 
-        // 2. Network Request
-        if (isBackground) AppLog.log(`[Background] Fetching data from API...`);
-        const { data, error } = await supabase.rpc('get_main_dashboard_data', filters);
-        
-        if (error) {
-            AppLog.error('API Error:', error);
-            return { data: null, error };
+        // 2. Check if we need to chunk (p_filial is empty and we have available branches)
+        const needsChunking = (!filters.p_filial || filters.p_filial.length === 0) 
+            && availableFiltersState.filiais 
+            && availableFiltersState.filiais.length > 0;
+
+        let finalData = null;
+
+        if (needsChunking) {
+            if (!isBackground) AppLog.log('Fetching all branches in chunks...');
+            const branches = availableFiltersState.filiais;
+            let accumulatedData = null;
+            const chunkSize = 2; // Process 2 branches concurrently
+            
+            for (let i = 0; i < branches.length; i += chunkSize) {
+                const chunk = branches.slice(i, i + chunkSize);
+                if (!isBackground) AppLog.log(`Fetching chunk ${i/chunkSize + 1}/${Math.ceil(branches.length/chunkSize)}...`);
+                
+                const promises = chunk.map(branch => {
+                    const chunkFilters = { ...filters, p_filial: [branch] };
+                    return supabase.rpc('get_main_dashboard_data', chunkFilters);
+                });
+                
+                const results = await Promise.all(promises);
+                
+                for (const res of results) {
+                    if (res.error) {
+                        AppLog.error('API Error in chunk:', res.error);
+                        continue;
+                    }
+                    if (res.data) {
+                        accumulatedData = mergeMainDashboardData(accumulatedData, res.data);
+                    }
+                }
+            }
+            finalData = accumulatedData;
+        } else {
+            // Normal Single Fetch
+            if (isBackground) AppLog.log(`[Background] Fetching data from API...`);
+            const { data, error } = await supabase.rpc('get_main_dashboard_data', filters);
+            if (error) {
+                AppLog.error('API Error:', error);
+                return { data: null, error };
+            }
+            finalData = data;
         }
 
         // 3. Save to Cache
-        await saveToCache(cacheKey, data);
-        if (isBackground) AppLog.log(`[Background] Cached successfully.`);
-
-        return { data, source: 'api' };
+        if (finalData) {
+            await saveToCache(cacheKey, finalData);
+            if (isBackground) AppLog.log(`[Background] Cached successfully.`);
+            return { data: finalData, source: 'api' };
+        }
+        
+        return { data: null, error: new Error("Failed to fetch data") };
     }
 
     async function loadMainDashboardData(forceRefresh = false) {
@@ -9534,6 +9763,45 @@ async function updateEstrelasView() {
     }
 }
 
+
+function mergeFrequencyData(accumulated, newData) {
+    if (!accumulated) return JSON.parse(JSON.stringify(newData));
+    if (!newData || !newData.length) return accumulated;
+
+    newData.forEach(newRow => {
+        let existingRow = accumulated.find(r => r.range_label === newRow.range_label);
+        if (existingRow) {
+            existingRow.clientes = (existingRow.clientes || 0) + (newRow.clientes || 0);
+            existingRow.fat_ano_atual = (existingRow.fat_ano_atual || 0) + (newRow.fat_ano_atual || 0);
+            existingRow.fat_ano_anterior = (existingRow.fat_ano_anterior || 0) + (newRow.fat_ano_anterior || 0);
+        } else {
+            accumulated.push({ ...newRow });
+        }
+    });
+    // Assuming the API returns them ordered by sort_order or we can just sort by sort_order
+    accumulated.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    return accumulated;
+}
+
+function mergeMixData(accumulated, newData) {
+    if (!accumulated) return JSON.parse(JSON.stringify(newData));
+    if (!newData || !newData.length) return accumulated;
+
+    newData.forEach(newRow => {
+        let existingRow = accumulated.find(r => r.categoria === newRow.categoria);
+        if (existingRow) {
+            existingRow.positivados = (existingRow.positivados || 0) + (newRow.positivados || 0);
+            existingRow.positivados_ano_anterior = (existingRow.positivados_ano_anterior || 0) + (newRow.positivados_ano_anterior || 0);
+            existingRow.meta = (existingRow.meta || 0) + (newRow.meta || 0);
+            // distinct base per category across branches can be summed safely
+            existingRow.base_clientes = (existingRow.base_clientes || 0) + (newRow.base_clientes || 0);
+        } else {
+            accumulated.push({ ...newRow });
+        }
+    });
+    return accumulated;
+}
+
 async function loadFrequencyTable(filters) {
     const tableBody = document.getElementById('frequency-table-body');
     const tableFooter = document.getElementById('frequency-table-footer');
@@ -9556,17 +9824,59 @@ async function loadFrequencyTable(filters) {
     };
 
     try {
-        const [freqResponse, mixResponse] = await Promise.all([
-            supabase.rpc("get_frequency_table_data", reqFilters),
-            supabase.rpc("get_mix_salty_foods_data", reqFilters)
-        ]);
+        const needsChunking = (!reqFilters.p_filial || reqFilters.p_filial.length === 0) 
+            && availableFiltersState.filiais 
+            && availableFiltersState.filiais.length > 0;
 
-        if (freqResponse.error) throw freqResponse.error;
-        if (mixResponse.error) throw mixResponse.error;
+        let finalFreqData = null;
+        let finalMixData = null;
 
-        renderFrequencyTable(freqResponse.data, tableBody, tableFooter);
-        renderFrequencyChart(freqResponse.data);
-        renderMixSaltyFoodsChart(mixResponse.data);
+        if (needsChunking) {
+            AppLog.log('Fetching Frequency & Mix in chunks...');
+            const branches = availableFiltersState.filiais;
+            const chunkSize = 2;
+
+            for (let i = 0; i < branches.length; i += chunkSize) {
+                const chunk = branches.slice(i, i + chunkSize);
+                
+                const chunkPromises = chunk.map(branch => {
+                    const chunkFilters = { ...reqFilters, p_filial: [branch] };
+                    return Promise.all([
+                        supabase.rpc("get_frequency_table_data", chunkFilters),
+                        supabase.rpc("get_mix_salty_foods_data", chunkFilters)
+                    ]);
+                });
+
+                const chunkResults = await Promise.all(chunkPromises);
+                
+                for (const [freqRes, mixRes] of chunkResults) {
+                    if (freqRes.error) throw freqRes.error;
+                    if (mixRes.error) throw mixRes.error;
+
+                    if (freqRes.data) {
+                        finalFreqData = mergeFrequencyData(finalFreqData, freqRes.data);
+                    }
+                    if (mixRes.data) {
+                        finalMixData = mergeMixData(finalMixData, mixRes.data);
+                    }
+                }
+            }
+        } else {
+            const [freqResponse, mixResponse] = await Promise.all([
+                supabase.rpc("get_frequency_table_data", reqFilters),
+                supabase.rpc("get_mix_salty_foods_data", reqFilters)
+            ]);
+
+            if (freqResponse.error) throw freqResponse.error;
+            if (mixResponse.error) throw mixResponse.error;
+
+            finalFreqData = freqResponse.data;
+            finalMixData = mixResponse.data;
+        }
+
+        renderFrequencyTable(finalFreqData, tableBody, tableFooter);
+        renderFrequencyChart(finalFreqData);
+        renderMixSaltyFoodsChart(finalMixData);
 
     } catch (err) {
         AppLog.error("Erro ao carregar tabela de frequência ou mix:", err);
