@@ -9763,6 +9763,45 @@ async function updateEstrelasView() {
     }
 }
 
+
+function mergeFrequencyData(accumulated, newData) {
+    if (!accumulated) return JSON.parse(JSON.stringify(newData));
+    if (!newData || !newData.length) return accumulated;
+
+    newData.forEach(newRow => {
+        let existingRow = accumulated.find(r => r.range_label === newRow.range_label);
+        if (existingRow) {
+            existingRow.clientes = (existingRow.clientes || 0) + (newRow.clientes || 0);
+            existingRow.fat_ano_atual = (existingRow.fat_ano_atual || 0) + (newRow.fat_ano_atual || 0);
+            existingRow.fat_ano_anterior = (existingRow.fat_ano_anterior || 0) + (newRow.fat_ano_anterior || 0);
+        } else {
+            accumulated.push({ ...newRow });
+        }
+    });
+    // Assuming the API returns them ordered by sort_order or we can just sort by sort_order
+    accumulated.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    return accumulated;
+}
+
+function mergeMixData(accumulated, newData) {
+    if (!accumulated) return JSON.parse(JSON.stringify(newData));
+    if (!newData || !newData.length) return accumulated;
+
+    newData.forEach(newRow => {
+        let existingRow = accumulated.find(r => r.categoria === newRow.categoria);
+        if (existingRow) {
+            existingRow.positivados = (existingRow.positivados || 0) + (newRow.positivados || 0);
+            existingRow.positivados_ano_anterior = (existingRow.positivados_ano_anterior || 0) + (newRow.positivados_ano_anterior || 0);
+            existingRow.meta = (existingRow.meta || 0) + (newRow.meta || 0);
+            // distinct base per category across branches can be summed safely
+            existingRow.base_clientes = (existingRow.base_clientes || 0) + (newRow.base_clientes || 0);
+        } else {
+            accumulated.push({ ...newRow });
+        }
+    });
+    return accumulated;
+}
+
 async function loadFrequencyTable(filters) {
     const tableBody = document.getElementById('frequency-table-body');
     const tableFooter = document.getElementById('frequency-table-footer');
@@ -9785,17 +9824,59 @@ async function loadFrequencyTable(filters) {
     };
 
     try {
-        const [freqResponse, mixResponse] = await Promise.all([
-            supabase.rpc("get_frequency_table_data", reqFilters),
-            supabase.rpc("get_mix_salty_foods_data", reqFilters)
-        ]);
+        const needsChunking = (!reqFilters.p_filial || reqFilters.p_filial.length === 0)
+            && availableFiltersState.filiais
+            && availableFiltersState.filiais.length > 0;
 
-        if (freqResponse.error) throw freqResponse.error;
-        if (mixResponse.error) throw mixResponse.error;
+        let finalFreqData = null;
+        let finalMixData = null;
 
-        renderFrequencyTable(freqResponse.data, tableBody, tableFooter);
-        renderFrequencyChart(freqResponse.data);
-        renderMixSaltyFoodsChart(mixResponse.data);
+        if (needsChunking) {
+            AppLog.log('Fetching Frequency & Mix in chunks...');
+            const branches = availableFiltersState.filiais;
+            const chunkSize = 2;
+
+            for (let i = 0; i < branches.length; i += chunkSize) {
+                const chunk = branches.slice(i, i + chunkSize);
+
+                const chunkPromises = chunk.map(branch => {
+                    const chunkFilters = { ...reqFilters, p_filial: [branch] };
+                    return Promise.all([
+                        supabase.rpc("get_frequency_table_data", chunkFilters),
+                        supabase.rpc("get_mix_salty_foods_data", chunkFilters)
+                    ]);
+                });
+
+                const chunkResults = await Promise.all(chunkPromises);
+
+                for (const [freqRes, mixRes] of chunkResults) {
+                    if (freqRes.error) throw freqRes.error;
+                    if (mixRes.error) throw mixRes.error;
+
+                    if (freqRes.data) {
+                        finalFreqData = mergeFrequencyData(finalFreqData, freqRes.data);
+                    }
+                    if (mixRes.data) {
+                        finalMixData = mergeMixData(finalMixData, mixRes.data);
+                    }
+                }
+            }
+        } else {
+            const [freqResponse, mixResponse] = await Promise.all([
+                supabase.rpc("get_frequency_table_data", reqFilters),
+                supabase.rpc("get_mix_salty_foods_data", reqFilters)
+            ]);
+
+            if (freqResponse.error) throw freqResponse.error;
+            if (mixResponse.error) throw mixResponse.error;
+
+            finalFreqData = freqResponse.data;
+            finalMixData = mixResponse.data;
+        }
+
+        renderFrequencyTable(finalFreqData, tableBody, tableFooter);
+        renderFrequencyChart(finalFreqData);
+        renderMixSaltyFoodsChart(finalMixData);
 
     } catch (err) {
         AppLog.error("Erro ao carregar tabela de frequência ou mix:", err);
