@@ -3323,23 +3323,33 @@ BEGIN
             ),
             kpi_curr AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
-                    SUM(peso) as peso,
-                    SUM(COALESCE(caixas, 0)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE ano = %L %s), 0) as pos_salty
-                FROM public.data_summary
-                %s AND ano = %L %s
+                    SUM(CASE WHEN base_data.tipovenda IN (''5'', ''11'') THEN base_data.bonificacao::numeric ELSE base_data.vlvenda::numeric END) as fat,
+                    SUM(base_data.peso) as peso,
+                    SUM(COALESCE(base_data.caixas, 0)) as caixas,
+                    COUNT(DISTINCT CASE WHEN %s THEN base_data.codcli END) as clientes,
+                    COUNT(DISTINCT CASE WHEN t.salty_venda >= 1 THEN base_data.codcli END) as pos_salty
+                FROM public.data_summary base_data
+                LEFT JOIN LATERAL (
+                    SELECT SUM(s2.vlvenda) as salty_venda
+                    FROM public.data_summary s2
+                    %s AND s2.ano = %L %s AND s2.codcli = base_data.codcli AND LTRIM(s2.codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(s2.tipovenda, ''0'') IN (''1'', ''9'')
+                ) t ON true
+                %s AND base_data.ano = %L %s
             ),
             kpi_prev AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
-                    SUM(peso) as peso,
-                    SUM(COALESCE(caixas, 0)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE ano = %L %s), 0) as pos_salty
-                FROM public.data_summary
-                %s AND ano = %L %s
+                    SUM(CASE WHEN base_data.tipovenda IN (''5'', ''11'') THEN base_data.bonificacao::numeric ELSE base_data.vlvenda::numeric END) as fat,
+                    SUM(base_data.peso) as peso,
+                    SUM(COALESCE(base_data.caixas, 0)) as caixas,
+                    COUNT(DISTINCT CASE WHEN %s THEN base_data.codcli END) as clientes,
+                    COUNT(DISTINCT CASE WHEN t.salty_venda >= 1 THEN base_data.codcli END) as pos_salty
+                FROM public.data_summary base_data
+                LEFT JOIN LATERAL (
+                    SELECT SUM(s2.vlvenda) as salty_venda
+                    FROM public.data_summary s2
+                    %s AND s2.ano = %L %s AND s2.codcli = base_data.codcli AND LTRIM(s2.codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(s2.tipovenda, ''0'') IN (''1'', ''9'')
+                ) t ON true
+                %s AND base_data.ano = %L %s
             ),
             kpi_tri AS (
                 SELECT 
@@ -3392,8 +3402,8 @@ BEGIN
         ', 
         v_where_summary_base, v_current_year, v_previous_year, -- salty_monthly CTE
         v_active_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
-        v_active_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
-        v_active_client_cond, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
+        v_active_client_cond, v_where_summary_base, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
+        v_active_client_cond, v_where_summary_base, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
         v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
         v_active_client_cond_slow, -- Prod Agg Clientes Cond
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
@@ -3451,11 +3461,11 @@ BEGIN
             ),
             kpi_curr AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
-                    SUM(totpesoliq) as peso,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE yr = %L %s), 0) as pos_salty
+                    SUM(CASE WHEN base_data.tipovenda IN (''5'', ''11'') THEN base_data.vlbonific::numeric ELSE base_data.vlvenda::numeric END) as fat,
+                    SUM(base_data.totpesoliq) as peso,
+                    SUM(COALESCE(base_data.qtvenda, 0) / COALESCE(NULLIF(base_data.qtde_embalagem_master, 0), 1)) as caixas,
+                    COUNT(DISTINCT CASE WHEN %s THEN base_data.codcli END) as clientes,
+                    COUNT(DISTINCT CASE WHEN t.salty_venda >= 1 THEN base_data.codcli END) as pos_salty
                 FROM (
                     SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                     FROM public.data_detailed s
@@ -3467,14 +3477,26 @@ BEGIN
                     LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                     %s AND EXTRACT(YEAR FROM s.dtped) = %L %s
                 ) as base_data
+                LEFT JOIN LATERAL (
+                    SELECT SUM(s2.vlvenda) as salty_venda
+                    FROM (
+                        SELECT dtped, codcli, vlvenda
+                        FROM public.data_detailed sd
+                        %s AND EXTRACT(YEAR FROM sd.dtped) = %L %s AND LTRIM(sd.codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(sd.tipovenda, ''0'') IN (''1'', ''9'')
+                        UNION ALL
+                        SELECT dtped, codcli, vlvenda
+                        FROM public.data_history sh
+                        %s AND EXTRACT(YEAR FROM sh.dtped) = %L %s AND LTRIM(sh.codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(sh.tipovenda, ''0'') IN (''1'', ''9'')
+                    ) s2 WHERE s2.codcli = base_data.codcli
+                ) t ON true
             ),
             kpi_prev AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
-                    SUM(totpesoliq) as peso,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE yr = %L %s), 0) as pos_salty
+                    SUM(CASE WHEN base_data.tipovenda IN (''5'', ''11'') THEN base_data.vlbonific::numeric ELSE base_data.vlvenda::numeric END) as fat,
+                    SUM(base_data.totpesoliq) as peso,
+                    SUM(COALESCE(base_data.qtvenda, 0) / COALESCE(NULLIF(base_data.qtde_embalagem_master, 0), 1)) as caixas,
+                    COUNT(DISTINCT CASE WHEN %s THEN base_data.codcli END) as clientes,
+                    COUNT(DISTINCT CASE WHEN t.salty_venda >= 1 THEN base_data.codcli END) as pos_salty
                 FROM (
                     SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                     FROM public.data_detailed s
@@ -3486,6 +3508,18 @@ BEGIN
                     LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                     %s AND EXTRACT(YEAR FROM s.dtped) = %L %s
                 ) as base_data
+                LEFT JOIN LATERAL (
+                    SELECT SUM(s2.vlvenda) as salty_venda
+                    FROM (
+                        SELECT dtped, codcli, vlvenda
+                        FROM public.data_detailed sd
+                        %s AND EXTRACT(YEAR FROM sd.dtped) = %L %s AND LTRIM(sd.codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(sd.tipovenda, ''0'') IN (''1'', ''9'')
+                        UNION ALL
+                        SELECT dtped, codcli, vlvenda
+                        FROM public.data_history sh
+                        %s AND EXTRACT(YEAR FROM sh.dtped) = %L %s AND LTRIM(sh.codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(sh.tipovenda, ''0'') IN (''1'', ''9'')
+                    ) s2 WHERE s2.codcli = base_data.codcli
+                ) t ON true
             ),
             kpi_tri AS (
                 SELECT 
@@ -3561,13 +3595,17 @@ BEGIN
         v_where_raw, v_current_year, v_previous_year,      -- base_data UNION 1
         v_where_raw, v_current_year, v_previous_year,      -- base_data UNION 2
         
-        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, 
-        v_where_raw, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr U1
-        v_where_raw, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr U2
+        v_active_client_cond_slow,
+        v_where_raw, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr Base U1
+        v_where_raw, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr Base U2
+        v_where_raw_base, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM sd.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr S2 U1
+        v_where_raw_base, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM sh.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr S2 U2
 
-        v_active_client_cond_slow, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, 
-        v_where_raw, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev U1
-        v_where_raw, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev U2
+        v_active_client_cond_slow,
+        v_where_raw, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev Base U1
+        v_where_raw, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev Base U2
+        v_where_raw_base, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM sd.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev S2 U1
+        v_where_raw_base, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM sh.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev S2 U2
 
         v_active_client_cond_slow, -- KPI Tri Clientes Cond
         v_where_raw, v_tri_start, v_tri_end, -- KPI Tri U1 Clients
