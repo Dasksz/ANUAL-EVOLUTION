@@ -5095,19 +5095,12 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
 
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
         let tableHTML = '';
-
-        // ⚡ O(1) Lookup Optimization: Map data by month_index outside the loop
-        const currDataByMonth = {};
-        for (let i = 0; i < currData.length; i++) {
-            currDataByMonth[currData[i].month_index] = currData[i];
-        }
-
         indicators.forEach(ind => {
             tableHTML += `<tr class="table-row">`;
             tableHTML += `<td class="font-bold p-2 text-left">${escapeHtml(ind.name)}</td>`;
 
             for (let i = 0; i < 12; i++) {
-                const d = currDataByMonth[i];
+                const d = currData.find(x => x.month_index === i);
                 let val = d ? d[ind.key] : null;
                 if (val === undefined) val = null;
                 if (val === null && !ind.allowNull) val = 0;
@@ -7251,16 +7244,9 @@ Valor: ${formatValue(item.valor, indicator)}`;
                 });
             } else {
                 // Pre-populate with distinct clients found in data for this single rede
-                // Optimized: create client lookup to avoid O(N^2) Array.find() inside loop
-                const clientLookup = new Map();
-                for (let i = 0; i < jbpPanelData.length; i++) {
-                    const row = jbpPanelData[i];
-                    if (row.codcli && !clientLookup.has(row.codcli)) {
-                        clientLookup.set(row.codcli, row);
-                    }
-                }
-
-                for (const [codcli, clientData] of clientLookup.entries()) {
+                const uniqueClients = [...new Set(jbpPanelData.map(row => row.codcli))].filter(Boolean);
+                uniqueClients.forEach(codcli => {
+                    const clientData = jbpPanelData.find(r => r.codcli === codcli);
                     groupedData[codcli] = {
                         id: codcli,
                         name: clientData ? clientData.cliente_nome : codcli,
@@ -7271,7 +7257,7 @@ Valor: ${formatValue(item.valor, indicator)}`;
                             faturamento: 0, peso: 0, caixas: 0, perda_valor: 0, bonificacao_valor: 0, clientes_positivados: 0, total_mix: 0, clientes_inovacoes: 0
                         }))
                     };
-                }
+                });
             }
 
 
@@ -10677,22 +10663,16 @@ async function syncIbgePopulations() {
         const normalizeStr = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
         
         const updates = [];
-
-        // Create a lookup map for O(1) retrieval
-        const ibgeMap = new Map();
-        for (const s of ibgeSeries) {
-            let ibgeName = normalizeStr(s.localidade.nome);
-            if (ibgeName.endsWith(" - BA")) {
-                ibgeName = ibgeName.substring(0, ibgeName.length - 5);
-            }
-            ibgeMap.set(ibgeName, s);
-        }
-
         for (const city of staleCities) {
             const normalizedCityName = normalizeStr(city.cidade);
-            // find in IBGE map
-            const ibgeMatch = ibgeMap.get(normalizedCityName);
-
+            // find in IBGE
+            const ibgeMatch = ibgeSeries.find(s => {
+                let ibgeName = normalizeStr(s.localidade.nome);
+                if (ibgeName.endsWith(" - BA")) {
+                    ibgeName = ibgeName.substring(0, ibgeName.length - 5);
+                }
+                return ibgeName === normalizedCityName;
+            });
             if (ibgeMatch && ibgeMatch.serie && ibgeMatch.serie['2025']) {
                 updates.push({
                     id: city.id,
