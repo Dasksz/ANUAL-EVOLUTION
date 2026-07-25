@@ -1033,7 +1033,7 @@ ALTER TABLE public.dim_vendedores ENABLE ROW LEVEL SECURITY;
 
 -- Função para atualizar os vendedores vindos do Worker garantindo que a coluna CPF (inserida manualmente) não seja sobrescrita.
 CREATE OR REPLACE FUNCTION public.upsert_dim_vendedores(p_vendors jsonb)
-RETURNS void AS $$
+RETURNS void SET search_path = public AS $$
 DECLARE
     vendor_record record;
 BEGIN
@@ -6413,7 +6413,7 @@ ALTER TABLE public.supervisors_routes ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.supervisors_routes;
 CREATE POLICY "Enable all access for authenticated users" ON public.supervisors_routes
-    FOR ALL USING ((SELECT auth.role()) = 'authenticated') WITH CHECK ((SELECT auth.role()) = 'authenticated');
+    FOR ALL TO authenticated USING ((SELECT auth.role()) = 'authenticated') WITH CHECK ((SELECT auth.role()) = 'authenticated');
     
 DROP POLICY IF EXISTS "Enable read access for anon" ON public.supervisors_routes;
 CREATE POLICY "Enable read access for anon" ON public.supervisors_routes
@@ -6470,7 +6470,7 @@ ALTER TABLE public.n8n_auth_colaboradores ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.n8n_auth_colaboradores;
 CREATE POLICY "Enable all access for authenticated users" ON public.n8n_auth_colaboradores
-    FOR ALL USING ((SELECT auth.role()) = 'authenticated') WITH CHECK ((SELECT auth.role()) = 'authenticated');
+    FOR ALL TO authenticated USING ((SELECT auth.role()) = 'authenticated') WITH CHECK ((SELECT auth.role()) = 'authenticated');
 
 DROP POLICY IF EXISTS "Enable read access for anon" ON public.n8n_auth_colaboradores;
 CREATE POLICY "Enable read access for anon" ON public.n8n_auth_colaboradores
@@ -6480,6 +6480,7 @@ CREATE POLICY "Enable read access for anon" ON public.n8n_auth_colaboradores
 CREATE OR REPLACE FUNCTION public._run_full_system()
  RETURNS text
  LANGUAGE plpgsql
+ SET search_path = public
 AS $function$
 DECLARE
 BEGIN
@@ -6620,6 +6621,7 @@ $function$;
 CREATE OR REPLACE FUNCTION public.get_estrelas_kpis_data_test()
  RETURNS json
  LANGUAGE plpgsql
+ SET search_path = public
 AS $function$
 DECLARE
 v_sql text;
