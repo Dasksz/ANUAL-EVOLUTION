@@ -2278,13 +2278,6 @@ CREATE POLICY "Acesso de escrita restrito a administradores_update" ON public.co
 DROP POLICY IF EXISTS "Acesso de escrita restrito a administradores_delete" ON public.config_aceleradores;
 CREATE POLICY "Acesso de escrita restrito a administradores_delete" ON public.config_aceleradores FOR DELETE USING (public.is_admin());
 
--- ==========================================
--- PERFORMANCE OPTIMIZATION (QUERYTUNER)
--- Replacing inline `json_agg(DISTINCT ...)` and `array_agg(DISTINCT ...)`
--- with `SELECT json_agg(...) FROM (SELECT DISTINCT ...) sub`.
--- This avoids large memory/disk sorts when aggregating JSON/Arrays.
--- Expected Impact (Example for 'fornecedores'): ~1375ms -> ~39ms (35x faster).
--- ==========================================
 CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_filial text[] default null,
     p_cidade text[] default null,
@@ -2433,40 +2426,33 @@ BEGIN
     -- Execute with dynamic JSON construction
     v_sql := '
     SELECT json_build_object(
-        ''anos'', (SELECT array_agg(ano) FROM (SELECT DISTINCT ano FROM public.cache_filters ORDER BY ano DESC) sub),
-        ''filiais'', (SELECT array_agg(filial) FROM (SELECT DISTINCT filial FROM public.cache_filters ' || v_where_filial || ' ORDER BY filial) sub),
-        ''cidades'', (SELECT array_agg(cidade) FROM (SELECT DISTINCT cidade FROM public.cache_filters ' || v_where_cidade || ' ORDER BY cidade) sub),
-        ''supervisors'', (SELECT array_agg(superv) FROM (SELECT DISTINCT superv FROM public.cache_filters ' || v_where_supervisor || ' ORDER BY superv) sub),
-        ''vendedores'', (SELECT array_agg(nome) FROM (SELECT DISTINCT nome FROM public.cache_filters ' || v_where_vendedor || ' ORDER BY nome) sub),
+        ''anos'', (SELECT array_agg(DISTINCT ano ORDER BY ano DESC) FROM public.cache_filters),
+        ''filiais'', (SELECT array_agg(DISTINCT filial ORDER BY filial) FROM public.cache_filters ' || v_where_filial || '),
+        ''cidades'', (SELECT array_agg(DISTINCT cidade ORDER BY cidade) FROM public.cache_filters ' || v_where_cidade || '),
+        ''supervisors'', (SELECT array_agg(DISTINCT superv ORDER BY superv) FROM public.cache_filters ' || v_where_supervisor || '),
+        ''vendedores'', (SELECT array_agg(DISTINCT nome ORDER BY nome) FROM public.cache_filters ' || v_where_vendedor || '),
         ''fornecedores'', (
-            SELECT json_agg(jsonb_build_object(''cod'', codfor, ''name'', fornecedor))
-            FROM (
-                SELECT DISTINCT codfor, fornecedor
-                FROM public.cache_filters ' || v_where_fornecedor || '
-                ORDER BY fornecedor
-            ) sub
+            SELECT json_agg(DISTINCT jsonb_build_object(''cod'', codfor, ''name'', fornecedor))
+            FROM public.cache_filters ' || v_where_fornecedor || '
         ),
-        ''tipos_venda'', (SELECT array_agg(tipovenda) FROM (SELECT DISTINCT tipovenda FROM public.cache_filters ' || v_where_tipovenda || ' ORDER BY tipovenda) sub),
-        ''redes'', (SELECT array_agg(rede) FROM (SELECT DISTINCT rede FROM public.cache_filters ' || v_where_rede || ' AND rede IS NOT NULL AND rede NOT IN (''N/A'', ''N/D'') ORDER BY rede) sub),
-        ''categorias'', (SELECT array_agg(categoria_produto) FROM (SELECT DISTINCT categoria_produto FROM public.cache_filters ' || v_where_cat || ' AND categoria_produto IS NOT NULL ORDER BY categoria_produto) sub),
+        ''tipos_venda'', (SELECT array_agg(DISTINCT tipovenda ORDER BY tipovenda) FROM public.cache_filters ' || v_where_tipovenda || '),
+        ''redes'', (SELECT array_agg(DISTINCT rede ORDER BY rede) FROM public.cache_filters ' || v_where_rede || ' AND rede IS NOT NULL AND rede NOT IN (''N/A'', ''N/D'')),
+        ''categorias'', (SELECT array_agg(DISTINCT categoria_produto ORDER BY categoria_produto) FROM public.cache_filters ' || v_where_cat || ' AND categoria_produto IS NOT NULL),
         ''pesquisadores'', (
-            SELECT json_agg(researcher_name)
+            SELECT json_agg(DISTINCT researcher_name)
             FROM (
-                SELECT DISTINCT researcher_name
-                FROM (
-                    SELECT COALESCE(
-                        CASE
-                            WHEN rri.tipo = ''promotor'' THEN rri.cod_involves
-                            WHEN rri.tipo = ''rca'' THEN dv_rca.nome
-                        END,
-                        np.pesquisador
-                    ) as researcher_name
-                    FROM public.data_nota_perfeita np
-                    LEFT JOIN (SELECT DISTINCT tipo, cod_system, cod_involves FROM public.relacao_rota_involves) rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
-                    LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
-                ) subq_inner
-                WHERE researcher_name IS NOT NULL
+                SELECT COALESCE(
+                    CASE
+                        WHEN rri.tipo = ''promotor'' THEN rri.cod_involves
+                        WHEN rri.tipo = ''rca'' THEN dv_rca.nome
+                    END,
+                    np.pesquisador
+                ) as researcher_name
+                FROM public.data_nota_perfeita np
+                LEFT JOIN (SELECT DISTINCT tipo, cod_system, cod_involves FROM public.relacao_rota_involves) rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
+                LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
             ) subq
+            WHERE researcher_name IS NOT NULL
         ),
         ''produtos'', (
             SELECT json_agg(jsonb_build_object(''cod'', codigo, ''name'', descricao))
