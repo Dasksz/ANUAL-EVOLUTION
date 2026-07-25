@@ -206,19 +206,13 @@ const _hashEncoder = new TextEncoder();
 
 async function generateHash(row) {
     // Sort keys to ensure deterministic order
-    const keys = Object.keys(row).sort();
-    let stringData = '';
-    for (let i = 0; i < keys.length; i++) {
-        const val = row[keys[i]];
-        if (i > 0) stringData += '|';
-        if (val !== null && val !== undefined) {
-            if (val instanceof Date) {
-                stringData += val.toISOString(); // Ensure Date determinism
-            } else {
-                stringData += val;
-            }
-        }
-    }
+    const stringData = Object.keys(row)
+        .sort()
+        .map(k => {
+            const val = row[k];
+            return val != null ? (val instanceof Date ? val.toISOString() : val) : '';
+        })
+        .join('|');
 
     // Delimiter to avoid boundary collisions
     const data = _hashEncoder.encode(stringData);
