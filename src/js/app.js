@@ -5095,12 +5095,19 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
 
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
         let tableHTML = '';
+
+        // ⚡ O(1) Lookup Optimization: Map data by month_index outside the loop
+        const currDataByMonth = {};
+        for (let i = 0; i < currData.length; i++) {
+            currDataByMonth[currData[i].month_index] = currData[i];
+        }
+
         indicators.forEach(ind => {
             tableHTML += `<tr class="table-row">`;
             tableHTML += `<td class="font-bold p-2 text-left">${escapeHtml(ind.name)}</td>`;
 
             for (let i = 0; i < 12; i++) {
-                const d = currData.find(x => x.month_index === i);
+                const d = currDataByMonth[i];
                 let val = d ? d[ind.key] : null;
                 if (val === undefined) val = null;
                 if (val === null && !ind.allowNull) val = 0;
