@@ -7244,9 +7244,16 @@ Valor: ${formatValue(item.valor, indicator)}`;
                 });
             } else {
                 // Pre-populate with distinct clients found in data for this single rede
-                const uniqueClients = [...new Set(jbpPanelData.map(row => row.codcli))].filter(Boolean);
-                uniqueClients.forEach(codcli => {
-                    const clientData = jbpPanelData.find(r => r.codcli === codcli);
+                // Optimized: create client lookup to avoid O(N^2) Array.find() inside loop
+                const clientLookup = new Map();
+                for (let i = 0; i < jbpPanelData.length; i++) {
+                    const row = jbpPanelData[i];
+                    if (row.codcli && !clientLookup.has(row.codcli)) {
+                        clientLookup.set(row.codcli, row);
+                    }
+                }
+
+                for (const [codcli, clientData] of clientLookup.entries()) {
                     groupedData[codcli] = {
                         id: codcli,
                         name: clientData ? clientData.cliente_nome : codcli,
@@ -7257,7 +7264,7 @@ Valor: ${formatValue(item.valor, indicator)}`;
                             faturamento: 0, peso: 0, caixas: 0, perda_valor: 0, bonificacao_valor: 0, clientes_positivados: 0, total_mix: 0, clientes_inovacoes: 0
                         }))
                     };
-                });
+                }
             }
 
 
