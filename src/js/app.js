@@ -10663,16 +10663,22 @@ async function syncIbgePopulations() {
         const normalizeStr = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
         
         const updates = [];
+
+        // Create a lookup map for O(1) retrieval
+        const ibgeMap = new Map();
+        for (const s of ibgeSeries) {
+            let ibgeName = normalizeStr(s.localidade.nome);
+            if (ibgeName.endsWith(" - BA")) {
+                ibgeName = ibgeName.substring(0, ibgeName.length - 5);
+            }
+            ibgeMap.set(ibgeName, s);
+        }
+
         for (const city of staleCities) {
             const normalizedCityName = normalizeStr(city.cidade);
-            // find in IBGE
-            const ibgeMatch = ibgeSeries.find(s => {
-                let ibgeName = normalizeStr(s.localidade.nome);
-                if (ibgeName.endsWith(" - BA")) {
-                    ibgeName = ibgeName.substring(0, ibgeName.length - 5);
-                }
-                return ibgeName === normalizedCityName;
-            });
+            // find in IBGE map
+            const ibgeMatch = ibgeMap.get(normalizedCityName);
+
             if (ibgeMatch && ibgeMatch.serie && ibgeMatch.serie['2025']) {
                 updates.push({
                     id: city.id,
