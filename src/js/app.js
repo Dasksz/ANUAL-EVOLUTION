@@ -3226,11 +3226,15 @@ async function loadBoxesView() {
         const cacheKey = generateCacheKey('boxes_dashboard_data', filters);
         let data = null;
 
+        const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Hours TTL
         try {
             const cachedEntry = await getFromCache(cacheKey);
-            if (cachedEntry && cachedEntry.data) {
-                AppLog.log('Serving Boxes View from Cache');
-                data = cachedEntry.data;
+            if (cachedEntry && cachedEntry.timestamp && cachedEntry.data) {
+                const age = Date.now() - cachedEntry.timestamp;
+                if (age < CACHE_TTL) {
+                    AppLog.log('Serving Boxes View from Cache');
+                    data = cachedEntry.data;
+                }
             }
         } catch (e) { AppLog.warn('Cache error:', e); }
 
@@ -4373,8 +4377,8 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
                     lastDashboardData = cachedEntry.data;
 
                     const age = Date.now() - cachedEntry.timestamp;
-                    if (age < 60 * 1000) { // Fresh enough (1 min)
-                         AppLog.log('SWR: Cache is fresh (<1min), skipping background fetch.');
+                    if (age < 24 * 60 * 60 * 1000) { // Fresh enough (24 hours)
+                         AppLog.log('SWR: Cache is fresh (<24h), skipping background fetch.');
                          await fetchLastSalesDate();
                          window.hideDashboardLoading();
                          prefetchViews(filters);
@@ -9831,28 +9835,67 @@ async function loadFrequencyTable(filters) {
         p_categoria: (filters.p_categoria && filters.p_categoria.length) ? filters.p_categoria : null
     };
 
+    const freqCacheKey = generateCacheKey('frequency_data', reqFilters);
+    const mixCacheKey = generateCacheKey('mix_data', reqFilters);
+    const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Hours TTL
+
+    let finalFreqData = null;
+    let finalMixData = null;
+
+    try {
+        const cachedFreq = await getFromCache(freqCacheKey);
+        const cachedMix = await getFromCache(mixCacheKey);
+        
+        let freqCachedValid = false;
+        let mixCachedValid = false;
+
+        if (cachedFreq && cachedFreq.timestamp && cachedFreq.data) {
+            if (Date.now() - cachedFreq.timestamp < CACHE_TTL) {
+                finalFreqData = cachedFreq.data;
+                freqCachedValid = true;
+            }
+        }
+        
+        if (cachedMix && cachedMix.timestamp && cachedMix.data) {
+            if (Date.now() - cachedMix.timestamp < CACHE_TTL) {
+                finalMixData = cachedMix.data;
+                mixCachedValid = true;
+            }
+        }
+
+        if (freqCachedValid && mixCachedValid) {
+            AppLog.log('Serving Frequency and Mix from Cache');
+            renderFrequencyTable(finalFreqData, tableBody, tableFooter);
+            renderFrequencyChart(finalFreqData);
+            renderMixSaltyFoodsChart(finalMixData);
+            return;
+        }
+    } catch (e) { AppLog.warn('Frequency/Mix cache error:', e); }
+
     try {
         const needsChunking = (!reqFilters.p_filial || reqFilters.p_filial.length === 0) 
             && availableFiltersState.filiais 
             && availableFiltersState.filiais.length > 0;
 
-        let finalFreqData = null;
-        let finalMixData = null;
-
         if (needsChunking) {
-            AppLog.log('Fetching Frequency & Mix in chunks...');
+            AppLog.log('Fetching Frequency & Mix in concurrent chunks...');
             const branches = availableFiltersState.filiais;
+            
+            tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-slate-400 text-xs">Carregando dados das filiais simultaneamente...</td></tr>`;
 
-            for (let i = 0; i < branches.length; i++) {
-                const branch = branches[i];
-                tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-slate-400 text-xs">Carregando ${branch} (${i+1}/${branches.length})...</td></tr>`;
-                
+            // Group requests into a single massive concurrent Promise.all
+            // This prevents sequential bottleneck waiting for one branch before requesting the next.
+            const chunkPromises = branches.map(branch => {
                 const chunkFilters = { ...reqFilters, p_filial: [branch] };
-                const [freqRes, mixRes] = await Promise.all([
+                return Promise.all([
                     supabase.rpc("get_frequency_table_data", chunkFilters),
                     supabase.rpc("get_mix_salty_foods_data", chunkFilters)
                 ]);
+            });
 
+            const results = await Promise.all(chunkPromises);
+
+            for (const [freqRes, mixRes] of results) {
                 if (freqRes.error) throw freqRes.error;
                 if (mixRes.error) throw mixRes.error;
 
@@ -9861,15 +9904,6 @@ async function loadFrequencyTable(filters) {
                 }
                 if (mixRes.data) {
                     finalMixData = mergeMixData(finalMixData, mixRes.data);
-                }
-
-                // Render progressively
-                if (finalFreqData) {
-                    renderFrequencyTable(finalFreqData, tableBody, tableFooter);
-                    renderFrequencyChart(finalFreqData);
-                }
-                if (finalMixData) {
-                    renderMixSaltyFoodsChart(finalMixData);
                 }
             }
         } else {
@@ -9884,6 +9918,9 @@ async function loadFrequencyTable(filters) {
             finalFreqData = freqResponse.data;
             finalMixData = mixResponse.data;
         }
+
+        if (finalFreqData) await saveToCache(freqCacheKey, finalFreqData);
+        if (finalMixData) await saveToCache(mixCacheKey, finalMixData);
 
         renderFrequencyTable(finalFreqData, tableBody, tableFooter);
         renderFrequencyChart(finalFreqData);
