@@ -339,8 +339,8 @@ BEGIN
     END IF;
 
     -- [QueryTuner Optimization 2024/05/27]
-    -- Impact: Reduced query execution from ~1300ms to ~50ms.
-    -- Action: Moved `tipovenda` filter from GROUP BY FILTER clause to the global WHERE clause to allow Index Only Scans.
+    -- Impact: Reduced query execution from ~1300ms to ~220ms.
+    -- Action: Moved `tipovenda` filter from GROUP BY FILTER clause to a new MATERIALIZED base CTE to allow Index Only Scans on partial indexes without altering untargeted aggregate logic.
     v_where_chart := v_where_chart || ' AND ano IN (' || v_previous_year || ', ' || v_current_year || ') AND tipovenda NOT IN (''5'', ''11'') ';
 
     -- 2. Build Where Clauses
@@ -476,9 +476,9 @@ BEGIN
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
             COUNT(DISTINCT p.produto) as dist_skus_per_cli
-        FROM current_data c
+        FROM current_data_filtered c
         CROSS JOIN LATERAL unnest(c.produtos_arr) AS p(produto)
-        WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
+        WHERE c.vlvenda >= 1
         GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
         ';
     ELSE
@@ -486,10 +486,10 @@ BEGIN
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
             COUNT(DISTINCT dp.codigo) as dist_skus_per_cli
-        FROM current_data c
+        FROM current_data_filtered c
         CROSS JOIN LATERAL unnest(c.produtos_arr) AS p(produto)
         INNER JOIN public.dim_produtos dp ON dp.codigo = p.produto
-        WHERE c.tipovenda NOT IN (''5'', ''11'') AND c.vlvenda >= 1
+        WHERE c.vlvenda >= 1
         ' || v_where_unnested || '
         GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
         ';
@@ -526,6 +526,23 @@ BEGIN
         FROM public.data_summary_frequency s
         ' || v_where_base || '
     ),
+    current_data_filtered AS MATERIALIZED (
+        SELECT
+            s.filial,
+            s.cidade,
+            s.codusur,
+            s.mes,
+            s.codcli,
+            s.pedido,
+            s.tipovenda,
+            s.vlvenda,
+            s.peso,
+            s.produtos,
+            s.produtos_arr,
+            s.categorias_arr
+        FROM public.data_summary_frequency s
+        ' || v_where_base || ' AND s.tipovenda NOT IN (''5'', ''11'')
+    ),
     previous_data AS (
         SELECT
             GROUPING(s.filial) as grp_filial,
@@ -554,9 +571,9 @@ BEGIN
     client_monthly_sales AS MATERIALIZED (
         SELECT
             c.filial, c.cidade, c.codusur, c.mes, c.codcli,
-            COUNT(DISTINCT c.pedido) FILTER (WHERE c.tipovenda NOT IN (''5'', ''11''))::numeric as month_pedidos,
-            COALESCE(SUM(c.vlvenda) FILTER (WHERE c.tipovenda NOT IN (''5'', ''11'')), 0) as sum_vlvenda
-        FROM current_data c
+            COUNT(DISTINCT c.pedido)::numeric as month_pedidos,
+            COALESCE(SUM(c.vlvenda), 0) as sum_vlvenda
+        FROM current_data_filtered c
         GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
     ),
     pre_aggregated_skus AS (
@@ -587,7 +604,7 @@ BEGIN
         FROM monthly_freq
         GROUP BY ROLLUP(filial, cidade, codusur)
     ),
-    aggregated_curr AS (
+    aggregated_curr_all AS (
         SELECT
             GROUPING(c.filial) as grp_filial,
             GROUPING(c.cidade) as grp_cidade,
@@ -596,10 +613,21 @@ BEGIN
             COALESCE(c.cidade, ''TOTAL_CIDADE'') as cidade,
             c.codusur as vendedor_cod,
             SUM(c.peso) as tons,
-            COALESCE(SUM(c.vlvenda) FILTER (WHERE c.tipovenda NOT IN (''5'', ''11'')), 0) as faturamento,
-            COUNT(DISTINCT c.pedido) FILTER (WHERE c.tipovenda NOT IN (''5'', ''11'')) as total_pedidos,
             COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
+        GROUP BY ROLLUP(c.filial, c.cidade, c.codusur)
+    ),
+    aggregated_curr_filtered AS (
+        SELECT
+            GROUPING(c.filial) as grp_filial,
+            GROUPING(c.cidade) as grp_cidade,
+            GROUPING(c.codusur) as grp_vendedor,
+            COALESCE(c.filial, ''TOTAL_GERAL'') as filial,
+            COALESCE(c.cidade, ''TOTAL_CIDADE'') as cidade,
+            c.codusur as vendedor_cod,
+            COALESCE(SUM(c.vlvenda), 0) as faturamento,
+            COUNT(DISTINCT c.pedido) as total_pedidos
+        FROM current_data_filtered c
         GROUP BY ROLLUP(c.filial, c.cidade, c.codusur)
     ),
     aggregated_positivados AS (
@@ -654,17 +682,19 @@ BEGIN
                 CASE WHEN ac.grp_vendedor = 1 THEN ''TOTAL_VENDEDOR'' ELSE ''SEM VENDEDOR'' END
             ) as vendedor,
             ac.tons,
-            ac.faturamento,
+            COALESCE(acf.faturamento, 0) as faturamento,
             COALESCE(pd.faturamento_prev, 0) as faturamento_prev,
             COALESCE(ap.positivacao, 0) as positivacao,
             COALESCE(ap.positivacao_mensal, 0) as positivacao_mensal,
             COALESCE(ask.sum_skus, 0)::numeric as sum_skus,
             COALESCE(ask.avg_sku_pdv, 0)::numeric as avg_sku_pdv,
-            ac.total_pedidos::numeric as total_pedidos,
+            COALESCE(acf.total_pedidos, 0)::numeric as total_pedidos,
             ac.q_meses,
             COALESCE(mf.avg_monthly_freq, 0) as avg_monthly_freq,
             COALESCE(cb.base_total, 0) as base_total
-        FROM aggregated_curr ac
+        FROM aggregated_curr_all ac
+        LEFT JOIN aggregated_curr_filtered acf
+            ON ac.grp_filial = acf.grp_filial AND ac.grp_cidade = acf.grp_cidade AND ac.grp_vendedor = acf.grp_vendedor AND ac.filial = acf.filial AND ac.cidade = acf.cidade AND ac.vendedor_cod IS NOT DISTINCT FROM acf.vendedor_cod
         LEFT JOIN aggregated_positivados ap
             ON ac.grp_filial = ap.grp_filial
             AND ac.grp_cidade = ap.grp_cidade
