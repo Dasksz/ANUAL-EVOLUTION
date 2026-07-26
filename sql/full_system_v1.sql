@@ -7613,3 +7613,238 @@ BEGIN
         EXECUTE 'ALTER FUNCTION ' || func.signature || ' SET search_path = public'; 
     END LOOP; 
 END $$;
+
+
+-- =========================================================================
+-- FUNCTION: get_closing_presentation_data
+-- Purpose: Aggregates massive KPI data (Faturamento, Tonelada, Positivacao)
+-- for the Closing Presentation (Geral, Salty, Foods) comparing Current,
+-- Previous Quarter, and Previous Year.
+-- =========================================================================
+DROP FUNCTION IF EXISTS public.get_closing_presentation_data(text, text);
+CREATE OR REPLACE FUNCTION get_closing_presentation_data(
+    p_ano text default null,
+    p_mes text default null
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_result JSON;
+    v_target_year int;
+    v_target_month int;
+    v_prev_quarter_year int;
+    v_prev_quarter_month int;
+    v_prev_year_year int;
+    v_prev_year_month int;
+BEGIN
+    -- Determine target period if not provided
+    IF p_ano IS NULL OR p_mes IS NULL THEN
+        SELECT ano, mes INTO v_target_year, v_target_month
+        FROM public.data_summary
+        ORDER BY ano DESC, mes DESC
+        LIMIT 1;
+    ELSE
+        v_target_year := p_ano::int;
+        v_target_month := p_mes::int;
+    END IF;
+
+    -- If still null, return empty
+    IF v_target_year IS NULL THEN
+        RETURN '{}'::json;
+    END IF;
+
+    -- Calculate previous quarter (-3 months)
+    IF v_target_month <= 3 THEN
+        v_prev_quarter_year := v_target_year - 1;
+        v_prev_quarter_month := v_target_month + 9;
+    ELSE
+        v_prev_quarter_year := v_target_year;
+        v_prev_quarter_month := v_target_month - 3;
+    END IF;
+
+    -- Calculate previous year (-12 months)
+    v_prev_year_year := v_target_year - 1;
+    v_prev_year_month := v_target_month;
+
+    -- We use dynamic SQL for extremely fast execution plan caching via CTEs
+    -- Using data_summary because it has vlvenda, peso and codcli.
+    -- We assume positive sales to count distinct codcli.
+
+    EXECUTE $dyn$
+    WITH base_data AS MATERIALIZED (
+        SELECT
+            ano,
+            mes,
+            filial,
+            codsupervisor,
+            codusur,
+            LTRIM(codfor, '0') as codfor_clean,
+            REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') as cnpj_clean,
+            vlvenda,
+            peso,
+            codcli
+        FROM public.data_summary
+        WHERE (ano = $1 AND mes = $2)
+           OR (ano = $3 AND mes = $4)
+           OR (ano = $5 AND mes = $6)
+    ),
+    -- Grouping helper
+    classified_data AS MATERIALIZED (
+        SELECT
+            ano, mes, filial, codsupervisor, codusur, codcli, cnpj_clean,
+            COALESCE(vlvenda, 0) as vlvenda,
+            COALESCE(peso, 0) as peso,
+            CASE
+                WHEN codfor_clean IN ('707', '708', '752') THEN 'Salty'
+                WHEN codfor_clean IN ('1119') THEN 'Foods'
+                ELSE 'Outros'
+            END as line_group
+        FROM base_data
+    ),
+
+    -- AGGREGATES PER PERIOD AND GROUP (Geral, Salty, Foods)
+    agg_global AS (
+        SELECT
+            ano, mes,
+            'Geral' as group_name,
+            'Todos' as dimension,
+            SUM(vlvenda) as faturamento,
+            SUM(peso) as tonelada,
+            COUNT(DISTINCT CASE WHEN vlvenda > 0 THEN codcli END) as positivacao
+        FROM classified_data
+        GROUP BY ano, mes
+        UNION ALL
+        SELECT
+            ano, mes,
+            line_group as group_name,
+            'Todos' as dimension,
+            SUM(vlvenda) as faturamento,
+            SUM(peso) as tonelada,
+            COUNT(DISTINCT CASE WHEN vlvenda > 0 THEN codcli END) as positivacao
+        FROM classified_data
+        WHERE line_group IN ('Salty', 'Foods')
+        GROUP BY ano, mes, line_group
+    ),
+
+    -- AGGREGATES PER FILIAL
+    agg_filial AS (
+        SELECT
+            ano, mes,
+            'Geral' as group_name,
+            filial as dimension,
+            SUM(vlvenda) as faturamento,
+            SUM(peso) as tonelada,
+            COUNT(DISTINCT CASE WHEN vlvenda > 0 THEN codcli END) as positivacao
+        FROM classified_data
+        GROUP BY ano, mes, filial
+        UNION ALL
+        SELECT
+            ano, mes,
+            line_group as group_name,
+            filial as dimension,
+            SUM(vlvenda) as faturamento,
+            SUM(peso) as tonelada,
+            COUNT(DISTINCT CASE WHEN vlvenda > 0 THEN codcli END) as positivacao
+        FROM classified_data
+        WHERE line_group IN ('Salty', 'Foods')
+        GROUP BY ano, mes, filial, line_group
+    ),
+
+    -- AGGREGATES PER SUPERVISOR
+    agg_supervisor AS (
+        SELECT
+            ano, mes,
+            'Geral' as group_name,
+            filial || ' - ' || codsupervisor as dimension,
+            SUM(vlvenda) as faturamento,
+            SUM(peso) as tonelada,
+            COUNT(DISTINCT CASE WHEN vlvenda > 0 THEN codcli END) as positivacao
+        FROM classified_data
+        GROUP BY ano, mes, filial, codsupervisor
+        UNION ALL
+        SELECT
+            ano, mes,
+            line_group as group_name,
+            filial || ' - ' || codsupervisor as dimension,
+            SUM(vlvenda) as faturamento,
+            SUM(peso) as tonelada,
+            COUNT(DISTINCT CASE WHEN vlvenda > 0 THEN codcli END) as positivacao
+        FROM classified_data
+        WHERE line_group IN ('Salty', 'Foods')
+        GROUP BY ano, mes, filial, codsupervisor, line_group
+    ),
+
+    -- REDES AGGREGATION
+    -- For "Todas as Redes", we assume any CNPJ with 14 characters that shares first 8 digits is a network,
+    -- or just checking if `cnpj_clean` is not null/empty as a proxy for this context.
+    -- Adjusting to a simple logic: Clients that have network.
+    -- Since data_summary might not map perfectly to Redes without dim_clientes,
+    -- we'll rely on the cnpj column grouping.
+    agg_redes AS (
+         SELECT
+            ano, mes,
+            'Geral' as group_name,
+            'Rede: ' || SUBSTRING(cnpj_clean FROM 1 FOR 8) as dimension,
+            SUM(vlvenda) as faturamento,
+            SUM(peso) as tonelada,
+            COUNT(DISTINCT CASE WHEN vlvenda > 0 THEN codcli END) as positivacao
+        FROM classified_data
+        WHERE cnpj_clean IS NOT NULL AND LENGTH(cnpj_clean) >= 8
+        GROUP BY ano, mes, SUBSTRING(cnpj_clean FROM 1 FOR 8)
+    ),
+
+    -- TOP VENDEDORES (Current vs Prev Year Faturamento Var)
+    top_vendedores AS (
+        SELECT
+            codusur as vendedor,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
+            SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) - SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as var_abs
+        FROM classified_data
+        WHERE codusur IS NOT NULL AND codusur != ''
+        GROUP BY codusur
+        HAVING SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) > 0
+        ORDER BY var_abs DESC
+        LIMIT 10
+    )
+
+    -- FINAL JSON ASSEMBLY
+    SELECT json_build_object(
+        'meta', json_build_object(
+            'curr', json_build_object('ano', $1, 'mes', $2),
+            'prev_q', json_build_object('ano', $3, 'mes', $4),
+            'prev_y', json_build_object('ano', $5, 'mes', $6)
+        ),
+        'global', (SELECT json_agg(row_to_json(a)) FROM agg_global a),
+        'filiais', (SELECT json_agg(row_to_json(a)) FROM agg_filial a),
+        'supervisores', (SELECT json_agg(row_to_json(a)) FROM agg_supervisor a),
+        'redes', (SELECT json_agg(row_to_json(a)) FROM agg_redes a),
+        'top_vendedores', (SELECT json_agg(row_to_json(a)) FROM top_vendedores a)
+    )
+    $dyn$ INTO v_result
+    USING
+        v_target_year, v_target_month,
+        v_prev_quarter_year, v_prev_quarter_month,
+        v_prev_year_year, v_prev_year_month;
+
+    RETURN COALESCE(v_result, '{}'::json);
+END;
+$$;
+
+
+-- =========================================================================
+-- TABLE: api_ia
+-- =========================================================================
+CREATE TABLE IF NOT EXISTS public.api_ia (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    provider text NOT NULL DEFAULT 'deepseek',
+    api_key text NOT NULL,
+    model_name text NOT NULL DEFAULT 'deepseek-chat',
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+-- Allow reading the API key via RPC or direct select for anon/authenticated roles
+GRANT SELECT ON public.api_ia TO anon, authenticated;
