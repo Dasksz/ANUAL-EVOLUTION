@@ -7670,7 +7670,7 @@ BEGIN
     -- Using data_summary because it has vlvenda, peso and codcli.
     -- We assume positive sales to count distinct codcli.
 
-    EXECUTE $dyn$
+        EXECUTE $dyn$
     WITH base_data AS MATERIALIZED (
         SELECT
             ano,
@@ -7696,101 +7696,99 @@ BEGIN
             COALESCE(peso, 0) as peso,
             CASE
                 WHEN codfor_clean IN ('707', '708', '752') THEN 'Salty'
-                WHEN codfor_clean IN ('1119') THEN 'Foods'
-                ELSE 'Outros'
+                WHEN codfor_clean IN ('1119_QUAKER', '1119_TODDY', '1119_TODDYNHO', '1119_KEROCOCO', '1119') THEN 'Foods'
             END as line_group
         FROM base_data
+        WHERE codfor_clean IN ('707', '708', '752', '1119_QUAKER', '1119_TODDY', '1119_TODDYNHO', '1119_KEROCOCO', '1119')
     ),
 
     -- AGGREGATES PER PERIOD AND GROUP (Geral, Salty, Foods)
     agg_global AS (
         SELECT
-            ano, mes,
             'Geral' as group_name,
             'Todos' as dimension,
-            SUM(vlvenda) as faturamento,
-            SUM(peso) as tonelada,
-            COUNT(DISTINCT CASE WHEN vlvenda > 0 THEN codcli END) as positivacao
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
+            SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN peso ELSE 0 END) as ton_atual,
+            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
         FROM classified_data
-        GROUP BY ano, mes
         UNION ALL
         SELECT
-            ano, mes,
             line_group as group_name,
             'Todos' as dimension,
-            SUM(vlvenda) as faturamento,
-            SUM(peso) as tonelada,
-            COUNT(DISTINCT CASE WHEN vlvenda > 0 THEN codcli END) as positivacao
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
+            SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN peso ELSE 0 END) as ton_atual,
+            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
         FROM classified_data
-        WHERE line_group IN ('Salty', 'Foods')
-        GROUP BY ano, mes, line_group
+        GROUP BY line_group
     ),
 
     -- AGGREGATES PER FILIAL
     agg_filial AS (
         SELECT
-            ano, mes,
             'Geral' as group_name,
             filial as dimension,
-            SUM(vlvenda) as faturamento,
-            SUM(peso) as tonelada,
-            COUNT(DISTINCT CASE WHEN vlvenda > 0 THEN codcli END) as positivacao
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
+            SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN peso ELSE 0 END) as ton_atual,
+            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
         FROM classified_data
-        GROUP BY ano, mes, filial
+        GROUP BY filial
         UNION ALL
         SELECT
-            ano, mes,
             line_group as group_name,
             filial as dimension,
-            SUM(vlvenda) as faturamento,
-            SUM(peso) as tonelada,
-            COUNT(DISTINCT CASE WHEN vlvenda > 0 THEN codcli END) as positivacao
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
+            SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN peso ELSE 0 END) as ton_atual,
+            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
         FROM classified_data
-        WHERE line_group IN ('Salty', 'Foods')
-        GROUP BY ano, mes, filial, line_group
+        GROUP BY filial, line_group
     ),
 
     -- AGGREGATES PER SUPERVISOR
     agg_supervisor AS (
         SELECT
-            ano, mes,
             'Geral' as group_name,
             filial || ' - ' || codsupervisor as dimension,
-            SUM(vlvenda) as faturamento,
-            SUM(peso) as tonelada,
-            COUNT(DISTINCT CASE WHEN vlvenda > 0 THEN codcli END) as positivacao
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
+            SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN peso ELSE 0 END) as ton_atual,
+            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
         FROM classified_data
-        GROUP BY ano, mes, filial, codsupervisor
+        GROUP BY filial, codsupervisor
         UNION ALL
         SELECT
-            ano, mes,
             line_group as group_name,
             filial || ' - ' || codsupervisor as dimension,
-            SUM(vlvenda) as faturamento,
-            SUM(peso) as tonelada,
-            COUNT(DISTINCT CASE WHEN vlvenda > 0 THEN codcli END) as positivacao
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
+            SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN peso ELSE 0 END) as ton_atual,
+            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
         FROM classified_data
-        WHERE line_group IN ('Salty', 'Foods')
-        GROUP BY ano, mes, filial, codsupervisor, line_group
+        GROUP BY filial, codsupervisor, line_group
     ),
 
     -- REDES AGGREGATION
-    -- For "Todas as Redes", we assume any CNPJ with 14 characters that shares first 8 digits is a network,
-    -- or just checking if `cnpj_clean` is not null/empty as a proxy for this context.
-    -- Adjusting to a simple logic: Clients that have network.
-    -- Since data_summary might not map perfectly to Redes without dim_clientes,
-    -- we'll rely on the cnpj column grouping.
     agg_redes AS (
          SELECT
-            ano, mes,
             'Geral' as group_name,
             'Rede: ' || SUBSTRING(cnpj_clean FROM 1 FOR 8) as dimension,
-            SUM(vlvenda) as faturamento,
-            SUM(peso) as tonelada,
-            COUNT(DISTINCT CASE WHEN vlvenda > 0 THEN codcli END) as positivacao
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
+            SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN peso ELSE 0 END) as ton_atual,
+            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
         FROM classified_data
         WHERE cnpj_clean IS NOT NULL AND LENGTH(cnpj_clean) >= 8
-        GROUP BY ano, mes, SUBSTRING(cnpj_clean FROM 1 FOR 8)
+        GROUP BY SUBSTRING(cnpj_clean FROM 1 FOR 8)
     ),
 
     -- TOP VENDEDORES (Current vs Prev Year Faturamento Var)
@@ -7798,10 +7796,15 @@ BEGIN
         SELECT
             codusur as vendedor,
             SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
             SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
             SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) - SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as var_abs
         FROM classified_data
         WHERE codusur IS NOT NULL AND codusur != ''
+          AND codsupervisor != '8'
+          AND codusur NOT ILIKE 'INAT_%'
+          AND codusur NOT ILIKE '%BALCÃO%'
+          AND codusur NOT ILIKE '%BALCAO%'
         GROUP BY codusur
         HAVING SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) > 0
         ORDER BY var_abs DESC
@@ -7815,11 +7818,11 @@ BEGIN
             'prev_q', json_build_object('ano', $3, 'mes', $4),
             'prev_y', json_build_object('ano', $5, 'mes', $6)
         ),
-        'global', (SELECT json_agg(row_to_json(a)) FROM agg_global a),
-        'filiais', (SELECT json_agg(row_to_json(a)) FROM agg_filial a),
-        'supervisores', (SELECT json_agg(row_to_json(a)) FROM agg_supervisor a),
-        'redes', (SELECT json_agg(row_to_json(a)) FROM agg_redes a),
-        'top_vendedores', (SELECT json_agg(row_to_json(a)) FROM top_vendedores a)
+        'global', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_global a),
+        'filiais', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_filial a),
+        'supervisores', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_supervisor a),
+        'redes', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_redes a),
+        'top_vendedores', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM top_vendedores a)
     )
     $dyn$ INTO v_result
     USING

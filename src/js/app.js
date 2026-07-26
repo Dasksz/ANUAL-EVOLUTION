@@ -10893,6 +10893,16 @@ Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}
         }
     }
 
+    function getVarSpan(atual, ant) {
+        const numAtual = parseFloat(atual || 0);
+        const numAnt = parseFloat(ant || 0);
+        if (numAnt === 0) return '<span class="text-slate-500">-</span>';
+        const perc = ((numAtual / numAnt) - 1) * 100;
+        const colorClass = perc >= 0 ? 'text-emerald-400' : 'text-red-400';
+        const sign = perc > 0 ? '+' : '';
+        return `<span class="${colorClass}">${sign}${perc.toFixed(1)}%</span>`;
+    }
+
     function renderTabs(data) {
         document.getElementById('presentation-period-label').textContent = `Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}`;
 
@@ -10902,22 +10912,66 @@ Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}
             geralContainer.innerHTML = '';
             const order = ['Geral', 'Salty', 'Foods'];
             order.forEach(groupName => {
-                const groupData = (data.global || []).find(g => g.group_name === groupName) || { faturamento: 0, tonelada: 0, positivacao: 0 };
+                const groupData = (data.global || []).find(g => g.group_name === groupName) || { fat_atual: 0, ton_atual: 0, pos_atual: 0 };
                 geralContainer.innerHTML += createCardHTML(groupName, groupData);
             });
         }
 
-        // Render Redes
+                // Render Filiais
+        const selectFilial = document.getElementById('presentation-filial-select');
+        if (selectFilial && data.filiais) {
+            const uniqueFiliais = [...new Set(data.filiais.map(f => f.dimension))];
+            selectFilial.innerHTML = uniqueFiliais.map(f => `<option value="${f}">${f}</option>`).join('');
+
+            const updateFiliaisView = () => {
+                const val = selectFilial.value;
+                const filialContainer = document.getElementById('presentation-filial-cards');
+                if(filialContainer) {
+                    filialContainer.innerHTML = '';
+                    ['Geral', 'Salty', 'Foods'].forEach(groupName => {
+                        const groupData = data.filiais.find(g => g.group_name === groupName && g.dimension === val) || { fat_atual: 0, ton_atual: 0, pos_atual: 0 };
+                        filialContainer.innerHTML += createCardHTML(groupName, groupData);
+                    });
+                }
+                const supContainer = document.getElementById('presentation-supervisor-tbody');
+                if(supContainer) {
+                    const supers = (data.supervisores || [])
+                        .filter(s => s.group_name === 'Geral' && s.dimension.startsWith(val))
+                        .sort((a,b) => b.fat_atual - a.fat_atual);
+
+                    supContainer.innerHTML = supers.map(s => `
+                        <tr>
+                            <td class="px-4 py-3 font-medium">${s.dimension.split(' - ')[1] || s.dimension}</td>
+                            <td class="px-4 py-3 text-right">R$ ${parseFloat(s.fat_atual).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                            <td class="px-4 py-3 text-right">${getVarSpan(s.fat_atual, s.fat_ant)}</td>
+                            <td class="px-4 py-3 text-right">${getVarSpan(s.fat_atual, s.fat_trim)}</td>
+                            <td class="px-4 py-3 text-right">${parseFloat(s.ton_atual).toLocaleString('pt-BR')} kg</td>
+                            <td class="px-4 py-3 text-right text-fuchsia-400 font-bold">${s.pos_atual}</td>
+                        </tr>
+                    `).join('');
+                }
+            };
+            selectFilial.onchange = updateFiliaisView;
+            updateFiliaisView();
+        }
+
+// Render Redes
         const redeContainer = document.getElementById('presentation-rede-cards');
         if(redeContainer) {
             redeContainer.innerHTML = '';
             // Aggregate all Redes for "Geral com Rede"
-            let fatRede = 0, tonRede = 0, posRede = 0;
-            (data.redes || []).forEach(r => { fatRede += parseFloat(r.faturamento||0); tonRede += parseFloat(r.tonelada||0); posRede += parseInt(r.positivacao||0); });
-            redeContainer.innerHTML += createCardHTML("Todos os Clientes com Rede", { faturamento: fatRede, tonelada: tonRede, positivacao: posRede });
+            let fatRedeAtual = 0, fatRedeAnt = 0, fatRedeTrim = 0, tonRede = 0, posRede = 0;
+            (data.redes || []).forEach(r => {
+                fatRedeAtual += parseFloat(r.fat_atual||0);
+                fatRedeAnt += parseFloat(r.fat_ant||0);
+                fatRedeTrim += parseFloat(r.fat_trim||0);
+                tonRede += parseFloat(r.ton_atual||0);
+                posRede += parseInt(r.pos_atual||0);
+            });
+            redeContainer.innerHTML += createCardHTML("Todos os Clientes com Rede", { fat_atual: fatRedeAtual, fat_ant: fatRedeAnt, fat_trim: fatRedeTrim, ton_atual: tonRede, pos_atual: posRede });
 
             const amer = (data.redes || []).find(r => r.dimension && r.dimension.toLowerCase().includes('33014556')); // Assuming standard CNPJ prefix for Lojas Americanas
-            redeContainer.innerHTML += createCardHTML("Rede: Americanas", amer || { faturamento: 0, tonelada: 0, positivacao: 0 });
+            redeContainer.innerHTML += createCardHTML("Rede: Americanas", amer || { fat_atual: 0, ton_atual: 0, pos_atual: 0 });
         }
 
         // Render Vendedores
@@ -10929,7 +10983,9 @@ Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}
                     <td class="px-4 py-3 font-medium">${v.vendedor}</td>
                     <td class="px-4 py-3 text-right">R$ ${parseFloat(v.fat_atual).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
                     <td class="px-4 py-3 text-right text-slate-500">R$ ${parseFloat(v.fat_ant).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
-                    <td class="px-4 py-3 text-right text-emerald-400 font-bold">+ R$ ${parseFloat(v.var_abs).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                    <td class="px-4 py-3 text-right text-slate-500">R$ ${parseFloat(v.fat_trim).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                    <td class="px-4 py-3 text-right font-bold">${getVarSpan(v.fat_atual, v.fat_ant)}</td>
+                    <td class="px-4 py-3 text-right font-bold">${getVarSpan(v.fat_atual, v.fat_trim)}</td>
                 </tr>
             `).join('');
         }
@@ -10942,15 +10998,19 @@ Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}
                 <div class="space-y-3">
                     <div class="flex justify-between items-center">
                         <span class="text-slate-400 text-sm">Faturamento</span>
-                        <span class="text-white font-bold text-lg">R$ ${parseFloat(metrics.faturamento).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+                        <span class="text-white font-bold text-lg">R$ ${parseFloat(metrics.fat_atual).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">Var YoY / QoQ</span>
+                        <span class="text-sm font-bold">${getVarSpan(metrics.fat_atual, metrics.fat_ant)} <span class="text-slate-600 mx-1">|</span> ${getVarSpan(metrics.fat_atual, metrics.fat_trim)}</span>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-slate-400 text-sm">Tonelada (KG)</span>
-                        <span class="text-white font-bold">${parseFloat(metrics.tonelada).toLocaleString('pt-BR')} kg</span>
+                        <span class="text-white font-bold">${parseFloat(metrics.ton_atual).toLocaleString('pt-BR')} kg</span>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-slate-400 text-sm">Positivação</span>
-                        <span class="text-fuchsia-400 font-bold">${metrics.positivacao} cli</span>
+                        <span class="text-fuchsia-400 font-bold">${metrics.pos_atual} cli</span>
                     </div>
                 </div>
             </div>
