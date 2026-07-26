@@ -1,0 +1,582 @@
+psql:sql/full_system_v1.sql:2: NOTICE:  function public.get_estrelas_kpis_data(text,text,text[],text[],text[],text[],text[],text[],text[],text[]) does not exist, skipping
+DROP FUNCTION
+DROP FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+psql:sql/full_system_v1.sql:768: NOTICE:  extension "uuid-ossp" already exists, skipping
+CREATE EXTENSION
+psql:sql/full_system_v1.sql:800: NOTICE:  relation "data_detailed" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+psql:sql/full_system_v1.sql:834: NOTICE:  relation "data_history" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+DO
+psql:sql/full_system_v1.sql:885: NOTICE:  relation "data_clients" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+DO
+DO
+DO
+psql:sql/full_system_v1.sql:917: NOTICE:  relation "data_holidays" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+psql:sql/full_system_v1.sql:930: NOTICE:  relation "profiles" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+DO
+psql:sql/full_system_v1.sql:967: NOTICE:  relation "data_summary" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+psql:sql/full_system_v1.sql:970: NOTICE:  relation "idx_summary_composite_main" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:971: NOTICE:  relation "idx_summary_codes" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:972: NOTICE:  relation "idx_summary_ano_filial" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:973: NOTICE:  relation "idx_summary_ano_cidade" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:974: NOTICE:  relation "idx_summary_ano_supcode" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:975: NOTICE:  relation "idx_summary_ano_usurcode" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:976: NOTICE:  relation "idx_summary_ano_codfor" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:977: NOTICE:  relation "idx_summary_ano_tipovenda" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:978: NOTICE:  relation "idx_summary_ano_codcli" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:979: NOTICE:  relation "idx_summary_ano_ramo" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:980: NOTICE:  relation "idx_summary_categoria" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1002: NOTICE:  relation "data_summary_frequency" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+psql:sql/full_system_v1.sql:1005: NOTICE:  relation "idx_dat_summary_freq_ano_mes" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1006: NOTICE:  relation "idx_dat_summary_freq_filial_cidade" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1007: NOTICE:  relation "idx_dat_summary_freq_vendedor_supervisor" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1008: NOTICE:  relation "idx_dat_summary_freq_pedido_cli" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1009: NOTICE:  relation "idx_dat_summary_freq_produtos_gin" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1010: NOTICE:  relation "idx_dat_summary_freq_categorias_gin" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1011: NOTICE:  relation "idx_dat_summary_freq_ano_mes_tipovenda" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1012: NOTICE:  relation "idx_dat_summary_freq_ano_mes_filial" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1013: NOTICE:  relation "idx_dat_summary_freq_ano_mes_vendedor" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1014: NOTICE:  relation "idx_dat_summary_freq_ano_mes_supervisor" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1015: NOTICE:  relation "idx_dat_summary_freq_ano_mes_fornecedor" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1016: NOTICE:  relation "idx_dat_summary_freq_ano_mes_rede" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1017: NOTICE:  relation "idx_dat_summary_freq_ano_codcli" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1020: NOTICE:  relation "idx_freq_partial_agg_metrics" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1021: NOTICE:  relation "idx_freq_partial_skus" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1022: NOTICE:  relation "idx_freq_chart_metrics" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1029: NOTICE:  relation "config_magic_number" already exists, skipping
+CREATE TABLE
+INSERT 0 0
+ALTER TABLE
+GRANT
+GRANT
+psql:sql/full_system_v1.sql:1048: NOTICE:  relation "config_city_branches" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+psql:sql/full_system_v1.sql:1055: NOTICE:  relation "dim_supervisores" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+psql:sql/full_system_v1.sql:1062: NOTICE:  relation "dim_vendedores" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+CREATE FUNCTION
+GRANT
+psql:sql/full_system_v1.sql:1085: NOTICE:  relation "dim_fornecedores" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+psql:sql/full_system_v1.sql:1096: NOTICE:  relation "dim_produtos" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+DO
+CREATE FUNCTION
+DROP VIEW
+CREATE VIEW
+DROP TABLE
+CREATE TABLE
+ALTER TABLE
+psql:sql/full_system_v1.sql:1186: NOTICE:  drop cascades to materialized view n8n_agent_view
+DROP TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+DROP TABLE
+CREATE TABLE
+ALTER TABLE
+psql:sql/full_system_v1.sql:1267: NOTICE:  relation "idx_detailed_dtped_composite" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1268: NOTICE:  relation "idx_history_dtped_composite" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1269: NOTICE:  relation "idx_detailed_dtped_desc" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1270: NOTICE:  relation "idx_detailed_codfor_dtped" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1271: NOTICE:  relation "idx_history_codfor_dtped" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1272: NOTICE:  relation "idx_detailed_produto" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1273: NOTICE:  relation "idx_history_produto" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1274: NOTICE:  relation "idx_clients_cidade" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1275: NOTICE:  relation "idx_clients_bloqueio_cidade" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1276: NOTICE:  relation "idx_clients_ramo" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1277: NOTICE:  relation "idx_clients_busca" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1280: NOTICE:  relation "idx_dim_produtos_mix_marca" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1281: NOTICE:  relation "idx_dim_produtos_mix_categoria" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1282: NOTICE:  relation "idx_data_clients_rede_lookup" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1286: NOTICE:  relation "idx_detailed_dtped_prod" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:1287: NOTICE:  relation "idx_history_dtped_prod" already exists, skipping
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE FUNCTION
+CREATE FUNCTION
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Enable access for all users" for relation "public.data_history" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Public profiles are viewable by everyone" for relation "public.data_history" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access Approved" for relation "public.data_history" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Write Access Admin" for relation "public.data_history" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Access Admin" for relation "public.data_history" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Access Admin" for relation "public.data_history" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "All Access Admin" for relation "public.data_history" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Admin" for relation "public.data_history" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Insert Admin" for relation "public.data_history" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Admin" for relation "public.data_history" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access" for relation "public.data_history" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Enable access for all users" for relation "public.data_clients" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Public profiles are viewable by everyone" for relation "public.data_clients" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access Approved" for relation "public.data_clients" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Write Access Admin" for relation "public.data_clients" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Access Admin" for relation "public.data_clients" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Access Admin" for relation "public.data_clients" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "All Access Admin" for relation "public.data_clients" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Admin" for relation "public.data_clients" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Insert Admin" for relation "public.data_clients" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Admin" for relation "public.data_clients" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access" for relation "public.data_clients" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Enable access for all users" for relation "public.data_holidays" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Public profiles are viewable by everyone" for relation "public.data_holidays" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access Approved" for relation "public.data_holidays" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Write Access Admin" for relation "public.data_holidays" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Access Admin" for relation "public.data_holidays" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Access Admin" for relation "public.data_holidays" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "All Access Admin" for relation "public.data_holidays" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Admin" for relation "public.data_holidays" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Insert Admin" for relation "public.data_holidays" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Admin" for relation "public.data_holidays" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access" for relation "public.data_holidays" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Admin Update" for relation "public.data_holidays" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Enable access for all users" for relation "public.profiles" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Public profiles are viewable by everyone" for relation "public.profiles" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access Approved" for relation "public.profiles" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Write Access Admin" for relation "public.profiles" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Access Admin" for relation "public.profiles" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Access Admin" for relation "public.profiles" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "All Access Admin" for relation "public.profiles" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Admin" for relation "public.profiles" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Insert Admin" for relation "public.profiles" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Admin" for relation "public.profiles" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access" for relation "public.profiles" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Unified Read Access" for relation "public.profiles" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Admin Insert" for relation "public.profiles" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Admin Update" for relation "public.profiles" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Admin Delete" for relation "public.profiles" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Enable access for all users" for relation "public.dim_fornecedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Public profiles are viewable by everyone" for relation "public.dim_fornecedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access Approved" for relation "public.dim_fornecedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Write Access Admin" for relation "public.dim_fornecedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Access Admin" for relation "public.dim_fornecedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Access Admin" for relation "public.dim_fornecedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "All Access Admin" for relation "public.dim_fornecedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Admin" for relation "public.dim_fornecedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Insert Admin" for relation "public.dim_fornecedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Admin" for relation "public.dim_fornecedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access" for relation "public.dim_fornecedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Enable access for all users" for relation "public.config_city_branches" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Public profiles are viewable by everyone" for relation "public.config_city_branches" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access Approved" for relation "public.config_city_branches" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Write Access Admin" for relation "public.config_city_branches" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Access Admin" for relation "public.config_city_branches" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Access Admin" for relation "public.config_city_branches" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "All Access Admin" for relation "public.config_city_branches" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Admin" for relation "public.config_city_branches" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Insert Admin" for relation "public.config_city_branches" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Admin" for relation "public.config_city_branches" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access" for relation "public.config_city_branches" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Enable access for all users" for relation "public.dim_supervisores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Public profiles are viewable by everyone" for relation "public.dim_supervisores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access Approved" for relation "public.dim_supervisores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Write Access Admin" for relation "public.dim_supervisores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Access Admin" for relation "public.dim_supervisores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Access Admin" for relation "public.dim_supervisores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "All Access Admin" for relation "public.dim_supervisores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Admin" for relation "public.dim_supervisores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Insert Admin" for relation "public.dim_supervisores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Admin" for relation "public.dim_supervisores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access" for relation "public.dim_supervisores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Enable access for all users" for relation "public.dim_vendedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Public profiles are viewable by everyone" for relation "public.dim_vendedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access Approved" for relation "public.dim_vendedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Write Access Admin" for relation "public.dim_vendedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Access Admin" for relation "public.dim_vendedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Access Admin" for relation "public.dim_vendedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "All Access Admin" for relation "public.dim_vendedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Admin" for relation "public.dim_vendedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Insert Admin" for relation "public.dim_vendedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Admin" for relation "public.dim_vendedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access" for relation "public.dim_vendedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Enable access for all users" for relation "public.data_detailed" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Public profiles are viewable by everyone" for relation "public.data_detailed" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access Approved" for relation "public.data_detailed" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Write Access Admin" for relation "public.data_detailed" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Access Admin" for relation "public.data_detailed" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Access Admin" for relation "public.data_detailed" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "All Access Admin" for relation "public.data_detailed" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Admin" for relation "public.data_detailed" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Insert Admin" for relation "public.data_detailed" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Admin" for relation "public.data_detailed" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access" for relation "public.data_detailed" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Enable access for all users" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Public profiles are viewable by everyone" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access Approved" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Write Access Admin" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Access Admin" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Access Admin" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "All Access Admin" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Admin" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Insert Admin" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Admin" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Unified Read Access" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Admin Insert" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Admin Update" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Admin Delete" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Enable access for all users" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Public profiles are viewable by everyone" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access Approved" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Write Access Admin" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Access Admin" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Access Admin" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "All Access Admin" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Admin" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Insert Admin" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Admin" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Unified Read Access" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Admin Insert" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Admin Update" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Admin Delete" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Enable access for all users" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Public profiles are viewable by everyone" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access Approved" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Write Access Admin" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Access Admin" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Access Admin" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "All Access Admin" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Delete Admin" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Insert Admin" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Update Admin" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Read Access" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Unified Read Access" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Admin Insert" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Admin Update" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1370: NOTICE:  policy "Admin Delete" for relation "public.cache_filters" does not exist, skipping
+DO
+CREATE FUNCTION
+DROP TRIGGER
+CREATE TRIGGER
+DROP POLICY
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Unified Read Access" for relation "public.config_city_branches" does not exist, skipping
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Admin Insert" for relation "public.config_city_branches" does not exist, skipping
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Admin Update" for relation "public.config_city_branches" does not exist, skipping
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Admin Delete" for relation "public.config_city_branches" does not exist, skipping
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Unified Read Access" for relation "public.dim_supervisores" does not exist, skipping
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Admin Insert" for relation "public.dim_supervisores" does not exist, skipping
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Admin Update" for relation "public.dim_supervisores" does not exist, skipping
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Admin Delete" for relation "public.dim_supervisores" does not exist, skipping
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Unified Read Access" for relation "public.dim_vendedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Admin Insert" for relation "public.dim_vendedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Admin Update" for relation "public.dim_vendedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Admin Delete" for relation "public.dim_vendedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Unified Read Access" for relation "public.dim_fornecedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Admin Insert" for relation "public.dim_fornecedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Admin Update" for relation "public.dim_fornecedores" does not exist, skipping
+psql:sql/full_system_v1.sql:1438: NOTICE:  policy "Admin Delete" for relation "public.dim_fornecedores" does not exist, skipping
+DO
+psql:sql/full_system_v1.sql:1441: NOTICE:  policy "Unified Read Access" for relation "public.data_holidays" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:sql/full_system_v1.sql:1444: NOTICE:  policy "Admin Insert" for relation "public.data_holidays" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:sql/full_system_v1.sql:1447: NOTICE:  policy "Admin Delete" for relation "public.data_holidays" does not exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Unified Read Access" for relation "public.data_history" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Insert" for relation "public.data_history" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Update" for relation "public.data_history" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Delete" for relation "public.data_history" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Unified Read Access" for relation "public.data_clients" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Insert" for relation "public.data_clients" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Update" for relation "public.data_clients" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Delete" for relation "public.data_clients" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Unified Read Access" for relation "public.data_detailed" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Insert" for relation "public.data_detailed" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Update" for relation "public.data_detailed" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Delete" for relation "public.data_detailed" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Unified Read Access" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Insert" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Update" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Delete" for relation "public.data_summary" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Unified Read Access" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Insert" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Update" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Delete" for relation "public.data_summary_frequency" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Unified Read Access" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Insert" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Update" for relation "public.cache_filters" does not exist, skipping
+psql:sql/full_system_v1.sql:1471: NOTICE:  policy "Admin Delete" for relation "public.cache_filters" does not exist, skipping
+DO
+CREATE FUNCTION
+DROP TRIGGER
+CREATE TRIGGER
+UPDATE 0
+CREATE FUNCTION
+CREATE FUNCTION
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+psql:sql/full_system_v1.sql:2112: NOTICE:  function refresh_cache_filters() does not exist, skipping
+DROP FUNCTION
+DROP FUNCTION
+CREATE FUNCTION
+DROP FUNCTION
+psql:sql/full_system_v1.sql:2232: NOTICE:  function get_dashboard_filters(text,text,text[],text[],text[],text[],text[],text[],text[],text[]) does not exist, skipping
+DROP FUNCTION
+psql:sql/full_system_v1.sql:2250: NOTICE:  relation "meta_estrelas" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+psql:sql/full_system_v1.sql:2261: NOTICE:  relation "config_aceleradores" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+psql:sql/full_system_v1.sql:2271: NOTICE:  policy "Acesso de escrita restrito a administradores" for relation "public.config_aceleradores" does not exist, skipping
+DROP POLICY
+DROP POLICY
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+DO
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+psql:sql/full_system_v1.sql:4516: NOTICE:  relation "data_innovations" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+psql:sql/full_system_v1.sql:4535: NOTICE:  relation "data_nota_perfeita" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+DO
+psql:sql/full_system_v1.sql:4550: NOTICE:  relation "idx_nota_perfeita_codcli" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:4559: NOTICE:  relation "relacao_rota_involves" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+psql:sql/full_system_v1.sql:4563: NOTICE:  relation "idx_relacao_rota_involves_system" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:4564: NOTICE:  relation "idx_relacao_rota_involves_involves" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:4574: NOTICE:  relation "data_metadata" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+psql:sql/full_system_v1.sql:4581: NOTICE:  policy "Admin All" for relation "public.data_metadata" does not exist, skipping
+DROP POLICY
+DROP POLICY
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+psql:sql/full_system_v1.sql:4590: NOTICE:  column "row_hash" of relation "data_clients" already exists, skipping
+ALTER TABLE
+DO
+psql:sql/full_system_v1.sql:4604: NOTICE:  relation "idx_clients_hash" already exists, skipping
+CREATE INDEX
+psql:sql/full_system_v1.sql:4605: NOTICE:  relation "idx_metadata_lookup" already exists, skipping
+CREATE INDEX
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+psql:sql/full_system_v1.sql:4803: NOTICE:  function get_innovations_data(text[],text[],text[],text[],text[],text[],text) does not exist, skipping
+DROP FUNCTION
+DROP FUNCTION
+psql:sql/full_system_v1.sql:4816: NOTICE:  function get_loja_perfeita_data(text[],text[],text[],text[],text[]) does not exist, skipping
+DROP FUNCTION
+psql:sql/full_system_v1.sql:4817: NOTICE:  function get_loja_perfeita_data(text[],text[],text[],text[],text[],text,pg_catalog.int4,pg_catalog.int4) does not exist, skipping
+DROP FUNCTION
+DROP FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+GRANT
+CREATE FUNCTION
+GRANT
+ALTER FUNCTION
+ALTER FUNCTION
+ALTER FUNCTION
+ALTER FUNCTION
+ALTER FUNCTION
+ALTER FUNCTION
+ALTER FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+ALTER FUNCTION
+psql:sql/full_system_v1.sql:5720: NOTICE:  view "n8n_agent_view" does not exist, skipping
+DROP VIEW
+SELECT 0
+CREATE FUNCTION
+REVOKE
+GRANT
+DO
+DO
+SELECT 0
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE FUNCTION
+REVOKE
+GRANT
+psql:sql/full_system_v1.sql:6375: NOTICE:  extension "pg_trgm" already exists, skipping
+CREATE EXTENSION
+CREATE INDEX
+psql:sql/full_system_v1.sql:6403: NOTICE:  relation "supervisors_routes" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+psql:sql/full_system_v1.sql:6446: NOTICE:  relation "supervisors_routes" already exists, skipping
+CREATE TABLE
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+psql:sql/full_system_v1.sql:6469: NOTICE:  relation "n8n_auth_colaboradores" already exists, skipping
+CREATE TABLE
+DO
+DO
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE INDEX
+CREATE FUNCTION
+CREATE FUNCTION
+DO
