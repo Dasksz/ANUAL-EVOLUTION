@@ -7670,7 +7670,7 @@ BEGIN
     -- Using data_summary because it has vlvenda, peso and codcli.
     -- We assume positive sales to count distinct codcli.
 
-        EXECUTE $dyn$
+            EXECUTE $dyn$
     WITH base_data AS MATERIALIZED (
         SELECT
             ano,
@@ -7682,7 +7682,8 @@ BEGIN
             REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') as cnpj_clean,
             vlvenda,
             peso,
-            codcli
+            codcli,
+            tipovenda
         FROM public.data_summary
         WHERE (ano = $1 AND mes = $2)
            OR (ano = $3 AND mes = $4)
@@ -7691,7 +7692,7 @@ BEGIN
     -- Grouping helper
     classified_data AS MATERIALIZED (
         SELECT
-            ano, mes, filial, codsupervisor, codusur, codcli, cnpj_clean,
+            ano, mes, filial, codsupervisor, codusur, codcli, cnpj_clean, tipovenda,
             COALESCE(vlvenda, 0) as vlvenda,
             COALESCE(peso, 0) as peso,
             CASE
@@ -7710,7 +7711,7 @@ BEGIN
             SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
             SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
-            SUM(CASE WHEN ano = $1 AND mes = $2 THEN peso ELSE 0 END) as ton_atual,
+            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
         FROM classified_data
         UNION ALL
@@ -7720,7 +7721,7 @@ BEGIN
             SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
             SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
-            SUM(CASE WHEN ano = $1 AND mes = $2 THEN peso ELSE 0 END) as ton_atual,
+            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
         FROM classified_data
         GROUP BY line_group
@@ -7734,7 +7735,7 @@ BEGIN
             SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
             SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
-            SUM(CASE WHEN ano = $1 AND mes = $2 THEN peso ELSE 0 END) as ton_atual,
+            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
         FROM classified_data
         GROUP BY filial
@@ -7745,7 +7746,7 @@ BEGIN
             SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
             SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
-            SUM(CASE WHEN ano = $1 AND mes = $2 THEN peso ELSE 0 END) as ton_atual,
+            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
         FROM classified_data
         GROUP BY filial, line_group
@@ -7759,7 +7760,7 @@ BEGIN
             SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
             SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
-            SUM(CASE WHEN ano = $1 AND mes = $2 THEN peso ELSE 0 END) as ton_atual,
+            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
         FROM classified_data
         GROUP BY filial, codsupervisor
@@ -7770,7 +7771,7 @@ BEGIN
             SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
             SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
-            SUM(CASE WHEN ano = $1 AND mes = $2 THEN peso ELSE 0 END) as ton_atual,
+            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
         FROM classified_data
         GROUP BY filial, codsupervisor, line_group
@@ -7784,7 +7785,7 @@ BEGIN
             SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
             SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
-            SUM(CASE WHEN ano = $1 AND mes = $2 THEN peso ELSE 0 END) as ton_atual,
+            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
         FROM classified_data
         WHERE cnpj_clean IS NOT NULL AND LENGTH(cnpj_clean) >= 8
