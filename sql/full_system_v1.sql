@@ -7843,5 +7843,14 @@ CREATE TABLE IF NOT EXISTS public.api_ia (
     updated_at timestamp with time zone DEFAULT now()
 );
 
+ALTER TABLE public.api_ia ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow read access to api_ia" ON public.api_ia;
+CREATE POLICY "Allow read access to api_ia"
+    ON public.api_ia
+    FOR SELECT
+    TO public
+    USING (true);
+
 -- Allow reading the API key via RPC or direct select for anon/authenticated roles
 GRANT SELECT ON public.api_ia TO anon, authenticated;

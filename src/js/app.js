@@ -10902,7 +10902,7 @@ Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}
             geralContainer.innerHTML = '';
             const order = ['Geral', 'Salty', 'Foods'];
             order.forEach(groupName => {
-                const groupData = data.global.find(g => g.group_name === groupName) || { faturamento: 0, tonelada: 0, positivacao: 0 };
+                const groupData = (data.global || []).find(g => g.group_name === groupName) || { faturamento: 0, tonelada: 0, positivacao: 0 };
                 geralContainer.innerHTML += createCardHTML(groupName, groupData);
             });
         }
@@ -10913,10 +10913,10 @@ Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}
             redeContainer.innerHTML = '';
             // Aggregate all Redes for "Geral com Rede"
             let fatRede = 0, tonRede = 0, posRede = 0;
-            data.redes.forEach(r => { fatRede += parseFloat(r.faturamento||0); tonRede += parseFloat(r.tonelada||0); posRede += parseInt(r.positivacao||0); });
+            (data.redes || []).forEach(r => { fatRede += parseFloat(r.faturamento||0); tonRede += parseFloat(r.tonelada||0); posRede += parseInt(r.positivacao||0); });
             redeContainer.innerHTML += createCardHTML("Todos os Clientes com Rede", { faturamento: fatRede, tonelada: tonRede, positivacao: posRede });
 
-            const amer = data.redes.find(r => r.dimension && r.dimension.toLowerCase().includes('33014556')); // Assuming standard CNPJ prefix for Lojas Americanas
+            const amer = (data.redes || []).find(r => r.dimension && r.dimension.toLowerCase().includes('33014556')); // Assuming standard CNPJ prefix for Lojas Americanas
             redeContainer.innerHTML += createCardHTML("Rede: Americanas", amer || { faturamento: 0, tonelada: 0, positivacao: 0 });
         }
 
