@@ -10936,7 +10936,7 @@ Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}
                 const supContainer = document.getElementById('presentation-supervisor-tbody');
                 if(supContainer) {
                     const supers = (data.supervisores || [])
-                        .filter(s => s.group_name === 'Geral' && s.dimension.startsWith(val))
+                        .filter(s => s.group_name === 'Geral' && s.dimension.startsWith(val) && parseFloat(s.fat_atual) > 0)
                         .sort((a,b) => b.fat_atual - a.fat_atual);
 
                     supContainer.innerHTML = supers.map(s => `

@@ -7756,58 +7756,64 @@ BEGIN
     agg_supervisor AS (
         SELECT
             'Geral' as group_name,
-            filial || ' - ' || codsupervisor as dimension,
-            SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
-            SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
-            SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
-            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
-            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
-        FROM classified_data
-        GROUP BY filial, codsupervisor
+            c.filial || ' - ' || COALESCE(SPLIT_PART(MAX(ds.nome), ' ', 1), c.codsupervisor) as dimension,
+            SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) as fat_atual,
+            SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.vlvenda ELSE 0 END) as fat_trim,
+            SUM(CASE WHEN c.ano = $5 AND c.mes = $6 THEN c.vlvenda ELSE 0 END) as fat_ant,
+            SUM(CASE WHEN c.ano = $1 AND c.mes = $2 AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) as ton_atual,
+            COUNT(DISTINCT CASE WHEN c.ano = $1 AND c.mes = $2 AND c.vlvenda >= 1 THEN c.codcli END) as pos_atual
+        FROM classified_data c
+        LEFT JOIN dim_supervisores ds ON c.codsupervisor = ds.codigo
+        GROUP BY c.filial, c.codsupervisor
+        HAVING SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) > 0
         UNION ALL
         SELECT
-            line_group as group_name,
-            filial || ' - ' || codsupervisor as dimension,
-            SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
-            SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
-            SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
-            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
-            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
-        FROM classified_data
-        GROUP BY filial, codsupervisor, line_group
+            c.line_group as group_name,
+            c.filial || ' - ' || COALESCE(SPLIT_PART(MAX(ds.nome), ' ', 1), c.codsupervisor) as dimension,
+            SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) as fat_atual,
+            SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.vlvenda ELSE 0 END) as fat_trim,
+            SUM(CASE WHEN c.ano = $5 AND c.mes = $6 THEN c.vlvenda ELSE 0 END) as fat_ant,
+            SUM(CASE WHEN c.ano = $1 AND c.mes = $2 AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) as ton_atual,
+            COUNT(DISTINCT CASE WHEN c.ano = $1 AND c.mes = $2 AND c.vlvenda >= 1 THEN c.codcli END) as pos_atual
+        FROM classified_data c
+        LEFT JOIN dim_supervisores ds ON c.codsupervisor = ds.codigo
+        GROUP BY c.filial, c.codsupervisor, c.line_group
+        HAVING SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) > 0
     ),
 
     -- REDES AGGREGATION
     agg_redes AS (
          SELECT
             'Geral' as group_name,
-            'Rede: ' || SUBSTRING(cnpj_clean FROM 1 FOR 8) as dimension,
-            SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
-            SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
-            SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
-            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
-            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
-        FROM classified_data
-        WHERE cnpj_clean IS NOT NULL AND LENGTH(cnpj_clean) >= 8
-        GROUP BY SUBSTRING(cnpj_clean FROM 1 FOR 8)
+            'Rede: ' || dc.ramo as dimension,
+            SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) as fat_atual,
+            SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.vlvenda ELSE 0 END) as fat_trim,
+            SUM(CASE WHEN c.ano = $5 AND c.mes = $6 THEN c.vlvenda ELSE 0 END) as fat_ant,
+            SUM(CASE WHEN c.ano = $1 AND c.mes = $2 AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) as ton_atual,
+            COUNT(DISTINCT CASE WHEN c.ano = $1 AND c.mes = $2 AND c.vlvenda >= 1 THEN c.codcli END) as pos_atual
+        FROM classified_data c
+        INNER JOIN data_clients dc ON c.codcli = dc.codigo_cliente
+        WHERE dc.ramo IS NOT NULL AND dc.ramo != ''
+        GROUP BY dc.ramo
     ),
 
     -- TOP VENDEDORES (Current vs Prev Year Faturamento Var)
     top_vendedores AS (
         SELECT
-            codusur as vendedor,
-            SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
-            SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_trim,
-            SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as fat_ant,
-            SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) - SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) as var_abs
-        FROM classified_data
-        WHERE codusur IS NOT NULL AND codusur != ''
-          AND codsupervisor != '8'
-          AND codusur NOT ILIKE 'INAT_%'
-          AND codusur NOT ILIKE '%BALCÃO%'
-          AND codusur NOT ILIKE '%BALCAO%'
-        GROUP BY codusur
-        HAVING SUM(CASE WHEN ano = $5 AND mes = $6 THEN vlvenda ELSE 0 END) > 0
+            COALESCE(SPLIT_PART(MAX(dv.nome), ' ', 1), c.codusur) as vendedor,
+            SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) as fat_atual,
+            SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.vlvenda ELSE 0 END) as fat_trim,
+            SUM(CASE WHEN c.ano = $5 AND c.mes = $6 THEN c.vlvenda ELSE 0 END) as fat_ant,
+            SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) - SUM(CASE WHEN c.ano = $5 AND c.mes = $6 THEN c.vlvenda ELSE 0 END) as var_abs
+        FROM classified_data c
+        LEFT JOIN dim_vendedores dv ON c.codusur = dv.codigo
+        WHERE c.codusur IS NOT NULL AND c.codusur != ''
+          AND c.codsupervisor != '8'
+          AND c.codusur NOT ILIKE 'INAT_%'
+          AND c.codusur NOT ILIKE '%BALCÃO%'
+          AND c.codusur NOT ILIKE '%BALCAO%'
+        GROUP BY c.codusur
+        HAVING SUM(CASE WHEN c.ano = $5 AND c.mes = $6 THEN c.vlvenda ELSE 0 END) > 0
         ORDER BY var_abs DESC
         LIMIT 10
     )
