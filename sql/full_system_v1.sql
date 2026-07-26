@@ -7756,7 +7756,14 @@ BEGIN
     agg_supervisor AS (
         SELECT
             'Geral' as group_name,
-            c.filial || ' - ' || COALESCE(SPLIT_PART(MAX(ds.nome), ' ', 1), c.codsupervisor) as dimension,
+            c.filial || ' - ' || COALESCE(
+                CASE
+                    WHEN MAX(ds.nome) ILIKE 'SV %' OR MAX(ds.nome) ILIKE 'SV_%'
+                    THEN SPLIT_PART(REPLACE(MAX(ds.nome), '_', ' '), ' ', 1) || ' ' || SPLIT_PART(REPLACE(MAX(ds.nome), '_', ' '), ' ', 2)
+                    ELSE SPLIT_PART(MAX(ds.nome), ' ', 1)
+                END,
+                c.codsupervisor
+            ) as dimension,
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) as fat_atual,
             SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.vlvenda ELSE 0 END) as fat_trim,
             SUM(CASE WHEN c.ano = $5 AND c.mes = $6 THEN c.vlvenda ELSE 0 END) as fat_ant,
@@ -7769,7 +7776,14 @@ BEGIN
         UNION ALL
         SELECT
             c.line_group as group_name,
-            c.filial || ' - ' || COALESCE(SPLIT_PART(MAX(ds.nome), ' ', 1), c.codsupervisor) as dimension,
+            c.filial || ' - ' || COALESCE(
+                CASE
+                    WHEN MAX(ds.nome) ILIKE 'SV %' OR MAX(ds.nome) ILIKE 'SV_%'
+                    THEN SPLIT_PART(REPLACE(MAX(ds.nome), '_', ' '), ' ', 1) || ' ' || SPLIT_PART(REPLACE(MAX(ds.nome), '_', ' '), ' ', 2)
+                    ELSE SPLIT_PART(MAX(ds.nome), ' ', 1)
+                END,
+                c.codsupervisor
+            ) as dimension,
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) as fat_atual,
             SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.vlvenda ELSE 0 END) as fat_trim,
             SUM(CASE WHEN c.ano = $5 AND c.mes = $6 THEN c.vlvenda ELSE 0 END) as fat_ant,
