@@ -219,6 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isInnovationsInitialized = false;
     let isLojaPerfeitaInitialized = false;
     let isEstrelasInitialized = false;
+    if(window.initPresentationLogic) window.initPresentationLogic();
 let lpSelectedFiliais = [];
 let lpSelectedSupervisors = [];
 let lpSelectedVendedores = [];
@@ -10727,3 +10728,295 @@ async function syncIbgePopulations() {
 
 
 });
+
+
+// Presentation Module
+// Handles the fetching, AI analysis, and PPT/Docx generation for Closing Presentations.
+
+window.initPresentationLogic = function() {
+    const btnOpen = document.getElementById('nav-presentation-btn');
+    const modal = document.getElementById('presentation-modal');
+    const btnClose = document.getElementById('close-presentation-modal');
+    const btnCancel = document.getElementById('cancel-presentation-btn');
+    const btnDownload = document.getElementById('download-presentation-btn');
+    const loader = document.getElementById('presentation-loader');
+    const loaderText = document.getElementById('presentation-loader-text');
+
+    // Tabs
+    const tabBtns = document.querySelectorAll('.presentation-tab-btn');
+    const tabContents = document.querySelectorAll('.presentation-tab-content');
+
+    let presentationData = null;
+    let aiAnalysisText = null;
+
+    if(!btnOpen || !modal) return;
+
+    btnOpen.addEventListener('click', async (e) => {
+        e.preventDefault();
+        modal.classList.remove('hidden');
+        await loadPresentationData();
+    });
+
+    const closeModal = () => {
+        modal.classList.add('hidden');
+        presentationData = null;
+        aiAnalysisText = null;
+        btnDownload.disabled = true;
+    };
+
+    btnClose.addEventListener('click', closeModal);
+    btnCancel.addEventListener('click', closeModal);
+
+    // Tab Switching
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            tabBtns.forEach(b => {
+                b.classList.remove('text-fuchsia-400', 'bg-fuchsia-500/10', 'border-fuchsia-500/20');
+                b.classList.add('text-slate-400', 'hover:text-slate-200', 'border-transparent');
+            });
+            btn.classList.add('text-fuchsia-400', 'bg-fuchsia-500/10', 'border-fuchsia-500/20');
+            btn.classList.remove('text-slate-400', 'border-transparent');
+
+            tabContents.forEach(content => {
+                content.classList.add('hidden');
+                content.classList.remove('block');
+            });
+
+            const tabId = btn.getAttribute('data-tab');
+            const targetContent = document.getElementById(`presentation-tab-${tabId}`);
+            if(targetContent) {
+                targetContent.classList.remove('hidden');
+                targetContent.classList.add('block');
+            }
+        });
+    });
+
+    async function loadPresentationData() {
+        loader.classList.remove('hidden');
+        loaderText.textContent = "Calculando fechamento da apresentação...";
+        btnDownload.disabled = true;
+
+        try {
+            // Get user selected filters or fallback to last period in db handled by RPC
+            const filters = window.getDashboardFilters ? window.getDashboardFilters() : {};
+            const p_ano = filters.ano !== 'todos' && filters.ano ? filters.ano : null;
+            const p_mes = filters.mes ? filters.mes : null;
+
+            // 1. Fetch DB Data
+            const { data: rpcData, error } = await window.supabase.rpc('get_closing_presentation_data', {
+                p_ano: p_ano,
+                p_mes: p_mes
+            });
+
+            if (error) throw error;
+            if (!rpcData || Object.keys(rpcData).length === 0) {
+                throw new Error("Nenhum dado encontrado para o período selecionado.");
+            }
+
+            presentationData = rpcData;
+
+            // Render basic view
+            renderTabs(rpcData);
+
+            // 2. Fetch AI keys
+            loaderText.textContent = "Gerando análise com Inteligência Artificial...";
+            const { data: apiKeys, error: apiError } = await window.supabase
+                .from('api_ia')
+                .select('api_key, model_name')
+                .limit(1)
+                .single();
+
+            if (apiError || !apiKeys?.api_key) {
+                console.warn("Chave de API não encontrada. Pulando análise de IA.");
+                aiAnalysisText = "Análise automática não disponível. Chave de API não configurada.";
+            } else {
+                // Call deepseek AI
+                aiAnalysisText = await generateAiAnalysis(apiKeys.api_key, apiKeys.model_name || 'deepseek-chat', rpcData);
+            }
+
+            btnDownload.disabled = false;
+        } catch (err) {
+            console.error("Presentation Error:", err);
+            if(window.showToast) window.showToast('error', 'Erro ao carregar dados da apresentação: ' + err.message);
+            closeModal();
+        } finally {
+            loader.classList.add('hidden');
+        }
+    }
+
+    async function generateAiAnalysis(apiKey, modelName, data) {
+        // Construct prompt based on data
+        let promptText = `Atue como um analista comercial sênior e crie um roteiro executivo para uma apresentação de resultados.
+Abaixo estão os dados do fechamento comercial:
+
+Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}
+
+[VISÃO GERAL]
+`;
+
+        const gGeral = data.global.find(g => g.group_name === 'Geral');
+        if(gGeral) {
+            promptText += `- Faturamento Total: R$ ${parseFloat(gGeral.faturamento).toLocaleString('pt-BR')}\n`;
+            promptText += `- Positivação Total: ${gGeral.positivacao} clientes\n`;
+        }
+
+        const gSalty = data.global.find(g => g.group_name === 'Salty');
+        if(gSalty) promptText += `- Faturamento Salty: R$ ${parseFloat(gSalty.faturamento).toLocaleString('pt-BR')}\n`;
+
+        const gFoods = data.global.find(g => g.group_name === 'Foods');
+        if(gFoods) promptText += `- Faturamento Foods: R$ ${parseFloat(gFoods.faturamento).toLocaleString('pt-BR')}\n`;
+
+        promptText += `\nCrie uma análise profissional, destacando pontos de atenção, potenciais alavancas e um discurso motivador para a equipe de vendas. Seja direto e estruturado com bullet points.`;
+
+        try {
+            const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: modelName,
+                    messages: [
+                        { role: 'system', content: 'Você é um Analista de Dados Comercial focado no varejo e atacado brasileiro.' },
+                        { role: 'user', content: promptText }
+                    ]
+                })
+            });
+
+            if(!res.ok) throw new Error("Erro na API da IA: " + res.statusText);
+            const resData = await res.json();
+            return resData.choices[0].message.content;
+        } catch (e) {
+            console.error(e);
+            return "Erro ao gerar análise: " + e.message;
+        }
+    }
+
+    function renderTabs(data) {
+        document.getElementById('presentation-period-label').textContent = `Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}`;
+
+        // Render Geral
+        const geralContainer = document.getElementById('presentation-geral-cards');
+        if(geralContainer) {
+            geralContainer.innerHTML = '';
+            const order = ['Geral', 'Salty', 'Foods'];
+            order.forEach(groupName => {
+                const groupData = data.global.find(g => g.group_name === groupName) || { faturamento: 0, tonelada: 0, positivacao: 0 };
+                geralContainer.innerHTML += createCardHTML(groupName, groupData);
+            });
+        }
+
+        // Render Redes
+        const redeContainer = document.getElementById('presentation-rede-cards');
+        if(redeContainer) {
+            redeContainer.innerHTML = '';
+            // Aggregate all Redes for "Geral com Rede"
+            let fatRede = 0, tonRede = 0, posRede = 0;
+            data.redes.forEach(r => { fatRede += parseFloat(r.faturamento||0); tonRede += parseFloat(r.tonelada||0); posRede += parseInt(r.positivacao||0); });
+            redeContainer.innerHTML += createCardHTML("Todos os Clientes com Rede", { faturamento: fatRede, tonelada: tonRede, positivacao: posRede });
+
+            const amer = data.redes.find(r => r.dimension && r.dimension.toLowerCase().includes('33014556')); // Assuming standard CNPJ prefix for Lojas Americanas
+            redeContainer.innerHTML += createCardHTML("Rede: Americanas", amer || { faturamento: 0, tonelada: 0, positivacao: 0 });
+        }
+
+        // Render Vendedores
+        const vendContainer = document.getElementById('presentation-vendedores-tbody');
+        if(vendContainer && data.top_vendedores) {
+            vendContainer.innerHTML = data.top_vendedores.map((v, i) => `
+                <tr>
+                    <td class="px-4 py-3 text-center font-bold text-slate-400">${i+1}º</td>
+                    <td class="px-4 py-3 font-medium">${v.vendedor}</td>
+                    <td class="px-4 py-3 text-right">R$ ${parseFloat(v.fat_atual).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                    <td class="px-4 py-3 text-right text-slate-500">R$ ${parseFloat(v.fat_ant).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                    <td class="px-4 py-3 text-right text-emerald-400 font-bold">+ R$ ${parseFloat(v.var_abs).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    function createCardHTML(title, metrics) {
+        return `
+            <div class="bg-[#0f0e13] border border-white/10 rounded-xl p-5">
+                <h3 class="text-lg font-bold text-white mb-4 border-b border-white/5 pb-2">${title}</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">Faturamento</span>
+                        <span class="text-white font-bold text-lg">R$ ${parseFloat(metrics.faturamento).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">Tonelada (KG)</span>
+                        <span class="text-white font-bold">${parseFloat(metrics.tonelada).toLocaleString('pt-BR')} kg</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">Positivação</span>
+                        <span class="text-fuchsia-400 font-bold">${metrics.positivacao} cli</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // --- DOWNLOAD LOGIC (PPTX & DOCX) ---
+    btnDownload.addEventListener('click', async () => {
+        if(!presentationData) return;
+
+        try {
+            const ogText = btnDownload.innerHTML;
+            btnDownload.innerHTML = `<svg class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> GERANDO ARQUIVOS...`;
+            btnDownload.disabled = true;
+
+            // Generate Word Document (using docx via CDN)
+            if(window.docx && aiAnalysisText) {
+                const { Document, Packer, Paragraph, TextRun } = window.docx;
+                const paragraphs = aiAnalysisText.split('\n').map(text => new Paragraph({ children: [new TextRun(text)] }));
+                const doc = new Document({ sections: [{ properties: {}, children: paragraphs }] });
+
+                const blob = await Packer.toBlob(doc);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "Analise_Fechamento.docx";
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            // Generate PowerPoint (using pptxgenjs)
+            if(window.PptxGenJS) {
+                let pptx = new PptxGenJS();
+                pptx.layout = 'LAYOUT_16x9';
+
+                // Slide 1: Cover
+                let slideCapa = pptx.addSlide();
+                slideCapa.background = { fill: "131217" };
+                slideCapa.addText("Fechamento de Resultados", { x: 1, y: 2, w: 8, h: 1, fontSize: 36, color: "FFFFFF", bold: true, align: "center", animate: { type: 'fade', w: 1, p: 'in' } });
+                slideCapa.addText(`Mês: ${presentationData.meta.curr.mes}/${presentationData.meta.curr.ano}`, { x: 1, y: 3, w: 8, h: 1, fontSize: 24, color: "d946ef", align: "center", animate: { type: 'fly', w: 1, p: 'in', dir: 'b' } });
+
+                // Slide 2: Visao Geral
+                let slideGeral = pptx.addSlide();
+                slideGeral.background = { fill: "131217" };
+                slideGeral.addText("Resultados Consolidados", { x: 0.5, y: 0.5, w: 9, h: 0.5, fontSize: 24, color: "FFFFFF", bold: true, border: [0, 0, {pt: 1, color: "333333"}, 0] });
+
+                let yOffset = 1.5;
+                ['Geral', 'Salty', 'Foods'].forEach(groupName => {
+                    const gData = presentationData.global.find(g => g.group_name === groupName) || { faturamento: 0, positivacao: 0 };
+                    slideGeral.addText(groupName, { x: 0.5, y: yOffset, w: 2.5, h: 0.5, fontSize: 18, color: "d946ef", bold: true });
+                    slideGeral.addText(`Fat: R$ ${parseFloat(gData.faturamento).toLocaleString('pt-BR')}`, { x: 3.0, y: yOffset, w: 3, h: 0.5, fontSize: 16, color: "FFFFFF" });
+                    slideGeral.addText(`Pos: ${gData.positivacao} clientes`, { x: 6.5, y: yOffset, w: 3, h: 0.5, fontSize: 16, color: "FFFFFF" });
+                    yOffset += 1.0;
+                });
+
+                await pptx.writeFile({ fileName: 'Apresentacao_Fechamento.pptx' });
+            }
+
+            btnDownload.innerHTML = ogText;
+            btnDownload.disabled = false;
+        } catch (e) {
+            console.error(e);
+            alert("Erro ao gerar arquivos.");
+            btnDownload.innerHTML = "BAIXAR APRESENTAÇÃO";
+            btnDownload.disabled = false;
+        }
+    });
+
+};
