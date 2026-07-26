@@ -3293,15 +3293,16 @@ BEGIN
         -- FAST PATH (Uses data_summary for totals)
         EXECUTE format('
             WITH 
+            salty_base_data AS MATERIALIZED (
+                SELECT ano, mes, codcli
+                FROM public.data_summary
+                %s AND ano IN (%L, %L) AND LTRIM(codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(tipovenda, ''0'') IN (''1'', ''9'')
+                GROUP BY ano, mes, codcli
+                HAVING SUM(vlvenda) >= 1
+            ),
             salty_monthly AS (
                 SELECT ano, mes, COUNT(DISTINCT codcli) as pos_salty
-                FROM (
-                    SELECT ano, mes, codcli
-                    FROM public.data_summary
-                    %s AND ano IN (%L, %L) AND LTRIM(codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(tipovenda, ''0'') IN (''1'', ''9'')
-                    GROUP BY ano, mes, codcli
-                    HAVING SUM(vlvenda) >= 1
-                ) sub
+                FROM salty_base_data
                 GROUP BY ano, mes
             ),
             chart_agg_base AS (
@@ -3327,7 +3328,7 @@ BEGIN
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE ano = %L %s), 0) as pos_salty
+                    COALESCE((SELECT COUNT(DISTINCT codcli) FROM salty_base_data WHERE ano = %L %s), 0) as pos_salty
                 FROM public.data_summary
                 %s AND ano = %L %s
             ),
@@ -3337,7 +3338,7 @@ BEGIN
                     SUM(peso) as peso,
                     SUM(COALESCE(caixas, 0)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE ano = %L %s), 0) as pos_salty
+                    COALESCE((SELECT COUNT(DISTINCT codcli) FROM salty_base_data WHERE ano = %L %s), 0) as pos_salty
                 FROM public.data_summary
                 %s AND ano = %L %s
             ),
@@ -3355,7 +3356,7 @@ BEGIN
                             GROUP BY ano, mes
                         ) sub
                     ), 0) as clientes,
-                    COALESCE((SELECT SUM(pos_salty)/3 FROM salty_monthly WHERE make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L), 0) as pos_salty
+                    COALESCE((SELECT COUNT(DISTINCT codcli)/3 FROM salty_base_data WHERE make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L), 0) as pos_salty
                 FROM public.data_summary
                 %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
             ),
@@ -3405,22 +3406,23 @@ BEGIN
         -- SLOW PATH (Full Raw Data with dim_produtos join)
         EXECUTE format('
             WITH 
+            salty_base_data AS MATERIALIZED (
+                SELECT EXTRACT(YEAR FROM dtped)::int as yr, (EXTRACT(MONTH FROM dtped)::int - 1) as m_idx, codcli
+                FROM (
+                    SELECT dtped, codcli, vlvenda
+                    FROM public.data_detailed s
+                %s AND s.dtped >= make_date(%L, 1, 1) AND LTRIM(s.codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(s.tipovenda, ''0'') IN (''1'', ''9'')
+                UNION ALL
+                    SELECT dtped, codcli, vlvenda
+                    FROM public.data_history s
+                %s AND s.dtped >= make_date(%L, 1, 1) AND LTRIM(s.codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(s.tipovenda, ''0'') IN (''1'', ''9'')
+                ) union_sub
+                GROUP BY EXTRACT(YEAR FROM dtped)::int, (EXTRACT(MONTH FROM dtped)::int - 1), codcli
+                HAVING SUM(vlvenda) >= 1
+            ),
             salty_monthly AS (
                 SELECT yr, m_idx, COUNT(DISTINCT codcli) as pos_salty
-                FROM (
-                    SELECT EXTRACT(YEAR FROM dtped)::int as yr, (EXTRACT(MONTH FROM dtped)::int - 1) as m_idx, codcli
-                    FROM (
-                        SELECT dtped, codcli, vlvenda
-                        FROM public.data_detailed s
-                    %s AND s.dtped >= make_date(%L, 1, 1) AND LTRIM(s.codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(s.tipovenda, ''0'') IN (''1'', ''9'')
-                    UNION ALL
-                        SELECT dtped, codcli, vlvenda
-                        FROM public.data_history s
-                    %s AND s.dtped >= make_date(%L, 1, 1) AND LTRIM(s.codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(s.tipovenda, ''0'') IN (''1'', ''9'')
-                    ) union_sub
-                    GROUP BY EXTRACT(YEAR FROM dtped)::int, (EXTRACT(MONTH FROM dtped)::int - 1), codcli
-                    HAVING SUM(vlvenda) >= 1
-                ) agg_sub
+                FROM salty_base_data
                 GROUP BY 1, 2
             ),
             chart_agg_base AS (
@@ -3455,7 +3457,7 @@ BEGIN
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE yr = %L %s), 0) as pos_salty
+                    COALESCE((SELECT COUNT(DISTINCT codcli) FROM salty_base_data WHERE yr = %L %s), 0) as pos_salty
                 FROM (
                     SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                     FROM public.data_detailed s
@@ -3474,7 +3476,7 @@ BEGIN
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE yr = %L %s), 0) as pos_salty
+                    COALESCE((SELECT COUNT(DISTINCT codcli) FROM salty_base_data WHERE yr = %L %s), 0) as pos_salty
                 FROM (
                     SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                     FROM public.data_detailed s
@@ -3510,7 +3512,7 @@ BEGIN
                             GROUP BY EXTRACT(YEAR FROM dtped), EXTRACT(MONTH FROM dtped)
                         ) sub
                     ), 0) as clientes,
-                    COALESCE((SELECT SUM(pos_salty)/3 FROM salty_monthly WHERE make_date(yr, m_idx+1, 1) >= date_trunc(''month'', %L::date) AND make_date(yr, m_idx+1, 1) <= date_trunc(''month'', %L::date)), 0) as pos_salty
+                    COALESCE((SELECT COUNT(DISTINCT codcli)/3 FROM salty_base_data WHERE make_date(yr, m_idx+1, 1) >= date_trunc(''month'', %L::date) AND make_date(yr, m_idx+1, 1) <= date_trunc(''month'', %L::date)), 0) as pos_salty
                 FROM (
                     SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.qtde_embalagem_master, s.tipovenda, s.vlbonific
                     FROM public.data_detailed s
