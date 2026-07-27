@@ -1,299 +1,412 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://dasksz.github.io; connect-src 'self' https://*.supabase.co https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://api.deepseek.com; object-src 'none'; base-uri 'self';">
-    <title>Apresentação Fechamento - PRIME</title>
+import supabase from "./supabase.js";
+// presentation.js
 
-    <link rel="icon" type="image/png" href="logo.png">
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize Swiper
+    const swiper = new Swiper(".mySwiper", {
+        pagination: {
+            el: ".swiper-pagination",
+            clickable: true,
+        },
+        navigation: {
+            nextEl: ".swiper-button-next",
+            prevEl: ".swiper-button-prev",
+        },
+        keyboard: {
+            enabled: true,
+        },
+        effect: "fade", // Gives a nice presentation transition effect
+        fadeEffect: {
+            crossFade: true
+        }
+    });
 
-    <!-- Scripts -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+    const overlay = document.getElementById('loading-overlay');
+    const btnDownload = document.getElementById('download-docx-btn');
 
-    <!-- Swiper -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    let presentationData = null;
+    let aiAnalysisText = null;
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    async function loadData() {
+        try {
+            // Call RPC without params to get the latest period
+            const { data: rpcData, error } = await supabase.rpc('get_closing_presentation_data');
 
-    <!-- Custom Styles -->
-    <link rel="stylesheet" href="src/css/presentation.css">
-    <link rel="stylesheet" href="src/css/styles.css">
+            if (error) throw error;
+            if (!rpcData || Object.keys(rpcData).length === 0) {
+                throw new Error("Nenhum dado encontrado no banco.");
+            }
 
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #131217;
-            color: #e2e8f0;
-            overflow: hidden; /* For presentation feel */
-            margin: 0;
-            padding: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
+            presentationData = rpcData;
+
+            // Set header subtitle based on data returned
+            if(rpcData.global && rpcData.global.length > 0) {
+                const mes = rpcData.meta.curr.mes;
+                const ano = rpcData.meta.curr.ano;
+                const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                document.getElementById('presentation-subtitle').textContent = `Fechamento Comercial - ${monthNames[mes-1]} ${ano}`;
+            }
+
+            renderSlides(rpcData);
+
+            // Fetch AI
+            document.getElementById('loader-text').textContent = "Gerando análise com Inteligência Artificial...";
+            document.getElementById('loader-subtext').textContent = "Conectando ao modelo LLM...";
+
+            const { data: apiKeys, error: apiError } = await supabase
+                .from('api_ia')
+                .select('api_key, model_name')
+                .limit(1)
+                .single();
+
+            if (apiError || !apiKeys?.api_key) {
+                console.warn("Chave de API não encontrada.");
+                aiAnalysisText = "Análise automática não disponível. Chave de API não configurada.";
+                document.getElementById('ai-analysis-content').innerHTML = `<p class="text-red-400 p-4 bg-red-900/20 rounded-lg">Análise indisponível. Verifique as configurações de IA.</p>`;
+            } else {
+                aiAnalysisText = await generateAiAnalysis(apiKeys.api_key, apiKeys.model_name || 'deepseek-chat', rpcData);
+                document.getElementById('ai-analysis-content').innerHTML = `<div class="whitespace-pre-wrap">${aiAnalysisText}</div>`;
+            }
+
+            btnDownload.disabled = false;
+        } catch (err) {
+            console.error("Erro na Apresentação:", err);
+            alert("Erro ao carregar dados: " + err.message);
+        } finally {
+            overlay.style.display = 'none';
+        }
+    }
+
+    // --- RENDER LOGIC (Adapted from app.js) ---
+    function renderSlides(data) {
+        renderGeral(data.global);
+        setupFilial(data.filiais, data.supervisores);
+        renderRede(data.redes); // Actually Atacado
+        setupVendedores(data.top_vendedores);
+    }
+
+    function buildCard(title, value, prevVal, isCurrency, isPercentage = false) {
+        let valFmt = isCurrency ? formatCurrency(value) : (isPercentage ? formatPercent(value) : formatNumber(value));
+
+        let varColor = "text-slate-400";
+        let varIcon = "";
+        let varText = "-";
+
+        if (prevVal !== undefined && prevVal !== null && prevVal !== 0) {
+            const variacao = ((value - prevVal) / Math.abs(prevVal)) * 100;
+            const variacaoFmt = formatPercent(variacao);
+            if (variacao > 0) {
+                varColor = "text-emerald-400";
+                varIcon = "↑";
+                varText = `+${variacaoFmt}`;
+            } else if (variacao < 0) {
+                varColor = "text-red-400";
+                varIcon = "↓";
+                varText = `${variacaoFmt}`;
+            } else {
+                varText = "0%";
+            }
+        } else if (prevVal === 0 && value > 0) {
+             varColor = "text-emerald-400";
+             varIcon = "↑";
+             varText = "+100%";
         }
 
-        /* Swiper Customization */
-        .swiper {
-            width: 100%;
-            height: 100%;
-        }
-        .swiper-slide {
-            padding: 2rem;
-            box-sizing: border-box;
-            overflow-y: auto;
-            /* scrollbar styling */
-        }
-        .swiper-slide::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        .swiper-slide::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 4px;
-        }
-        .swiper-slide::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
-        }
-        .swiper-slide::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        /* Header Style inspired by user image */
-        .presentation-header {
-            display: flex;
-            align-items: center;
-            background: linear-gradient(90deg, #1e1b4b 0%, #131217 100%);
-            border-bottom: 2px solid #c026d3; /* fuchsia-600 */
-            padding: 0;
-            position: relative;
-            z-index: 10;
-        }
-
-        .header-logo-container {
-            background-color: #0f0e13;
-            padding: 1.5rem;
-            position: relative;
-            clip-path: polygon(0 0, 100% 0, 85% 100%, 0% 100%);
-            min-width: 250px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-right: 2px solid #c026d3;
-        }
-
-        .header-title-container {
-            padding: 1.5rem 2rem;
-            flex-grow: 1;
-        }
-
-        .section-title {
-            background-color: #c026d3; /* Fuchsia for section headers */
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem 0.5rem 0 0;
-            font-weight: bold;
-            display: inline-block;
-            margin-bottom: 1rem;
-        }
-
-        /* Loading Overlay */
-        #loading-overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: rgba(19, 18, 23, 0.9);
-            z-index: 50;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(5px);
-        }
-
-        .swiper-pagination-bullet {
-            background: #cbd5e1;
-            opacity: 0.5;
-        }
-        .swiper-pagination-bullet-active {
-            background: #c026d3;
-            opacity: 1;
-        }
-
-        /* Swiper Navigation Buttons Customization */
-        .swiper-button-next, .swiper-button-prev {
-            color: #c026d3 !important;
-        }
-    </style>
-</head>
-<body>
-
-    <!-- Loading Overlay -->
-    <div id="loading-overlay">
-        <svg class="animate-spin h-12 w-12 text-fuchsia-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <h3 class="text-lg font-bold text-white mb-2" id="loader-text">Carregando dados da apresentação...</h3>
-        <p class="text-slate-400 text-sm max-w-md text-center" id="loader-subtext">Buscando o período mais recente no banco de dados.</p>
-    </div>
-
-    <!-- Header -->
-    <header class="presentation-header">
-        <div class="header-logo-container">
-            <img src="logo.svg" alt="Company Logo" class="h-12 w-auto mb-2 drop-shadow-md">
-            <span class="text-xs font-semibold text-slate-300 tracking-wider">PRIME</span>
-        </div>
-        <div class="header-title-container flex justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-bold text-white tracking-wide" id="presentation-title">Relatório de Fechamento de Vendas</h1>
-                <p class="text-sm text-fuchsia-400 font-medium mt-1" id="presentation-subtitle">Resumo Executivo</p>
-            </div>
-            <div class="flex gap-3">
-                <button id="download-docx-btn" disabled class="px-4 py-2 text-sm font-bold text-white bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors focus:outline-none flex items-center gap-2 shadow-lg shadow-fuchsia-500/20">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    BAIXAR RESUMO IA
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content: Swiper -->
-    <div class="swiper mySwiper flex-1">
-        <div class="swiper-wrapper">
-
-            <!-- Slide 1: Visão Geral -->
-            <div class="swiper-slide">
-                <div class="section-title">Visão Geral</div>
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="presentation-geral-cards">
-                    <!-- Injected via JS -->
+        return `
+            <div class="presentation-card">
+                <div class="metric-label">${title}</div>
+                <div class="metric-value">${valFmt}</div>
+                <div class="mt-2 text-sm font-medium ${varColor} flex items-center gap-1">
+                    <span>${varIcon} ${varText}</span>
+                    <span class="text-xs text-slate-500 font-normal">vs Anterior</span>
                 </div>
             </div>
+        `;
+    }
 
-            <!-- Slide 2: Por Filial -->
-            <div class="swiper-slide">
-                <div class="flex justify-between items-center border-b border-fuchsia-500/30 pb-2 mb-6">
-                    <div class="section-title mb-0">Por Filial</div>
-                    <div class="flex items-center gap-4">
-                        <label class="text-sm font-medium text-slate-400">Filtrar Filial:</label>
-                        <select id="presentation-filial-select" class="bg-[#0f0e13] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-fuchsia-500 min-w-[200px]">
-                            <!-- Options -->
-                        </select>
+    function renderGeral(geralData) {
+        const container = document.getElementById('presentation-geral-cards');
+        if(!geralData || geralData.length === 0) {
+            container.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
+            return;
+        }
+        const d = geralData.find(g => g.group_name === 'Geral') || geralData[0];
+
+        container.innerHTML = `
+            ${buildCard("Faturamento Total", d.fat_atual, d.fat_ant, true)}
+            ${buildCard("Toneladas (Salty+Foods)", d.ton_atual, d.ton_ant, false)}
+            ${buildCard("Positivação Total", d.pos_atual, d.pos_ant, false)}
+        `;
+    }
+
+    function setupFilial(filialData, supervisoresData) {
+        const select = document.getElementById('presentation-filial-select');
+        const containerCards = document.getElementById('presentation-filial-cards');
+        const tbodySup = document.getElementById('presentation-supervisor-tbody');
+
+        if(!filialData || filialData.length === 0) {
+             containerCards.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
+             return;
+        }
+
+        // Populate Select
+        select.innerHTML = filialData.map(f => `<option value="${f.dimension}">${f.dimension}</option>`).join('');
+
+        const renderFilial = (filialName) => {
+            const fd = filialData.find(f => f.dimension === filialName) || filialData[0];
+            containerCards.innerHTML = `
+                ${buildCard("Faturamento", fd.fat_atual, fd.fat_ant, true)}
+                ${buildCard("Toneladas", fd.ton_atual, fd.ton_ant, false)}
+                ${buildCard("Positivação", fd.pos_atual, fd.pos_ant, false)}
+            `;
+
+            // Supervisores
+            const sups = (supervisoresData || []).filter(s => s.dimension.startsWith(filialName));
+            tbodySup.innerHTML = sups.map(s => `
+                <tr class="hover:bg-white/5 transition-colors">
+                    <td class="px-4 py-3 font-medium text-white">${s.supervisor}</td>
+                    <td class="px-4 py-3 text-right">${formatCurrency(s.fat_atual)}</td>
+                    <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_ant)}</td>
+                    <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_ant_trim)}</td>
+                    <td class="px-4 py-3 text-right">${formatNumber(s.ton_atual)}</td>
+                    <td class="px-4 py-3 text-right">${formatNumber(s.pos_atual)}</td>
+                </tr>
+            `).join('');
+
+            if(sups.length === 0) tbodySup.innerHTML = `<tr><td colspan="6" class="px-4 py-4 text-center text-slate-500">Nenhum supervisor encontrado.</td></tr>`;
+        };
+
+        select.addEventListener('change', (e) => renderFilial(e.target.value));
+        renderFilial(filialData[0].dimension); // init
+    }
+
+    function renderRede(redesData) {
+        const container = document.getElementById('presentation-rede-cards');
+        if(!redesData || redesData.length === 0) {
+            container.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
+            return;
+        }
+
+        // "Rede" is now conceptually "Atacado"
+        const topAtacado = redesData.sort((a,b) => b.fat_atual - a.fat_atual)[0] || redesData[0];
+
+        container.innerHTML = `
+            <div class="presentation-card bg-gradient-to-br from-fuchsia-900/40 to-transparent border-fuchsia-500/30">
+                <h3 class="text-lg font-bold text-white mb-4 border-b border-fuchsia-500/30 pb-2">Top Atacado: ${topAtacado.dimension}</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-xs text-slate-400 mb-1">Faturamento</div>
+                        <div class="text-xl font-bold text-white">${formatCurrency(topAtacado.fat_atual)}</div>
+                        <div class="text-sm mt-1">${renderVarBadge(topAtacado.fat_atual, topAtacado.fat_ant)} YoY</div>
                     </div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" id="presentation-filial-cards">
-                    <!-- Injected via JS -->
-                </div>
-
-                <div class="bg-white/5 rounded-xl border border-white/10 overflow-hidden shadow-lg backdrop-blur-sm">
-                    <div class="bg-[#0f0e13] px-4 py-3 border-b border-white/10">
-                        <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Supervisores da Filial</h4>
-                    </div>
-                    <div class="overflow-x-auto p-4">
-                        <table class="w-full text-left text-sm text-slate-300">
-                            <thead class="text-xs uppercase text-slate-400 border-b border-white/10">
-                                <tr>
-                                    <th class="px-4 py-3 pb-4">Supervisor</th>
-                                    <th class="px-4 py-3 pb-4 text-right">Faturamento</th>
-                                    <th class="px-4 py-3 pb-4 text-right">Var YoY</th>
-                                    <th class="px-4 py-3 pb-4 text-right">Var QoQ</th>
-                                    <th class="px-4 py-3 pb-4 text-right">Tonelada</th>
-                                    <th class="px-4 py-3 pb-4 text-right">Positivação</th>
-                                </tr>
-                            </thead>
-                            <tbody id="presentation-supervisor-tbody" class="divide-y divide-white/5">
-                            </tbody>
-                        </table>
+                    <div>
+                        <div class="text-xs text-slate-400 mb-1">Toneladas</div>
+                        <div class="text-xl font-bold text-white">${formatNumber(topAtacado.ton_atual)}</div>
+                        <div class="text-sm mt-1">${renderVarBadge(topAtacado.ton_atual, topAtacado.ton_ant)} YoY</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Slide 3: Por Atacado -->
-            <div class="swiper-slide">
-                <div class="section-title">Por Atacado</div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="presentation-rede-cards">
-                    <!-- Injected via JS (Geral de Redes + Americanas) -->
-                </div>
-            </div>
-
-            <!-- Slide 4: Top Vendedores -->
-            <div class="swiper-slide">
-                <div class="flex justify-between items-center border-b border-fuchsia-500/30 pb-2 mb-6">
-                    <div class="section-title mb-0">Top 10 Vendedores</div>
-                    <div class="flex items-center space-x-3">
-                        <label class="text-xs text-slate-400">Supervisor:</label>
-                        <select id="top-vendedores-supervisor-filter" class="bg-[#0f0e13] border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-[#fc0100]">
-                            <option value="ALL">Todos</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Mini Tabs for Top 10 Vendedores -->
-                <div class="flex flex-wrap gap-2 mb-6" id="top-vendedores-tabs">
-                    <button data-tab="fat_geral" class="px-4 py-2 text-sm font-medium rounded-lg bg-[#fc0100]/20 text-[#fc0100] border border-[#fc0100]/50 transition-all shadow-md">Faturamento Geral</button>
-                    <button data-tab="fat_salty" class="px-4 py-2 text-sm font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-md">Faturamento Salty</button>
-                    <button data-tab="fat_foods" class="px-4 py-2 text-sm font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-md">Faturamento Foods</button>
-                    <button data-tab="ton_salty" class="px-4 py-2 text-sm font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-md">Ton. Salty</button>
-                    <button data-tab="ton_foods" class="px-4 py-2 text-sm font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-md">Ton. Foods</button>
-                    <button data-tab="pos_salty" class="px-4 py-2 text-sm font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-md">Pos. Salty</button>
-                    <button data-tab="pos_foods" class="px-4 py-2 text-sm font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-md">Pos. Foods</button>
-                </div>
-
-                <div class="bg-white/5 rounded-xl border border-white/10 overflow-hidden shadow-lg backdrop-blur-sm">
-                    <div class="overflow-x-auto p-4">
-                        <table class="w-full text-left text-sm text-slate-300">
-                            <thead class="text-xs uppercase text-slate-400 border-b border-white/10">
-                                <tr>
-                                    <th class="px-4 py-3 pb-4 w-16 text-center">Pos</th>
-                                    <th class="px-4 py-3 pb-4">Vendedor</th>
-                                    <th id="th-atual" class="px-4 py-3 pb-4 text-right">Fat. Atual</th>
-                                    <th id="th-ant" class="px-4 py-3 pb-4 text-right">Fat. Ano Ant.</th>
-                                    <th id="th-trim" class="px-4 py-3 pb-4 text-right">Fat. Trim Ant.</th>
-                                    <th class="px-4 py-3 pb-4 text-right text-emerald-400">Var YoY</th>
-                                    <th class="px-4 py-3 pb-4 text-right text-emerald-400">Var QoQ</th>
-                                </tr>
-                            </thead>
-                            <tbody id="presentation-vendedores-tbody" class="divide-y divide-white/5">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Slide 5: IA Resumo Executivo (Optional slide for the summary if we want to show it, or just for downloading) -->
-            <div class="swiper-slide">
-                <div class="section-title">Resumo Executivo da IA</div>
-                <div class="bg-white/5 rounded-xl border border-white/10 p-6 shadow-lg backdrop-blur-sm min-h-[400px]">
-                    <div id="ai-analysis-content" class="prose prose-invert max-w-none text-slate-300">
-                        <div class="flex flex-col items-center justify-center h-full text-slate-500 py-12">
-                            <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg>
-                            <p>Aguardando análise da Inteligência Artificial...</p>
+            <div class="presentation-card">
+                 <h3 class="text-sm font-bold text-slate-300 mb-4 border-b border-white/10 pb-2">Outros Atacados</h3>
+                 <div class="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                    ${redesData.filter(r => r.dimension !== topAtacado.dimension).map(r => `
+                        <div class="flex justify-between items-center bg-black/20 p-2 rounded">
+                            <span class="text-sm font-medium text-slate-300 truncate w-32" title="${r.dimension}">${r.dimension}</span>
+                            <span class="text-sm text-white">${formatCurrency(r.fat_atual)}</span>
+                            <span class="text-xs">${renderVarBadge(r.fat_atual, r.fat_ant)}</span>
                         </div>
-                    </div>
-                </div>
+                    `).join('')}
+                 </div>
             </div>
+        `;
+    }
 
-        </div>
+    function setupVendedores(vendedoresData) {
+        if(!vendedoresData) return;
 
-        <!-- Pagination -->
-        <div class="swiper-pagination"></div>
-        <!-- Navigation -->
-        <div class="swiper-button-next"></div>
-        <div class="swiper-button-prev"></div>
-    </div>
+        const tabs = document.querySelectorAll('#top-vendedores-tabs button');
+        const selectSup = document.getElementById('top-vendedores-supervisor-filter');
+        const tbody = document.getElementById('presentation-vendedores-tbody');
 
-    <!-- Scripts -->
-    <script type="module" src="src/js/config.js"></script>
-    <script type="module" src="src/js/supabase.js"></script>
-    <script type="module" src="src/js/utils.js"></script>
-    <script type="module" src="src/js/presentation.js"></script>
-</body>
-</html>
+        // Populate select
+        const sups = [...new Set(vendedoresData.map(v => v.supervisor_nome).filter(Boolean))].sort();
+        selectSup.innerHTML = '<option value="ALL">Todos</option>' + sups.map(s => `<option value="${s}">${s}</option>`).join('');
+
+        let currentTab = 'fat_geral';
+        let currentSup = 'ALL';
+
+        const renderTable = () => {
+            let filtered = vendedoresData;
+            if(currentSup !== 'ALL') filtered = filtered.filter(v => v.supervisor_nome === currentSup);
+
+            // Sort based on tab
+            let sortKey = 'fat_atual';
+            if(currentTab === 'fat_salty') sortKey = 'fat_atual_salty';
+            if(currentTab === 'fat_foods') sortKey = 'fat_atual_foods';
+            if(currentTab === 'ton_salty') sortKey = 'ton_atual_salty';
+            if(currentTab === 'ton_foods') sortKey = 'ton_atual_foods';
+            if(currentTab === 'pos_salty') sortKey = 'pos_atual_salty';
+            if(currentTab === 'pos_foods') sortKey = 'pos_atual_foods';
+
+            filtered.sort((a,b) => (b[sortKey] || 0) - (a[sortKey] || 0));
+            const top10 = filtered.slice(0, 10);
+
+            // Determine if formatting currency or number
+            const isCurr = currentTab.startsWith('fat_');
+
+            tbody.innerHTML = top10.map((v, idx) => {
+                const valAtual = v[sortKey] || 0;
+                let keyAntYear = sortKey.replace('_atual', '_ant');
+                let keyAntTrim = sortKey.replace('_atual', '_ant_trim');
+                if(sortKey === 'fat_atual') { keyAntYear = 'fat_ant'; keyAntTrim = 'fat_ant_trim'; }
+
+                const valYear = v[keyAntYear] || 0;
+                const valTrim = v[keyAntTrim] || 0;
+
+                const fmt = isCurr ? formatCurrency : formatNumber;
+
+                let medal = `<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs font-bold text-slate-300">${idx+1}</span>`;
+                if(idx === 0) medal = `🥇`;
+                if(idx === 1) medal = `🥈`;
+                if(idx === 2) medal = `🥉`;
+
+                return `
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <td class="px-4 py-3 text-center">${medal}</td>
+                        <td class="px-4 py-3 font-medium text-white">
+                            <div class="truncate max-w-[150px]" title="${v.vendedor}">${v.vendedor}</div>
+                            <div class="text-[10px] text-slate-500">${v.supervisor_nome || 'N/A'}</div>
+                        </td>
+                        <td class="px-4 py-3 text-right font-semibold text-fuchsia-400">${fmt(valAtual)}</td>
+                        <td class="px-4 py-3 text-right text-slate-400">${fmt(valYear)}</td>
+                        <td class="px-4 py-3 text-right text-slate-400">${fmt(valTrim)}</td>
+                        <td class="px-4 py-3 text-right">${renderVarBadge(valAtual, valYear)}</td>
+                        <td class="px-4 py-3 text-right">${renderVarBadge(valAtual, valTrim)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            if(top10.length === 0) tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-4 text-center text-slate-500">Nenhum vendedor encontrado.</td></tr>`;
+        };
+
+        selectSup.addEventListener('change', (e) => { currentSup = e.target.value; renderTable(); });
+
+        tabs.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabs.forEach(b => {
+                    b.classList.remove('bg-[#fc0100]/20', 'text-[#fc0100]', 'border-[#fc0100]/50');
+                    b.classList.add('bg-white/5', 'text-slate-400', 'border-transparent');
+                });
+                btn.classList.add('bg-[#fc0100]/20', 'text-[#fc0100]', 'border-[#fc0100]/50');
+                btn.classList.remove('bg-white/5', 'text-slate-400');
+                currentTab = btn.getAttribute('data-tab');
+                renderTable();
+            });
+        });
+
+        renderTable();
+    }
+
+    // --- UTILS ---
+    function formatCurrency(val) {
+        if (!val) return 'R$ 0,00';
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+    }
+    function formatNumber(val) {
+        if (!val) return '0';
+        return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(val);
+    }
+    function formatPercent(val) {
+        if (!val && val !== 0) return '0%';
+        return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(val) + '%';
+    }
+
+    function renderVarBadge(atual, anterior) {
+        if (!anterior || anterior === 0) {
+             return atual > 0 ? `<span class="text-emerald-400 font-medium">↑ +100%</span>` : `<span class="text-slate-500">-</span>`;
+        }
+        const varPct = ((atual - anterior) / Math.abs(anterior)) * 100;
+        const fmt = formatPercent(Math.abs(varPct));
+        if (varPct > 0) return `<span class="text-emerald-400 font-medium">↑ ${fmt}</span>`;
+        if (varPct < 0) return `<span class="text-red-400 font-medium">↓ ${fmt}</span>`;
+        return `<span class="text-slate-400 font-medium">0%</span>`;
+    }
+
+    // --- AI LOGIC ---
+    async function generateAiAnalysis(apiKey, modelName, data) {
+        let promptText = `Atue como um analista comercial sênior e crie um roteiro executivo para uma apresentação de resultados.
+Abaixo estão os dados do fechamento comercial:
+- Visão Geral: Faturamento atual ${formatCurrency(data.global?.[0]?.fat_atual)}, Variacao vs Ano Anterior: ${data.global?.[0]?.fat_ant ? (((data.global[0].fat_atual - data.global[0].fat_ant)/data.global[0].fat_ant)*100).toFixed(1) : 0}%
+Por favor, analise esses pontos e escreva um texto direto, profissional, com insights claros.`;
+
+        try {
+            const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: modelName,
+                    messages: [
+                        { role: "system", content: "Você é um analista executivo focado em resultados comerciais de bens de consumo." },
+                        { role: "user", content: promptText }
+                    ],
+                    temperature: 0.5,
+                    max_tokens: 800
+                })
+            });
+            if (!response.ok) throw new Error("Erro na API da IA");
+            const resData = await response.json();
+            return resData.choices[0].message.content;
+        } catch (e) {
+            console.error(e);
+            return "Erro ao comunicar com a inteligência artificial.";
+        }
+    }
+
+    // --- DOCX DOWNLOAD ---
+    btnDownload.addEventListener('click', async () => {
+        if(!window.docx || !aiAnalysisText) return;
+        try {
+            const { Document, Packer, Paragraph, TextRun } = window.docx;
+
+            const paragraphs = aiAnalysisText.split('\n').filter(p => p.trim() !== '').map(text => {
+                return new Paragraph({
+                    children: [ new TextRun({ text: text, size: 24 }) ],
+                    spacing: { after: 200 }
+                });
+            });
+
+            const doc = new Document({
+                sections: [{
+                    properties: {},
+                    children: [
+                        new Paragraph({
+                            children: [ new TextRun({ text: "Resumo Executivo - Fechamento Comercial", bold: true, size: 32 }) ],
+                            spacing: { after: 400 }
+                        }),
+                        ...paragraphs
+                    ]
+                }]
+            });
+
+            const blob = await Packer.toBlob(doc);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "Analise_Fechamento.docx";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch(e) {
+            console.error(e);
+            alert("Erro ao gerar arquivo Word.");
+        }
+    });
+
+    // START
+    loadData();
+});
