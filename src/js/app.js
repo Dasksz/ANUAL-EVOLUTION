@@ -1432,8 +1432,6 @@ function getActiveExportView() {
                     return;
                 }
 
-                enhanceSelectToCustomDropdown(jbpAnoFilter);
-                enhanceSelectToCustomDropdown(jbpMesFilter);
             } catch (e) {
                 localStorage.removeItem(cacheKey);
             }
@@ -2390,10 +2388,6 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                         initDashboard();
                     }, 1500);
     
-                enhanceSelectToCustomDropdown(jbpAnoFilter);
-                enhanceSelectToCustomDropdown(jbpMesFilter);
-            } catch (e) {
-                    statusText.innerHTML = `<span class="text-red-500">Erro: ${escapeHtml(e.message)}</span>`;
                     generateBtn.disabled = false;
                 }
             } else if (type === 'error') {
@@ -2700,8 +2694,6 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                         });
                     }
     
-                enhanceSelectToCustomDropdown(jbpAnoFilter);
-                enhanceSelectToCustomDropdown(jbpMesFilter);
             } catch (e) {
                     AppLog.error('Erro ao limpar dados antigos da Loja Perfeita:', e);
                 }
@@ -4302,8 +4294,6 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
                          return { data: cachedEntry.data, source: 'stale', timestamp: cachedEntry.timestamp };
                     }
                 }
-                enhanceSelectToCustomDropdown(jbpAnoFilter);
-                enhanceSelectToCustomDropdown(jbpMesFilter);
             } catch (e) { AppLog.warn('Cache error:', e); }
         }
 
@@ -4392,8 +4382,6 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
                     window.showDashboardLoading();
                 }
 
-                enhanceSelectToCustomDropdown(jbpAnoFilter);
-                enhanceSelectToCustomDropdown(jbpMesFilter);
             } catch (e) {
                 AppLog.warn('SWR Cache Error:', e);
                 window.showDashboardLoading();
@@ -6516,8 +6504,6 @@ const body = document.getElementById('city-segmentation-table-body');
                 const redeList = getList('comparison-rede-filter-list') || comparisonRedeFilterDropdown;
                 window.setupDefaultMultiSelect(comparisonRedeFilterBtn, comparisonRedeFilterDropdown, redeList, redes, selectedComparisonRedes, document.getElementById('comparison-rede-filter-search'));
 
-                enhanceSelectToCustomDropdown(jbpAnoFilter);
-                enhanceSelectToCustomDropdown(jbpMesFilter);
             } catch (e) {
                 AppLog.error('Error setting up comparison filters:', e);
             }
@@ -6583,8 +6569,6 @@ const body = document.getElementById('city-segmentation-table-body');
                 }
 
 
-                enhanceSelectToCustomDropdown(jbpAnoFilter);
-                enhanceSelectToCustomDropdown(jbpMesFilter);
             } catch (e) {
                 AppLog.error("Error initializing JBP filters:", e);
             }
@@ -7437,8 +7421,6 @@ Valor: ${formatValue(item.valor, indicator)}`;
                     data = cachedEntry.data;
                 }
 
-                enhanceSelectToCustomDropdown(jbpAnoFilter);
-                enhanceSelectToCustomDropdown(jbpMesFilter);
             } catch (e) { AppLog.warn('Cache error:', e); }
 
             if (!data) {
