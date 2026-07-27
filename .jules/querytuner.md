@@ -21,3 +21,7 @@ Action: By extracting the same mapping pairs (`DISTINCT codusur, codsupervisor`)
 ## 2024/05/27 - Window function vs DISTINCT ON for Top-N per group in data retrieval
 Learning: Using `ROW_NUMBER() OVER(PARTITION BY ... ORDER BY ...)` inside a CTE just to filter `WHERE rn = 1` forces a heavy WindowAgg and large external disk sorts on massive tables (like `data_summary_frequency`), which can take upwards of ~300ms.
 Action: For finding the single latest/top row per group, rewrite the query to use PostgreSQL's native `DISTINCT ON (...)` combined with `ORDER BY`. This allows the planner to eliminate the WindowAgg entirely, resolving the data in a single pass using sorting. In `search_loja_perfeita_clients`, this improved performance significantly.
+
+2024/07/27 - Pushing down DISTINCT for Array/JSON Aggregation
+Learning: When evaluating `array_agg(DISTINCT ...)` or `json_agg(DISTINCT ...)` in a main query with many rows, PostgreSQL does a massive disk sort to find the unique items across the whole dataset before building the array.
+Action: To avoid this, move the `DISTINCT` into a subquery first: `(SELECT json_agg(...) FROM (SELECT DISTINCT ...) sub)`. This lets PostgreSQL use fast Index Only Scans and HashAggregates on the raw columns and significantly drops query time on filtered views (e.g. from ~450ms to ~190ms).
