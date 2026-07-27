@@ -7684,6 +7684,7 @@ BEGIN
             ds.peso,
             ds.tipovenda,
             ds.codfor
+        , ds.categoria_produto
         FROM public.data_summary ds
         WHERE (ds.ano, ds.mes) IN ( ($1, $2), ($3, $4), ($5, $6), ($7, $8), ($9, $10) )
     ),
@@ -7902,6 +7903,49 @@ BEGIN
         HAVING SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) > 0
         ORDER BY fat_atual DESC
         -- Changed sorting to fat_atual DESC as it makes more sense for a top 10 list than YoY growth absolute.
+    ),
+    agg_categorias AS (
+        SELECT
+            b.filial,
+            CASE
+                WHEN b.categoria_produto = 'TODDY' THEN 'TODDY'
+                WHEN b.categoria_produto = 'TODDYNHO' THEN 'TODDYNHO'
+                WHEN b.categoria_produto ILIKE '%CHEETOS%' THEN 'CHEETOS'
+                WHEN b.categoria_produto ILIKE '%FANDANGOS%' THEN 'FANDANGOS'
+                WHEN b.categoria_produto ILIKE '%DORITOS%' THEN 'DORITOS'
+                WHEN b.categoria_produto ILIKE '%CEBOLITOS%' THEN 'CEBOLITOS'
+                WHEN b.categoria_produto ILIKE '%RUFFLES%' THEN 'RUFFLES'
+                WHEN b.categoria_produto ILIKE '%QUAKER%' THEN 'QUAKER'
+                WHEN b.categoria_produto ILIKE '%KEROCOCO%' THEN 'KEROCOCO'
+                ELSE NULL
+            END as cat_name,
+            SUM(CASE WHEN b.ano = $1 AND b.mes = $2 THEN b.vlvenda ELSE 0 END) as fat_atual,
+            SUM(CASE WHEN (b.ano = $5 AND b.mes = $6) OR (b.ano = $7 AND b.mes = $8) OR (b.ano = $9 AND b.mes = $10) THEN b.vlvenda ELSE 0 END) / 3.0 as fat_trim
+        FROM base_data b
+        WHERE b.categoria_produto IS NOT NULL
+        GROUP BY 1, 2
+        HAVING CASE
+                WHEN b.categoria_produto = 'TODDY' THEN 'TODDY'
+                WHEN b.categoria_produto = 'TODDYNHO' THEN 'TODDYNHO'
+                WHEN b.categoria_produto ILIKE '%CHEETOS%' THEN 'CHEETOS'
+                WHEN b.categoria_produto ILIKE '%FANDANGOS%' THEN 'FANDANGOS'
+                WHEN b.categoria_produto ILIKE '%DORITOS%' THEN 'DORITOS'
+                WHEN b.categoria_produto ILIKE '%CEBOLITOS%' THEN 'CEBOLITOS'
+                WHEN b.categoria_produto ILIKE '%RUFFLES%' THEN 'RUFFLES'
+                WHEN b.categoria_produto ILIKE '%QUAKER%' THEN 'QUAKER'
+                WHEN b.categoria_produto ILIKE '%KEROCOCO%' THEN 'KEROCOCO'
+                ELSE NULL
+            END IS NOT NULL
+    ),
+    agg_chart AS (
+        SELECT
+            ano,
+            mes,
+            SUM(vlvenda) as faturamento
+        FROM public.data_summary
+        WHERE ano IN ($1, $3)
+        GROUP BY ano, mes
+        ORDER BY ano, mes
     )
 
     -- FINAL JSON ASSEMBLY
@@ -7915,7 +7959,9 @@ BEGIN
         'filiais', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_filial a),
         'supervisores', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_supervisor a),
         'redes', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_redes a),
-        'top_vendedores', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM top_vendedores a)
+        'top_vendedores', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM top_vendedores a),
+        'categorias', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_categorias a),
+        'chart_data', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_chart a)
     )
     $dyn$ INTO v_result
     USING
