@@ -23,6 +23,44 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const overlay = document.getElementById('loading-overlay');
     const btnDownload = document.getElementById('download-docx-btn');
+    const openModalBtn = document.getElementById('open-summary-modal-btn');
+    const closeModalBtn = document.getElementById('close-summary-modal-btn');
+    const summaryModal = document.getElementById('summary-modal');
+    const summaryModalBackdrop = document.getElementById('summary-modal-backdrop');
+    const summaryModalContent = document.getElementById('summary-modal-content');
+
+    // Modal open/close logic
+    function openModal() {
+        summaryModal.classList.remove('hidden');
+        summaryModal.classList.add('flex');
+
+        // Slight delay to allow display:flex to apply before transitioning opacity
+        requestAnimationFrame(() => {
+            summaryModalBackdrop.classList.remove('opacity-0');
+            summaryModalBackdrop.classList.add('opacity-100');
+
+            summaryModalContent.classList.remove('scale-95', 'opacity-0');
+            summaryModalContent.classList.add('scale-100', 'opacity-100');
+        });
+    }
+
+    function closeModal() {
+        summaryModalBackdrop.classList.remove('opacity-100');
+        summaryModalBackdrop.classList.add('opacity-0');
+
+        summaryModalContent.classList.remove('scale-100', 'opacity-100');
+        summaryModalContent.classList.add('scale-95', 'opacity-0');
+
+        setTimeout(() => {
+            summaryModal.classList.add('hidden');
+            summaryModal.classList.remove('flex');
+        }, 300); // Matches Tailwind transition duration
+    }
+
+    if (openModalBtn) openModalBtn.addEventListener('click', openModal);
+    if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+    if (summaryModalBackdrop) summaryModalBackdrop.addEventListener('click', closeModal);
+
 
     let presentationData = null;
     let aiAnalysisText = null;
@@ -69,6 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             btnDownload.disabled = false;
+            if (openModalBtn) openModalBtn.classList.remove('hidden');
         } catch (err) {
             console.error("Erro na Apresentação:", err);
             alert("Erro ao carregar dados: " + err.message);
@@ -714,12 +753,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `<span class="text-slate-400 font-medium">0%</span>`;
     }
 
-    // --- AI LOGIC ---
+        // --- AI LOGIC ---
     async function generateAiAnalysis(apiKey, modelName, data) {
+        // Prepare comprehensive data context for the LLM
+        const global = data.global?.[0] || {};
+        const varFatAno = global.fat_ant ? (((global.fat_atual - global.fat_ant)/global.fat_ant)*100).toFixed(1) : 0;
+
+        const topFiliais = (data.filiais || []).slice(0, 3).map(f => `${f.nome}: ${formatCurrency(f.fat_atual)} (Var: ${f.fat_ant ? (((f.fat_atual - f.fat_ant)/f.fat_ant)*100).toFixed(1) : 0}%)`).join(', ');
+        const topSupervisores = (data.supervisores || []).slice(0, 3).map(s => `${s.nome}: ${formatCurrency(s.fat_atual)}`).join(', ');
+        const topRedes = (data.redes || []).slice(0, 3).map(r => `${r.nome}: ${formatCurrency(r.fat_atual)}`).join(', ');
+        const topVendedores = (data.top_vendedores || []).slice(0, 3).map(v => `${v.nome}: ${formatCurrency(v.fat_atual)}`).join(', ');
+
         let promptText = `Atue como um analista comercial sênior e crie um roteiro executivo para uma apresentação de resultados.
-Abaixo estão os dados do fechamento comercial:
-- Visão Geral: Faturamento atual ${formatCurrency(data.global?.[0]?.fat_atual)}, Variacao vs Ano Anterior: ${data.global?.[0]?.fat_ant ? (((data.global[0].fat_atual - data.global[0].fat_ant)/data.global[0].fat_ant)*100).toFixed(1) : 0}%
-Por favor, analise esses pontos e escreva um texto direto, profissional, com insights claros.`;
+Abaixo estão os dados completos do fechamento comercial:
+
+### Visão Geral:
+- Faturamento Atual: ${formatCurrency(global.fat_atual || 0)} (Variação vs Ano Anterior: ${varFatAno}%)
+- Volume Kg Atual: ${formatNumber(global.kg_atual || 0)} Kg (Variação vs Mês Anterior: ${global.kg_ant_trim ? (((global.kg_atual - global.kg_ant_trim)/global.kg_ant_trim)*100).toFixed(1) : 0}%)
+- Devolução: ${formatCurrency(global.dev_atual || 0)} (Representatividade: ${global.fat_atual ? ((global.dev_atual / global.fat_atual)*100).toFixed(1) : 0}%)
+- Positivação (Clientes Ativos): ${formatNumber(global.pos_atual || 0)} (Variação vs Mês Anterior: ${global.pos_ant_trim ? (((global.pos_atual - global.pos_ant_trim)/global.pos_ant_trim)*100).toFixed(1) : 0}%)
+
+### Destaques por Segmento (Top 3):
+- Top Filiais: ${topFiliais || 'N/A'}
+- Top Supervisores: ${topSupervisores || 'N/A'}
+- Top Atacados/Redes: ${topRedes || 'N/A'}
+- Top Vendedores: ${topVendedores || 'N/A'}
+
+Por favor, analise esses pontos de forma holística. Escreva um texto direto, profissional, com insights claros sobre:
+1. A performance geral de faturamento e volume.
+2. O impacto das devoluções e da positivação na rentabilidade/cobertura.
+3. Quais filiais, supervisores, redes ou vendedores tracionaram o resultado e merecem destaque.
+4. Conclua com recomendações práticas para o próximo ciclo de vendas.`;
 
         try {
             const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -735,7 +799,7 @@ Por favor, analise esses pontos e escreva um texto direto, profissional, com ins
                         { role: "user", content: promptText }
                     ],
                     temperature: 0.5,
-                    max_tokens: 800
+                    max_tokens: 1500
                 })
             });
             if (!response.ok) throw new Error("Erro na API da IA");

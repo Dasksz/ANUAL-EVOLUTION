@@ -8,12 +8,18 @@
 
     <link rel="icon" type="image/png" href="logo.png">
 
+
+
+        </div>
+    </div>
+
     <!-- Scripts -->
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
 
     <!-- Swiper -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
@@ -249,14 +255,12 @@
         <div class="header-title-container flex justify-between items-center">
             <div>
                 <h1 class="text-2xl font-bold text-white tracking-wide" id="presentation-title">Relatório de Fechamento de Vendas</h1>
-                <p class="text-sm text-fuchsia-400 font-medium mt-1" id="presentation-subtitle">Resumo Executivo</p>
+                <div class="flex items-center gap-2 mt-1">
+                    <p class="text-sm text-fuchsia-400 font-medium" id="presentation-subtitle">Resumo Executivo</p>
+                    <button id="open-summary-modal-btn" class="hidden text-sm text-fuchsia-400 font-medium hover:text-fuchsia-300 transition-colors focus:outline-none">- Resumo</button>
+                </div>
             </div>
-            <div class="flex gap-3">
-                <button id="download-docx-btn" disabled class="px-4 py-2 text-sm font-bold text-white bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors focus:outline-none flex items-center gap-2 shadow-lg shadow-fuchsia-500/20">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    BAIXAR RESUMO IA
-                </button>
-            </div>
+
         </div>
     </header>
 
@@ -414,29 +418,43 @@
                 </div>
             </div>
 
-            <!-- Slide 5: IA Resumo Executivo (Optional slide for the summary if we want to show it, or just for downloading) -->
-            <div class="swiper-slide">
-                <div class="section-title">Resumo Executivo da IA</div>
-                <div class="bg-white/5 rounded-xl border border-white/10 p-6 shadow-lg backdrop-blur-sm min-h-[400px]">
-                    <div id="ai-analysis-content" class="prose prose-invert max-w-none text-slate-300">
-                        <div class="flex flex-col items-center justify-center h-full text-slate-500 py-12">
-                            <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg>
-                            <p>Aguardando análise da Inteligência Artificial...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Pagination -->
+            <!-- Pagination -->
         <div class="swiper-pagination"></div>
         <!-- Navigation -->
         <div class="swiper-button-next"></div>
         <div class="swiper-button-prev"></div>
     </div>
 
+
+    <!-- Summary Modal -->
+    <div id="summary-modal" class="fixed inset-0 z-50 hidden items-center justify-center">
+        <div id="summary-modal-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity opacity-0"></div>
+        <div id="summary-modal-content" class="bg-slate-900 border border-white/10 rounded-xl w-full max-w-4xl mx-4 max-h-[85vh] flex flex-col shadow-2xl relative z-10 transition-all transform scale-95 opacity-0">
+            <div class="flex justify-between items-center p-6 border-b border-white/10">
+                <h2 class="text-xl font-bold text-white">Resumo Executivo da IA</h2>
+                <div class="flex gap-4 items-center">
+                    <button id="download-docx-btn" disabled class="px-4 py-2 text-sm font-bold text-white bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors focus:outline-none flex items-center gap-2 shadow-lg shadow-fuchsia-500/20">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        BAIXAR RESUMO IA
+                    </button>
+                    <button id="close-summary-modal-btn" class="text-slate-400 hover:text-white transition-colors focus:outline-none">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1">
+                <div id="ai-analysis-content" class="prose prose-invert max-w-none text-slate-300">
+                    <div class="flex flex-col items-center justify-center h-full text-slate-500 py-12">
+                        <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/></svg>
+                        <p>Aguardando análise da Inteligência Artificial...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
+
     <script type="module" src="src/js/config.js"></script>
     <script type="module" src="src/js/supabase.js"></script>
     <script type="module" src="src/js/utils.js"></script>
