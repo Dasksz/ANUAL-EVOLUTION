@@ -2387,7 +2387,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                         window.showToast('success', 'Dados atualizados com sucesso!', 'Sucesso');
                         initDashboard();
                     }, 1500);
-    
+                } catch (e) {
+                    statusText.innerHTML = `<span class="text-red-500">Erro: ${escapeHtml(e.message)}</span>`;
                     generateBtn.disabled = false;
                 }
             } else if (type === 'error') {
@@ -2693,8 +2694,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                             if (error) throw error;
                         });
                     }
-    
-            } catch (e) {
+                } catch (e) {
                     AppLog.error('Erro ao limpar dados antigos da Loja Perfeita:', e);
                 }
                 
