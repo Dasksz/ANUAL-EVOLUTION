@@ -7619,7 +7619,12 @@ END $$;
 -- Previous Quarter, and Previous Year.
 -- =========================================================================
 DROP FUNCTION IF EXISTS public.get_closing_presentation_data(text, text);
+
+-- INDICE OTIMIZADO PARA APRESENTAÇÃO DE FECHAMENTO
+CREATE INDEX IF NOT EXISTS idx_summary_closing_perf ON public.data_summary USING btree (ano, mes) INCLUDE (vlvenda, peso, codcli, filial, codusur, codsupervisor, codfor, tipovenda);
+
 CREATE OR REPLACE FUNCTION get_closing_presentation_data(
+
     p_ano text default null,
     p_mes text default null
 )
@@ -7674,7 +7679,7 @@ BEGIN
 
     -- We use dynamic SQL for extremely fast execution plan caching via CTEs
     EXECUTE $dyn$
-    WITH base_data AS (
+    WITH base_data AS MATERIALIZED (
         SELECT
             ds.codcli,
             ds.filial,
@@ -7687,13 +7692,9 @@ BEGIN
             ds.tipovenda,
             ds.codfor
         FROM public.data_summary ds
-        WHERE (ds.ano = $1 AND ds.mes = $2)
-           OR (ds.ano = $3 AND ds.mes = $4)
-           OR (ds.ano = $5 AND ds.mes = $6)
-           OR (ds.ano = $7 AND ds.mes = $8)
-           OR (ds.ano = $9 AND ds.mes = $10)
+        WHERE (ds.ano, ds.mes) IN ( ($1, $2), ($3, $4), ($5, $6), ($7, $8), ($9, $10) )
     ),
-    classified_data AS (
+    classified_data AS MATERIALIZED (
         SELECT
             b.codcli,
             b.filial,
