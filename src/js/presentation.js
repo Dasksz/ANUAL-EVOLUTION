@@ -1,5 +1,4 @@
 import supabase from "./supabase.js";
-// presentation.js
 
 document.addEventListener("DOMContentLoaded", async () => {
   // Initialize Swiper
