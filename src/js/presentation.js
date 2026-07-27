@@ -1,186 +1,228 @@
 import supabase from "./supabase.js";
 // presentation.js
 
-document.addEventListener('DOMContentLoaded', async () => {
-    // Initialize Swiper
-    const swiper = new Swiper(".mySwiper", {
-        pagination: {
-            el: ".swiper-pagination",
-            clickable: true,
-        },
-        navigation: {
-            nextEl: ".swiper-button-next",
-            prevEl: ".swiper-button-prev",
-        },
-        keyboard: {
-            enabled: true,
-        },
-        effect: "fade", // Gives a nice presentation transition effect
-        fadeEffect: {
-            crossFade: true
-        }
+document.addEventListener("DOMContentLoaded", async () => {
+  // Initialize Swiper
+  const swiper = new Swiper(".mySwiper", {
+    pagination: {
+      el: ".swiper-pagination",
+      clickable: true,
+    },
+    navigation: {
+      nextEl: ".swiper-button-next",
+      prevEl: ".swiper-button-prev",
+    },
+    keyboard: {
+      enabled: true,
+    },
+    effect: "fade", // Gives a nice presentation transition effect
+    fadeEffect: {
+      crossFade: true,
+    },
+  });
+
+  const overlay = document.getElementById("loading-overlay");
+  const btnDownload = document.getElementById("download-docx-btn");
+  const openModalBtn = document.getElementById("open-summary-modal-btn");
+  const closeModalBtn = document.getElementById("close-summary-modal-btn");
+  const summaryModal = document.getElementById("summary-modal");
+  const summaryModalBackdrop = document.getElementById(
+    "summary-modal-backdrop",
+  );
+  const summaryModalContent = document.getElementById("summary-modal-content");
+
+  // Modal open/close logic
+  function openModal() {
+    summaryModal.classList.remove("hidden");
+    summaryModal.classList.add("flex");
+
+    // Slight delay to allow display:flex to apply before transitioning opacity
+    requestAnimationFrame(() => {
+      summaryModalBackdrop.classList.remove("opacity-0");
+      summaryModalBackdrop.classList.add("opacity-100");
+
+      summaryModalContent.classList.remove("scale-95", "opacity-0");
+      summaryModalContent.classList.add("scale-100", "opacity-100");
     });
+  }
 
-    const overlay = document.getElementById('loading-overlay');
-    const btnDownload = document.getElementById('download-docx-btn');
-    const openModalBtn = document.getElementById('open-summary-modal-btn');
-    const closeModalBtn = document.getElementById('close-summary-modal-btn');
-    const summaryModal = document.getElementById('summary-modal');
-    const summaryModalBackdrop = document.getElementById('summary-modal-backdrop');
-    const summaryModalContent = document.getElementById('summary-modal-content');
+  function closeModal() {
+    summaryModalBackdrop.classList.remove("opacity-100");
+    summaryModalBackdrop.classList.add("opacity-0");
 
-    // Modal open/close logic
-    function openModal() {
-        summaryModal.classList.remove('hidden');
-        summaryModal.classList.add('flex');
+    summaryModalContent.classList.remove("scale-100", "opacity-100");
+    summaryModalContent.classList.add("scale-95", "opacity-0");
 
-        // Slight delay to allow display:flex to apply before transitioning opacity
-        requestAnimationFrame(() => {
-            summaryModalBackdrop.classList.remove('opacity-0');
-            summaryModalBackdrop.classList.add('opacity-100');
+    setTimeout(() => {
+      summaryModal.classList.add("hidden");
+      summaryModal.classList.remove("flex");
+    }, 300); // Matches Tailwind transition duration
+  }
 
-            summaryModalContent.classList.remove('scale-95', 'opacity-0');
-            summaryModalContent.classList.add('scale-100', 'opacity-100');
-        });
+  if (openModalBtn) openModalBtn.addEventListener("click", openModal);
+  if (closeModalBtn) closeModalBtn.addEventListener("click", closeModal);
+  if (summaryModalBackdrop)
+    summaryModalBackdrop.addEventListener("click", closeModal);
+
+  let presentationData = null;
+  let aiAnalysisText = null;
+
+  async function loadData() {
+    try {
+      // Call RPC without params to get the latest period
+      const { data: rpcData, error } = await supabase.rpc(
+        "get_closing_presentation_data",
+      );
+
+      if (error) throw error;
+      if (!rpcData || Object.keys(rpcData).length === 0) {
+        throw new Error("Nenhum dado encontrado no banco.");
+      }
+
+      presentationData = rpcData;
+
+      // Set header subtitle based on data returned
+      if (rpcData.global && rpcData.global.length > 0) {
+        const mes = rpcData.meta.curr.mes;
+        const ano = rpcData.meta.curr.ano;
+        const monthNames = [
+          "Janeiro",
+          "Fevereiro",
+          "Março",
+          "Abril",
+          "Maio",
+          "Junho",
+          "Julho",
+          "Agosto",
+          "Setembro",
+          "Outubro",
+          "Novembro",
+          "Dezembro",
+        ];
+        document.getElementById("presentation-subtitle").textContent =
+          `Fechamento Comercial - ${monthNames[mes - 1]} ${ano}`;
+      }
+
+      renderSlides(rpcData);
+
+      // Fetch AI
+      document.getElementById("loader-text").textContent =
+        "Gerando análise com Inteligência Artificial...";
+      document.getElementById("loader-subtext").textContent =
+        "Conectando ao modelo LLM...";
+
+      const { data: apiKeys, error: apiError } = await supabase
+        .from("api_ia")
+        .select("api_key, model_name")
+        .limit(1)
+        .single();
+
+      if (apiError || !apiKeys?.api_key) {
+        console.warn("Chave de API não encontrada.");
+        aiAnalysisText =
+          "Análise automática não disponível. Chave de API não configurada.";
+        document.getElementById("ai-analysis-content").innerHTML =
+          `<p class="text-red-400 p-4 bg-red-900/20 rounded-lg">Análise indisponível. Verifique as configurações de IA.</p>`;
+      } else {
+        aiAnalysisText = await generateAiAnalysis(
+          apiKeys.api_key,
+          apiKeys.model_name || "deepseek-chat",
+          rpcData,
+        );
+        document.getElementById("ai-analysis-content").innerHTML =
+          `<div class="whitespace-pre-wrap">${aiAnalysisText}</div>`;
+      }
+
+      btnDownload.disabled = false;
+      if (openModalBtn) openModalBtn.classList.remove("hidden");
+    } catch (err) {
+      console.error("Erro na Apresentação:", err);
+      alert("Erro ao carregar dados: " + err.message);
+    } finally {
+      overlay.style.display = "none";
+    }
+  }
+
+  // --- RENDER LOGIC (Adapted from app.js) ---
+  function renderSlides(data) {
+    renderGeral(data.global);
+
+    const targetYear = data.meta?.curr?.ano || new Date().getFullYear();
+    const targetMonthIdx =
+      (data.meta?.curr?.mes || new Date().getMonth() + 1) - 1;
+    renderEvolutionChart(data.chart_data, targetYear, targetMonthIdx);
+    setupFilial(data.filiais, data.supervisores);
+    renderRede(data.redes); // Actually Atacado
+    setupVendedores(data.top_vendedores);
+  }
+
+  function buildCard(
+    title,
+    value,
+    prevValTrim,
+    prevValAno,
+    isCurrency,
+    isPercentage = false,
+  ) {
+    let valFmt = isCurrency
+      ? formatCurrency(value)
+      : isPercentage
+        ? formatPercent(value)
+        : formatNumber(value);
+
+    let varColorTrim = "text-slate-400";
+    let varIconTrim = "";
+    let varTextTrim = "-";
+
+    if (
+      prevValTrim !== undefined &&
+      prevValTrim !== null &&
+      prevValTrim !== 0
+    ) {
+      const variacao = ((value - prevValTrim) / Math.abs(prevValTrim)) * 100;
+      const variacaoFmt = formatPercent(variacao);
+      if (variacao > 0) {
+        varColorTrim = "text-emerald-400";
+        varIconTrim = "↑";
+        varTextTrim = `+${variacaoFmt}`;
+      } else if (variacao < 0) {
+        varColorTrim = "text-red-400";
+        varIconTrim = "↓";
+        varTextTrim = `${variacaoFmt}`;
+      } else {
+        varTextTrim = "0%";
+      }
+    } else if (prevValTrim === 0 && value > 0) {
+      varColorTrim = "text-emerald-400";
+      varIconTrim = "↑";
+      varTextTrim = "+100%";
     }
 
-    function closeModal() {
-        summaryModalBackdrop.classList.remove('opacity-100');
-        summaryModalBackdrop.classList.add('opacity-0');
+    let varColorAno = "text-slate-400";
+    let varIconAno = "";
+    let varTextAno = "-";
 
-        summaryModalContent.classList.remove('scale-100', 'opacity-100');
-        summaryModalContent.classList.add('scale-95', 'opacity-0');
-
-        setTimeout(() => {
-            summaryModal.classList.add('hidden');
-            summaryModal.classList.remove('flex');
-        }, 300); // Matches Tailwind transition duration
+    if (prevValAno !== undefined && prevValAno !== null && prevValAno !== 0) {
+      const variacao = ((value - prevValAno) / Math.abs(prevValAno)) * 100;
+      const variacaoFmt = formatPercent(variacao);
+      if (variacao > 0) {
+        varColorAno = "text-emerald-400";
+        varIconAno = "↑";
+        varTextAno = `+${variacaoFmt}`;
+      } else if (variacao < 0) {
+        varColorAno = "text-red-400";
+        varIconAno = "↓";
+        varTextAno = `${variacaoFmt}`;
+      } else {
+        varTextAno = "0%";
+      }
+    } else if (prevValAno === 0 && value > 0) {
+      varColorAno = "text-emerald-400";
+      varIconAno = "↑";
+      varTextAno = "+100%";
     }
 
-    if (openModalBtn) openModalBtn.addEventListener('click', openModal);
-    if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
-    if (summaryModalBackdrop) summaryModalBackdrop.addEventListener('click', closeModal);
-
-
-    let presentationData = null;
-    let aiAnalysisText = null;
-
-    async function loadData() {
-        try {
-            // Call RPC without params to get the latest period
-            const { data: rpcData, error } = await supabase.rpc('get_closing_presentation_data');
-
-            if (error) throw error;
-            if (!rpcData || Object.keys(rpcData).length === 0) {
-                throw new Error("Nenhum dado encontrado no banco.");
-            }
-
-            presentationData = rpcData;
-
-            // Set header subtitle based on data returned
-            if(rpcData.global && rpcData.global.length > 0) {
-                const mes = rpcData.meta.curr.mes;
-                const ano = rpcData.meta.curr.ano;
-                const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-                document.getElementById('presentation-subtitle').textContent = `Fechamento Comercial - ${monthNames[mes-1]} ${ano}`;
-            }
-
-            renderSlides(rpcData);
-
-            // Fetch AI
-            document.getElementById('loader-text').textContent = "Gerando análise com Inteligência Artificial...";
-            document.getElementById('loader-subtext').textContent = "Conectando ao modelo LLM...";
-
-            const { data: apiKeys, error: apiError } = await supabase
-                .from('api_ia')
-                .select('api_key, model_name')
-                .limit(1)
-                .single();
-
-            if (apiError || !apiKeys?.api_key) {
-                console.warn("Chave de API não encontrada.");
-                aiAnalysisText = "Análise automática não disponível. Chave de API não configurada.";
-                document.getElementById('ai-analysis-content').innerHTML = `<p class="text-red-400 p-4 bg-red-900/20 rounded-lg">Análise indisponível. Verifique as configurações de IA.</p>`;
-            } else {
-                aiAnalysisText = await generateAiAnalysis(apiKeys.api_key, apiKeys.model_name || 'deepseek-chat', rpcData);
-                document.getElementById('ai-analysis-content').innerHTML = `<div class="whitespace-pre-wrap">${aiAnalysisText}</div>`;
-            }
-
-            btnDownload.disabled = false;
-            if (openModalBtn) openModalBtn.classList.remove('hidden');
-        } catch (err) {
-            console.error("Erro na Apresentação:", err);
-            alert("Erro ao carregar dados: " + err.message);
-        } finally {
-            overlay.style.display = 'none';
-        }
-    }
-
-    // --- RENDER LOGIC (Adapted from app.js) ---
-    function renderSlides(data) {
-        renderGeral(data.global);
-
-        const targetYear = data.meta?.curr?.ano || new Date().getFullYear();
-        const targetMonthIdx = (data.meta?.curr?.mes || new Date().getMonth() + 1) - 1;
-        renderEvolutionChart(data.chart_data, targetYear, targetMonthIdx);
-        setupFilial(data.filiais, data.supervisores);
-        renderRede(data.redes); // Actually Atacado
-        setupVendedores(data.top_vendedores);
-    }
-
-    function buildCard(title, value, prevValTrim, prevValAno, isCurrency, isPercentage = false) {
-        let valFmt = isCurrency ? formatCurrency(value) : (isPercentage ? formatPercent(value) : formatNumber(value));
-
-        let varColorTrim = "text-slate-400";
-        let varIconTrim = "";
-        let varTextTrim = "-";
-
-        if (prevValTrim !== undefined && prevValTrim !== null && prevValTrim !== 0) {
-            const variacao = ((value - prevValTrim) / Math.abs(prevValTrim)) * 100;
-            const variacaoFmt = formatPercent(variacao);
-            if (variacao > 0) {
-                varColorTrim = "text-emerald-400";
-                varIconTrim = "↑";
-                varTextTrim = `+${variacaoFmt}`;
-            } else if (variacao < 0) {
-                varColorTrim = "text-red-400";
-                varIconTrim = "↓";
-                varTextTrim = `${variacaoFmt}`;
-            } else {
-                varTextTrim = "0%";
-            }
-        } else if (prevValTrim === 0 && value > 0) {
-             varColorTrim = "text-emerald-400";
-             varIconTrim = "↑";
-             varTextTrim = "+100%";
-        }
-
-        let varColorAno = "text-slate-400";
-        let varIconAno = "";
-        let varTextAno = "-";
-
-        if (prevValAno !== undefined && prevValAno !== null && prevValAno !== 0) {
-            const variacao = ((value - prevValAno) / Math.abs(prevValAno)) * 100;
-            const variacaoFmt = formatPercent(variacao);
-            if (variacao > 0) {
-                varColorAno = "text-emerald-400";
-                varIconAno = "↑";
-                varTextAno = `+${variacaoFmt}`;
-            } else if (variacao < 0) {
-                varColorAno = "text-red-400";
-                varIconAno = "↓";
-                varTextAno = `${variacaoFmt}`;
-            } else {
-                varTextAno = "0%";
-            }
-        } else if (prevValAno === 0 && value > 0) {
-             varColorAno = "text-emerald-400";
-             varIconAno = "↑";
-             varTextAno = "+100%";
-        }
-
-
-        return `
+    return `
             <div class="presentation-card">
                 <div class="metric-label">${title}</div>
                 <div class="metric-value">${valFmt}</div>
@@ -198,173 +240,208 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             </div>
         `;
+  }
+
+  function renderGeral(geralData) {
+    const container = document.getElementById("presentation-geral-cards");
+    if (!geralData || geralData.length === 0) {
+      container.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
+      return;
     }
+    const d = geralData.find((g) => g.group_name === "Geral") || geralData[0];
 
-    function renderGeral(geralData) {
-        const container = document.getElementById('presentation-geral-cards');
-        if(!geralData || geralData.length === 0) {
-            container.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
-            return;
-        }
-        const d = geralData.find(g => g.group_name === 'Geral') || geralData[0];
-
-        container.innerHTML = `
+    container.innerHTML = `
             ${buildCard("Faturamento Total", d.fat_atual, d.fat_trim, d.fat_ant, true)}
             ${buildCard("Toneladas (Salty+Foods)", d.ton_atual, d.ton_trim, d.ton_ant, false)}
             ${buildCard("Positivação Total", d.pos_atual, d.pos_trim, d.pos_ant, false)}
             ${buildCard("Devoluções", d.dev_atual, d.dev_trim, d.dev_ant, true)}
             ${buildCard("Bonificações", d.bonificacao_atual, d.bonificacao_trim, d.bonificacao_ant, true)}
         `;
+  }
+
+  function renderEvolutionChart(chartData, targetYear, targetMonthIndex) {
+    const canvas = document.getElementById("presentation-evolution-chart");
+    if (!canvas || !chartData || chartData.length === 0) return;
+
+    // format chartData for current and previous year
+    const prevYear = targetYear - 1;
+    const months = [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set",
+      "Out",
+      "Nov",
+      "Dez",
+    ];
+
+    const currData = new Array(12).fill(0);
+    const prevData = new Array(12).fill(0);
+
+    chartData.forEach((d) => {
+      const mIdx = d.mes - 1;
+      if (d.ano === targetYear && mIdx >= 0 && mIdx < 12)
+        currData[mIdx] += Number(d.faturamento);
+      if (d.ano === prevYear && mIdx >= 0 && mIdx < 12)
+        prevData[mIdx] += Number(d.faturamento);
+    });
+
+    // Find best month of current year (only considering up to target month to be safe, or all available)
+    let bestMonthIdx = -1;
+    let maxVal = -1;
+    currData.forEach((val, idx) => {
+      if (val > maxVal) {
+        maxVal = val;
+        bestMonthIdx = idx;
+      }
+    });
+
+    // If best month is found, we can place the star on target month if requested, but instructions said:
+    // "ícone de estrela acima da coluna do melhor mês do ano atual que, para o cenário atual, será posicionado no próprio mês em análise."
+    // Interpreting as: The star goes on the best month. If the instruction specifically meant forcing it to the target month, we will set it to target month, but usually it means dynamic best month. Let's stick to dynamically calculating the best month, or if forced to current month:
+    // Let's force it to target month if it's strictly requested, but "melhor mês do ano atual" implies a calculation. Let's use the calculated best month.
+
+    const ctx = canvas.getContext("2d");
+
+    // Custom plugin to draw star
+    const drawStarPlugin = {
+      id: "drawStarPlugin",
+      afterDatasetsDraw(chart, args, pluginOptions) {
+        const {
+          ctx,
+          data,
+          chartArea: { top },
+          scales: { x, y },
+        } = chart;
+        ctx.save();
+
+        const meta = chart.getDatasetMeta(0); // dataset 0 is current year
+        if (bestMonthIdx >= 0 && meta.data[bestMonthIdx]) {
+          const bar = meta.data[bestMonthIdx];
+          const xPos = bar.x;
+          const yPos = bar.y - 15; // slightly above bar
+
+          ctx.font = "20px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          // ctx.fillStyle = '#facc15';
+          ctx.fillText("⭐", xPos, yPos);
+        }
+        ctx.restore();
+      },
+    };
+
+    if (window.presentationEvolutionChartInstance) {
+      window.presentationEvolutionChartInstance.destroy();
     }
 
-    function renderEvolutionChart(chartData, targetYear, targetMonthIndex) {
-        const canvas = document.getElementById('presentation-evolution-chart');
-        if (!canvas || !chartData || chartData.length === 0) return;
+    // Custom colors for current month highlight
+    const bgColorsCurr = currData.map((_, i) =>
+      i === targetMonthIndex ? "#d946ef" : "#a21caf",
+    ); // fuchsia highlight vs purple
 
-        // format chartData for current and previous year
-        const prevYear = targetYear - 1;
-        const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-
-        const currData = new Array(12).fill(0);
-        const prevData = new Array(12).fill(0);
-
-        chartData.forEach(d => {
-            const mIdx = d.mes - 1;
-            if (d.ano === targetYear && mIdx >= 0 && mIdx < 12) currData[mIdx] += Number(d.faturamento);
-            if (d.ano === prevYear && mIdx >= 0 && mIdx < 12) prevData[mIdx] += Number(d.faturamento);
-        });
-
-        // Find best month of current year (only considering up to target month to be safe, or all available)
-        let bestMonthIdx = -1;
-        let maxVal = -1;
-        currData.forEach((val, idx) => {
-            if (val > maxVal) {
-                maxVal = val;
-                bestMonthIdx = idx;
-            }
-        });
-
-        // If best month is found, we can place the star on target month if requested, but instructions said:
-        // "ícone de estrela acima da coluna do melhor mês do ano atual que, para o cenário atual, será posicionado no próprio mês em análise."
-        // Interpreting as: The star goes on the best month. If the instruction specifically meant forcing it to the target month, we will set it to target month, but usually it means dynamic best month. Let's stick to dynamically calculating the best month, or if forced to current month:
-        // Let's force it to target month if it's strictly requested, but "melhor mês do ano atual" implies a calculation. Let's use the calculated best month.
-
-        const ctx = canvas.getContext('2d');
-
-        // Custom plugin to draw star
-        const drawStarPlugin = {
-            id: 'drawStarPlugin',
-            afterDatasetsDraw(chart, args, pluginOptions) {
-                const { ctx, data, chartArea: { top }, scales: { x, y } } = chart;
-                ctx.save();
-
-                const meta = chart.getDatasetMeta(0); // dataset 0 is current year
-                if (bestMonthIdx >= 0 && meta.data[bestMonthIdx]) {
-                    const bar = meta.data[bestMonthIdx];
-                    const xPos = bar.x;
-                    const yPos = bar.y - 15; // slightly above bar
-
-                    ctx.font = '20px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    // ctx.fillStyle = '#facc15';
-                    ctx.fillText('⭐', xPos, yPos);
-                }
-                ctx.restore();
-            }
-        };
-
-        if (window.presentationEvolutionChartInstance) {
-            window.presentationEvolutionChartInstance.destroy();
-        }
-
-        // Custom colors for current month highlight
-        const bgColorsCurr = currData.map((_, i) => i === targetMonthIndex ? '#d946ef' : '#a21caf'); // fuchsia highlight vs purple
-
-        window.presentationEvolutionChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: months,
-                datasets: [
-                    {
-                        label: `Ano Atual (${targetYear})`,
-                        data: currData,
-                        backgroundColor: bgColorsCurr,
-                        borderRadius: 4,
-                        borderSkipped: false
-                    },
-                    {
-                        label: `Ano Anterior (${prevYear})`,
-                        data: prevData,
-                        backgroundColor: '#334155', // slate-700
-                        borderRadius: 4,
-                        borderSkipped: false
-                    }
-                ]
+    window.presentationEvolutionChartInstance = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: months,
+        datasets: [
+          {
+            label: `Ano Atual (${targetYear})`,
+            data: currData,
+            backgroundColor: bgColorsCurr,
+            borderRadius: 4,
+            borderSkipped: false,
+          },
+          {
+            label: `Ano Anterior (${prevYear})`,
+            data: prevData,
+            backgroundColor: "#334155", // slate-700
+            borderRadius: 4,
+            borderSkipped: false,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: "#cbd5e1" },
+          },
+          tooltip: {
+            callbacks: {
+              label: (context) => formatCurrency(context.raw),
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: { color: '#cbd5e1' }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => formatCurrency(context.raw)
-                        }
-                    },
-                    datalabels: { display: false } // disable datalabels if plugin is loaded globally
-                },
-                scales: {
-                    x: {
-                        ticks: { color: '#94a3b8' },
-                        grid: { display: false }
-                    },
-                    y: {
-                        ticks: {
-                            color: '#94a3b8',
-                            callback: (val) => {
-                                if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
-                                if (val >= 1000) return (val / 1000).toFixed(0) + 'k';
-                                return val;
-                            }
-                        },
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
-                    }
-                }
+          },
+          datalabels: { display: false }, // disable datalabels if plugin is loaded globally
+        },
+        scales: {
+          x: {
+            ticks: { color: "#94a3b8" },
+            grid: { display: false },
+          },
+          y: {
+            ticks: {
+              color: "#94a3b8",
+              callback: (val) => {
+                if (val >= 1000000) return (val / 1000000).toFixed(1) + "M";
+                if (val >= 1000) return (val / 1000).toFixed(0) + "k";
+                return val;
+              },
             },
-            plugins: [drawStarPlugin]
-        });
+            grid: { color: "rgba(255, 255, 255, 0.05)" },
+          },
+        },
+      },
+      plugins: [drawStarPlugin],
+    });
+  }
+
+  function setupFilial(filialData, supervisoresData) {
+    const categoriasData = presentationData.categorias || [];
+    const select = document.getElementById("presentation-filial-select");
+    const containerCards = document.getElementById("presentation-filial-cards");
+    const tbodySup = document.getElementById("presentation-supervisor-tbody");
+
+    if (!filialData || filialData.length === 0) {
+      containerCards.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
+      return;
     }
 
-    function setupFilial(filialData, supervisoresData) {
-        const categoriasData = presentationData.categorias || [];
-        const select = document.getElementById('presentation-filial-select');
-        const containerCards = document.getElementById('presentation-filial-cards');
-        const tbodySup = document.getElementById('presentation-supervisor-tbody');
+    // Populate Select
+    // Get unique filiais filtering out 'Global' and grouping by dimension
+    const uniqueFiliais = [
+      ...new Set(
+        filialData
+          .filter((f) => f.group_name === "Geral" && f.dimension !== "Global")
+          .map((f) => f.dimension),
+      ),
+    ];
+    select.innerHTML = uniqueFiliais
+      .map((f) => `<option value="${f}">${f}</option>`)
+      .join("");
 
-        if(!filialData || filialData.length === 0) {
-             containerCards.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
-             return;
-        }
-
-        // Populate Select
-                // Get unique filiais filtering out 'Global' and grouping by dimension
-        const uniqueFiliais = [...new Set(filialData.filter(f => f.group_name === 'Geral' && f.dimension !== 'Global').map(f => f.dimension))];
-        select.innerHTML = uniqueFiliais.map(f => `<option value="${f}">${f}</option>`).join('');
-
-        const renderFilial = (filialName) => {
-            const fd = filialData.find(f => f.dimension === filialName) || filialData[0];
-            containerCards.innerHTML = `
+    const renderFilial = (filialName) => {
+      const fd =
+        filialData.find((f) => f.dimension === filialName) || filialData[0];
+      containerCards.innerHTML = `
                 ${buildCard("Faturamento", fd.fat_atual, fd.fat_trim, fd.fat_ant, true)}
                 ${buildCard("Toneladas", fd.ton_atual, fd.ton_trim, fd.ton_ant, false)}
                 ${buildCard("Positivação", fd.pos_atual, fd.pos_trim, fd.pos_ant, false)}
             `;
 
-            // Supervisores
-            const sups = (supervisoresData || []).filter(s => s.dimension.startsWith(filialName) && s.group_name === 'Geral');
-            tbodySup.innerHTML = sups.map(s => `
+      // Supervisores
+      const sups = (supervisoresData || []).filter(
+        (s) => s.dimension.startsWith(filialName) && s.group_name === "Geral",
+      );
+      tbodySup.innerHTML = sups
+        .map(
+          (s) => `
                 <tr class="hover:bg-white/5 transition-colors">
                     <td class="px-4 py-3 font-medium text-white">${s.dimension.split(" - ")[1] || s.dimension}</td>
                     <td class="px-4 py-3 text-right">${formatCurrency(s.fat_atual)}</td>
@@ -373,32 +450,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td class="px-4 py-3 text-right">${formatNumber(s.ton_atual)}</td>
                     <td class="px-4 py-3 text-right">${formatNumber(s.pos_atual)}</td>
                 </tr>
-            `).join('');
+            `,
+        )
+        .join("");
 
-            // --- Categorias ---
-            const renderCategoryCircle = (catName, isSalty) => {
-                // Find category data for this branch
-                const cd = categoriasData.find(c => c.filial === filialName && c.cat_name === catName);
-                const fatAtual = cd ? Number(cd.fat_atual) : 0;
-                const fatTrim = cd ? Number(cd.fat_trim) : 0;
+      // --- Categorias ---
+      const renderCategoryCircle = (catName, isSalty) => {
+        // Find category data for this branch
+        const cd = categoriasData.find(
+          (c) => c.filial === filialName && c.cat_name === catName,
+        );
+        const fatAtual = cd ? Number(cd.fat_atual) : 0;
+        const fatTrim = cd ? Number(cd.fat_trim) : 0;
 
-                // Meta base: 100% = Média do último trimestre + 15%
-                const meta = fatTrim * 1.15;
-                let pct = 0;
-                if (meta > 0) {
-                    pct = (fatAtual / meta) * 100;
-                } else if (fatAtual > 0) {
-                    pct = 100; // if no history but has sales
-                }
+        // Meta base: 100% = Média do último trimestre + 15%
+        const meta = fatTrim * 1.15;
+        let pct = 0;
+        if (meta > 0) {
+          pct = (fatAtual / meta) * 100;
+        } else if (fatAtual > 0) {
+          pct = 100; // if no history but has sales
+        }
 
-                // UI clamps stroke array to 100 max visually, but text shows actual
-                const strokeArray = Math.min(pct, 100).toFixed(1);
-                const isUnder = pct < 100;
+        // UI clamps stroke array to 100 max visually, but text shows actual
+        const strokeArray = Math.min(pct, 100).toFixed(1);
+        const isUnder = pct < 100;
 
-                const cssClass = isUnder ? 'below-target' : (isSalty ? 'salty' : 'foods');
-                const displayName = catName;
+        const cssClass = isUnder ? "below-target" : isSalty ? "salty" : "foods";
+        const displayName = catName;
 
-                return `
+        return `
                     <div class="circular-chart-container" tabindex="0">
                         <span class="text-[10px] font-bold text-slate-300 mb-2 truncate w-full text-center">${displayName}</span>
                         <svg viewBox="0 0 36 36" class="circular-chart ${cssClass}">
@@ -418,54 +499,66 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="cat-tooltip">Fat: ${formatCurrency(fatAtual)}</div>
                     </div>
                 `;
-            };
+      };
 
-            const saltyContainer = document.getElementById('presentation-cat-salty');
-            const foodsContainer = document.getElementById('presentation-cat-foods');
+      const saltyContainer = document.getElementById("presentation-cat-salty");
+      const foodsContainer = document.getElementById("presentation-cat-foods");
 
-            if (saltyContainer) {
-                saltyContainer.innerHTML =
-                    renderCategoryCircle('CHEETOS', true) +
-                    renderCategoryCircle('FANDANGOS', true) +
-                    renderCategoryCircle('DORITOS', true) +
-                    renderCategoryCircle('CEBOLITOS', true) +
-                    renderCategoryCircle('RUFFLES', true);
-            }
-            if (foodsContainer) {
-                foodsContainer.innerHTML =
-                    renderCategoryCircle('TODDY', false) +
-                    renderCategoryCircle('TODDYNHO', false) +
-                    renderCategoryCircle('QUAKER', false) +
-                    renderCategoryCircle('KEROCOCO', false);
-            }
+      if (saltyContainer) {
+        saltyContainer.innerHTML =
+          renderCategoryCircle("CHEETOS", true) +
+          renderCategoryCircle("FANDANGOS", true) +
+          renderCategoryCircle("DORITOS", true) +
+          renderCategoryCircle("CEBOLITOS", true) +
+          renderCategoryCircle("RUFFLES", true);
+      }
+      if (foodsContainer) {
+        foodsContainer.innerHTML =
+          renderCategoryCircle("TODDY", false) +
+          renderCategoryCircle("TODDYNHO", false) +
+          renderCategoryCircle("QUAKER", false) +
+          renderCategoryCircle("KEROCOCO", false);
+      }
 
+      if (sups.length === 0)
+        tbodySup.innerHTML = `<tr><td colspan="6" class="px-4 py-4 text-center text-slate-500">Nenhum supervisor encontrado.</td></tr>`;
+    };
 
-            if(sups.length === 0) tbodySup.innerHTML = `<tr><td colspan="6" class="px-4 py-4 text-center text-slate-500">Nenhum supervisor encontrado.</td></tr>`;
-        };
+    select.addEventListener("change", (e) => renderFilial(e.target.value));
+    if (uniqueFiliais.length > 0) renderFilial(uniqueFiliais[0]); // init
+  }
 
-        select.addEventListener('change', (e) => renderFilial(e.target.value));
-        if(uniqueFiliais.length > 0) renderFilial(uniqueFiliais[0]); // init
+  function renderRede(redesData) {
+    const container = document.getElementById("presentation-rede-cards");
+    if (!redesData || redesData.length === 0) {
+      container.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
+      return;
     }
 
-    function renderRede(redesData) {
-        const container = document.getElementById('presentation-rede-cards');
-        if(!redesData || redesData.length === 0) {
-            container.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
-            return;
-        }
+    // "Rede" is now conceptually "Atacado"
+    const topAtacado =
+      redesData.sort((a, b) => b.fat_atual - a.fat_atual)[0] || redesData[0];
 
-        // "Rede" is now conceptually "Atacado"
-        const topAtacado = redesData.sort((a,b) => b.fat_atual - a.fat_atual)[0] || redesData[0];
+    // Helper to remove "Rede: " prefix
+    const formatDim = (dim) => (dim ? dim.replace(/^Rede:\s*/i, "") : dim);
 
-        // Helper to remove "Rede: " prefix
-        const formatDim = (dim) => dim ? dim.replace(/^Rede:\s*/i, '') : dim;
+    const outrosAtacados = redesData.filter(
+      (r) => r.dimension !== topAtacado.dimension,
+    );
+    const totalFatOutros = outrosAtacados.reduce(
+      (sum, r) => sum + (r.fat_atual || 0),
+      0,
+    );
+    const totalFatTrimOutros = outrosAtacados.reduce(
+      (sum, r) => sum + (r.fat_trim || 0),
+      0,
+    );
+    const totalFatAntOutros = outrosAtacados.reduce(
+      (sum, r) => sum + (r.fat_ant || 0),
+      0,
+    );
 
-        const outrosAtacados = redesData.filter(r => r.dimension !== topAtacado.dimension);
-        const totalFatOutros = outrosAtacados.reduce((sum, r) => sum + (r.fat_atual || 0), 0);
-        const totalFatTrimOutros = outrosAtacados.reduce((sum, r) => sum + (r.fat_trim || 0), 0);
-        const totalFatAntOutros = outrosAtacados.reduce((sum, r) => sum + (r.fat_ant || 0), 0);
-
-        container.innerHTML = `
+    container.innerHTML = `
             <div class="presentation-card bg-gradient-to-br from-fuchsia-900/40 to-transparent border-fuchsia-500/30">
                 <h3 class="text-lg font-bold text-white mb-4 border-b border-fuchsia-500/30 pb-2">Top Atacado: ${formatDim(topAtacado.dimension)}</h3>
                 <div class="grid grid-cols-2 gap-4">
@@ -485,220 +578,261 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="presentation-card">
                  <div class="flex justify-between items-end mb-4 border-b border-white/10 pb-2">
                      <h3 class="text-sm font-bold text-slate-300">Outros Atacados</h3>
-                     ${outrosAtacados.length > 0 ? `
+                     ${
+                       outrosAtacados.length > 0
+                         ? `
                      <div class="text-right">
                          <div class="text-sm font-bold text-white">${formatCurrency(totalFatOutros)}</div>
                          <div class="text-xs">${renderVarBadge(totalFatOutros, totalFatTrimOutros)} vs Trim, ${renderVarBadge(totalFatOutros, totalFatAntOutros)} vs Ano</div>
                      </div>
-                     ` : ''}
+                     `
+                         : ""
+                     }
                  </div>
                  <div class="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                    ${outrosAtacados.map(r => `
+                    ${outrosAtacados
+                      .map(
+                        (r) => `
                         <div class="flex justify-between items-center bg-black/20 p-2 rounded gap-4">
                             <span class="text-sm font-medium text-slate-300 truncate w-56" title="${formatDim(r.dimension)}">${formatDim(r.dimension)}</span>
                             <span class="text-sm text-white whitespace-nowrap">${formatCurrency(r.fat_atual)}</span>
                             <span class="text-xs whitespace-nowrap">${renderVarBadge(r.fat_atual, r.fat_trim)} vs Trim, ${renderVarBadge(r.fat_atual, r.fat_ant)} vs Ano</span>
                         </div>
-                    `).join('')}
+                    `,
+                      )
+                      .join("")}
                  </div>
             </div>
         `;
-    }
+  }
 
-    function renderEvolutionChart(chartData, targetYear, targetMonthIndex) {
-        const canvas = document.getElementById('presentation-evolution-chart');
-        if (!canvas || !chartData || chartData.length === 0) return;
+  function renderEvolutionChart(chartData, targetYear, targetMonthIndex) {
+    const canvas = document.getElementById("presentation-evolution-chart");
+    if (!canvas || !chartData || chartData.length === 0) return;
 
-        // format chartData for current and previous year
-        const prevYear = targetYear - 1;
-        const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    // format chartData for current and previous year
+    const prevYear = targetYear - 1;
+    const months = [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set",
+      "Out",
+      "Nov",
+      "Dez",
+    ];
 
-        const currData = new Array(12).fill(0);
-        const prevData = new Array(12).fill(0);
+    const currData = new Array(12).fill(0);
+    const prevData = new Array(12).fill(0);
 
-        chartData.forEach(d => {
-            const mIdx = d.mes - 1;
-            if (d.ano === targetYear && mIdx >= 0 && mIdx < 12) currData[mIdx] += Number(d.faturamento);
-            if (d.ano === prevYear && mIdx >= 0 && mIdx < 12) prevData[mIdx] += Number(d.faturamento);
-        });
+    chartData.forEach((d) => {
+      const mIdx = d.mes - 1;
+      if (d.ano === targetYear && mIdx >= 0 && mIdx < 12)
+        currData[mIdx] += Number(d.faturamento);
+      if (d.ano === prevYear && mIdx >= 0 && mIdx < 12)
+        prevData[mIdx] += Number(d.faturamento);
+    });
 
-        // Find best month of current year (only considering up to target month to be safe, or all available)
-        let bestMonthIdx = -1;
-        let maxVal = -1;
-        currData.forEach((val, idx) => {
-            if (val > maxVal) {
-                maxVal = val;
-                bestMonthIdx = idx;
-            }
-        });
+    // Find best month of current year (only considering up to target month to be safe, or all available)
+    let bestMonthIdx = -1;
+    let maxVal = -1;
+    currData.forEach((val, idx) => {
+      if (val > maxVal) {
+        maxVal = val;
+        bestMonthIdx = idx;
+      }
+    });
 
-        // If best month is found, we can place the star on target month if requested, but instructions said:
-        // "ícone de estrela acima da coluna do melhor mês do ano atual que, para o cenário atual, será posicionado no próprio mês em análise."
-        // Interpreting as: The star goes on the best month. If the instruction specifically meant forcing it to the target month, we will set it to target month, but usually it means dynamic best month. Let's stick to dynamically calculating the best month, or if forced to current month:
-        // Let's force it to target month if it's strictly requested, but "melhor mês do ano atual" implies a calculation. Let's use the calculated best month.
+    // If best month is found, we can place the star on target month if requested, but instructions said:
+    // "ícone de estrela acima da coluna do melhor mês do ano atual que, para o cenário atual, será posicionado no próprio mês em análise."
+    // Interpreting as: The star goes on the best month. If the instruction specifically meant forcing it to the target month, we will set it to target month, but usually it means dynamic best month. Let's stick to dynamically calculating the best month, or if forced to current month:
+    // Let's force it to target month if it's strictly requested, but "melhor mês do ano atual" implies a calculation. Let's use the calculated best month.
 
-        const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
 
-        // Custom plugin to draw star
-        const drawStarPlugin = {
-            id: 'drawStarPlugin',
-            afterDatasetsDraw(chart, args, pluginOptions) {
-                const { ctx, data, chartArea: { top }, scales: { x, y } } = chart;
-                ctx.save();
+    // Custom plugin to draw star
+    const drawStarPlugin = {
+      id: "drawStarPlugin",
+      afterDatasetsDraw(chart, args, pluginOptions) {
+        const {
+          ctx,
+          data,
+          chartArea: { top },
+          scales: { x, y },
+        } = chart;
+        ctx.save();
 
-                const meta = chart.getDatasetMeta(0); // dataset 0 is current year
-                if (bestMonthIdx >= 0 && meta.data[bestMonthIdx]) {
-                    const bar = meta.data[bestMonthIdx];
-                    const xPos = bar.x;
-                    const yPos = bar.y - 15; // slightly above bar
+        const meta = chart.getDatasetMeta(0); // dataset 0 is current year
+        if (bestMonthIdx >= 0 && meta.data[bestMonthIdx]) {
+          const bar = meta.data[bestMonthIdx];
+          const xPos = bar.x;
+          const yPos = bar.y - 15; // slightly above bar
 
-                    ctx.font = '20px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    // ctx.fillStyle = '#facc15';
-                    ctx.fillText('⭐', xPos, yPos);
-                }
-                ctx.restore();
-            }
-        };
-
-        if (window.presentationEvolutionChartInstance) {
-            window.presentationEvolutionChartInstance.destroy();
+          ctx.font = "20px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          // ctx.fillStyle = '#facc15';
+          ctx.fillText("⭐", xPos, yPos);
         }
+        ctx.restore();
+      },
+    };
 
-        // Custom colors for current month highlight
-        const bgColorsCurr = currData.map((_, i) => i === targetMonthIndex ? '#d946ef' : '#a21caf'); // fuchsia highlight vs purple
-
-        window.presentationEvolutionChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: months,
-                datasets: [
-                    {
-                        label: `Ano Atual (${targetYear})`,
-                        data: currData,
-                        backgroundColor: bgColorsCurr,
-                        borderRadius: 4,
-                        borderSkipped: false
-                    },
-                    {
-                        label: `Ano Anterior (${prevYear})`,
-                        data: prevData,
-                        backgroundColor: '#334155', // slate-700
-                        borderRadius: 4,
-                        borderSkipped: false
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: { color: '#cbd5e1' }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => formatCurrency(context.raw)
-                        }
-                    },
-                    datalabels: { display: false } // disable datalabels if plugin is loaded globally
-                },
-                scales: {
-                    x: {
-                        ticks: { color: '#94a3b8' },
-                        grid: { display: false }
-                    },
-                    y: {
-                        ticks: {
-                            color: '#94a3b8',
-                            callback: (val) => {
-                                if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
-                                if (val >= 1000) return (val / 1000).toFixed(0) + 'k';
-                                return val;
-                            }
-                        },
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
-                    }
-                }
-            },
-            plugins: [drawStarPlugin]
-        });
+    if (window.presentationEvolutionChartInstance) {
+      window.presentationEvolutionChartInstance.destroy();
     }
 
-    function setupVendedores(vendedoresData) {
-        if(!vendedoresData) return;
+    // Custom colors for current month highlight
+    const bgColorsCurr = currData.map((_, i) =>
+      i === targetMonthIndex ? "#d946ef" : "#a21caf",
+    ); // fuchsia highlight vs purple
 
-        const tabs = document.querySelectorAll('#top-vendedores-tabs button');
-        const selectSup = document.getElementById('top-vendedores-supervisor-filter');
-        const tbody = document.getElementById('presentation-vendedores-tbody');
+    window.presentationEvolutionChartInstance = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: months,
+        datasets: [
+          {
+            label: `Ano Atual (${targetYear})`,
+            data: currData,
+            backgroundColor: bgColorsCurr,
+            borderRadius: 4,
+            borderSkipped: false,
+          },
+          {
+            label: `Ano Anterior (${prevYear})`,
+            data: prevData,
+            backgroundColor: "#334155", // slate-700
+            borderRadius: 4,
+            borderSkipped: false,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: "#cbd5e1" },
+          },
+          tooltip: {
+            callbacks: {
+              label: (context) => formatCurrency(context.raw),
+            },
+          },
+          datalabels: { display: false }, // disable datalabels if plugin is loaded globally
+        },
+        scales: {
+          x: {
+            ticks: { color: "#94a3b8" },
+            grid: { display: false },
+          },
+          y: {
+            ticks: {
+              color: "#94a3b8",
+              callback: (val) => {
+                if (val >= 1000000) return (val / 1000000).toFixed(1) + "M";
+                if (val >= 1000) return (val / 1000).toFixed(0) + "k";
+                return val;
+              },
+            },
+            grid: { color: "rgba(255, 255, 255, 0.05)" },
+          },
+        },
+      },
+      plugins: [drawStarPlugin],
+    });
+  }
 
-        // Populate select
-        const sups = [...new Set(vendedoresData.map(v => v.supervisor_nome).filter(Boolean))].sort();
-        selectSup.innerHTML = '<option value="ALL">Todos</option>' + sups.map(s => `<option value="${s}">${s}</option>`).join('');
+  function setupVendedores(vendedoresData) {
+    if (!vendedoresData) return;
 
-        let currentTab = 'fat_geral';
-        let currentSup = 'ALL';
+    const tabs = document.querySelectorAll("#top-vendedores-tabs button");
+    const selectSup = document.getElementById(
+      "top-vendedores-supervisor-filter",
+    );
+    const tbody = document.getElementById("presentation-vendedores-tbody");
 
-        const thAtual = document.getElementById('th-atual');
-        const thAnt = document.getElementById('th-ant');
-        const thTrim = document.getElementById('th-trim');
+    // Populate select
+    const sups = [
+      ...new Set(vendedoresData.map((v) => v.supervisor_nome).filter(Boolean)),
+    ].sort();
+    selectSup.innerHTML =
+      '<option value="ALL">Todos</option>' +
+      sups.map((s) => `<option value="${s}">${s}</option>`).join("");
 
-        const renderTable = () => {
-            if (currentTab.startsWith('fat_')) {
-                if (thAtual) thAtual.textContent = 'Fat. Atual';
-                if (thAnt) thAnt.textContent = 'Fat. Ano Ant.';
-                if (thTrim) thTrim.textContent = 'Fat. Trim Ant.';
-            } else if (currentTab.startsWith('ton_')) {
-                if (thAtual) thAtual.textContent = 'Ton. Atual';
-                if (thAnt) thAnt.textContent = 'Ton. Ano Ant.';
-                if (thTrim) thTrim.textContent = 'Ton. Trim Ant.';
-            } else if (currentTab.startsWith('pos_')) {
-                if (thAtual) thAtual.textContent = 'Pos. Atual';
-                if (thAnt) thAnt.textContent = 'Pos. Ano Ant.';
-                if (thTrim) thTrim.textContent = 'Pos. Trim Ant.';
-            }
+    let currentTab = "fat_geral";
+    let currentSup = "ALL";
 
-            let filtered = vendedoresData;
-            if(currentSup !== 'ALL') filtered = filtered.filter(v => v.supervisor_nome === currentSup);
+    const thAtual = document.getElementById("th-atual");
+    const thAnt = document.getElementById("th-ant");
+    const thTrim = document.getElementById("th-trim");
 
-            // Sort based on tab
-            let sortKey = 'fat_atual';
-            if(currentTab === 'fat_salty') sortKey = 'fat_atual_salty';
-            if(currentTab === 'fat_foods') sortKey = 'fat_atual_foods';
-            if(currentTab === 'ton_salty') sortKey = 'ton_atual_salty';
-            if(currentTab === 'ton_foods') sortKey = 'ton_atual_foods';
-            if(currentTab === 'pos_salty') sortKey = 'pos_atual_salty';
-            if(currentTab === 'pos_foods') sortKey = 'pos_atual_foods';
+    const renderTable = () => {
+      if (currentTab.startsWith("fat_")) {
+        if (thAtual) thAtual.textContent = "Fat. Atual";
+        if (thAnt) thAnt.textContent = "Fat. Ano Ant.";
+        if (thTrim) thTrim.textContent = "Fat. Trim Ant.";
+      } else if (currentTab.startsWith("ton_")) {
+        if (thAtual) thAtual.textContent = "Ton. Atual";
+        if (thAnt) thAnt.textContent = "Ton. Ano Ant.";
+        if (thTrim) thTrim.textContent = "Ton. Trim Ant.";
+      } else if (currentTab.startsWith("pos_")) {
+        if (thAtual) thAtual.textContent = "Pos. Atual";
+        if (thAnt) thAnt.textContent = "Pos. Ano Ant.";
+        if (thTrim) thTrim.textContent = "Pos. Trim Ant.";
+      }
 
-            filtered.sort((a,b) => (b[sortKey] || 0) - (a[sortKey] || 0));
-            const top10 = filtered.slice(0, 10);
+      let filtered = vendedoresData;
+      if (currentSup !== "ALL")
+        filtered = filtered.filter((v) => v.supervisor_nome === currentSup);
 
-            // Determine if formatting currency or number
-            const isCurr = currentTab.startsWith('fat_');
+      // Sort based on tab
+      let sortKey = "fat_atual";
+      if (currentTab === "fat_salty") sortKey = "fat_atual_salty";
+      if (currentTab === "fat_foods") sortKey = "fat_atual_foods";
+      if (currentTab === "ton_salty") sortKey = "ton_atual_salty";
+      if (currentTab === "ton_foods") sortKey = "ton_atual_foods";
+      if (currentTab === "pos_salty") sortKey = "pos_atual_salty";
+      if (currentTab === "pos_foods") sortKey = "pos_atual_foods";
 
-            tbody.innerHTML = top10.map((v, idx) => {
-                const valAtual = v[sortKey] || 0;
-                let keyAntYear = sortKey.replace('_atual', '_ant');
-                let keyAntTrim = sortKey.replace('_atual', '_trim');
-                if(sortKey === 'fat_atual') { keyAntYear = 'fat_ant'; keyAntTrim = 'fat_trim'; }
+      filtered.sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
+      const top10 = filtered.slice(0, 10);
 
-                const valYear = v[keyAntYear] || 0;
-                const valTrim = v[keyAntTrim] || 0;
+      // Determine if formatting currency or number
+      const isCurr = currentTab.startsWith("fat_");
 
-                const fmt = isCurr ? formatCurrency : formatNumber;
+      tbody.innerHTML = top10
+        .map((v, idx) => {
+          const valAtual = v[sortKey] || 0;
+          let keyAntYear = sortKey.replace("_atual", "_ant");
+          let keyAntTrim = sortKey.replace("_atual", "_trim");
+          if (sortKey === "fat_atual") {
+            keyAntYear = "fat_ant";
+            keyAntTrim = "fat_trim";
+          }
 
-                let medal = `<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs font-bold text-slate-300">${idx+1}</span>`;
-                if(idx === 0) medal = `🥇`;
-                if(idx === 1) medal = `🥈`;
-                if(idx === 2) medal = `🥉`;
+          const valYear = v[keyAntYear] || 0;
+          const valTrim = v[keyAntTrim] || 0;
 
-                return `
+          const fmt = isCurr ? formatCurrency : formatNumber;
+
+          let medal = `<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs font-bold text-slate-300">${idx + 1}</span>`;
+          if (idx === 0) medal = `🥇`;
+          if (idx === 1) medal = `🥈`;
+          if (idx === 2) medal = `🥉`;
+
+          return `
                     <tr class="hover:bg-white/5 transition-colors">
                         <td class="px-4 py-3 text-center">${medal}</td>
                         <td class="px-4 py-3 font-medium text-white">
                             <div class="truncate max-w-[150px]" title="${v.vendedor}">${v.vendedor}</div>
-                            <div class="text-[10px] text-slate-500">${v.supervisor_nome || 'N/A'}</div>
+                            <div class="text-[10px] text-slate-500">${v.supervisor_nome || "N/A"}</div>
                         </td>
                         <td class="px-4 py-3 text-right font-semibold text-fuchsia-400">${fmt(valAtual)}</td>
                         <td class="px-4 py-3 text-right text-slate-400">${fmt(valYear)}</td>
@@ -707,153 +841,216 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td class="px-4 py-3 text-right">${renderVarBadge(valAtual, valTrim)}</td>
                     </tr>
                 `;
-            }).join('');
+        })
+        .join("");
 
-            if(top10.length === 0) tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-4 text-center text-slate-500">Nenhum vendedor encontrado.</td></tr>`;
-        };
+      if (top10.length === 0)
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-4 text-center text-slate-500">Nenhum vendedor encontrado.</td></tr>`;
+    };
 
-        selectSup.addEventListener('change', (e) => { currentSup = e.target.value; renderTable(); });
+    selectSup.addEventListener("change", (e) => {
+      currentSup = e.target.value;
+      renderTable();
+    });
 
-        tabs.forEach(btn => {
-            btn.addEventListener('click', () => {
-                tabs.forEach(b => {
-                    b.classList.remove('bg-[#fc0100]/20', 'text-[#fc0100]', 'border-[#fc0100]/50');
-                    b.classList.add('bg-white/5', 'text-slate-400', 'border-transparent');
-                });
-                btn.classList.add('bg-[#fc0100]/20', 'text-[#fc0100]', 'border-[#fc0100]/50');
-                btn.classList.remove('bg-white/5', 'text-slate-400');
-                currentTab = btn.getAttribute('data-tab');
-                renderTable();
-            });
+    tabs.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        tabs.forEach((b) => {
+          b.classList.remove(
+            "bg-[#fc0100]/20",
+            "text-[#fc0100]",
+            "border-[#fc0100]/50",
+          );
+          b.classList.add("bg-white/5", "text-slate-400", "border-transparent");
         });
-
+        btn.classList.add(
+          "bg-[#fc0100]/20",
+          "text-[#fc0100]",
+          "border-[#fc0100]/50",
+        );
+        btn.classList.remove("bg-white/5", "text-slate-400");
+        currentTab = btn.getAttribute("data-tab");
         renderTable();
-    }
+      });
+    });
 
-    // --- UTILS ---
-    function formatCurrency(val) {
-        if (!val) return 'R$ 0,00';
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-    }
-    function formatNumber(val) {
-        if (!val) return '0';
-        return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(val);
-    }
-    function formatPercent(val) {
-        if (!val && val !== 0) return '0%';
-        return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(val) + '%';
-    }
+    renderTable();
+  }
 
-    function renderVarBadge(atual, anterior) {
-        if (!anterior || anterior === 0) {
-             return atual > 0 ? `<span class="text-emerald-400 font-medium">↑ +100%</span>` : `<span class="text-slate-500">-</span>`;
-        }
-        const varPct = ((atual - anterior) / Math.abs(anterior)) * 100;
-        const fmt = formatPercent(Math.abs(varPct));
-        if (varPct > 0) return `<span class="text-emerald-400 font-medium">↑ ${fmt}</span>`;
-        if (varPct < 0) return `<span class="text-red-400 font-medium">↓ ${fmt}</span>`;
-        return `<span class="text-slate-400 font-medium">0%</span>`;
+  // --- UTILS ---
+  function formatCurrency(val) {
+    if (!val) return "R$ 0,00";
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(val);
+  }
+  function formatNumber(val) {
+    if (!val) return "0";
+    return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(
+      val,
+    );
+  }
+  function formatPercent(val) {
+    if (!val && val !== 0) return "0%";
+    return (
+      new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(val) +
+      "%"
+    );
+  }
+
+  function renderVarBadge(atual, anterior) {
+    if (!anterior || anterior === 0) {
+      return atual > 0
+        ? `<span class="text-emerald-400 font-medium">↑ +100%</span>`
+        : `<span class="text-slate-500">-</span>`;
     }
+    const varPct = ((atual - anterior) / Math.abs(anterior)) * 100;
+    const fmt = formatPercent(Math.abs(varPct));
+    if (varPct > 0)
+      return `<span class="text-emerald-400 font-medium">↑ ${fmt}</span>`;
+    if (varPct < 0)
+      return `<span class="text-red-400 font-medium">↓ ${fmt}</span>`;
+    return `<span class="text-slate-400 font-medium">0%</span>`;
+  }
 
-        // --- AI LOGIC ---
-    async function generateAiAnalysis(apiKey, modelName, data) {
-        // Prepare comprehensive data context for the LLM
-        const global = data.global?.[0] || {};
-        const varFatAno = global.fat_ant ? (((global.fat_atual - global.fat_ant)/global.fat_ant)*100).toFixed(1) : 0;
+  // --- AI LOGIC ---
+  async function generateAiAnalysis(apiKey, modelName, data) {
+    // Prepare comprehensive data context for the LLM
+    const global = data.global?.[0] || {};
+    const varFatAno = global.fat_ant
+      ? (((global.fat_atual - global.fat_ant) / global.fat_ant) * 100).toFixed(
+          1,
+        )
+      : 0;
 
-        const topFiliais = (data.filiais || []).slice(0, 3).map(f => `${f.nome}: ${formatCurrency(f.fat_atual)} (Var: ${f.fat_ant ? (((f.fat_atual - f.fat_ant)/f.fat_ant)*100).toFixed(1) : 0}%)`).join(', ');
-        const topSupervisores = (data.supervisores || []).slice(0, 3).map(s => `${s.nome}: ${formatCurrency(s.fat_atual)}`).join(', ');
-        const topRedes = (data.redes || []).slice(0, 3).map(r => `${r.nome}: ${formatCurrency(r.fat_atual)}`).join(', ');
-        const topVendedores = (data.top_vendedores || []).slice(0, 3).map(v => `${v.nome}: ${formatCurrency(v.fat_atual)}`).join(', ');
+    const topFiliais = (data.filiais || [])
+      .slice(0, 3)
+      .map(
+        (f) =>
+          `${f.nome}: ${formatCurrency(f.fat_atual)} (Var: ${f.fat_ant ? (((f.fat_atual - f.fat_ant) / f.fat_ant) * 100).toFixed(1) : 0}%)`,
+      )
+      .join(", ");
+    const topSupervisores = (data.supervisores || [])
+      .slice(0, 3)
+      .map((s) => `${s.nome}: ${formatCurrency(s.fat_atual)}`)
+      .join(", ");
+    const topRedes = (data.redes || [])
+      .slice(0, 3)
+      .map((r) => `${r.nome}: ${formatCurrency(r.fat_atual)}`)
+      .join(", ");
+    const topVendedores = (data.top_vendedores || [])
+      .slice(0, 3)
+      .map((v) => `${v.nome}: ${formatCurrency(v.fat_atual)}`)
+      .join(", ");
 
-        let promptText = `Atue como um analista comercial sênior e crie um roteiro executivo para uma apresentação de resultados.
+    let promptText = `Crie um roteiro falado (script de apresentação) para que eu possa apresentar os resultados comerciais de fechamento.
 Abaixo estão os dados completos do fechamento comercial:
 
 ### Visão Geral:
 - Faturamento Atual: ${formatCurrency(global.fat_atual || 0)} (Variação vs Ano Anterior: ${varFatAno}%)
-- Volume Kg Atual: ${formatNumber(global.ton_atual || 0)} Kg (Variação vs Mês Anterior: ${global.ton_trim ? (((global.ton_atual - global.ton_trim)/global.ton_trim)*100).toFixed(1) : 0}%)
-- Devolução: ${formatCurrency(global.dev_atual || 0)} (Representatividade: ${global.fat_atual ? ((global.dev_atual / global.fat_atual)*100).toFixed(1) : 0}%)\n- Bonificações: ${formatCurrency(global.bonificacao_atual || 0)} (Representatividade: ${global.fat_atual ? ((global.bonificacao_atual / global.fat_atual)*100).toFixed(1) : 0}%)
-- Positivação (Clientes Ativos): ${formatNumber(global.pos_atual || 0)} (Variação vs Mês Anterior: ${global.pos_ant_trim ? (((global.pos_atual - global.pos_ant_trim)/global.pos_ant_trim)*100).toFixed(1) : 0}%)
+- Volume Kg Atual: ${formatNumber(global.ton_atual || 0)} Kg (Variação vs Mês Anterior: ${global.ton_trim ? (((global.ton_atual - global.ton_trim) / global.ton_trim) * 100).toFixed(1) : 0}%)
+- Devoluções: ${formatCurrency(global.dev_atual || 0)} (Variação vs Ano Anterior: ${global.dev_ant ? (((global.dev_atual - global.dev_ant) / global.dev_ant) * 100).toFixed(1) : 0}%)
+- Bonificações: ${formatCurrency(global.bonificacao_atual || 0)} (Variação vs Ano Anterior: ${global.bonificacao_ant ? (((global.bonificacao_atual - global.bonificacao_ant) / global.bonificacao_ant) * 100).toFixed(1) : 0}%)
+- Positivação (Clientes Ativos): ${formatNumber(global.pos_atual || 0)} (Variação vs Mês Anterior: ${global.pos_ant_trim ? (((global.pos_atual - global.pos_ant_trim) / global.pos_ant_trim) * 100).toFixed(1) : 0}%)
 
 ### Destaques por Segmento (Top 3):
-- Top Filiais: ${topFiliais || 'N/A'}
-- Top Supervisores: ${topSupervisores || 'N/A'}
-- Top Atacados/Redes: ${topRedes || 'N/A'}
-- Top Vendedores: ${topVendedores || 'N/A'}
+- Top Filiais: ${topFiliais || "N/A"}
+- Top Supervisores: ${topSupervisores || "N/A"}
+- Top Atacados/Redes: ${topRedes || "N/A"}
+- Top Vendedores: ${topVendedores || "N/A"}
 
-Por favor, analise esses pontos de forma holística. Escreva um texto direto, profissional, com insights claros sobre:
-1. A performance geral de faturamento e volume.
-2. O impacto das devoluções, bonificações e da positivação na rentabilidade/cobertura.
-3. Quais filiais, supervisores, redes ou vendedores tracionaram o resultado e merecem destaque.
-4. Conclua com recomendações práticas para o próximo ciclo de vendas.`;
+Aja estritamente como um roteirista. Seu objetivo é apenas apresentar esses números de forma fluida, como se fosse o teleprompter de um apresentador. Dê alguns toques de fala em cima de cada ponto para conectar os assuntos.
+REGRAS IMPORTANTES:
+1. NÃO invente motivos, justificativas ou sugestões de negócios para os números.
+2. NÃO crie planos de ação ou "Recomendações Práticas".
+3. O foco é apenas narrar os números de forma executiva e clara.`;
 
-        try {
-            const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: modelName,
-                    messages: [
-                        { role: "system", content: "Você é um analista executivo focado em resultados comerciais de bens de consumo." },
-                        { role: "user", content: promptText }
-                    ],
-                    temperature: 0.5,
-                    max_tokens: 1500
-                })
-            });
-            if (!response.ok) throw new Error("Erro na API da IA");
-            const resData = await response.json();
-            return resData.choices[0].message.content;
-        } catch (e) {
-            console.error(e);
-            return "Erro ao comunicar com a inteligência artificial.";
-        }
+    try {
+      const response = await fetch(
+        "https://api.deepseek.com/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: modelName,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "Você é um roteirista que cria discursos executivos focados apenas em apresentar os resultados numéricos, sem sugerir ações de negócios.",
+              },
+              { role: "user", content: promptText },
+            ],
+            temperature: 0.5,
+            max_tokens: 1500,
+          }),
+        },
+      );
+      if (!response.ok) throw new Error("Erro na API da IA");
+      const resData = await response.json();
+      return resData.choices[0].message.content;
+    } catch (e) {
+      console.error(e);
+      return "Erro ao comunicar com a inteligência artificial.";
     }
+  }
 
-    // --- DOCX DOWNLOAD ---
-    btnDownload.addEventListener('click', async () => {
-        if(!window.docx || !aiAnalysisText) return;
-        try {
-            const { Document, Packer, Paragraph, TextRun } = window.docx;
+  // --- DOCX DOWNLOAD ---
+  btnDownload.addEventListener("click", async () => {
+    if (!window.docx || !aiAnalysisText) return;
+    try {
+      const { Document, Packer, Paragraph, TextRun } = window.docx;
 
-            const paragraphs = aiAnalysisText.split('\n').filter(p => p.trim() !== '').map(text => {
-                return new Paragraph({
-                    children: [ new TextRun({ text: text, size: 24 }) ],
-                    spacing: { after: 200 }
-                });
-            });
+      const paragraphs = aiAnalysisText
+        .split("\n")
+        .filter((p) => p.trim() !== "")
+        .map((text) => {
+          return new Paragraph({
+            children: [new TextRun({ text: text, size: 24 })],
+            spacing: { after: 200 },
+          });
+        });
 
-            const doc = new Document({
-                sections: [{
-                    properties: {},
-                    children: [
-                        new Paragraph({
-                            children: [ new TextRun({ text: "Resumo Executivo - Fechamento Comercial", bold: true, size: 32 }) ],
-                            spacing: { after: 400 }
-                        }),
-                        ...paragraphs
-                    ]
-                }]
-            });
+      const doc = new Document({
+        sections: [
+          {
+            properties: {},
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: "Resumo Executivo - Fechamento Comercial",
+                    bold: true,
+                    size: 32,
+                  }),
+                ],
+                spacing: { after: 400 },
+              }),
+              ...paragraphs,
+            ],
+          },
+        ],
+      });
 
-            const blob = await Packer.toBlob(doc);
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = "Analise_Fechamento.docx";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        } catch(e) {
-            console.error(e);
-            alert("Erro ao gerar arquivo Word.");
-        }
-    });
+      const blob = await Packer.toBlob(doc);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Analise_Fechamento.docx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao gerar arquivo Word.");
+    }
+  });
 
-    // START
-    loadData();
+  // START
+  loadData();
 });
