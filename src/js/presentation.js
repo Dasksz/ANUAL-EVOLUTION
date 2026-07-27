@@ -41,8 +41,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Set header subtitle based on data returned
             if(rpcData.global && rpcData.global.length > 0) {
-                const mes = rpcData.global[0].mes;
-                const ano = rpcData.global[0].ano;
+                const mes = rpcData.meta.curr.mes;
+                const ano = rpcData.meta.curr.ano;
                 const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
                 document.getElementById('presentation-subtitle').textContent = `Fechamento Comercial - ${monthNames[mes-1]} ${ano}`;
             }
@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             container.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
             return;
         }
-        const d = geralData[0];
+        const d = geralData.find(g => g.group_name === 'Geral') || geralData[0];
 
         container.innerHTML = `
             ${buildCard("Faturamento Total", d.fat_atual, d.fat_ant, true)}
@@ -150,10 +150,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Populate Select
-        select.innerHTML = filialData.map(f => `<option value="${f.filial}">${f.filial}</option>`).join('');
+        select.innerHTML = filialData.map(f => `<option value="${f.dimension}">${f.dimension}</option>`).join('');
 
         const renderFilial = (filialName) => {
-            const fd = filialData.find(f => f.filial === filialName) || filialData[0];
+            const fd = filialData.find(f => f.dimension === filialName) || filialData[0];
             containerCards.innerHTML = `
                 ${buildCard("Faturamento", fd.fat_atual, fd.fat_ant, true)}
                 ${buildCard("Toneladas", fd.ton_atual, fd.ton_ant, false)}
@@ -161,10 +161,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
 
             // Supervisores
-            const sups = (supervisoresData || []).filter(s => s.filial === filialName);
+            const sups = (supervisoresData || []).filter(s => s.dimension.startsWith(filialName));
             tbodySup.innerHTML = sups.map(s => `
                 <tr class="hover:bg-white/5 transition-colors">
-                    <td class="px-4 py-3 font-medium text-white">${s.supervisor}</td>
+                    <td class="px-4 py-3 font-medium text-white">${s.dimension.split(" - ")[1] || s.dimension}</td>
                     <td class="px-4 py-3 text-right">${formatCurrency(s.fat_atual)}</td>
                     <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_ant)}</td>
                     <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_ant_trim)}</td>
@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         select.addEventListener('change', (e) => renderFilial(e.target.value));
-        renderFilial(filialData[0].filial); // init
+        renderFilial(filialData[0].dimension); // init
     }
 
     function renderRede(redesData) {
@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         container.innerHTML = `
             <div class="presentation-card bg-gradient-to-br from-fuchsia-900/40 to-transparent border-fuchsia-500/30">
-                <h3 class="text-lg font-bold text-white mb-4 border-b border-fuchsia-500/30 pb-2">Top Atacado: ${topAtacado.rede}</h3>
+                <h3 class="text-lg font-bold text-white mb-4 border-b border-fuchsia-500/30 pb-2">Top Atacado: ${topAtacado.dimension}</h3>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <div class="text-xs text-slate-400 mb-1">Faturamento</div>
@@ -210,9 +210,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="presentation-card">
                  <h3 class="text-sm font-bold text-slate-300 mb-4 border-b border-white/10 pb-2">Outros Atacados</h3>
                  <div class="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                    ${redesData.filter(r => r.rede !== topAtacado.rede).map(r => `
+                    ${redesData.filter(r => r.dimension !== topAtacado.dimension).map(r => `
                         <div class="flex justify-between items-center bg-black/20 p-2 rounded">
-                            <span class="text-sm font-medium text-slate-300 truncate w-32" title="${r.rede}">${r.rede}</span>
+                            <span class="text-sm font-medium text-slate-300 truncate w-32" title="${r.dimension}">${r.dimension}</span>
                             <span class="text-sm text-white">${formatCurrency(r.fat_atual)}</span>
                             <span class="text-xs">${renderVarBadge(r.fat_atual, r.fat_ant)}</span>
                         </div>
@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tbody = document.getElementById('presentation-vendedores-tbody');
 
         // Populate select
-        const sups = [...new Set(vendedoresData.map(v => v.supervisor).filter(Boolean))].sort();
+        const sups = [...new Set(vendedoresData.map(v => v.supervisor_nome).filter(Boolean))].sort();
         selectSup.innerHTML = '<option value="ALL">Todos</option>' + sups.map(s => `<option value="${s}">${s}</option>`).join('');
 
         let currentTab = 'fat_geral';
@@ -238,16 +238,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const renderTable = () => {
             let filtered = vendedoresData;
-            if(currentSup !== 'ALL') filtered = filtered.filter(v => v.supervisor === currentSup);
+            if(currentSup !== 'ALL') filtered = filtered.filter(v => v.supervisor_nome === currentSup);
 
             // Sort based on tab
             let sortKey = 'fat_atual';
-            if(currentTab === 'fat_salty') sortKey = 'fat_salty_atual';
-            if(currentTab === 'fat_foods') sortKey = 'fat_foods_atual';
-            if(currentTab === 'ton_salty') sortKey = 'ton_salty_atual';
-            if(currentTab === 'ton_foods') sortKey = 'ton_foods_atual';
-            if(currentTab === 'pos_salty') sortKey = 'pos_salty_atual';
-            if(currentTab === 'pos_foods') sortKey = 'pos_foods_atual';
+            if(currentTab === 'fat_salty') sortKey = 'fat_atual_salty';
+            if(currentTab === 'fat_foods') sortKey = 'fat_atual_foods';
+            if(currentTab === 'ton_salty') sortKey = 'ton_atual_salty';
+            if(currentTab === 'ton_foods') sortKey = 'ton_atual_foods';
+            if(currentTab === 'pos_salty') sortKey = 'pos_atual_salty';
+            if(currentTab === 'pos_foods') sortKey = 'pos_atual_foods';
 
             filtered.sort((a,b) => (b[sortKey] || 0) - (a[sortKey] || 0));
             const top10 = filtered.slice(0, 10);
@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td class="px-4 py-3 text-center">${medal}</td>
                         <td class="px-4 py-3 font-medium text-white">
                             <div class="truncate max-w-[150px]" title="${v.vendedor}">${v.vendedor}</div>
-                            <div class="text-[10px] text-slate-500">${v.supervisor || 'N/A'}</div>
+                            <div class="text-[10px] text-slate-500">${v.supervisor_nome || 'N/A'}</div>
                         </td>
                         <td class="px-4 py-3 text-right font-semibold text-fuchsia-400">${fmt(valAtual)}</td>
                         <td class="px-4 py-3 text-right text-slate-400">${fmt(valYear)}</td>
