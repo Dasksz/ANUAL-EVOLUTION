@@ -10854,17 +10854,17 @@ Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}
 [VISÃO GERAL]
 `;
 
-        const gGeral = data.global.find(g => g.group_name === 'Geral');
+        const gGeral = (data.global || []).find(g => g.group_name === 'Geral');
         if(gGeral) {
-            promptText += `- Faturamento Total: R$ ${parseFloat(gGeral.faturamento).toLocaleString('pt-BR')}\n`;
-            promptText += `- Positivação Total: ${gGeral.positivacao} clientes\n`;
+            promptText += `- Faturamento Total: R$ ${parseFloat(gGeral.fat_atual || 0).toLocaleString('pt-BR')}\n`;
+            promptText += `- Positivação Total: ${gGeral.pos_atual || 0} clientes\n`;
         }
 
-        const gSalty = data.global.find(g => g.group_name === 'Salty');
-        if(gSalty) promptText += `- Faturamento Salty: R$ ${parseFloat(gSalty.faturamento).toLocaleString('pt-BR')}\n`;
+        const gSalty = (data.global || []).find(g => g.group_name === 'Salty');
+        if(gSalty) promptText += `- Faturamento Salty: R$ ${parseFloat(gSalty.fat_atual || 0).toLocaleString('pt-BR')}\n`;
 
-        const gFoods = data.global.find(g => g.group_name === 'Foods');
-        if(gFoods) promptText += `- Faturamento Foods: R$ ${parseFloat(gFoods.faturamento).toLocaleString('pt-BR')}\n`;
+        const gFoods = (data.global || []).find(g => g.group_name === 'Foods');
+        if(gFoods) promptText += `- Faturamento Foods: R$ ${parseFloat(gFoods.fat_atual || 0).toLocaleString('pt-BR')}\n`;
 
         promptText += `\nCrie uma análise profissional, destacando pontos de atenção, potenciais alavancas e um discurso motivador para a equipe de vendas. Seja direto e estruturado com bullet points.`;
 
