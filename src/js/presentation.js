@@ -40,9 +40,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             presentationData = rpcData;
 
             // Set header subtitle based on data returned
-            if(rpcData.geral && rpcData.geral.length > 0) {
-                const mes = rpcData.geral[0].mes;
-                const ano = rpcData.geral[0].ano;
+            if(rpcData.global && rpcData.global.length > 0) {
+                const mes = rpcData.global[0].mes;
+                const ano = rpcData.global[0].ano;
                 const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
                 document.getElementById('presentation-subtitle').textContent = `Fechamento Comercial - ${monthNames[mes-1]} ${ano}`;
             }
@@ -79,8 +79,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- RENDER LOGIC (Adapted from app.js) ---
     function renderSlides(data) {
-        renderGeral(data.geral);
-        setupFilial(data.filial, data.supervisores);
+        renderGeral(data.global);
+        setupFilial(data.filiais, data.supervisores);
         renderRede(data.redes); // Actually Atacado
         setupVendedores(data.top_vendedores);
     }
@@ -133,9 +133,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const d = geralData[0];
 
         container.innerHTML = `
-            ${buildCard("Faturamento Total", d.fat_atual, d.fat_ant_year, true)}
-            ${buildCard("Toneladas (Salty+Foods)", d.ton_atual, d.ton_ant_year, false)}
-            ${buildCard("Positivação Total", d.pos_atual, d.pos_ant_year, false)}
+            ${buildCard("Faturamento Total", d.fat_atual, d.fat_ant, true)}
+            ${buildCard("Toneladas (Salty+Foods)", d.ton_atual, d.ton_ant, false)}
+            ${buildCard("Positivação Total", d.pos_atual, d.pos_ant, false)}
         `;
     }
 
@@ -155,9 +155,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const renderFilial = (filialName) => {
             const fd = filialData.find(f => f.filial === filialName) || filialData[0];
             containerCards.innerHTML = `
-                ${buildCard("Faturamento", fd.fat_atual, fd.fat_ant_year, true)}
-                ${buildCard("Toneladas", fd.ton_atual, fd.ton_ant_year, false)}
-                ${buildCard("Positivação", fd.pos_atual, fd.pos_ant_year, false)}
+                ${buildCard("Faturamento", fd.fat_atual, fd.fat_ant, true)}
+                ${buildCard("Toneladas", fd.ton_atual, fd.ton_ant, false)}
+                ${buildCard("Positivação", fd.pos_atual, fd.pos_ant, false)}
             `;
 
             // Supervisores
@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <tr class="hover:bg-white/5 transition-colors">
                     <td class="px-4 py-3 font-medium text-white">${s.supervisor}</td>
                     <td class="px-4 py-3 text-right">${formatCurrency(s.fat_atual)}</td>
-                    <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_ant_year)}</td>
+                    <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_ant)}</td>
                     <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_ant_trim)}</td>
                     <td class="px-4 py-3 text-right">${formatNumber(s.ton_atual)}</td>
                     <td class="px-4 py-3 text-right">${formatNumber(s.pos_atual)}</td>
@@ -197,12 +197,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div>
                         <div class="text-xs text-slate-400 mb-1">Faturamento</div>
                         <div class="text-xl font-bold text-white">${formatCurrency(topAtacado.fat_atual)}</div>
-                        <div class="text-sm mt-1">${renderVarBadge(topAtacado.fat_atual, topAtacado.fat_ant_year)} YoY</div>
+                        <div class="text-sm mt-1">${renderVarBadge(topAtacado.fat_atual, topAtacado.fat_ant)} YoY</div>
                     </div>
                     <div>
                         <div class="text-xs text-slate-400 mb-1">Toneladas</div>
                         <div class="text-xl font-bold text-white">${formatNumber(topAtacado.ton_atual)}</div>
-                        <div class="text-sm mt-1">${renderVarBadge(topAtacado.ton_atual, topAtacado.ton_ant_year)} YoY</div>
+                        <div class="text-sm mt-1">${renderVarBadge(topAtacado.ton_atual, topAtacado.ton_ant)} YoY</div>
                     </div>
                 </div>
             </div>
@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="flex justify-between items-center bg-black/20 p-2 rounded">
                             <span class="text-sm font-medium text-slate-300 truncate w-32" title="${r.rede}">${r.rede}</span>
                             <span class="text-sm text-white">${formatCurrency(r.fat_atual)}</span>
-                            <span class="text-xs">${renderVarBadge(r.fat_atual, r.fat_ant_year)}</span>
+                            <span class="text-xs">${renderVarBadge(r.fat_atual, r.fat_ant)}</span>
                         </div>
                     `).join('')}
                  </div>
@@ -257,9 +257,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             tbody.innerHTML = top10.map((v, idx) => {
                 const valAtual = v[sortKey] || 0;
-                let keyAntYear = sortKey.replace('_atual', '_ant_year');
+                let keyAntYear = sortKey.replace('_atual', '_ant');
                 let keyAntTrim = sortKey.replace('_atual', '_ant_trim');
-                if(sortKey === 'fat_atual') { keyAntYear = 'fat_ant_year'; keyAntTrim = 'fat_ant_trim'; }
+                if(sortKey === 'fat_atual') { keyAntYear = 'fat_ant'; keyAntTrim = 'fat_ant_trim'; }
 
                 const valYear = v[keyAntYear] || 0;
                 const valTrim = v[keyAntTrim] || 0;
@@ -337,7 +337,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function generateAiAnalysis(apiKey, modelName, data) {
         let promptText = `Atue como um analista comercial sênior e crie um roteiro executivo para uma apresentação de resultados.
 Abaixo estão os dados do fechamento comercial:
-- Visão Geral: Faturamento atual ${formatCurrency(data.geral?.[0]?.fat_atual)}, Variacao vs Ano Anterior: ${data.geral?.[0]?.fat_ant_year ? (((data.geral[0].fat_atual - data.geral[0].fat_ant_year)/data.geral[0].fat_ant_year)*100).toFixed(1) : 0}%
+- Visão Geral: Faturamento atual ${formatCurrency(data.global?.[0]?.fat_atual)}, Variacao vs Ano Anterior: ${data.global?.[0]?.fat_ant ? (((data.global[0].fat_atual - data.global[0].fat_ant)/data.global[0].fat_ant)*100).toFixed(1) : 0}%
 Por favor, analise esses pontos e escreva um texto direto, profissional, com insights claros.`;
 
         try {
