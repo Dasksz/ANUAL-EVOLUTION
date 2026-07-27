@@ -599,7 +599,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         let currentTab = 'fat_geral';
         let currentSup = 'ALL';
 
+        const thAtual = document.getElementById('th-atual');
+        const thAnt = document.getElementById('th-ant');
+        const thTrim = document.getElementById('th-trim');
+
         const renderTable = () => {
+            if (currentTab.startsWith('fat_')) {
+                if (thAtual) thAtual.textContent = 'Fat. Atual';
+                if (thAnt) thAnt.textContent = 'Fat. Ano Ant.';
+                if (thTrim) thTrim.textContent = 'Fat. Trim Ant.';
+            } else if (currentTab.startsWith('ton_')) {
+                if (thAtual) thAtual.textContent = 'Ton. Atual';
+                if (thAnt) thAnt.textContent = 'Ton. Ano Ant.';
+                if (thTrim) thTrim.textContent = 'Ton. Trim Ant.';
+            } else if (currentTab.startsWith('pos_')) {
+                if (thAtual) thAtual.textContent = 'Pos. Atual';
+                if (thAnt) thAnt.textContent = 'Pos. Ano Ant.';
+                if (thTrim) thTrim.textContent = 'Pos. Trim Ant.';
+            }
+
             let filtered = vendedoresData;
             if(currentSup !== 'ALL') filtered = filtered.filter(v => v.supervisor_nome === currentSup);
 
