@@ -132,6 +132,101 @@
             color: #c026d3 !important;
         }
     </style>
+
+    <style>
+        /* CSS for Circular Progress Bars */
+        .circular-chart-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 90px;
+        }
+
+        .circular-chart {
+            display: block;
+            margin: 0 auto;
+            max-width: 80%;
+            max-height: 250px;
+        }
+
+        .circle-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.1);
+            stroke-width: 3.8;
+        }
+
+        .circle {
+            fill: none;
+            stroke-width: 2.8;
+            stroke-linecap: round;
+            animation: progress 1s ease-out forwards;
+        }
+
+        @keyframes progress {
+            0% {
+                stroke-dasharray: 0 100;
+            }
+        }
+
+        .circular-chart.salty .circle {
+            stroke: #ff9800;
+        }
+
+        .circular-chart.foods .circle {
+            stroke: #4caf50;
+        }
+
+        .circular-chart.below-target .circle {
+            stroke: #ef4444; /* red for underperforming */
+        }
+
+        .percentage {
+            fill: #fff;
+            font-family: inherit;
+            font-size: 0.5em;
+            text-anchor: middle;
+            font-weight: bold;
+        }
+
+        /* Tooltip styling using standard title attribute is simple, but for custom CSS tooltips: */
+        .cat-tooltip {
+            visibility: hidden;
+            background-color: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -50px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 11px;
+            white-space: nowrap;
+            pointer-events: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .cat-tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: rgba(0, 0, 0, 0.85) transparent transparent transparent;
+        }
+
+        .circular-chart-container:hover .cat-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
 
@@ -175,6 +270,33 @@
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="presentation-geral-cards">
                     <!-- Injected via JS -->
                 </div>
+
+                <div class="mt-8 flex flex-col lg:flex-row gap-6">
+                    <!-- Evolução Mensal Chart -->
+                    <div class="flex-1 presentation-card relative">
+                        <div class="section-title text-sm mb-4">Evolução Mensal - Faturamento</div>
+                        <div class="relative h-64 w-full">
+                            <canvas id="presentation-evolution-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Imagem e Frase Motivacional -->
+                    <div class="w-full lg:w-1/3 presentation-card flex flex-col items-center justify-center text-center relative overflow-hidden group">
+                        <!-- Imagem Ilustrativa (Background/Opaca ou elemento visual) -->
+                        <div class="absolute inset-0 z-0 opacity-20 transition-transform duration-700 group-hover:scale-105"
+                             style="background-image: url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop'); background-size: cover; background-position: center;">
+                        </div>
+                        <div class="absolute inset-0 bg-gradient-to-t from-[#0f0e13] via-[#0f0e13]/80 to-transparent z-10"></div>
+
+                        <div class="relative z-20 p-6 flex flex-col items-center">
+                            <div class="w-16 h-16 rounded-full bg-fuchsia-500/20 flex items-center justify-center mb-4 border border-fuchsia-500/50">
+                                <svg class="w-8 h-8 text-fuchsia-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-white mb-2 tracking-wide">RESULTADOS QUE IMPORTAM</h3>
+                            <p class="text-slate-300 text-sm font-medium italic">"Os números contam a história do nosso esforço. Cada meta superada é o reflexo da nossa dedicação."</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Slide 2: Por Filial -->
@@ -191,6 +313,30 @@
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" id="presentation-filial-cards">
                     <!-- Injected via JS -->
+                </div>
+
+                <div class="section-title text-sm mb-4">Desempenho por Categorias</div>
+                <!-- Mini Gráficos Circulares Container -->
+                <div class="mb-8">
+                    <div class="flex flex-col gap-6">
+
+                        <!-- Salty Row -->
+                        <div class="presentation-card p-4">
+                            <h4 class="text-xs font-bold text-slate-400 mb-4 tracking-wider uppercase border-b border-white/10 pb-2">SALTY</h4>
+                            <div class="flex flex-wrap justify-center lg:justify-start gap-6" id="presentation-cat-salty">
+                                <!-- Injected via JS -->
+                            </div>
+                        </div>
+
+                        <!-- Foods Row -->
+                        <div class="presentation-card p-4">
+                            <h4 class="text-xs font-bold text-slate-400 mb-4 tracking-wider uppercase border-b border-white/10 pb-2">FOODS</h4>
+                            <div class="flex flex-wrap justify-center lg:justify-start gap-6" id="presentation-cat-foods">
+                                <!-- Injected via JS -->
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
 
                 <div class="bg-white/5 rounded-xl border border-white/10 overflow-hidden shadow-lg backdrop-blur-sm">
