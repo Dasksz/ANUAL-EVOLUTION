@@ -3091,16 +3091,36 @@
 
                     <!-- Aba Vendedores -->
                     <div id="presentation-tab-vendedores" class="presentation-tab-content hidden">
-                        <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4 border-b border-white/10 pb-2">Top 10 Vendedores - Variações</h4>
+                        <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                            <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Top 10 Vendedores - Variações</h4>
+                            <div class="flex items-center space-x-3">
+                                <label class="text-xs text-slate-400">Supervisor:</label>
+                                <select id="top-vendedores-supervisor-filter" class="bg-[#0f0e13] border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-[#fc0100]">
+                                    <option value="ALL">Todos</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Mini Tabs for Top 10 Vendedores -->
+                        <div class="flex flex-wrap gap-2 mb-4" id="top-vendedores-tabs">
+                            <button data-tab="fat_geral" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#fc0100]/20 text-[#fc0100] border border-[#fc0100]/50 transition-colors">Faturamento Geral</button>
+                            <button data-tab="fat_salty" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors">Faturamento Salty</button>
+                            <button data-tab="fat_foods" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors">Faturamento Foods</button>
+                            <button data-tab="ton_salty" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors">Ton. Salty</button>
+                            <button data-tab="ton_foods" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors">Ton. Foods</button>
+                            <button data-tab="pos_salty" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors">Pos. Salty</button>
+                            <button data-tab="pos_foods" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors">Pos. Foods</button>
+                        </div>
+
                         <div class="overflow-x-auto rounded-xl border border-white/10">
                             <table class="w-full text-left text-sm text-slate-300">
                                 <thead class="text-xs uppercase bg-[#0f0e13] text-slate-400">
                                     <tr>
                                         <th class="px-4 py-3 w-16 text-center">Pos</th>
                                         <th class="px-4 py-3">Vendedor</th>
-                                        <th class="px-4 py-3 text-right">Fat. Atual</th>
-                                        <th class="px-4 py-3 text-right">Fat. Ano Ant.</th>
-                                        <th class="px-4 py-3 text-right">Fat. Trim Ant.</th>
+                                        <th id="th-atual" class="px-4 py-3 text-right">Fat. Atual</th>
+                                        <th id="th-ant" class="px-4 py-3 text-right">Fat. Ano Ant.</th>
+                                        <th id="th-trim" class="px-4 py-3 text-right">Fat. Trim Ant.</th>
                                         <th class="px-4 py-3 text-right text-emerald-400">Var YoY</th>
                                         <th class="px-4 py-3 text-right text-emerald-400">Var QoQ</th>
                                     </tr>
