@@ -183,7 +183,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Populate Select
-        select.innerHTML = filialData.map(f => `<option value="${f.dimension}">${f.dimension}</option>`).join('');
+                // Get unique filiais filtering out 'Global' and grouping by dimension
+        const uniqueFiliais = [...new Set(filialData.filter(f => f.group_name === 'Geral' && f.dimension !== 'Global').map(f => f.dimension))];
+        select.innerHTML = uniqueFiliais.map(f => `<option value="${f}">${f}</option>`).join('');
 
         const renderFilial = (filialName) => {
             const fd = filialData.find(f => f.dimension === filialName) || filialData[0];
@@ -194,13 +196,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
 
             // Supervisores
-            const sups = (supervisoresData || []).filter(s => s.dimension.startsWith(filialName));
+            const sups = (supervisoresData || []).filter(s => s.dimension.startsWith(filialName) && s.group_name === 'Geral');
             tbodySup.innerHTML = sups.map(s => `
                 <tr class="hover:bg-white/5 transition-colors">
                     <td class="px-4 py-3 font-medium text-white">${s.dimension.split(" - ")[1] || s.dimension}</td>
                     <td class="px-4 py-3 text-right">${formatCurrency(s.fat_atual)}</td>
                     <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_ant)}</td>
-                    <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_ant_trim)}</td>
+                    <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_trim)}</td>
                     <td class="px-4 py-3 text-right">${formatNumber(s.ton_atual)}</td>
                     <td class="px-4 py-3 text-right">${formatNumber(s.pos_atual)}</td>
                 </tr>
@@ -210,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         select.addEventListener('change', (e) => renderFilial(e.target.value));
-        renderFilial(filialData[0].dimension); // init
+        if(uniqueFiliais.length > 0) renderFilial(uniqueFiliais[0]); // init
     }
 
     function renderRede(redesData) {
