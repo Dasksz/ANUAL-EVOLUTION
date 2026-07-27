@@ -509,7 +509,7 @@
                     <button type="button" id="nav-agenda-btn" aria-label="Agenda" class="nav-link side-nav-item"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>Agenda</button>
                     <a href="https://primeba.life/" target="_blank" rel="noopener noreferrer" aria-label="Logística" class="nav-link side-nav-item"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" /><path d="M15 18H9" /><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14" /><circle cx="17" cy="18" r="2" /><circle cx="7" cy="18" r="2" /></svg>Logística</a>
                     <a href="https://dasksz.github.io/RH-PRIME/#" target="_blank" rel="noopener noreferrer" aria-label="Recursos Humanos" class="nav-link side-nav-item"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17 2 2a1 1 0 1 0 3-3" /><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4" /><path d="m21 3 1 11h-2" /><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3" /><path d="M3 4h8" /></svg>Recursos Humanos</a>
-                    <button type="button" id="nav-presentation-btn" aria-label="Apresentação Fechamento" class="nav-link side-nav-item text-fuchsia-400 hover:text-fuchsia-300"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h20M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3m6 18h8M12 16v5"/></svg>Apresentação Fechamento</button>
+                    <a href="presentation.html" target="_blank" id="nav-presentation-btn" aria-label="Apresentação Fechamento" class="nav-link side-nav-item text-fuchsia-400 hover:text-fuchsia-300"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h20M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3m6 18h8M12 16v5"/></svg>Apresentação Fechamento</a>
 
                 </nav>
             </div>
@@ -3002,150 +3002,7 @@
 
 
     <!-- Presentation Modal -->
-    <div id="presentation-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100000] hidden flex items-center justify-center p-4">
-        <div class="bg-[#151419] border border-white/10 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col relative overflow-hidden">
-            <!-- Header -->
-            <div class="flex items-center justify-between p-6 border-b border-white/10 bg-[#0f0e13]">
-                <div class="flex items-center gap-3">
-                    <div class="p-2 bg-fuchsia-500/10 rounded-lg">
-                        <svg class="w-6 h-6 text-fuchsia-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h20M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3m6 18h8M12 16v5"/></svg>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold text-white">Apresentação de Fechamento</h2>
-                        <p class="text-sm text-slate-400" id="presentation-period-label">Carregando período...</p>
-                    </div>
-                </div>
-                <button id="close-presentation-modal" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-white/5 transition-colors focus:outline-none">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
-            </div>
 
-            <!-- Loader State -->
-            <div id="presentation-loader" class="absolute inset-0 z-50 bg-[#151419]/90 backdrop-blur-sm flex flex-col items-center justify-center hidden">
-                <svg class="animate-spin h-12 w-12 text-fuchsia-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <h3 class="text-lg font-bold text-white mb-2" id="presentation-loader-text">Calculando fechamento da apresentação...</h3>
-                <p class="text-slate-400 text-sm max-w-md text-center" id="presentation-loader-subtext">Isso pode levar alguns segundos dependendo do volume de dados.</p>
-            </div>
-
-            <!-- Main Content Area with Tabs -->
-            <div class="flex-1 overflow-hidden flex flex-col">
-                <!-- Tabs Navigation -->
-                <div class="flex items-center gap-1 p-4 border-b border-white/5 overflow-x-auto custom-scrollbar bg-[#0f0e13]/50">
-                    <button class="presentation-tab-btn active px-4 py-2 rounded-lg text-sm font-medium transition-all text-fuchsia-400 bg-fuchsia-500/10 border border-fuchsia-500/20" data-tab="geral">Visão Geral</button>
-                    <button class="presentation-tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent" data-tab="filial">Por Filial</button>
-                    <button class="presentation-tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent" data-tab="rede">Por Rede</button>
-                    <button class="presentation-tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent" data-tab="vendedores">Top Vendedores</button>
-                </div>
-
-                <!-- Tab Contents -->
-                <div class="flex-1 overflow-y-auto p-6 custom-scrollbar bg-[#131217]">
-
-                    <!-- Aba Geral -->
-                    <div id="presentation-tab-geral" class="presentation-tab-content block">
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="presentation-geral-cards">
-                            <!-- Injected via JS -->
-                        </div>
-                    </div>
-
-                    <!-- Aba Filial -->
-                    <div id="presentation-tab-filial" class="presentation-tab-content hidden">
-                        <div class="flex items-center gap-4 mb-4">
-                            <label class="text-sm font-medium text-slate-400">Filtrar:</label>
-                            <select id="presentation-filial-select" class="bg-[#0f0e13] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-fuchsia-500 min-w-[200px]">
-                                <!-- Options -->
-                            </select>
-                        </div>
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" id="presentation-filial-cards">
-                            <!-- Injected via JS -->
-                        </div>
-
-                        <!-- Supervisores da Filial -->
-                        <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4 border-b border-white/10 pb-2">Supervisores da Filial</h4>
-                        <div class="overflow-x-auto rounded-xl border border-white/10">
-                            <table class="w-full text-left text-sm text-slate-300">
-                                <thead class="text-xs uppercase bg-[#0f0e13] text-slate-400">
-                                    <tr>
-                                        <th class="px-4 py-3">Supervisor</th>
-                                        <th class="px-4 py-3 text-right">Faturamento</th>
-                                        <th class="px-4 py-3 text-right">Var YoY</th>
-                                        <th class="px-4 py-3 text-right">Var QoQ</th>
-                                        <th class="px-4 py-3 text-right">Tonelada</th>
-                                        <th class="px-4 py-3 text-right">Positivação</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="presentation-supervisor-tbody" class="divide-y divide-white/5">
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Aba Rede -->
-                    <div id="presentation-tab-rede" class="presentation-tab-content hidden">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="presentation-rede-cards">
-                            <!-- Geral de Redes + Americanas -->
-                        </div>
-                    </div>
-
-                    <!-- Aba Vendedores -->
-                    <div id="presentation-tab-vendedores" class="presentation-tab-content hidden">
-                        <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
-                            <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Top 10 Vendedores - Variações</h4>
-                            <div class="flex items-center space-x-3">
-                                <label class="text-xs text-slate-400">Supervisor:</label>
-                                <select id="top-vendedores-supervisor-filter" class="bg-[#0f0e13] border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-[#fc0100]">
-                                    <option value="ALL">Todos</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Mini Tabs for Top 10 Vendedores -->
-                        <div class="flex flex-wrap gap-2 mb-4" id="top-vendedores-tabs">
-                            <button data-tab="fat_geral" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#fc0100]/20 text-[#fc0100] border border-[#fc0100]/50 transition-colors">Faturamento Geral</button>
-                            <button data-tab="fat_salty" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors">Faturamento Salty</button>
-                            <button data-tab="fat_foods" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors">Faturamento Foods</button>
-                            <button data-tab="ton_salty" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors">Ton. Salty</button>
-                            <button data-tab="ton_foods" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors">Ton. Foods</button>
-                            <button data-tab="pos_salty" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors">Pos. Salty</button>
-                            <button data-tab="pos_foods" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors">Pos. Foods</button>
-                        </div>
-
-                        <div class="overflow-x-auto rounded-xl border border-white/10">
-                            <table class="w-full text-left text-sm text-slate-300">
-                                <thead class="text-xs uppercase bg-[#0f0e13] text-slate-400">
-                                    <tr>
-                                        <th class="px-4 py-3 w-16 text-center">Pos</th>
-                                        <th class="px-4 py-3">Vendedor</th>
-                                        <th id="th-atual" class="px-4 py-3 text-right">Fat. Atual</th>
-                                        <th id="th-ant" class="px-4 py-3 text-right">Fat. Ano Ant.</th>
-                                        <th id="th-trim" class="px-4 py-3 text-right">Fat. Trim Ant.</th>
-                                        <th class="px-4 py-3 text-right text-emerald-400">Var YoY</th>
-                                        <th class="px-4 py-3 text-right text-emerald-400">Var QoQ</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="presentation-vendedores-tbody" class="divide-y divide-white/5">
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="p-4 border-t border-white/10 bg-[#0f0e13] flex justify-end gap-3">
-                <button id="cancel-presentation-btn" class="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors focus:outline-none">
-                    Cancelar
-                </button>
-                <button id="download-presentation-btn" disabled class="px-6 py-2 text-sm font-bold text-white bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors focus:outline-none flex items-center gap-2 shadow-lg shadow-fuchsia-500/20">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    BAIXAR APRESENTAÇÃO
-                </button>
-            </div>
-        </div>
-    </div>
 
 </body>
 </html>
