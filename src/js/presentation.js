@@ -1,3 +1,4 @@
+import supabase from "./supabase.js";
 // presentation.js
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -29,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadData() {
         try {
             // Call RPC without params to get the latest period
-            const { data: rpcData, error } = await window.supabase.rpc('get_closing_presentation_data');
+            const { data: rpcData, error } = await supabase.rpc('get_closing_presentation_data');
 
             if (error) throw error;
             if (!rpcData || Object.keys(rpcData).length === 0) {
@@ -52,7 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('loader-text').textContent = "Gerando análise com Inteligência Artificial...";
             document.getElementById('loader-subtext').textContent = "Conectando ao modelo LLM...";
 
-            const { data: apiKeys, error: apiError } = await window.supabase
+            const { data: apiKeys, error: apiError } = await supabase
                 .from('api_ia')
                 .select('api_key, model_name')
                 .limit(1)
