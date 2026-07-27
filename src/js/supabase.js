@@ -45,6 +45,6 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL || '', SUPABASE
 });
 
 // Attach to window to maintain global 'supabase' variable access for non-module scripts/legacy code
-window.supabase = supabaseClient;
+window.supabaseClient = supabaseClient;
 
 export default supabaseClient;
