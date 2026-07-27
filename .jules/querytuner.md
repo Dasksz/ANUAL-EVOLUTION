@@ -25,3 +25,6 @@ Action: For finding the single latest/top row per group, rewrite the query to us
 2024/07/27 - Pushing down DISTINCT for Array/JSON Aggregation
 Learning: When evaluating `array_agg(DISTINCT ...)` or `json_agg(DISTINCT ...)` in a main query with many rows, PostgreSQL does a massive disk sort to find the unique items across the whole dataset before building the array.
 Action: To avoid this, move the `DISTINCT` into a subquery first: `(SELECT json_agg(...) FROM (SELECT DISTINCT ...) sub)`. This lets PostgreSQL use fast Index Only Scans and HashAggregates on the raw columns and significantly drops query time on filtered views (e.g. from ~450ms to ~190ms).
+2024/07/27 - SARGable Date Queries
+Learning: Using date extraction functions like `EXTRACT(YEAR FROM dtped) = p_year` on large partitioned/indexed time-series tables prevents the query planner from using indexes efficiently and requires scanning the entire table or partition.
+Action: Always use explicit date boundaries (SARGable predicates) like `dtped >= make_date(p_year, 1, 1) AND dtped <= make_date(p_year, 12, 31)` to allow PostgreSQL to utilize index range scans and partition pruning efficiently.
