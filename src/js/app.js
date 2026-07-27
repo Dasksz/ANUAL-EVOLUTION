@@ -10903,6 +10903,10 @@ Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}
         return `<span class="${colorClass}">${sign}${perc.toFixed(1)}%</span>`;
     }
 
+    let topVendedoresData = [];
+    let currentTopVendTab = 'fat_geral';
+    let currentTopVendSupervisor = 'ALL';
+
     function renderTabs(data) {
         document.getElementById('presentation-period-label').textContent = `Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}`;
 
@@ -10917,7 +10921,7 @@ Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}
             });
         }
 
-                // Render Filiais
+        // Render Filiais
         const selectFilial = document.getElementById('presentation-filial-select');
         if (selectFilial && data.filiais) {
             const uniqueFiliais = [...new Set(data.filiais.map(f => f.dimension))];
@@ -10937,58 +10941,150 @@ Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}
                 if(supContainer) {
                     const supers = (data.supervisores || [])
                         .filter(s => s.group_name === 'Geral' && s.dimension.startsWith(val) && parseFloat(s.fat_atual) > 0)
-                        .sort((a,b) => b.fat_atual - a.fat_atual);
-
-                    supContainer.innerHTML = supers.map(s => `
+                        .sort((a,b) => parseFloat(b.fat_atual) - parseFloat(a.fat_atual));
+                        
+                    supContainer.innerHTML = supers.map((s, i) => `
                         <tr>
+                            <td class="px-4 py-3 text-center font-bold text-slate-400">${i+1}º</td>
                             <td class="px-4 py-3 font-medium">${s.dimension.split(' - ')[1] || s.dimension}</td>
                             <td class="px-4 py-3 text-right">R$ ${parseFloat(s.fat_atual).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
-                            <td class="px-4 py-3 text-right">${getVarSpan(s.fat_atual, s.fat_ant)}</td>
-                            <td class="px-4 py-3 text-right">${getVarSpan(s.fat_atual, s.fat_trim)}</td>
-                            <td class="px-4 py-3 text-right">${parseFloat(s.ton_atual).toLocaleString('pt-BR')} kg</td>
-                            <td class="px-4 py-3 text-right text-fuchsia-400 font-bold">${s.pos_atual}</td>
+                            <td class="px-4 py-3 text-right text-slate-500">R$ ${parseFloat(s.fat_ant).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                            <td class="px-4 py-3 text-right text-slate-500">R$ ${parseFloat(s.fat_trim).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                            <td class="px-4 py-3 text-right font-bold">${getVarSpan(s.fat_atual, s.fat_ant)}</td>
+                            <td class="px-4 py-3 text-right font-bold">${getVarSpan(s.fat_atual, s.fat_trim)}</td>
                         </tr>
                     `).join('');
                 }
             };
-            selectFilial.onchange = updateFiliaisView;
-            updateFiliaisView();
+            
+            selectFilial.removeEventListener('change', updateFiliaisView);
+            selectFilial.addEventListener('change', updateFiliaisView);
+            updateFiliaisView(); // initial trigger
         }
 
-// Render Redes
+        // Render Redes
         const redeContainer = document.getElementById('presentation-rede-cards');
-        if(redeContainer) {
+        if(redeContainer && data.redes) {
             redeContainer.innerHTML = '';
-            // Aggregate all Redes for "Geral com Rede"
-            let fatRedeAtual = 0, fatRedeAnt = 0, fatRedeTrim = 0, tonRede = 0, posRede = 0;
-            (data.redes || []).forEach(r => { 
-                fatRedeAtual += parseFloat(r.fat_atual||0); 
-                fatRedeAnt += parseFloat(r.fat_ant||0);
-                fatRedeTrim += parseFloat(r.fat_trim||0);
-                tonRede += parseFloat(r.ton_atual||0); 
-                posRede += parseInt(r.pos_atual||0); 
-            });
+            const fatRedeAtual = data.redes.reduce((acc, curr) => acc + parseFloat(curr.fat_atual), 0);
+            const fatRedeAnt = data.redes.reduce((acc, curr) => acc + parseFloat(curr.fat_ant), 0);
+            const fatRedeTrim = data.redes.reduce((acc, curr) => acc + parseFloat(curr.fat_trim), 0);
+            const tonRede = data.redes.reduce((acc, curr) => acc + parseFloat(curr.ton_atual), 0);
+            const posRede = data.redes.reduce((acc, curr) => acc + parseInt(curr.pos_atual), 0);
+            
             redeContainer.innerHTML += createCardHTML("Todos os Clientes com Rede", { fat_atual: fatRedeAtual, fat_ant: fatRedeAnt, fat_trim: fatRedeTrim, ton_atual: tonRede, pos_atual: posRede });
 
             const amer = (data.redes || []).find(r => r.dimension && r.dimension.toLowerCase().includes('33014556')); // Assuming standard CNPJ prefix for Lojas Americanas
             redeContainer.innerHTML += createCardHTML("Rede: Americanas", amer || { fat_atual: 0, ton_atual: 0, pos_atual: 0 });
         }
 
-        // Render Vendedores
-        const vendContainer = document.getElementById('presentation-vendedores-tbody');
-        if(vendContainer && data.top_vendedores) {
-            vendContainer.innerHTML = data.top_vendedores.map((v, i) => `
-                <tr>
-                    <td class="px-4 py-3 text-center font-bold text-slate-400">${i+1}º</td>
-                    <td class="px-4 py-3 font-medium">${v.vendedor}</td>
-                    <td class="px-4 py-3 text-right">R$ ${parseFloat(v.fat_atual).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
-                    <td class="px-4 py-3 text-right text-slate-500">R$ ${parseFloat(v.fat_ant).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
-                    <td class="px-4 py-3 text-right text-slate-500">R$ ${parseFloat(v.fat_trim).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
-                    <td class="px-4 py-3 text-right font-bold">${getVarSpan(v.fat_atual, v.fat_ant)}</td>
-                    <td class="px-4 py-3 text-right font-bold">${getVarSpan(v.fat_atual, v.fat_trim)}</td>
-                </tr>
-            `).join('');
+        // Render Vendedores setup
+        if (data.top_vendedores) {
+            topVendedoresData = data.top_vendedores;
+            
+            const supSelect = document.getElementById('top-vendedores-supervisor-filter');
+            if (supSelect) {
+                const uniqueSups = [...new Set(topVendedoresData.map(v => v.supervisor_nome))].filter(Boolean);
+                supSelect.innerHTML = '<option value="ALL">Todos</option>' + uniqueSups.map(s => `<option value="${s}">${s}</option>`).join('');
+                
+                supSelect.removeEventListener('change', window.handleTopVendSupChange);
+                window.handleTopVendSupChange = (e) => {
+                    currentTopVendSupervisor = e.target.value;
+                    renderTopVendedoresTable();
+                };
+                supSelect.addEventListener('change', window.handleTopVendSupChange);
+            }
+
+            const tabs = document.querySelectorAll('#top-vendedores-tabs button');
+            tabs.forEach(t => {
+                t.removeEventListener('click', window.handleTopVendTabClick);
+            });
+            window.handleTopVendTabClick = (e) => {
+                const _tabs = document.querySelectorAll('#top-vendedores-tabs button');
+                _tabs.forEach(btn => {
+                    btn.classList.remove('bg-[#fc0100]/20', 'text-[#fc0100]', 'border-[#fc0100]/50');
+                    btn.classList.add('bg-white/5', 'text-slate-400', 'border-transparent');
+                });
+                e.target.classList.remove('bg-white/5', 'text-slate-400', 'border-transparent');
+                e.target.classList.add('bg-[#fc0100]/20', 'text-[#fc0100]', 'border-[#fc0100]/50');
+                
+                currentTopVendTab = e.target.getAttribute('data-tab');
+                renderTopVendedoresTable();
+            };
+            tabs.forEach(t => {
+                t.addEventListener('click', window.handleTopVendTabClick);
+            });
+            
+            // Ensure proper initial state for tabs UI
+            tabs.forEach(btn => {
+                if (btn.getAttribute('data-tab') === currentTopVendTab) {
+                    btn.classList.remove('bg-white/5', 'text-slate-400', 'border-transparent');
+                    btn.classList.add('bg-[#fc0100]/20', 'text-[#fc0100]', 'border-[#fc0100]/50');
+                } else {
+                    btn.classList.remove('bg-[#fc0100]/20', 'text-[#fc0100]', 'border-[#fc0100]/50');
+                    btn.classList.add('bg-white/5', 'text-slate-400', 'border-transparent');
+                }
+            });
+            
+            if (supSelect) supSelect.value = currentTopVendSupervisor;
+
+            renderTopVendedoresTable();
         }
+    }
+
+    function renderTopVendedoresTable() {
+        const vendContainer = document.getElementById('presentation-vendedores-tbody');
+        if (!vendContainer) return;
+
+        let filteredData = topVendedoresData;
+        if (currentTopVendSupervisor !== 'ALL') {
+            filteredData = filteredData.filter(v => v.supervisor_nome === currentTopVendSupervisor);
+        }
+
+        const metricsMap = {
+            'fat_geral': { atual: 'fat_atual', ant: 'fat_ant', trim: 'fat_trim', prefix: 'R$ ', format: (v) => parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) },
+            'fat_salty': { atual: 'fat_atual_salty', ant: 'fat_ant_salty', trim: 'fat_trim_salty', prefix: 'R$ ', format: (v) => parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) },
+            'fat_foods': { atual: 'fat_atual_foods', ant: 'fat_ant_foods', trim: 'fat_trim_foods', prefix: 'R$ ', format: (v) => parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) },
+            'ton_salty': { atual: 'ton_atual_salty', ant: 'ton_ant_salty', trim: 'ton_trim_salty', prefix: '', format: (v) => parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' t' },
+            'ton_foods': { atual: 'ton_atual_foods', ant: 'ton_ant_foods', trim: 'ton_trim_foods', prefix: '', format: (v) => parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' t' },
+            'pos_salty': { atual: 'pos_atual_salty', ant: 'pos_ant_salty', trim: 'pos_trim_salty', prefix: '', format: (v) => Math.round(parseFloat(v)).toLocaleString('pt-BR') },
+            'pos_foods': { atual: 'pos_atual_foods', ant: 'pos_ant_foods', trim: 'pos_trim_foods', prefix: '', format: (v) => Math.round(parseFloat(v)).toLocaleString('pt-BR') },
+        };
+
+        const m = metricsMap[currentTopVendTab];
+        
+        const isFat = currentTopVendTab.startsWith('fat_');
+        const isTon = currentTopVendTab.startsWith('ton_');
+        const isPos = currentTopVendTab.startsWith('pos_');
+        
+        const thAtual = document.getElementById('th-atual');
+        const thAnt = document.getElementById('th-ant');
+        const thTrim = document.getElementById('th-trim');
+        
+        if (thAtual) thAtual.textContent = isFat ? 'Fat. Atual' : (isTon ? 'Ton. Atual' : 'Pos. Atual');
+        if (thAnt) thAnt.textContent = isFat ? 'Fat. Ano Ant.' : (isTon ? 'Ton. Ano Ant.' : 'Pos. Ano Ant.');
+        if (thTrim) thTrim.textContent = isFat ? 'Fat. Trim Ant.' : (isTon ? 'Ton. Trim Ant.' : 'Pos. Trim Ant.');
+
+        // Re-sort data based on the chosen current metric
+        filteredData.sort((a, b) => parseFloat(b[m.atual]) - parseFloat(a[m.atual]));
+        
+        // Take Top 10 of the filtered list
+        filteredData = filteredData.slice(0, 10);
+
+        vendContainer.innerHTML = filteredData.map((v, i) => `
+            <tr>
+                <td class="px-4 py-3 text-center font-bold text-slate-400">${i+1}º</td>
+                <td class="px-4 py-3 font-medium">
+                    <div class="truncate w-32 md:w-auto text-white" title="${v.vendedor}">${v.vendedor}</div>
+                    <div class="text-[10px] text-slate-500 truncate w-32 md:w-auto uppercase" title="${v.supervisor_nome || ''}">${v.supervisor_nome || ''}</div>
+                </td>
+                <td class="px-4 py-3 text-right">${m.prefix}${m.format(v[m.atual] || 0)}</td>
+                <td class="px-4 py-3 text-right text-slate-500">${m.prefix}${m.format(v[m.ant] || 0)}</td>
+                <td class="px-4 py-3 text-right text-slate-500">${m.prefix}${m.format(v[m.trim] || 0)}</td>
+                <td class="px-4 py-3 text-right font-bold">${getVarSpan(v[m.atual] || 0, v[m.ant] || 0)}</td>
+                <td class="px-4 py-3 text-right font-bold">${getVarSpan(v[m.atual] || 0, v[m.trim] || 0)}</td>
+            </tr>
+        `).join('');
     }
 
     function createCardHTML(title, metrics) {
