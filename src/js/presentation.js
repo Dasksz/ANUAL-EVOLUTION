@@ -341,8 +341,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const fatAtual = cd ? Number(cd.fat_atual) : 0;
                 const fatTrim = cd ? Number(cd.fat_trim) : 0;
 
-                // Meta base: 100% = Média do último trimestre + 10%
-                const meta = fatTrim * 1.1;
+                // Meta base: 100% = Média do último trimestre + 15%
+                const meta = fatTrim * 1.15;
                 let pct = 0;
                 if (meta > 0) {
                     pct = (fatAtual / meta) * 100;
