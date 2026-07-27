@@ -212,6 +212,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             ${buildCard("Faturamento Total", d.fat_atual, d.fat_trim, d.fat_ant, true)}
             ${buildCard("Toneladas (Salty+Foods)", d.ton_atual, d.ton_trim, d.ton_ant, false)}
             ${buildCard("Positivação Total", d.pos_atual, d.pos_trim, d.pos_ant, false)}
+            ${buildCard("Devoluções", d.dev_atual, d.dev_trim, d.dev_ant, true)}
+            ${buildCard("Bonificações", d.bonificacao_atual, d.bonificacao_trim, d.bonificacao_ant, true)}
         `;
     }
 
@@ -769,8 +771,8 @@ Abaixo estão os dados completos do fechamento comercial:
 
 ### Visão Geral:
 - Faturamento Atual: ${formatCurrency(global.fat_atual || 0)} (Variação vs Ano Anterior: ${varFatAno}%)
-- Volume Kg Atual: ${formatNumber(global.kg_atual || 0)} Kg (Variação vs Mês Anterior: ${global.kg_ant_trim ? (((global.kg_atual - global.kg_ant_trim)/global.kg_ant_trim)*100).toFixed(1) : 0}%)
-- Devolução: ${formatCurrency(global.dev_atual || 0)} (Representatividade: ${global.fat_atual ? ((global.dev_atual / global.fat_atual)*100).toFixed(1) : 0}%)
+- Volume Kg Atual: ${formatNumber(global.ton_atual || 0)} Kg (Variação vs Mês Anterior: ${global.ton_trim ? (((global.ton_atual - global.ton_trim)/global.ton_trim)*100).toFixed(1) : 0}%)
+- Devolução: ${formatCurrency(global.dev_atual || 0)} (Representatividade: ${global.fat_atual ? ((global.dev_atual / global.fat_atual)*100).toFixed(1) : 0}%)\n- Bonificações: ${formatCurrency(global.bonificacao_atual || 0)} (Representatividade: ${global.fat_atual ? ((global.bonificacao_atual / global.fat_atual)*100).toFixed(1) : 0}%)
 - Positivação (Clientes Ativos): ${formatNumber(global.pos_atual || 0)} (Variação vs Mês Anterior: ${global.pos_ant_trim ? (((global.pos_atual - global.pos_ant_trim)/global.pos_ant_trim)*100).toFixed(1) : 0}%)
 
 ### Destaques por Segmento (Top 3):
@@ -781,7 +783,7 @@ Abaixo estão os dados completos do fechamento comercial:
 
 Por favor, analise esses pontos de forma holística. Escreva um texto direto, profissional, com insights claros sobre:
 1. A performance geral de faturamento e volume.
-2. O impacto das devoluções e da positivação na rentabilidade/cobertura.
+2. O impacto das devoluções, bonificações e da positivação na rentabilidade/cobertura.
 3. Quais filiais, supervisores, redes ou vendedores tracionaram o resultado e merecem destaque.
 4. Conclua com recomendações práticas para o próximo ciclo de vendas.`;
 

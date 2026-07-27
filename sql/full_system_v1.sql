@@ -5939,8 +5939,12 @@ BEGIN
         v_has_filters_no_city := true;
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND ds.categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where := v_where || format(' AND ds.categoria_produto,
+            ds.devolucao,
+            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
+        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto,
+            ds.devolucao,
+            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
         v_has_filters_no_city := true;
     END IF;
 
@@ -6280,8 +6284,12 @@ BEGIN
         v_has_filters_no_city := true;
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND ds.categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where := v_where || format(' AND ds.categoria_produto,
+            ds.devolucao,
+            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
+        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto,
+            ds.devolucao,
+            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
         v_has_filters_no_city := true;
     END IF;
 
@@ -7510,7 +7518,9 @@ BEGIN
         v_where_acumulado := v_where_acumulado || format(' AND ds.tipovenda = ANY(%L::text[]) ', p_tipovenda);
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_acumulado := v_where_acumulado || format(' AND ds.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_acumulado := v_where_acumulado || format(' AND ds.categoria_produto,
+            ds.devolucao,
+            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
     END IF;
     IF p_segmentacao IS NOT NULL AND array_length(p_segmentacao, 1) > 0 THEN
         v_where_acumulado := v_where_acumulado || format(' AND dc.ramo_atividade = ANY(%L::text[]) ', p_segmentacao);
@@ -7696,7 +7706,9 @@ BEGIN
             ds.peso,
             ds.tipovenda,
             ds.codfor
-        , ds.categoria_produto
+        , ds.categoria_produto,
+            ds.devolucao,
+            ds.bonificacao
         FROM public.data_summary ds
         WHERE (ds.ano, ds.mes) IN ( ($1, $2), ($3, $4), ($5, $6), ($7, $8), ($9, $10) )
     ),
@@ -7711,6 +7723,8 @@ BEGIN
             b.vlvenda,
             b.peso,
             b.tipovenda,
+            b.devolucao,
+            b.bonificacao,
             CASE 
                 WHEN b.codfor IN ('707', '708', '752') THEN 'Salty'
                 WHEN b.codfor IN ('1119') THEN 'Foods'
@@ -7745,7 +7759,13 @@ BEGIN
             SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_ant,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
             (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
-            COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant
+            COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN devolucao ELSE 0 END) as dev_atual,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN bonificacao ELSE 0 END) as bonificacao_atual,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN devolucao ELSE 0 END) as dev_ant,
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN devolucao ELSE 0 END) / 3.0 as dev_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN bonificacao ELSE 0 END) as bonificacao_ant,
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN bonificacao ELSE 0 END) / 3.0 as bonificacao_trim
         FROM classified_data
         UNION ALL
         SELECT
@@ -7759,7 +7779,13 @@ BEGIN
             SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_ant,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
             (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
-            COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant
+            COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN devolucao ELSE 0 END) as dev_atual,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN bonificacao ELSE 0 END) as bonificacao_atual,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN devolucao ELSE 0 END) as dev_ant,
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN devolucao ELSE 0 END) / 3.0 as dev_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN bonificacao ELSE 0 END) as bonificacao_ant,
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN bonificacao ELSE 0 END) / 3.0 as bonificacao_trim
         FROM classified_data
         GROUP BY line_group
     ),
@@ -7777,7 +7803,13 @@ BEGIN
             SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_ant,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
             (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
-            COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant
+            COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN devolucao ELSE 0 END) as dev_atual,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN bonificacao ELSE 0 END) as bonificacao_atual,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN devolucao ELSE 0 END) as dev_ant,
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN devolucao ELSE 0 END) / 3.0 as dev_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN bonificacao ELSE 0 END) as bonificacao_ant,
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN bonificacao ELSE 0 END) / 3.0 as bonificacao_trim
         FROM classified_data
         GROUP BY filial
         UNION ALL
@@ -7792,7 +7824,13 @@ BEGIN
             SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_ant,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
             (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
-            COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant
+            COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN devolucao ELSE 0 END) as dev_atual,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN bonificacao ELSE 0 END) as bonificacao_atual,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN devolucao ELSE 0 END) as dev_ant,
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN devolucao ELSE 0 END) / 3.0 as dev_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN bonificacao ELSE 0 END) as bonificacao_ant,
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN bonificacao ELSE 0 END) / 3.0 as bonificacao_trim
         FROM classified_data
         GROUP BY filial, line_group
     ),
