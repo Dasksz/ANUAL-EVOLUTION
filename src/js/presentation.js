@@ -243,19 +243,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderGeral(geralData) {
-    const container = document.getElementById("presentation-geral-cards");
+    const containerLeft = document.getElementById("presentation-geral-cards-left");
+    const containerRight = document.getElementById("presentation-geral-cards-right");
     if (!geralData || geralData.length === 0) {
-      container.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
+      containerLeft.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
+      containerRight.innerHTML = '';
       return;
     }
     const d = geralData.find((g) => g.group_name === "Geral") || geralData[0];
 
-    container.innerHTML = `
+    containerLeft.innerHTML = `
             ${buildCard("Faturamento Total", d.fat_atual, d.fat_trim, d.fat_ant, true)}
             ${buildCard("Toneladas (Salty+Foods)", d.ton_atual, d.ton_trim, d.ton_ant, false)}
-            ${buildCard("Positivação Total", d.pos_atual, d.pos_trim, d.pos_ant, false)}
             ${buildCard("Devoluções", d.dev_atual, d.dev_trim, d.dev_ant, true)}
             ${buildCard("Bonificações", d.bonificacao_atual, d.bonificacao_trim, d.bonificacao_ant, true)}
+        `;
+
+    containerRight.innerHTML = `
+            ${buildCard("Positivação Total", d.pos_atual, d.pos_trim, d.pos_ant, false)}
         `;
   }
 
