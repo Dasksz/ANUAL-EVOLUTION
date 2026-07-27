@@ -7715,7 +7715,11 @@ BEGIN
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_ant,
             SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
-            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
+            SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) / 3.0 as ton_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_ant,
+            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
+            (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
+            COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant
         FROM classified_data
         UNION ALL
         SELECT
@@ -7725,7 +7729,11 @@ BEGIN
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_ant,
             SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
-            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
+            SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) / 3.0 as ton_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_ant,
+            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
+            (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
+            COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant
         FROM classified_data
         GROUP BY line_group
     ),
@@ -7739,7 +7747,11 @@ BEGIN
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_ant,
             SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
-            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
+            SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) / 3.0 as ton_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_ant,
+            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
+            (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
+            COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant
         FROM classified_data
         GROUP BY filial
         UNION ALL
@@ -7750,7 +7762,11 @@ BEGIN
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_ant,
             SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
-            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual
+            SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) / 3.0 as ton_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_ant,
+            COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
+            (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
+            COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant
         FROM classified_data
         GROUP BY filial, line_group
     ),
@@ -7771,7 +7787,11 @@ BEGIN
             SUM(CASE WHEN (c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10) THEN c.vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.vlvenda ELSE 0 END) as fat_ant,
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) as ton_atual,
-            COUNT(DISTINCT CASE WHEN c.ano = $1 AND c.mes = $2 AND c.vlvenda >= 1 THEN c.codcli END) as pos_atual
+            SUM(CASE WHEN ((c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10)) AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) / 3.0 as ton_trim,
+            SUM(CASE WHEN c.ano = $3 AND c.mes = $4 AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) as ton_ant,
+            COUNT(DISTINCT CASE WHEN c.ano = $1 AND c.mes = $2 AND c.vlvenda >= 1 THEN c.codcli END) as pos_atual,
+            (COUNT(DISTINCT CASE WHEN c.ano = $5 AND c.mes = $6 AND c.vlvenda >= 1 THEN c.codcli END) + COUNT(DISTINCT CASE WHEN c.ano = $7 AND c.mes = $8 AND c.vlvenda >= 1 THEN c.codcli END) + COUNT(DISTINCT CASE WHEN c.ano = $9 AND c.mes = $10 AND c.vlvenda >= 1 THEN c.codcli END)) / 3.0 as pos_trim,
+            COUNT(DISTINCT CASE WHEN c.ano = $3 AND c.mes = $4 AND c.vlvenda >= 1 THEN c.codcli END) as pos_ant
         FROM classified_data c
         LEFT JOIN dim_supervisores ds ON c.codsupervisor = ds.codigo
         GROUP BY c.filial, c.codsupervisor
@@ -7791,7 +7811,11 @@ BEGIN
             SUM(CASE WHEN (c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10) THEN c.vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.vlvenda ELSE 0 END) as fat_ant,
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) as ton_atual,
-            COUNT(DISTINCT CASE WHEN c.ano = $1 AND c.mes = $2 AND c.vlvenda >= 1 THEN c.codcli END) as pos_atual
+            SUM(CASE WHEN ((c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10)) AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) / 3.0 as ton_trim,
+            SUM(CASE WHEN c.ano = $3 AND c.mes = $4 AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) as ton_ant,
+            COUNT(DISTINCT CASE WHEN c.ano = $1 AND c.mes = $2 AND c.vlvenda >= 1 THEN c.codcli END) as pos_atual,
+            (COUNT(DISTINCT CASE WHEN c.ano = $5 AND c.mes = $6 AND c.vlvenda >= 1 THEN c.codcli END) + COUNT(DISTINCT CASE WHEN c.ano = $7 AND c.mes = $8 AND c.vlvenda >= 1 THEN c.codcli END) + COUNT(DISTINCT CASE WHEN c.ano = $9 AND c.mes = $10 AND c.vlvenda >= 1 THEN c.codcli END)) / 3.0 as pos_trim,
+            COUNT(DISTINCT CASE WHEN c.ano = $3 AND c.mes = $4 AND c.vlvenda >= 1 THEN c.codcli END) as pos_ant
         FROM classified_data c
         LEFT JOIN dim_supervisores ds ON c.codsupervisor = ds.codigo
         GROUP BY c.filial, c.codsupervisor, c.line_group
@@ -7807,7 +7831,11 @@ BEGIN
             SUM(CASE WHEN (c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10) THEN c.vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.vlvenda ELSE 0 END) as fat_ant,
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) as ton_atual,
-            COUNT(DISTINCT CASE WHEN c.ano = $1 AND c.mes = $2 AND c.vlvenda >= 1 THEN c.codcli END) as pos_atual
+            SUM(CASE WHEN ((c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10)) AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) / 3.0 as ton_trim,
+            SUM(CASE WHEN c.ano = $3 AND c.mes = $4 AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) as ton_ant,
+            COUNT(DISTINCT CASE WHEN c.ano = $1 AND c.mes = $2 AND c.vlvenda >= 1 THEN c.codcli END) as pos_atual,
+            (COUNT(DISTINCT CASE WHEN c.ano = $5 AND c.mes = $6 AND c.vlvenda >= 1 THEN c.codcli END) + COUNT(DISTINCT CASE WHEN c.ano = $7 AND c.mes = $8 AND c.vlvenda >= 1 THEN c.codcli END) + COUNT(DISTINCT CASE WHEN c.ano = $9 AND c.mes = $10 AND c.vlvenda >= 1 THEN c.codcli END)) / 3.0 as pos_trim,
+            COUNT(DISTINCT CASE WHEN c.ano = $3 AND c.mes = $4 AND c.vlvenda >= 1 THEN c.codcli END) as pos_ant
         FROM classified_data c
         INNER JOIN data_clients dc ON c.codcli = dc.codigo_cliente
         WHERE dc.ramo IS NOT NULL AND dc.ramo != ''
@@ -7833,7 +7861,11 @@ BEGIN
             SUM(CASE WHEN (c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10) THEN c.vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.vlvenda ELSE 0 END) as fat_ant,
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) as ton_atual,
+            SUM(CASE WHEN ((c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10)) AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) / 3.0 as ton_trim,
+            SUM(CASE WHEN c.ano = $3 AND c.mes = $4 AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) as ton_ant,
             COUNT(DISTINCT CASE WHEN c.ano = $1 AND c.mes = $2 AND c.vlvenda >= 1 THEN c.codcli END) as pos_atual,
+            (COUNT(DISTINCT CASE WHEN c.ano = $5 AND c.mes = $6 AND c.vlvenda >= 1 THEN c.codcli END) + COUNT(DISTINCT CASE WHEN c.ano = $7 AND c.mes = $8 AND c.vlvenda >= 1 THEN c.codcli END) + COUNT(DISTINCT CASE WHEN c.ano = $9 AND c.mes = $10 AND c.vlvenda >= 1 THEN c.codcli END)) / 3.0 as pos_trim,
+            COUNT(DISTINCT CASE WHEN c.ano = $3 AND c.mes = $4 AND c.vlvenda >= 1 THEN c.codcli END) as pos_ant,
             
             -- SALTY
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 AND c.line_group = 'Salty' THEN c.vlvenda ELSE 0 END) as fat_atual_salty,

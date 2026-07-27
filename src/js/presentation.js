@@ -85,41 +85,74 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupVendedores(data.top_vendedores);
     }
 
-    function buildCard(title, value, prevVal, isCurrency, isPercentage = false) {
+    function buildCard(title, value, prevValTrim, prevValAno, isCurrency, isPercentage = false) {
         let valFmt = isCurrency ? formatCurrency(value) : (isPercentage ? formatPercent(value) : formatNumber(value));
 
-        let varColor = "text-slate-400";
-        let varIcon = "";
-        let varText = "-";
+        let varColorTrim = "text-slate-400";
+        let varIconTrim = "";
+        let varTextTrim = "-";
 
-        if (prevVal !== undefined && prevVal !== null && prevVal !== 0) {
-            const variacao = ((value - prevVal) / Math.abs(prevVal)) * 100;
+        if (prevValTrim !== undefined && prevValTrim !== null && prevValTrim !== 0) {
+            const variacao = ((value - prevValTrim) / Math.abs(prevValTrim)) * 100;
             const variacaoFmt = formatPercent(variacao);
             if (variacao > 0) {
-                varColor = "text-emerald-400";
-                varIcon = "↑";
-                varText = `+${variacaoFmt}`;
+                varColorTrim = "text-emerald-400";
+                varIconTrim = "↑";
+                varTextTrim = `+${variacaoFmt}`;
             } else if (variacao < 0) {
-                varColor = "text-red-400";
-                varIcon = "↓";
-                varText = `${variacaoFmt}`;
+                varColorTrim = "text-red-400";
+                varIconTrim = "↓";
+                varTextTrim = `${variacaoFmt}`;
             } else {
-                varText = "0%";
+                varTextTrim = "0%";
             }
-        } else if (prevVal === 0 && value > 0) {
-             varColor = "text-emerald-400";
-             varIcon = "↑";
-             varText = "+100%";
+        } else if (prevValTrim === 0 && value > 0) {
+             varColorTrim = "text-emerald-400";
+             varIconTrim = "↑";
+             varTextTrim = "+100%";
         }
+
+        let varColorAno = "text-slate-400";
+        let varIconAno = "";
+        let varTextAno = "-";
+
+        if (prevValAno !== undefined && prevValAno !== null && prevValAno !== 0) {
+            const variacao = ((value - prevValAno) / Math.abs(prevValAno)) * 100;
+            const variacaoFmt = formatPercent(variacao);
+            if (variacao > 0) {
+                varColorAno = "text-emerald-400";
+                varIconAno = "↑";
+                varTextAno = `+${variacaoFmt}`;
+            } else if (variacao < 0) {
+                varColorAno = "text-red-400";
+                varIconAno = "↓";
+                varTextAno = `${variacaoFmt}`;
+            } else {
+                varTextAno = "0%";
+            }
+        } else if (prevValAno === 0 && value > 0) {
+             varColorAno = "text-emerald-400";
+             varIconAno = "↑";
+             varTextAno = "+100%";
+        }
+
 
         return `
             <div class="presentation-card">
                 <div class="metric-label">${title}</div>
                 <div class="metric-value">${valFmt}</div>
-                <div class="mt-2 text-sm font-medium ${varColor} flex items-center gap-1">
-                    <span>${varIcon} ${varText}</span>
-                    <span class="text-xs text-slate-500 font-normal">vs Anterior</span>
+                
+                <div class="mt-4 grid grid-cols-2 gap-2 text-sm border-t border-white/10 pt-2">
+                    <div class="flex flex-col">
+                         <span class="text-xs text-slate-500 font-normal mb-0.5">vs Trim. Ant.</span>
+                         <span class="font-medium ${varColorTrim} flex items-center gap-1">${varIconTrim} ${varTextTrim}</span>
+                    </div>
+                    <div class="flex flex-col border-l border-white/10 pl-2">
+                         <span class="text-xs text-slate-500 font-normal mb-0.5">vs Ano Ant.</span>
+                         <span class="font-medium ${varColorAno} flex items-center gap-1">${varIconAno} ${varTextAno}</span>
+                    </div>
                 </div>
+
             </div>
         `;
     }
@@ -133,9 +166,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const d = geralData.find(g => g.group_name === 'Geral') || geralData[0];
 
         container.innerHTML = `
-            ${buildCard("Faturamento Total", d.fat_atual, d.fat_ant, true)}
-            ${buildCard("Toneladas (Salty+Foods)", d.ton_atual, d.ton_ant, false)}
-            ${buildCard("Positivação Total", d.pos_atual, d.pos_ant, false)}
+            ${buildCard("Faturamento Total", d.fat_atual, d.fat_trim, d.fat_ant, true)}
+            ${buildCard("Toneladas (Salty+Foods)", d.ton_atual, d.ton_trim, d.ton_ant, false)}
+            ${buildCard("Positivação Total", d.pos_atual, d.pos_trim, d.pos_ant, false)}
         `;
     }
 
@@ -155,9 +188,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const renderFilial = (filialName) => {
             const fd = filialData.find(f => f.dimension === filialName) || filialData[0];
             containerCards.innerHTML = `
-                ${buildCard("Faturamento", fd.fat_atual, fd.fat_ant, true)}
-                ${buildCard("Toneladas", fd.ton_atual, fd.ton_ant, false)}
-                ${buildCard("Positivação", fd.pos_atual, fd.pos_ant, false)}
+                ${buildCard("Faturamento", fd.fat_atual, fd.fat_trim, fd.fat_ant, true)}
+                ${buildCard("Toneladas", fd.ton_atual, fd.ton_trim, fd.ton_ant, false)}
+                ${buildCard("Positivação", fd.pos_atual, fd.pos_trim, fd.pos_ant, false)}
             `;
 
             // Supervisores
@@ -197,12 +230,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div>
                         <div class="text-xs text-slate-400 mb-1">Faturamento</div>
                         <div class="text-xl font-bold text-white">${formatCurrency(topAtacado.fat_atual)}</div>
-                        <div class="text-sm mt-1">${renderVarBadge(topAtacado.fat_atual, topAtacado.fat_ant)} YoY</div>
+                        <div class="text-sm mt-1">${renderVarBadge(topAtacado.fat_atual, topAtacado.fat_trim)} vs Trim, ${renderVarBadge(topAtacado.fat_atual, topAtacado.fat_ant)} vs Ano</div>
                     </div>
                     <div>
                         <div class="text-xs text-slate-400 mb-1">Toneladas</div>
                         <div class="text-xl font-bold text-white">${formatNumber(topAtacado.ton_atual)}</div>
-                        <div class="text-sm mt-1">${renderVarBadge(topAtacado.ton_atual, topAtacado.ton_ant)} YoY</div>
+                        <div class="text-sm mt-1">${renderVarBadge(topAtacado.ton_atual, topAtacado.ton_trim)} vs Trim, ${renderVarBadge(topAtacado.ton_atual, topAtacado.ton_ant)} vs Ano</div>
                     </div>
                 </div>
             </div>
@@ -214,7 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="flex justify-between items-center bg-black/20 p-2 rounded">
                             <span class="text-sm font-medium text-slate-300 truncate w-32" title="${r.dimension}">${r.dimension}</span>
                             <span class="text-sm text-white">${formatCurrency(r.fat_atual)}</span>
-                            <span class="text-xs">${renderVarBadge(r.fat_atual, r.fat_ant)}</span>
+                            <span class="text-xs">${renderVarBadge(r.fat_atual, r.fat_trim)} vs Trim, ${renderVarBadge(r.fat_atual, r.fat_ant)} vs Ano</span>
                         </div>
                     `).join('')}
                  </div>
@@ -258,8 +291,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             tbody.innerHTML = top10.map((v, idx) => {
                 const valAtual = v[sortKey] || 0;
                 let keyAntYear = sortKey.replace('_atual', '_ant');
-                let keyAntTrim = sortKey.replace('_atual', '_ant_trim');
-                if(sortKey === 'fat_atual') { keyAntYear = 'fat_ant'; keyAntTrim = 'fat_ant_trim'; }
+                let keyAntTrim = sortKey.replace('_atual', '_trim');
+                if(sortKey === 'fat_atual') { keyAntYear = 'fat_ant'; keyAntTrim = 'fat_trim'; }
 
                 const valYear = v[keyAntYear] || 0;
                 const valTrim = v[keyAntTrim] || 0;
