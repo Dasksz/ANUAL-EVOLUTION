@@ -1,0 +1,411 @@
+// presentation.js
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize Swiper
+    const swiper = new Swiper(".mySwiper", {
+        pagination: {
+            el: ".swiper-pagination",
+            clickable: true,
+        },
+        navigation: {
+            nextEl: ".swiper-button-next",
+            prevEl: ".swiper-button-prev",
+        },
+        keyboard: {
+            enabled: true,
+        },
+        effect: "fade", // Gives a nice presentation transition effect
+        fadeEffect: {
+            crossFade: true
+        }
+    });
+
+    const overlay = document.getElementById('loading-overlay');
+    const btnDownload = document.getElementById('download-docx-btn');
+
+    let presentationData = null;
+    let aiAnalysisText = null;
+
+    async function loadData() {
+        try {
+            // Call RPC without params to get the latest period
+            const { data: rpcData, error } = await window.supabase.rpc('get_closing_presentation_data');
+
+            if (error) throw error;
+            if (!rpcData || Object.keys(rpcData).length === 0) {
+                throw new Error("Nenhum dado encontrado no banco.");
+            }
+
+            presentationData = rpcData;
+
+            // Set header subtitle based on data returned
+            if(rpcData.geral && rpcData.geral.length > 0) {
+                const mes = rpcData.geral[0].mes;
+                const ano = rpcData.geral[0].ano;
+                const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                document.getElementById('presentation-subtitle').textContent = `Fechamento Comercial - ${monthNames[mes-1]} ${ano}`;
+            }
+
+            renderSlides(rpcData);
+
+            // Fetch AI
+            document.getElementById('loader-text').textContent = "Gerando análise com Inteligência Artificial...";
+            document.getElementById('loader-subtext').textContent = "Conectando ao modelo LLM...";
+
+            const { data: apiKeys, error: apiError } = await window.supabase
+                .from('api_ia')
+                .select('api_key, model_name')
+                .limit(1)
+                .single();
+
+            if (apiError || !apiKeys?.api_key) {
+                console.warn("Chave de API não encontrada.");
+                aiAnalysisText = "Análise automática não disponível. Chave de API não configurada.";
+                document.getElementById('ai-analysis-content').innerHTML = `<p class="text-red-400 p-4 bg-red-900/20 rounded-lg">Análise indisponível. Verifique as configurações de IA.</p>`;
+            } else {
+                aiAnalysisText = await generateAiAnalysis(apiKeys.api_key, apiKeys.model_name || 'deepseek-chat', rpcData);
+                document.getElementById('ai-analysis-content').innerHTML = `<div class="whitespace-pre-wrap">${aiAnalysisText}</div>`;
+            }
+
+            btnDownload.disabled = false;
+        } catch (err) {
+            console.error("Erro na Apresentação:", err);
+            alert("Erro ao carregar dados: " + err.message);
+        } finally {
+            overlay.style.display = 'none';
+        }
+    }
+
+    // --- RENDER LOGIC (Adapted from app.js) ---
+    function renderSlides(data) {
+        renderGeral(data.geral);
+        setupFilial(data.filial, data.supervisores);
+        renderRede(data.redes); // Actually Atacado
+        setupVendedores(data.top_vendedores);
+    }
+
+    function buildCard(title, value, prevVal, isCurrency, isPercentage = false) {
+        let valFmt = isCurrency ? formatCurrency(value) : (isPercentage ? formatPercent(value) : formatNumber(value));
+
+        let varColor = "text-slate-400";
+        let varIcon = "";
+        let varText = "-";
+
+        if (prevVal !== undefined && prevVal !== null && prevVal !== 0) {
+            const variacao = ((value - prevVal) / Math.abs(prevVal)) * 100;
+            const variacaoFmt = formatPercent(variacao);
+            if (variacao > 0) {
+                varColor = "text-emerald-400";
+                varIcon = "↑";
+                varText = `+${variacaoFmt}`;
+            } else if (variacao < 0) {
+                varColor = "text-red-400";
+                varIcon = "↓";
+                varText = `${variacaoFmt}`;
+            } else {
+                varText = "0%";
+            }
+        } else if (prevVal === 0 && value > 0) {
+             varColor = "text-emerald-400";
+             varIcon = "↑";
+             varText = "+100%";
+        }
+
+        return `
+            <div class="presentation-card">
+                <div class="metric-label">${title}</div>
+                <div class="metric-value">${valFmt}</div>
+                <div class="mt-2 text-sm font-medium ${varColor} flex items-center gap-1">
+                    <span>${varIcon} ${varText}</span>
+                    <span class="text-xs text-slate-500 font-normal">vs Anterior</span>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderGeral(geralData) {
+        const container = document.getElementById('presentation-geral-cards');
+        if(!geralData || geralData.length === 0) {
+            container.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
+            return;
+        }
+        const d = geralData[0];
+
+        container.innerHTML = `
+            ${buildCard("Faturamento Total", d.fat_atual, d.fat_ant_year, true)}
+            ${buildCard("Toneladas (Salty+Foods)", d.ton_atual, d.ton_ant_year, false)}
+            ${buildCard("Positivação Total", d.pos_atual, d.pos_ant_year, false)}
+        `;
+    }
+
+    function setupFilial(filialData, supervisoresData) {
+        const select = document.getElementById('presentation-filial-select');
+        const containerCards = document.getElementById('presentation-filial-cards');
+        const tbodySup = document.getElementById('presentation-supervisor-tbody');
+
+        if(!filialData || filialData.length === 0) {
+             containerCards.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
+             return;
+        }
+
+        // Populate Select
+        select.innerHTML = filialData.map(f => `<option value="${f.filial}">${f.filial}</option>`).join('');
+
+        const renderFilial = (filialName) => {
+            const fd = filialData.find(f => f.filial === filialName) || filialData[0];
+            containerCards.innerHTML = `
+                ${buildCard("Faturamento", fd.fat_atual, fd.fat_ant_year, true)}
+                ${buildCard("Toneladas", fd.ton_atual, fd.ton_ant_year, false)}
+                ${buildCard("Positivação", fd.pos_atual, fd.pos_ant_year, false)}
+            `;
+
+            // Supervisores
+            const sups = (supervisoresData || []).filter(s => s.filial === filialName);
+            tbodySup.innerHTML = sups.map(s => `
+                <tr class="hover:bg-white/5 transition-colors">
+                    <td class="px-4 py-3 font-medium text-white">${s.supervisor}</td>
+                    <td class="px-4 py-3 text-right">${formatCurrency(s.fat_atual)}</td>
+                    <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_ant_year)}</td>
+                    <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_ant_trim)}</td>
+                    <td class="px-4 py-3 text-right">${formatNumber(s.ton_atual)}</td>
+                    <td class="px-4 py-3 text-right">${formatNumber(s.pos_atual)}</td>
+                </tr>
+            `).join('');
+
+            if(sups.length === 0) tbodySup.innerHTML = `<tr><td colspan="6" class="px-4 py-4 text-center text-slate-500">Nenhum supervisor encontrado.</td></tr>`;
+        };
+
+        select.addEventListener('change', (e) => renderFilial(e.target.value));
+        renderFilial(filialData[0].filial); // init
+    }
+
+    function renderRede(redesData) {
+        const container = document.getElementById('presentation-rede-cards');
+        if(!redesData || redesData.length === 0) {
+            container.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
+            return;
+        }
+
+        // "Rede" is now conceptually "Atacado"
+        const topAtacado = redesData.sort((a,b) => b.fat_atual - a.fat_atual)[0] || redesData[0];
+
+        container.innerHTML = `
+            <div class="presentation-card bg-gradient-to-br from-fuchsia-900/40 to-transparent border-fuchsia-500/30">
+                <h3 class="text-lg font-bold text-white mb-4 border-b border-fuchsia-500/30 pb-2">Top Atacado: ${topAtacado.rede}</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-xs text-slate-400 mb-1">Faturamento</div>
+                        <div class="text-xl font-bold text-white">${formatCurrency(topAtacado.fat_atual)}</div>
+                        <div class="text-sm mt-1">${renderVarBadge(topAtacado.fat_atual, topAtacado.fat_ant_year)} YoY</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400 mb-1">Toneladas</div>
+                        <div class="text-xl font-bold text-white">${formatNumber(topAtacado.ton_atual)}</div>
+                        <div class="text-sm mt-1">${renderVarBadge(topAtacado.ton_atual, topAtacado.ton_ant_year)} YoY</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="presentation-card">
+                 <h3 class="text-sm font-bold text-slate-300 mb-4 border-b border-white/10 pb-2">Outros Atacados</h3>
+                 <div class="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                    ${redesData.filter(r => r.rede !== topAtacado.rede).map(r => `
+                        <div class="flex justify-between items-center bg-black/20 p-2 rounded">
+                            <span class="text-sm font-medium text-slate-300 truncate w-32" title="${r.rede}">${r.rede}</span>
+                            <span class="text-sm text-white">${formatCurrency(r.fat_atual)}</span>
+                            <span class="text-xs">${renderVarBadge(r.fat_atual, r.fat_ant_year)}</span>
+                        </div>
+                    `).join('')}
+                 </div>
+            </div>
+        `;
+    }
+
+    function setupVendedores(vendedoresData) {
+        if(!vendedoresData) return;
+
+        const tabs = document.querySelectorAll('#top-vendedores-tabs button');
+        const selectSup = document.getElementById('top-vendedores-supervisor-filter');
+        const tbody = document.getElementById('presentation-vendedores-tbody');
+
+        // Populate select
+        const sups = [...new Set(vendedoresData.map(v => v.supervisor).filter(Boolean))].sort();
+        selectSup.innerHTML = '<option value="ALL">Todos</option>' + sups.map(s => `<option value="${s}">${s}</option>`).join('');
+
+        let currentTab = 'fat_geral';
+        let currentSup = 'ALL';
+
+        const renderTable = () => {
+            let filtered = vendedoresData;
+            if(currentSup !== 'ALL') filtered = filtered.filter(v => v.supervisor === currentSup);
+
+            // Sort based on tab
+            let sortKey = 'fat_atual';
+            if(currentTab === 'fat_salty') sortKey = 'fat_salty_atual';
+            if(currentTab === 'fat_foods') sortKey = 'fat_foods_atual';
+            if(currentTab === 'ton_salty') sortKey = 'ton_salty_atual';
+            if(currentTab === 'ton_foods') sortKey = 'ton_foods_atual';
+            if(currentTab === 'pos_salty') sortKey = 'pos_salty_atual';
+            if(currentTab === 'pos_foods') sortKey = 'pos_foods_atual';
+
+            filtered.sort((a,b) => (b[sortKey] || 0) - (a[sortKey] || 0));
+            const top10 = filtered.slice(0, 10);
+
+            // Determine if formatting currency or number
+            const isCurr = currentTab.startsWith('fat_');
+
+            tbody.innerHTML = top10.map((v, idx) => {
+                const valAtual = v[sortKey] || 0;
+                let keyAntYear = sortKey.replace('_atual', '_ant_year');
+                let keyAntTrim = sortKey.replace('_atual', '_ant_trim');
+                if(sortKey === 'fat_atual') { keyAntYear = 'fat_ant_year'; keyAntTrim = 'fat_ant_trim'; }
+
+                const valYear = v[keyAntYear] || 0;
+                const valTrim = v[keyAntTrim] || 0;
+
+                const fmt = isCurr ? formatCurrency : formatNumber;
+
+                let medal = `<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs font-bold text-slate-300">${idx+1}</span>`;
+                if(idx === 0) medal = `🥇`;
+                if(idx === 1) medal = `🥈`;
+                if(idx === 2) medal = `🥉`;
+
+                return `
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <td class="px-4 py-3 text-center">${medal}</td>
+                        <td class="px-4 py-3 font-medium text-white">
+                            <div class="truncate max-w-[150px]" title="${v.vendedor}">${v.vendedor}</div>
+                            <div class="text-[10px] text-slate-500">${v.supervisor || 'N/A'}</div>
+                        </td>
+                        <td class="px-4 py-3 text-right font-semibold text-fuchsia-400">${fmt(valAtual)}</td>
+                        <td class="px-4 py-3 text-right text-slate-400">${fmt(valYear)}</td>
+                        <td class="px-4 py-3 text-right text-slate-400">${fmt(valTrim)}</td>
+                        <td class="px-4 py-3 text-right">${renderVarBadge(valAtual, valYear)}</td>
+                        <td class="px-4 py-3 text-right">${renderVarBadge(valAtual, valTrim)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            if(top10.length === 0) tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-4 text-center text-slate-500">Nenhum vendedor encontrado.</td></tr>`;
+        };
+
+        selectSup.addEventListener('change', (e) => { currentSup = e.target.value; renderTable(); });
+
+        tabs.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabs.forEach(b => {
+                    b.classList.remove('bg-[#fc0100]/20', 'text-[#fc0100]', 'border-[#fc0100]/50');
+                    b.classList.add('bg-white/5', 'text-slate-400', 'border-transparent');
+                });
+                btn.classList.add('bg-[#fc0100]/20', 'text-[#fc0100]', 'border-[#fc0100]/50');
+                btn.classList.remove('bg-white/5', 'text-slate-400');
+                currentTab = btn.getAttribute('data-tab');
+                renderTable();
+            });
+        });
+
+        renderTable();
+    }
+
+    // --- UTILS ---
+    function formatCurrency(val) {
+        if (!val) return 'R$ 0,00';
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+    }
+    function formatNumber(val) {
+        if (!val) return '0';
+        return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(val);
+    }
+    function formatPercent(val) {
+        if (!val && val !== 0) return '0%';
+        return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(val) + '%';
+    }
+
+    function renderVarBadge(atual, anterior) {
+        if (!anterior || anterior === 0) {
+             return atual > 0 ? `<span class="text-emerald-400 font-medium">↑ +100%</span>` : `<span class="text-slate-500">-</span>`;
+        }
+        const varPct = ((atual - anterior) / Math.abs(anterior)) * 100;
+        const fmt = formatPercent(Math.abs(varPct));
+        if (varPct > 0) return `<span class="text-emerald-400 font-medium">↑ ${fmt}</span>`;
+        if (varPct < 0) return `<span class="text-red-400 font-medium">↓ ${fmt}</span>`;
+        return `<span class="text-slate-400 font-medium">0%</span>`;
+    }
+
+    // --- AI LOGIC ---
+    async function generateAiAnalysis(apiKey, modelName, data) {
+        let promptText = `Atue como um analista comercial sênior e crie um roteiro executivo para uma apresentação de resultados.
+Abaixo estão os dados do fechamento comercial:
+- Visão Geral: Faturamento atual ${formatCurrency(data.geral?.[0]?.fat_atual)}, Variacao vs Ano Anterior: ${data.geral?.[0]?.fat_ant_year ? (((data.geral[0].fat_atual - data.geral[0].fat_ant_year)/data.geral[0].fat_ant_year)*100).toFixed(1) : 0}%
+Por favor, analise esses pontos e escreva um texto direto, profissional, com insights claros.`;
+
+        try {
+            const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: modelName,
+                    messages: [
+                        { role: "system", content: "Você é um analista executivo focado em resultados comerciais de bens de consumo." },
+                        { role: "user", content: promptText }
+                    ],
+                    temperature: 0.5,
+                    max_tokens: 800
+                })
+            });
+            if (!response.ok) throw new Error("Erro na API da IA");
+            const resData = await response.json();
+            return resData.choices[0].message.content;
+        } catch (e) {
+            console.error(e);
+            return "Erro ao comunicar com a inteligência artificial.";
+        }
+    }
+
+    // --- DOCX DOWNLOAD ---
+    btnDownload.addEventListener('click', async () => {
+        if(!window.docx || !aiAnalysisText) return;
+        try {
+            const { Document, Packer, Paragraph, TextRun } = window.docx;
+
+            const paragraphs = aiAnalysisText.split('\n').filter(p => p.trim() !== '').map(text => {
+                return new Paragraph({
+                    children: [ new TextRun({ text: text, size: 24 }) ],
+                    spacing: { after: 200 }
+                });
+            });
+
+            const doc = new Document({
+                sections: [{
+                    properties: {},
+                    children: [
+                        new Paragraph({
+                            children: [ new TextRun({ text: "Resumo Executivo - Fechamento Comercial", bold: true, size: 32 }) ],
+                            spacing: { after: 400 }
+                        }),
+                        ...paragraphs
+                    ]
+                }]
+            });
+
+            const blob = await Packer.toBlob(doc);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "Analise_Fechamento.docx";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch(e) {
+            console.error(e);
+            alert("Erro ao gerar arquivo Word.");
+        }
+    });
+
+    // START
+    loadData();
+});

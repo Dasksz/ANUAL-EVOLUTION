@@ -1,0 +1,56 @@
+/* Additional Custom Presentation Styles */
+.presentation-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.presentation-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+    border-color: rgba(192, 38, 211, 0.3); /* fuchsia-600 */
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: white;
+    margin-top: 0.5rem;
+    background: linear-gradient(to right, #e879f9, #c026d3);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+/* Animations for slide entry */
+.swiper-slide-active .presentation-card {
+    animation: fadeUp 0.6s ease-out forwards;
+    opacity: 0;
+}
+
+.swiper-slide-active .presentation-card:nth-child(1) { animation-delay: 0.1s; }
+.swiper-slide-active .presentation-card:nth-child(2) { animation-delay: 0.2s; }
+.swiper-slide-active .presentation-card:nth-child(3) { animation-delay: 0.3s; }
+.swiper-slide-active .presentation-card:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

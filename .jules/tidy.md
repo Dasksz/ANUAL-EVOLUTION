@@ -1,5 +1,3 @@
-## 2026/07/26 : Closing Presentation Modal with AI
-
-**Aprendizado:** Integrating PptxGenJS and Docx via CDN allows for rich document generation directly in the browser without backend dependencies. CTEs in Postgres (using `WITH MATERIALIZED`) drastically improve the performance of complex reporting queries.
-
-**Ação:** Implemented a new Modal (`presentation-modal`) in `index.html`, added the SQL function `get_closing_presentation_data` and table `api_ia` in `sql/full_system_v1.sql`, and added the integration logic in `src/js/app.js` using the Deepseek API to generate dynamic AI analysis.
+## 2024/05/29 : Separated Presentation view to Standalone Page
+**Aprendizado:** Moved the Closing Presentation ("Apresentação Fechamento") from a modal into its own standalone HTML page for better layout and presentation flow using Swiper.js, allowing the use of custom slide transitions and a cleaner UI without cluttering the main `app.js` and `index.html`.
+**Ação:** Created `presentation.html`, `src/css/presentation.css`, and `src/js/presentation.js`. Replaced modal toggle logic in `app.js` and `index.html` with a direct link opening in a new tab.
