@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const sups = (supervisoresData || []).filter(s => s.dimension.startsWith(filialName));
             tbodySup.innerHTML = sups.map(s => `
                 <tr class="hover:bg-white/5 transition-colors">
-                    <td class="px-4 py-3 font-medium text-white">${s.supervisor}</td>
+                    <td class="px-4 py-3 font-medium text-white">${s.dimension}</td>
                     <td class="px-4 py-3 text-right">${formatCurrency(s.fat_atual)}</td>
                     <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_ant)}</td>
                     <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_ant_trim)}</td>
