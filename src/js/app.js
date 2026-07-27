@@ -10974,8 +10974,7 @@ Mês: ${data.meta.curr.mes}/${data.meta.curr.ano}
             
             redeContainer.innerHTML += createCardHTML("Todos os Clientes com Rede", { fat_atual: fatRedeAtual, fat_ant: fatRedeAnt, fat_trim: fatRedeTrim, ton_atual: tonRede, pos_atual: posRede });
 
-            const amer = (data.redes || []).find(r => r.dimension && r.dimension.toLowerCase().includes('33014556')); // Assuming standard CNPJ prefix for Lojas Americanas
-            redeContainer.innerHTML += createCardHTML("Rede: Americanas", amer || { fat_atual: 0, ton_atual: 0, pos_atual: 0 });
+
         }
 
         // Render Vendedores setup
