@@ -7707,6 +7707,52 @@ BEGIN
         FROM base_data b
     ),
 
+    grouped_pos AS MATERIALIZED (
+        SELECT
+            codusur,
+            codcli,
+            ano,
+            mes,
+            SUM(vlvenda) as sum_vlvenda,
+            SUM(CASE WHEN line_group = 'Salty' THEN vlvenda ELSE 0 END) as sum_vlvenda_salty,
+            SUM(CASE WHEN line_group = 'Foods' THEN vlvenda ELSE 0 END) as sum_vlvenda_foods
+        FROM classified_data
+        GROUP BY codusur, codcli, ano, mes
+    ),
+
+
+    grouped_pos AS MATERIALIZED (
+        SELECT
+            filial,
+            codusur,
+            codsupervisor,
+            codcli,
+            ano,
+            mes,
+            SUM(vlvenda) as sum_vlvenda,
+            SUM(CASE WHEN line_group = 'Salty' THEN vlvenda ELSE 0 END) as sum_vlvenda_salty,
+            SUM(CASE WHEN line_group = 'Foods' THEN vlvenda ELSE 0 END) as sum_vlvenda_foods
+        FROM classified_data
+        GROUP BY filial, codusur, codsupervisor, codcli, ano, mes
+    ),
+
+
+    grouped_pos AS MATERIALIZED (
+        SELECT
+            filial,
+            codusur,
+            codsupervisor,
+            codcli,
+            ano,
+            mes,
+            SUM(vlvenda) as sum_vlvenda,
+            SUM(CASE WHEN line_group = 'Salty' THEN vlvenda ELSE 0 END) as sum_vlvenda_salty,
+            SUM(CASE WHEN line_group = 'Foods' THEN vlvenda ELSE 0 END) as sum_vlvenda_foods
+        FROM classified_data
+        GROUP BY filial, codusur, codsupervisor, codcli, ano, mes
+    ),
+
+
     -- AGGREGATES GLOBALS
     agg_global AS (
         SELECT
@@ -7844,7 +7890,7 @@ BEGIN
     ),
 
     -- TOP VENDEDORES WITH FULL BREAKDOWN
-    top_vendedores AS (
+    top_vendedores_base AS (
         SELECT
             COALESCE(SPLIT_PART(MAX(dv.nome), ' ', 1), c.codusur) as vendedor,
             MAX(c.codsupervisor) as codsupervisor,
@@ -7856,6 +7902,7 @@ BEGIN
                 END, 
                 MAX(c.codsupervisor)
             ) as supervisor_nome,
+            c.codusur,
             
             -- GERAL
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) as fat_atual,
@@ -7864,9 +7911,6 @@ BEGIN
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) as ton_atual,
             SUM(CASE WHEN ((c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10)) AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) / 3.0 as ton_trim,
             SUM(CASE WHEN c.ano = $3 AND c.mes = $4 AND c.tipovenda NOT IN ('5', '11') THEN c.peso ELSE 0 END) as ton_ant,
-            COUNT(DISTINCT CASE WHEN c.ano = $1 AND c.mes = $2 AND c.vlvenda >= 1 THEN c.codcli END) as pos_atual,
-            (COUNT(DISTINCT CASE WHEN c.ano = $5 AND c.mes = $6 AND c.vlvenda >= 1 THEN c.codcli END) + COUNT(DISTINCT CASE WHEN c.ano = $7 AND c.mes = $8 AND c.vlvenda >= 1 THEN c.codcli END) + COUNT(DISTINCT CASE WHEN c.ano = $9 AND c.mes = $10 AND c.vlvenda >= 1 THEN c.codcli END)) / 3.0 as pos_trim,
-            COUNT(DISTINCT CASE WHEN c.ano = $3 AND c.mes = $4 AND c.vlvenda >= 1 THEN c.codcli END) as pos_ant,
             
             -- SALTY
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 AND c.line_group = 'Salty' THEN c.vlvenda ELSE 0 END) as fat_atual_salty,
@@ -7875,9 +7919,6 @@ BEGIN
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 AND c.tipovenda NOT IN ('5', '11') AND c.line_group = 'Salty' THEN c.peso ELSE 0 END) as ton_atual_salty,
             SUM(CASE WHEN ((c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10)) AND c.tipovenda NOT IN ('5', '11') AND c.line_group = 'Salty' THEN c.peso ELSE 0 END) / 3.0 as ton_trim_salty,
             SUM(CASE WHEN c.ano = $3 AND c.mes = $4 AND c.tipovenda NOT IN ('5', '11') AND c.line_group = 'Salty' THEN c.peso ELSE 0 END) as ton_ant_salty,
-            COUNT(DISTINCT CASE WHEN c.ano = $1 AND c.mes = $2 AND c.line_group = 'Salty' AND c.vlvenda >= 1 THEN c.codcli END) as pos_atual_salty,
-            (COUNT(DISTINCT CASE WHEN c.ano = $5 AND c.mes = $6 AND c.line_group = 'Salty' AND c.vlvenda >= 1 THEN c.codcli END) + COUNT(DISTINCT CASE WHEN c.ano = $7 AND c.mes = $8 AND c.line_group = 'Salty' AND c.vlvenda >= 1 THEN c.codcli END) + COUNT(DISTINCT CASE WHEN c.ano = $9 AND c.mes = $10 AND c.line_group = 'Salty' AND c.vlvenda >= 1 THEN c.codcli END)) / 3.0 as pos_trim_salty,
-            COUNT(DISTINCT CASE WHEN c.ano = $3 AND c.mes = $4 AND c.line_group = 'Salty' AND c.vlvenda >= 1 THEN c.codcli END) as pos_ant_salty,
 
             -- FOODS
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 AND c.line_group = 'Foods' THEN c.vlvenda ELSE 0 END) as fat_atual_foods,
@@ -7886,9 +7927,6 @@ BEGIN
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 AND c.tipovenda NOT IN ('5', '11') AND c.line_group = 'Foods' THEN c.peso ELSE 0 END) as ton_atual_foods,
             SUM(CASE WHEN ((c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10)) AND c.tipovenda NOT IN ('5', '11') AND c.line_group = 'Foods' THEN c.peso ELSE 0 END) / 3.0 as ton_trim_foods,
             SUM(CASE WHEN c.ano = $3 AND c.mes = $4 AND c.tipovenda NOT IN ('5', '11') AND c.line_group = 'Foods' THEN c.peso ELSE 0 END) as ton_ant_foods,
-            COUNT(DISTINCT CASE WHEN c.ano = $1 AND c.mes = $2 AND c.line_group = 'Foods' AND c.vlvenda >= 1 THEN c.codcli END) as pos_atual_foods,
-            (COUNT(DISTINCT CASE WHEN c.ano = $5 AND c.mes = $6 AND c.line_group = 'Foods' AND c.vlvenda >= 1 THEN c.codcli END) + COUNT(DISTINCT CASE WHEN c.ano = $7 AND c.mes = $8 AND c.line_group = 'Foods' AND c.vlvenda >= 1 THEN c.codcli END) + COUNT(DISTINCT CASE WHEN c.ano = $9 AND c.mes = $10 AND c.line_group = 'Foods' AND c.vlvenda >= 1 THEN c.codcli END)) / 3.0 as pos_trim_foods,
-            COUNT(DISTINCT CASE WHEN c.ano = $3 AND c.mes = $4 AND c.line_group = 'Foods' AND c.vlvenda >= 1 THEN c.codcli END) as pos_ant_foods,
 
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) - SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.vlvenda ELSE 0 END) as var_abs
         FROM classified_data c
@@ -7898,12 +7936,42 @@ BEGIN
           AND c.codsupervisor != '8'
           AND c.codusur NOT ILIKE 'INAT_%'
           AND c.codusur NOT ILIKE '%BALCÃO%'
-          AND c.codusur NOT ILIKE '%BALCAO%'
-        GROUP BY c.codusur
-        HAVING SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) > 0
-        ORDER BY fat_atual DESC
-        -- Changed sorting to fat_atual DESC as it makes more sense for a top 10 list than YoY growth absolute.
+          AND c.codusur NOT ILIKE '%VENDAS DIRETAS%'
+        GROUP BY c.codusur, c.codsupervisor
     ),
+    
+    top_vendedores_pos AS (
+        SELECT 
+            codusur,
+            COUNT(CASE WHEN ano = $1 AND mes = $2 AND sum_vlvenda >= 1 THEN 1 END) as pos_atual,
+            (COUNT(CASE WHEN ano = $5 AND mes = $6 AND sum_vlvenda >= 1 THEN 1 END) + COUNT(CASE WHEN ano = $7 AND mes = $8 AND sum_vlvenda >= 1 THEN 1 END) + COUNT(CASE WHEN ano = $9 AND mes = $10 AND sum_vlvenda >= 1 THEN 1 END)) / 3.0 as pos_trim,
+            COUNT(CASE WHEN ano = $3 AND mes = $4 AND sum_vlvenda >= 1 THEN 1 END) as pos_ant,
+
+            COUNT(CASE WHEN ano = $1 AND mes = $2 AND sum_vlvenda_salty >= 1 THEN 1 END) as pos_atual_salty,
+            (COUNT(CASE WHEN ano = $5 AND mes = $6 AND sum_vlvenda_salty >= 1 THEN 1 END) + COUNT(CASE WHEN ano = $7 AND mes = $8 AND sum_vlvenda_salty >= 1 THEN 1 END) + COUNT(CASE WHEN ano = $9 AND mes = $10 AND sum_vlvenda_salty >= 1 THEN 1 END)) / 3.0 as pos_trim_salty,
+            COUNT(CASE WHEN ano = $3 AND mes = $4 AND sum_vlvenda_salty >= 1 THEN 1 END) as pos_ant_salty,
+
+            COUNT(CASE WHEN ano = $1 AND mes = $2 AND sum_vlvenda_foods >= 1 THEN 1 END) as pos_atual_foods,
+            (COUNT(CASE WHEN ano = $5 AND mes = $6 AND sum_vlvenda_foods >= 1 THEN 1 END) + COUNT(CASE WHEN ano = $7 AND mes = $8 AND sum_vlvenda_foods >= 1 THEN 1 END) + COUNT(CASE WHEN ano = $9 AND mes = $10 AND sum_vlvenda_foods >= 1 THEN 1 END)) / 3.0 as pos_trim_foods,
+            COUNT(CASE WHEN ano = $3 AND mes = $4 AND sum_vlvenda_foods >= 1 THEN 1 END) as pos_ant_foods
+        FROM grouped_pos
+        GROUP BY codusur
+    ),
+    
+    top_vendedores AS (
+        SELECT 
+            b.vendedor, b.codsupervisor, b.supervisor_nome,
+            b.fat_atual, b.fat_trim, b.fat_ant, b.ton_atual, b.ton_trim, b.ton_ant,
+            b.fat_atual_salty, b.fat_trim_salty, b.fat_ant_salty, b.ton_atual_salty, b.ton_trim_salty, b.ton_ant_salty,
+            b.fat_atual_foods, b.fat_trim_foods, b.fat_ant_foods, b.ton_atual_foods, b.ton_trim_foods, b.ton_ant_foods, b.var_abs,
+            COALESCE(p.pos_atual, 0) as pos_atual, COALESCE(p.pos_trim, 0) as pos_trim, COALESCE(p.pos_ant, 0) as pos_ant,
+            COALESCE(p.pos_atual_salty, 0) as pos_atual_salty, COALESCE(p.pos_trim_salty, 0) as pos_trim_salty, COALESCE(p.pos_ant_salty, 0) as pos_ant_salty,
+            COALESCE(p.pos_atual_foods, 0) as pos_atual_foods, COALESCE(p.pos_trim_foods, 0) as pos_trim_foods, COALESCE(p.pos_ant_foods, 0) as pos_ant_foods
+        FROM top_vendedores_base b
+        LEFT JOIN top_vendedores_pos p ON b.codusur = p.codusur
+    ),
+
+    -- CATEGORIAS
     agg_categorias AS (
         SELECT
             b.filial,
