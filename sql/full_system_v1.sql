@@ -7720,39 +7720,6 @@ BEGIN
         GROUP BY codusur, codcli, ano, mes
     ),
 
-
-    grouped_pos AS MATERIALIZED (
-        SELECT
-            filial,
-            codusur,
-            codsupervisor,
-            codcli,
-            ano,
-            mes,
-            SUM(vlvenda) as sum_vlvenda,
-            SUM(CASE WHEN line_group = 'Salty' THEN vlvenda ELSE 0 END) as sum_vlvenda_salty,
-            SUM(CASE WHEN line_group = 'Foods' THEN vlvenda ELSE 0 END) as sum_vlvenda_foods
-        FROM classified_data
-        GROUP BY filial, codusur, codsupervisor, codcli, ano, mes
-    ),
-
-
-    grouped_pos AS MATERIALIZED (
-        SELECT
-            filial,
-            codusur,
-            codsupervisor,
-            codcli,
-            ano,
-            mes,
-            SUM(vlvenda) as sum_vlvenda,
-            SUM(CASE WHEN line_group = 'Salty' THEN vlvenda ELSE 0 END) as sum_vlvenda_salty,
-            SUM(CASE WHEN line_group = 'Foods' THEN vlvenda ELSE 0 END) as sum_vlvenda_foods
-        FROM classified_data
-        GROUP BY filial, codusur, codsupervisor, codcli, ano, mes
-    ),
-
-
     -- AGGREGATES GLOBALS
     agg_global AS (
         SELECT
