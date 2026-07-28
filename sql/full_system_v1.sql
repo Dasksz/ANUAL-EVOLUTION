@@ -8042,18 +8042,25 @@ BEGIN
             ano,
             mes,
             SUM(vlvenda) as faturamento
-        FROM classified_data
+        FROM public.data_summary
         WHERE ano IN ($1, $3)
         GROUP BY ano, mes
         UNION ALL
         SELECT
-            line_group as group_name,
+            CASE
+                WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') THEN 'Salty'
+                ELSE 'Foods'
+            END as group_name,
             ano,
             mes,
             SUM(vlvenda) as faturamento
-        FROM classified_data
+        FROM public.data_summary
         WHERE ano IN ($1, $3)
-        GROUP BY line_group, ano, mes
+        GROUP BY
+            CASE
+                WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') THEN 'Salty'
+                ELSE 'Foods'
+            END, ano, mes
     )
 
     -- FINAL JSON ASSEMBLY
