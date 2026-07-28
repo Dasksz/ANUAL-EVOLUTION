@@ -65,6 +65,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (summaryModalBackdrop)
     summaryModalBackdrop.addEventListener("click", closeModal);
 
+  const closeRankingBtn = document.getElementById("close-ranking-modal-btn");
+  const rankingBackdrop = document.getElementById("ranking-modal-backdrop");
+  if (closeRankingBtn) closeRankingBtn.addEventListener("click", closeRankingModal);
+  if (rankingBackdrop) rankingBackdrop.addEventListener("click", closeRankingModal);
+
   let presentationData = null;
   let aiAnalysisText = null;
 
@@ -912,6 +917,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  window.closeRankingModal = closeRankingModal;
   function closeRankingModal() {
     const modal = document.getElementById("ranking-modal");
     const backdrop = document.getElementById("ranking-modal-backdrop");
