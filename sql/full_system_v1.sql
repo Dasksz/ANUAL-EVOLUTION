@@ -3910,8 +3910,8 @@ BEGIN
     END IF;
 
     IF p_segmentacao IS NOT NULL AND array_length(p_segmentacao, 1) > 0 THEN
-        v_where := v_where || format(' AND ramo_atividade = ANY(%L::text[]) ', p_segmentacao);
-        v_where_trend := v_where_trend || format(' AND ramo_atividade = ANY(%L::text[]) ', p_segmentacao);
+        v_where := v_where || format(' AND EXISTS (SELECT 1 FROM public.data_clients dc WHERE dc.codigo_cliente = codcli AND dc.ramo_atividade = ANY(%L::text[])) ', p_segmentacao);
+        v_where_trend := v_where_trend || format(' AND EXISTS (SELECT 1 FROM public.data_clients dc WHERE dc.codigo_cliente = codcli AND dc.ramo_atividade = ANY(%L::text[])) ', p_segmentacao);
         v_where_clients := v_where_clients || format(' AND ramo_atividade = ANY(%L::text[]) ', p_segmentacao);
     END IF;
     
@@ -4264,15 +4264,15 @@ BEGIN
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
                 IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(p.codfor = ''1119'' AND p.descricao ILIKE ''%%TODDYNHO%%'')');
+                    v_conditions := array_append(v_conditions, '(dp.codfor = ''1119'' AND dp.descricao ILIKE ''%%TODDYNHO%%'')');
                 ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(p.codfor = ''1119'' AND p.descricao ILIKE ''%%TODDY %%'')');
+                    v_conditions := array_append(v_conditions, '(dp.codfor = ''1119'' AND dp.descricao ILIKE ''%%TODDY %%'')');
                 ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(p.codfor = ''1119'' AND p.descricao ILIKE ''%%QUAKER%%'')');
+                    v_conditions := array_append(v_conditions, '(dp.codfor = ''1119'' AND dp.descricao ILIKE ''%%QUAKER%%'')');
                 ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(p.codfor = ''1119'' AND p.descricao ILIKE ''%%KEROCOCO%%'')');
+                    v_conditions := array_append(v_conditions, '(dp.codfor = ''1119'' AND dp.descricao ILIKE ''%%KEROCOCO%%'')');
                 ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(p.codfor = ''1119'' AND p.descricao NOT ILIKE ''%%TODDYNHO%%'' AND p.descricao NOT ILIKE ''%%TODDY %%'' AND p.descricao NOT ILIKE ''%%QUAKER%%'' AND p.descricao NOT ILIKE ''%%KEROCOCO%%'')');
+                    v_conditions := array_append(v_conditions, '(dp.codfor = ''1119'' AND dp.descricao NOT ILIKE ''%%TODDYNHO%%'' AND dp.descricao NOT ILIKE ''%%TODDY %%'' AND dp.descricao NOT ILIKE ''%%QUAKER%%'' AND dp.descricao NOT ILIKE ''%%KEROCOCO%%'')');
                 ELSE
                     v_simple_codes := array_append(v_simple_codes, v_code);
                 END IF;
