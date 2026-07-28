@@ -898,10 +898,37 @@ document.addEventListener("DOMContentLoaded", async () => {
         tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-4 text-center text-slate-500">Nenhum vendedor encontrado.</td></tr>`;
     };
 
+    const profileIcon = document.getElementById("top-vendedores-profile-icon");
+    const profileFallback = document.getElementById("top-vendedores-profile-fallback");
+
+    function updateProfileIcon(supName) {
+      if (!profileIcon || !profileFallback) return;
+
+      profileIcon.classList.remove("hidden");
+      profileFallback.classList.add("hidden");
+
+      if (supName === "ALL") {
+        profileIcon.src = "src/assets/images/PRIME.png";
+      } else if (supName && supName.includes("AMERICANAS")) {
+        profileIcon.src = "src/assets/images/AMERICANAS.png";
+      } else if (supName && supName.includes("TIAGO")) {
+        profileIcon.src = "src/assets/images/SHARK.png";
+      } else if (supName && (supName.includes("RÔMULO") || supName.includes("ROMULO"))) {
+        profileIcon.src = "src/assets/images/AGUIA.png";
+      } else {
+        profileIcon.classList.add("hidden");
+        profileFallback.classList.remove("hidden");
+      }
+    }
+
     selectSup.addEventListener("change", (e) => {
       currentSup = e.target.value;
+      updateProfileIcon(currentSup);
       renderTable();
     });
+
+    // Initialize with default
+    updateProfileIcon(currentSup);
 
     tabs.forEach((btn) => {
       btn.addEventListener("click", () => {
