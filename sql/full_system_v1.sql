@@ -3446,18 +3446,19 @@ BEGIN
                     EXTRACT(YEAR FROM dtped)::int as yr,
                     SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(totpesoliq) as peso,
+                    -- [PERF] Optimized EXTRACT(YEAR) -> make_date boundaries for Index Scan
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM (
                     SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                     FROM public.data_detailed s
                     LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                    %s AND EXTRACT(YEAR FROM s.dtped) IN (%L, %L)
+                    %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)
                     UNION ALL
                     SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                     FROM public.data_history s
                     LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                    %s AND EXTRACT(YEAR FROM s.dtped) IN (%L, %L)
+                    %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)
                 ) as base_data
                 GROUP BY 1, 2
             ),
@@ -3477,12 +3478,12 @@ BEGIN
                     SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                     FROM public.data_detailed s
                     LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                    %s AND EXTRACT(YEAR FROM s.dtped) = %L %s
+                    %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                     UNION ALL
                     SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                     FROM public.data_history s
                     LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                    %s AND EXTRACT(YEAR FROM s.dtped) = %L %s
+                    %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                 ) as base_data
             ),
             kpi_prev AS (
@@ -3496,12 +3497,12 @@ BEGIN
                     SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                     FROM public.data_detailed s
                     LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                    %s AND EXTRACT(YEAR FROM s.dtped) = %L %s
+                    %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                     UNION ALL
                     SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                     FROM public.data_history s
                     LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                    %s AND EXTRACT(YEAR FROM s.dtped) = %L %s
+                    %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                 ) as base_data
             ),
             kpi_tri AS (
@@ -3553,12 +3554,12 @@ BEGIN
                     SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                     FROM public.data_detailed s
                     LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                    %s AND EXTRACT(YEAR FROM s.dtped) = %L %s
+                    %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                     UNION ALL
                     SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
                     FROM public.data_history s
                     LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                    %s AND EXTRACT(YEAR FROM s.dtped) = %L %s
+                    %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                 ) as base_data
                 GROUP BY 1
                 ORDER BY caixas DESC
@@ -3575,16 +3576,16 @@ BEGIN
         v_where_raw_base, v_previous_year, -- salty_base UNION 2
         
         v_active_client_cond_slow, -- Chart Base Clientes Cond
-        v_where_raw, v_current_year, v_previous_year,      -- base_data UNION 1
-        v_where_raw, v_current_year, v_previous_year,      -- base_data UNION 2
+        v_where_raw, v_previous_year, v_current_year,      -- base_data UNION 1
+        v_where_raw, v_previous_year, v_current_year,      -- base_data UNION 2
         
         v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, 
-        v_where_raw, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr U1
-        v_where_raw, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr U2
+        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr U1
+        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Curr U2
 
         v_active_client_cond_slow, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, 
-        v_where_raw, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev U1
-        v_where_raw, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev U2
+        v_where_raw, v_previous_year, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev U1
+        v_where_raw, v_previous_year, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- KPI Prev U2
 
         v_active_client_cond_slow, -- KPI Tri Clientes Cond
         v_where_raw, v_tri_start, v_tri_end, -- KPI Tri U1 Clients
@@ -3594,8 +3595,8 @@ BEGIN
         v_where_raw, v_tri_start, v_tri_end, -- KPI Tri U2 Base
 
         v_active_client_cond_slow, -- Prod Agg Clientes Cond
-        v_where_raw, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- Prod Agg U1
-        v_where_raw, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END -- Prod Agg U2
+        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END, -- Prod Agg U1
+        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) = %L ', v_target_month) ELSE '' END -- Prod Agg U2
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     END IF;
