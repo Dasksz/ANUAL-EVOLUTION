@@ -7945,6 +7945,15 @@ BEGIN
             SUM(CASE WHEN ((c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10)) AND c.tipovenda NOT IN ('5', '11') AND c.line_group = 'Foods' THEN c.peso ELSE 0 END) / 3.0 as ton_trim_foods,
             SUM(CASE WHEN c.ano = $3 AND c.mes = $4 AND c.tipovenda NOT IN ('5', '11') AND c.line_group = 'Foods' THEN c.peso ELSE 0 END) as ton_ant_foods,
 
+            -- DEVOLUCAO E BONIFICACAO
+            SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.devolucao ELSE 0 END) as dev_atual,
+            SUM(CASE WHEN ((c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10)) THEN c.devolucao ELSE 0 END) / 3.0 as dev_trim,
+            SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.devolucao ELSE 0 END) as dev_ant,
+
+            SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.bonificacao ELSE 0 END) as bon_atual,
+            SUM(CASE WHEN ((c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10)) THEN c.bonificacao ELSE 0 END) / 3.0 as bon_trim,
+            SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.bonificacao ELSE 0 END) as bon_ant,
+
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) - SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.vlvenda ELSE 0 END) as var_abs
         FROM classified_data c
         LEFT JOIN dim_vendedores dv ON c.codusur = dv.codigo
@@ -7980,7 +7989,7 @@ BEGIN
             b.vendedor, b.codsupervisor, b.supervisor_nome,
             b.fat_atual, b.fat_trim, b.fat_ant, b.ton_atual, b.ton_trim, b.ton_ant,
             b.fat_atual_salty, b.fat_trim_salty, b.fat_ant_salty, b.ton_atual_salty, b.ton_trim_salty, b.ton_ant_salty,
-            b.fat_atual_foods, b.fat_trim_foods, b.fat_ant_foods, b.ton_atual_foods, b.ton_trim_foods, b.ton_ant_foods, b.var_abs,
+            b.fat_atual_foods, b.fat_trim_foods, b.fat_ant_foods, b.ton_atual_foods, b.ton_trim_foods, b.ton_ant_foods, b.var_abs, b.dev_atual, b.dev_trim, b.dev_ant, b.bon_atual, b.bon_trim, b.bon_ant,
             COALESCE(p.pos_atual, 0) as pos_atual, COALESCE(p.pos_trim, 0) as pos_trim, COALESCE(p.pos_ant, 0) as pos_ant,
             COALESCE(p.pos_atual_salty, 0) as pos_atual_salty, COALESCE(p.pos_trim_salty, 0) as pos_trim_salty, COALESCE(p.pos_ant_salty, 0) as pos_ant_salty,
             COALESCE(p.pos_atual_foods, 0) as pos_atual_foods, COALESCE(p.pos_trim_foods, 0) as pos_trim_foods, COALESCE(p.pos_ant_foods, 0) as pos_ant_foods

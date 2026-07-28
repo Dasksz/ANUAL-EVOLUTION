@@ -321,6 +321,10 @@
         <div class="swiper-slide flex flex-col">
           <div class="flex justify-between items-center border-b border-fuchsia-500/30 pb-2 mb-6">
             <div class="section-title mb-0">Visão Geral</div>
+            <div class="flex items-center gap-2" id="presentation-geral-filters">
+              <button data-filter="Salty" class="px-3 py-1 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-md">Salty</button>
+              <button data-filter="Foods" class="px-3 py-1 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-md">Foods</button>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
@@ -377,6 +381,10 @@
             class="flex justify-between items-center border-b border-fuchsia-500/30 pb-2 mb-6"
           >
             <div class="section-title mb-0">Por Filial</div>
+            <div class="flex items-center gap-2 ml-4 mr-auto" id="presentation-filial-filters">
+              <button data-filter="Salty" class="px-3 py-1 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-md">Salty</button>
+              <button data-filter="Foods" class="px-3 py-1 text-xs font-medium rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-md">Foods</button>
+            </div>
             <div class="flex items-center gap-4">
               <label class="text-sm font-medium text-slate-400"
                 >Filtrar Filial:</label
@@ -588,6 +596,65 @@
       <div class="swiper-button-prev"></div>
     </div>
 
+    <!-- Ranking Modal -->
+    <div
+      id="ranking-modal"
+      class="fixed inset-0 z-[60] hidden items-center justify-center"
+    >
+      <div
+        id="ranking-modal-backdrop"
+        class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity opacity-0"
+      ></div>
+      <div
+        id="ranking-modal-content"
+        class="bg-slate-900 border border-white/10 rounded-xl w-full max-w-4xl mx-4 max-h-[85vh] flex flex-col shadow-2xl relative z-10 transition-all transform scale-95 opacity-0"
+      >
+        <div
+          class="flex justify-between items-center p-6 border-b border-white/10"
+        >
+          <h2 id="ranking-modal-title" class="text-xl font-bold text-white">Ranking</h2>
+          <button
+            id="close-ranking-modal-btn"
+            class="text-slate-400 hover:text-white transition-colors focus:outline-none"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <div class="p-6 overflow-y-auto flex-1">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm text-slate-300">
+                <thead
+                  class="text-xs uppercase text-slate-400 border-b border-white/10"
+                >
+                  <tr>
+                    <th class="px-4 py-3 pb-4 w-16 text-center">Pos</th>
+                    <th class="px-4 py-3 pb-4">Vendedor</th>
+                    <th id="ranking-th-atual" class="px-4 py-3 pb-4 text-right">Valor Atual</th>
+                    <th id="ranking-th-trim" class="px-4 py-3 pb-4 text-right text-emerald-400">Var Trim</th>
+                    <th id="ranking-th-ano" class="px-4 py-3 pb-4 text-right text-emerald-400">Var Ano</th>
+                  </tr>
+                </thead>
+                <tbody
+                  id="ranking-modal-tbody"
+                  class="divide-y divide-white/5"
+                ></tbody>
+              </table>
+            </div>
+        </div>
+      </div>
+    </div>
     <!-- Summary Modal -->
     <div
       id="summary-modal"
