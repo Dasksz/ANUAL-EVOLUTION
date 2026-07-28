@@ -465,11 +465,11 @@ document.addEventListener("DOMContentLoaded", async () => {
           (s) => `
                 <tr class="hover:bg-white/5 transition-colors">
                     <td class="px-4 py-3 font-medium text-white">${s.dimension.split(" - ")[1] || s.dimension}</td>
-                    <td class="px-4 py-3 text-right">${formatCurrency(s.fat_atual)}</td>
-                    <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_ant)}</td>
-                    <td class="px-4 py-3 text-right">${renderVarBadge(s.fat_atual, s.fat_trim)}</td>
-                    <td class="px-4 py-3 text-right">${formatNumber(s.ton_atual)}</td>
-                    <td class="px-4 py-3 text-right">${formatNumber(s.pos_atual)}</td>
+                    <td class="px-4 py-3">${formatCurrency(s.fat_atual)}</td>
+                    <td class="px-4 py-3">${renderVarBadge(s.fat_atual, s.fat_ant)}</td>
+                    <td class="px-4 py-3">${renderVarBadge(s.fat_atual, s.fat_trim)}</td>
+                    <td class="px-4 py-3">${formatNumber(s.ton_atual)}</td>
+                    <td class="px-4 py-3">${formatNumber(s.pos_atual)}</td>
                 </tr>
             `,
         )
