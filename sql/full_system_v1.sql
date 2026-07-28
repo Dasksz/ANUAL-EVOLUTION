@@ -103,7 +103,7 @@ BEGIN
 
         IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
-                    IF v_code IN ('707', '708', '752') THEN
+                    IF LTRIM(v_code::text, '0') IN ('707', '708', '752') THEN
                         v_salty_codes := array_append(v_salty_codes, v_code);
                     ELSIF v_code = '1119_TODDYNHO' THEN
                         v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND s.categorias_arr && ARRAY[''TODDYNHO''])');
@@ -604,7 +604,7 @@ BEGIN
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
             codusur as vendedor_cod,
             -- Calculate frequency per month, then average those frequencies across active months
-            SUM(month_pedidos) / NULLIF(SUM(month_clientes), 0) as avg_monthly_freq
+            AVG(CASE WHEN month_clientes > 0 THEN month_pedidos / month_clientes ELSE NULL END) as avg_monthly_freq
         FROM monthly_freq
         GROUP BY ROLLUP(filial, cidade, codusur)
     ),
@@ -671,7 +671,7 @@ BEGIN
             cidade,
             vendedor_cod,
             SUM(sum_skus_mes) as sum_skus,
-            SUM(sum_skus_mes)::numeric / NULLIF(SUM(clients_positivados_mes), 0) as avg_sku_pdv
+            AVG(CASE WHEN clients_positivados_mes > 0 THEN sum_skus_mes::numeric / clients_positivados_mes ELSE NULL END) as avg_sku_pdv
         FROM rolled_monthly_skus
         GROUP BY grp_filial, grp_cidade, grp_vendedor, filial, cidade, vendedor_cod
     ),
@@ -2812,7 +2812,7 @@ BEGIN
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_mix_constraint := ' 1=1 ';
     ELSE
-        v_mix_constraint := ' 1=1 ';
+        v_mix_constraint := ' LTRIM(fs.codfor::text, ''0'') IN (''707'', ''708'', ''752'') ';
     END IF;
 
     -- KPI Base Filter (Table: data_clients)
@@ -7731,8 +7731,8 @@ BEGIN
             b.devolucao,
             b.bonificacao,
             CASE 
-                WHEN b.codfor IN ('707', '708', '752') THEN 'Salty'
-                WHEN b.codfor IN ('1119') THEN 'Foods'
+                WHEN LTRIM(b.codfor::text, '0') IN ('707', '708', '752') THEN 'Salty'
+                WHEN LTRIM(b.codfor::text, '0') IN ('1119') THEN 'Foods'
                 ELSE 'Foods'
             END as line_group
         FROM base_data b
