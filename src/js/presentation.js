@@ -581,7 +581,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     container.innerHTML = `
             <div class="presentation-card bg-gradient-to-br from-fuchsia-900/40 to-transparent border-fuchsia-500/30">
-                <h3 class="text-lg font-bold text-white mb-4 border-b border-fuchsia-500/30 pb-2">Top Atacado: ${formatDim(topAtacado.dimension)}</h3>
+                <h3 class="text-lg font-bold text-white mb-4 border-b border-fuchsia-500/30 pb-2"> ${formatDim(topAtacado.dimension)}</h3>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <div class="text-xs text-slate-400 mb-1">Faturamento</div>
