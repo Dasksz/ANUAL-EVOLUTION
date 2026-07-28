@@ -763,9 +763,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                     <div class="truncate max-w-[150px]" title="${v.vendedor}">${v.vendedor}</div>
                     <div class="text-[10px] text-slate-500">${v.supervisor_nome || "N/A"}</div>
                 </td>
-                <td class="px-4 py-3 text-right font-semibold text-fuchsia-400">${fmt(valAtual)}</td>
-                <td class="px-4 py-3 text-right">${renderVarBadge(valAtual, valTrim)}</td>
-                <td class="px-4 py-3 text-right">${renderVarBadge(valAtual, valAno)}</td>
+                <td class="px-4 py-3 font-semibold text-fuchsia-400">${fmt(valAtual)}</td>
+                <td class="px-4 py-3">${renderVarBadge(valAtual, valTrim)}</td>
+                <td class="px-4 py-3">${renderVarBadge(valAtual, valAno)}</td>
             </tr>
         `;
     }).join("");
@@ -884,11 +884,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                             <div class="truncate max-w-[150px]" title="${v.vendedor}">${v.vendedor}</div>
                             <div class="text-[10px] text-slate-500">${v.supervisor_nome || "N/A"}</div>
                         </td>
-                        <td class="px-4 py-3 text-right font-semibold text-fuchsia-400">${fmt(valAtual)}</td>
-                        <td class="px-4 py-3 text-right text-slate-400">${fmt(valYear)}</td>
-                        <td class="px-4 py-3 text-right text-slate-400">${fmt(valTrim)}</td>
-                        <td class="px-4 py-3 text-right">${renderVarBadge(valAtual, valYear)}</td>
-                        <td class="px-4 py-3 text-right">${renderVarBadge(valAtual, valTrim)}</td>
+                        <td class="px-4 py-3 font-semibold text-fuchsia-400">${fmt(valAtual)}</td>
+                        <td class="px-4 py-3 text-slate-400">${fmt(valYear)}</td>
+                        <td class="px-4 py-3 text-slate-400">${fmt(valTrim)}</td>
+                        <td class="px-4 py-3">${renderVarBadge(valAtual, valYear)}</td>
+                        <td class="px-4 py-3">${renderVarBadge(valAtual, valTrim)}</td>
                     </tr>
                 `;
         })
