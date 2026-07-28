@@ -1321,6 +1321,11 @@ CREATE INDEX IF NOT EXISTS idx_cache_ano_fornecedor ON public.cache_filters (ano
 -- [QueryTuner] Optimization: Added compound index for (ano, categoria_produto)
 -- Expected impact: Reduces get_dashboard_filters execution time by ~62% (from ~445ms to ~169ms) by enabling Index Only Scans for category aggregations.
 CREATE INDEX IF NOT EXISTS idx_cache_ano_categoria ON public.cache_filters (ano, categoria_produto);
+
+-- [QueryTuner] Optimization: Added compound index for (ano, rede)
+-- Expected impact: Reduces get_dashboard_filters_optimized execution time by transforming a Sequence/Index Scan + Sort into a fast Index Only Scan.
+CREATE INDEX IF NOT EXISTS idx_cache_ano_rede ON public.cache_filters (ano, rede);
+
 CREATE INDEX IF NOT EXISTS idx_cache_filters_rede_lookup ON public.cache_filters (filial, cidade, superv, ano, rede);
 
 -- ==============================================================================

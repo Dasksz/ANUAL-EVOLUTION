@@ -28,3 +28,6 @@ Action: To avoid this, move the `DISTINCT` into a subquery first: `(SELECT json_
 2024/07/27 - SARGable Date Queries
 Learning: Using date extraction functions like `EXTRACT(YEAR FROM dtped) = p_year` on large partitioned/indexed time-series tables prevents the query planner from using indexes efficiently and requires scanning the entire table or partition.
 Action: Always use explicit date boundaries (SARGable predicates) like `dtped >= make_date(p_year, 1, 1) AND dtped <= make_date(p_year, 12, 31)` to allow PostgreSQL to utilize index range scans and partition pruning efficiently.
+2024/05/23 - Missing cache_filters index on `rede` causing implicit sorts
+Learning: The `get_dashboard_filters_optimized` function queries `cache_filters` for distinct filter values (e.g., `rede`) based heavily on the `ano` parameter. However, `idx_cache_ano_rede` was missing. This forced PostgreSQL to use unrelated indexes (like `idx_cache_ano_categoria`) combined with an in-memory Sort step to fulfill `SELECT DISTINCT rede`.
+Action: Always verify that all heavily queried dashboard filter columns (especially those used with `DISTINCT`) have targeted compound indexes, such as `(ano, column_name)`, to allow the planner to resolve them via fast `Index Only Scans` and avoid `Sort` nodes entirely.
