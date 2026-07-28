@@ -240,9 +240,9 @@ export function formatPercentage(value, decimals = 1) {
 export function generateYearOptionsHtml(years, defaultLabel = 'Todos', defaultValue = 'todos') {
     let html = '';
     if (defaultLabel !== '') {
-        html += `<option value="${escapeHtml(defaultValue)}">${escapeHtml(defaultLabel)}</option>`;
+        html += `<option class="bg-slate-800 text-slate-200" value="${escapeHtml(defaultValue)}">${escapeHtml(defaultLabel)}</option>`;
     }
-    html += years.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+    html += years.map(a => `<option class="bg-slate-800 text-slate-200" value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
     return html;
 }
 
@@ -258,11 +258,11 @@ export function generateYearOptionsHtml(years, defaultLabel = 'Todos', defaultVa
 export function generateMonthOptionsHtml(defaultLabel = 'Todos', defaultValue = '', oneIndexedPadded = false) {
     let html = '';
     if (defaultLabel !== '') {
-        html += `<option value="${escapeHtml(defaultValue)}">${escapeHtml(defaultLabel)}</option>`;
+        html += `<option class="bg-slate-800 text-slate-200" value="${escapeHtml(defaultValue)}">${escapeHtml(defaultLabel)}</option>`;
     }
     html += MONTHS_PT.map((m, i) => {
         const val = oneIndexedPadded ? String(i + 1).padStart(2, '0') : i;
-        return `<option value="${escapeHtml(val)}">${escapeHtml(m)}</option>`;
+        return `<option class="bg-slate-800 text-slate-200" value="${escapeHtml(val)}">${escapeHtml(m)}</option>`;
     }).join('');
     return html;
 }

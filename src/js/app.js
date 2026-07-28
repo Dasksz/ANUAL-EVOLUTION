@@ -5195,8 +5195,8 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
     }
 
     document.addEventListener('click', (e) => {
-        const dropdowns = [cityFilialFilterDropdown, cityCidadeFilterDropdown, citySupervisorFilterDropdown, cityVendedorFilterDropdown, cityFornecedorFilterDropdown, cityTipovendaFilterDropdown, cityRedeFilterDropdown, cityCategoriaFilterDropdown];
-        const btns = [cityFilialFilterBtn, cityCidadeFilterBtn, citySupervisorFilterBtn, cityVendedorFilterBtn, cityFornecedorFilterBtn, cityTipovendaFilterBtn, cityRedeFilterBtn, cityCategoriaFilterBtn];
+        const dropdowns = [cityFilialFilterDropdown, cityCidadeFilterDropdown, citySupervisorFilterDropdown, cityVendedorFilterDropdown, cityFornecedorFilterDropdown, cityTipovendaFilterDropdown, citySegmentacaoFilterDropdown, cityRedeFilterDropdown, cityCategoriaFilterDropdown];
+        const btns = [cityFilialFilterBtn, cityCidadeFilterBtn, citySupervisorFilterBtn, cityVendedorFilterBtn, cityFornecedorFilterBtn, cityTipovendaFilterBtn, citySegmentacaoFilterBtn, cityRedeFilterBtn, cityCategoriaFilterBtn];
         let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
         if (anyClosed && !cityView.classList.contains('hidden')) {
             handleCityFilterChange();
@@ -10433,14 +10433,11 @@ window.forceSyncSheets = async () => {
     }
 
     try {
-        const response = await fetch('https://vawrdqreibhlfsfvxbpv.supabase.co/functions/v1/sync-sheets', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${SUPABASE_KEY}`
-            }
+        const { data, error } = await supabase.functions.invoke('sync-sheets', {
+            method: 'POST'
         });
 
-        if (!response.ok) throw new Error('Falha ao sincronizar dados.');
+        if (error) throw new Error(error.message || 'Falha ao sincronizar dados.');
         
         window.showToast('Sucesso', 'Dados da planilha atualizados.', 'success');
         
