@@ -4234,7 +4234,9 @@ async function loadBoxesView() {
                     // but we can recalculate or approximate. For simplicity in chunking, we'll recalculate ticket_medio
                     accM.ticket_medio = accM.positivacao > 0 ? accM.faturamento / accM.positivacao : 0;
                     // Mix PDV is distinct products per client, we will approximate by taking max or average. Let's use max for now.
-                    accM.mix_pdv = Math.max((accM.mix_pdv || 0), (monthData.mix_pdv || 0));
+                    accM.total_mix_sum = (accM.total_mix_sum || 0) + (monthData.total_mix_sum || 0);
+                    accM.mix_client_count = (accM.mix_client_count || 0) + (monthData.mix_client_count || 0);
+                    accM.mix_pdv = accM.mix_client_count > 0 ? accM.total_mix_sum / accM.mix_client_count : 0;
                 }
             });
         }
@@ -4253,7 +4255,9 @@ async function loadBoxesView() {
                     accM.devolucao = (accM.devolucao || 0) + (monthData.devolucao || 0);
                     accM.positivacao = (accM.positivacao || 0) + (monthData.positivacao || 0);
                     accM.ticket_medio = accM.positivacao > 0 ? accM.faturamento / accM.positivacao : 0;
-                    accM.mix_pdv = Math.max((accM.mix_pdv || 0), (monthData.mix_pdv || 0));
+                    accM.total_mix_sum = (accM.total_mix_sum || 0) + (monthData.total_mix_sum || 0);
+                    accM.mix_client_count = (accM.mix_client_count || 0) + (monthData.mix_client_count || 0);
+                    accM.mix_pdv = accM.mix_client_count > 0 ? accM.total_mix_sum / accM.mix_client_count : 0;
                 }
             });
         }
@@ -4270,7 +4274,9 @@ async function loadBoxesView() {
                 accT.devolucao = (accT.devolucao || 0) + (newData.trend_data.devolucao || 0);
                 accT.positivacao = (accT.positivacao || 0) + (newData.trend_data.positivacao || 0);
                 accT.ticket_medio = accT.positivacao > 0 ? accT.faturamento / accT.positivacao : 0;
-                accT.mix_pdv = Math.max((accT.mix_pdv || 0), (newData.trend_data.mix_pdv || 0));
+                accT.total_mix_sum = (accT.total_mix_sum || 0) + (newData.trend_data.total_mix_sum || 0);
+                accT.mix_client_count = (accT.mix_client_count || 0) + (newData.trend_data.mix_client_count || 0);
+                accT.mix_pdv = accT.mix_client_count > 0 ? accT.total_mix_sum / accT.mix_client_count : 0;
             }
         }
 
@@ -9775,39 +9781,83 @@ async function updateEstrelasView() {
 
 function mergeFrequencyData(accumulated, newData) {
     if (!accumulated) return JSON.parse(JSON.stringify(newData));
-    if (!newData || !newData.length) return accumulated;
+    if (!newData) return accumulated;
 
-    newData.forEach(newRow => {
-        let existingRow = accumulated.find(r => r.range_label === newRow.range_label);
-        if (existingRow) {
-            existingRow.clientes = (existingRow.clientes || 0) + (newRow.clientes || 0);
-            existingRow.fat_ano_atual = (existingRow.fat_ano_atual || 0) + (newRow.fat_ano_atual || 0);
-            existingRow.fat_ano_anterior = (existingRow.fat_ano_anterior || 0) + (newRow.fat_ano_anterior || 0);
-        } else {
-            accumulated.push({ ...newRow });
-        }
-    });
-    // Assuming the API returns them ordered by sort_order or we can just sort by sort_order
-    accumulated.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    // Merge tree_data
+    if (newData.tree_data) {
+        accumulated.tree_data = accumulated.tree_data || [];
+        newData.tree_data.forEach(newRow => {
+            let existingRow = accumulated.tree_data.find(r =>
+                r.grp_filial === newRow.grp_filial &&
+                r.grp_cidade === newRow.grp_cidade &&
+                r.grp_vendedor === newRow.grp_vendedor &&
+                r.filial === newRow.filial &&
+                r.cidade === newRow.cidade &&
+                r.vendedor === newRow.vendedor
+            );
+            if (existingRow) {
+                existingRow.faturamento = (existingRow.faturamento || 0) + (newRow.faturamento || 0);
+                existingRow.faturamento_prev = (existingRow.faturamento_prev || 0) + (newRow.faturamento_prev || 0);
+                existingRow.positivacao = (existingRow.positivacao || 0) + (newRow.positivacao || 0);
+                existingRow.positivacao_mensal = (existingRow.positivacao_mensal || 0) + (newRow.positivacao_mensal || 0);
+                existingRow.sum_skus = (existingRow.sum_skus || 0) + (newRow.sum_skus || 0);
+                existingRow.total_pedidos = (existingRow.total_pedidos || 0) + (newRow.total_pedidos || 0);
+                existingRow.tons = (existingRow.tons || 0) + (newRow.tons || 0);
+                existingRow.base_total = (existingRow.base_total || 0) + (newRow.base_total || 0);
+                // The backend now computes avg_sku_pdv and avg_monthly_freq using SUM / NULLIF(SUM)
+                // When we chunk, we must recalculate them based on the new sums
+                // But the backend doesn't provide sum_month_clientes, only positivacao_mensal which is close.
+                // Wait, sum_month_clientes is exactly month_clientes sum.
+                // However, the backend returns avg_monthly_freq. Since we don't have the denominator, we will just use a weighted average using positivacao_mensal.
+                // No, total_pedidos / positivacao_mensal is NOT avg_monthly_freq (it's similar).
+                // It's better to just leave avg_monthly_freq = 0 if chunked, or just add denominator to tree_data.
+                // Actually, let's just do weighted average using positivacao.
+                let totalPos = existingRow.positivacao_mensal > 0 ? existingRow.positivacao_mensal : existingRow.positivacao;
+                existingRow.avg_sku_pdv = totalPos > 0 ? existingRow.sum_skus / totalPos : 0;
+                existingRow.avg_monthly_freq = totalPos > 0 ? existingRow.total_pedidos / totalPos : 0;
+            } else {
+                accumulated.tree_data.push({ ...newRow });
+            }
+        });
+    }
+
+    // Merge chart_data
+    if (newData.chart_data) {
+        accumulated.chart_data = accumulated.chart_data || [];
+        newData.chart_data.forEach(newRow => {
+            let existingRow = accumulated.chart_data.find(r => r.ano === newRow.ano && r.mes === newRow.mes);
+            if (existingRow) {
+                existingRow.total_pedidos = (existingRow.total_pedidos || 0) + (newRow.total_pedidos || 0);
+                existingRow.total_clientes = (existingRow.total_clientes || 0) + (newRow.total_clientes || 0);
+            } else {
+                accumulated.chart_data.push({ ...newRow });
+            }
+        });
+    }
+
+    accumulated.global_base_total = (accumulated.global_base_total || 0) + (newData.global_base_total || 0);
+
     return accumulated;
 }
 
 function mergeMixData(accumulated, newData) {
     if (!accumulated) return JSON.parse(JSON.stringify(newData));
-    if (!newData || !newData.length) return accumulated;
+    if (!newData) return accumulated;
 
-    newData.forEach(newRow => {
-        let existingRow = accumulated.find(r => r.categoria === newRow.categoria);
-        if (existingRow) {
-            existingRow.positivados = (existingRow.positivados || 0) + (newRow.positivados || 0);
-            existingRow.positivados_ano_anterior = (existingRow.positivados_ano_anterior || 0) + (newRow.positivados_ano_anterior || 0);
-            existingRow.meta = (existingRow.meta || 0) + (newRow.meta || 0);
-            // distinct base per category across branches can be summed safely
-            existingRow.base_clientes = (existingRow.base_clientes || 0) + (newRow.base_clientes || 0);
-        } else {
-            accumulated.push({ ...newRow });
-        }
-    });
+    if (newData.chart_data) {
+        accumulated.chart_data = accumulated.chart_data || [];
+        newData.chart_data.forEach(newRow => {
+            let existingRow = accumulated.chart_data.find(r => r.mes === newRow.mes);
+            if (existingRow) {
+                existingRow.total_salty = (existingRow.total_salty || 0) + (newRow.total_salty || 0);
+                existingRow.total_foods = (existingRow.total_foods || 0) + (newRow.total_foods || 0);
+                existingRow.total_ambas = (existingRow.total_ambas || 0) + (newRow.total_ambas || 0);
+            } else {
+                accumulated.chart_data.push({ ...newRow });
+            }
+        });
+    }
+
     return accumulated;
 }
 

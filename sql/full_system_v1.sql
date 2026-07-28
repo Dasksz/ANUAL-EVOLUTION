@@ -604,7 +604,7 @@ BEGIN
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
             codusur as vendedor_cod,
             -- Calculate frequency per month, then average those frequencies across active months
-            AVG(CASE WHEN month_clientes > 0 THEN month_pedidos / month_clientes ELSE NULL END) as avg_monthly_freq
+            SUM(month_pedidos) / NULLIF(SUM(month_clientes), 0) as avg_monthly_freq
         FROM monthly_freq
         GROUP BY ROLLUP(filial, cidade, codusur)
     ),
@@ -671,7 +671,7 @@ BEGIN
             cidade,
             vendedor_cod,
             SUM(sum_skus_mes) as sum_skus,
-            AVG(CASE WHEN clients_positivados_mes > 0 THEN sum_skus_mes::numeric / clients_positivados_mes ELSE NULL END) as avg_sku_pdv
+            SUM(sum_skus_mes)::numeric / NULLIF(SUM(clients_positivados_mes), 0) as avg_sku_pdv
         FROM rolled_monthly_skus
         GROUP BY grp_filial, grp_cidade, grp_vendedor, filial, cidade, vendedor_cod
     ),
@@ -2812,7 +2812,7 @@ BEGIN
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_mix_constraint := ' 1=1 ';
     ELSE
-        v_mix_constraint := ' fs.codfor IN (''707'', ''708'', ''752'') ';
+        v_mix_constraint := ' 1=1 ';
     END IF;
 
     -- KPI Base Filter (Table: data_clients)
