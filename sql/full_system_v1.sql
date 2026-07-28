@@ -8038,13 +8038,22 @@ BEGIN
     ),
     agg_chart AS (
         SELECT
+            'Geral' as group_name,
             ano,
             mes,
             SUM(vlvenda) as faturamento
-        FROM public.data_summary
+        FROM classified_data
         WHERE ano IN ($1, $3)
         GROUP BY ano, mes
-        ORDER BY ano, mes
+        UNION ALL
+        SELECT
+            line_group as group_name,
+            ano,
+            mes,
+            SUM(vlvenda) as faturamento
+        FROM classified_data
+        WHERE ano IN ($1, $3)
+        GROUP BY line_group, ano, mes
     )
 
     -- FINAL JSON ASSEMBLY

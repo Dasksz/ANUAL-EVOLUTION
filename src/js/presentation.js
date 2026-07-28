@@ -157,7 +157,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const targetYear = data.meta?.curr?.ano || new Date().getFullYear();
     const targetMonthIdx =
       (data.meta?.curr?.mes || new Date().getMonth() + 1) - 1;
-    renderEvolutionChart(data.chart_data, targetYear, targetMonthIdx);
     setupFilial(data.filiais, data.supervisores);
     renderRede(data.redes); // Actually Atacado
     setupVendedores(data.top_vendedores);
@@ -251,6 +250,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderGeral(geralData) {
     if (geralData) globalGeralData = geralData;
+    if (presentationData && presentationData.chart_data) {
+        const targetYear = presentationData.meta?.curr?.ano || new Date().getFullYear();
+        const targetMonthIdx = (presentationData.meta?.curr?.mes || new Date().getMonth() + 1) - 1;
+        renderEvolutionChart(presentationData.chart_data, targetYear, targetMonthIdx);
+    }
     const containerLeft = document.getElementById("presentation-geral-cards-left");
     const containerRight = document.getElementById("presentation-geral-cards-right");
     if (!globalGeralData || globalGeralData.length === 0) {
@@ -296,7 +300,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const currData = new Array(12).fill(0);
     const prevData = new Array(12).fill(0);
 
-    chartData.forEach((d) => {
+    chartData
+      .filter((d) => d.group_name === currentGeralFilter)
+      .forEach((d) => {
       const mIdx = d.mes - 1;
       if (d.ano === targetYear && mIdx >= 0 && mIdx < 12)
         currData[mIdx] += Number(d.faturamento);
@@ -621,148 +627,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         `;
   }
 
-  function renderEvolutionChart(chartData, targetYear, targetMonthIndex) {
-    const canvas = document.getElementById("presentation-evolution-chart");
-    if (!canvas || !chartData || chartData.length === 0) return;
 
-    // format chartData for current and previous year
-    const prevYear = targetYear - 1;
-    const months = [
-      "Jan",
-      "Fev",
-      "Mar",
-      "Abr",
-      "Mai",
-      "Jun",
-      "Jul",
-      "Ago",
-      "Set",
-      "Out",
-      "Nov",
-      "Dez",
-    ];
-
-    const currData = new Array(12).fill(0);
-    const prevData = new Array(12).fill(0);
-
-    chartData.forEach((d) => {
-      const mIdx = d.mes - 1;
-      if (d.ano === targetYear && mIdx >= 0 && mIdx < 12)
-        currData[mIdx] += Number(d.faturamento);
-      if (d.ano === prevYear && mIdx >= 0 && mIdx < 12)
-        prevData[mIdx] += Number(d.faturamento);
-    });
-
-    // Find best month of current year (only considering up to target month to be safe, or all available)
-    let bestMonthIdx = -1;
-    let maxVal = -1;
-    currData.forEach((val, idx) => {
-      if (val > maxVal) {
-        maxVal = val;
-        bestMonthIdx = idx;
-      }
-    });
-
-    // If best month is found, we can place the star on target month if requested, but instructions said:
-    // "ícone de estrela acima da coluna do melhor mês do ano atual que, para o cenário atual, será posicionado no próprio mês em análise."
-    // Interpreting as: The star goes on the best month. If the instruction specifically meant forcing it to the target month, we will set it to target month, but usually it means dynamic best month. Let's stick to dynamically calculating the best month, or if forced to current month:
-    // Let's force it to target month if it's strictly requested, but "melhor mês do ano atual" implies a calculation. Let's use the calculated best month.
-
-    const ctx = canvas.getContext("2d");
-
-    // Custom plugin to draw star
-    const drawStarPlugin = {
-      id: "drawStarPlugin",
-      afterDatasetsDraw(chart, args, pluginOptions) {
-        const {
-          ctx,
-          data,
-          chartArea: { top },
-          scales: { x, y },
-        } = chart;
-        ctx.save();
-
-        const meta = chart.getDatasetMeta(0); // dataset 0 is current year
-        if (bestMonthIdx >= 0 && meta.data[bestMonthIdx]) {
-          const bar = meta.data[bestMonthIdx];
-          const xPos = bar.x;
-          const yPos = bar.y - 15; // slightly above bar
-
-          ctx.font = "20px Arial";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          // ctx.fillStyle = '#facc15';
-          ctx.fillText("⭐", xPos, yPos);
-        }
-        ctx.restore();
-      },
-    };
-
-    if (window.presentationEvolutionChartInstance) {
-      window.presentationEvolutionChartInstance.destroy();
-    }
-
-    // Custom colors for current month highlight
-    const bgColorsCurr = currData.map((_, i) =>
-      i === targetMonthIndex ? "#d946ef" : "#a21caf",
-    ); // fuchsia highlight vs purple
-
-    window.presentationEvolutionChartInstance = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: months,
-        datasets: [
-          {
-            label: `Ano Atual (${targetYear})`,
-            data: currData,
-            backgroundColor: bgColorsCurr,
-            borderRadius: 4,
-            borderSkipped: false,
-          },
-          {
-            label: `Ano Anterior (${prevYear})`,
-            data: prevData,
-            backgroundColor: "#334155", // slate-700
-            borderRadius: 4,
-            borderSkipped: false,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            labels: { color: "#cbd5e1" },
-          },
-          tooltip: {
-            callbacks: {
-              label: (context) => formatCurrency(context.raw),
-            },
-          },
-          datalabels: { display: false }, // disable datalabels if plugin is loaded globally
-        },
-        scales: {
-          x: {
-            ticks: { color: "#94a3b8" },
-            grid: { display: false },
-          },
-          y: {
-            ticks: {
-              color: "#94a3b8",
-              callback: (val) => {
-                if (val >= 1000000) return (val / 1000000).toFixed(1) + "M";
-                if (val >= 1000) return (val / 1000).toFixed(0) + "k";
-                return val;
-              },
-            },
-            grid: { color: "rgba(255, 255, 255, 0.05)" },
-          },
-        },
-      },
-      plugins: [drawStarPlugin],
-    });
-  }
 
 
   // --- Modal Ranking Logic ---
