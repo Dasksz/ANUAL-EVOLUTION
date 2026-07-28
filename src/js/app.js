@@ -4638,11 +4638,12 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         } else {
             // SCENARIO B: Default (Month vs Month or Filtered Month)
             
-            if (mesFilter.value !== '') {
-                const selectedMonthIndex = parseInt(mesFilter.value);
-                currentData = currentData.filter(d => d.month_index === selectedMonthIndex);
-                previousData = previousData.filter(d => d.month_index === selectedMonthIndex);
-            }
+            // [Tidy: The user wants the chart to continue displaying all months even if a month filter is applied.]
+            // if (mesFilter.value !== '') {
+            //     const selectedMonthIndex = parseInt(mesFilter.value);
+            //     currentData = currentData.filter(d => d.month_index === selectedMonthIndex);
+            //     previousData = previousData.filter(d => d.month_index === selectedMonthIndex);
+            // }
 
             const currMonthData = currentData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
             const prevMonthData = previousData.find(d => d.month_index === targetIndex) || { faturamento: 0, peso: 0 };
