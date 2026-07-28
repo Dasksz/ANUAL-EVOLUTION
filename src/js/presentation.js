@@ -2,6 +2,7 @@ import supabase from "./supabase.js";
 // presentation.js
 
 document.addEventListener("DOMContentLoaded", async () => {
+  setupFilters();
   // Initialize Swiper
   const swiper = new Swiper(".mySwiper", {
     pagination: {
@@ -145,6 +146,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // --- RENDER LOGIC (Adapted from app.js) ---
   function renderSlides(data) {
+    globalVendedoresData = data.top_vendedores || [];
     renderGeral(data.global);
 
     const targetYear = data.meta?.curr?.ano || new Date().getFullYear();
@@ -223,7 +225,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     return `
-            <div class="presentation-card">
+            <div class="presentation-card" ${title === 'Devoluções' ? 'onclick="window.openRankingModal(\'dev\')" style="cursor:pointer"' : ""} ${title === 'Bonificações' ? 'onclick="window.openRankingModal(\'bon\')" style="cursor:pointer"' : ""}>
                 <div class="metric-label">${title}</div>
                 <div class="metric-value">${valFmt}</div>
                 
@@ -243,18 +245,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderGeral(geralData) {
+    if (geralData) globalGeralData = geralData;
     const containerLeft = document.getElementById("presentation-geral-cards-left");
     const containerRight = document.getElementById("presentation-geral-cards-right");
-    if (!geralData || geralData.length === 0) {
+    if (!globalGeralData || globalGeralData.length === 0) {
       containerLeft.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
       containerRight.innerHTML = '';
       return;
     }
-    const d = geralData.find((g) => g.group_name === "Geral") || geralData[0];
+    const d = globalGeralData.find((g) => g.group_name === currentGeralFilter) || globalGeralData[0];
 
     containerLeft.innerHTML = `
             ${buildCard("Faturamento Total", d.fat_atual, d.fat_trim, d.fat_ant, true)}
-            ${buildCard("Toneladas (Salty+Foods)", d.ton_atual, d.ton_trim, d.ton_ant, false)}
+            ${buildCard(currentGeralFilter === 'Geral' ? "Toneladas (Salty+Foods)" : `Toneladas ${currentGeralFilter}`, d.ton_atual, d.ton_trim, d.ton_ant, false)}
             ${buildCard("Devoluções", d.dev_atual, d.dev_trim, d.dev_ant, true)}
             ${buildCard("Bonificações", d.bonificacao_atual, d.bonificacao_trim, d.bonificacao_ant, true)}
         `;
@@ -408,6 +411,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function setupFilial(filialData, supervisoresData) {
+    if (filialData) globalFilialData = filialData;
     const categoriasData = presentationData.categorias || [];
     const select = document.getElementById("presentation-filial-select");
     const containerCards = document.getElementById("presentation-filial-cards");
@@ -432,8 +436,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join("");
 
     const renderFilial = (filialName) => {
+      currentFilialSelected = filialName;
       const fd =
-        filialData.find((f) => f.dimension === filialName) || filialData[0];
+        globalFilialData.find((f) => f.dimension === filialName && f.group_name === currentFilialFilter) || globalFilialData[0];
       containerCards.innerHTML = `
                 ${buildCard("Faturamento", fd.fat_atual, fd.fat_trim, fd.fat_ant, true)}
                 ${buildCard("Toneladas", fd.ton_atual, fd.ton_trim, fd.ton_ant, false)}
@@ -442,7 +447,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Supervisores
       const sups = (supervisoresData || []).filter(
-        (s) => s.dimension.startsWith(filialName) && s.group_name === "Geral",
+        (s) => s.dimension.startsWith(filialName) && s.group_name === currentFilialFilter,
       );
       tbodySup.innerHTML = sups
         .map(
@@ -754,6 +759,175 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+
+  // --- Modal Ranking Logic ---
+  let globalVendedoresData = [];
+  let globalGeralData = [];
+  let currentGeralFilter = 'Geral';
+  let globalFilialData = [];
+  let currentFilialFilter = 'Geral';
+  let currentFilialSelected = null;
+
+  // --- Filters Event Listeners ---
+  function setupFilters() {
+    const geralButtons = document.querySelectorAll('#presentation-geral-filters button');
+    geralButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const filter = btn.getAttribute('data-filter');
+        if (currentGeralFilter === filter) {
+          currentGeralFilter = 'Geral'; // Toggle off
+        } else {
+          currentGeralFilter = filter;
+        }
+
+        // Update styling
+        geralButtons.forEach(b => {
+           if (b.getAttribute('data-filter') === currentGeralFilter) {
+               b.classList.remove('bg-white/5', 'text-slate-400');
+               b.classList.add('bg-fuchsia-600', 'text-white');
+           } else {
+               b.classList.add('bg-white/5', 'text-slate-400');
+               b.classList.remove('bg-fuchsia-600', 'text-white');
+           }
+        });
+
+        renderGeral(); // Re-render
+      });
+    });
+
+    const filialButtons = document.querySelectorAll('#presentation-filial-filters button');
+    filialButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const filter = btn.getAttribute('data-filter');
+        if (currentFilialFilter === filter) {
+          currentFilialFilter = 'Geral'; // Toggle off
+        } else {
+          currentFilialFilter = filter;
+        }
+
+        // Update styling
+        filialButtons.forEach(b => {
+           if (b.getAttribute('data-filter') === currentFilialFilter) {
+               b.classList.remove('bg-white/5', 'text-slate-400');
+               b.classList.add('bg-fuchsia-600', 'text-white');
+           } else {
+               b.classList.add('bg-white/5', 'text-slate-400');
+               b.classList.remove('bg-fuchsia-600', 'text-white');
+           }
+        });
+
+        if (currentFilialSelected) {
+           // We need to access renderFilial, but it's scoped inside setupFilial.
+           // To fix this we can just re-call setupFilial with existing data.
+           setupFilial(globalFilialData, presentationData.supervisores);
+
+           // Ensure we keep the selected filial
+           const select = document.getElementById("presentation-filial-select");
+           if (select) select.value = currentFilialSelected;
+        }
+      });
+    });
+  }
+
+
+
+  window.openRankingModal = openRankingModal;
+  function openRankingModal(metric) {
+    if (!globalVendedoresData || globalVendedoresData.length === 0) return;
+
+    const modal = document.getElementById("ranking-modal");
+    const backdrop = document.getElementById("ranking-modal-backdrop");
+    const content = document.getElementById("ranking-modal-content");
+    const title = document.getElementById("ranking-modal-title");
+    const tbody = document.getElementById("ranking-modal-tbody");
+
+    if (!modal || !backdrop || !content || !tbody) return;
+
+    let titleText = "Ranking";
+    let sortKeyAtual = "";
+    let sortKeyTrim = "";
+    let sortKeyAno = "";
+    let isCurr = false;
+
+    if (metric === "dev") {
+      titleText = "Ranking de Devoluções";
+      sortKeyAtual = "dev_atual";
+      sortKeyTrim = "dev_trim";
+      sortKeyAno = "dev_ant";
+      isCurr = true;
+    } else if (metric === "bon") {
+      titleText = "Ranking de Bonificações";
+      sortKeyAtual = "bon_atual";
+      sortKeyTrim = "bon_trim";
+      sortKeyAno = "bon_ant";
+      isCurr = true;
+    }
+
+    title.textContent = titleText;
+
+    // Filter out rows with 0 or null values for the current metric to make it cleaner, or just sort them
+    let data = [...globalVendedoresData];
+
+    // Sort descending
+    data.sort((a, b) => (b[sortKeyAtual] || 0) - (a[sortKeyAtual] || 0));
+
+    // Render table
+    tbody.innerHTML = data.map((v, idx) => {
+        const valAtual = v[sortKeyAtual] || 0;
+        const valTrim = v[sortKeyTrim] || 0;
+        const valAno = v[sortKeyAno] || 0;
+
+        if (valAtual === 0 && valTrim === 0 && valAno === 0) return ''; // Skip empty rows
+
+        const fmt = isCurr ? formatCurrency : formatNumber;
+
+        let medal = `<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs font-bold text-slate-300">${idx + 1}</span>`;
+        if (idx === 0) medal = `🥇`;
+        if (idx === 1) medal = `🥈`;
+        if (idx === 2) medal = `🥉`;
+
+        return `
+            <tr class="hover:bg-white/5 transition-colors">
+                <td class="px-4 py-3 text-center">${medal}</td>
+                <td class="px-4 py-3 font-medium text-white">
+                    <div class="truncate max-w-[150px]" title="${v.vendedor}">${v.vendedor}</div>
+                    <div class="text-[10px] text-slate-500">${v.supervisor_nome || "N/A"}</div>
+                </td>
+                <td class="px-4 py-3 text-right font-semibold text-fuchsia-400">${fmt(valAtual)}</td>
+                <td class="px-4 py-3 text-right">${renderVarBadge(valAtual, valTrim)}</td>
+                <td class="px-4 py-3 text-right">${renderVarBadge(valAtual, valAno)}</td>
+            </tr>
+        `;
+    }).join("");
+
+    // Show modal
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+      backdrop.classList.remove("opacity-0");
+      content.classList.remove("scale-95", "opacity-0");
+      content.classList.add("scale-100", "opacity-100");
+    });
+  }
+
+  function closeRankingModal() {
+    const modal = document.getElementById("ranking-modal");
+    const backdrop = document.getElementById("ranking-modal-backdrop");
+    const content = document.getElementById("ranking-modal-content");
+
+    if (!modal) return;
+
+    backdrop.classList.add("opacity-0");
+    content.classList.remove("scale-100", "opacity-100");
+    content.classList.add("scale-95", "opacity-0");
+
+    setTimeout(() => {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }, 300);
+  }
   function setupVendedores(vendedoresData) {
     if (!vendedoresData) return;
 
