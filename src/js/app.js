@@ -3093,6 +3093,9 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         if (filterData.filiais && filterData.filiais.length > 0) {
             availableFiltersState.filiais = filterData.filiais;
         }
+        if (filterData.fornecedores && filterData.fornecedores.length > 0) {
+            availableFiltersState.fornecedores = filterData.fornecedores;
+        }
 
         if (filterData.anos && boxesAnoFilter) {
             const currentVal = boxesAnoFilter.value;
@@ -3237,21 +3240,39 @@ async function loadBoxesView() {
         } catch (e) { AppLog.warn('Cache error:', e); }
 
         if (!data) {
-            const needsChunking = (!filters.p_filial || filters.p_filial.length === 0) 
-                && availableFiltersState.filiais 
-                && availableFiltersState.filiais.length > 0;
+            const useFornecedorChunking = (!filters.p_fornecedor || filters.p_fornecedor.length === 0) 
+            && availableFiltersState.fornecedores 
+            && availableFiltersState.fornecedores.length > 0;
+            
+        const needsChunking = (!filters.p_filial || filters.p_filial.length === 0) 
+            && availableFiltersState.filiais 
+            && availableFiltersState.filiais.length > 0;
 
-            if (needsChunking) {
-                AppLog.log('Fetching Boxes View in chunks...');
-                const branches = availableFiltersState.filiais;
-                let accumulatedData = null;
+        if (useFornecedorChunking) {
+            let chunkList = [];
+            let chunkKey = '';
+            let chunkLabel = '';
+            
+            if (useFornecedorChunking) {
+                chunkList = availableFiltersState.fornecedores.map(f => typeof f === 'object' ? f.cod : f);
+                chunkKey = 'p_fornecedor';
+                chunkLabel = 'Fornecedor';
+                AppLog.log('Fetching Boxes View in Fornecedor chunks...');
+            } else {
+                chunkList = availableFiltersState.filiais;
+                chunkKey = 'p_filial';
+                chunkLabel = 'Filial';
+                AppLog.log('Fetching Boxes View in Filial chunks...');
+            }
+            
+            let accumulatedData = null;
+            
+            for (let i = 0; i < chunkList.length; i++) {
+                const chunkVal = chunkList[i];
+                AppLog.log(`Fetching Boxes ${chunkLabel} ${i + 1}/${chunkList.length}...`);
+                window.showDashboardLoading('boxes-view', `Carregando ${chunkLabel} ${i+1} de ${chunkList.length}...`);
                 
-                for (let i = 0; i < branches.length; i++) {
-                    const branch = branches[i];
-                    AppLog.log(`Fetching Boxes branch ${i + 1}/${branches.length}...`);
-                    window.showDashboardLoading('boxes-view', `Carregando Filial ${i+1} de ${branches.length}...`);
-                    
-                    const chunkFilters = { ...filters, p_filial: [branch] };
+                const chunkFilters = { ...filters, [chunkKey]: [String(chunkVal)] };
                     const { data: resData, error: resError } = await supabase.rpc('get_boxes_dashboard_data', chunkFilters);
                     
                     if (resError) {
