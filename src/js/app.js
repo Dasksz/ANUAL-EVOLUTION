@@ -4262,7 +4262,7 @@ async function loadBoxesView() {
                     // Mix PDV is distinct products per client, we will approximate by taking max or average. Let's use max for now.
                     accM.total_mix_sum = (accM.total_mix_sum || 0) + (monthData.total_mix_sum || 0);
                     accM.mix_client_count = (accM.mix_client_count || 0) + (monthData.mix_client_count || 0);
-                    accM.mix_pdv = accM.mix_client_count > 0 ? accM.total_mix_sum / accM.mix_client_count : 0;
+                    accM.mix_pdv = Math.max((accM.mix_pdv || 0), (monthData.mix_pdv || 0));
                 }
             });
         }
@@ -4283,7 +4283,7 @@ async function loadBoxesView() {
                     accM.ticket_medio = accM.positivacao > 0 ? accM.faturamento / accM.positivacao : 0;
                     accM.total_mix_sum = (accM.total_mix_sum || 0) + (monthData.total_mix_sum || 0);
                     accM.mix_client_count = (accM.mix_client_count || 0) + (monthData.mix_client_count || 0);
-                    accM.mix_pdv = accM.mix_client_count > 0 ? accM.total_mix_sum / accM.mix_client_count : 0;
+                    accM.mix_pdv = Math.max((accM.mix_pdv || 0), (monthData.mix_pdv || 0));
                 }
             });
         }
@@ -4302,7 +4302,7 @@ async function loadBoxesView() {
                 accT.ticket_medio = accT.positivacao > 0 ? accT.faturamento / accT.positivacao : 0;
                 accT.total_mix_sum = (accT.total_mix_sum || 0) + (newData.trend_data.total_mix_sum || 0);
                 accT.mix_client_count = (accT.mix_client_count || 0) + (newData.trend_data.mix_client_count || 0);
-                accT.mix_pdv = accT.mix_client_count > 0 ? accT.total_mix_sum / accT.mix_client_count : 0;
+                accT.mix_pdv = Math.max((accT.mix_pdv || 0), (newData.trend_data.mix_pdv || 0));
             }
         }
 
