@@ -3089,6 +3089,11 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         if (error) AppLog.error('Error fetching boxes filters:', error);
         if (!filterData) return;
 
+        // Ensure availableFiltersState is populated so chunking works correctly if this is the first page loaded
+        if (filterData.filiais && filterData.filiais.length > 0) {
+            availableFiltersState.filiais = filterData.filiais;
+        }
+
         if (filterData.anos && boxesAnoFilter) {
             const currentVal = boxesAnoFilter.value;
             // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
