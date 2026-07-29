@@ -1699,8 +1699,8 @@ BEGIN
             s.codsupervisor,
             s.codusur,
             CASE 
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDY %' THEN '1119_TODDY'
+                WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDYNHO%' OR dp.descricao ILIKE '%TODYNHO%') THEN '1119_TODDYNHO'
+                WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDY %' OR dp.descricao = 'TODDY') THEN '1119_TODDY'
                 WHEN s.codfor = '1119' AND dp.descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
                 WHEN s.codfor = '1119' AND dp.descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
                 WHEN s.codfor = '1119' THEN '1119_OUTROS'
@@ -2400,14 +2400,43 @@ BEGIN
 
     -- Fornecedor
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where_filial := v_where_filial || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_cidade := v_where_cidade || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_supervisor := v_where_supervisor || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_vendedor := v_where_vendedor || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_tipovenda := v_where_tipovenda || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_rede := v_where_rede || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_cat := v_where_cat || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_prod := v_where_prod || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
+        DECLARE
+            v_code text;
+            v_conditions text[] := '{}';
+            v_simple_codes text[] := '{}';
+        BEGIN
+            FOREACH v_code IN ARRAY p_fornecedor LOOP
+                IF v_code = '1119_TODDYNHO' THEN
+                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND (fornecedor ILIKE ''%TODDYNHO%'' OR fornecedor ILIKE ''%TODYNHO%''))');
+                ELSIF v_code = '1119_TODDY' THEN
+                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND (fornecedor ILIKE ''%TODDY %'' OR fornecedor = ''TODDY''))');
+                ELSIF v_code = '1119_QUAKER' THEN
+                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND fornecedor ILIKE ''%QUAKER%'')');
+                ELSIF v_code = '1119_KEROCOCO' THEN
+                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND fornecedor ILIKE ''%KEROCOCO%'')');
+                ELSIF v_code = '1119_OUTROS' THEN
+                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND fornecedor NOT ILIKE ''%TODDYNHO%'' AND fornecedor NOT ILIKE ''%TODYNHO%'' AND fornecedor NOT ILIKE ''%TODDY %'' AND fornecedor != ''TODDY'' AND fornecedor NOT ILIKE ''%QUAKER%'' AND fornecedor NOT ILIKE ''%KEROCOCO%'')');
+                ELSE
+                    v_simple_codes := array_append(v_simple_codes, v_code);
+                END IF;
+            END LOOP;
+            IF array_length(v_simple_codes, 1) > 0 THEN
+                v_conditions := array_append(v_conditions, format('codfor = ANY(%L::text[])', v_simple_codes));
+            END IF;
+            IF array_length(v_conditions, 1) > 0 THEN
+                v_where_filial := v_where_filial || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
+                v_where_cidade := v_where_cidade || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
+                v_where_supervisor := v_where_supervisor || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
+                v_where_vendedor := v_where_vendedor || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
+                v_where_tipovenda := v_where_tipovenda || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
+                v_where_rede := v_where_rede || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
+                v_where_cat := v_where_cat || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
+                
+                -- Note: v_where_prod applies to public.dim_produtos (codigo, descricao)
+                -- We use substring replacements to adapt the condition syntax
+                v_where_prod := v_where_prod || ' AND (' || replace(replace(array_to_string(v_conditions, ' OR '), 'codfor = ''1119''', 'true'), 'fornecedor', 'descricao') || ') ';
+            END IF;
+        END;
     END IF;
 
     -- Tipovenda
@@ -3527,7 +3556,7 @@ BEGIN
         v_active_client_cond_slow, -- chart_agg_base (1 %s)
         
         v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END, -- kpi_curr base query (1 %s, 1 %L, 1 %s, 1 %L, 1 %s)
-
+        
         v_active_client_cond_slow, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END, -- kpi_prev base query (1 %s, 1 %L, 1 %s, 1 %L, 1 %s)
 
         v_active_client_cond_slow, v_tri_start, v_tri_end, -- kpi_tri monthly clients subquery (1 %s, 2 %L)
@@ -3574,9 +3603,9 @@ BEGIN
                 (
                     SELECT SUM(COALESCE(sub_qtvenda, 0) / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1))
                     FROM (
-                        SELECT qtvenda as sub_qtvenda FROM public.data_detailed sd WHERE sd.produto = (p->>'produto') AND sd.dtped >= (v_max_sale_date - interval '6 months')::date AND sd.tipovenda IN ('1', '9')
+                        SELECT qtvenda as sub_qtvenda FROM public.data_detailed sd WHERE sd.produto = (p->>'produto') AND sd.dtped >= (v_max_sale_date - interval '6 months')::date AND sd.dtped <= (v_max_sale_date)::date AND sd.tipovenda IN ('1', '9')
                         UNION ALL
-                        SELECT qtvenda as sub_qtvenda FROM public.data_history sh WHERE sh.produto = (p->>'produto') AND sh.dtped >= (v_max_sale_date - interval '6 months')::date AND sh.tipovenda IN ('1', '9')
+                        SELECT qtvenda as sub_qtvenda FROM public.data_history sh WHERE sh.produto = (p->>'produto') AND sh.dtped >= (v_max_sale_date - interval '6 months')::date AND sh.dtped <= (v_max_sale_date)::date AND sh.tipovenda IN ('1', '9')
                     ) as hist
                 ) as total_caixas_6m
             FROM public.dim_produtos dp
@@ -6678,8 +6707,8 @@ BEGIN
             s.codsupervisor, 
             s.codusur, 
             CASE 
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDY %' THEN '1119_TODDY'
+                WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDYNHO%' OR dp.descricao ILIKE '%TODYNHO%') THEN '1119_TODDYNHO'
+                WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDY %' OR dp.descricao = 'TODDY') THEN '1119_TODDY'
                 WHEN s.codfor = '1119' AND dp.descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
                 WHEN s.codfor = '1119' AND dp.descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
                 WHEN s.codfor = '1119' THEN '1119_OUTROS'
@@ -6760,8 +6789,8 @@ BEGIN
             s.codsupervisor,
             s.codusur,
             CASE 
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDY %' THEN '1119_TODDY'
+                WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDYNHO%' OR dp.descricao ILIKE '%TODYNHO%') THEN '1119_TODDYNHO'
+                WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDY %' OR dp.descricao = 'TODDY') THEN '1119_TODDY'
                 WHEN s.codfor = '1119' AND dp.descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
                 WHEN s.codfor = '1119' AND dp.descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
                 WHEN s.codfor = '1119' THEN '1119_OUTROS'
@@ -6844,8 +6873,8 @@ BEGIN
             s.codsupervisor,
             s.codusur,
             CASE 
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
-                WHEN s.codfor = '1119' AND dp.descricao ILIKE '%TODDY %' THEN '1119_TODDY'
+                WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDYNHO%' OR dp.descricao ILIKE '%TODYNHO%') THEN '1119_TODDYNHO'
+                WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDY %' OR dp.descricao = 'TODDY') THEN '1119_TODDY'
                 WHEN s.codfor = '1119' AND dp.descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
                 WHEN s.codfor = '1119' AND dp.descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
                 WHEN s.codfor = '1119' THEN '1119_OUTROS'
@@ -6955,8 +6984,8 @@ BEGIN
             categoria_produto,
             qtde_embalagem_master,
             CASE 
-                WHEN '1119' = '1119' AND descricao ILIKE '%TODDYNHO%' THEN '1119_TODDYNHO'
-                WHEN '1119' = '1119' AND descricao ILIKE '%TODDY %' THEN '1119_TODDY'
+                WHEN '1119' = '1119' AND (descricao ILIKE '%TODDYNHO%' OR descricao ILIKE '%TODYNHO%') THEN '1119_TODDYNHO'
+                WHEN '1119' = '1119' AND (descricao ILIKE '%TODDY %' OR descricao = 'TODDY') THEN '1119_TODDY'
                 WHEN '1119' = '1119' AND descricao ILIKE '%QUAKER%' THEN '1119_QUAKER'
                 WHEN '1119' = '1119' AND descricao ILIKE '%KEROCOCO%' THEN '1119_KEROCOCO'
                 ELSE '1119_OUTROS'
