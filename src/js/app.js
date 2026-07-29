@@ -4723,14 +4723,14 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
                 kpiDevolCurr += (d.devolucao || 0);
                 // Use total_sold_base if available, else fallback to faturamento
                 kpiTotalSoldBaseCurr += (d.total_sold_base !== undefined ? d.total_sold_base : (d.faturamento || 0));
-                if (d.mix_pdv > 0) { kpiMixCurr += d.mix_pdv; kpiMixCountCurr++; }
+                if (d.mix_pdv >= 0) { kpiMixCurr += d.mix_pdv; kpiMixCountCurr++; }
             };
 
             // Previous Period Aggregation
             const aggPrevious = (d) => {
                 kpiBonifPrev += (d.bonificacao || 0);
                 kpiDevolPrev += (d.devolucao || 0);
-                if (d.mix_pdv > 0) { kpiMixPrev += d.mix_pdv; kpiMixCountPrev++; }
+                if (d.mix_pdv >= 0) { kpiMixPrev += d.mix_pdv; kpiMixCountPrev++; }
             };
 
             // Use filtered month data if month selected, otherwise all months

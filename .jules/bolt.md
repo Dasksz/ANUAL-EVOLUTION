@@ -54,3 +54,6 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## $(date +%Y-%m-%d) - [Otimização de Índices e Datas no PostgreSQL]
 **Learning:** Utilizar funções nativas como `EXTRACT(YEAR FROM coluna_data)` ou `EXTRACT(MONTH FROM coluna_data)` em cláusulas `WHERE` impede o PostgreSQL de utilizar índices (B-Tree) de forma eficiente, forçando uma varredura sequencial completa (Seq Scan) que causa lentidão e timeouts em bases de dados grandes.
 **Action:** Para garantir máxima performance e o uso de índices em grandes volumes, sempre substitua funções extrativas por checagem de limites exatos (ex: `coluna_data >= '2024-01-01' AND coluna_data <= '2024-12-31'`). Em filtros textuais complexos, prefira utilizar a cláusula `IN (SELECT ...)` com subqueries baseadas em tabelas dimensionais já indexadas.
+## $(date +%Y-%m-%d) - Fix Dashboard Yearly Mix PDV bug
+**Learning:** Checking `if (d.mix_pdv > 0)` when summing average indicators over months ignores any month that explicitly had a 0 result. This causes the count variable to be artificially low, or zero, breaking averages calculation (`kpiMixCurr / kpiMixCountCurr`).
+**Action:** Always use `if (d.mix_pdv >= 0)` or `if (d.mix_pdv !== undefined)` when summing up values for an average calculation in dashboards to properly account for months that correctly resolve to 0.
