@@ -67,6 +67,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const closeRankingBtn = document.getElementById("close-ranking-modal-btn");
   const rankingBackdrop = document.getElementById("ranking-modal-backdrop");
+  function closeRankingModal() {
+    const rankingModal = document.getElementById("ranking-modal");
+    if (!rankingModal) return;
+    const rankingBackdropModal = document.getElementById("ranking-modal-backdrop");
+    const rankingModalContent = document.getElementById("ranking-modal-content");
+    
+    rankingBackdropModal.classList.remove("opacity-100");
+    rankingBackdropModal.classList.add("opacity-0");
+    rankingModalContent.classList.remove("scale-100", "opacity-100");
+    rankingModalContent.classList.add("scale-95", "opacity-0");
+    
+    setTimeout(() => {
+      rankingModal.classList.add("hidden");
+      rankingModal.classList.remove("flex");
+    }, 300);
+  }
+
   if (closeRankingBtn) closeRankingBtn.addEventListener("click", closeRankingModal);
   if (rankingBackdrop) rankingBackdrop.addEventListener("click", closeRankingModal);
 
