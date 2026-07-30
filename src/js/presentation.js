@@ -649,7 +649,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           <!-- Decorative Image -->
           <div class="rounded-xl overflow-hidden shadow-lg border border-white/10 hidden lg:block">
-              <img src="https://images.unsplash.com/photo-1600952841320-db92ec4047ca?q=80&w=800&auto=format&fit=crop" alt="Resultados Atacado" class="w-full h-full object-cover opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all duration-500">
+              <img src="https://centraldovarejo.com.br/wp-content/uploads/2023/12/woman-at-work-putting-boxes-on-the-shelves-beside-2023-11-27-05-07-58-utc.jpg" alt="Resultados Atacado" class="w-full h-full object-cover opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all duration-500">
           </div>
       </div>
 
