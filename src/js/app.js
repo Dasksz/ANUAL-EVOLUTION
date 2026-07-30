@@ -3249,7 +3249,7 @@ async function loadBoxesView() {
             && availableFiltersState.filiais 
             && availableFiltersState.filiais.length > 0;
 
-        if (useFornecedorChunking) {
+        if (useFornecedorChunking || needsChunking) {
             let chunkList = [];
             let chunkKey = '';
             let chunkLabel = '';

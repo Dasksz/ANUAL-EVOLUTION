@@ -3358,7 +3358,7 @@ BEGIN
                 FROM (
                     SELECT ano, mes, codcli
                     FROM public.data_summary
-                    %s AND ano IN (%L, %L) AND LTRIM(codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(tipovenda, ''0'') IN (''1'', ''9'')
+                    %s AND ano IN (%L, %L) AND codfor IN (''707'', ''708'', ''752'', ''0707'', ''0708'', ''0752'') AND tipovenda IN (''1'', ''9'', ''01'', ''09'')
                     GROUP BY ano, mes, codcli
                     HAVING SUM(vlvenda) >= 1
                 ) sub
@@ -3457,7 +3457,7 @@ BEGIN
         v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
         v_active_client_cond_slow, -- Prod Agg Clientes Cond
         v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
-        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END -- Prod
+        v_where_raw, v_previous_year, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END -- Prod
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     
@@ -3482,7 +3482,7 @@ BEGIN
                 FROM (
                     SELECT EXTRACT(YEAR FROM dtped)::int as yr, (EXTRACT(MONTH FROM dtped)::int - 1) as m_idx, codcli
                     FROM base_data s
-                    WHERE LTRIM(s.codfor, ''0'') IN (''707'', ''708'', ''752'') AND LTRIM(s.tipovenda, ''0'') IN (''1'', ''9'')
+                    WHERE s.codfor IN (''707'', ''708'', ''752'', ''0707'', ''0708'', ''0752'') AND s.tipovenda IN (''1'', ''9'', ''01'', ''09'')
                     GROUP BY EXTRACT(YEAR FROM dtped)::int, (EXTRACT(MONTH FROM dtped)::int - 1), codcli
                     HAVING SUM(vlvenda) >= 1
                 ) agg_sub
