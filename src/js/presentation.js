@@ -592,7 +592,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     container.innerHTML = `
       <!-- Top Row: 4 Cards -->
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 max-h-[320px]">
           <!-- Total Faturado -->
           <div class="presentation-card relative overflow-hidden group">
               <div class="absolute top-0 left-0 w-1 h-full bg-fuchsia-500 rounded-l-lg"></div>
@@ -648,8 +648,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           </div>
 
           <!-- Decorative Image -->
-          <div class="rounded-xl overflow-hidden shadow-lg border border-white/10 hidden lg:block">
-              <img src="https://centraldovarejo.com.br/wp-content/uploads/2023/12/woman-at-work-putting-boxes-on-the-shelves-beside-2023-11-27-05-07-58-utc.jpg" alt="Resultados Atacado" class="w-full h-full object-cover opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all duration-500">
+          <div class="rounded-xl overflow-hidden shadow-lg border border-white/10 hidden lg:block h-full">
+              <img src="https://centraldovarejo.com.br/wp-content/uploads/2023/12/woman-at-work-putting-boxes-on-the-shelves-beside-2023-11-27-05-07-58-utc.jpg" alt="Resultados Atacado" class="w-full h-full object-cover object-center opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all duration-500">
           </div>
       </div>
 
