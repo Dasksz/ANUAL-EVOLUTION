@@ -4351,7 +4351,7 @@ BEGIN
             FROM target_sales GROUP BY 1
         ),
         curr_prod_agg AS (
-            SELECT s.codcli, s.produto, MAX(dp.mix_marca) as mix_marca, MAX(dp.mix_categoria) as mix_cat, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val, SUM(CASE WHEN %s THEN s.vlvenda ELSE 0 END) as pepsico_prod_val
+            SELECT s.codcli, s.produto, MAX(dp.mix_marca) as mix_marca, MAX(dp.mix_categoria) as mix_cat, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val, SUM(CASE WHEN ' || v_tipovenda_cond || ' THEN s.vlvenda ELSE 0 END) as pepsico_prod_val
             FROM target_sales s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             GROUP BY 1, 2
@@ -4405,7 +4405,7 @@ BEGIN
             FROM history_sales GROUP BY 1
         ),
         hist_prod_agg AS (
-            SELECT date_trunc(''month'', dtped) as m_date, s.codcli, s.produto, MAX(dp.mix_marca) as mix_marca, MAX(dp.mix_categoria) as mix_cat, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val, SUM(CASE WHEN %s THEN s.vlvenda ELSE 0 END) as pepsico_prod_val
+            SELECT date_trunc(''month'', dtped) as m_date, s.codcli, s.produto, MAX(dp.mix_marca) as mix_marca, MAX(dp.mix_categoria) as mix_cat, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val, SUM(CASE WHEN ' || v_tipovenda_cond || ' THEN s.vlvenda ELSE 0 END) as pepsico_prod_val
             FROM history_sales s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             GROUP BY 1, 2, 3
@@ -4490,10 +4490,8 @@ BEGIN
     ',
     v_where, v_where_rede, v_start_target, v_end_target,
     v_where, v_where_rede, v_start_target, v_end_target,
-    v_tipovenda_cond,
     v_where, v_where_rede, v_start_quarter, v_end_quarter,
-    v_where, v_where_rede, v_start_quarter, v_end_quarter,
-    v_tipovenda_cond
+    v_where, v_where_rede, v_start_quarter, v_end_quarter
     ) INTO v_current_daily, v_current_kpi, v_history_daily, v_history_kpi, v_supervisor_data, v_history_monthly;
 
     RETURN json_build_object(
