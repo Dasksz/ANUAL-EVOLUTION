@@ -4148,6 +4148,7 @@ DECLARE
     v_end_quarter timestamp with time zone;
 
     -- Filter Clause
+    v_tipovenda_cond text;
     v_where text := ' WHERE 1=1 ';
     v_where_rede text := '';
 
