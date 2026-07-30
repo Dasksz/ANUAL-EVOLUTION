@@ -3037,7 +3037,9 @@ BEGIN
             ''devolucao'', a.devolucao, 
             ''positivacao'', a.positivacao_count, 
             ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END, 
-            ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
+            ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END,
+            ''total_mix_sum'', a.total_mix_sum,
+            ''mix_client_count'', a.mix_client_count
         ) ORDER BY a.mes) FILTER (WHERE a.ano = $2), ''[]''::json),
         
         COALESCE(json_agg(json_build_object(
@@ -3049,7 +3051,9 @@ BEGIN
             ''devolucao'', a.devolucao, 
             ''positivacao'', a.positivacao_count, 
             ''mix_pdv'', CASE WHEN a.mix_client_count > 0 THEN a.total_mix_sum::numeric / a.mix_client_count ELSE 0 END, 
-            ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END
+            ''ticket_medio'', CASE WHEN a.positivacao_count > 0 THEN a.faturamento / a.positivacao_count ELSE 0 END,
+            ''total_mix_sum'', a.total_mix_sum,
+            ''mix_client_count'', a.mix_client_count
         ) ORDER BY a.mes) FILTER (WHERE a.ano = $4), ''[]''::json)
     FROM agg_data a
     ';
@@ -3076,7 +3080,9 @@ BEGIN
                         'devolucao', (v_elem->>'devolucao')::numeric * v_trend_factor,
                         'positivacao', ((v_elem->>'positivacao')::numeric * v_trend_factor)::int,
                         'mix_pdv', (v_elem->>'mix_pdv')::numeric,
-                        'ticket_medio', (v_elem->>'ticket_medio')::numeric
+                        'ticket_medio', (v_elem->>'ticket_medio')::numeric,
+                        'total_mix_sum', (v_elem->>'total_mix_sum')::numeric * v_trend_factor,
+                        'mix_client_count', (v_elem->>'mix_client_count')::numeric * v_trend_factor
                     );
                 END IF;
             END LOOP;
