@@ -4272,6 +4272,9 @@ BEGIN
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where := v_where || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_tipovenda_cond := format('s.tipovenda = ANY(%L::text[])', p_tipovenda);
+    ELSE
+        v_tipovenda_cond := 's.tipovenda IN (''1'', ''9'')';
     END IF;
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
         v_where := v_where || format(' AND produto = ANY(%L::text[]) ', p_produto);
@@ -4311,23 +4314,23 @@ BEGIN
 
     EXECUTE format('
         WITH target_sales AS (
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
             FROM public.data_detailed s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
             UNION ALL
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
             FROM public.data_history s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
         ),
         history_sales AS (
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
             FROM public.data_detailed s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
             UNION ALL
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
             FROM public.data_history s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
@@ -4347,7 +4350,7 @@ BEGIN
             FROM target_sales GROUP BY 1
         ),
         curr_prod_agg AS (
-            SELECT s.codcli, s.produto, MAX(dp.mix_marca) as mix_marca, MAX(dp.mix_categoria) as mix_cat, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val
+            SELECT s.codcli, s.produto, MAX(dp.mix_marca) as mix_marca, MAX(dp.mix_categoria) as mix_cat, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val, SUM(CASE WHEN %s THEN s.vlvenda ELSE 0 END) as pepsico_prod_val
             FROM target_sales s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             GROUP BY 1, 2
@@ -4356,16 +4359,16 @@ BEGIN
             SELECT
                 codcli,
                 SUM(prod_val) as total_val,
-                COUNT(CASE WHEN codfor IN (''707'', ''708'', ''752'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''RUFFLES'' THEN 1 ELSE 0 END) as has_ruffles,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TORCIDA'' THEN 1 ELSE 0 END) as has_torcida,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDYNHO'' THEN 1 ELSE 0 END) as has_toddynho,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDY'' THEN 1 ELSE 0 END) as has_toddy,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''QUAKER'' THEN 1 ELSE 0 END) as has_quaker,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''KEROCOCO'' THEN 1 ELSE 0 END) as has_kerococo
+                COUNT(CASE WHEN LTRIM(codfor::text, ''0'') IN (''707'', ''708'', ''752'') AND pepsico_prod_val >= 1 THEN 1 END) as pepsico_skus,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''RUFFLES'' THEN 1 ELSE 0 END) as has_ruffles,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''TORCIDA'' THEN 1 ELSE 0 END) as has_torcida,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''TODDYNHO'' THEN 1 ELSE 0 END) as has_toddynho,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''TODDY'' THEN 1 ELSE 0 END) as has_toddy,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''QUAKER'' THEN 1 ELSE 0 END) as has_quaker,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''KEROCOCO'' THEN 1 ELSE 0 END) as has_kerococo
             FROM curr_prod_agg
             GROUP BY 1
         ),
@@ -4401,7 +4404,7 @@ BEGIN
             FROM history_sales GROUP BY 1
         ),
         hist_prod_agg AS (
-            SELECT date_trunc(''month'', dtped) as m_date, s.codcli, s.produto, MAX(dp.mix_marca) as mix_marca, MAX(dp.mix_categoria) as mix_cat, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val
+            SELECT date_trunc(''month'', dtped) as m_date, s.codcli, s.produto, MAX(dp.mix_marca) as mix_marca, MAX(dp.mix_categoria) as mix_cat, MAX(s.codfor) as codfor, SUM(s.vlvenda) as prod_val, SUM(CASE WHEN %s THEN s.vlvenda ELSE 0 END) as pepsico_prod_val
             FROM history_sales s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             GROUP BY 1, 2, 3
@@ -4411,16 +4414,16 @@ BEGIN
                 m_date,
                 codcli,
                 SUM(prod_val) as total_val,
-                COUNT(CASE WHEN codfor IN (''707'', ''708'', ''752'') AND prod_val >= 1 THEN 1 END) as pepsico_skus,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''RUFFLES'' THEN 1 ELSE 0 END) as has_ruffles,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TORCIDA'' THEN 1 ELSE 0 END) as has_torcida,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDYNHO'' THEN 1 ELSE 0 END) as has_toddynho,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''TODDY'' THEN 1 ELSE 0 END) as has_toddy,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''QUAKER'' THEN 1 ELSE 0 END) as has_quaker,
-                MAX(CASE WHEN prod_val >= 1 AND mix_marca = ''KEROCOCO'' THEN 1 ELSE 0 END) as has_kerococo
+                COUNT(CASE WHEN LTRIM(codfor::text, ''0'') IN (''707'', ''708'', ''752'') AND pepsico_prod_val >= 1 THEN 1 END) as pepsico_skus,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''CHEETOS'' THEN 1 ELSE 0 END) as has_cheetos,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''DORITOS'' THEN 1 ELSE 0 END) as has_doritos,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''FANDANGOS'' THEN 1 ELSE 0 END) as has_fandangos,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''RUFFLES'' THEN 1 ELSE 0 END) as has_ruffles,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''TORCIDA'' THEN 1 ELSE 0 END) as has_torcida,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''TODDYNHO'' THEN 1 ELSE 0 END) as has_toddynho,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''TODDY'' THEN 1 ELSE 0 END) as has_toddy,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''QUAKER'' THEN 1 ELSE 0 END) as has_quaker,
+                MAX(CASE WHEN pepsico_prod_val >= 1 AND mix_marca = ''KEROCOCO'' THEN 1 ELSE 0 END) as has_kerococo
             FROM hist_prod_agg
             GROUP BY 1, 2
         ),
@@ -4486,8 +4489,10 @@ BEGIN
     ',
     v_where, v_where_rede, v_start_target, v_end_target,
     v_where, v_where_rede, v_start_target, v_end_target,
+    v_tipovenda_cond,
     v_where, v_where_rede, v_start_quarter, v_end_quarter,
-    v_where, v_where_rede, v_start_quarter, v_end_quarter
+    v_where, v_where_rede, v_start_quarter, v_end_quarter,
+    v_tipovenda_cond
     ) INTO v_current_daily, v_current_kpi, v_history_daily, v_history_kpi, v_supervisor_data, v_history_monthly;
 
     RETURN json_build_object(
