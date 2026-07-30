@@ -3136,6 +3136,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             accKpi.peso = (Number(accKpi.peso) || 0) + (Number(newKpi.peso) || 0);
             accKpi.caixas = (Number(accKpi.caixas) || 0) + (Number(newKpi.caixas) || 0);
             accKpi.clientes = (Number(accKpi.clientes) || 0) + (Number(newKpi.clientes) || 0);
+            accKpi.pos_salty = (Number(accKpi.pos_salty) || 0) + (Number(newKpi.pos_salty) || 0);
             return accKpi;
         };
 
