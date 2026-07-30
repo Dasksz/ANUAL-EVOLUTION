@@ -150,7 +150,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --- RENDER LOGIC (Adapted from app.js) ---
-  function renderSlides(data) {
+    function renderSlides(data) {
     globalVendedoresData = data.top_vendedores || [];
     renderGeral(data.global);
 
@@ -158,7 +158,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const targetMonthIdx =
       (data.meta?.curr?.mes || new Date().getMonth() + 1) - 1;
     setupFilial(data.filiais, data.supervisores);
-    renderRede(data.redes); // Actually Atacado
+    renderRede(data.redes, data.meta, data.global); // Actually Atacado
     setupVendedores(data.top_vendedores);
   }
 
@@ -549,54 +549,131 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (uniqueFiliais.length > 0) renderFilial(uniqueFiliais[0]); // init
   }
 
-  function renderRede(redesData) {
+  function renderRede(redesData, meta, globalData) {
     const container = document.getElementById("presentation-rede-cards");
     if (!redesData || redesData.length === 0) {
       container.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
       return;
     }
 
-    // "Rede" is now conceptually "Atacado"
-    const topAtacado =
-      redesData.sort((a, b) => b.fat_atual - a.fat_atual)[0] || redesData[0];
-
     // Helper to remove "Rede: " prefix
     const formatDim = (dim) => (dim ? dim.replace(/^Rede:\s*/i, "") : dim);
 
-    const outrosAtacados = redesData.filter(
-      (r) => r.dimension !== topAtacado.dimension,
-    );
-    const totalFatOutros = outrosAtacados.reduce(
-      (sum, r) => sum + (r.fat_atual || 0),
-      0,
-    );
-    const totalFatTrimOutros = outrosAtacados.reduce(
-      (sum, r) => sum + (r.fat_trim || 0),
-      0,
-    );
-    const totalFatAntOutros = outrosAtacados.reduce(
-      (sum, r) => sum + (r.fat_ant || 0),
-      0,
-    );
+    // Context formatting
+    const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    const targetMonthIdx = meta?.curr?.mes ? meta.curr.mes - 1 : new Date().getMonth();
+    const targetYear = meta?.curr?.ano || new Date().getFullYear();
+    const monthName = monthNames[targetMonthIdx];
+
+    // Global aggregations from ALL redes
+    const totalFatGlobal = redesData.reduce((sum, r) => sum + (r.fat_atual || 0), 0);
+    const totalFatTrimGlobal = redesData.reduce((sum, r) => sum + (r.fat_trim || 0), 0);
+    const totalTonGlobal = redesData.reduce((sum, r) => sum + (r.ton_atual || 0), 0);
+    const totalTonTrimGlobal = redesData.reduce((sum, r) => sum + (r.ton_trim || 0), 0);
+    const formatTotalApprox = (val) => val >= 1000 ? `~R$ ${Math.floor(val/1000)}K` : `~R$ ${val}`;
+    
+    // Sort logic for top crescimento
+    const calcVarPct = (atual, trim) => {
+      if (!trim || trim === 0) return atual > 0 ? 100 : 0;
+      return ((atual - trim) / Math.abs(trim)) * 100;
+    };
+    
+    const redesCrescimento = [...redesData].sort((a, b) => calcVarPct(b.fat_atual, b.fat_trim) - calcVarPct(a.fat_atual, a.fat_trim)).slice(0, 3);
+    
+    // Find absolute top atacado
+    const topAtacado = [...redesData].sort((a, b) => (b.fat_atual || 0) - (a.fat_atual || 0))[0] || redesData[0];
+    const outrosAtacados = redesData.filter((r) => r.dimension !== topAtacado.dimension);
+
+    const totalFatOutros = outrosAtacados.reduce((sum, r) => sum + (r.fat_atual || 0), 0);
+    const totalFatTrimOutros = outrosAtacados.reduce((sum, r) => sum + (r.fat_trim || 0), 0);
+    const totalFatAntOutros = outrosAtacados.reduce((sum, r) => sum + (r.fat_ant || 0), 0);
+
+    const topNames = outrosAtacados.length > 0 ? `(${formatDim(topAtacado.dimension)} + Outros Atacados)` : `(${formatDim(topAtacado.dimension)})`;
 
     container.innerHTML = `
-            <div class="presentation-card bg-gradient-to-br from-fuchsia-900/40 to-transparent border-fuchsia-500/30">
-                <h3 class="text-lg font-bold text-white mb-4 border-b border-fuchsia-500/30 pb-2"> ${formatDim(topAtacado.dimension)}</h3>
+      <!-- Top Row: 4 Cards -->
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <!-- Total Faturado -->
+          <div class="presentation-card relative overflow-hidden group">
+              <div class="absolute top-0 left-0 w-1 h-full bg-fuchsia-500 rounded-l-lg"></div>
+              <div class="text-xs text-slate-400 font-bold uppercase mb-2 tracking-wider">TOTAL FATURADO GLOBAL (${monthName} ${targetYear})</div>
+              <div class="flex justify-between items-end mb-2">
+                 <div>
+                    <div class="text-2xl lg:text-3xl font-extrabold text-white">${formatCurrency(totalFatGlobal)}</div>
+                    <div class="text-xs text-slate-500 mt-1">${topNames}</div>
+                 </div>
+                 <div class="text-right">
+                    <div class="text-xl lg:text-2xl font-bold ${calcVarPct(totalFatGlobal, totalFatTrimGlobal) > 0 ? 'text-emerald-400' : 'text-red-400'}">
+                        ${calcVarPct(totalFatGlobal, totalFatTrimGlobal) > 0 ? '↑' : '↓'} ${formatPercent(Math.abs(calcVarPct(totalFatGlobal, totalFatTrimGlobal)))}
+                    </div>
+                    <div class="text-[10px] text-slate-500">vs Mês Anterior</div>
+                 </div>
+              </div>
+              <div class="mt-4 bg-white/5 rounded px-3 py-2 text-sm text-slate-400 font-medium">
+                  Valor Aproximado: ${formatTotalApprox(totalFatGlobal)}
+              </div>
+          </div>
+          
+          <!-- Total Toneladas -->
+          <div class="presentation-card relative overflow-hidden group">
+              <div class="absolute top-0 left-0 w-1 h-full bg-purple-500 rounded-l-lg"></div>
+              <div class="text-xs text-slate-400 font-bold uppercase mb-2 tracking-wider">TOTAL TONELADAS GLOBAL</div>
+              <div class="flex justify-between items-end mb-2">
+                 <div>
+                    <div class="text-2xl lg:text-3xl font-extrabold text-white">${formatNumber(totalTonGlobal)} <span class="text-base lg:text-lg font-medium text-slate-400">tons</span></div>
+                    <div class="text-xs text-slate-500 mt-1">Estimado total, e.g.</div>
+                 </div>
+                 <div class="text-right">
+                    <div class="text-xl lg:text-2xl font-bold ${calcVarPct(totalTonGlobal, totalTonTrimGlobal) > 0 ? 'text-emerald-400' : 'text-red-400'}">
+                        ${calcVarPct(totalTonGlobal, totalTonTrimGlobal) > 0 ? '↑' : '↓'} ${formatPercent(Math.abs(calcVarPct(totalTonGlobal, totalTonTrimGlobal)))}
+                    </div>
+                    <div class="text-[10px] text-slate-500">vs Mês Anterior</div>
+                 </div>
+              </div>
+          </div>
+
+          <!-- Top Redes Crescimento -->
+          <div class="presentation-card flex flex-col justify-center">
+              <div class="text-xs text-slate-400 font-bold uppercase mb-4 tracking-wider">TOP REDES POR CRESCIMENTO</div>
+              <div class="space-y-3">
+                  ${redesCrescimento.map((r, i) => `
+                      <div class="flex justify-between items-center text-sm font-medium">
+                          <span class="text-white truncate">${i + 1}. ${formatDim(r.dimension)}</span>
+                          <span class="${calcVarPct(r.fat_atual, r.fat_trim) > 0 ? 'text-emerald-400' : 'text-red-400'}">
+                              ${calcVarPct(r.fat_atual, r.fat_trim) > 0 ? '+' : ''}${formatPercent(calcVarPct(r.fat_atual, r.fat_trim))}
+                          </span>
+                      </div>
+                  `).join('')}
+              </div>
+          </div>
+
+          <!-- Decorative Image -->
+          <div class="rounded-xl overflow-hidden shadow-lg border border-white/10 hidden lg:block">
+              <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400&h=250" alt="Resultados Atacado" class="w-full h-full object-cover opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all duration-500">
+          </div>
+      </div>
+
+      <!-- Bottom Row: 2 Cards -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- Top Atacado -->
+            <div class="presentation-card bg-gradient-to-br from-fuchsia-900/20 to-transparent border-fuchsia-500/30 flex flex-col justify-center">
+                <h3 class="text-sm font-bold text-slate-300 mb-4 uppercase tracking-wider">${formatDim(topAtacado.dimension)}</h3>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <div class="text-xs text-slate-400 mb-1">Faturamento</div>
+                        <div class="text-xs text-slate-500 mb-1">Faturamento</div>
                         <div class="text-xl font-bold text-white">${formatCurrency(topAtacado.fat_atual)}</div>
-                        <div class="text-sm mt-1">${renderVarBadge(topAtacado.fat_atual, topAtacado.fat_trim)} vs Trim, ${renderVarBadge(topAtacado.fat_atual, topAtacado.fat_ant)} vs Ano</div>
+                        <div class="text-xs mt-1">${renderVarBadge(topAtacado.fat_atual, topAtacado.fat_trim)} vs Trim, ${renderVarBadge(topAtacado.fat_atual, topAtacado.fat_ant)} vs Ano</div>
                     </div>
                     <div>
-                        <div class="text-xs text-slate-400 mb-1">Toneladas</div>
+                        <div class="text-xs text-slate-500 mb-1">Tonelada</div>
                         <div class="text-xl font-bold text-white">${formatNumber(topAtacado.ton_atual)}</div>
-                        <div class="text-sm mt-1">${renderVarBadge(topAtacado.ton_atual, topAtacado.ton_trim)} vs Trim, ${renderVarBadge(topAtacado.ton_atual, topAtacado.ton_ant)} vs Ano</div>
+                        <div class="text-xs mt-1">${renderVarBadge(topAtacado.ton_atual, topAtacado.ton_trim)} vs Trim, ${renderVarBadge(topAtacado.ton_atual, topAtacado.ton_ant)} vs Ano</div>
                     </div>
                 </div>
             </div>
 
-            <div class="presentation-card">
+            <!-- Outros Atacados -->
+            <div class="presentation-card flex flex-col">
                  <div class="flex justify-between items-end mb-4 border-b border-white/10 pb-2">
                      <h3 class="text-sm font-bold text-slate-300">Outros Atacados</h3>
                      ${
@@ -614,21 +691,19 @@ document.addEventListener("DOMContentLoaded", async () => {
                     ${outrosAtacados
                       .map(
                         (r) => `
-                        <div class="flex justify-between items-center bg-black/20 p-2 rounded gap-4">
-                            <span class="text-sm font-medium text-slate-300 truncate w-56" title="${formatDim(r.dimension)}">${formatDim(r.dimension)}</span>
+                        <div class="flex justify-between items-center bg-black/20 p-2 rounded gap-4 hover:bg-black/40 transition-colors">
+                            <span class="text-sm font-medium text-slate-300 truncate w-40" title="${formatDim(r.dimension)}">${formatDim(r.dimension)}</span>
                             <span class="text-sm text-white whitespace-nowrap">${formatCurrency(r.fat_atual)}</span>
-                            <span class="text-xs whitespace-nowrap">${renderVarBadge(r.fat_atual, r.fat_trim)} vs Trim, ${renderVarBadge(r.fat_atual, r.fat_ant)} vs Ano</span>
+                            <span class="text-xs whitespace-nowrap text-right flex-shrink-0">${renderVarBadge(r.fat_atual, r.fat_trim)} vs Trim, ${renderVarBadge(r.fat_atual, r.fat_ant)} vs Ano</span>
                         </div>
                     `,
                       )
                       .join("")}
                  </div>
             </div>
-        `;
+      </div>
+    `;
   }
-
-
-
 
   // --- Modal Ranking Logic ---
   let globalVendedoresData = [];
@@ -652,328 +727,42 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Update styling
         geralButtons.forEach(b => {
-           if (b.getAttribute('data-filter') === currentGeralFilter) {
-               b.classList.remove('bg-white/5', 'text-slate-400');
-               b.classList.add('bg-fuchsia-600', 'text-white');
-           } else {
-               b.classList.add('bg-white/5', 'text-slate-400');
-               b.classList.remove('bg-fuchsia-600', 'text-white');
-           }
+          b.classList.remove('bg-fuchsia-600', 'text-white', 'border-fuchsia-400');
+          b.classList.add('bg-[#fc0100]/20', 'text-[#fc0100]', 'border-[#fc0100]/50');
         });
-
-        renderGeral(); // Re-render
-      });
-    });
-
-    const filialButtons = document.querySelectorAll('#presentation-filial-filters button');
-    filialButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const filter = btn.getAttribute('data-filter');
-        if (currentFilialFilter === filter) {
-          currentFilialFilter = 'Geral'; // Toggle off
-        } else {
-          currentFilialFilter = filter;
+        if (currentGeralFilter !== 'Geral') {
+             btn.classList.remove('bg-[#fc0100]/20', 'text-[#fc0100]', 'border-[#fc0100]/50');
+             btn.classList.add('bg-fuchsia-600', 'text-white', 'border-fuchsia-400');
         }
 
-        // Update styling
-        filialButtons.forEach(b => {
-           if (b.getAttribute('data-filter') === currentFilialFilter) {
-               b.classList.remove('bg-white/5', 'text-slate-400');
-               b.classList.add('bg-fuchsia-600', 'text-white');
-           } else {
-               b.classList.add('bg-white/5', 'text-slate-400');
-               b.classList.remove('bg-fuchsia-600', 'text-white');
-           }
-        });
-
-        if (currentFilialSelected) {
-           // We need to access renderFilial, but it's scoped inside setupFilial.
-           // To fix this we can just re-call setupFilial with existing data.
-           setupFilial(globalFilialData, presentationData.supervisores);
-
-           // Ensure we keep the selected filial
-           const select = document.getElementById("presentation-filial-select");
-           if (select) select.value = currentFilialSelected;
-        }
+        // Re-render
+        renderGeral(globalGeralData);
       });
     });
   }
 
-
-
-  window.openRankingModal = openRankingModal;
-  function openRankingModal(metric) {
-    if (!globalVendedoresData || globalVendedoresData.length === 0) return;
-
-    const modal = document.getElementById("ranking-modal");
-    const backdrop = document.getElementById("ranking-modal-backdrop");
-    const content = document.getElementById("ranking-modal-content");
-    const title = document.getElementById("ranking-modal-title");
-    const tbody = document.getElementById("ranking-modal-tbody");
-
-    if (!modal || !backdrop || !content || !tbody) return;
-
-    let titleText = "Ranking";
-    let sortKeyAtual = "";
-    let sortKeyTrim = "";
-    let sortKeyAno = "";
-    let isCurr = false;
-
-    if (metric === "dev") {
-      titleText = "Ranking de Devoluções";
-      sortKeyAtual = "dev_atual";
-      sortKeyTrim = "dev_trim";
-      sortKeyAno = "dev_ant";
-      isCurr = true;
-    } else if (metric === "bon") {
-      titleText = "Ranking de Bonificações";
-      sortKeyAtual = "bon_atual";
-      sortKeyTrim = "bon_trim";
-      sortKeyAno = "bon_ant";
-      isCurr = true;
-    }
-
-    title.textContent = titleText;
-
-    // Filter out rows with 0 or null values for the current metric to make it cleaner, or just sort them
-    let data = [...globalVendedoresData];
-
-    // Sort descending
-    data.sort((a, b) => (b[sortKeyAtual] || 0) - (a[sortKeyAtual] || 0));
-
-    // Render table
-    tbody.innerHTML = data.map((v, idx) => {
-        const valAtual = v[sortKeyAtual] || 0;
-        const valTrim = v[sortKeyTrim] || 0;
-        const valAno = v[sortKeyAno] || 0;
-
-        if (valAtual === 0 && valTrim === 0 && valAno === 0) return ''; // Skip empty rows
-
-        const fmt = isCurr ? formatCurrency : formatNumber;
-
-        let medal = `<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs font-bold text-slate-300">${idx + 1}</span>`;
-        if (idx === 0) medal = `🥇`;
-        if (idx === 1) medal = `🥈`;
-        if (idx === 2) medal = `🥉`;
-
-        return `
-            <tr class="hover:bg-white/5 transition-colors">
-                <td class="px-4 py-3 text-center">${medal}</td>
-                <td class="px-4 py-3 font-medium text-white">
-                    <div class="truncate max-w-[150px]" title="${v.vendedor}">${v.vendedor}</div>
-                    <div class="text-[10px] text-slate-500">${v.supervisor_nome || "N/A"}</div>
-                </td>
-                <td class="px-4 py-3 font-semibold text-fuchsia-400">${fmt(valAtual)}</td>
-                <td class="px-4 py-3">${renderVarBadge(valAtual, valTrim)}</td>
-                <td class="px-4 py-3">${renderVarBadge(valAtual, valAno)}</td>
-            </tr>
-        `;
-    }).join("");
-
-    // Show modal
-    modal.classList.remove("hidden");
-    modal.classList.add("flex");
-
-    // Trigger animation
-    requestAnimationFrame(() => {
-      backdrop.classList.remove("opacity-0");
-      content.classList.remove("scale-95", "opacity-0");
-      content.classList.add("scale-100", "opacity-100");
-    });
-  }
-
-  window.closeRankingModal = closeRankingModal;
-  function closeRankingModal() {
-    const modal = document.getElementById("ranking-modal");
-    const backdrop = document.getElementById("ranking-modal-backdrop");
-    const content = document.getElementById("ranking-modal-content");
-
-    if (!modal) return;
-
-    backdrop.classList.add("opacity-0");
-    content.classList.remove("scale-100", "opacity-100");
-    content.classList.add("scale-95", "opacity-0");
-
-    setTimeout(() => {
-      modal.classList.add("hidden");
-      modal.classList.remove("flex");
-    }, 300);
-  }
-  function setupVendedores(vendedoresData) {
-    if (!vendedoresData) return;
-
-    const tabs = document.querySelectorAll("#top-vendedores-tabs button");
-    const selectSup = document.getElementById(
-      "top-vendedores-supervisor-filter",
-    );
-    const tbody = document.getElementById("presentation-vendedores-tbody");
-
-    // Populate select
-    const sups = [
-      ...new Set(vendedoresData.map((v) => v.supervisor_nome).filter(Boolean)),
-    ].sort();
-    selectSup.innerHTML =
-      '<option value="ALL">Todos</option>' +
-      sups.map((s) => `<option value="${s}">${s}</option>`).join("");
-
-    let currentTab = "fat_geral";
-    let currentSup = "ALL";
-
-    const thAtual = document.getElementById("th-atual");
-    const thAnt = document.getElementById("th-ant");
-    const thTrim = document.getElementById("th-trim");
-
-    const renderTable = () => {
-      if (currentTab.startsWith("fat_")) {
-        if (thAtual) thAtual.textContent = "Fat. Atual";
-        if (thAnt) thAnt.textContent = "Fat. Ano Ant.";
-        if (thTrim) thTrim.textContent = "Fat. Trim Ant.";
-      } else if (currentTab.startsWith("ton_")) {
-        if (thAtual) thAtual.textContent = "Ton. Atual";
-        if (thAnt) thAnt.textContent = "Ton. Ano Ant.";
-        if (thTrim) thTrim.textContent = "Ton. Trim Ant.";
-      } else if (currentTab.startsWith("pos_")) {
-        if (thAtual) thAtual.textContent = "Pos. Atual";
-        if (thAnt) thAnt.textContent = "Pos. Ano Ant.";
-        if (thTrim) thTrim.textContent = "Pos. Trim Ant.";
-      }
-
-      let filtered = vendedoresData;
-      if (currentSup !== "ALL")
-        filtered = filtered.filter((v) => v.supervisor_nome === currentSup);
-
-      // Sort based on tab
-      let sortKey = "fat_atual";
-      if (currentTab === "fat_salty") sortKey = "fat_atual_salty";
-      if (currentTab === "fat_foods") sortKey = "fat_atual_foods";
-      if (currentTab === "ton_salty") sortKey = "ton_atual_salty";
-      if (currentTab === "ton_foods") sortKey = "ton_atual_foods";
-      if (currentTab === "pos_salty") sortKey = "pos_atual_salty";
-      if (currentTab === "pos_foods") sortKey = "pos_atual_foods";
-
-      filtered.sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
-      const top10 = filtered.slice(0, 10);
-
-      // Determine if formatting currency or number
-      const isCurr = currentTab.startsWith("fat_");
-
-      tbody.innerHTML = top10
-        .map((v, idx) => {
-          const valAtual = v[sortKey] || 0;
-          let keyAntYear = sortKey.replace("_atual", "_ant");
-          let keyAntTrim = sortKey.replace("_atual", "_trim");
-          if (sortKey === "fat_atual") {
-            keyAntYear = "fat_ant";
-            keyAntTrim = "fat_trim";
-          }
-
-          const valYear = v[keyAntYear] || 0;
-          const valTrim = v[keyAntTrim] || 0;
-
-          const fmt = isCurr ? formatCurrency : formatNumber;
-
-          let medal = `<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs font-bold text-slate-300">${idx + 1}</span>`;
-          if (idx === 0) medal = `🥇`;
-          if (idx === 1) medal = `🥈`;
-          if (idx === 2) medal = `🥉`;
-
-          return `
-                    <tr class="hover:bg-white/5 transition-colors">
-                        <td class="px-4 py-3 text-center">${medal}</td>
-                        <td class="px-4 py-3 font-medium text-white">
-                            <div class="truncate max-w-[150px]" title="${v.vendedor}">${v.vendedor}</div>
-                            <div class="text-[10px] text-slate-500">${v.supervisor_nome || "N/A"}</div>
-                        </td>
-                        <td class="px-4 py-3 font-semibold text-fuchsia-400">${fmt(valAtual)}</td>
-                        <td class="px-4 py-3 text-slate-400">${fmt(valYear)}</td>
-                        <td class="px-4 py-3 text-slate-400">${fmt(valTrim)}</td>
-                        <td class="px-4 py-3">${renderVarBadge(valAtual, valYear)}</td>
-                        <td class="px-4 py-3">${renderVarBadge(valAtual, valTrim)}</td>
-                    </tr>
-                `;
-        })
-        .join("");
-
-      if (top10.length === 0)
-        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-4 text-center text-slate-500">Nenhum vendedor encontrado.</td></tr>`;
-    };
-
-    const profileIcon = document.getElementById("top-vendedores-profile-icon");
-    const profileFallback = document.getElementById("top-vendedores-profile-fallback");
-
-    function updateProfileIcon(supName) {
-      if (!profileIcon || !profileFallback) return;
-
-      profileIcon.classList.remove("hidden");
-      profileFallback.classList.add("hidden");
-
-      if (supName === "ALL") {
-        profileIcon.src = "src/assets/images/PRIME.png";
-      } else if (supName && supName.includes("AMERICANAS")) {
-        profileIcon.src = "src/assets/images/AMERICANAS.png";
-      } else if (supName && supName.includes("TIAGO")) {
-        profileIcon.src = "src/assets/images/SHARK.png";
-      } else if (supName && (supName.includes("RÔMULO") || supName.includes("ROMULO"))) {
-        profileIcon.src = "src/assets/images/AGUIA.png";
-      } else {
-        profileIcon.classList.add("hidden");
-        profileFallback.classList.remove("hidden");
-      }
-    }
-
-    selectSup.addEventListener("change", (e) => {
-      currentSup = e.target.value;
-      updateProfileIcon(currentSup);
-      renderTable();
-    });
-
-    // Initialize with default
-    updateProfileIcon(currentSup);
-
-    tabs.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        tabs.forEach((b) => {
-          b.classList.remove(
-            "bg-[#fc0100]/20",
-            "text-[#fc0100]",
-            "border-[#fc0100]/50",
-          );
-          b.classList.add("bg-white/5", "text-slate-400", "border-transparent");
-        });
-        btn.classList.add(
-          "bg-[#fc0100]/20",
-          "text-[#fc0100]",
-          "border-[#fc0100]/50",
-        );
-        btn.classList.remove("bg-white/5", "text-slate-400");
-        currentTab = btn.getAttribute("data-tab");
-        renderTable();
-      });
-    });
-
-    renderTable();
-  }
-
-  // --- UTILS ---
+  // Helpers
   function formatCurrency(val) {
-    if (!val) return "R$ 0,00";
+    if (val === undefined || val === null) return "R$ 0,00";
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
     }).format(val);
   }
-  function formatNumber(val) {
-    if (!val) return "0";
-    return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(
-      val,
-    );
-  }
+
   function formatPercent(val) {
-    if (!val && val !== 0) return "0%";
-    return (
-      new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(val) +
-      "%"
-    );
+    if (val === undefined || val === null) return "0%";
+    return new Intl.NumberFormat("pt-BR", {
+      style: "percent",
+      maximumFractionDigits: 1,
+    }).format(val / 100);
+  }
+
+  function formatNumber(val) {
+    if (val === undefined || val === null) return "0";
+    return new Intl.NumberFormat("pt-BR", {
+      maximumFractionDigits: 0,
+    }).format(val);
   }
 
   function renderVarBadge(atual, anterior) {
