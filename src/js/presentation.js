@@ -67,23 +67,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const closeRankingBtn = document.getElementById("close-ranking-modal-btn");
   const rankingBackdrop = document.getElementById("ranking-modal-backdrop");
-  function closeRankingModal() {
-    const rankingModal = document.getElementById("ranking-modal");
-    if (!rankingModal) return;
-    const rankingBackdropModal = document.getElementById("ranking-modal-backdrop");
-    const rankingModalContent = document.getElementById("ranking-modal-content");
-    
-    rankingBackdropModal.classList.remove("opacity-100");
-    rankingBackdropModal.classList.add("opacity-0");
-    rankingModalContent.classList.remove("scale-100", "opacity-100");
-    rankingModalContent.classList.add("scale-95", "opacity-0");
-    
-    setTimeout(() => {
-      rankingModal.classList.add("hidden");
-      rankingModal.classList.remove("flex");
-    }, 300);
-  }
-
   if (closeRankingBtn) closeRankingBtn.addEventListener("click", closeRankingModal);
   if (rankingBackdrop) rankingBackdrop.addEventListener("click", closeRankingModal);
 
@@ -666,7 +649,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           <!-- Decorative Image -->
           <div class="rounded-xl overflow-hidden shadow-lg border border-white/10 hidden lg:block">
-              <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400&h=250" alt="Resultados Atacado" class="w-full h-full object-cover opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all duration-500">
+              <img src="https://images.unsplash.com/photo-1600952841320-db92ec4047ca?q=80&w=800&auto=format&fit=crop" alt="Resultados Atacado" class="w-full h-full object-cover opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all duration-500">
           </div>
       </div>
 
@@ -759,6 +742,260 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Helpers
+  window.openRankingModal = openRankingModal;
+  function openRankingModal(metric) {
+    if (!globalVendedoresData || globalVendedoresData.length === 0) return;
+
+    const modal = document.getElementById("ranking-modal");
+    const backdrop = document.getElementById("ranking-modal-backdrop");
+    const content = document.getElementById("ranking-modal-content");
+    const title = document.getElementById("ranking-modal-title");
+    const tbody = document.getElementById("ranking-modal-tbody");
+
+    if (!modal || !backdrop || !content || !tbody) return;
+
+    let titleText = "Ranking";
+    let sortKeyAtual = "";
+    let sortKeyTrim = "";
+    let sortKeyAno = "";
+    let isCurr = false;
+
+    if (metric === "dev") {
+      titleText = "Ranking de Devoluções";
+      sortKeyAtual = "dev_atual";
+      sortKeyTrim = "dev_trim";
+      sortKeyAno = "dev_ant";
+      isCurr = true;
+    } else if (metric === "bon") {
+      titleText = "Ranking de Bonificações";
+      sortKeyAtual = "bon_atual";
+      sortKeyTrim = "bon_trim";
+      sortKeyAno = "bon_ant";
+      isCurr = true;
+    }
+
+    title.textContent = titleText;
+
+    // Filter out rows with 0 or null values for the current metric to make it cleaner, or just sort them
+    let data = [...globalVendedoresData];
+
+    // Sort descending
+    data.sort((a, b) => (b[sortKeyAtual] || 0) - (a[sortKeyAtual] || 0));
+
+    // Render table
+    tbody.innerHTML = data.map((v, idx) => {
+        const valAtual = v[sortKeyAtual] || 0;
+        const valTrim = v[sortKeyTrim] || 0;
+        const valAno = v[sortKeyAno] || 0;
+
+        if (valAtual === 0 && valTrim === 0 && valAno === 0) return ''; // Skip empty rows
+
+        const fmt = isCurr ? formatCurrency : formatNumber;
+
+        let medal = `<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs font-bold text-slate-300">${idx + 1}</span>`;
+        if (idx === 0) medal = `🥇`;
+        if (idx === 1) medal = `🥈`;
+        if (idx === 2) medal = `🥉`;
+
+        return `
+            <tr class="hover:bg-white/5 transition-colors">
+                <td class="px-4 py-3 text-center">${medal}</td>
+                <td class="px-4 py-3 font-medium text-white">
+                    <div class="truncate max-w-[150px]" title="${v.vendedor}">${v.vendedor}</div>
+                    <div class="text-[10px] text-slate-500">${v.supervisor_nome || "N/A"}</div>
+                </td>
+                <td class="px-4 py-3 font-semibold text-fuchsia-400">${fmt(valAtual)}</td>
+                <td class="px-4 py-3">${renderVarBadge(valAtual, valTrim)}</td>
+                <td class="px-4 py-3">${renderVarBadge(valAtual, valAno)}</td>
+            </tr>
+        `;
+    }).join("");
+
+    // Show modal
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+      backdrop.classList.remove("opacity-0");
+      content.classList.remove("scale-95", "opacity-0");
+      content.classList.add("scale-100", "opacity-100");
+    });
+  }
+
+  window.closeRankingModal = closeRankingModal;
+  function closeRankingModal() {
+    const modal = document.getElementById("ranking-modal");
+    const backdrop = document.getElementById("ranking-modal-backdrop");
+    const content = document.getElementById("ranking-modal-content");
+
+    if (!modal) return;
+
+    backdrop.classList.add("opacity-0");
+    content.classList.remove("scale-100", "opacity-100");
+    content.classList.add("scale-95", "opacity-0");
+
+    setTimeout(() => {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }, 300);
+  }
+  function setupVendedores(vendedoresData) {
+    if (!vendedoresData) return;
+
+    const tabs = document.querySelectorAll("#top-vendedores-tabs button");
+    const selectSup = document.getElementById(
+      "top-vendedores-supervisor-filter",
+    );
+    const tbody = document.getElementById("presentation-vendedores-tbody");
+
+    // Populate select
+    const sups = [
+      ...new Set(vendedoresData.map((v) => v.supervisor_nome).filter(Boolean)),
+    ].sort();
+    selectSup.innerHTML =
+      '<option value="ALL">Todos</option>' +
+      sups.map((s) => `<option value="${s}">${s}</option>`).join("");
+
+    let currentTab = "fat_geral";
+    let currentSup = "ALL";
+
+    const thAtual = document.getElementById("th-atual");
+    const thAnt = document.getElementById("th-ant");
+    const thTrim = document.getElementById("th-trim");
+
+    const renderTable = () => {
+      if (currentTab.startsWith("fat_")) {
+        if (thAtual) thAtual.textContent = "Fat. Atual";
+        if (thAnt) thAnt.textContent = "Fat. Ano Ant.";
+        if (thTrim) thTrim.textContent = "Fat. Trim Ant.";
+      } else if (currentTab.startsWith("ton_")) {
+        if (thAtual) thAtual.textContent = "Ton. Atual";
+        if (thAnt) thAnt.textContent = "Ton. Ano Ant.";
+        if (thTrim) thTrim.textContent = "Ton. Trim Ant.";
+      } else if (currentTab.startsWith("pos_")) {
+        if (thAtual) thAtual.textContent = "Pos. Atual";
+        if (thAnt) thAnt.textContent = "Pos. Ano Ant.";
+        if (thTrim) thTrim.textContent = "Pos. Trim Ant.";
+      }
+
+      let filtered = vendedoresData;
+      if (currentSup !== "ALL")
+        filtered = filtered.filter((v) => v.supervisor_nome === currentSup);
+
+      // Sort based on tab
+      let sortKey = "fat_atual";
+      if (currentTab === "fat_salty") sortKey = "fat_atual_salty";
+      if (currentTab === "fat_foods") sortKey = "fat_atual_foods";
+      if (currentTab === "ton_salty") sortKey = "ton_atual_salty";
+      if (currentTab === "ton_foods") sortKey = "ton_atual_foods";
+      if (currentTab === "pos_salty") sortKey = "pos_atual_salty";
+      if (currentTab === "pos_foods") sortKey = "pos_atual_foods";
+
+      filtered.sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
+      const top10 = filtered.slice(0, 10);
+
+      // Determine if formatting currency or number
+      const isCurr = currentTab.startsWith("fat_");
+
+      tbody.innerHTML = top10
+        .map((v, idx) => {
+          const valAtual = v[sortKey] || 0;
+          let keyAntYear = sortKey.replace("_atual", "_ant");
+          let keyAntTrim = sortKey.replace("_atual", "_trim");
+          if (sortKey === "fat_atual") {
+            keyAntYear = "fat_ant";
+            keyAntTrim = "fat_trim";
+          }
+
+          const valYear = v[keyAntYear] || 0;
+          const valTrim = v[keyAntTrim] || 0;
+
+          const fmt = isCurr ? formatCurrency : formatNumber;
+
+          let medal = `<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs font-bold text-slate-300">${idx + 1}</span>`;
+          if (idx === 0) medal = `🥇`;
+          if (idx === 1) medal = `🥈`;
+          if (idx === 2) medal = `🥉`;
+
+          return `
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <td class="px-4 py-3 text-center">${medal}</td>
+                        <td class="px-4 py-3 font-medium text-white">
+                            <div class="truncate max-w-[150px]" title="${v.vendedor}">${v.vendedor}</div>
+                            <div class="text-[10px] text-slate-500">${v.supervisor_nome || "N/A"}</div>
+                        </td>
+                        <td class="px-4 py-3 font-semibold text-fuchsia-400">${fmt(valAtual)}</td>
+                        <td class="px-4 py-3 text-slate-400">${fmt(valYear)}</td>
+                        <td class="px-4 py-3 text-slate-400">${fmt(valTrim)}</td>
+                        <td class="px-4 py-3">${renderVarBadge(valAtual, valYear)}</td>
+                        <td class="px-4 py-3">${renderVarBadge(valAtual, valTrim)}</td>
+                    </tr>
+                `;
+        })
+        .join("");
+
+      if (top10.length === 0)
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-4 text-center text-slate-500">Nenhum vendedor encontrado.</td></tr>`;
+    };
+
+    const profileIcon = document.getElementById("top-vendedores-profile-icon");
+    const profileFallback = document.getElementById("top-vendedores-profile-fallback");
+
+    function updateProfileIcon(supName) {
+      if (!profileIcon || !profileFallback) return;
+
+      profileIcon.classList.remove("hidden");
+      profileFallback.classList.add("hidden");
+
+      if (supName === "ALL") {
+        profileIcon.src = "src/assets/images/PRIME.png";
+      } else if (supName && supName.includes("AMERICANAS")) {
+        profileIcon.src = "src/assets/images/AMERICANAS.png";
+      } else if (supName && supName.includes("TIAGO")) {
+        profileIcon.src = "src/assets/images/SHARK.png";
+      } else if (supName && (supName.includes("RÔMULO") || supName.includes("ROMULO"))) {
+        profileIcon.src = "src/assets/images/AGUIA.png";
+      } else {
+        profileIcon.classList.add("hidden");
+        profileFallback.classList.remove("hidden");
+      }
+    }
+
+    selectSup.addEventListener("change", (e) => {
+      currentSup = e.target.value;
+      updateProfileIcon(currentSup);
+      renderTable();
+    });
+
+    // Initialize with default
+    updateProfileIcon(currentSup);
+
+    tabs.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        tabs.forEach((b) => {
+          b.classList.remove(
+            "bg-[#fc0100]/20",
+            "text-[#fc0100]",
+            "border-[#fc0100]/50",
+          );
+          b.classList.add("bg-white/5", "text-slate-400", "border-transparent");
+        });
+        btn.classList.add(
+          "bg-[#fc0100]/20",
+          "text-[#fc0100]",
+          "border-[#fc0100]/50",
+        );
+        btn.classList.remove("bg-white/5", "text-slate-400");
+        currentTab = btn.getAttribute("data-tab");
+        renderTable();
+      });
+    });
+
+    renderTable();
+  }
+
+  // --- UTILS ---
   function formatCurrency(val) {
     if (val === undefined || val === null) return "R$ 0,00";
     return new Intl.NumberFormat("pt-BR", {
