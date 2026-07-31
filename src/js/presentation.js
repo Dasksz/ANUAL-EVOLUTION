@@ -648,7 +648,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           </div>
 
           <!-- Decorative Image -->
-          <div class="rounded-xl overflow-hidden shadow-lg border border-white/10 hidden lg:block h-full max-h-[250px] lg:max-h-full">
+          <div class="hidden lg:block h-full lg:h-[260px] w-full rounded-xl border border-white/10 shadow-lg overflow-hidden">
               <img src="https://centraldovarejo.com.br/wp-content/uploads/2023/12/woman-at-work-putting-boxes-on-the-shelves-beside-2023-11-27-05-07-58-utc.jpg" alt="Resultados Atacado" class="w-full h-full object-cover object-center opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all duration-500">
           </div>
       </div>
