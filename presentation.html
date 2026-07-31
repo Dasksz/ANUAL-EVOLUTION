@@ -327,51 +327,46 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
-            
-            <!-- Left Column: KPIs (4 cards) + Chart -->
-            <div class="lg:col-span-2 flex flex-col gap-6 h-full min-h-0">
-              
-              <!-- KPIs (2x2 grid) -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="presentation-geral-cards-left">
-                <!-- Injected via JS: Faturamento, Toneladas, Devoluções, Bonificações -->
-              </div>
-
-              <!-- Evolução Mensal Chart -->
-              <div class="flex-1 min-h-0 presentation-card relative flex flex-col">
-                <div class="text-sm font-bold text-white bg-fuchsia-600 px-3 py-1 rounded w-max mb-4 shrink-0">
-                  Evolução Mensal - Faturamento
-                </div>
-                <div class="relative flex-1 w-full min-h-0">
-                  <canvas id="presentation-evolution-chart"></canvas>
-                </div>
-              </div>
-
+          <div class="flex flex-col gap-6 flex-1 min-h-0">
+            <!-- Top Row: 3 KPIs -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 shrink-0" id="presentation-geral-cards-top">
+                <!-- Injected via JS: Faturamento, Toneladas, Positivação -->
             </div>
 
-            <!-- Right Column: Positivação + Image -->
-            <div class="lg:col-span-1 flex flex-col gap-6 h-full min-h-0">
-              
-              <div id="presentation-geral-cards-right">
-                <!-- Injected via JS: Positivação Total -->
-              </div>
-
-              <!-- Imagem e Frase Motivacional -->
-              <div class="flex-1 min-h-0 presentation-card flex flex-col items-center justify-center text-center relative overflow-hidden group p-0">
-                <div class="absolute inset-0 z-0 opacity-20 transition-transform duration-700 group-hover:scale-105 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop');"></div>
-                <div class="absolute inset-0 bg-gradient-to-t from-[#0f0e13] via-[#0f0e13]/80 to-transparent z-10"></div>
-                
-                <div class="relative z-20 p-6 flex flex-col items-center h-full justify-center">
-                  <div class="w-16 h-16 rounded-full bg-fuchsia-500/20 flex items-center justify-center mb-4 border border-fuchsia-500/50">
-                    <svg class="w-8 h-8 text-fuchsia-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-                  </div>
-                  <h3 class="text-xl font-bold text-white mb-2 tracking-wide">RESULTADOS QUE IMPORTAM</h3>
-                  <p class="text-slate-300 text-sm font-medium italic">"Os números contam a história do nosso esforço. Cada meta superada é o reflexo da nossa dedicação."</p>
+            <!-- Bottom Area -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
+                <!-- Left 2 Cols: 2 KPIs + Chart -->
+                <div class="lg:col-span-2 flex flex-col gap-6 h-full min-h-0">
+                    <!-- 2 KPIs -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 shrink-0" id="presentation-geral-cards-middle">
+                        <!-- Injected via JS: Devoluções, Bonificações -->
+                    </div>
+                    
+                    <!-- Chart -->
+                    <div class="flex-1 min-h-0 presentation-card relative flex flex-col">
+                        <div class="text-sm font-bold text-white bg-fuchsia-600 px-3 py-1 rounded w-max mb-4 shrink-0">
+                            Evolução Mensal - Faturamento
+                        </div>
+                        <div class="relative flex-1 w-full min-h-0">
+                            <canvas id="presentation-evolution-chart"></canvas>
+                        </div>
+                    </div>
                 </div>
-              </div>
 
+                <!-- Right 1 Col: Image -->
+                <div class="lg:col-span-1 h-full min-h-0 presentation-card flex flex-col items-center justify-center text-center relative overflow-hidden group p-0">
+                    <div class="absolute inset-0 z-0 opacity-20 transition-transform duration-700 group-hover:scale-105 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop');"></div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-[#0f0e13] via-[#0f0e13]/80 to-transparent z-10"></div>
+                    
+                    <div class="relative z-20 p-6 flex flex-col items-center h-full justify-center">
+                        <div class="w-16 h-16 rounded-full bg-fuchsia-500/20 flex items-center justify-center mb-4 border border-fuchsia-500/50">
+                            <svg class="w-8 h-8 text-fuchsia-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2 tracking-wide">RESULTADOS QUE IMPORTAM</h3>
+                        <p class="text-slate-300 text-sm font-medium italic">"Os números contam a história do nosso esforço. Cada meta superada é o reflexo da nossa dedicação."</p>
+                    </div>
+                </div>
             </div>
-
           </div>
         </div>
 
