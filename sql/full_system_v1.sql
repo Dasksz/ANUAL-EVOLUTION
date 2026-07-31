@@ -3439,10 +3439,12 @@ BEGIN
                     FROM (
                         SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, s.dtped, s.codcli, s.tipovenda, s.vlbonific
                         FROM public.data_detailed s
+                        LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                         %s AND dtped >= make_date(%L, 1, 1) AND dtped <= make_date(%L, 12, 31) %s
                         UNION ALL
                         SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, s.dtped, s.codcli, s.tipovenda, s.vlbonific
                         FROM public.data_history s
+                        LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                         %s AND dtped >= make_date(%L, 1, 1) AND dtped <= make_date(%L, 12, 31) %s
                     ) as raw_base
                     GROUP BY 1
