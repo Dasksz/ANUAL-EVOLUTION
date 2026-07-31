@@ -3251,7 +3251,7 @@ async function loadBoxesView() {
                     return;
                 }
                 data = rpcData;
-            }
+            
             if (data) saveToCache(cacheKey, data);
         }
 
