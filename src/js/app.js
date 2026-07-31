@@ -1,6 +1,8 @@
 import supabase from './supabase.js?v=5';
 
 import {
+    renderTableEmptyState,
+    updateEl,
     generateYearOptionsHtml,
     generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
 
@@ -1474,8 +1476,7 @@ function getActiveExportView() {
             } else {
                 showScreen('tela-pendente');
                 if (status === 'bloqueado') {
-                        const statusMsg = document.getElementById('status-text-pendente'); 
-                        if(statusMsg) statusMsg.textContent = "Acesso Bloqueado";
+                        updateEl('status-text-pendente', "Acesso Bloqueado");
                 }
                 startStatusListener(user.id);
             }
@@ -3062,8 +3063,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             boxesMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
             clearArrays(boxesSelectedFiliais, boxesSelectedProducts, boxesSelectedSupervisores, boxesSelectedVendedores, boxesSelectedFornecedores, boxesSelectedCidades, boxesSelectedTiposVenda, boxesSelectedCategorias);
             boxesTrendActive = false; // Reset Trend
-            const span = document.getElementById('boxes-trend-text');
-            if(span) span.textContent = 'Calcular Tendência';
+            updateEl('boxes-trend-text', 'Calcular Tendência');
             if(boxesTrendToggleBtn) {
                 boxesTrendToggleBtn.classList.remove('text-purple-500', 'hover:text-purple-400');
                 boxesTrendToggleBtn.classList.add('text-orange-500', 'hover:text-orange-400');
@@ -3375,9 +3375,9 @@ async function loadBoxesView() {
         const pageData = displayData.slice(startIndex, endIndex);
 
         // Update pagination UI text
-        document.getElementById('boxes-page-start').textContent = totalItems > 0 ? startIndex + 1 : 0;
-        document.getElementById('boxes-page-end').textContent = endIndex;
-        document.getElementById('boxes-page-total').textContent = totalItems;
+        updateEl('boxes-page-start', totalItems > 0 ? startIndex + 1 : 0);
+        updateEl('boxes-page-end', endIndex);
+        updateEl('boxes-page-total', totalItems);
 
         // Render rows
         if (pageData.length > 0) {
@@ -3399,7 +3399,7 @@ async function loadBoxesView() {
                 </tr>
             `).join('');
         } else {
-            tableBody.innerHTML = '<tr><td colspan="9" class="p-4 text-center text-slate-500">Nenhum produto encontrado.</td></tr>';
+            tableBody.innerHTML = renderTableEmptyState('9', 'Nenhum produto encontrado.', false, 'p-4');
         }
 
         // Render pagination controls
@@ -4603,7 +4603,7 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         holidays = data.holidays || [];
         // Calendar is now rendered on modal open
 
-        document.getElementById('kpi-clients-attended').textContent = formatInteger(data.kpi_clients_attended);
+        updateEl('kpi-clients-attended', formatInteger(data.kpi_clients_attended));
         const baseEl = document.getElementById('kpi-clients-base');
         if (data.kpi_clients_base > 0) {
             baseEl.textContent = `de ${formatInteger(data.kpi_clients_base)} na base`;
@@ -4781,46 +4781,46 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             const fmtPerc = (v) => `${formatPercentage((isNaN(v) ? 0 : v), 1)}`;
 
             // 1. Bonification
-            document.getElementById('kpi-bonif-val').textContent = fmtBRL(kpiBonifCurr);
+            updateEl('kpi-bonif-val', fmtBRL(kpiBonifCurr));
             const elBonifPerc = document.getElementById('kpi-bonif-perc');
             elBonifPerc.textContent = fmtPerc(percBonif);
             elBonifPerc.className = `text-lg font-bold ${percBonif <= 1.5 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-bonif-sec').textContent = fmtBRL(kpiTotalSoldBaseCurr);
+            updateEl('kpi-bonif-sec', fmtBRL(kpiTotalSoldBaseCurr));
 
             // Update Corner Types (05, 11) - Defensive check
             const safeTypes = (typeof selectedTiposVenda !== 'undefined' && Array.isArray(selectedTiposVenda)) ? selectedTiposVenda : [];
             const types = safeTypes.filter(t => t === '5' || t === '11').sort().join(' e ');
             const typeLabel = types ? types : '05 e 11';
-            document.getElementById('kpi-bonif-types').textContent = typeLabel;
-            document.getElementById('kpi-bonif-var-types').textContent = typeLabel;
+            updateEl('kpi-bonif-types', typeLabel);
+            updateEl('kpi-bonif-var-types', typeLabel);
 
             // 2. Bonification Variation
-            document.getElementById('kpi-bonif-var-val').textContent = fmtBRL(kpiBonifCurr);
+            updateEl('kpi-bonif-var-val', fmtBRL(kpiBonifCurr));
             const elBonifVarPerc = document.getElementById('kpi-bonif-var-perc');
             elBonifVarPerc.textContent = `${varBonif > 0 ? '+' : ''}${formatPercentage(varBonif, 1)}`;
             elBonifVarPerc.className = `text-lg font-bold ${varBonif <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-bonif-var-sec').textContent = fmtBRL(kpiBonifPrev);
+            updateEl('kpi-bonif-var-sec', fmtBRL(kpiBonifPrev));
 
             // 3. Devolução
-            document.getElementById('kpi-devol-val').textContent = fmtBRL(kpiDevolCurr);
+            updateEl('kpi-devol-val', fmtBRL(kpiDevolCurr));
             const elDevolPerc = document.getElementById('kpi-devol-perc');
             elDevolPerc.textContent = fmtPerc(percDevol);
             elDevolPerc.className = `text-lg font-bold ${percDevol > 0 ? 'text-red-400' : 'text-emerald-400'}`;
-            document.getElementById('kpi-devol-sec').textContent = fmtBRL(kpiTotalSoldBaseCurr);
+            updateEl('kpi-devol-sec', fmtBRL(kpiTotalSoldBaseCurr));
 
             // 4. Devolução Variation
-            document.getElementById('kpi-devol-var-val').textContent = fmtBRL(kpiDevolCurr);
+            updateEl('kpi-devol-var-val', fmtBRL(kpiDevolCurr));
             const elDevolVarPerc = document.getElementById('kpi-devol-var-perc');
             elDevolVarPerc.textContent = `${varDevol > 0 ? '+' : ''}${formatPercentage(varDevol, 1)}`;
             elDevolVarPerc.className = `text-lg font-bold ${varDevol <= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-devol-var-sec').textContent = fmtBRL(kpiDevolPrev);
+            updateEl('kpi-devol-var-sec', fmtBRL(kpiDevolPrev));
 
             // 5. Mix PDV
-            document.getElementById('kpi-mix-val').textContent = formatNumber(avgMixCurr, 2);
+            updateEl('kpi-mix-val', formatNumber(avgMixCurr, 2));
             const elMixPerc = document.getElementById('kpi-mix-perc');
             elMixPerc.textContent = `${varMix > 0 ? '+' : ''}${formatPercentage(varMix, 1)}`;
             elMixPerc.className = `text-lg font-bold ${varMix >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById('kpi-mix-sec').textContent = formatNumber(avgMixPrev, 2);
+            updateEl('kpi-mix-sec', formatNumber(avgMixPrev, 2));
         } catch (err) {
             AppLog.error('Error updating new KPIs:', err);
         }
@@ -4895,10 +4895,10 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         const mName = monthNames[targetIndex]?.toUpperCase() || "";
         
         // Update Titles
-        document.getElementById('kpi-title-evo-ano-fat').textContent = kpiTitleFat;
-        document.getElementById('kpi-title-evo-ano-kg').textContent = kpiTitleKg;
-        document.getElementById('kpi-title-evo-tri-fat').textContent = `Tend. FAT ${mName} vs Trim. Ant.`;
-        document.getElementById('kpi-title-evo-tri-kg').textContent = `Tend. TON ${mName} vs Trim. Ant.`;
+        updateEl('kpi-title-evo-ano-fat', kpiTitleFat);
+        updateEl('kpi-title-evo-ano-kg', kpiTitleKg);
+        updateEl('kpi-title-evo-tri-fat', `Tend. FAT ${mName} vs Trim. Ant.`);
+        updateEl('kpi-title-evo-tri-kg', `Tend. TON ${mName} vs Trim. Ant.`);
 
         // --- CHART PREP (Responsive to Mode) ---
         const mainChartTitle = document.getElementById('main-chart-title');
@@ -5314,7 +5314,7 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         const year = yearSelect.value || new Date().getFullYear().toString();
         
         if (year === 'todos') {
-            body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Selecione um ano específico para ver a positivação.</td></tr>';
+            body.innerHTML = renderTableEmptyState('7', 'Selecione um ano específico para ver a positivação.', false, 'p-4');
             return;
         }
 
@@ -5346,12 +5346,12 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
 
             if (error) {
                 AppLog.error('Error fetching city positivity data:', error);
-                body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-red-500">Erro ao carregar dados.</td></tr>';
+                body.innerHTML = renderTableEmptyState('7', 'Erro ao carregar dados.', true, 'p-4');
                 return;
             }
 
             if (!data || data.length === 0) {
-                body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum dado encontrado para o período.</td></tr>';
+                body.innerHTML = renderTableEmptyState('7', 'Nenhum dado encontrado para o período.', false, 'p-4');
                 return;
             }
 
@@ -5401,7 +5401,7 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
 
         } catch (e) {
             AppLog.error('Exception loading city positivity table:', e);
-            body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-red-500">Erro inesperado.</td></tr>';
+            body.innerHTML = renderTableEmptyState('7', 'Erro inesperado.', true, 'p-4');
         } finally {
             body.classList.remove('opacity-50', 'pointer-events-none');
         }
@@ -5418,7 +5418,7 @@ const body = document.getElementById('city-segmentation-table-body');
         const year = yearSelect.value || new Date().getFullYear().toString();
         
         if (year === 'todos') {
-            body.innerHTML = '<tr><td colspan="14" class="p-4 text-center text-slate-500">Selecione um ano específico para ver a performance por segmentação.</td></tr>';
+            body.innerHTML = renderTableEmptyState('14', 'Selecione um ano específico para ver a performance por segmentação.', false, 'p-4');
             return;
         }
 
@@ -5462,12 +5462,12 @@ const body = document.getElementById('city-segmentation-table-body');
 
             if (error) {
                 AppLog.error('Error fetching city segmentation data:', error);
-                body.innerHTML = '<tr><td colspan="14" class="p-4 text-center text-red-500">Erro ao carregar dados.</td></tr>';
+                body.innerHTML = renderTableEmptyState('14', 'Erro ao carregar dados.', true, 'p-4');
                 return;
             }
 
             if (!data || data.length === 0) {
-                body.innerHTML = '<tr><td colspan="14" class="p-4 text-center text-slate-500">Nenhum dado encontrado para o período.</td></tr>';
+                body.innerHTML = renderTableEmptyState('14', 'Nenhum dado encontrado para o período.', false, 'p-4');
                 return;
             }
 
@@ -5512,7 +5512,7 @@ const body = document.getElementById('city-segmentation-table-body');
 
         } catch (e) {
             AppLog.error('Exception loading city segmentation table:', e);
-            body.innerHTML = '<tr><td colspan="14" class="p-4 text-center text-red-500">Erro inesperado.</td></tr>';
+            body.innerHTML = renderTableEmptyState('14', 'Erro inesperado.', true, 'p-4');
         } finally {
             body.classList.remove('opacity-50', 'pointer-events-none', 'transition-opacity');
         }
@@ -5567,8 +5567,7 @@ const body = document.getElementById('city-segmentation-table-body');
         const categoryRanking = data.category_ranking ? (Array.isArray(data.category_ranking) ? data.category_ranking : mapRows(data.category_ranking)) : [];
         const totalSaltyPos = data.total_salty_pos || 0;
         
-        const elTotalSalty = document.getElementById('city-total-salty-pos');
-        if(elTotalSalty) elTotalSalty.textContent = totalSaltyPos;
+        updateEl('city-total-salty-pos', totalSaltyPos);
 
         // Refactored to use declarative template literals and innerHTML instead of verbose document.createElement logic.
         // This improves readability, maintainability, and significantly reduces code size while preserving XSS safety via escapeHtml.
@@ -5589,7 +5588,7 @@ const body = document.getElementById('city-segmentation-table-body');
                     </tr>
                 `).join('');
             } else {
-                body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>`;
+                body.innerHTML = renderTableEmptyState('7', 'Nenhum registro encontrado.', false, 'p-4');
             }
         };
 
@@ -5612,7 +5611,7 @@ const body = document.getElementById('city-segmentation-table-body');
                     `;
                 }).join('');
             } else {
-                body.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>`;
+                body.innerHTML = renderTableEmptyState('3', 'Nenhum registro encontrado.', false, 'p-4');
             }
         };
 
@@ -5641,7 +5640,7 @@ const body = document.getElementById('city-segmentation-table-body');
                     `;
                 }).join('');
             } else {
-                body.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>`;
+                body.innerHTML = renderTableEmptyState('3', 'Nenhum registro encontrado.', false, 'p-4');
             }
         };
 
@@ -5988,10 +5987,10 @@ const body = document.getElementById('city-segmentation-table-body');
          const val1Kg = kpiBranches[b1]?.peso || 0;
          const val2Kg = kpiBranches[b2]?.peso || 0;
 
-         const elB1Name = document.getElementById('branch-name-1'); if(elB1Name) elB1Name.textContent = b1;
-         const elB2Name = document.getElementById('branch-name-2'); if(elB2Name) elB2Name.textContent = b2;
-         const elVal1Fat = document.getElementById('branch-val-1-fat'); if(elVal1Fat) elVal1Fat.textContent = formatCurrency(val1Fat);
-         const elVal2Fat = document.getElementById('branch-val-2-fat'); if(elVal2Fat) elVal2Fat.textContent = formatCurrency(val2Fat);
+         updateEl('branch-name-1', b1);
+         updateEl('branch-name-2', b2);
+         updateEl('branch-val-1-fat', formatCurrency(val1Fat));
+         updateEl('branch-val-2-fat', formatCurrency(val2Fat));
          
          // Variations Logic
          // Share of Total (Val / Total)
@@ -6017,10 +6016,10 @@ const body = document.getElementById('city-segmentation-table-body');
          }
 
 
-         const elB1NameKg = document.getElementById('branch-name-1-kg'); if(elB1NameKg) elB1NameKg.textContent = b1;
-         const elB2NameKg = document.getElementById('branch-name-2-kg'); if(elB2NameKg) elB2NameKg.textContent = b2;
-         const elVal1Kg = document.getElementById('branch-val-1-kg'); if(elVal1Kg) elVal1Kg.textContent = formatTons(val1Kg, 1);
-         const elVal2Kg = document.getElementById('branch-val-2-kg'); if(elVal2Kg) elVal2Kg.textContent = formatTons(val2Kg, 1);
+         updateEl('branch-name-1-kg', b1);
+         updateEl('branch-name-2-kg', b2);
+         updateEl('branch-val-1-kg', formatTons(val1Kg, 1));
+         updateEl('branch-val-2-kg', formatTons(val2Kg, 1));
 
          const totalKg = val1Kg + val2Kg;
          const share1Kg = calcShare(val1Kg, totalKg);
@@ -6048,14 +6047,14 @@ const body = document.getElementById('city-segmentation-table-body');
                  kpiContext = `Ano ${selectedYear}`;
              }
          }
-         const elTitleFat = document.getElementById('branch-kpi-title-fat'); if(elTitleFat) elTitleFat.textContent = `Faturamento (${kpiContext})`;
-         const elTitleKg = document.getElementById('branch-kpi-title-kg'); if(elTitleKg) elTitleKg.textContent = `Tonelagem (${kpiContext})`;
+         updateEl('branch-kpi-title-fat', `Faturamento (${kpiContext})`);
+         updateEl('branch-kpi-title-kg', `Tonelagem (${kpiContext})`);
 
-         const elTotalTitleFat = document.getElementById('branch-total-kpi-title-fat'); if(elTotalTitleFat) elTotalTitleFat.textContent = `Faturamento Total (${kpiContext})`;
-         const elTotalTitleKg = document.getElementById('branch-total-kpi-title-kg'); if(elTotalTitleKg) elTotalTitleKg.textContent = `Tonelagem Total (${kpiContext})`;
+         updateEl('branch-total-kpi-title-fat', `Faturamento Total (${kpiContext})`);
+         updateEl('branch-total-kpi-title-kg', `Tonelagem Total (${kpiContext})`);
 
-         const elTotalValFat = document.getElementById('branch-total-fat-val'); if(elTotalValFat) elTotalValFat.textContent = formatCurrency(totalFat);
-         const elTotalValKg = document.getElementById('branch-total-kg-val'); if(elTotalValKg) elTotalValKg.textContent = formatTons(totalKg, 1);
+         updateEl('branch-total-fat-val', formatCurrency(totalFat));
+         updateEl('branch-total-kg-val', formatTons(totalKg, 1));
 
 
          // --- Chart Rendering ---
@@ -8149,8 +8148,7 @@ function renderInnovationsKPIs(data) {
     const baseClients = data.kpi_clients_base || 0;
 
     // Total Clients (Base Total)
-    const activeClientsEl = document.getElementById('innovations-month-active-clients-kpi');
-    if (activeClientsEl) activeClientsEl.textContent = formatNumber(baseClients, 0);
+    updateEl('innovations-month-active-clients-kpi', formatNumber(baseClients, 0));
 
     // Calculate Best Coverage & Avg Per Client
     let bestCategory = null;
@@ -8176,14 +8174,11 @@ function renderInnovationsKPIs(data) {
         totalSelectionPos += cat.pos_current;
     });
 
-    const topCovTitle = document.getElementById('innovations-month-top-coverage-title');
     const topCovKpi = document.getElementById('innovations-month-top-coverage-kpi');
     const topCovCount = document.getElementById('innovations-month-top-coverage-count-kpi');
     const topCovValue = document.getElementById('innovations-month-top-coverage-value-kpi');
-    const topCovLabel = document.getElementById('innovations-month-top-coverage-label');
-
-    if (topCovTitle) topCovTitle.textContent = bestCategory || 'N/A';
-    if (topCovLabel) topCovLabel.textContent = 'Melhor Categoria';
+    updateEl('innovations-month-top-coverage-title', bestCategory || 'N/A');
+    updateEl('innovations-month-top-coverage-label', 'Melhor Categoria');
     
     // Changing the count label to the calculated average
     if (topCovKpi) topCovKpi.textContent = bestAvgPerClient > 0 ? bestAvgPerClient.toFixed(2) : '0.00';
@@ -8454,7 +8449,7 @@ window.renderInnovationsTable = function(data) {
     });
 
     if (data.categories.length === 0) {
-        html = '<tr><td colspan="8" class="p-4 text-center text-slate-500">Nenhum dado encontrado para os filtros selecionados.</td></tr>';
+        html = renderTableEmptyState('8', 'Nenhum dado encontrado para os filtros selecionados.', false, 'p-4');
     }
 
     tbody.innerHTML = html;
@@ -9157,8 +9152,7 @@ function renderLpKPIs(kpis) {
     if (perfStoresEl) {
         let pct = kpis.total_audits > 0 ? (kpis.perfect_stores / kpis.total_audits) * 100 : 0;
         perfStoresEl.textContent = formatPercentage(pct, 1);
-        const sub = document.getElementById('lp-kpi-perfect-stores-sub');
-        if (sub) sub.textContent = formatNumber(kpis.perfect_stores, 0) + ' Auditorias';
+        updateEl('lp-kpi-perfect-stores-sub', formatNumber(kpis.perfect_stores, 0) + ' Auditorias');
     }
 }
 
@@ -9748,13 +9742,6 @@ async function updateEstrelasView() {
         const metaAcel = data.aceleradores_meta || 0;
 
         // Helper function to safely update DOM
-        const updateEl = (id, val, isStyle = false) => {
-            const el = document.getElementById(id);
-            if (el) {
-                if (isStyle) el.style.width = val;
-                else el.textContent = val;
-            }
-        };
 
         // Update UI
         updateEl('sellout-meta-val', `${metaSellout.toFixed(2)} tons`);
@@ -9894,7 +9881,7 @@ async function loadFrequencyTable(filters) {
     const tableFooter = document.getElementById('frequency-table-footer');
     if (!tableBody || !tableFooter) return;
 
-    tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-slate-400 text-xs">Carregando Frequência...</td></tr>';
+    tableBody.innerHTML = renderTableEmptyState('8', 'Carregando Frequência...', false, 'py-4 text-xs');
 
     const reqFilters = {
         p_filial: (filters.p_filial && filters.p_filial.length) ? filters.p_filial : null,
@@ -9956,7 +9943,7 @@ async function loadFrequencyTable(filters) {
             AppLog.log('Fetching Frequency & Mix in concurrent chunks...');
             const branches = availableFiltersState.filiais;
             
-            tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-slate-400 text-xs">Carregando dados das filiais simultaneamente...</td></tr>`;
+            tableBody.innerHTML = renderTableEmptyState('8', 'Carregando dados das filiais simultaneamente...', false, 'py-4 text-xs');
 
             // Group requests into a single massive concurrent Promise.all
             // This prevents sequential bottleneck waiting for one branch before requesting the next.
@@ -10003,7 +9990,7 @@ async function loadFrequencyTable(filters) {
 
     } catch (err) {
         AppLog.error("Erro ao carregar tabela de frequência ou mix:", err);
-        tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500 text-xs">Erro ao carregar dados.</td></tr>';
+        tableBody.innerHTML = renderTableEmptyState('8', 'Erro ao carregar dados.', true, 'py-4 text-xs');
     }
 }
 
@@ -10014,7 +10001,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
     const treeData = data.tree_data || [];
 
     if (treeData.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-slate-400 text-xs">Nenhum dado encontrado</td></tr>';
+        tableBody.innerHTML = renderTableEmptyState('8', 'Nenhum dado encontrado', false, 'py-4 text-xs');
         return;
     }
 
@@ -10212,8 +10199,8 @@ function renderFrequencyChart(data) {
     const currentYear = data.current_year;
     const previousYear = data.previous_year;
 
-    document.getElementById('freq-chart-legend-curr').textContent = currentYear;
-    document.getElementById('freq-chart-legend-prev').textContent = previousYear;
+    updateEl('freq-chart-legend-curr', currentYear);
+    updateEl('freq-chart-legend-prev', previousYear);
 
     const monthInitials = MONTHS_PT_INITIALS;
 
@@ -10628,22 +10615,22 @@ async function updateAgendaView() {
         
         const calcPct = (val, total) => total > 0 ? Math.round((val / total) * 100) : 0;
         
-        document.getElementById('agenda-kpi-total-dias').textContent = formatInteger(totalDias);
-        document.getElementById('agenda-kpi-preenchidos').textContent = formatInteger(preenchidos);
-        document.getElementById('agenda-kpi-preenchidos-pct').textContent = `${calcPct(preenchidos, totalDias)}%`;
+        updateEl('agenda-kpi-total-dias', formatInteger(totalDias));
+        updateEl('agenda-kpi-preenchidos', formatInteger(preenchidos));
+        updateEl('agenda-kpi-preenchidos-pct', `${calcPct(preenchidos, totalDias)}%`);
         
-        document.getElementById('agenda-kpi-pendentes').textContent = formatInteger(pendentes);
-        document.getElementById('agenda-kpi-pendentes-pct').textContent = `${calcPct(pendentes, totalDias)}%`;
+        updateEl('agenda-kpi-pendentes', formatInteger(pendentes));
+        updateEl('agenda-kpi-pendentes-pct', `${calcPct(pendentes, totalDias)}%`);
         
-        document.getElementById('agenda-kpi-foco').textContent = formatInteger(foco);
-        document.getElementById('agenda-kpi-foco-pct').textContent = `${calcPct(foco, totalDias)}%`;
+        updateEl('agenda-kpi-foco', formatInteger(foco));
+        updateEl('agenda-kpi-foco-pct', `${calcPct(foco, totalDias)}%`);
         
         // Render Table
         const tbody = document.getElementById('agenda-table-body');
         if (!tbody) return;
         
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-500">Nenhum dado encontrado para os filtros selecionados.</td></tr>`;
+            tbody.innerHTML = renderTableEmptyState('8', 'Nenhum dado encontrado para os filtros selecionados.', false, 'p-8');
         } else {
             const getIconStatus = (isPreenchido) => {
                 if (isPreenchido) {
