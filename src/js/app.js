@@ -4286,7 +4286,7 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
                 AppLog.error('API Error:', error);
                 return { data: null, error };
             }
-            finalData = data;
+            const finalData = data;
 
         // 3. Save to Cache
         if (finalData) {
