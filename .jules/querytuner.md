@@ -15,3 +15,6 @@
 2024/11/01 - Optimize Date Functions on Indexes (get_boxes_dashboard_data)
  Learning: Using `EXTRACT(YEAR FROM dtped) = X` in WHERE clauses forces full table/sequential scans because it alters the indexed column before comparison, rendering B-Tree indexes useless.
  Action: Replaced `EXTRACT` logic with explicit SARGable ranges (`dtped >= make_date(X, 1, 1) AND dtped <= make_date(X, 12, 31)`) in `get_boxes_dashboard_data` CTEs (`kpi_curr`, `kpi_prev`, `prod_agg`). Also learned that replacing one placeholder (`%L`) with two in dynamic SQL requires duplicating the passed formatting variable.
+## 2026-07-31 - Title
+ Learning: Massive join operations on raw event tables before aggregation leads to devastating performance drops (statement timeouts) due to memory/disk spills in hash aggregates.
+ Action: Apply pre-aggregation strategies (grouping by target dimension before left joining metadata/dim tables) in CTEs. Convert EXTRACT date clauses to SARGable constraints (make_date intervals).
