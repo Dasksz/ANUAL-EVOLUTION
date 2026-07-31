@@ -57,3 +57,6 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## $(date +%Y-%m-%d) - Fix Dashboard Yearly Mix PDV bug
 **Learning:** Checking `if (d.mix_pdv > 0)` when summing average indicators over months ignores any month that explicitly had a 0 result. This causes the count variable to be artificially low, or zero, breaking averages calculation (`kpiMixCurr / kpiMixCountCurr`).
 **Action:** Always use `if (d.mix_pdv >= 0)` or `if (d.mix_pdv !== undefined)` when summing up values for an average calculation in dashboards to properly account for months that correctly resolve to 0.
+## 2026-07-31 - Optimize frontend sequential chunk loading
+ **Learning:** Sequential asynchronous API loops (`for...await`) inside UI loading tasks can lead to timeouts and poor UX, especially when iterating over items like filters/suppliers.
+ **Action:** Refactor sequential iterations involving non-dependent fetch operations to use batching and `Promise.all`, to parallelize data retrieval.

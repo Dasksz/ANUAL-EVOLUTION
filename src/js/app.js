@@ -3268,14 +3268,22 @@ async function loadBoxesView() {
             
             let accumulatedData = null;
             
-            for (let i = 0; i < chunkList.length; i++) {
-                const chunkVal = chunkList[i];
-                AppLog.log(`Fetching Boxes ${chunkLabel} ${i + 1}/${chunkList.length}...`);
-                window.showDashboardLoading('boxes-view', `Carregando ${chunkLabel} ${i+1} de ${chunkList.length}...`);
+
+            const BATCH_SIZE = 5;
+            for (let i = 0; i < chunkList.length; i += BATCH_SIZE) {
+                const batch = chunkList.slice(i, i + BATCH_SIZE);
+                AppLog.log(`Fetching Boxes ${chunkLabel} batch ${i/BATCH_SIZE + 1}...`);
+                window.showDashboardLoading('boxes-view', `Carregando ${chunkLabel} ${Math.min(i + BATCH_SIZE, chunkList.length)} de ${chunkList.length}...`);
                 
-                const chunkFilters = { ...filters, [chunkKey]: [String(chunkVal)] };
-                    const { data: resData, error: resError } = await supabase.rpc('get_boxes_dashboard_data', chunkFilters);
-                    
+                const promises = batch.map(chunkVal => {
+                    const chunkFilters = { ...filters, [chunkKey]: [String(chunkVal)] };
+                    return supabase.rpc('get_boxes_dashboard_data', chunkFilters).then(res => ({ ...res, chunkVal }));
+                });
+
+                const results = await Promise.all(promises);
+
+                for (const result of results) {
+                    const { data: resData, error: resError } = result;
                     if (resError) {
                         AppLog.error('API Error in boxes chunk:', resError);
                         if (resError.message.includes('function get_boxes_dashboard_data') && resError.message.includes('does not exist')) {
@@ -3287,9 +3295,13 @@ async function loadBoxesView() {
                     }
                     if (resData) {
                         accumulatedData = mergeBoxesDashboardData(accumulatedData, resData);
-                        renderBoxesDashboard(accumulatedData);
                     }
                 }
+
+                if (accumulatedData) {
+                    renderBoxesDashboard(accumulatedData);
+                }
+            }
                 data = accumulatedData;
             } else {
                 const { data: rpcData, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
@@ -4342,26 +4354,36 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             const branches = availableFiltersState.filiais;
             let accumulatedData = null;
             
-            for (let i = 0; i < branches.length; i++) {
-                const branch = branches[i];
+
+            const BATCH_SIZE = 5;
+            for (let i = 0; i < branches.length; i += BATCH_SIZE) {
+                const batch = branches.slice(i, i + BATCH_SIZE);
+
                 if (!isBackground) {
-                    AppLog.log(`Fetching branch ${i + 1}/${branches.length}...`);
-                    window.showDashboardLoading('main-dashboard-view', `Carregando Filial ${i+1} de ${branches.length}...`);
+                    AppLog.log(`Fetching branch batch ${i/BATCH_SIZE + 1}...`);
+                    window.showDashboardLoading('main-dashboard-view', `Carregando Filial ${Math.min(i + BATCH_SIZE, branches.length)} de ${branches.length}...`);
                 }
                 
-                const chunkFilters = { ...filters, p_filial: [branch] };
-                const { data: resData, error: resError } = await supabase.rpc('get_main_dashboard_data', chunkFilters);
+                const promises = batch.map(branch => {
+                    const chunkFilters = { ...filters, p_filial: [branch] };
+                    return supabase.rpc('get_main_dashboard_data', chunkFilters).then(res => ({ ...res, branch }));
+                });
                 
-                if (resError) {
-                    AppLog.error('API Error in chunk:', resError);
-                    continue;
-                }
-                if (resData) {
-                    accumulatedData = mergeMainDashboardData(accumulatedData, resData);
-                    // Render progressively if not in background
-                    if (!isBackground) {
-                        renderDashboard(accumulatedData);
+                const results = await Promise.all(promises);
+
+                for (const result of results) {
+                    const { data: resData, error: resError } = result;
+                    if (resError) {
+                        AppLog.error('API Error in chunk:', resError);
+                        continue;
                     }
+                    if (resData) {
+                        accumulatedData = mergeMainDashboardData(accumulatedData, resData);
+                    }
+                }
+
+                if (!isBackground && accumulatedData) {
+                    renderDashboard(accumulatedData);
                 }
             }
             finalData = accumulatedData;
