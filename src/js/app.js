@@ -3241,7 +3241,58 @@ async function loadBoxesView() {
         } catch (e) { AppLog.warn('Cache error:', e); }
 
         if (!data) {
-            const { data: rpcData, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
+            const useFornecedorChunking = (!filters.p_fornecedor || filters.p_fornecedor.length === 0) 
+            && availableFiltersState.fornecedores 
+            && availableFiltersState.fornecedores.length > 0;
+            
+        const needsChunking = (!filters.p_filial || filters.p_filial.length === 0) 
+            && availableFiltersState.filiais 
+            && availableFiltersState.filiais.length > 0;
+
+        if (useFornecedorChunking || needsChunking) {
+            let chunkList = [];
+            let chunkKey = '';
+            let chunkLabel = '';
+            
+            if (useFornecedorChunking) {
+                chunkList = availableFiltersState.fornecedores.map(f => typeof f === 'object' ? f.cod : f);
+                chunkKey = 'p_fornecedor';
+                chunkLabel = 'Fornecedor';
+                AppLog.log('Fetching Boxes View in Fornecedor chunks...');
+            } else {
+                chunkList = availableFiltersState.filiais;
+                chunkKey = 'p_filial';
+                chunkLabel = 'Filial';
+                AppLog.log('Fetching Boxes View in Filial chunks...');
+            }
+            
+            let accumulatedData = null;
+            
+            for (let i = 0; i < chunkList.length; i++) {
+                const chunkVal = chunkList[i];
+                AppLog.log(`Fetching Boxes ${chunkLabel} ${i + 1}/${chunkList.length}...`);
+                window.showDashboardLoading('boxes-view', `Carregando ${chunkLabel} ${i+1} de ${chunkList.length}...`);
+                
+                const chunkFilters = { ...filters, [chunkKey]: [String(chunkVal)] };
+                    const { data: resData, error: resError } = await supabase.rpc('get_boxes_dashboard_data', chunkFilters);
+                    
+                    if (resError) {
+                        AppLog.error('API Error in boxes chunk:', resError);
+                        if (resError.message.includes('function get_boxes_dashboard_data') && resError.message.includes('does not exist')) {
+                            window.hideDashboardLoading();
+                            window.showToast('error', "Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
+                            return;
+                        }
+                        continue;
+                    }
+                    if (resData) {
+                        accumulatedData = mergeBoxesDashboardData(accumulatedData, resData);
+                        renderBoxesDashboard(accumulatedData);
+                    }
+                }
+                data = accumulatedData;
+            } else {
+                const { data: rpcData, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
                 if (error) {
                     AppLog.error(error);
                     window.hideDashboardLoading();
@@ -3251,7 +3302,7 @@ async function loadBoxesView() {
                     return;
                 }
                 data = rpcData;
-            
+            }
             if (data) saveToCache(cacheKey, data);
         }
 
@@ -4280,13 +4331,50 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         }
 
         // 2. Check if we need to chunk (p_filial is empty and we have available branches)
-        if (isBackground) AppLog.log(`[Background] Fetching data from API...`);
+        const needsChunking = (!filters.p_filial || filters.p_filial.length === 0) 
+            && availableFiltersState.filiais 
+            && availableFiltersState.filiais.length > 0;
+
+        let finalData = null;
+
+        if (needsChunking) {
+            if (!isBackground) AppLog.log('Fetching all branches in chunks...');
+            const branches = availableFiltersState.filiais;
+            let accumulatedData = null;
+            
+            for (let i = 0; i < branches.length; i++) {
+                const branch = branches[i];
+                if (!isBackground) {
+                    AppLog.log(`Fetching branch ${i + 1}/${branches.length}...`);
+                    window.showDashboardLoading('main-dashboard-view', `Carregando Filial ${i+1} de ${branches.length}...`);
+                }
+                
+                const chunkFilters = { ...filters, p_filial: [branch] };
+                const { data: resData, error: resError } = await supabase.rpc('get_main_dashboard_data', chunkFilters);
+                
+                if (resError) {
+                    AppLog.error('API Error in chunk:', resError);
+                    continue;
+                }
+                if (resData) {
+                    accumulatedData = mergeMainDashboardData(accumulatedData, resData);
+                    // Render progressively if not in background
+                    if (!isBackground) {
+                        renderDashboard(accumulatedData);
+                    }
+                }
+            }
+            finalData = accumulatedData;
+        } else {
+            // Normal Single Fetch
+            if (isBackground) AppLog.log(`[Background] Fetching data from API...`);
             const { data, error } = await supabase.rpc('get_main_dashboard_data', filters);
             if (error) {
                 AppLog.error('API Error:', error);
                 return { data: null, error };
             }
-            const finalData = data;
+            finalData = data;
+        }
 
         // 3. Save to Cache
         if (finalData) {
