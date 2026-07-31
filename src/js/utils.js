@@ -375,33 +375,3 @@ export function resetDateDropdowns(anoSelect, mesSelect, currentYear, currentMon
         mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
     }
 }
-
-/**
- * Generates an HTML string for a table row indicating an empty state or error.
- * Extracted from app.js to reduce duplication of `<tr><td colspan="...">...</td></tr>` strings.
- * @param {number|string} colspan - The number of columns to span.
- * @param {string} message - The message to display.
- * @param {boolean} [isError=false] - Whether the message is an error (applies red text).
- * @param {string} [extraClasses=''] - Any extra CSS classes (e.g. for padding/text size).
- * @returns {string} The HTML string for the empty state row.
- */
-export function renderTableEmptyState(colspan, message, isError = false, extraClasses = '') {
-    const colorClass = isError ? 'text-red-500' : (extraClasses.includes('text-slate-') ? '' : 'text-slate-500');
-    // Using string interpolation for performance, and escaping dynamic inputs
-    return `<tr><td colspan="${escapeHtml(colspan)}" class="text-center ${colorClass} ${escapeHtml(extraClasses)}">${escapeHtml(message)}</td></tr>`;
-}
-
-/**
- * Safely updates a DOM element's textContent or style width.
- * Extracted from getBoxesDashboardData in app.js to be used globally, reducing repetition of document.getElementById checks.
- * @param {string} id - The ID of the DOM element to update.
- * @param {string|number} val - The value to set (text or width).
- * @param {boolean} [isStyle=false] - If true, updates style.width instead of textContent.
- */
-export function updateEl(id, val, isStyle = false) {
-    const el = document.getElementById(id);
-    if (el) {
-        if (isStyle) el.style.width = val;
-        else el.textContent = val;
-    }
-}
