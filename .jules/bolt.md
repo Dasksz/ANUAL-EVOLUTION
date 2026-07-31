@@ -60,3 +60,10 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## 2026-07-31 - Optimize frontend sequential chunk loading
  **Learning:** Sequential asynchronous API loops (`for...await`) inside UI loading tasks can lead to timeouts and poor UX, especially when iterating over items like filters/suppliers.
  **Action:** Refactor sequential iterations involving non-dependent fetch operations to use batching and `Promise.all`, to parallelize data retrieval.
+## 2026-07-26 - [Concurrent Chunking for Dashboard Loading]
+ **Learning:** Sequential chunked API requests (`for...await`) block the UI and cause database timeouts when aggregating large datasets (like `get_boxes_dashboard_data`) across multiple branches.
+ **Action:** Refactored chunking logic in `src/js/app.js` to use `Promise.all` mapping over the array of chunks, firing them concurrently. This drastically reduces overall loading time and prevents sequential timeout chains.
+
+## 2026-07-26 - [Chunking Strategy for Distinct Client Metrics]
+ **Learning:** Chunking data by a dimension where clients overlap heavily (e.g., `Fornecedor`, where one client buys from multiple suppliers) causes the frontend sum of `clientes` (distinct counts) to inflate massively. Chunking by a mutually exclusive dimension (e.g., `Filial` or `Cidade`) is required to safely sum distinct client counts client-side.
+ **Action:** Removed `useFornecedorChunking` completely and fell back to `Filial` chunking for `get_boxes_dashboard_data`.

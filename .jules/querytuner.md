@@ -15,3 +15,6 @@
 2024/11/01 - Optimize Date Functions on Indexes (get_boxes_dashboard_data)
  Learning: Using `EXTRACT(YEAR FROM dtped) = X` in WHERE clauses forces full table/sequential scans because it alters the indexed column before comparison, rendering B-Tree indexes useless.
  Action: Replaced `EXTRACT` logic with explicit SARGable ranges (`dtped >= make_date(X, 1, 1) AND dtped <= make_date(X, 12, 31)`) in `get_boxes_dashboard_data` CTEs (`kpi_curr`, `kpi_prev`, `prod_agg`). Also learned that replacing one placeholder (`%L`) with two in dynamic SQL requires duplicating the passed formatting variable.
+## 2026-07-26 - Optimized `prod_agg` with Pre-Aggregation and Sargable Dates
+ Learning: In `get_boxes_dashboard_data`, `prod_agg` was extracting raw sales for an entire year and joining `dim_produtos` *before* aggregation, scanning millions of rows. It also used `EXTRACT(MONTH FROM dtped) = X`, defeating `dtped` indexes.
+ Action: Rewrote the `prod_agg` CTE to aggregate `data_detailed` and `data_history` first (into `prod_raw`), and only join `dim_produtos` at the final step. Replaced `EXTRACT` with Sargable date boundaries. This reduced execution time of `prod_agg` from ~663ms to ~132ms per branch query.

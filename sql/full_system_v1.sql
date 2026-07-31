@@ -3419,27 +3419,48 @@ BEGIN
                 FROM public.data_summary
                 %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
             ),
+            prod_raw AS (
+                SELECT produto,
+                       SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as faturamento,
+                       SUM(totpesoliq) as peso,
+                       SUM(COALESCE(qtvenda, 0)) as total_qtvenda,
+                       COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
+                       MAX(dtped) as ultima_venda
+                FROM public.data_detailed s
+                %s AND dtped >= make_date(%L, 1, 1) AND dtped <= make_date(%L, 12, 31) %s
+                GROUP BY produto
+                UNION ALL
+                SELECT produto,
+                       SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as faturamento,
+                       SUM(totpesoliq) as peso,
+                       SUM(COALESCE(qtvenda, 0)) as total_qtvenda,
+                       COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
+                       MAX(dtped) as ultima_venda
+                FROM public.data_history s
+                %s AND dtped >= make_date(%L, 1, 1) AND dtped <= make_date(%L, 12, 31) %s
+                GROUP BY produto
+            ),
+            prod_grouped AS (
+                SELECT produto,
+                       SUM(faturamento) as faturamento,
+                       SUM(peso) as peso,
+                       SUM(total_qtvenda) as total_qtvenda,
+                       SUM(clientes) as clientes,
+                       MAX(ultima_venda) as ultima_venda
+                FROM prod_raw
+                GROUP BY produto
+            ),
             prod_agg AS (
-                SELECT
-                    produto,
-                    MAX(descricao) as descricao,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as faturamento,
-                    SUM(totpesoliq) as peso,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    MAX(dtped) as ultima_venda
-                FROM (
-                    SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
-                    FROM public.data_detailed s
-                    LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                    %s AND dtped >= make_date(%L, 1, 1) AND dtped <= make_date(%L, 12, 31) %s
-                    UNION ALL
-                    SELECT s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, s.dtped, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific
-                    FROM public.data_history s
-                    LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                    %s AND dtped >= make_date(%L, 1, 1) AND dtped <= make_date(%L, 12, 31) %s
-                ) as prod_base
-                GROUP BY 1
+                SELECT p.produto,
+                       MAX(dp.descricao) as descricao,
+                       (p.total_qtvenda / COALESCE(NULLIF(MAX(dp.qtde_embalagem_master), 0), 1)) as caixas,
+                       p.faturamento,
+                       p.peso,
+                       p.clientes,
+                       p.ultima_venda
+                FROM prod_grouped p
+                LEFT JOIN public.dim_produtos dp ON p.produto = dp.codigo
+                GROUP BY p.produto, p.faturamento, p.peso, p.total_qtvenda, p.clientes, p.ultima_venda
                 ORDER BY caixas DESC
                 LIMIT 1000
             )
@@ -3455,9 +3476,8 @@ BEGIN
         v_active_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
         v_active_client_cond, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
         v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
-        v_active_client_cond_slow, -- Prod Agg Clientes Cond
-        v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END, -- Prod
-        v_where_raw, v_previous_year, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM dtped) = %L ', v_target_month) ELSE '' END -- Prod
+        v_active_client_cond_slow, v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND dtped >= make_date(%L, %L, 1) AND dtped <= (make_date(%L, %L, 1) + interval ''1 month'' - interval ''1 day'') ', v_current_year, v_target_month, v_current_year, v_target_month) ELSE '' END, -- Prod Detailed
+        v_active_client_cond_slow, v_where_raw, v_previous_year, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND dtped >= make_date(%L, %L, 1) AND dtped <= (make_date(%L, %L, 1) + interval ''1 month'' - interval ''1 day'') ', v_previous_year, v_target_month, v_previous_year, v_target_month) ELSE '' END -- Prod History
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     
@@ -3542,18 +3562,28 @@ BEGIN
                 FROM base_data s
                 WHERE s.dtped >= %L AND s.dtped <= %L
             ),
-            prod_agg AS (
-                SELECT
-                    produto,
-                    MAX(descricao) as descricao,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as faturamento,
-                    SUM(totpesoliq) as peso,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    MAX(dtped) as ultima_venda
+            prod_raw AS (
+                SELECT produto,
+                       SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as faturamento,
+                       SUM(totpesoliq) as peso,
+                       SUM(COALESCE(qtvenda, 0)) as total_qtvenda,
+                       COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
+                       MAX(dtped) as ultima_venda
                 FROM base_data s
                 WHERE s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
-                GROUP BY 1
+                GROUP BY produto
+            ),
+            prod_agg AS (
+                SELECT p.produto,
+                       MAX(dp.descricao) as descricao,
+                       (p.total_qtvenda / COALESCE(NULLIF(MAX(dp.qtde_embalagem_master), 0), 1)) as caixas,
+                       p.faturamento,
+                       p.peso,
+                       p.clientes,
+                       p.ultima_venda
+                FROM prod_raw p
+                LEFT JOIN public.dim_produtos dp ON p.produto = dp.codigo
+                GROUP BY p.produto, p.faturamento, p.peso, p.total_qtvenda, p.clientes, p.ultima_venda
                 ORDER BY caixas DESC
                 LIMIT 1000
             )
@@ -3580,7 +3610,7 @@ BEGIN
         v_tri_start, v_tri_end, -- kpi_tri base query (2 %L)
 
         -- ⚡ QueryTuner: Updated prod_agg to use sargable date boundaries instead of EXTRACT(YEAR), passing v_current_year twice
-        v_active_client_cond_slow, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END -- prod_agg (1 %s, 2 %L, 1 %s)
+        v_active_client_cond_slow, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND s.dtped <= (make_date(%L, %L, 1) + interval ''1 month'' - interval ''1 day'') ', v_current_year, v_target_month) ELSE '' END -- prod_agg (1 %s, 2 %L, 1 %s)
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     END IF;
