@@ -12,3 +12,6 @@
 2024/11/01 - Prevent Duplicate Scans
  Learning: When generating product aggregations in dynamic queries, redundant historical table scanning occurs when both current and previous years query `data_history` blindly.
  Action: Restricted the `data_history` branch in `prod_agg` CTE for `get_boxes_dashboard_data` to only use `v_previous_year` since `data_detailed` reliably handles the current year data.
+2024/11/01 - Optimize Date Functions on Indexes (get_boxes_dashboard_data)
+ Learning: Using `EXTRACT(YEAR FROM dtped) = X` in WHERE clauses forces full table/sequential scans because it alters the indexed column before comparison, rendering B-Tree indexes useless.
+ Action: Replaced `EXTRACT` logic with explicit SARGable ranges (`dtped >= make_date(X, 1, 1) AND dtped <= make_date(X, 12, 31)`) in `get_boxes_dashboard_data` CTEs (`kpi_curr`, `kpi_prev`, `prod_agg`). Also learned that replacing one placeholder (`%L`) with two in dynamic SQL requires duplicating the passed formatting variable.

@@ -3512,7 +3512,7 @@ BEGIN
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
                     COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE yr = %L %s), 0) as pos_salty
                 FROM base_data s
-                WHERE EXTRACT(YEAR FROM s.dtped) = %L %s
+                WHERE s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
             ),
             kpi_prev AS (
                 SELECT 
@@ -3522,7 +3522,7 @@ BEGIN
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
                     COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE yr = %L %s), 0) as pos_salty
                 FROM base_data s
-                WHERE EXTRACT(YEAR FROM s.dtped) = %L %s
+                WHERE s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
             ),
             kpi_tri AS (
                 SELECT 
@@ -3552,7 +3552,7 @@ BEGIN
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
                     MAX(dtped) as ultima_venda
                 FROM base_data s
-                WHERE EXTRACT(YEAR FROM s.dtped) = %L %s
+                WHERE s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                 GROUP BY 1
                 ORDER BY caixas DESC
                 LIMIT 1000
@@ -3569,15 +3569,18 @@ BEGIN
         
         v_active_client_cond_slow, -- chart_agg_base (1 %s)
         
-        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END, -- kpi_curr base query (1 %s, 1 %L, 1 %s, 1 %L, 1 %s)
+        -- ⚡ QueryTuner: Updated kpi_curr to use sargable date boundaries instead of EXTRACT(YEAR), passing v_current_year twice
+        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END, -- kpi_curr base query (1 %s, 1 %L, 1 %s, 2 %L, 1 %s)
         
-        v_active_client_cond_slow, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END, -- kpi_prev base query (1 %s, 1 %L, 1 %s, 1 %L, 1 %s)
+        -- ⚡ QueryTuner: Updated kpi_prev to use sargable date boundaries instead of EXTRACT(YEAR), passing v_previous_year twice
+        v_active_client_cond_slow, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_previous_year, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END, -- kpi_prev base query (1 %s, 1 %L, 1 %s, 2 %L, 1 %s)
 
         v_active_client_cond_slow, v_tri_start, v_tri_end, -- kpi_tri monthly clients subquery (1 %s, 2 %L)
         v_tri_start, v_tri_end, -- kpi_tri salty subquery (2 %L)
         v_tri_start, v_tri_end, -- kpi_tri base query (2 %L)
 
-        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END -- prod_agg (1 %s, 1 %L, 1 %s)
+        -- ⚡ QueryTuner: Updated prod_agg to use sargable date boundaries instead of EXTRACT(YEAR), passing v_current_year twice
+        v_active_client_cond_slow, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END -- prod_agg (1 %s, 2 %L, 1 %s)
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     END IF;
