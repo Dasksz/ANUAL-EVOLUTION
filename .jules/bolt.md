@@ -57,3 +57,6 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## $(date +%Y-%m-%d) - Fix Dashboard Yearly Mix PDV bug
 **Learning:** Checking `if (d.mix_pdv > 0)` when summing average indicators over months ignores any month that explicitly had a 0 result. This causes the count variable to be artificially low, or zero, breaking averages calculation (`kpiMixCurr / kpiMixCountCurr`).
 **Action:** Always use `if (d.mix_pdv >= 0)` or `if (d.mix_pdv !== undefined)` when summing up values for an average calculation in dashboards to properly account for months that correctly resolve to 0.
+## 2024-07-31 - Frontend Chunking Bottleneck
+**Learning:** The application uses client-side chunking/merging (`mergeBoxesDashboardData`) to prevent Supabase timeouts. When iterating through `chart_data` and `products_table` across many chunks, the use of `Array.prototype.find()` creates a massive O(N^2) bottleneck that blocks the main UI thread.
+**Action:** Always replace `Array.prototype.find()` inside chunking/merging loops with `new Map()` lookups to achieve O(N) complexity and keep the main thread unblocked during data aggregation.

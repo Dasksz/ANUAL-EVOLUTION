@@ -3147,9 +3147,14 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         // 2. Merge Chart Data
         if (newData.chart_data && newData.chart_data.length > 0) {
             accumulated.chart_data = accumulated.chart_data || [];
+            // Create a Map for O(1) lookups
+            const chartDataMap = new Map();
+            accumulated.chart_data.forEach(r => chartDataMap.set(`${r.year}-${r.month_index}`, r));
+
             newData.chart_data.forEach(newRow => {
                 // The API returns month_index and year for chart data
-                let existingRow = accumulated.chart_data.find(r => r.year === newRow.year && r.month_index === newRow.month_index);
+                const key = `${newRow.year}-${newRow.month_index}`;
+                let existingRow = chartDataMap.get(key);
                 if (existingRow) {
                     existingRow.caixas = (Number(existingRow.caixas) || 0) + (Number(newRow.caixas) || 0);
                     existingRow.faturamento = (Number(existingRow.faturamento) || 0) + (Number(newRow.faturamento) || 0);
@@ -3157,7 +3162,9 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                     existingRow.clientes = (Number(existingRow.clientes) || 0) + (Number(newRow.clientes) || 0);
                     existingRow.pos_salty = (Number(existingRow.pos_salty) || 0) + (Number(newRow.pos_salty) || 0);
                 } else {
-                    accumulated.chart_data.push({ ...newRow });
+                    const newEntry = { ...newRow };
+                    accumulated.chart_data.push(newEntry);
+                    chartDataMap.set(key, newEntry);
                 }
             });
             // Sort chronologically by year then month_index
@@ -3170,8 +3177,12 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         // 3. Merge Products Table
         if (newData.products_table && newData.products_table.length > 0) {
             accumulated.products_table = accumulated.products_table || [];
+            // Create a Map for O(1) lookups
+            const productsMap = new Map();
+            accumulated.products_table.forEach(p => productsMap.set(p.produto, p));
+
             newData.products_table.forEach(newProd => {
-                let existingProd = accumulated.products_table.find(p => p.produto === newProd.produto);
+                let existingProd = productsMap.get(newProd.produto);
                 if (existingProd) {
                     existingProd.faturamento = (Number(existingProd.faturamento) || 0) + (Number(newProd.faturamento) || 0);
                     existingProd.peso = (Number(existingProd.peso) || 0) + (Number(newProd.peso) || 0);
@@ -3189,7 +3200,9 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                         existingProd.tend_estq = 0;
                     }
                 } else {
-                    accumulated.products_table.push({ ...newProd });
+                    const newEntry = { ...newProd };
+                    accumulated.products_table.push(newEntry);
+                    productsMap.set(newEntry.produto, newEntry);
                 }
             });
         }
