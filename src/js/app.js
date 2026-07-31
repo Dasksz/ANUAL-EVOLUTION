@@ -3241,70 +3241,7 @@ async function loadBoxesView() {
         } catch (e) { AppLog.warn('Cache error:', e); }
 
         if (!data) {
-            const useFornecedorChunking = (!filters.p_fornecedor || filters.p_fornecedor.length === 0) 
-            && availableFiltersState.fornecedores 
-            && availableFiltersState.fornecedores.length > 0;
-            
-        const needsChunking = (!filters.p_filial || filters.p_filial.length === 0) 
-            && availableFiltersState.filiais 
-            && availableFiltersState.filiais.length > 0;
-
-        if (useFornecedorChunking || needsChunking) {
-            let chunkList = [];
-            let chunkKey = '';
-            let chunkLabel = '';
-            
-            if (useFornecedorChunking) {
-                chunkList = availableFiltersState.fornecedores.map(f => typeof f === 'object' ? f.cod : f);
-                chunkKey = 'p_fornecedor';
-                chunkLabel = 'Fornecedor';
-                AppLog.log('Fetching Boxes View in Fornecedor chunks...');
-            } else {
-                chunkList = availableFiltersState.filiais;
-                chunkKey = 'p_filial';
-                chunkLabel = 'Filial';
-                AppLog.log('Fetching Boxes View in Filial chunks...');
-            }
-            
-            let accumulatedData = null;
-            
-
-            const BATCH_SIZE = 5;
-            for (let i = 0; i < chunkList.length; i += BATCH_SIZE) {
-                const batch = chunkList.slice(i, i + BATCH_SIZE);
-                AppLog.log(`Fetching Boxes ${chunkLabel} batch ${i/BATCH_SIZE + 1}...`);
-                window.showDashboardLoading('boxes-view', `Carregando ${chunkLabel} ${Math.min(i + BATCH_SIZE, chunkList.length)} de ${chunkList.length}...`);
-                
-                const promises = batch.map(chunkVal => {
-                    const chunkFilters = { ...filters, [chunkKey]: [String(chunkVal)] };
-                    return supabase.rpc('get_boxes_dashboard_data', chunkFilters).then(res => ({ ...res, chunkVal }));
-                });
-
-                const results = await Promise.all(promises);
-
-                for (const result of results) {
-                    const { data: resData, error: resError } = result;
-                    if (resError) {
-                        AppLog.error('API Error in boxes chunk:', resError);
-                        if (resError.message.includes('function get_boxes_dashboard_data') && resError.message.includes('does not exist')) {
-                            window.hideDashboardLoading();
-                            window.showToast('error', "Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
-                            return;
-                        }
-                        continue;
-                    }
-                    if (resData) {
-                        accumulatedData = mergeBoxesDashboardData(accumulatedData, resData);
-                    }
-                }
-
-                if (accumulatedData) {
-                    renderBoxesDashboard(accumulatedData);
-                }
-            }
-                data = accumulatedData;
-            } else {
-                const { data: rpcData, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
+            const { data: rpcData, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
                 if (error) {
                     AppLog.error(error);
                     window.hideDashboardLoading();
@@ -4343,60 +4280,13 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         }
 
         // 2. Check if we need to chunk (p_filial is empty and we have available branches)
-        const needsChunking = (!filters.p_filial || filters.p_filial.length === 0) 
-            && availableFiltersState.filiais 
-            && availableFiltersState.filiais.length > 0;
-
-        let finalData = null;
-
-        if (needsChunking) {
-            if (!isBackground) AppLog.log('Fetching all branches in chunks...');
-            const branches = availableFiltersState.filiais;
-            let accumulatedData = null;
-            
-
-            const BATCH_SIZE = 5;
-            for (let i = 0; i < branches.length; i += BATCH_SIZE) {
-                const batch = branches.slice(i, i + BATCH_SIZE);
-
-                if (!isBackground) {
-                    AppLog.log(`Fetching branch batch ${i/BATCH_SIZE + 1}...`);
-                    window.showDashboardLoading('main-dashboard-view', `Carregando Filial ${Math.min(i + BATCH_SIZE, branches.length)} de ${branches.length}...`);
-                }
-                
-                const promises = batch.map(branch => {
-                    const chunkFilters = { ...filters, p_filial: [branch] };
-                    return supabase.rpc('get_main_dashboard_data', chunkFilters).then(res => ({ ...res, branch }));
-                });
-                
-                const results = await Promise.all(promises);
-
-                for (const result of results) {
-                    const { data: resData, error: resError } = result;
-                    if (resError) {
-                        AppLog.error('API Error in chunk:', resError);
-                        continue;
-                    }
-                    if (resData) {
-                        accumulatedData = mergeMainDashboardData(accumulatedData, resData);
-                    }
-                }
-
-                if (!isBackground && accumulatedData) {
-                    renderDashboard(accumulatedData);
-                }
-            }
-            finalData = accumulatedData;
-        } else {
-            // Normal Single Fetch
-            if (isBackground) AppLog.log(`[Background] Fetching data from API...`);
+        if (isBackground) AppLog.log(`[Background] Fetching data from API...`);
             const { data, error } = await supabase.rpc('get_main_dashboard_data', filters);
             if (error) {
                 AppLog.error('API Error:', error);
                 return { data: null, error };
             }
             finalData = data;
-        }
 
         // 3. Save to Cache
         if (finalData) {
