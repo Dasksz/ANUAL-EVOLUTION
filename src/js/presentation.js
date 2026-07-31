@@ -255,24 +255,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         const targetMonthIdx = (presentationData.meta?.curr?.mes || new Date().getMonth() + 1) - 1;
         renderEvolutionChart(presentationData.chart_data, targetYear, targetMonthIdx);
     }
-    const containerLeft = document.getElementById("presentation-geral-cards-left");
-    const containerRight = document.getElementById("presentation-geral-cards-right");
+    const containerTop = document.getElementById("presentation-geral-cards-top");
+    const containerMiddle = document.getElementById("presentation-geral-cards-middle");
+
     if (!globalGeralData || globalGeralData.length === 0) {
-      containerLeft.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
-      containerRight.innerHTML = '';
+      containerTop.innerHTML = '<p class="text-slate-400">Sem dados.</p>';
+      containerMiddle.innerHTML = '';
       return;
     }
     const d = globalGeralData.find((g) => g.group_name === currentGeralFilter) || globalGeralData[0];
 
-    containerLeft.innerHTML = `
+    containerTop.innerHTML = `
             ${buildCard("Faturamento Total", d.fat_atual, d.fat_trim, d.fat_ant, true)}
             ${buildCard(currentGeralFilter === 'Geral' ? "Toneladas (Salty+Foods)" : `Toneladas ${currentGeralFilter}`, d.ton_atual, d.ton_trim, d.ton_ant, false)}
-            ${buildCard("Devoluções", d.dev_atual, d.dev_trim, d.dev_ant, true)}
-            ${buildCard("Bonificações", d.bonificacao_atual, d.bonificacao_trim, d.bonificacao_ant, true)}
+            ${buildCard("Positivação Total", d.pos_atual, d.pos_trim, d.pos_ant, false)}
         `;
 
-    containerRight.innerHTML = `
-            ${buildCard("Positivação Total", d.pos_atual, d.pos_trim, d.pos_ant, false)}
+    containerMiddle.innerHTML = `
+            ${buildCard("Devoluções", d.dev_atual, d.dev_trim, d.dev_ant, true)}
+            ${buildCard("Bonificações", d.bonificacao_atual, d.bonificacao_trim, d.bonificacao_ant, true)}
         `;
   }
 
@@ -648,8 +649,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           </div>
 
           <!-- Decorative Image -->
-          <div class="rounded-xl overflow-hidden shadow-lg border border-white/10 hidden lg:block">
-              <img src="https://images.unsplash.com/photo-1600952841320-db92ec4047ca?q=80&w=800&auto=format&fit=crop" alt="Resultados Atacado" class="w-full h-full object-cover opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all duration-500">
+          <div class="hidden lg:block h-full lg:h-[260px] w-full rounded-xl border border-white/10 shadow-lg overflow-hidden">
+              <img src="https://centraldovarejo.com.br/wp-content/uploads/2023/12/woman-at-work-putting-boxes-on-the-shelves-beside-2023-11-27-05-07-58-utc.jpg" alt="Resultados Atacado" class="w-full h-full object-cover object-center opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all duration-500">
           </div>
       </div>
 
