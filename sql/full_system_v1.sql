@@ -3233,7 +3233,8 @@ BEGIN
     -- 2. Build FILTERS (Keep existing logic)
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
         v_use_cache := false;
-        v_where_raw := v_where_raw || format(' AND produto = ANY(%L::text[]) ', p_produto);
+        v_where_raw := v_where_raw || format(' AND s.produto = ANY(%L::text[]) ', p_produto);
+        v_where_raw_base := v_where_raw_base || format(' AND s.produto = ANY(%L::text[]) ', p_produto);
     END IF;
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
@@ -3281,7 +3282,9 @@ BEGIN
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where_summary := v_where_summary || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_summary_base := v_where_summary_base || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_where_raw := v_where_raw || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_raw_base := v_where_raw_base || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
     
     -- Fornecedor Logic
@@ -3420,25 +3423,27 @@ BEGIN
                 %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
             ),
             prod_raw AS (
-                SELECT produto,
-                       SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as faturamento,
-                       SUM(totpesoliq) as peso,
-                       SUM(COALESCE(qtvenda, 0)) as total_qtvenda,
-                       COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                       MAX(dtped) as ultima_venda
+                SELECT s.produto,
+                       SUM(CASE WHEN s.tipovenda IN (''5'', ''11'') THEN s.vlbonific::numeric ELSE s.vlvenda::numeric END) as faturamento,
+                       SUM(s.totpesoliq) as peso,
+                       SUM(COALESCE(s.qtvenda, 0)) as total_qtvenda,
+                       COUNT(DISTINCT CASE WHEN %s THEN s.codcli END) as clientes,
+                       MAX(s.dtped) as ultima_venda
                 FROM public.data_detailed s
-                %s AND dtped >= make_date(%L, 1, 1) AND dtped <= make_date(%L, 12, 31) %s
-                GROUP BY produto
+                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+                %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
+                GROUP BY s.produto
                 UNION ALL
-                SELECT produto,
-                       SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as faturamento,
-                       SUM(totpesoliq) as peso,
-                       SUM(COALESCE(qtvenda, 0)) as total_qtvenda,
-                       COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                       MAX(dtped) as ultima_venda
+                SELECT s.produto,
+                       SUM(CASE WHEN s.tipovenda IN (''5'', ''11'') THEN s.vlbonific::numeric ELSE s.vlvenda::numeric END) as faturamento,
+                       SUM(s.totpesoliq) as peso,
+                       SUM(COALESCE(s.qtvenda, 0)) as total_qtvenda,
+                       COUNT(DISTINCT CASE WHEN %s THEN s.codcli END) as clientes,
+                       MAX(s.dtped) as ultima_venda
                 FROM public.data_history s
-                %s AND dtped >= make_date(%L, 1, 1) AND dtped <= make_date(%L, 12, 31) %s
-                GROUP BY produto
+                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+                %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
+                GROUP BY s.produto
             ),
             prod_grouped AS (
                 SELECT produto,
@@ -3648,11 +3653,11 @@ BEGIN
                 ) as estoque,
                 (v_max_sale_date - GREATEST(dp.dt_cadastro, (v_max_sale_date - interval '6 months')::date) + 1) as elapsed_days,
                 (
-                    SELECT SUM(COALESCE(sub_qtvenda, 0) / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1))
+                    SELECT SUM(sub_qtvenda) / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)
                     FROM (
-                        SELECT qtvenda as sub_qtvenda FROM public.data_detailed sd WHERE sd.produto = (p->>'produto') AND sd.dtped >= (v_max_sale_date - interval '6 months')::date AND sd.dtped <= (v_max_sale_date)::date AND sd.tipovenda IN ('1', '9')
+                        SELECT SUM(qtvenda) as sub_qtvenda FROM public.data_detailed sd WHERE sd.produto = (p->>'produto') AND sd.dtped >= (v_max_sale_date - interval '6 months')::date AND sd.dtped <= (v_max_sale_date)::date AND sd.tipovenda IN ('1', '9')
                         UNION ALL
-                        SELECT qtvenda as sub_qtvenda FROM public.data_history sh WHERE sh.produto = (p->>'produto') AND sh.dtped >= (v_max_sale_date - interval '6 months')::date AND sh.dtped <= (v_max_sale_date)::date AND sh.tipovenda IN ('1', '9')
+                        SELECT SUM(qtvenda) as sub_qtvenda FROM public.data_history sh WHERE sh.produto = (p->>'produto') AND sh.dtped >= (v_max_sale_date - interval '6 months')::date AND sh.dtped <= (v_max_sale_date)::date AND sh.tipovenda IN ('1', '9')
                     ) as hist
                 ) as total_caixas_6m
             FROM public.dim_produtos dp
