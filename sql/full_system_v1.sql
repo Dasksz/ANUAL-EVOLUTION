@@ -2936,18 +2936,20 @@ BEGIN
         FROM (
             SELECT ano, mes, codcli, SUM(vlvenda) as total_vlvenda, SUM(bonificacao) as total_bonificacao
             FROM filtered_summary
-            WHERE (
-                ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND tipovenda = ANY($1) )
-                OR
-                ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND
-                  (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1) ELSE tipovenda NOT IN (''5'', ''11'') END)
-                )
-            )
+            WHERE CASE
+                WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1)
+                ELSE tipovenda NOT IN (''5'', ''11'')
+            END
             GROUP BY ano, mes, codcli
             HAVING (
-                ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(bonificacao) > 0 )
-                OR
-                ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(vlvenda) >= 1 )
+                CASE
+                    WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN
+                        ( ($1 <@ ARRAY[''5'', ''11'']) AND SUM(bonificacao) > 0 ) OR
+                        ( NOT ($1 <@ ARRAY[''5'', ''11'']) AND NOT ($1 && ARRAY[''5'', ''11'']) AND SUM(vlvenda) >= 1 ) OR
+                        ( ($1 && ARRAY[''5'', ''11'']) AND NOT ($1 <@ ARRAY[''5'', ''11'']) AND (SUM(vlvenda) >= 1 OR SUM(bonificacao) > 0) )
+                    ELSE
+                        SUM(vlvenda) >= 1
+                END
             )
         ) grouped_clients
         GROUP BY ano, mes
@@ -3014,18 +3016,20 @@ BEGIN
             FROM filtered_summary
             WHERE ano = $2
             ' || CASE WHEN v_is_month_filtered THEN ' AND mes = $3 ' ELSE '' END || '
-            AND (
-                ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND tipovenda = ANY($1) )
-                OR
-                ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND
-                  (CASE WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1) ELSE tipovenda NOT IN (''5'', ''11'') END)
-                )
-            )
+            AND CASE
+                WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN tipovenda = ANY($1)
+                ELSE tipovenda NOT IN (''5'', ''11'')
+            END
             GROUP BY codcli
             HAVING (
-                ( ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(bonificacao) > 0 )
-                OR
-                ( NOT ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0 AND $1 <@ ARRAY[''5'',''11'']) AND SUM(vlvenda) >= 1 )
+                CASE
+                    WHEN ($1 IS NOT NULL AND COALESCE(array_length($1, 1), 0) > 0) THEN
+                        ( ($1 <@ ARRAY[''5'', ''11'']) AND SUM(bonificacao) > 0 ) OR
+                        ( NOT ($1 <@ ARRAY[''5'', ''11'']) AND NOT ($1 && ARRAY[''5'', ''11'']) AND SUM(vlvenda) >= 1 ) OR
+                        ( ($1 && ARRAY[''5'', ''11'']) AND NOT ($1 <@ ARRAY[''5'', ''11'']) AND (SUM(vlvenda) >= 1 OR SUM(bonificacao) > 0) )
+                    ELSE
+                        SUM(vlvenda) >= 1
+                END
             )
         ) grouped_active_clients
     ),
