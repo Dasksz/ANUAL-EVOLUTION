@@ -1,2 +1,0 @@
-CREATE TABLE IF NOT EXISTS profiles (id uuid PRIMARY KEY, status text);
-INSERT INTO profiles (id, status) VALUES ('00000000-0000-0000-0000-000000000000', 'approved') ON CONFLICT DO NOTHING;

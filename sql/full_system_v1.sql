@@ -3434,7 +3434,6 @@ BEGIN
                        COUNT(DISTINCT CASE WHEN %s THEN s.codcli END) as clientes,
                        MAX(s.dtped) as ultima_venda
                 FROM public.data_detailed s
-                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                 GROUP BY s.produto
                 UNION ALL
@@ -3445,7 +3444,6 @@ BEGIN
                        COUNT(DISTINCT CASE WHEN %s THEN s.codcli END) as clientes,
                        MAX(s.dtped) as ultima_venda
                 FROM public.data_history s
-                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                 GROUP BY s.produto
             ),
