@@ -67,3 +67,7 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## 2026-07-26 - [Chunking Strategy for Distinct Client Metrics]
  **Learning:** Chunking data by a dimension where clients overlap heavily (e.g., `Fornecedor`, where one client buys from multiple suppliers) causes the frontend sum of `clientes` (distinct counts) to inflate massively. Chunking by a mutually exclusive dimension (e.g., `Filial` or `Cidade`) is required to safely sum distinct client counts client-side.
  **Action:** Removed `useFornecedorChunking` completely and fell back to `Filial` chunking for `get_boxes_dashboard_data`.
+
+2024/05/20 - [Fix Frontend API Contention Timeout]
+ **Learning:** Mesmo com queries otimizadas (< 2s de execução), a técnica de "chunking" no frontend que dispara dezenas de requisições simultâneas para o Supabase (usando `Promise.all`) pode esgotar o pool de conexões do PostgREST e do banco, resultando em timeouts sintéticos (500 Internal Server Error ou 57014) em cascata.
+ **Action:** Desativei o chunking forçado por filial na página de Cobertura (`updateBoxesDashboard`). Com a nova otimização de pré-agregação de produtos no SQL, a execução para todas as filiais via FAST PATH é resolvida em ~1.2s, eliminando completamente a necessidade de "fatiar" a requisição e salvando a rede/API.

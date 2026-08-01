@@ -3245,9 +3245,9 @@ async function loadBoxesView() {
         } catch (e) { AppLog.warn('Cache error:', e); }
 
         if (!data) {
-            const needsChunking = (!filters.p_filial || filters.p_filial.length === 0) 
-            && availableFiltersState.filiais 
-            && availableFiltersState.filiais.length > 0;
+            // ⚡ Otimização: A query get_boxes_dashboard_data foi drasticamente otimizada no banco.
+            // O chunking estava causando contenção e timeout na API do Supabase ao disparar 20 requisições pesadas.
+            const needsChunking = false;
 
         if (needsChunking) {
             const chunkList = availableFiltersState.filiais;
