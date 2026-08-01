@@ -3205,7 +3205,11 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         return accumulated;
     }
 
+let isBoxesViewLoading = false;
 async function loadBoxesView() {
+    if (isBoxesViewLoading) { console.warn("Boxes view is already loading. Ignoring duplicate call."); return; }
+    isBoxesViewLoading = true;
+    try {
         window.showDashboardLoading('boxes-view');
 
         if (typeof initBoxesFilters === 'function' && boxesAnoFilter && boxesAnoFilter.options.length <= 1) {
@@ -3241,7 +3245,7 @@ async function loadBoxesView() {
         } catch (e) { AppLog.warn('Cache error:', e); }
 
         if (!data) {
-            const needsChunking = (!filters.p_filial || filters.p_filial.length === 0)
+            const needsChunking = (!filters.p_filial || filters.p_filial.length === 0) 
             && availableFiltersState.filiais 
             && availableFiltersState.filiais.length > 0;
 
@@ -3259,9 +3263,9 @@ async function loadBoxesView() {
                 const chunkFilters = { ...filters, [chunkKey]: [String(chunkVal)] };
                 return supabase.rpc('get_boxes_dashboard_data', chunkFilters);
             });
-
+            
             const results = await Promise.all(chunkPromises);
-
+            
             for (let i = 0; i < results.length; i++) {
                 const { data: resData, error: resError } = results[i];
                     
@@ -3296,7 +3300,12 @@ async function loadBoxesView() {
 
         window.hideDashboardLoading();
         if (data) renderBoxesDashboard(data);
+    } catch (e) {
+        AppLog.error('Error in loadBoxesView:', e);
+    } finally {
+        isBoxesViewLoading = false;
     }
+}
 
 
     // Boxes Pagination & Sorting State
