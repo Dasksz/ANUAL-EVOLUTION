@@ -229,7 +229,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     return `
-            <div class="presentation-card" ${title === 'Devoluções' ? 'onclick="window.openRankingModal(\'dev\')" style="cursor:pointer"' : ""} ${title === 'Bonificações' ? 'onclick="window.openRankingModal(\'bon\')" style="cursor:pointer"' : ""}>
+            <div class="presentation-card" ${title === 'Devoluções' ? 'onclick="window.openRankingModal(\'dev\')" style="cursor:pointer"' : ""} ${title === 'Bonificações' ? 'onclick="window.openRankingModal(\'bon\')" style="cursor:pointer"' : ""} ${title === 'Perdas' ? 'onclick="window.openRankingModal(\'per\')" style="cursor:pointer"' : ""}>
                 <div class="metric-label">${title}</div>
                 <div class="metric-value">${valFmt}</div>
                 
@@ -274,6 +274,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     containerMiddle.innerHTML = `
             ${buildCard("Devoluções", d.dev_atual, d.dev_trim, d.dev_ant, true)}
             ${buildCard("Bonificações", d.bonificacao_atual, d.bonificacao_trim, d.bonificacao_ant, true)}
+            ${buildCard("Perdas", d.perdas_atual, d.perdas_trim, d.perdas_ant, true)}
         `;
   }
 
@@ -774,6 +775,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       sortKeyTrim = "bon_trim";
       sortKeyAno = "bon_ant";
       isCurr = true;
+    } else if (metric === "per") {
+      titleText = "Ranking de Perdas";
+      sortKeyAtual = "per_atual";
+      sortKeyTrim = "per_trim";
+      sortKeyAno = "per_ant";
+      isCurr = true;
     }
 
     title.textContent = titleText;
@@ -1074,6 +1081,7 @@ Abaixo estão os dados completos do fechamento comercial:
 - Volume Kg Atual: ${formatNumber(global.ton_atual || 0)} Kg (Variação vs Mês Anterior: ${global.ton_trim ? (((global.ton_atual - global.ton_trim) / global.ton_trim) * 100).toFixed(1) : 0}%)
 - Devoluções: ${formatCurrency(global.dev_atual || 0)} (Variação vs Ano Anterior: ${global.dev_ant ? (((global.dev_atual - global.dev_ant) / global.dev_ant) * 100).toFixed(1) : 0}%)
 - Bonificações: ${formatCurrency(global.bonificacao_atual || 0)} (Variação vs Ano Anterior: ${global.bonificacao_ant ? (((global.bonificacao_atual - global.bonificacao_ant) / global.bonificacao_ant) * 100).toFixed(1) : 0}%)
+- Perdas: ${formatCurrency(global.perdas_atual || 0)} (Variação vs Ano Anterior: ${global.perdas_ant ? (((global.perdas_atual - global.perdas_ant) / global.perdas_ant) * 100).toFixed(1) : 0}%)
 - Positivação (Clientes Ativos): ${formatNumber(global.pos_atual || 0)} (Variação vs Mês Anterior: ${global.pos_ant_trim ? (((global.pos_atual - global.pos_ant_trim) / global.pos_ant_trim) * 100).toFixed(1) : 0}%)
 
 ### Destaques por Segmento (Top 3):

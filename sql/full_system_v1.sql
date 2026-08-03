@@ -7834,7 +7834,8 @@ BEGIN
             b.peso,
             b.tipovenda,
             b.devolucao,
-            b.bonificacao,
+            CASE WHEN b.tipovenda = '11' THEN b.bonificacao ELSE 0 END as bonificacao,
+            CASE WHEN b.tipovenda = '5' THEN b.vlvenda ELSE 0 END as perdas,
             CASE 
                 WHEN LTRIM(b.codfor::text, '0') IN ('707', '708', '752') THEN 'Salty'
                 WHEN LTRIM(b.codfor::text, '0') IN ('1119') THEN 'Foods'
@@ -7875,7 +7876,10 @@ BEGIN
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN devolucao ELSE 0 END) as dev_ant,
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN devolucao ELSE 0 END) / 3.0 as dev_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN bonificacao ELSE 0 END) as bonificacao_ant,
-            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN bonificacao ELSE 0 END) / 3.0 as bonificacao_trim
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN bonificacao ELSE 0 END) / 3.0 as bonificacao_trim,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN perdas ELSE 0 END) as perdas_atual,
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN perdas ELSE 0 END) / 3.0 as perdas_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN perdas ELSE 0 END) as perdas_ant
         FROM classified_data
         UNION ALL
         SELECT
@@ -7895,7 +7899,10 @@ BEGIN
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN devolucao ELSE 0 END) as dev_ant,
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN devolucao ELSE 0 END) / 3.0 as dev_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN bonificacao ELSE 0 END) as bonificacao_ant,
-            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN bonificacao ELSE 0 END) / 3.0 as bonificacao_trim
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN bonificacao ELSE 0 END) / 3.0 as bonificacao_trim,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN perdas ELSE 0 END) as perdas_atual,
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN perdas ELSE 0 END) / 3.0 as perdas_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN perdas ELSE 0 END) as perdas_ant
         FROM classified_data
         GROUP BY line_group
     ),
@@ -7919,7 +7926,10 @@ BEGIN
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN devolucao ELSE 0 END) as dev_ant,
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN devolucao ELSE 0 END) / 3.0 as dev_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN bonificacao ELSE 0 END) as bonificacao_ant,
-            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN bonificacao ELSE 0 END) / 3.0 as bonificacao_trim
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN bonificacao ELSE 0 END) / 3.0 as bonificacao_trim,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN perdas ELSE 0 END) as perdas_atual,
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN perdas ELSE 0 END) / 3.0 as perdas_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN perdas ELSE 0 END) as perdas_ant
         FROM classified_data
         GROUP BY filial
         UNION ALL
@@ -7940,7 +7950,10 @@ BEGIN
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN devolucao ELSE 0 END) as dev_ant,
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN devolucao ELSE 0 END) / 3.0 as dev_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN bonificacao ELSE 0 END) as bonificacao_ant,
-            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN bonificacao ELSE 0 END) / 3.0 as bonificacao_trim
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN bonificacao ELSE 0 END) / 3.0 as bonificacao_trim,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN perdas ELSE 0 END) as perdas_atual,
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN perdas ELSE 0 END) / 3.0 as perdas_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 THEN perdas ELSE 0 END) as perdas_ant
         FROM classified_data
         GROUP BY filial, line_group
     ),
@@ -8063,6 +8076,10 @@ BEGIN
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.bonificacao ELSE 0 END) as bon_atual,
             SUM(CASE WHEN ((c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10)) THEN c.bonificacao ELSE 0 END) / 3.0 as bon_trim,
             SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.bonificacao ELSE 0 END) as bon_ant,
+
+            SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.perdas ELSE 0 END) as per_atual,
+            SUM(CASE WHEN ((c.ano = $5 AND c.mes = $6) OR (c.ano = $7 AND c.mes = $8) OR (c.ano = $9 AND c.mes = $10)) THEN c.perdas ELSE 0 END) / 3.0 as per_trim,
+            SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.perdas ELSE 0 END) as per_ant,
 
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) - SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.vlvenda ELSE 0 END) as var_abs
         FROM classified_data c
