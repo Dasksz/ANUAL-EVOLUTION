@@ -3623,7 +3623,27 @@ BEGIN
     END IF;
 
     -- Enrich products_table with trend_estq
+    -- ⚡ QueryTuner: Optimized N+1 LATERAL query for 6m sales trend into a pre-aggregated CTE using target_products
     IF v_products_table IS NOT NULL AND json_array_length(v_products_table) > 0 THEN
+        WITH target_products AS (
+            SELECT p->>'produto' as produto FROM json_array_elements(v_products_table) p
+        ),
+        sales_6m AS (
+            SELECT produto, SUM(qtvenda) as qtvenda_6m
+            FROM public.data_detailed
+            WHERE dtped >= (v_max_sale_date - interval '6 months')::date AND dtped <= v_max_sale_date AND tipovenda IN ('1', '9')
+            AND produto IN (SELECT produto FROM target_products)
+            GROUP BY produto
+            UNION ALL
+            SELECT produto, SUM(qtvenda) as qtvenda_6m
+            FROM public.data_history
+            WHERE dtped >= (v_max_sale_date - interval '6 months')::date AND dtped <= v_max_sale_date AND tipovenda IN ('1', '9')
+            AND produto IN (SELECT produto FROM target_products)
+            GROUP BY produto
+        ),
+        agg_sales_6m AS (
+            SELECT produto, SUM(qtvenda_6m) as total_qtvenda_6m FROM sales_6m GROUP BY produto
+        )
         SELECT json_agg(
             json_build_object(
                 'produto', p->>'produto',
@@ -3654,15 +3674,9 @@ BEGIN
                     WHERE (p_filial IS NULL OR array_length(p_filial, 1) IS NULL OR key = ANY(p_filial))
                 ) as estoque,
                 (v_max_sale_date - GREATEST(dp.dt_cadastro, (v_max_sale_date - interval '6 months')::date) + 1) as elapsed_days,
-                (
-                    SELECT SUM(sub_qtvenda) / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)
-                    FROM (
-                        SELECT SUM(qtvenda) as sub_qtvenda FROM public.data_detailed sd WHERE sd.produto = (p->>'produto') AND sd.dtped >= (v_max_sale_date - interval '6 months')::date AND sd.dtped <= (v_max_sale_date)::date AND sd.tipovenda IN ('1', '9')
-                        UNION ALL
-                        SELECT SUM(qtvenda) as sub_qtvenda FROM public.data_history sh WHERE sh.produto = (p->>'produto') AND sh.dtped >= (v_max_sale_date - interval '6 months')::date AND sh.dtped <= (v_max_sale_date)::date AND sh.tipovenda IN ('1', '9')
-                    ) as hist
-                ) as total_caixas_6m
+                ( COALESCE(s6.total_qtvenda_6m, 0) / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1) ) as total_caixas_6m
             FROM public.dim_produtos dp
+            LEFT JOIN agg_sales_6m s6 ON s6.produto = dp.codigo
             WHERE dp.codigo = (p->>'produto')
         ) sub ON true;
     END IF;
