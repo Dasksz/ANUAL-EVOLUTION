@@ -406,6 +406,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             grid: { display: false },
           },
           y: {
+            grace: "15%",
             ticks: {
               color: "#94a3b8",
               callback: (val) => {
