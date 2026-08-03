@@ -3235,7 +3235,6 @@ BEGIN
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
         v_use_cache := false;
         v_where_raw := v_where_raw || format(' AND s.produto = ANY(%L::text[]) ', p_produto);
-        v_where_raw_base := v_where_raw_base || format(' AND s.produto = ANY(%L::text[]) ', p_produto);
     END IF;
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
@@ -3283,9 +3282,7 @@ BEGIN
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where_summary := v_where_summary || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_summary_base := v_where_summary_base || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_where_raw := v_where_raw || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_raw_base := v_where_raw_base || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
     
     -- Fornecedor Logic
@@ -3362,7 +3359,7 @@ BEGIN
                 FROM (
                     SELECT ano, mes, codcli
                     FROM public.data_summary
-                    %s AND ano IN (%L, %L) AND codfor IN (''707'', ''708'', ''752'', ''0707'', ''0708'', ''0752'') AND tipovenda IN (''1'', ''9'', ''01'', ''09'')
+                    %s AND ano IN (%L, %L) AND LTRIM(codfor::text, ''0'') IN (''707'', ''708'', ''752'') AND tipovenda IN (''1'', ''9'', ''01'', ''09'')
                     GROUP BY ano, mes, codcli
                     HAVING SUM(vlvenda) >= 1
                 ) sub
@@ -3505,8 +3502,16 @@ BEGIN
                 SELECT yr, m_idx, COUNT(DISTINCT codcli) as pos_salty
                 FROM (
                     SELECT EXTRACT(YEAR FROM dtped)::int as yr, (EXTRACT(MONTH FROM dtped)::int - 1) as m_idx, codcli
-                    FROM base_data s
-                    WHERE s.codfor IN (''707'', ''708'', ''752'', ''0707'', ''0708'', ''0752'') AND s.tipovenda IN (''1'', ''9'', ''01'', ''09'')
+                    FROM public.data_detailed s
+                    %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
+                    AND LTRIM(s.codfor::text, ''0'') IN (''707'', ''708'', ''752'') AND s.tipovenda IN (''1'', ''9'', ''01'', ''09'')
+                    GROUP BY EXTRACT(YEAR FROM dtped)::int, (EXTRACT(MONTH FROM dtped)::int - 1), codcli
+                    HAVING SUM(vlvenda) >= 1
+                    UNION ALL
+                    SELECT EXTRACT(YEAR FROM dtped)::int as yr, (EXTRACT(MONTH FROM dtped)::int - 1) as m_idx, codcli
+                    FROM public.data_history s
+                    %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
+                    AND LTRIM(s.codfor::text, ''0'') IN (''707'', ''708'', ''752'') AND s.tipovenda IN (''1'', ''9'', ''01'', ''09'')
                     GROUP BY EXTRACT(YEAR FROM dtped)::int, (EXTRACT(MONTH FROM dtped)::int - 1), codcli
                     HAVING SUM(vlvenda) >= 1
                 ) agg_sub
@@ -3598,8 +3603,10 @@ BEGIN
                 (SELECT row_to_json(t) FROM kpi_tri t),
                 (SELECT json_agg(pa) FROM prod_agg pa)
         ', 
-        v_where_raw_base, v_previous_year, v_current_year, v_previous_year, v_current_year, -- base_data detailed (1 %s, 4 %L)
-        v_where_raw_base, v_previous_year, v_current_year, v_previous_year, v_current_year, -- base_data history (1 %s, 4 %L)
+        v_where_raw, v_current_year, v_current_year, v_previous_year, v_previous_year, -- base_data detailed (1 %s, 4 %L)
+        v_where_raw, v_current_year, v_current_year, v_previous_year, v_previous_year, -- base_data history (1 %s, 4 %L)
+        v_where_raw_base, v_current_year, v_current_year, v_previous_year, v_previous_year, -- salty_monthly detailed (1 %s, 4 %L)
+        v_where_raw_base, v_current_year, v_current_year, v_previous_year, v_previous_year, -- salty_monthly history (1 %s, 4 %L)
         
         v_active_client_cond_slow, -- chart_agg_base (1 %s)
         
