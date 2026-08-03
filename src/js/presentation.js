@@ -752,6 +752,34 @@ document.addEventListener("DOMContentLoaded", async () => {
         renderGeral(globalGeralData);
       });
     });
+    const filialButtons = document.querySelectorAll('#presentation-filial-filters button');
+    filialButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const filter = btn.getAttribute('data-filter');
+        if (currentFilialFilter === filter) {
+          currentFilialFilter = 'Geral'; // Toggle off
+        } else {
+          currentFilialFilter = filter;
+        }
+
+        // Update styling
+        filialButtons.forEach(b => {
+          b.classList.remove('bg-fuchsia-600', 'text-white', 'border-fuchsia-400');
+          b.classList.add('bg-white/5', 'text-slate-400');
+        });
+        if (currentFilialFilter !== 'Geral') {
+             btn.classList.remove('bg-white/5', 'text-slate-400');
+             btn.classList.add('bg-fuchsia-600', 'text-white', 'border-fuchsia-400');
+        }
+
+        // Re-render
+        const select = document.getElementById("presentation-filial-select");
+        if (select) {
+          select.dispatchEvent(new Event('change'));
+        }
+      });
+    });
+
   }
 
   // Helpers
