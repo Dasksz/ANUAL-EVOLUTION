@@ -500,7 +500,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         const strokeArray = Math.min(pct, 100).toFixed(1);
         const isUnder = pct < 100;
 
-        const cssClass = isUnder ? "below-target" : isSalty ? "salty" : "foods";
+        let cssClass = "perf-low";
+        if (pct >= 100) {
+          cssClass = "perf-high";
+        } else if (pct >= 90) {
+          cssClass = "perf-med";
+        }
+
         const displayName = catName;
 
         return `
@@ -520,7 +526,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                             />
                             <text x="18" y="20.35" class="percentage">${pct.toFixed(0)}%</text>
                         </svg>
-                        <div class="cat-tooltip">Fat: ${formatCurrency(fatAtual)}</div>
+                        <div class="cat-tooltip text-left p-2 space-y-1">
+                            <div><span class="text-slate-400">Vendido:</span> ${formatCurrency(fatAtual)}</div>
+                            <div><span class="text-slate-400">Média (Tri):</span> ${formatCurrency(fatTrim)}</div>
+                            <div><span class="text-slate-400">Meta (100%):</span> ${formatCurrency(meta)}</div>
+                        </div>
                     </div>
                 `;
       };
