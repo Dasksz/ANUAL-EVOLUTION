@@ -3235,7 +3235,6 @@ BEGIN
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
         v_use_cache := false;
         v_where_raw := v_where_raw || format(' AND s.produto = ANY(%L::text[]) ', p_produto);
-        v_where_raw_base := v_where_raw_base || format(' AND s.produto = ANY(%L::text[]) ', p_produto);
     END IF;
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
@@ -3283,9 +3282,7 @@ BEGIN
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where_summary := v_where_summary || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_summary_base := v_where_summary_base || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_where_raw := v_where_raw || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_raw_base := v_where_raw_base || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
     
     -- Fornecedor Logic
@@ -3358,155 +3355,19 @@ BEGIN
         EXECUTE format('
             WITH 
             salty_monthly AS (
-                SELECT ano, mes, COUNT(DISTINCT codcli) as pos_salty
-                FROM (
-                    SELECT ano, mes, codcli
-                    FROM public.data_summary
-                    %s AND ano IN (%L, %L) AND codfor IN (''707'', ''708'', ''752'', ''0707'', ''0708'', ''0752'') AND tipovenda IN (''1'', ''9'', ''01'', ''09'')
-                    GROUP BY ano, mes, codcli
-                    HAVING SUM(vlvenda) >= 1
-                ) sub
-                GROUP BY ano, mes
-            ),
-            chart_agg_base AS (
-                SELECT 
-                    mes - 1 as m_idx,
-                    ano as yr,
-                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
-                    SUM(peso) as peso,
-                    SUM(COALESCE(caixas, 0)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
-                FROM public.data_summary
-                %s AND ano IN (%L, %L)
-                GROUP BY 1, 2
-            ),
-            chart_agg AS (
-                SELECT b.*, COALESCE(sm.pos_salty, 0) as pos_salty
-                FROM chart_agg_base b
-                LEFT JOIN salty_monthly sm ON b.yr = sm.ano AND b.m_idx = (sm.mes - 1)
-            ),
-            kpi_curr AS (
-                SELECT 
-                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
-                    SUM(peso) as peso,
-                    SUM(COALESCE(caixas, 0)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE ano = %L %s), 0) as pos_salty
-                FROM public.data_summary
-                %s AND ano = %L %s
-            ),
-            kpi_prev AS (
-                SELECT 
-                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
-                    SUM(peso) as peso,
-                    SUM(COALESCE(caixas, 0)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE ano = %L %s), 0) as pos_salty
-                FROM public.data_summary
-                %s AND ano = %L %s
-            ),
-            kpi_tri AS (
-                SELECT 
-                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao::numeric ELSE vlvenda::numeric END) / 3 as fat,
-                    SUM(peso) / 3 as peso,
-                    SUM(COALESCE(caixas, 0)) / 3 as caixas,
-                    COALESCE((
-                        SELECT SUM(monthly_clients) / 3
-                        FROM (
-                            SELECT COUNT(DISTINCT CASE WHEN %s THEN codcli END) as monthly_clients
-                            FROM public.data_summary
-                            %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
-                            GROUP BY ano, mes
-                        ) sub
-                    ), 0) as clientes,
-                    COALESCE((SELECT SUM(pos_salty)/3 FROM salty_monthly WHERE make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L), 0) as pos_salty
-                FROM public.data_summary
-                %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
-            ),
-            prod_raw AS (
-                SELECT s.produto,
-                       SUM(CASE WHEN s.tipovenda IN (''5'', ''11'') THEN s.vlbonific::numeric ELSE s.vlvenda::numeric END) as faturamento,
-                       SUM(s.totpesoliq) as peso,
-                       SUM(COALESCE(s.qtvenda, 0)) as total_qtvenda,
-                       COUNT(DISTINCT CASE WHEN %s THEN s.codcli END) as clientes,
-                       MAX(s.dtped) as ultima_venda
-                FROM public.data_detailed s
-                %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
-                GROUP BY s.produto
-                UNION ALL
-                SELECT s.produto,
-                       SUM(CASE WHEN s.tipovenda IN (''5'', ''11'') THEN s.vlbonific::numeric ELSE s.vlvenda::numeric END) as faturamento,
-                       SUM(s.totpesoliq) as peso,
-                       SUM(COALESCE(s.qtvenda, 0)) as total_qtvenda,
-                       COUNT(DISTINCT CASE WHEN %s THEN s.codcli END) as clientes,
-                       MAX(s.dtped) as ultima_venda
-                FROM public.data_history s
-                %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
-                GROUP BY s.produto
-            ),
-            prod_grouped AS (
-                SELECT produto,
-                       SUM(faturamento) as faturamento,
-                       SUM(peso) as peso,
-                       SUM(total_qtvenda) as total_qtvenda,
-                       SUM(clientes) as clientes,
-                       MAX(ultima_venda) as ultima_venda
-                FROM prod_raw
-                GROUP BY produto
-            ),
-            prod_agg AS (
-                SELECT p.produto,
-                       MAX(dp.descricao) as descricao,
-                       (p.total_qtvenda / COALESCE(NULLIF(MAX(dp.qtde_embalagem_master), 0), 1)) as caixas,
-                       p.faturamento,
-                       p.peso,
-                       p.clientes,
-                       p.ultima_venda
-                FROM prod_grouped p
-                LEFT JOIN public.dim_produtos dp ON p.produto = dp.codigo
-                GROUP BY p.produto, p.faturamento, p.peso, p.total_qtvenda, p.clientes, p.ultima_venda
-                ORDER BY caixas DESC
-                LIMIT 1000
-            )
-            SELECT 
-                (SELECT json_agg(json_build_object(''month_index'', m_idx, ''year'', yr, ''faturamento'', fat, ''peso'', peso, ''caixas'', caixas, ''clientes'', clientes, ''pos_salty'', pos_salty)) FROM chart_agg),
-                (SELECT row_to_json(c) FROM kpi_curr c),
-                (SELECT row_to_json(p) FROM kpi_prev p),
-                (SELECT row_to_json(t) FROM kpi_tri t),
-                (SELECT json_agg(pa) FROM prod_agg pa)
-        ', 
-        v_where_summary_base, v_current_year, v_previous_year, -- salty_monthly CTE
-        v_active_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
-        v_active_client_cond, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
-        v_active_client_cond, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
-        v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
-        v_active_client_cond_slow, v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND dtped >= make_date(%L, %L, 1) AND dtped <= (make_date(%L, %L, 1) + interval ''1 month'' - interval ''1 day'') ', v_current_year, v_target_month, v_current_year, v_target_month) ELSE '' END, -- Prod Detailed
-        v_active_client_cond_slow, v_where_raw, v_previous_year, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND dtped >= make_date(%L, %L, 1) AND dtped <= (make_date(%L, %L, 1) + interval ''1 month'' - interval ''1 day'') ', v_previous_year, v_target_month, v_previous_year, v_target_month) ELSE '' END -- Prod History
-        )
-        INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
-    
-    ELSE
-        -- SLOW PATH (Full Raw Data with dim_produtos join)
-        -- PERFORMANCE FIX: Materialized CTE to avoid redundant data_history scans
-        EXECUTE format('
-            WITH 
-            base_data AS MATERIALIZED (
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific, s.codfor
-                FROM public.data_detailed s
-                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
-                UNION ALL
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific, s.codfor
-                FROM public.data_history s
-                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
-            ),
-            salty_monthly AS (
                 SELECT yr, m_idx, COUNT(DISTINCT codcli) as pos_salty
                 FROM (
                     SELECT EXTRACT(YEAR FROM dtped)::int as yr, (EXTRACT(MONTH FROM dtped)::int - 1) as m_idx, codcli
-                    FROM base_data s
-                    WHERE s.codfor IN (''707'', ''708'', ''752'', ''0707'', ''0708'', ''0752'') AND s.tipovenda IN (''1'', ''9'', ''01'', ''09'')
+                    FROM public.data_detailed s
+                    %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
+                    AND LTRIM(s.codfor::text, ''0'') IN (''707'', ''708'', ''752'') AND s.tipovenda IN (''1'', ''9'', ''01'', ''09'')
+                    GROUP BY EXTRACT(YEAR FROM dtped)::int, (EXTRACT(MONTH FROM dtped)::int - 1), codcli
+                    HAVING SUM(vlvenda) >= 1
+                    UNION ALL
+                    SELECT EXTRACT(YEAR FROM dtped)::int as yr, (EXTRACT(MONTH FROM dtped)::int - 1) as m_idx, codcli
+                    FROM public.data_history s
+                    %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
+                    AND LTRIM(s.codfor::text, ''0'') IN (''707'', ''708'', ''752'') AND s.tipovenda IN (''1'', ''9'', ''01'', ''09'')
                     GROUP BY EXTRACT(YEAR FROM dtped)::int, (EXTRACT(MONTH FROM dtped)::int - 1), codcli
                     HAVING SUM(vlvenda) >= 1
                 ) agg_sub
@@ -3598,8 +3459,10 @@ BEGIN
                 (SELECT row_to_json(t) FROM kpi_tri t),
                 (SELECT json_agg(pa) FROM prod_agg pa)
         ', 
-        v_where_raw_base, v_previous_year, v_current_year, v_previous_year, v_current_year, -- base_data detailed (1 %s, 4 %L)
-        v_where_raw_base, v_previous_year, v_current_year, v_previous_year, v_current_year, -- base_data history (1 %s, 4 %L)
+        v_where_raw, v_previous_year, v_current_year, v_previous_year, v_current_year, -- base_data detailed (1 %s, 4 %L)
+        v_where_raw, v_previous_year, v_current_year, v_previous_year, v_current_year, -- base_data history (1 %s, 4 %L)
+        v_where_raw_base, v_previous_year, v_current_year, v_previous_year, v_current_year, -- salty_monthly detailed (1 %s, 4 %L)
+        v_where_raw_base, v_previous_year, v_current_year, v_previous_year, v_current_year, -- salty_monthly history (1 %s, 4 %L)
         
         v_active_client_cond_slow, -- chart_agg_base (1 %s)
         
