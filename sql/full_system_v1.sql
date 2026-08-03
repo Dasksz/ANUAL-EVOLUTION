@@ -7835,7 +7835,7 @@ BEGIN
             b.tipovenda,
             b.devolucao,
             CASE WHEN b.tipovenda = '11' THEN b.bonificacao ELSE 0 END as bonificacao,
-            CASE WHEN b.tipovenda = '5' THEN b.vlvenda ELSE 0 END as perdas,
+            CASE WHEN b.tipovenda = '5' THEN b.bonificacao ELSE 0 END as perdas,
             CASE 
                 WHEN LTRIM(b.codfor::text, '0') IN ('707', '708', '752') THEN 'Salty'
                 WHEN LTRIM(b.codfor::text, '0') IN ('1119') THEN 'Foods'
