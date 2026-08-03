@@ -25,3 +25,7 @@
 2026-08-02 - Optimize EXTRACT with IN operator
  Learning: Using `EXTRACT(YEAR FROM s.dtped)::int IN (Y1, Y2)` on massive timestamp tables causes the PostgreSQL query planner to bypass index range scans, forcing a full parallel sequential scan (e.g. ~1220ms).
  Action: Replaced the extraction and IN operator with a single continuous SARGable explicit boundary `(s.dtped >= make_date(Y2, 1, 1) AND s.dtped < make_date(Y1 + 1, 1, 1))`. This drops execution time to ~75ms by allowing an index Range Scan, and fixes bugs with midnight cutoff issues by using `< make_date` instead of `<= make_date`.
+
+2024/09/20 - Optimize distinct lookup query
+ Learning: When finding distinct relationships (like codusur mapped to codsupervisor) combined with a filter (like `nome = ANY(p_supervisor)`), doing `SELECT DISTINCT ... FROM massive_table` in a subquery BEFORE the JOIN forces PostgreSQL to parallel sequence scan and HashAggregate the entire massive table first (taking e.g. ~56ms+).
+ Action: Replace unrestricted DISTINCT subqueries with a direct filter pushdown using an `IN` clause: `WHERE codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ...)`. This allows the planner to use existing indexes on `codsupervisor` in the massive table, dropping execution time to ~0.17ms.
