@@ -8123,7 +8123,7 @@ BEGIN
             b.vendedor, b.codsupervisor, b.supervisor_nome,
             b.fat_atual, b.fat_trim, b.fat_ant, b.ton_atual, b.ton_trim, b.ton_ant,
             b.fat_atual_salty, b.fat_trim_salty, b.fat_ant_salty, b.ton_atual_salty, b.ton_trim_salty, b.ton_ant_salty,
-            b.fat_atual_foods, b.fat_trim_foods, b.fat_ant_foods, b.ton_atual_foods, b.ton_trim_foods, b.ton_ant_foods, b.var_abs, b.dev_atual, b.dev_trim, b.dev_ant, b.bon_atual, b.bon_trim, b.bon_ant,
+            b.fat_atual_foods, b.fat_trim_foods, b.fat_ant_foods, b.ton_atual_foods, b.ton_trim_foods, b.ton_ant_foods, b.var_abs, b.dev_atual, b.dev_trim, b.dev_ant, b.bon_atual, b.bon_trim, b.bon_ant, b.per_atual, b.per_trim, b.per_ant,
             COALESCE(p.pos_atual, 0) as pos_atual, COALESCE(p.pos_trim, 0) as pos_trim, COALESCE(p.pos_ant, 0) as pos_ant,
             COALESCE(p.pos_atual_salty, 0) as pos_atual_salty, COALESCE(p.pos_trim_salty, 0) as pos_trim_salty, COALESCE(p.pos_ant_salty, 0) as pos_ant_salty,
             COALESCE(p.pos_atual_foods, 0) as pos_atual_foods, COALESCE(p.pos_trim_foods, 0) as pos_trim_foods, COALESCE(p.pos_ant_foods, 0) as pos_ant_foods
