@@ -1,5 +1,5 @@
-fix: enable filtering for Salty and Foods on Por Filial slide
+feat: add thank you slide to presentation
 
-The "Salty" and "Foods" buttons on the "Por Filial" slide in the closing presentation were unresponsive.
-
-This commit introduces event listeners for the `#presentation-filial-filters button` elements within the `setupFilters()` initialization logic. When clicked, these buttons update the `currentFilialFilter` state, toggle the active button styling, and dispatch a `change` event on the filial select element to force a re-render of the specific filial data.
+Adds a final slide to the closing presentation with the message 'Obrigado,
+equipe Prime Distribuição' styled beautifully with Tailwind gradients and
+the company logo.
