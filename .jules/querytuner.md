@@ -29,3 +29,7 @@
 2024/09/20 - Optimize distinct lookup query
  Learning: When finding distinct relationships (like codusur mapped to codsupervisor) combined with a filter (like `nome = ANY(p_supervisor)`), doing `SELECT DISTINCT ... FROM massive_table` in a subquery BEFORE the JOIN forces PostgreSQL to parallel sequence scan and HashAggregate the entire massive table first (taking e.g. ~56ms+).
  Action: Replace unrestricted DISTINCT subqueries with a direct filter pushdown using an `IN` clause: `WHERE codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ...)`. This allows the planner to use existing indexes on `codsupervisor` in the massive table, dropping execution time to ~0.17ms.
+
+2026-08-03 - Optimize Array/JSONB distinct aggregations by pushing DISTINCT into CTE
+ Learning: In PostgreSQL, when aggregating large datasets with `jsonb_agg(DISTINCT col)` or `array_agg(DISTINCT col)`, if the query includes multiple aggregates or grouping, it can cause the query planner to perform extremely slow external merge sorts or memory-bound HashAggregates for each distinct calculation. Furthermore, inline `FILTER (WHERE col IS NOT NULL)` clauses on these aggregates often force slower GroupAggregates instead of HashAggregates.
+ Action: Rewrote inline `json_agg(DISTINCT col)` to use a subquery pattern: `SELECT json_agg(col) FROM (SELECT DISTINCT col FROM ...)`. Additionally, for `jsonb_agg` applied to array elements in `get_presentation_dashboard_data`, pushed the DISTINCT down into the `FROM` subquery, which yielded measurable improvements.
