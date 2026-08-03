@@ -890,6 +890,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   function setupVendedores(vendedoresData) {
     if (!vendedoresData) return;
 
+    // Preload profile images to prevent delay when filtering
+    const profileImages = [
+      "src/assets/images/PRIME.png",
+      "src/assets/images/AMERICANAS.png",
+      "src/assets/images/SHARK.png",
+      "src/assets/images/AGUIA.png"
+    ];
+    profileImages.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+
     const tabs = document.querySelectorAll("#top-vendedores-tabs button");
     const selectSup = document.getElementById(
       "top-vendedores-supervisor-filter",
