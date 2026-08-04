@@ -3357,6 +3357,17 @@ BEGIN
         -- FAST PATH (Uses data_summary for totals)
         EXECUTE format('
             WITH 
+            base_data AS (
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.produto, dp.qtde_embalagem_master, s.qtvenda, s.tipovenda, s.vlbonific
+                FROM public.data_detailed s
+                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+                %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
+                UNION ALL
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.produto, dp.qtde_embalagem_master, s.qtvenda, s.tipovenda, s.vlbonific
+                FROM public.data_history s
+                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+                %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
+            ),
             salty_monthly AS (
                 SELECT ano, mes, COUNT(DISTINCT codcli) as pos_salty
                 FROM (
