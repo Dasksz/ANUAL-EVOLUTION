@@ -3505,10 +3505,21 @@ BEGIN
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
             ),
+            chart_agg_base AS (
+                SELECT 
+                    EXTRACT(MONTH FROM dtped)::int - 1 as m_idx,
+                    EXTRACT(YEAR FROM dtped)::int as yr,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(totpesoliq) as peso,
+                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
+                FROM base_data s
+                GROUP BY 1, 2
+            ),
             chart_agg AS (
                 SELECT b.*
                 FROM chart_agg_base b
-                            ),
+            ),
             kpi_curr AS (
                 SELECT 
                     SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
