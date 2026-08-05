@@ -3365,17 +3365,6 @@ BEGIN
         -- FAST PATH (Uses data_summary for totals)
         EXECUTE format('
             WITH 
-            base_data AS (
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.produto, dp.qtde_embalagem_master, s.qtvenda, s.tipovenda, s.vlbonific
-                FROM public.data_detailed s
-                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
-                UNION ALL
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.produto, dp.qtde_embalagem_master, s.qtvenda, s.tipovenda, s.vlbonific
-                FROM public.data_history s
-                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
-            ),
             chart_agg_base AS (
                 SELECT 
                     mes - 1 as m_idx,
@@ -3435,6 +3424,7 @@ BEGIN
                        COUNT(DISTINCT CASE WHEN %s THEN s.codcli END) as clientes,
                        MAX(s.dtped) as ultima_venda
                 FROM public.data_detailed s
+                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                 GROUP BY s.produto
                 UNION ALL
@@ -3445,6 +3435,7 @@ BEGIN
                        COUNT(DISTINCT CASE WHEN %s THEN s.codcli END) as clientes,
                        MAX(s.dtped) as ultima_venda
                 FROM public.data_history s
+                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                 GROUP BY s.produto
             ),
@@ -3479,8 +3470,6 @@ BEGIN
                 (SELECT row_to_json(t) FROM kpi_tri t),
                 (SELECT json_agg(pa) FROM prod_agg pa)
         ', 
-        v_where_summary_base, v_current_year, v_current_year, v_previous_year, v_previous_year, -- base_data detailed
-        v_where_summary_base, v_current_year, v_current_year, v_previous_year, v_previous_year, -- base_data history
         v_active_client_cond, v_where_summary, v_current_year, v_previous_year, -- Chart
         v_active_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
         v_active_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
