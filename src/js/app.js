@@ -9284,17 +9284,7 @@ window.clearAllFilters = async function(prefix) {
             'innovations-rede-filter-dropdown', 'innovations-filial-filter-dropdown',
             'innovations-categoria-filter-dropdown'
         ];
-        clearArrays(lpSelectedCidades);
-        const lpCodcliBtn = document.getElementById("lp-codcli-filter-btn");
-        if (lpCodcliBtn) {
-            lpCodcliBtn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
-            lpCodcliBtn.classList.remove("text-white", "font-medium", "bg-white/10");
-            lpCodcliBtn.classList.add("text-slate-300");
-        }
-        const lpCodcliDropdown = document.getElementById("lp-codcli-filter-dropdown");
-        if(lpCodcliDropdown) {
-            uncheckAllCheckboxes(lpCodcliDropdown);
-        }
+
 
         wrappers.forEach(id => {
             const dropdown = document.getElementById(id);
@@ -9514,22 +9504,30 @@ window.clearAllFilters = async function(prefix) {
     } else if (prefix === 'lp') {
         const anoSelect = document.getElementById('lp-ano-filter');
         const mesSelect = document.getElementById('lp-mes-filter');
-        const currentYear = new Date().getFullYear().toString();
-        const currentMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
+        
+        if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
+        const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
         
         if (anoSelect) {
             let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
             anoSelect.value = hasYear ? currentYear : 'todos';
-            anoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            // Update visual state of custom dropdown without triggering 'change' event to avoid race condition with explicit loadLojaPerfeitaFilters(true)
+            const span = anoSelect.nextElementSibling?.querySelector('span');
+            if (span && anoSelect.options[anoSelect.selectedIndex]) {
+                span.textContent = anoSelect.options[anoSelect.selectedIndex].text;
+            }
         }
         if (mesSelect) {
             mesSelect.value = currentMonth;
-            mesSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            const span = mesSelect.nextElementSibling?.querySelector('span');
+            if (span && mesSelect.options[mesSelect.selectedIndex]) {
+                span.textContent = mesSelect.options[mesSelect.selectedIndex].text;
+            }
         }
 
         clearArrays(lpSelectedCidades, lpSelectedFiliais, lpSelectedSupervisors, lpSelectedVendedores, lpSelectedRedes, lpSelectedPesquisadores);
         
-        ['lp-supervisor', 'lp-vendedor', 'lp-rede', 'lp-cidade', 'lp-pesquisador'].forEach(prefix => {
+        ['lp-filial', 'lp-supervisor', 'lp-vendedor', 'lp-rede', 'lp-cidade', 'lp-pesquisador'].forEach(prefix => {
             const btn = document.getElementById(`${prefix}-filter-btn`);
             if (btn) {
                 btn.innerHTML = `<span class="truncate">Todos</span><svg class="w-3 h-3 text-slate-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
