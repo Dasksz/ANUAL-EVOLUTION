@@ -1,2 +1,0 @@
-sudo: unknown user postgres
-sudo: error initializing audit plugin sudoers_audit
