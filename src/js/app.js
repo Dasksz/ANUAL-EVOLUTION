@@ -3136,7 +3136,6 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             accKpi.peso = (Number(accKpi.peso) || 0) + (Number(newKpi.peso) || 0);
             accKpi.caixas = (Number(accKpi.caixas) || 0) + (Number(newKpi.caixas) || 0);
             accKpi.clientes = (Number(accKpi.clientes) || 0) + (Number(newKpi.clientes) || 0);
-            accKpi.pos_salty = (Number(accKpi.pos_salty) || 0) + (Number(newKpi.pos_salty) || 0);
             return accKpi;
         };
 
@@ -3155,7 +3154,6 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                     existingRow.faturamento = (Number(existingRow.faturamento) || 0) + (Number(newRow.faturamento) || 0);
                     existingRow.peso = (Number(existingRow.peso) || 0) + (Number(newRow.peso) || 0);
                     existingRow.clientes = (Number(existingRow.clientes) || 0) + (Number(newRow.clientes) || 0);
-                    existingRow.pos_salty = (Number(existingRow.pos_salty) || 0) + (Number(newRow.pos_salty) || 0);
                 } else {
                     accumulated.chart_data.push({ ...newRow });
                 }
@@ -3603,8 +3601,6 @@ async function loadBoxesView() {
         updateBoxKpi('peso', 'peso', fmtKg);
         updateBoxKpi('caixas', 'caixas', fmtCaixas);
         updateBoxKpi('clientes', 'clientes', fmtCaixas);
-        updateBoxKpi('pos_salty', 'pos-salty', fmtCaixas);
-
         // Chart (2 datasets: Current vs Previous + Trend if active)
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
         const labels = [...monthNames];

@@ -75,3 +75,4 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## 2024-05-20 - Fix get_boxes_dashboard_data API crash
  **Learning:** In complex `EXECUTE format(...)` dynamic SQL generation, failure to supply the exact number of variables for the format string causes fatal API endpoints errors like `too few arguments for format()`.
  **Action:** Always manually tally format variables (`%L`, `%s`) against the supplied variables in PostgreSQL `format` invocations, particularly after schema or WHERE clause additions.
+## 2025-08-05 - Remove KPI Posituação Salty from Cobertura\n**Learning:** When removing a KPI card, also remember to clean up the backend (SQL RPCs) and the frontend aggregator logic.\n**Action:** Ensure grid structures are adapted after removing a child card (e.g., from 5 to 4 columns).
