@@ -3378,13 +3378,14 @@ BEGIN
             ),
             chart_agg_base AS (
                 SELECT 
-                    EXTRACT(MONTH FROM dtped)::int - 1 as m_idx,
-                    EXTRACT(YEAR FROM dtped)::int as yr,
-                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
-                    SUM(totpesoliq) as peso,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
+                    mes - 1 as m_idx,
+                    ano as yr,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN bonificacao::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(peso) as peso,
+                    SUM(COALESCE(caixas, 0)) as caixas,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
-                FROM base_data s
+                FROM public.data_summary
+                %s AND ano IN (%L, %L)
                 GROUP BY 1, 2
             ),
             chart_agg AS (
