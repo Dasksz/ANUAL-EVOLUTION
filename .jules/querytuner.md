@@ -40,3 +40,6 @@
 2024/05/20 - Fix mismatched dynamic SQL format arguments
  Learning: When using dynamic SQL execution via `EXECUTE format(...)` in PostgreSQL, ensure the number of provided variables matches exactly the count of format specifiers (`%s`, `%L`). Missing arguments will trigger a `too few arguments for format()` error that can crash queries.
  Action: Count format specifiers exactly before applying string templates in PostgreSQL. Test dynamic functions thoroughly.
+## 2026-08-04 - Optimize array overlap matching via ?& and ?|
+**Learning:** Checking for JSON array overlaps using `EXISTS(SELECT 1 FROM jsonb_array_elements_text(col) WHERE ...)` or `ARRAY(...) <@ ARRAY(...)` executes a subquery per row which becomes a significant bottleneck during large aggregations.
+**Action:** Replace nested string arrays evaluation with PostgreSQL's native jsonb operators `?&` (contains all) and `?|` (contains any). This drastically improves parsing speeds during GROUP BY calculations and allows indexable operations if GIN indexes are applied.
