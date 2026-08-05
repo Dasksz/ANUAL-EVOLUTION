@@ -5057,6 +5057,8 @@ GRANT EXECUTE ON FUNCTION public.search_clients(text) TO anon, authenticated;
 -- ==========================================
 -- Add search_loja_perfeita_clients RPC
 -- ==========================================
+DROP FUNCTION IF EXISTS public.search_loja_perfeita_clients(text, text[], text[], text[], text[], text[]);
+
 CREATE OR REPLACE FUNCTION public.search_loja_perfeita_clients(
     p_search text,
     p_filial text[] DEFAULT NULL,
