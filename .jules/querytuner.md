@@ -36,3 +36,7 @@
 2026-08-04 - Optimize FILTER WHERE on large aggregates
  Learning: In PostgreSQL, applying a `FILTER (WHERE ...)` clause on aggregate functions across large datasets (e.g. `COUNT(*) FILTER (WHERE sum_vlvenda >= 1)`) can severely degrade performance by forcing slow `GroupAggregate` and `Incremental Sort` operations.
  Action: Replace inline `FILTER` clauses with `COUNT(CASE WHEN cond THEN 1 END)` or `COUNT(DISTINCT CASE WHEN cond THEN col END)`. This mathematically equivalent structure allows the query planner to utilize significantly faster `HashAggregate` execution paths.
+
+2024/05/20 - Fix mismatched dynamic SQL format arguments
+ Learning: When using dynamic SQL execution via `EXECUTE format(...)` in PostgreSQL, ensure the number of provided variables matches exactly the count of format specifiers (`%s`, `%L`). Missing arguments will trigger a `too few arguments for format()` error that can crash queries.
+ Action: Count format specifiers exactly before applying string templates in PostgreSQL. Test dynamic functions thoroughly.

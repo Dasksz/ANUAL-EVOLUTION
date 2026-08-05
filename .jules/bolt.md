@@ -71,3 +71,7 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 2024/05/20 - [Fix Frontend API Contention Timeout]
  **Learning:** Mesmo com queries otimizadas (< 2s de execução), a técnica de "chunking" no frontend que dispara dezenas de requisições simultâneas para o Supabase (usando `Promise.all`) pode esgotar o pool de conexões do PostgREST e do banco, resultando em timeouts sintéticos (500 Internal Server Error ou 57014) em cascata.
  **Action:** Desativei o chunking forçado por filial na página de Cobertura (`updateBoxesDashboard`). Com a nova otimização de pré-agregação de produtos no SQL, a execução para todas as filiais via FAST PATH é resolvida em ~1.2s, eliminando completamente a necessidade de "fatiar" a requisição e salvando a rede/API.
+
+## 2024-05-20 - Fix get_boxes_dashboard_data API crash
+ **Learning:** In complex `EXECUTE format(...)` dynamic SQL generation, failure to supply the exact number of variables for the format string causes fatal API endpoints errors like `too few arguments for format()`.
+ **Action:** Always manually tally format variables (`%L`, `%s`) against the supplied variables in PostgreSQL `format` invocations, particularly after schema or WHERE clause additions.
