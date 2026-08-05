@@ -135,7 +135,7 @@ BEGIN
         END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(s.categorias) c WHERE c = ANY(%L::text[])) ', p_categoria);
+        v_where_base := v_where_base || format(' AND s.categorias ?| %L::text[] ', p_categoria);
     END IF;
 
     -- 3. Build Metas Where Clause
@@ -204,8 +204,8 @@ BEGIN
         ),
         aceleradores_calc AS (
             SELECT
-                COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias)) THEN s.codcli END) as aceleradores_realizado,
-                COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) && ARRAY(SELECT jsonb_array_elements_text(s.categorias)) AND NOT ((SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s.categorias))) THEN s.codcli END) as aceleradores_parcial
+                COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND s.categorias ?& (SELECT nomes FROM aceleradores_config) THEN s.codcli END) as aceleradores_realizado,
+                COUNT(DISTINCT CASE WHEN s.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND s.categorias ?| (SELECT nomes FROM aceleradores_config) AND NOT (s.categorias ?& (SELECT nomes FROM aceleradores_config)) THEN s.codcli END) as aceleradores_parcial
             FROM target_sales s
         ),
         metas_calc AS (
@@ -225,7 +225,7 @@ BEGIN
                 COALESCE(SUM(t.foods_tonnage), 0) AS sellout_foods,
                 COUNT(DISTINCT CASE WHEN t.salty_venda >= 1 THEN t.codcli END) AS pos_salty,
                 COUNT(DISTINCT CASE WHEN t.foods_venda >= 1 AND (t.total_venda - t.foods_venda) < 1 THEN t.codcli END) AS pos_foods,
-                (SELECT COUNT(DISTINCT CASE WHEN s2.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND (SELECT nomes FROM aceleradores_config) <@ ARRAY(SELECT jsonb_array_elements_text(s2.categorias)) THEN s2.codcli END) FROM target_sales s2 WHERE s2.codusur = t.codusur) AS acel_realizado,
+                (SELECT COUNT(DISTINCT CASE WHEN s2.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND s2.categorias ?& (SELECT nomes FROM aceleradores_config) THEN s2.codcli END) FROM target_sales s2 WHERE s2.codusur = t.codusur) AS acel_realizado,
                 COALESCE((SELECT SUM(m.calibracao_salty) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(t.codusur, ''0'') AND m.filial::text = LTRIM(t.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_salty,
                 COALESCE((SELECT SUM(m.calibracao_foods) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(t.codusur, ''0'') AND m.filial::text = LTRIM(t.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_foods,
                 COALESCE((SELECT SUM(m.calibracao_pos) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(t.codusur, ''0'') AND m.filial::text = LTRIM(t.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_pos
