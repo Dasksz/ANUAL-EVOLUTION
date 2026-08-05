@@ -247,25 +247,6 @@ BEGIN
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
             ),
-            salty_monthly AS (
-                SELECT yr, m_idx, COUNT(DISTINCT codcli) as pos_salty
-                FROM (
-                    SELECT EXTRACT(YEAR FROM dtped)::int as yr, (EXTRACT(MONTH FROM dtped)::int - 1) as m_idx, codcli
-                    FROM public.data_detailed s
-                    %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
-                    AND LTRIM(s.codfor::text, ''0'') IN (''707'', ''708'', ''752'') AND s.tipovenda IN (''1'', ''9'', ''01'', ''09'')
-                    GROUP BY EXTRACT(YEAR FROM dtped)::int, (EXTRACT(MONTH FROM dtped)::int - 1), codcli
-                    HAVING SUM(vlvenda) >= 1
-                    UNION ALL
-                    SELECT EXTRACT(YEAR FROM dtped)::int as yr, (EXTRACT(MONTH FROM dtped)::int - 1) as m_idx, codcli
-                    FROM public.data_history s
-                    %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
-                    AND LTRIM(s.codfor::text, ''0'') IN (''707'', ''708'', ''752'') AND s.tipovenda IN (''1'', ''9'', ''01'', ''09'')
-                    GROUP BY EXTRACT(YEAR FROM dtped)::int, (EXTRACT(MONTH FROM dtped)::int - 1), codcli
-                    HAVING SUM(vlvenda) >= 1
-                ) agg_sub
-                GROUP BY 1, 2
-            ),
             chart_agg_base AS (
                 SELECT
                     EXTRACT(MONTH FROM dtped)::int - 1 as m_idx,
@@ -278,17 +259,15 @@ BEGIN
                 GROUP BY 1, 2
             ),
             chart_agg AS (
-                SELECT b.*, COALESCE(sm.pos_salty, 0) as pos_salty
+                SELECT b.*
                 FROM chart_agg_base b
-                LEFT JOIN salty_monthly sm ON b.yr = sm.yr AND b.m_idx = sm.m_idx
             ),
             kpi_curr AS (
                 SELECT
                     SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE yr = %L %s), 0) as pos_salty
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM base_data s
                 WHERE s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
             ),
@@ -297,8 +276,7 @@ BEGIN
                     SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
-                    COALESCE((SELECT SUM(pos_salty) FROM salty_monthly WHERE yr = %L %s), 0) as pos_salty
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM base_data s
                 WHERE s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
             ),
@@ -315,8 +293,7 @@ BEGIN
                             WHERE s.dtped >= %L AND s.dtped <= %L
                             GROUP BY EXTRACT(YEAR FROM dtped), EXTRACT(MONTH FROM dtped)
                         ) sub
-                    ), 0) as clientes,
-                    COALESCE((SELECT SUM(pos_salty)/3 FROM salty_monthly WHERE make_date(yr, m_idx+1, 1) >= date_trunc(''month'', %L::date) AND make_date(yr, m_idx+1, 1) <= date_trunc(''month'', %L::date)), 0) as pos_salty
+                    ), 0) as clientes
                 FROM base_data s
                 WHERE s.dtped >= %L AND s.dtped <= %L
             ),
@@ -346,7 +323,7 @@ BEGIN
                 LIMIT 1000
             )
             SELECT
-                (SELECT json_agg(json_build_object(''month_index'', m_idx, ''year'', yr, ''faturamento'', fat, ''peso'', peso, ''caixas'', caixas, ''clientes'', clientes, ''pos_salty'', pos_salty)) FROM chart_agg),
+                (SELECT json_agg(json_build_object(''month_index'', m_idx, ''year'', yr, ''faturamento'', fat, ''peso'', peso, ''caixas'', caixas, ''clientes'', clientes)) FROM chart_agg),
                 (SELECT row_to_json(c) FROM kpi_curr c),
                 (SELECT row_to_json(p) FROM kpi_prev p),
                 (SELECT row_to_json(t) FROM kpi_tri t),
@@ -354,19 +331,16 @@ BEGIN
         ',
         v_where_raw, v_previous_year, v_current_year, v_previous_year, v_current_year, -- base_data detailed (1 %s, 4 %L)
         v_where_raw, v_previous_year, v_current_year, v_previous_year, v_current_year, -- base_data history (1 %s, 4 %L)
-        v_where_raw_base, v_previous_year, v_current_year, v_previous_year, v_current_year, -- salty_monthly detailed (1 %s, 4 %L)
-        v_where_raw_base, v_previous_year, v_current_year, v_previous_year, v_current_year, -- salty_monthly history (1 %s, 4 %L)
 
         v_active_client_cond_slow, -- chart_agg_base (1 %s)
 
         -- ⚡ QueryTuner: Updated kpi_curr to use sargable date boundaries instead of EXTRACT(YEAR), passing v_current_year twice
-        v_active_client_cond_slow, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END, -- kpi_curr base query (1 %s, 1 %L, 1 %s, 2 %L, 1 %s)
+        v_active_client_cond_slow, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END, -- kpi_curr base query (1 %s, 2 %L, 1 %s)
 
         -- ⚡ QueryTuner: Updated kpi_prev to use sargable date boundaries instead of EXTRACT(YEAR), passing v_previous_year twice
-        v_active_client_cond_slow, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND m_idx = %L ', v_target_month - 1) ELSE '' END, v_previous_year, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END, -- kpi_prev base query (1 %s, 1 %L, 1 %s, 2 %L, 1 %s)
+        v_active_client_cond_slow, v_previous_year, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END, -- kpi_prev base query (1 %s, 2 %L, 1 %s)
 
         v_active_client_cond_slow, v_tri_start, v_tri_end, -- kpi_tri monthly clients subquery (1 %s, 2 %L)
-        v_tri_start, v_tri_end, -- kpi_tri salty subquery (2 %L)
         v_tri_start, v_tri_end, -- kpi_tri base query (2 %L)
 
         -- ⚡ QueryTuner: Updated prod_agg to use sargable date boundaries instead of EXTRACT(YEAR), passing v_current_year twice

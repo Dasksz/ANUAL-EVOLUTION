@@ -43,3 +43,4 @@
 ## 2026-08-04 - Optimize array overlap matching via ?& and ?|
 **Learning:** Checking for JSON array overlaps using `EXISTS(SELECT 1 FROM jsonb_array_elements_text(col) WHERE ...)` or `ARRAY(...) <@ ARRAY(...)` executes a subquery per row which becomes a significant bottleneck during large aggregations.
 **Action:** Replace nested string arrays evaluation with PostgreSQL's native jsonb operators `?&` (contains all) and `?|` (contains any). This drastically improves parsing speeds during GROUP BY calculations and allows indexable operations if GIN indexes are applied.
+2025/08/05 - Remove KPI Positivação Salty from get_boxes_dashboard_data\nLearning: Always use format string parameter match counts when modifying dynamic SQL, especially in complex CTE chains.\nAction: Ensure parameters are removed precisely alongside their references.
