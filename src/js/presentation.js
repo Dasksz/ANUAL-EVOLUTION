@@ -1,4 +1,10 @@
 import supabase from "./supabase.js";
+
+// Improve Chart.js resolution
+if (typeof window !== 'undefined' && typeof window.Chart !== 'undefined') {
+    window.Chart.defaults.devicePixelRatio = Math.max(window.devicePixelRatio || 1, 2);
+}
+
 // presentation.js
 
 document.addEventListener("DOMContentLoaded", async () => {
