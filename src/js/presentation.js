@@ -76,9 +76,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadData() {
     try {
       // Call RPC without params to get the latest period
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const p_ano = urlParams.get('ano') || null;
+      const p_mes = urlParams.get('mes') || null;
+
       const { data: rpcData, error } = await supabase.rpc(
         "get_closing_presentation_data",
+        { p_ano, p_mes }
       );
+
 
       if (error) throw error;
       if (!rpcData || Object.keys(rpcData).length === 0) {
