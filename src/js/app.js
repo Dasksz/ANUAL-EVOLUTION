@@ -981,6 +981,118 @@ function getActiveExportView() {
         });
     }
 
+
+    // Presentation Modal Elements
+    const presentationBtn = document.getElementById('nav-presentation-btn');
+    const presentationModal = document.getElementById('presentation-selector-modal');
+    const presentationBackdrop = document.getElementById('presentation-modal-backdrop');
+    const closePresentationBtn = document.getElementById('close-presentation-modal-btn');
+    const generatePresentationBtn = document.getElementById('generate-presentation-btn');
+    const presentationAnoSelect = document.getElementById('presentation-ano-select');
+    const presentationMesSelect = document.getElementById('presentation-mes-select');
+
+    let presentationAvailableFilters = null;
+
+    async function loadPresentationFilters() {
+        if (!presentationAvailableFilters) {
+             const { data, error } = await supabase.rpc('get_dashboard_filters', {
+                p_filial: [], p_cidade: [], p_supervisor: [], p_vendedor: [],
+                p_fornecedor: [], p_ano: null, p_mes: null, p_tipovenda: [], p_rede: [], p_categoria: []
+            });
+            if (error) {
+                AppLog.error('Error fetching filters for presentation modal', error);
+                window.showToast('error', 'Erro ao carregar filtros');
+                return;
+            }
+            presentationAvailableFilters = data;
+        }
+
+        // Populate Years
+        presentationAnoSelect.innerHTML = '<option value="">Selecione o Ano</option>';
+        if (presentationAvailableFilters.anos) {
+            presentationAvailableFilters.anos.forEach(ano => {
+                const opt = document.createElement('option');
+                opt.value = ano;
+                opt.textContent = ano;
+                presentationAnoSelect.appendChild(opt);
+            });
+        }
+    }
+
+    function openPresentationModal() {
+        presentationModal.classList.remove('hidden');
+        loadPresentationFilters();
+    }
+
+    function closePresentationModal() {
+        presentationModal.classList.add('hidden');
+        presentationAnoSelect.value = '';
+        presentationMesSelect.innerHTML = '<option value="">Selecione o Ano Primeiro</option>';
+        presentationMesSelect.disabled = true;
+        generatePresentationBtn.disabled = true;
+    }
+
+    if (presentationBtn) presentationBtn.addEventListener('click', openPresentationModal);
+    if (closePresentationBtn) closePresentationBtn.addEventListener('click', closePresentationModal);
+    if (presentationBackdrop) presentationBackdrop.addEventListener('click', closePresentationModal);
+
+    if (presentationAnoSelect) {
+        presentationAnoSelect.addEventListener('change', async (e) => {
+            const ano = e.target.value;
+            presentationMesSelect.disabled = !ano;
+            generatePresentationBtn.disabled = !ano || !presentationMesSelect.value;
+
+            if (ano) {
+                presentationMesSelect.innerHTML = '<option value="">Carregando...</option>';
+                // Fetch months available for this year
+                const { data, error } = await supabase.from('cache_filters')
+                    .select('mes')
+                    .eq('ano', ano)
+                    .not('mes', 'is', null)
+
+                if (error) {
+                    AppLog.error('Error fetching months for presentation', error);
+                    presentationMesSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                    return;
+                }
+
+                // Get distinct months and sort
+                const distinctMonths = [...new Set(data.map(item => item.mes))].sort((a, b) => b - a);
+
+                presentationMesSelect.innerHTML = '<option value="">Selecione o Mês</option>';
+                const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+                distinctMonths.forEach(mes => {
+                    const opt = document.createElement('option');
+                    opt.value = mes;
+                    opt.textContent = monthNames[mes - 1];
+                    presentationMesSelect.appendChild(opt);
+                });
+            } else {
+                presentationMesSelect.innerHTML = '<option value="">Selecione o Ano Primeiro</option>';
+                presentationMesSelect.disabled = true;
+            }
+        });
+    }
+
+    if (presentationMesSelect) {
+        presentationMesSelect.addEventListener('change', (e) => {
+            generatePresentationBtn.disabled = !presentationAnoSelect.value || !e.target.value;
+        });
+    }
+
+    if (generatePresentationBtn) {
+        generatePresentationBtn.addEventListener('click', () => {
+            const ano = presentationAnoSelect.value;
+            const mes = presentationMesSelect.value;
+            if (ano && mes) {
+                window.open(`presentation.html?ano=${ano}&mes=${mes}`, '_blank');
+                closePresentationModal();
+            }
+        });
+    }
+
+
     // Calendar Modal Elements
     const calendarModal = document.getElementById('calendar-modal');
     const calendarModalBackdrop = document.getElementById('calendar-modal-backdrop');
