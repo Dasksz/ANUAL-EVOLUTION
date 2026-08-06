@@ -1,0 +1,2 @@
+#!/bin/bash
+sed -i 's/CREATE INDEX IF NOT EXISTS idx_freq_chart_metrics ON public.data_summary_frequency (ano, mes) INCLUDE (pedido, codcli, vlvenda, tipovenda) WHERE tipovenda NOT IN (''5'', ''11'');\n\n-- \[QueryTuner\] Optimization: Added index to speed up DISTINCT ON queries\nCREATE INDEX IF NOT EXISTS idx_data_summary_freq_latest_client ON public.data_summary_frequency (codcli, ano DESC, mes DESC, created_at DESC) INCLUDE (codsupervisor, codusur, filial);\n\n--/CREATE INDEX IF NOT EXISTS idx_freq_chart_metrics ON public.data_summary_frequency/g' sql/full_system_v1.sql

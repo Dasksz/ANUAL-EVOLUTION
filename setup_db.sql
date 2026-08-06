@@ -1,0 +1,9 @@
+CREATE SCHEMA IF NOT EXISTS auth;
+CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$ BEGIN RETURN '00000000-0000-0000-0000-000000000000'::uuid; END; $$ LANGUAGE plpgsql;
+CREATE OR REPLACE FUNCTION auth.role() RETURNS text AS $$ BEGIN RETURN 'authenticated'; END; $$ LANGUAGE plpgsql;
+CREATE TABLE IF NOT EXISTS auth.users (
+  id uuid PRIMARY KEY,
+  email text,
+  raw_user_meta_data jsonb
+);
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
