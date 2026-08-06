@@ -981,7 +981,7 @@ function getActiveExportView() {
         });
     }
 
-
+    
     // Presentation Modal Elements
     const presentationBtn = document.getElementById('nav-presentation-btn');
     const presentationModal = document.getElementById('presentation-selector-modal');
@@ -1041,27 +1041,25 @@ function getActiveExportView() {
             const ano = e.target.value;
             presentationMesSelect.disabled = !ano;
             generatePresentationBtn.disabled = !ano || !presentationMesSelect.value;
-
+            
             if (ano) {
                 presentationMesSelect.innerHTML = '<option value="">Carregando...</option>';
-                // Fetch months available for this year
-                const { data, error } = await supabase.from('cache_filters')
-                    .select('mes')
-                    .eq('ano', ano)
-                    .not('mes', 'is', null)
-
-                if (error) {
-                    AppLog.error('Error fetching months for presentation', error);
-                    presentationMesSelect.innerHTML = '<option value="">Erro ao carregar</option>';
-                    return;
-                }
-
-                // Get distinct months and sort
-                const distinctMonths = [...new Set(data.map(item => item.mes))].sort((a, b) => b - a);
-
+                // Fetch months available for this year efficiently bypassing 1000 row limits
+                const monthChecks = Array.from({length: 12}, (_, i) => i + 1).map(async (m) => {
+                    const { data, error } = await supabase.from('cache_filters')
+                        .select('mes')
+                        .eq('ano', ano)
+                        .eq('mes', m)
+                        .limit(1);
+                    return (!error && data && data.length > 0) ? m : null;
+                });
+                
+                const results = await Promise.all(monthChecks);
+                const distinctMonths = results.filter(m => m !== null).sort((a, b) => b - a);
+                
                 presentationMesSelect.innerHTML = '<option value="">Selecione o Mês</option>';
                 const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-
+                
                 distinctMonths.forEach(mes => {
                     const opt = document.createElement('option');
                     opt.value = mes;
