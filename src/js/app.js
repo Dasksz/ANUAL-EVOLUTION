@@ -6,6 +6,12 @@ import {
     generateYearOptionsHtml,
     generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
 
+// Improve Chart.js resolution
+if (typeof window !== 'undefined' && typeof window.Chart !== 'undefined') {
+    window.Chart.defaults.devicePixelRatio = Math.max(window.devicePixelRatio || 1, 2);
+}
+
+
 
 let estrelasDetailedData = [];
 let estrelasQtdMarcas = 0;
