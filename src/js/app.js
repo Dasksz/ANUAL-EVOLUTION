@@ -3633,10 +3633,16 @@ async function loadBoxesView() {
                     // If we are in Dec (index 11), divide by 12 * 12 (basically identity)
                     const monthsPassed = trendInfo.current_month_index + 1;
                     
-                    if (monthsPassed > 0) {
-                        mainDisplayVal = (ytdWithTrend / monthsPassed) * 12;
+                    if (key === 'clientes') {
+                        // Para clientes distintos, não multiplicar por 12 para não inflar a contagem.
+                        // Usa apenas o realizado no ano + a tendência do mês atual.
+                        mainDisplayVal = ytdWithTrend;
                     } else {
-                        mainDisplayVal = ytdWithTrend; // Fallback
+                        if (monthsPassed > 0) {
+                            mainDisplayVal = (ytdWithTrend / monthsPassed) * 12;
+                        } else {
+                            mainDisplayVal = ytdWithTrend; // Fallback
+                        }
                     }
                     
                 } else {
