@@ -11,12 +11,7 @@ CREATE OR REPLACE FUNCTION get_estrelas_kpis_data(
     p_mes text default null,
     p_tipovenda text[] default null,
     p_rede text[] default null,
-    p_categoria text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null
+    p_categoria text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -111,20 +106,20 @@ BEGIN
                     IF LTRIM(v_code::text, '0') IN ('707', '708', '752') THEN
                         v_salty_codes := array_append(v_salty_codes, v_code);
                     ELSIF v_code = '1119_TODDYNHO' THEN
-                        v_foods_conds := array_append(v_foods_conds, '(codfor = ''1119_TODDYNHO'')');
+                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
                     ELSIF v_code = '1119_TODDY' THEN
-                        v_foods_conds := array_append(v_foods_conds, '(codfor = ''1119_TODDY'')');
+                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
                     ELSIF v_code = '1119_QUAKER' THEN
-                        v_foods_conds := array_append(v_foods_conds, '(codfor = ''1119_QUAKER'')');
+                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
                     ELSIF v_code = '1119_KEROCOCO' THEN
-                        v_foods_conds := array_append(v_foods_conds, '(codfor = ''1119_KEROCOCO'')');
+                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
                     ELSIF v_code = '1119_OUTROS' THEN
-                        v_foods_conds := array_append(v_foods_conds, '(codfor = ''1119_OUTROS'')');
+                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                     END IF;
                 END LOOP;
 
                 IF array_length(v_salty_codes, 1) > 0 THEN
-                    v_fornecedor_salty_cond := format('codfor = ANY(ARRAY[''%s''])', array_to_string(v_salty_codes, ''','''));
+                    v_fornecedor_salty_cond := format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_salty_codes, ''','''));
                 ELSE
                     -- If filtering and NO salty codes were selected, salty metrics should be strictly zeroed out
                     -- ONLY if we are actually filtering suppliers.
@@ -293,10 +288,6 @@ CREATE OR REPLACE FUNCTION get_frequency_table_data(
     p_rede text[] default null,
     p_produto text[] default null,
     p_categoria text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
     p_tipovenda text[] default null
 )
 RETURNS JSON
@@ -395,27 +386,27 @@ BEGIN
             BEGIN
                 FOREACH v_code IN ARRAY p_fornecedor LOOP
                     IF v_code = '1119_TODDYNHO' THEN
-                        v_conditions := array_append(v_conditions, '(codfor = ''1119_TODDYNHO'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(codfor = ''1119_TODDYNHO'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
+                        v_unnested_conditions := array_append(v_unnested_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
                     ELSIF v_code = '1119_TODDY' THEN
-                        v_conditions := array_append(v_conditions, '(codfor = ''1119_TODDY'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(codfor = ''1119_TODDY'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
+                        v_unnested_conditions := array_append(v_unnested_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
                     ELSIF v_code = '1119_QUAKER' THEN
-                        v_conditions := array_append(v_conditions, '(codfor = ''1119_QUAKER'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(codfor = ''1119_QUAKER'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
+                        v_unnested_conditions := array_append(v_unnested_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
                     ELSIF v_code = '1119_KEROCOCO' THEN
-                        v_conditions := array_append(v_conditions, '(codfor = ''1119_KEROCOCO'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(codfor = ''1119_KEROCOCO'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
+                        v_unnested_conditions := array_append(v_unnested_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
                     ELSIF v_code = '1119_OUTROS' THEN
-                        v_conditions := array_append(v_conditions, '(codfor = ''1119_OUTROS'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(codfor = ''1119_OUTROS'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
+                        v_unnested_conditions := array_append(v_unnested_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                     ELSE
                         v_simple_codes := array_append(v_simple_codes, v_code);
                     END IF;
                 END LOOP;
 
                 IF array_length(v_simple_codes, 1) > 0 THEN
-                    v_conditions := array_append(v_conditions, format('codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
+                    v_conditions := array_append(v_conditions, format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
                     v_unnested_conditions := array_append(v_unnested_conditions, format('dp.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
                 END IF;
 
@@ -470,7 +461,7 @@ BEGIN
         v_where_base := v_where_base || ' AND s.categorias_arr && ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
         v_where_base_prev := v_where_base_prev || ' AND s.categorias_arr && ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
         v_where_chart := v_where_chart || ' AND categorias_arr && ARRAY[''' || array_to_string(p_categoria, ''',''') || '''] ';
-        v_where_unnested := v_where_unnested || ' AND categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || ''']) ';
+        v_where_unnested := v_where_unnested || ' AND dp.categoria_produto = ANY(ARRAY[''' || array_to_string(p_categoria, ''',''') || ''']) ';
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
@@ -2311,13 +2302,6 @@ $$;
 
 -- 5. Update Get Filters
 DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[]);
-DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[],text[]);
-DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[],text[]);
-DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[],text[]);
-DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[],text[]);
-DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[],text[]);
-DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[],text[]);
-DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[],text[]);
 DROP FUNCTION IF EXISTS get_dashboard_filters(text,text,text[],text[],text[],text[],text[],text[],text[],text[]);
 
 
@@ -2382,11 +2366,7 @@ CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_mes text default null,
     p_tipovenda text[] default null,
     p_rede text[] default null,
-    p_categoria text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null
+    p_categoria text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -2483,15 +2463,15 @@ BEGIN
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
                 IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_TODDYNHO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
                 ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_TODDY'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
                 ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_QUAKER'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
                 ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_KEROCOCO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
                 ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_OUTROS'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                 ELSE
                     v_simple_codes := array_append(v_simple_codes, v_code);
                 END IF;
@@ -2764,11 +2744,7 @@ CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_tipovenda text[] default null,
     p_rede text[] default null,
     p_produto text[] default null,
-    p_categoria text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null -- Added
+    p_categoria text[] default null -- Added
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -3199,11 +3175,7 @@ CREATE OR REPLACE FUNCTION get_boxes_dashboard_data(
     p_tipovenda text[] default null,
     p_rede text[] default null,
     p_produto text[] default null,
-    p_categoria text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null
+    p_categoria text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -3359,8 +3331,8 @@ BEGIN
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where_summary := v_where_summary || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_where_summary_base := v_where_summary_base || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_raw := v_where_raw || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_raw_base := v_where_raw_base || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_raw := v_where_raw || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_raw_base := v_where_raw_base || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
     
     -- Fornecedor Logic
@@ -3375,21 +3347,21 @@ BEGIN
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
                 IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_TODDYNHO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
                 ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_TODDY'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
                 ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_QUAKER'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
                 ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_KEROCOCO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
                 ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_OUTROS'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                 ELSE
                     v_simple_codes := array_append(v_simple_codes, v_code);
                 END IF;
             END LOOP;
             IF array_length(v_simple_codes, 1) > 0 THEN
-                v_conditions := array_append(v_conditions, format('codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
+                v_conditions := array_append(v_conditions, format('s.codfor = ANY(%L::text[])', v_simple_codes));
             END IF;
             IF array_length(v_conditions, 1) > 0 THEN
                 v_where_raw := v_where_raw || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
@@ -3750,11 +3722,7 @@ CREATE OR REPLACE FUNCTION get_branch_comparison_data(
     p_tipovenda text[] default null,
     p_rede text[] default null,
     p_produto text[] default null,
-    p_categoria text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null
+    p_categoria text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -3918,11 +3886,7 @@ CREATE OR REPLACE FUNCTION get_city_view_data(
     p_limit int default 50,
     p_inactive_page int default 0,
     p_inactive_limit int default 50,
-    p_categoria text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null
+    p_categoria text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -4236,11 +4200,7 @@ CREATE OR REPLACE FUNCTION get_comparison_view_data(
     p_tipovenda text[] default null,
     p_rede text[] default null,
     p_produto text[] default null,
-    p_categoria text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null
+    p_categoria text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -4355,22 +4315,22 @@ BEGIN
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
                 IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_TODDYNHO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
                 ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_TODDY'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
                 ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_QUAKER'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
                 ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_KEROCOCO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
                 ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_OUTROS'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                 ELSE
                     v_simple_codes := array_append(v_simple_codes, v_code);
                 END IF;
             END LOOP;
 
             IF array_length(v_simple_codes, 1) > 0 THEN
-                v_conditions := array_append(v_conditions, format('codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
+                v_conditions := array_append(v_conditions, format('s.codfor = ANY(%L::text[])', v_simple_codes));
             END IF;
 
             IF array_length(v_conditions, 1) > 0 THEN
@@ -4391,7 +4351,7 @@ BEGIN
     
     -- Category Filter
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where := v_where || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
 
     -- REDE Logic
@@ -5326,10 +5286,6 @@ CREATE OR REPLACE FUNCTION get_mix_salty_foods_data(
     p_rede text[] default null,
     p_produto text[] default null,
     p_categoria text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
     p_tipovenda text[] default null
 )
 RETURNS JSON
@@ -5388,22 +5344,22 @@ BEGIN
             BEGIN
                 FOREACH v_code IN ARRAY p_fornecedor LOOP
                     IF v_code = '1119_TODDYNHO' THEN
-                        v_conditions := array_append(v_conditions, '(codfor = ''1119_TODDYNHO'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
                     ELSIF v_code = '1119_TODDY' THEN
-                        v_conditions := array_append(v_conditions, '(codfor = ''1119_TODDY'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
                     ELSIF v_code = '1119_QUAKER' THEN
-                        v_conditions := array_append(v_conditions, '(codfor = ''1119_QUAKER'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
                     ELSIF v_code = '1119_KEROCOCO' THEN
-                        v_conditions := array_append(v_conditions, '(codfor = ''1119_KEROCOCO'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
                     ELSIF v_code = '1119_OUTROS' THEN
-                        v_conditions := array_append(v_conditions, '(codfor = ''1119_OUTROS'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                     ELSE
                         v_simple_codes := array_append(v_simple_codes, v_code);
                     END IF;
                 END LOOP;
 
                 IF array_length(v_simple_codes, 1) > 0 THEN
-                    v_conditions := array_append(v_conditions, format('codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
+                    v_conditions := array_append(v_conditions, format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
                 END IF;
 
                 IF array_length(v_conditions, 1) > 0 THEN
@@ -5996,11 +5952,7 @@ CREATE OR REPLACE FUNCTION public.get_city_positivity_table(
     p_fornecedor text[] default null,
     p_tipovenda text[] default null,
     p_rede text[] default null,
-    p_categoria text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null
+    p_categoria text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -6067,8 +6019,8 @@ BEGIN
         v_has_filters_no_city := true;
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where := v_where || format(' AND dcodfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_base_cidades := v_where_base_cidades || format(' AND dcodfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where := v_where || format(' AND ds.codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where_base_cidades := v_where_base_cidades || format(' AND ds.codfor = ANY(%L::text[]) ', p_fornecedor);
         v_has_filters_no_city := true;
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
@@ -6077,12 +6029,12 @@ BEGIN
         v_has_filters_no_city := true;
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND ds.categoria_produto = ANY(%L::text[]) 
-             
-            ', p_categoria);
-        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto = ANY(%L::text[]) 
-             
-            ', p_categoria);
+        v_where := v_where || format(' AND ds.categoria_produto,
+            ds.devolucao,
+            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
+        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto,
+            ds.devolucao,
+            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
         v_has_filters_no_city := true;
     END IF;
 
@@ -6340,11 +6292,7 @@ CREATE OR REPLACE FUNCTION public.get_city_positivity_table(
     p_tipovenda text[] default null,
     p_segmentacao text[] default null,
     p_rede text[] default null,
-    p_categoria text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null
+    p_categoria text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -6411,8 +6359,8 @@ BEGIN
         v_has_filters_no_city := true;
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where := v_where || format(' AND dcodfor = ANY(%L::text[]) ', p_fornecedor);
-        v_where_base_cidades := v_where_base_cidades || format(' AND dcodfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where := v_where || format(' AND ds.codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where_base_cidades := v_where_base_cidades || format(' AND ds.codfor = ANY(%L::text[]) ', p_fornecedor);
         v_has_filters_no_city := true;
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
@@ -6426,12 +6374,12 @@ BEGIN
         v_has_filters_no_city := true;
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND ds.categoria_produto = ANY(%L::text[]) 
-             
-            ', p_categoria);
-        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto = ANY(%L::text[]) 
-             
-            ', p_categoria);
+        v_where := v_where || format(' AND ds.categoria_produto,
+            ds.devolucao,
+            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
+        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto,
+            ds.devolucao,
+            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
         v_has_filters_no_city := true;
     END IF;
 
@@ -7524,7 +7472,7 @@ BEGIN
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where := v_where || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where := v_where || format(' AND s.codfor = ANY(%L::text[]) ', p_fornecedor);
     END IF;
     
     IF p_produto IS NOT NULL AND array_length(p_produto, 1) > 0 THEN
@@ -7532,7 +7480,7 @@ BEGIN
     END IF;
 
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where := v_where || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
 
     -- REDE Logic
@@ -7729,11 +7677,7 @@ CREATE OR REPLACE FUNCTION public.get_city_segmentation_positivity_table(
     p_tipovenda text[] default null,
     p_segmentacao text[] default null,
     p_rede text[] default null,
-    p_categoria text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null,
-    p_produto text[] default null
+    p_categoria text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -7781,15 +7725,15 @@ BEGIN
         v_where_acumulado := v_where_acumulado || format(' AND ds.codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
-        v_where_acumulado := v_where_acumulado || format(' AND dcodfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where_acumulado := v_where_acumulado || format(' AND ds.codfor = ANY(%L::text[]) ', p_fornecedor);
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where_acumulado := v_where_acumulado || format(' AND ds.tipovenda = ANY(%L::text[]) ', p_tipovenda);
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_acumulado := v_where_acumulado || format(' AND ds.categoria_produto = ANY(%L::text[]) 
-             
-            ', p_categoria);
+        v_where_acumulado := v_where_acumulado || format(' AND ds.categoria_produto,
+            ds.devolucao,
+            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
     END IF;
     IF p_segmentacao IS NOT NULL AND array_length(p_segmentacao, 1) > 0 THEN
         v_where_acumulado := v_where_acumulado || format(' AND dc.ramo_atividade = ANY(%L::text[]) ', p_segmentacao);
@@ -7975,8 +7919,8 @@ BEGIN
             ds.peso,
             ds.tipovenda,
             ds.codfor
-        , ds.categoria_produto = ANY(%L::text[]) 
-             
+        , ds.categoria_produto,
+            ds.devolucao,
             ds.bonificacao
         FROM public.data_summary ds
         WHERE (ds.ano, ds.mes) IN ( ($1, $2), ($3, $4), ($5, $6), ($7, $8), ($9, $10) )
