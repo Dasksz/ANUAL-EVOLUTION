@@ -8799,6 +8799,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- LOJA PERFEITA VIEW LOGIC ---
 let lpSelectedClient = null; // To hold the specific selected client code
 let lpTableData = []; // Store data for pagination
+let lpOriginalTableData = []; // Store original unfiltered data
+let lpCurrentColorFilter = null; // 'green', 'yellow', 'red' or null
 let lpCurrentPage = 1;
 const lpRowsPerPage = 50;
 
@@ -9290,11 +9292,59 @@ window.nextLpPage = function() {
     }
 };
 
+window.toggleLpColorFilter = function(color) {
+    // If clicking the currently selected color, turn it off
+    if (lpCurrentColorFilter === color) {
+        lpCurrentColorFilter = null;
+    } else {
+        lpCurrentColorFilter = color;
+    }
+
+    // Update UI
+    const colors = ['green', 'yellow', 'red'];
+    colors.forEach(c => {
+        const btn = document.getElementById(`lp-filter-${c}`);
+        if (!btn) return;
+
+        if (lpCurrentColorFilter === null) {
+            // No filter active, all normal
+            btn.classList.remove('opacity-30', 'border-white');
+            btn.classList.add('border-transparent');
+        } else if (lpCurrentColorFilter === c) {
+            // This is the active filter
+            btn.classList.remove('opacity-30', 'border-transparent');
+            btn.classList.add('border-white');
+        } else {
+            // Other filters dim
+            btn.classList.add('opacity-30', 'border-transparent');
+            btn.classList.remove('border-white');
+        }
+    });
+
+    // Re-render table with filtering
+    renderLpTable();
+};
+
 function renderLpTable(clients) {
     if (clients) {
-        lpTableData = clients;
+        lpOriginalTableData = clients;
         lpCurrentPage = 1;
     }
+
+    // Apply color filter if active
+    if (lpCurrentColorFilter) {
+        lpTableData = lpOriginalTableData.filter(c => {
+            if (lpCurrentColorFilter === 'green') return c.score >= 80;
+            if (lpCurrentColorFilter === 'yellow') return c.score >= 50 && c.score < 80;
+            if (lpCurrentColorFilter === 'red') return c.score < 50;
+            return true;
+        });
+    } else {
+        lpTableData = [...lpOriginalTableData];
+    }
+
+    // Always reset to page 1 when filtering, unless clients were passed (already reset)
+    if (!clients) lpCurrentPage = 1;
 
     const tbody = document.getElementById('lp-table-body');
     if (!tbody) return;
