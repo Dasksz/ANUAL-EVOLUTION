@@ -3634,9 +3634,9 @@ async function loadBoxesView() {
                     const monthsPassed = trendInfo.current_month_index + 1;
                     
                     if (key === 'clientes') {
-                        // Para clientes distintos, não multiplicar por 12 para não inflar a contagem.
-                        // Usa apenas o realizado no ano + a tendência do mês atual.
-                        mainDisplayVal = ytdWithTrend;
+                        // Clientes distintos na visão anual: exibir apenas o valor Realizado do Ano (curr)
+                        // Não somar a tendência do mês, pois os clientes da tendência provavelmente já estão na base acumulada.
+                        mainDisplayVal = curr;
                     } else {
                         if (monthsPassed > 0) {
                             mainDisplayVal = (ytdWithTrend / monthsPassed) * 12;
