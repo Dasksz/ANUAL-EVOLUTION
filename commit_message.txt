@@ -1,5 +1,0 @@
-feat: add thank you slide to presentation
-
-Adds a final slide to the closing presentation with the message 'Obrigado,
-equipe Prime Distribuição' styled beautifully with Tailwind gradients and
-the company logo.
