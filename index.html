@@ -2375,8 +2375,15 @@
         </div>
     </div>
 
-    <!-- Details Title -->
-    <h3 class="text-lg font-bold text-white mb-4">Detalhamento por Cliente</h3>
+    <!-- Details Title & Filters -->
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-bold text-white">Detalhamento por Cliente</h3>
+        <div class="flex gap-2 items-center" id="lp-color-filters">
+            <button onclick="toggleLpColorFilter('green')" id="lp-filter-green" class="w-4 h-4 rounded-full bg-green-500 hover:scale-110 transition-all focus:outline-none border-2 border-transparent" title="Filtrar notas verdes (>= 80)"></button>
+            <button onclick="toggleLpColorFilter('yellow')" id="lp-filter-yellow" class="w-4 h-4 rounded-full bg-yellow-400 hover:scale-110 transition-all focus:outline-none border-2 border-transparent" title="Filtrar notas amarelas (50 a 79)"></button>
+            <button onclick="toggleLpColorFilter('red')" id="lp-filter-red" class="w-4 h-4 rounded-full bg-red-500 hover:scale-110 transition-all focus:outline-none border-2 border-transparent" title="Filtrar notas vermelhas (< 50)"></button>
+        </div>
+    </div>
 
     <!-- Table Container -->
     <div class="glass-card rounded-xl overflow-hidden flex flex-col bg-[#1a1c23] border border-slate-700/50">
