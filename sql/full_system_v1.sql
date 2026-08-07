@@ -106,15 +106,15 @@ BEGIN
                     IF LTRIM(v_code::text, '0') IN ('707', '708', '752') THEN
                         v_salty_codes := array_append(v_salty_codes, v_code);
                     ELSIF v_code = '1119_TODDYNHO' THEN
-                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119_TODDYNHO'')');
+                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
                     ELSIF v_code = '1119_TODDY' THEN
-                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119_TODDY'')');
+                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
                     ELSIF v_code = '1119_QUAKER' THEN
-                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119_QUAKER'')');
+                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
                     ELSIF v_code = '1119_KEROCOCO' THEN
-                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119_KEROCOCO'')');
+                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
                     ELSIF v_code = '1119_OUTROS' THEN
-                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119_OUTROS'')');
+                        v_foods_conds := array_append(v_foods_conds, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                     END IF;
                 END LOOP;
 
@@ -386,20 +386,20 @@ BEGIN
             BEGIN
                 FOREACH v_code IN ARRAY p_fornecedor LOOP
                     IF v_code = '1119_TODDYNHO' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119_TODDYNHO'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
+                        v_unnested_conditions := array_append(v_unnested_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
                     ELSIF v_code = '1119_TODDY' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119_TODDY'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
+                        v_unnested_conditions := array_append(v_unnested_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
                     ELSIF v_code = '1119_QUAKER' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119_QUAKER'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
+                        v_unnested_conditions := array_append(v_unnested_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
                     ELSIF v_code = '1119_KEROCOCO' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119_KEROCOCO'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
+                        v_unnested_conditions := array_append(v_unnested_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
                     ELSIF v_code = '1119_OUTROS' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119_OUTROS'')');
-                        v_unnested_conditions := array_append(v_unnested_conditions, '(dp.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
+                        v_unnested_conditions := array_append(v_unnested_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                     ELSE
                         v_simple_codes := array_append(v_simple_codes, v_code);
                     END IF;
@@ -2463,15 +2463,15 @@ BEGIN
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
                 IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_TODDYNHO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
                 ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_TODDY'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
                 ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_QUAKER'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
                 ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_KEROCOCO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
                 ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119_OUTROS'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                 ELSE
                     v_simple_codes := array_append(v_simple_codes, v_code);
                 END IF;
@@ -3347,15 +3347,15 @@ BEGIN
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
                 IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119_TODDYNHO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
                 ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119_TODDY'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
                 ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119_QUAKER'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
                 ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119_KEROCOCO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
                 ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119_OUTROS'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                 ELSE
                     v_simple_codes := array_append(v_simple_codes, v_code);
                 END IF;
@@ -4315,15 +4315,15 @@ BEGIN
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
                 IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(dp.codfor = ''1119_TODDYNHO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
                 ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(dp.codfor = ''1119_TODDY'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
                 ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(dp.codfor = ''1119_QUAKER'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
                 ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(dp.codfor = ''1119_KEROCOCO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
                 ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(dp.codfor = ''1119_OUTROS'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                 ELSE
                     v_simple_codes := array_append(v_simple_codes, v_code);
                 END IF;
@@ -5344,15 +5344,15 @@ BEGIN
             BEGIN
                 FOREACH v_code IN ARRAY p_fornecedor LOOP
                     IF v_code = '1119_TODDYNHO' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119_TODDYNHO'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
                     ELSIF v_code = '1119_TODDY' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119_TODDY'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
                     ELSIF v_code = '1119_QUAKER' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119_QUAKER'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
                     ELSIF v_code = '1119_KEROCOCO' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119_KEROCOCO'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
                     ELSIF v_code = '1119_OUTROS' THEN
-                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119_OUTROS'')');
+                        v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                     ELSE
                         v_simple_codes := array_append(v_simple_codes, v_code);
                     END IF;
