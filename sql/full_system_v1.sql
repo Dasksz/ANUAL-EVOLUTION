@@ -119,7 +119,7 @@ BEGIN
                 END LOOP;
 
                 IF array_length(v_salty_codes, 1) > 0 THEN
-                    v_fornecedor_salty_cond := format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_salty_codes, ''','''));
+                    v_fornecedor_salty_cond := format('codfor = ANY(ARRAY[''%s''])', array_to_string(v_salty_codes, ''','''));
                 ELSE
                     -- If filtering and NO salty codes were selected, salty metrics should be strictly zeroed out
                     -- ONLY if we are actually filtering suppliers.
@@ -406,7 +406,7 @@ BEGIN
                 END LOOP;
 
                 IF array_length(v_simple_codes, 1) > 0 THEN
-                    v_conditions := array_append(v_conditions, format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
+                    v_conditions := array_append(v_conditions, format('codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
                     v_unnested_conditions := array_append(v_unnested_conditions, format('dp.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
                 END IF;
 
@@ -2302,6 +2302,7 @@ $$;
 
 -- 5. Update Get Filters
 DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[]);
+DROP FUNCTION IF EXISTS get_dashboard_filters(text[],text[],text[],text[],text[],text,text,text[],text[],text[],text[]);
 DROP FUNCTION IF EXISTS get_dashboard_filters(text,text,text[],text[],text[],text[],text[],text[],text[],text[]);
 
 
@@ -2366,7 +2367,8 @@ CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_mes text default null,
     p_tipovenda text[] default null,
     p_rede text[] default null,
-    p_categoria text[] default null
+    p_categoria text[] default null,
+    p_produto text[] default null
 )
 RETURNS JSON
 LANGUAGE plpgsql
@@ -5359,7 +5361,7 @@ BEGIN
                 END LOOP;
 
                 IF array_length(v_simple_codes, 1) > 0 THEN
-                    v_conditions := array_append(v_conditions, format('s.codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
+                    v_conditions := array_append(v_conditions, format('codfor = ANY(ARRAY[''%s''])', array_to_string(v_simple_codes, ''',''')));
                 END IF;
 
                 IF array_length(v_conditions, 1) > 0 THEN
@@ -6029,12 +6031,8 @@ BEGIN
         v_has_filters_no_city := true;
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND ds.categoria_produto,
-            ds.devolucao,
-            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
-        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto,
-            ds.devolucao,
-            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
+        v_where := v_where || format(' AND ds.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_has_filters_no_city := true;
     END IF;
 
@@ -6374,12 +6372,8 @@ BEGIN
         v_has_filters_no_city := true;
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND ds.categoria_produto,
-            ds.devolucao,
-            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
-        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto,
-            ds.devolucao,
-            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
+        v_where := v_where || format(' AND ds.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_has_filters_no_city := true;
     END IF;
 
@@ -7731,9 +7725,7 @@ BEGIN
         v_where_acumulado := v_where_acumulado || format(' AND ds.tipovenda = ANY(%L::text[]) ', p_tipovenda);
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_acumulado := v_where_acumulado || format(' AND ds.categoria_produto,
-            ds.devolucao,
-            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
+        v_where_acumulado := v_where_acumulado || format(' AND ds.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
     IF p_segmentacao IS NOT NULL AND array_length(p_segmentacao, 1) > 0 THEN
         v_where_acumulado := v_where_acumulado || format(' AND dc.ramo_atividade = ANY(%L::text[]) ', p_segmentacao);
