@@ -3521,68 +3521,104 @@ BEGIN
     ELSE
         -- SLOW PATH (Full Raw Data with dim_produtos join)
         -- PERFORMANCE FIX: Materialized CTE to avoid redundant data_history scans
+        -- ⚡ QueryTuner: Defer dim_produtos JOIN until AFTER aggregations and filtering in base_data, drastically reducing joined rows from millions to thousands
         EXECUTE format('
             WITH 
             base_data AS MATERIALIZED (
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific, s.codfor
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, s.codcli, s.tipovenda, s.vlbonific, s.codfor
                 FROM public.data_detailed s
-                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
                 UNION ALL
-                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, dp.descricao, dp.qtde_embalagem_master, s.codcli, s.tipovenda, s.vlbonific, s.codfor
+                SELECT s.dtped, s.vlvenda, s.totpesoliq, s.qtvenda, s.produto, s.codcli, s.tipovenda, s.vlbonific, s.codfor
                 FROM public.data_history s
-                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND ( (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) OR (s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31)) )
             ),
             chart_agg_base AS (
                 SELECT 
                     EXTRACT(MONTH FROM dtped)::int - 1 as m_idx,
                     EXTRACT(YEAR FROM dtped)::int as yr,
+                    produto,
                     SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(totpesoliq) as peso,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
+                    SUM(COALESCE(qtvenda, 0)) as total_qtvenda,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM base_data s
-                GROUP BY 1, 2
+                GROUP BY 1, 2, 3
             ),
             chart_agg AS (
-                SELECT b.*
+                SELECT
+                    m_idx, yr,
+                    SUM(fat) as fat, SUM(peso) as peso, SUM(total_qtvenda / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)) as caixas, SUM(clientes) as clientes
                 FROM chart_agg_base b
+                LEFT JOIN public.dim_produtos dp ON b.produto = dp.codigo
+                GROUP BY m_idx, yr
+            ),
+            kpi_curr_raw AS (
+                SELECT 
+                    produto,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(totpesoliq) as peso,
+                    SUM(COALESCE(qtvenda, 0)) as total_qtvenda,
+                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
+                FROM base_data s
+                WHERE s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
+                GROUP BY produto
             ),
             kpi_curr AS (
                 SELECT 
+                    SUM(fat) as fat,
+                    SUM(peso) as peso,
+                    SUM(total_qtvenda / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)) as caixas,
+                    SUM(clientes) as clientes
+                FROM kpi_curr_raw s
+                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+            ),
+            kpi_prev_raw AS (
+                SELECT
+                    produto,
                     SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(totpesoliq) as peso,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
+                    SUM(COALESCE(qtvenda, 0)) as total_qtvenda,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM base_data s
                 WHERE s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
+                GROUP BY produto
             ),
             kpi_prev AS (
-                SELECT 
+                SELECT
+                    SUM(fat) as fat,
+                    SUM(peso) as peso,
+                    SUM(total_qtvenda / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)) as caixas,
+                    SUM(clientes) as clientes
+                FROM kpi_prev_raw s
+                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
+            ),
+            kpi_tri_raw AS (
+                SELECT
+                    produto,
                     SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(totpesoliq) as peso,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) as caixas,
-                    COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
+                    SUM(COALESCE(qtvenda, 0)) as total_qtvenda
                 FROM base_data s
-                WHERE s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
+                WHERE s.dtped >= %L AND s.dtped <= %L
+                GROUP BY produto
             ),
             kpi_tri AS (
                 SELECT 
-                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) / 3 as fat,
-                    SUM(totpesoliq) / 3 as peso,
-                    SUM(COALESCE(qtvenda, 0) / COALESCE(NULLIF(qtde_embalagem_master, 0), 1)) / 3 as caixas,
+                    SUM(fat) / 3 as fat,
+                    SUM(peso) / 3 as peso,
+                    SUM(total_qtvenda / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)) / 3 as caixas,
                     COALESCE((
                         SELECT SUM(monthly_clients) / 3
                         FROM (
-                            SELECT COUNT(DISTINCT CASE WHEN %s THEN codcli END) as monthly_clients
-                            FROM base_data s
-                            WHERE s.dtped >= %L AND s.dtped <= %L
-                            GROUP BY EXTRACT(YEAR FROM dtped), EXTRACT(MONTH FROM dtped)
+                            SELECT COUNT(DISTINCT CASE WHEN %s THEN sub_s.codcli END) as monthly_clients
+                            FROM base_data sub_s
+                            WHERE sub_s.dtped >= %L AND sub_s.dtped <= %L
+                            GROUP BY EXTRACT(YEAR FROM sub_s.dtped), EXTRACT(MONTH FROM sub_s.dtped)
                         ) sub
                     ), 0) as clientes
-                FROM base_data s
-                WHERE s.dtped >= %L AND s.dtped <= %L
+                FROM kpi_tri_raw s
+                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             ),
             prod_raw AS (
                 SELECT produto,
@@ -3597,15 +3633,14 @@ BEGIN
             ),
             prod_agg AS (
                 SELECT p.produto,
-                       MAX(dp.descricao) as descricao,
-                       (p.total_qtvenda / COALESCE(NULLIF(MAX(dp.qtde_embalagem_master), 0), 1)) as caixas,
+                       dp.descricao as descricao,
+                       (p.total_qtvenda / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)) as caixas,
                        p.faturamento,
                        p.peso,
                        p.clientes,
                        p.ultima_venda
                 FROM prod_raw p
                 LEFT JOIN public.dim_produtos dp ON p.produto = dp.codigo
-                GROUP BY p.produto, p.faturamento, p.peso, p.total_qtvenda, p.clientes, p.ultima_venda
                 ORDER BY caixas DESC
                 LIMIT 1000
             )
