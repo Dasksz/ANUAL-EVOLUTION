@@ -3565,7 +3565,7 @@ BEGIN
                 GROUP BY produto
             ),
             kpi_curr AS (
-                SELECT 
+                SELECT
                     SUM(fat) as fat,
                     SUM(peso) as peso,
                     SUM(total_qtvenda / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)) as caixas,
@@ -3600,7 +3600,7 @@ BEGIN
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0)) as total_qtvenda
                 FROM base_data s
-                WHERE s.dtped >= %L AND s.dtped <= %L
+                WHERE s.dtped >= %L::date AND s.dtped <= %L::date
                 GROUP BY produto
             ),
             kpi_tri AS (
@@ -3613,7 +3613,7 @@ BEGIN
                         FROM (
                             SELECT COUNT(DISTINCT CASE WHEN %s THEN sub_s.codcli END) as monthly_clients
                             FROM base_data sub_s
-                            WHERE sub_s.dtped >= %L AND sub_s.dtped <= %L
+                            WHERE sub_s.dtped >= %L::date AND sub_s.dtped <= %L::date
                             GROUP BY EXTRACT(YEAR FROM sub_s.dtped), EXTRACT(MONTH FROM sub_s.dtped)
                         ) sub
                     ), 0) as clientes

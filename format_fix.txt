@@ -1,0 +1,23 @@
+<<<<<<< SEARCH
+            kpi_tri_raw AS (
+                SELECT
+                    produto,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(totpesoliq) as peso,
+                    SUM(COALESCE(qtvenda, 0)) as total_qtvenda
+                FROM base_data s
+                WHERE s.dtped >= %L AND s.dtped <= %L
+                GROUP BY produto
+            ),
+=======
+            kpi_tri_raw AS (
+                SELECT
+                    produto,
+                    SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
+                    SUM(totpesoliq) as peso,
+                    SUM(COALESCE(qtvenda, 0)) as total_qtvenda
+                FROM base_data s
+                WHERE s.dtped >= %L::date AND s.dtped <= %L::date
+                GROUP BY produto
+            ),
+>>>>>>> REPLACE
