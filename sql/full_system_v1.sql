@@ -3546,9 +3546,9 @@ BEGIN
                 GROUP BY 1, 2, 3
             ),
             chart_agg AS (
-                SELECT
-                    m_idx, yr,
-                    SUM(fat) as fat, SUM(peso) as peso, SUM(total_qtvenda / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)) as caixas, SUM(clientes) as clientes
+                SELECT 
+                    m_idx, yr, 
+                    SUM(fat) as fat, SUM(peso) as peso, SUM(total_qtvenda / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)) as caixas, SUM(clientes) as clientes 
                 FROM chart_agg_base b
                 LEFT JOIN public.dim_produtos dp ON b.produto = dp.codigo
                 GROUP BY m_idx, yr
@@ -3574,7 +3574,7 @@ BEGIN
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             ),
             kpi_prev_raw AS (
-                SELECT
+                SELECT 
                     produto,
                     SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(totpesoliq) as peso,
@@ -3585,7 +3585,7 @@ BEGIN
                 GROUP BY produto
             ),
             kpi_prev AS (
-                SELECT
+                SELECT 
                     SUM(fat) as fat,
                     SUM(peso) as peso,
                     SUM(total_qtvenda / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)) as caixas,
@@ -3594,13 +3594,13 @@ BEGIN
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             ),
             kpi_tri_raw AS (
-                SELECT
+                SELECT 
                     produto,
                     SUM(CASE WHEN tipovenda IN (''5'', ''11'') THEN vlbonific::numeric ELSE vlvenda::numeric END) as fat,
                     SUM(totpesoliq) as peso,
                     SUM(COALESCE(qtvenda, 0)) as total_qtvenda
                 FROM base_data s
-                WHERE s.dtped >= %L AND s.dtped <= %L
+                WHERE s.dtped >= %L::date AND s.dtped <= %L::date
                 GROUP BY produto
             ),
             kpi_tri AS (
@@ -3613,7 +3613,7 @@ BEGIN
                         FROM (
                             SELECT COUNT(DISTINCT CASE WHEN %s THEN sub_s.codcli END) as monthly_clients
                             FROM base_data sub_s
-                            WHERE sub_s.dtped >= %L AND sub_s.dtped <= %L
+                            WHERE sub_s.dtped >= %L::date AND sub_s.dtped <= %L::date
                             GROUP BY EXTRACT(YEAR FROM sub_s.dtped), EXTRACT(MONTH FROM sub_s.dtped)
                         ) sub
                     ), 0) as clientes
