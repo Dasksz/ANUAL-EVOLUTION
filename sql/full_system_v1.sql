@@ -2463,15 +2463,15 @@ BEGIN
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
                 IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
+                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categoria_produto = ''TODDYNHO'')');
                 ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
+                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categoria_produto = ''TODDY'')');
                 ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
+                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categoria_produto = ''QUAKER'')');
                 ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
+                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categoria_produto = ''KEROCOCO'')');
                 ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
+                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                 ELSE
                     v_simple_codes := array_append(v_simple_codes, v_code);
                 END IF;
@@ -2488,9 +2488,9 @@ BEGIN
                 v_where_rede := v_where_rede || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
                 v_where_cat := v_where_cat || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
                 
-                -- Note: v_where_prod applies to public.dim_produtos (codigo, descricao)
-                -- We use substring replacements to adapt the condition syntax
-                v_where_prod := v_where_prod || ' AND (' || replace(replace(array_to_string(v_conditions, ' OR '), 'codfor = ''1119''', 'true'), 'fornecedor', 'descricao') || ') ';
+                -- Note: v_where_prod applies to public.dim_produtos (codigo, descricao, categoria_produto)
+                -- We use substring replacements to adapt the condition syntax since we removed aliases
+                v_where_prod := v_where_prod || ' AND (' || replace(replace(array_to_string(v_conditions, ' OR '), 'codfor', 'codigo'), 'fornecedor', 'descricao') || ') ';
             END IF;
         END;
     END IF;
