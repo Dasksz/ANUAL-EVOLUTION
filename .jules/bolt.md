@@ -79,3 +79,6 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## 2024-05-25 - Fix invalid input syntax for type date in get_boxes_dashboard_data
  **Learning:** In complex `EXECUTE format` queries with multiple CTEs, ensure the order of arguments passed to `format` exactly matches the order the CTEs are declared in the dynamic query string, otherwise parameter injection will occur out of order resulting in type casting errors (e.g. attempting to parse a string condition into a `%L` expected as a date).
  **Action:** Swapped `v_tri_start, v_tri_end` and `v_active_client_cond_slow, v_tri_start, v_tri_end` to match the query declaration order of `kpi_tri_raw` and `kpi_tri`.
+## 2026-08-11 - Fix missing FROM-clause error in get_dashboard_filters
+**Learning:** When applying dynamic query builder logic across different tables, ensure that the table aliases and column mappings exactly match the target table of the dynamic SQL block. In this case, `get_dashboard_filters` runs against `cache_filters`, which does not have `s` or `dp` aliases.
+**Action:** Always map conditions explicitly using column names native to the queried table, and perform shadow tests against the specific RPC execution context to catch dynamic SQL generation errors early.
