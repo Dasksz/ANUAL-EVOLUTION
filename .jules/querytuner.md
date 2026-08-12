@@ -10,7 +10,3 @@ Action: Test specifically patched live function schema strings during shadow run
 ## 2024-08-07 - N+1 LATERAL JOIN in 6-month sales trend aggregation
 **Learning:** In `get_boxes_dashboard_data`, enriching a final JSON array with 6-month historical sales data using a `LEFT JOIN LATERAL` block evaluated the subqueries once per product (up to 1,000 times). While Postgres' planner can sometimes flatten this, relying on raw table queries inside the LATERAL join caused massive nested loop inefficiencies compared to evaluating the sales globally first.
 **Action:** When joining aggregations across large sets of products against historical logs (`data_detailed`/`data_history`), materialize the aggregate using a CTE like `sales_6m` that pre-calculates grouped data for all products found in the target list at once, and join that pre-aggregated result set (e.g. `agg_sales_6m`) into the LATERAL or LEFT JOIN.
-
-2024/05/27 - Unnecessary Aggregations in CTEs
-Learning: In `get_city_view_data`, a CTE (`client_totals`) was using `MAX(cidade)` to pass along a dimension while performing a massive `SUM(vlvenda) GROUP BY codcli`. This forces the database to evaluate the string dimension for every row in the raw tables, slowing down the aggregation phase unnecessarily.
-Action: Remove non-grouping dimension columns from massive aggregation CTEs. Instead, fetch those dimensions (like `cidade`) during the final pagination step by joining the reduced, aggregated result set back to the dimension tables (e.g., `data_clients`).
