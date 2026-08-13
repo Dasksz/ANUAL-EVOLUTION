@@ -1,6 +1,6 @@
 import supabase from './supabase.js?v=5';
 
-import {
+import { parseGoalsSvStructure,
     renderTableEmptyState,
     updateEl,
     generateYearOptionsHtml,
@@ -11178,7 +11178,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Reusing the parseGoalsSvStructure (from legacy code)
-            const updates = window.parseGoalsSvStructure(text);
+            const updates = parseGoalsSvStructure(text);
 
             if (!updates || updates.length === 0) {
                 alert("Nenhum dado válido encontrado para atualização. Verifique o formato.");
