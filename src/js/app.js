@@ -2184,6 +2184,14 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     }
 
     if (navAgendaBtn) {
+    if (navGoalsBtn) {
+        navGoalsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (window.innerWidth < 1024) closeSideMenu();
+            renderView('goals');
+        });
+    }
+
         navAgendaBtn.addEventListener('click', (e) => {
 
             if (navigateWithCtrl(e, 'agenda')) return;
