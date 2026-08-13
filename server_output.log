@@ -1,0 +1,4 @@
+127.0.0.1 - - [13/Aug/2026 17:56:58] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 17:57:18] "GET /src/js/app.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 17:57:36] "GET /src/js/utils.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Aug/2026 18:02:32] "GET /src/js/app.js HTTP/1.1" 200 -
