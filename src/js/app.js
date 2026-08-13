@@ -11068,7 +11068,7 @@ async function renderGoalsView() {
                 
                 // Helper to get saved meta
                 const getMeta = (cat, metrica, defaultBase) => {
-                    const saved = savedMetas.find(m => m.vendedor_nome === s.vendedor && m.categoria === cat && m.metrica === metrica);
+                    const saved = savedMetas.find(m => m.codusur === s.codusur && m.categoria === cat && m.metrica === metrica);
                     return saved ? parseFloat(saved.valor_ajuste) : (defaultBase * growth);
                 };
 
@@ -11096,7 +11096,7 @@ async function renderGoalsView() {
 
                 html += `
                 <tr class="hover:bg-slate-700/30 text-sm text-slate-300">
-                    <td class="px-4 py-2 font-medium text-slate-200 border-r border-slate-700 bg-slate-900 sticky left-0 z-10 shadow-md">${window.escapeHtml(s.vendedor)}</td>
+                    <td class="px-4 py-2 font-medium text-slate-200 border-r border-slate-700 bg-slate-900 sticky left-0 z-10 shadow-md">${window.escapeHtml(s.codusur)}</td>
                     
                     <td class="px-2 py-2 text-right">${window.formatCurrency(s.fat_elma * growth)}</td>
                     <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${window.formatCurrency(fatElma)}</td>
@@ -11268,7 +11268,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return {
                     ano: currentGoalsAno,
                     mes: currentGoalsMes,
-                    vendedor_nome: u.seller,
+                    codusur: u.seller,
                     categoria: u.category,
                     metrica: metrica,
                     valor_ajuste: u.val
