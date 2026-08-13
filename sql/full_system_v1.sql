@@ -5,7 +5,7 @@ CREATE OR REPLACE FUNCTION get_estrelas_kpis_data(
     p_filial text[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
-    p_vendedor text[] default null,
+    p_codusur text[] default null,
     p_fornecedor text[] default null,
     p_ano text default null,
     p_mes text default null,
@@ -72,10 +72,10 @@ BEGIN
         v_where_clients := v_where_clients || format(' AND EXISTS (SELECT 1 FROM public.data_summary_frequency sf WHERE sf.codcli = dc.codigo_cliente AND sf.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[]))) ', p_supervisor);
     END IF;
 
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+        v_where_base := v_where_base || format(' AND s.codusur IN (SELECT codigo FROM public.dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
         -- Client filtering logic simplified for exact matching where possible
-        v_where_clients := v_where_clients || format(' AND EXISTS (SELECT 1 FROM public.data_summary_frequency sf WHERE sf.codcli = dc.codigo_cliente AND sf.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[]))) ', p_vendedor);
+        v_where_clients := v_where_clients || format(' AND EXISTS (SELECT 1 FROM public.data_summary_frequency sf WHERE sf.codcli = dc.codigo_cliente AND sf.codusur IN (SELECT codigo FROM public.dim_codusures WHERE nome = ANY(%L::text[]))) ', p_codusur);
     END IF;
 
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
@@ -148,8 +148,8 @@ BEGIN
             END IF;
         END IF;
 
-        IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-            v_where_metas := v_where_metas || format(' AND m.cod_rca::text IN (SELECT LTRIM(codigo, ''0'') FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+        IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+            v_where_metas := v_where_metas || format(' AND m.cod_rca::text IN (SELECT LTRIM(codigo, ''0'') FROM public.dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
         END IF;
 
         IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
@@ -158,7 +158,7 @@ BEGIN
                 -- Expected Impact: ~6600ms -> ~170ms (38x faster).
                 -- ⚡ [QueryTuner] Further Optimized: Replaced unrestricted subquery with direct IN clause.
                 -- Expected Impact: ~56ms -> ~0.17ms (330x faster) by utilizing index scan directly.
-                SELECT DISTINCT LTRIM(codusur, ''0'')
+                SELECT DISTINCT LTRIM(codusur as codusur, ''0'')
                 FROM public.data_summary_frequency
                 WHERE codsupervisor IN (
                     SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[])
@@ -219,21 +219,21 @@ BEGIN
         ),
         detalhes_calc AS (
             SELECT
-                t.vendedor_nome,
+                t.codusur,
                 t.filial,
                 COALESCE(SUM(t.salty_tonnage), 0) AS sellout_salty,
                 COALESCE(SUM(t.foods_tonnage), 0) AS sellout_foods,
                 COUNT(DISTINCT CASE WHEN t.salty_venda >= 1 THEN t.codcli END) AS pos_salty,
                 COUNT(DISTINCT CASE WHEN t.foods_venda >= 1 AND (t.total_venda - t.foods_venda) < 1 THEN t.codcli END) AS pos_foods,
                 (SELECT COUNT(DISTINCT CASE WHEN s2.vlvenda >= 1 AND (SELECT nomes FROM aceleradores_config) IS NOT NULL AND s2.categorias ?& (SELECT nomes FROM aceleradores_config) THEN s2.codcli END) FROM target_sales s2 WHERE s2.codusur = t.codusur) AS acel_realizado,
-                COALESCE((SELECT SUM(m.calibracao_salty) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(t.codusur, ''0'') AND m.filial::text = LTRIM(t.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_salty,
-                COALESCE((SELECT SUM(m.calibracao_foods) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(t.codusur, ''0'') AND m.filial::text = LTRIM(t.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_foods,
-                COALESCE((SELECT SUM(m.calibracao_pos) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(t.codusur, ''0'') AND m.filial::text = LTRIM(t.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_pos
+                COALESCE((SELECT SUM(m.calibracao_salty) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(t.codusur as codusur, ''0'') AND m.filial::text = LTRIM(t.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_salty,
+                COALESCE((SELECT SUM(m.calibracao_foods) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(t.codusur as codusur, ''0'') AND m.filial::text = LTRIM(t.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_foods,
+                COALESCE((SELECT SUM(m.calibracao_pos) FROM public.meta_estrelas m WHERE m.cod_rca::text = LTRIM(t.codusur as codusur, ''0'') AND m.filial::text = LTRIM(t.filial, ''0'') AND m.ano = %s AND m.mes = %s), 0) AS meta_pos
             FROM (
                 SELECT 
-                    COALESCE(dv.nome, ''N/D'') AS vendedor_nome,
+                    COALESCE(dv.nome, ''N/D'') AS codusur,
                     s.filial,
-                    s.codusur,
+                    s.codusur as codusur,
                     s.codcli,
                     SUM(CASE WHEN %s THEN s.peso ELSE 0 END) as salty_tonnage,
                     SUM(CASE WHEN %s THEN s.peso ELSE 0 END) as foods_tonnage,
@@ -241,10 +241,10 @@ BEGIN
                     SUM(CASE WHEN %s THEN s.vlvenda ELSE 0 END) as foods_venda,
                     SUM(s.vlvenda) as total_venda
                 FROM target_sales s
-                LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
-                GROUP BY dv.nome, s.filial, s.codusur, s.codcli
+                LEFT JOIN public.dim_codusures dv ON s.codusur = dv.codigo
+                GROUP BY dv.nome, s.filial, s.codusur as codusur, s.codcli
             ) t
-            GROUP BY t.vendedor_nome, t.filial, t.codusur
+            GROUP BY t.codusur, t.filial, t.codusur
             ORDER BY COALESCE(SUM(t.salty_tonnage), 0) + COALESCE(SUM(t.foods_tonnage), 0) DESC
         ),
         detalhes_json AS (
@@ -283,7 +283,7 @@ CREATE OR REPLACE FUNCTION get_frequency_table_data(
     p_cidade text[] default null,
     p_filial text[] default null,
     p_supervisor text[] default null,
-    p_vendedor text[] default null,
+    p_codusur text[] default null,
     p_fornecedor text[] default null,
     p_rede text[] default null,
     p_produto text[] default null,
@@ -343,7 +343,7 @@ BEGIN
     v_where_chart := v_where_chart || ' AND ano IN (' || v_previous_year || ', ' || v_current_year || ') AND tipovenda NOT IN (''5'', ''11'') ';
 
     -- 2. Build Where Clauses
-    -- We apply regional filters (filial, cidade, vendedor) directly to v_where_base, v_where_base_prev, and v_where_clients
+    -- We apply regional filters (filial, cidade, codusur) directly to v_where_base, v_where_base_prev, and v_where_clients
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         IF NOT ('ambas' = ANY(p_filial)) THEN
             v_where_chart := v_where_chart || ' AND filial = ANY(ARRAY[''' || array_to_string(p_filial, ''',''') || ''']) ';
@@ -367,11 +367,11 @@ BEGIN
         v_where_base_prev := v_where_base_prev || ' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
     END IF;
 
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_clients := v_where_clients || ' AND dv.nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || ''']) ';
-        v_where_chart := v_where_chart || ' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
-        v_where_base := v_where_base || ' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
-        v_where_base_prev := v_where_base_prev || ' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+        v_where_clients := v_where_clients || ' AND dv.nome = ANY(ARRAY[''' || array_to_string(p_codusur as codusur, ''',''') || ''']) ';
+        v_where_chart := v_where_chart || ' AND codusur IN (SELECT codigo FROM public.dim_codusures WHERE nome = ANY(ARRAY[''' || array_to_string(p_codusur as codusur, ''',''') || '''])) ';
+        v_where_base := v_where_base || ' AND s.codusur IN (SELECT codigo FROM public.dim_codusures WHERE nome = ANY(ARRAY[''' || array_to_string(p_codusur as codusur, ''',''') || '''])) ';
+        v_where_base_prev := v_where_base_prev || ' AND s.codusur IN (SELECT codigo FROM public.dim_codusures WHERE nome = ANY(ARRAY[''' || array_to_string(p_codusur as codusur, ''',''') || '''])) ';
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
@@ -478,16 +478,16 @@ BEGIN
     IF v_where_unnested = ' ' OR v_where_unnested = '' THEN
         v_pre_agg_skus_sql := '
         SELECT
-            c.filial, c.cidade, c.codusur, c.mes, c.codcli,
+            c.filial, c.cidade, c.codusur as codusur, c.mes, c.codcli,
             (SELECT COUNT(DISTINCT p) FROM unnest(string_to_array(string_agg(array_to_string(c.produtos_arr, ''|#|''), ''|#|''), ''|#|'')) p) as dist_skus_per_cli
         FROM current_data_filtered c
         WHERE c.vlvenda >= 1
-        GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
+        GROUP BY c.filial, c.cidade, c.codusur as codusur, c.mes, c.codcli
         ';
     ELSE
         v_pre_agg_skus_sql := '
         SELECT
-            c.filial, c.cidade, c.codusur, c.mes, c.codcli,
+            c.filial, c.cidade, c.codusur as codusur, c.mes, c.codcli,
             (
                 SELECT COUNT(DISTINCT dp.codigo) 
                 FROM unnest(string_to_array(string_agg(array_to_string(c.produtos_arr, ''|#|''), ''|#|''), ''|#|'')) p(produto)
@@ -496,7 +496,7 @@ BEGIN
             ) as dist_skus_per_cli
         FROM current_data_filtered c
         WHERE c.vlvenda >= 1
-        GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
+        GROUP BY c.filial, c.cidade, c.codusur as codusur, c.mes, c.codcli
         ';
     END IF;
 
@@ -508,17 +508,17 @@ BEGIN
             dc.codigo_cliente as codcli,
             COALESCE(cb.filial, ''SEM FILIAL'') as filial,
             COALESCE(dc.cidade, ''SEM CIDADE'') as cidade,
-            COALESCE(dv.nome, ''SEM VENDEDOR'') as vendedor
+            COALESCE(dv.nome, ''SEM VENDEDOR'') as codusur
         FROM public.data_clients dc
         LEFT JOIN public.config_city_branches cb USING (cidade)
-        LEFT JOIN public.dim_vendedores dv ON dc.rca1 = dv.codigo
+        LEFT JOIN public.dim_codusures dv ON dc.rca1 = dv.codigo
         ' || v_where_clients || '
     ),
     current_data AS MATERIALIZED (
         SELECT
             s.filial,
             s.cidade,
-            s.codusur,
+            s.codusur as codusur,
             s.mes,
             s.codcli,
             s.pedido,
@@ -535,7 +535,7 @@ BEGIN
         SELECT
             s.filial,
             s.cidade,
-            s.codusur,
+            s.codusur as codusur,
             s.mes,
             s.codcli,
             s.pedido,
@@ -552,10 +552,10 @@ BEGIN
         SELECT
             GROUPING(s.filial) as grp_filial,
             GROUPING(s.cidade) as grp_cidade,
-            GROUPING(s.codusur) as grp_vendedor,
+            GROUPING(s.codusur) as grp_codusur as codusur,
             COALESCE(s.filial, ''TOTAL_GERAL'') as filial,
             COALESCE(s.cidade, ''TOTAL_CIDADE'') as cidade,
-            s.codusur as vendedor_cod,
+            s.codusur as codusur_cod,
             SUM(s.vlvenda) as faturamento_prev
         FROM public.data_summary_frequency s
         ' || v_where_base_prev || ' AND s.tipovenda NOT IN (''5'', ''11'')
@@ -565,21 +565,21 @@ BEGIN
         SELECT
             GROUPING(filial) as grp_filial,
             GROUPING(cidade) as grp_cidade,
-            GROUPING(vendedor) as grp_vendedor,
+            GROUPING(codusur) as grp_codusur as codusur,
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
-            COALESCE(vendedor, ''TOTAL_VENDEDOR'') as vendedor,
+            COALESCE(codusur as codusur, ''TOTAL_VENDEDOR'') as codusur as codusur,
             COUNT(DISTINCT codcli) as base_total
         FROM base_clients
-        GROUP BY ROLLUP(filial, cidade, vendedor)
+        GROUP BY ROLLUP(filial, cidade, codusur)
     ),
     client_monthly_sales AS MATERIALIZED (
         SELECT
-            c.filial, c.cidade, c.codusur, c.mes, c.codcli,
+            c.filial, c.cidade, c.codusur as codusur, c.mes, c.codcli,
             COUNT(DISTINCT c.pedido)::numeric as month_pedidos,
             COALESCE(SUM(c.vlvenda), 0) as sum_vlvenda
         FROM current_data_filtered c
-        GROUP BY c.filial, c.cidade, c.codusur, c.mes, c.codcli
+        GROUP BY c.filial, c.cidade, c.codusur as codusur, c.mes, c.codcli
     ),
     pre_aggregated_skus AS (
         ' || v_pre_agg_skus_sql || '
@@ -588,24 +588,24 @@ BEGIN
         SELECT
             filial,
             cidade,
-            codusur,
+            codusur as codusur,
             mes,
             SUM(month_pedidos) as month_pedidos,
             -- ⚡ QueryTuner: Replacing FILTER (WHERE ...) with COUNT(CASE WHEN ...) to prevent PostgreSQL from forcing slow GroupAggregate sorts
             -- Expected impact: Drops execution time from ~3400ms to ~2900ms on massive client base grouping.
             COUNT(CASE WHEN sum_vlvenda >= 1 THEN 1 END)::numeric as month_clientes
         FROM client_monthly_sales
-        GROUP BY filial, cidade, codusur, mes
+        GROUP BY filial, cidade, codusur as codusur, mes
     ),
 
     rolled_monthly_freq AS (
         SELECT
             GROUPING(filial) as grp_filial,
             GROUPING(cidade) as grp_cidade,
-            GROUPING(codusur) as grp_vendedor,
+            GROUPING(codusur) as grp_codusur as codusur,
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
-            codusur as vendedor_cod,
+            codusur as codusur_cod,
             -- Calculate frequency per month, then average those frequencies across active months
             AVG(CASE WHEN month_clientes > 0 THEN month_pedidos / month_clientes ELSE NULL END) as avg_monthly_freq
         FROM monthly_freq
@@ -615,10 +615,10 @@ BEGIN
         SELECT
             GROUPING(c.filial) as grp_filial,
             GROUPING(c.cidade) as grp_cidade,
-            GROUPING(c.codusur) as grp_vendedor,
+            GROUPING(c.codusur) as grp_codusur as codusur,
             COALESCE(c.filial, ''TOTAL_GERAL'') as filial,
             COALESCE(c.cidade, ''TOTAL_CIDADE'') as cidade,
-            c.codusur as vendedor_cod,
+            c.codusur as codusur_cod,
             SUM(c.peso) as tons,
             COUNT(DISTINCT c.mes) as q_meses
         FROM current_data c
@@ -628,10 +628,10 @@ BEGIN
         SELECT
             GROUPING(c.filial) as grp_filial,
             GROUPING(c.cidade) as grp_cidade,
-            GROUPING(c.codusur) as grp_vendedor,
+            GROUPING(c.codusur) as grp_codusur as codusur,
             COALESCE(c.filial, ''TOTAL_GERAL'') as filial,
             COALESCE(c.cidade, ''TOTAL_CIDADE'') as cidade,
-            c.codusur as vendedor_cod,
+            c.codusur as codusur_cod,
             COALESCE(SUM(c.vlvenda), 0) as faturamento,
             COUNT(DISTINCT c.pedido) as total_pedidos
         FROM current_data_filtered c
@@ -641,10 +641,10 @@ BEGIN
         SELECT
             GROUPING(filial) as grp_filial,
             GROUPING(cidade) as grp_cidade,
-            GROUPING(codusur) as grp_vendedor,
+            GROUPING(codusur) as grp_codusur as codusur,
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
-            codusur as vendedor_cod,
+            codusur as codusur_cod,
             -- ⚡ QueryTuner: Replacing FILTER (WHERE ...) with COUNT(DISTINCT CASE WHEN ...)
             COUNT(DISTINCT CASE WHEN sum_vlvenda >= 1 THEN codcli END) as positivacao,
             COUNT(DISTINCT CASE WHEN sum_vlvenda >= 1 THEN codcli::text || ''-'' || mes::text END) as positivacao_mensal
@@ -656,10 +656,10 @@ BEGIN
         SELECT
             GROUPING(filial) as grp_filial,
             GROUPING(cidade) as grp_cidade,
-            GROUPING(codusur) as grp_vendedor,
+            GROUPING(codusur) as grp_codusur as codusur,
             COALESCE(filial, ''TOTAL_GERAL'') as filial,
             COALESCE(cidade, ''TOTAL_CIDADE'') as cidade,
-            codusur as vendedor_cod,
+            codusur as codusur_cod,
             mes,
             SUM(dist_skus_per_cli) as sum_skus_mes,
             COUNT(codcli) as clients_positivados_mes
@@ -670,25 +670,25 @@ BEGIN
         SELECT
             grp_filial,
             grp_cidade,
-            grp_vendedor,
+            grp_codusur as codusur,
             filial,
             cidade,
-            vendedor_cod,
+            codusur_cod,
             SUM(sum_skus_mes) as sum_skus,
             AVG(CASE WHEN clients_positivados_mes > 0 THEN sum_skus_mes::numeric / clients_positivados_mes ELSE NULL END) as avg_sku_pdv
         FROM rolled_monthly_skus
-        GROUP BY grp_filial, grp_cidade, grp_vendedor, filial, cidade, vendedor_cod
+        GROUP BY grp_filial, grp_cidade, grp_codusur as codusur, filial, cidade, codusur_cod
     ),
     final_tree AS (
         SELECT
             ac.grp_filial,
             ac.grp_cidade,
-            ac.grp_vendedor,
+            ac.grp_codusur as codusur,
             ac.filial,
             ac.cidade,
-            COALESCE((SELECT nome FROM public.dim_vendedores WHERE codigo = ac.vendedor_cod LIMIT 1),
-                CASE WHEN ac.grp_vendedor = 1 THEN ''TOTAL_VENDEDOR'' ELSE ''SEM VENDEDOR'' END
-            ) as vendedor,
+            COALESCE((SELECT nome FROM public.dim_codusures WHERE codigo = ac.codusur_cod LIMIT 1),
+                CASE WHEN ac.grp_codusur = 1 THEN ''TOTAL_VENDEDOR'' ELSE ''SEM VENDEDOR'' END
+            ) as codusur as codusur,
             ac.tons,
             COALESCE(acf.faturamento, 0) as faturamento,
             COALESCE(pd.faturamento_prev, 0) as faturamento_prev,
@@ -702,40 +702,40 @@ BEGIN
             COALESCE(cb.base_total, 0) as base_total
         FROM aggregated_curr_all ac
         LEFT JOIN aggregated_curr_filtered acf
-            ON ac.grp_filial = acf.grp_filial AND ac.grp_cidade = acf.grp_cidade AND ac.grp_vendedor = acf.grp_vendedor AND ac.filial = acf.filial AND ac.cidade = acf.cidade AND ac.vendedor_cod IS NOT DISTINCT FROM acf.vendedor_cod
+            ON ac.grp_filial = acf.grp_filial AND ac.grp_cidade = acf.grp_cidade AND ac.grp_codusur = acf.grp_codusur AND ac.filial = acf.filial AND ac.cidade = acf.cidade AND ac.codusur_cod IS NOT DISTINCT FROM acf.codusur_cod
         LEFT JOIN aggregated_positivados ap
             ON ac.grp_filial = ap.grp_filial
             AND ac.grp_cidade = ap.grp_cidade
-            AND ac.grp_vendedor = ap.grp_vendedor
+            AND ac.grp_codusur = ap.grp_codusur
             AND ac.filial = ap.filial
             AND ac.cidade = ap.cidade
-            AND ac.vendedor_cod IS NOT DISTINCT FROM ap.vendedor_cod
+            AND ac.codusur_cod IS NOT DISTINCT FROM ap.codusur_cod
         LEFT JOIN previous_data pd ON ac.grp_filial = pd.grp_filial 
                                   AND ac.grp_cidade = pd.grp_cidade 
-                                  AND ac.grp_vendedor = pd.grp_vendedor 
+                                  AND ac.grp_codusur = pd.grp_codusur 
                                   AND ac.filial = pd.filial 
                                   AND ac.cidade = pd.cidade 
-                                  AND ac.vendedor_cod IS NOT DISTINCT FROM pd.vendedor_cod
+                                  AND ac.codusur_cod IS NOT DISTINCT FROM pd.codusur_cod
         
         LEFT JOIN rolled_monthly_freq mf ON ac.grp_filial = mf.grp_filial
                                   AND ac.grp_cidade = mf.grp_cidade
-                                  AND ac.grp_vendedor = mf.grp_vendedor
+                                  AND ac.grp_codusur = mf.grp_codusur
                                   AND ac.filial = mf.filial
                                   AND ac.cidade = mf.cidade
-                                  AND ac.vendedor_cod IS NOT DISTINCT FROM mf.vendedor_cod
+                                  AND ac.codusur_cod IS NOT DISTINCT FROM mf.codusur_cod
         LEFT JOIN aggregated_skus ask ON ac.grp_filial = ask.grp_filial 
                                   AND ac.grp_cidade = ask.grp_cidade 
-                                  AND ac.grp_vendedor = ask.grp_vendedor 
+                                  AND ac.grp_codusur = ask.grp_codusur 
                                   AND ac.filial = ask.filial 
                                   AND ac.cidade = ask.cidade 
-                                  AND ac.vendedor_cod IS NOT DISTINCT FROM ask.vendedor_cod
+                                  AND ac.codusur_cod IS NOT DISTINCT FROM ask.codusur_cod
         LEFT JOIN client_base cb ON ac.grp_filial = cb.grp_filial 
                                 AND ac.grp_cidade = cb.grp_cidade 
-                                AND ac.grp_vendedor = cb.grp_vendedor 
+                                AND ac.grp_codusur = cb.grp_codusur 
                                 AND ac.filial = cb.filial 
                                 AND ac.cidade = cb.cidade
-                                AND COALESCE((SELECT nome FROM public.dim_vendedores WHERE codigo = ac.vendedor_cod LIMIT 1),
-                                    CASE WHEN ac.grp_vendedor = 1 THEN ''TOTAL_VENDEDOR'' ELSE ''SEM VENDEDOR'' END) = cb.vendedor
+                                AND COALESCE((SELECT nome FROM public.dim_codusures WHERE codigo = ac.codusur_cod LIMIT 1),
+                                    CASE WHEN ac.grp_codusur = 1 THEN ''TOTAL_VENDEDOR'' ELSE ''SEM VENDEDOR'' END) = cb.codusur
     ),
     chart_monthly_sales AS (
         SELECT s.ano, s.mes, s.codcli,
@@ -979,7 +979,7 @@ CREATE TABLE IF NOT EXISTS public.data_summary (
 ALTER TABLE public.data_summary ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS idx_summary_composite_main ON public.data_summary USING btree (ano, mes, filial, cidade);
-CREATE INDEX IF NOT EXISTS idx_summary_codes ON public.data_summary USING btree (codsupervisor, codusur, filial);
+CREATE INDEX IF NOT EXISTS idx_summary_codes ON public.data_summary USING btree (codsupervisor, codusur as codusur, filial);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_filial ON public.data_summary USING btree (ano, filial);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_cidade ON public.data_summary USING btree (ano, cidade);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_supcode ON public.data_summary USING btree (ano, codsupervisor);
@@ -1015,34 +1015,34 @@ ALTER TABLE public.data_summary_frequency ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes ON public.data_summary_frequency USING btree (ano, mes);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_filial_cidade ON public.data_summary_frequency USING btree (filial, cidade);
-CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_vendedor_supervisor ON public.data_summary_frequency USING btree (codusur, codsupervisor);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_codusur_supervisor ON public.data_summary_frequency USING btree (codusur as codusur, codsupervisor);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_pedido_cli ON public.data_summary_frequency USING btree (pedido, codcli);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_produtos_gin ON public.data_summary_frequency USING gin (produtos);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_categorias_gin ON public.data_summary_frequency USING gin (categorias);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_tipovenda ON public.data_summary_frequency USING btree (ano, mes, tipovenda);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_filial ON public.data_summary_frequency USING btree (ano, mes, filial, cidade);
-CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_vendedor ON public.data_summary_frequency USING btree (ano, mes, codusur);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_codusur ON public.data_summary_frequency USING btree (ano, mes, codusur);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_supervisor ON public.data_summary_frequency USING btree (ano, mes, codsupervisor);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_fornecedor ON public.data_summary_frequency USING btree (ano, mes, codfor);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_rede ON public.data_summary_frequency USING btree (ano, mes, rede);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_codcli ON public.data_summary_frequency USING btree (ano, codcli);
 
 -- NOVOS ÍNDICES OTIMIZADOS PARA get_frequency_table_data (Evita Timeout 500)
-CREATE INDEX IF NOT EXISTS idx_freq_partial_agg_metrics ON public.data_summary_frequency (ano, mes, codusur, filial, cidade) INCLUDE (vlvenda, peso, codcli, pedido, tipovenda) WHERE tipovenda NOT IN ('5', '11');
-CREATE INDEX IF NOT EXISTS idx_freq_partial_skus ON public.data_summary_frequency (ano, mes, codusur, codcli) INCLUDE (produtos, tipovenda) WHERE tipovenda NOT IN ('5', '11');
+CREATE INDEX IF NOT EXISTS idx_freq_partial_agg_metrics ON public.data_summary_frequency (ano, mes, codusur as codusur, filial, cidade) INCLUDE (vlvenda, peso, codcli, pedido, tipovenda) WHERE tipovenda NOT IN ('5', '11');
+CREATE INDEX IF NOT EXISTS idx_freq_partial_skus ON public.data_summary_frequency (ano, mes, codusur as codusur, codcli) INCLUDE (produtos, tipovenda) WHERE tipovenda NOT IN ('5', '11');
 CREATE INDEX IF NOT EXISTS idx_freq_chart_metrics ON public.data_summary_frequency (ano, mes) INCLUDE (pedido, codcli, vlvenda, tipovenda) WHERE tipovenda NOT IN ('5', '11');
 
 -- [QueryTuner] Optimization: Added index to speed up DISTINCT ON queries for client mapping
 -- Expected impact: Drops DISTINCT ON execution time from ~340ms to ~90ms (almost 4x faster) by allowing an Index Scan instead of a full Seq Scan + Sort.
-CREATE INDEX IF NOT EXISTS idx_data_summary_freq_latest_client ON public.data_summary_frequency (codcli, ano DESC, mes DESC, created_at DESC) INCLUDE (codsupervisor, codusur, filial);
+CREATE INDEX IF NOT EXISTS idx_data_summary_freq_latest_client ON public.data_summary_frequency (codcli, ano DESC, mes DESC, created_at DESC) INCLUDE (codsupervisor, codusur as codusur, filial);
 
 -- [QueryTuner] Optimization: Added index to speed up DISTINCT ON queries for client mapping
 -- Expected impact: Drops DISTINCT ON execution time from ~340ms to ~90ms (almost 4x faster) by allowing an Index Scan instead of a full Seq Scan + Sort.
-CREATE INDEX IF NOT EXISTS idx_data_summary_freq_latest_client ON public.data_summary_frequency (codcli, ano DESC, mes DESC, created_at DESC) INCLUDE (codsupervisor, codusur, filial);
+CREATE INDEX IF NOT EXISTS idx_data_summary_freq_latest_client ON public.data_summary_frequency (codcli, ano DESC, mes DESC, created_at DESC) INCLUDE (codsupervisor, codusur as codusur, filial);
 
 -- [QueryTuner] Optimization: Added index to speed up DISTINCT ON queries for client mapping
 -- Expected impact: Drops DISTINCT ON execution time from ~340ms to ~90ms (almost 4x faster) by allowing an Index Scan instead of a full Seq Scan + Sort.
-CREATE INDEX IF NOT EXISTS idx_data_summary_freq_latest_client ON public.data_summary_frequency (codcli, ano DESC, mes DESC, created_at DESC) INCLUDE (codsupervisor, codusur, filial);
+CREATE INDEX IF NOT EXISTS idx_data_summary_freq_latest_client ON public.data_summary_frequency (codcli, ano DESC, mes DESC, created_at DESC) INCLUDE (codsupervisor, codusur as codusur, filial);
 
 
 CREATE TABLE IF NOT EXISTS public.config_magic_number (
@@ -1078,28 +1078,28 @@ CREATE TABLE IF NOT EXISTS public.dim_supervisores (
 );
 ALTER TABLE public.dim_supervisores ENABLE ROW LEVEL SECURITY;
 
-CREATE TABLE IF NOT EXISTS public.dim_vendedores (
+CREATE TABLE IF NOT EXISTS public.dim_codusures (
     codigo text PRIMARY KEY,
     nome text,
     cpf text
 );
-ALTER TABLE public.dim_vendedores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.dim_codusures ENABLE ROW LEVEL SECURITY;
 
--- Função para atualizar os vendedores vindos do Worker garantindo que a coluna CPF (inserida manualmente) não seja sobrescrita.
-CREATE OR REPLACE FUNCTION public.upsert_dim_vendedores(p_vendors jsonb)
+-- Função para atualizar os codusures vindos do Worker garantindo que a coluna CPF (inserida manualmente) não seja sobrescrita.
+CREATE OR REPLACE FUNCTION public.upsert_dim_codusures(p_vendors jsonb)
 RETURNS void SET search_path = public AS $$
 DECLARE
     vendor_record record;
 BEGIN
     FOR vendor_record IN SELECT * FROM jsonb_to_recordset(p_vendors) AS x(codigo text, nome text) LOOP
-        INSERT INTO public.dim_vendedores (codigo, nome)
+        INSERT INTO public.dim_codusures (codigo, nome)
         VALUES (vendor_record.codigo, vendor_record.nome)
         ON CONFLICT (codigo) DO UPDATE
         SET nome = EXCLUDED.nome;
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
-GRANT EXECUTE ON FUNCTION public.upsert_dim_vendedores(jsonb) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.upsert_dim_codusures(jsonb) TO authenticated, anon;
 
 
 CREATE TABLE IF NOT EXISTS public.dim_fornecedores (
@@ -1246,7 +1246,7 @@ ALTER TABLE public.data_summary_frequency ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes on public.data_summary_frequency using btree (ano, mes);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_filial_cidade on public.data_summary_frequency using btree (filial, cidade);
-CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_vendedor_supervisor on public.data_summary_frequency using btree (codusur, codsupervisor);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_codusur_supervisor on public.data_summary_frequency using btree (codusur as codusur, codsupervisor);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_pedido_cli on public.data_summary_frequency using btree (pedido, codcli);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_produtos_gin on public.data_summary_frequency using gin (produtos);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_categorias_gin on public.data_summary_frequency using gin (categorias);
@@ -1254,28 +1254,28 @@ CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_categorias_gin on public.data_su
 -- Novas Otimizações de Índices para a Tabela de Frequência (Get Frequency Table Data)
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_tipovenda on public.data_summary_frequency using btree (ano, mes, tipovenda);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_filial on public.data_summary_frequency using btree (ano, mes, filial, cidade);
-CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_vendedor on public.data_summary_frequency using btree (ano, mes, codusur);
+CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_codusur on public.data_summary_frequency using btree (ano, mes, codusur);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_supervisor on public.data_summary_frequency using btree (ano, mes, codsupervisor);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_fornecedor on public.data_summary_frequency using btree (ano, mes, codfor);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_mes_rede on public.data_summary_frequency using btree (ano, mes, rede);
 CREATE INDEX IF NOT EXISTS idx_dat_summary_freq_ano_codcli on public.data_summary_frequency using btree (ano, codcli);
 
 -- NOVOS ÍNDICES OTIMIZADOS PARA get_frequency_table_data (Evita Timeout 500)
-CREATE INDEX IF NOT EXISTS idx_freq_partial_agg_metrics ON public.data_summary_frequency (ano, mes, codusur, filial, cidade) INCLUDE (vlvenda, peso, codcli, pedido, tipovenda) WHERE tipovenda NOT IN ('5', '11');
-CREATE INDEX IF NOT EXISTS idx_freq_partial_skus ON public.data_summary_frequency (ano, mes, codusur, codcli) INCLUDE (produtos, tipovenda) WHERE tipovenda NOT IN ('5', '11');
+CREATE INDEX IF NOT EXISTS idx_freq_partial_agg_metrics ON public.data_summary_frequency (ano, mes, codusur as codusur, filial, cidade) INCLUDE (vlvenda, peso, codcli, pedido, tipovenda) WHERE tipovenda NOT IN ('5', '11');
+CREATE INDEX IF NOT EXISTS idx_freq_partial_skus ON public.data_summary_frequency (ano, mes, codusur as codusur, codcli) INCLUDE (produtos, tipovenda) WHERE tipovenda NOT IN ('5', '11');
 CREATE INDEX IF NOT EXISTS idx_freq_chart_metrics ON public.data_summary_frequency (ano, mes) INCLUDE (pedido, codcli, vlvenda, tipovenda) WHERE tipovenda NOT IN ('5', '11');
 
 -- [QueryTuner] Optimization: Added index to speed up DISTINCT ON queries for client mapping
 -- Expected impact: Drops DISTINCT ON execution time from ~340ms to ~90ms (almost 4x faster) by allowing an Index Scan instead of a full Seq Scan + Sort.
-CREATE INDEX IF NOT EXISTS idx_data_summary_freq_latest_client ON public.data_summary_frequency (codcli, ano DESC, mes DESC, created_at DESC) INCLUDE (codsupervisor, codusur, filial);
+CREATE INDEX IF NOT EXISTS idx_data_summary_freq_latest_client ON public.data_summary_frequency (codcli, ano DESC, mes DESC, created_at DESC) INCLUDE (codsupervisor, codusur as codusur, filial);
 
 -- [QueryTuner] Optimization: Added index to speed up DISTINCT ON queries for client mapping
 -- Expected impact: Drops DISTINCT ON execution time from ~340ms to ~90ms (almost 4x faster) by allowing an Index Scan instead of a full Seq Scan + Sort.
-CREATE INDEX IF NOT EXISTS idx_data_summary_freq_latest_client ON public.data_summary_frequency (codcli, ano DESC, mes DESC, created_at DESC) INCLUDE (codsupervisor, codusur, filial);
+CREATE INDEX IF NOT EXISTS idx_data_summary_freq_latest_client ON public.data_summary_frequency (codcli, ano DESC, mes DESC, created_at DESC) INCLUDE (codsupervisor, codusur as codusur, filial);
 
 -- [QueryTuner] Optimization: Added index to speed up DISTINCT ON queries for client mapping
 -- Expected impact: Drops DISTINCT ON execution time from ~340ms to ~90ms (almost 4x faster) by allowing an Index Scan instead of a full Seq Scan + Sort.
-CREATE INDEX IF NOT EXISTS idx_data_summary_freq_latest_client ON public.data_summary_frequency (codcli, ano DESC, mes DESC, created_at DESC) INCLUDE (codsupervisor, codusur, filial);
+CREATE INDEX IF NOT EXISTS idx_data_summary_freq_latest_client ON public.data_summary_frequency (codcli, ano DESC, mes DESC, created_at DESC) INCLUDE (codsupervisor, codusur as codusur, filial);
 
 
 -- Cache Table (For Filter Dropdowns)
@@ -1303,8 +1303,8 @@ ALTER TABLE public.cache_filters ENABLE ROW LEVEL SECURITY;
 -- ==============================================================================
 
 -- Sales Table Indexes
-CREATE INDEX IF NOT EXISTS idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, codsupervisor, codusur, codfor);
-CREATE INDEX IF NOT EXISTS idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, codsupervisor, codusur, codfor);
+CREATE INDEX IF NOT EXISTS idx_detailed_dtped_composite ON public.data_detailed (dtped, filial, cidade, codsupervisor, codusur as codusur, codfor);
+CREATE INDEX IF NOT EXISTS idx_history_dtped_composite ON public.data_history (dtped, filial, cidade, codsupervisor, codusur as codusur, codfor);
 CREATE INDEX IF NOT EXISTS idx_detailed_dtped_desc ON public.data_detailed(dtped DESC);
 CREATE INDEX IF NOT EXISTS idx_detailed_codfor_dtped ON public.data_detailed (codfor, dtped);
 CREATE INDEX IF NOT EXISTS idx_history_codfor_dtped ON public.data_history (codfor, dtped);
@@ -1328,7 +1328,7 @@ CREATE INDEX IF NOT EXISTS idx_history_dtped_prod ON public.data_history (dtped,
 -- Summary Table Targeted Indexes (For Dynamic SQL)
 -- V2 Optimized Indexes (Codes)
 CREATE INDEX IF NOT EXISTS idx_summary_composite_main ON public.data_summary (ano, mes, filial, cidade);
-CREATE INDEX IF NOT EXISTS idx_summary_codes ON public.data_summary (codsupervisor, codusur, filial);
+CREATE INDEX IF NOT EXISTS idx_summary_codes ON public.data_summary (codsupervisor, codusur as codusur, filial);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_filial ON public.data_summary (ano, filial);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_cidade ON public.data_summary (ano, cidade);
 CREATE INDEX IF NOT EXISTS idx_summary_ano_supcode ON public.data_summary (ano, codsupervisor);
@@ -1413,7 +1413,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DO $$
 DECLARE t text;
 BEGIN
-    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_clients', 'data_detailed', 'data_history', 'profiles', 'data_summary', 'data_summary_frequency', 'cache_filters', 'data_holidays', 'config_city_branches', 'dim_supervisores', 'dim_vendedores', 'dim_fornecedores')
+    FOR t IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('data_clients', 'data_detailed', 'data_history', 'profiles', 'data_summary', 'data_summary_frequency', 'cache_filters', 'data_holidays', 'config_city_branches', 'dim_supervisores', 'dim_codusures', 'dim_fornecedores')
     LOOP
         EXECUTE format('DROP POLICY IF EXISTS "Enable access for all users" ON public.%I;', t);
         EXECUTE format('DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.%I;', t);
@@ -1488,7 +1488,7 @@ CREATE POLICY "Profiles Delete" ON public.profiles FOR DELETE USING (public.is_a
 DO $$
 DECLARE t text;
 BEGIN
-    FOR t IN SELECT unnest(ARRAY['config_city_branches', 'dim_supervisores', 'dim_vendedores', 'dim_fornecedores', 'dim_produtos'])
+    FOR t IN SELECT unnest(ARRAY['config_city_branches', 'dim_supervisores', 'dim_codusures', 'dim_fornecedores', 'dim_produtos'])
     LOOP
         EXECUTE format('DROP POLICY IF EXISTS "Unified Read Access" ON public.%I', t);
         EXECUTE format('CREATE POLICY "Unified Read Access" ON public.%I FOR SELECT USING (public.is_admin() OR public.is_approved())', t);
@@ -1726,7 +1726,7 @@ BEGIN
     DELETE FROM public.data_summary_frequency WHERE ano = p_year;
     
     INSERT INTO public.data_summary (
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao, 
         pre_mix_count, pre_positivacao_val,
         ramo, caixas, categoria_produto
@@ -1735,11 +1735,11 @@ BEGIN
         -- ⚡ QueryTuner: Replacing EXTRACT(YEAR FROM dtped) = p_year with SARGable date ranges
         -- (dtped >= make_date(...) AND dtped <= make_date(...)) to enable Index Range Scans on dtped.
         -- EXPLAIN ANALYZE data_history: 2354ms (Parallel Seq Scan) -> 77ms (Index Scan/Append), 30x faster.
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
+        SELECT dtped, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
         FROM public.data_detailed
         WHERE dtped >= make_date(p_year, 1, 1) AND dtped <= make_date(p_year, 12, 31)
         UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
+        SELECT dtped, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda
         FROM public.data_history
         WHERE dtped >= make_date(p_year, 1, 1) AND dtped <= make_date(p_year, 12, 31)
     ),
@@ -1753,7 +1753,7 @@ BEGIN
             END as filial,
             COALESCE(s.cidade, c.cidade) as cidade, 
             s.codsupervisor,
-            s.codusur,
+            s.codusur as codusur,
             CASE 
                 WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDYNHO%' OR dp.descricao ILIKE '%TODYNHO%') THEN '1119_TODDYNHO'
                 WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDY %' OR dp.descricao = 'TODDY') THEN '1119_TODDY'
@@ -1773,7 +1773,7 @@ BEGIN
     ),
     product_agg AS (
         SELECT 
-            ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, categoria_produto, produto,
+            ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, ramo, categoria_produto, produto,
             SUM(vlvenda) as prod_val,
             SUM(totpesoliq) as prod_peso,
             SUM(vlbonific) as prod_bonific,
@@ -1784,7 +1784,7 @@ BEGIN
     ),
     client_agg AS (
         SELECT 
-            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo, pa.categoria_produto,
+            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur as codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo, pa.categoria_produto,
             SUM(pa.prod_val) as total_val,
             SUM(pa.prod_peso) as total_peso,
             SUM(pa.prod_bonific) as total_bonific,
@@ -1795,7 +1795,7 @@ BEGIN
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
     )
     SELECT 
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli,
         total_val, total_peso, total_bonific, total_devol,
         mix_calc,
         CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
@@ -1807,7 +1807,7 @@ BEGIN
 
     -- Update data_summary_frequency for the year
     INSERT INTO public.data_summary_frequency (
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede,
+        ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede,
         produtos_arr, categorias_arr, has_cheetos, has_doritos, has_fandangos, has_ruffles, has_torcida, has_toddynho, has_toddy, has_quaker, has_kerococo
     )
     WITH dim_prod_enhanced AS (
@@ -1828,11 +1828,11 @@ BEGIN
         -- ⚡ QueryTuner: Replacing EXTRACT(YEAR FROM dtped) = p_year with SARGable date ranges
         -- (dtped >= make_date(...) AND dtped <= make_date(...)) to enable Index Range Scans on dtped.
         -- EXPLAIN ANALYZE data_history: 2354ms (Parallel Seq Scan) -> 77ms (Index Scan/Append), 30x faster.
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto 
+        SELECT dtped, filial, cidade, codsupervisor, codusur as codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto 
         FROM public.data_detailed 
         WHERE dtped >= make_date(p_year, 1, 1) AND dtped <= make_date(p_year, 12, 31)
         UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto 
+        SELECT dtped, filial, cidade, codsupervisor, codusur as codusur, codfor, codcli, tipovenda, pedido, vlvenda, totpesoliq, produto 
         FROM public.data_history 
         WHERE dtped >= make_date(p_year, 1, 1) AND dtped <= make_date(p_year, 12, 31)
     ),
@@ -1843,7 +1843,7 @@ BEGIN
             s.filial,
             s.cidade,
             s.codsupervisor,
-            s.codusur,
+            s.codusur as codusur,
             CASE
                 WHEN s.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS')
                 ELSE s.codfor
@@ -1867,7 +1867,7 @@ BEGIN
             op.filial,
             op.cidade,
             op.codsupervisor,
-            op.codusur,
+            op.codusur as codusur,
             op.codfor,
             op.codcli,
             op.tipovenda,
@@ -1896,7 +1896,7 @@ BEGIN
             op.filial,
             op.cidade,
             op.codsupervisor,
-            op.codusur,
+            op.codusur as codusur,
             op.codfor,
             op.codcli,
             op.tipovenda,
@@ -1909,7 +1909,7 @@ BEGIN
         filial,
         cidade,
         codsupervisor,
-        codusur,
+        codusur as codusur,
         codfor,
         codcli,
         tipovenda,
@@ -1968,17 +1968,17 @@ BEGIN
     
     -- STEP B: Insert into data_summary using CTE
     INSERT INTO public.data_summary (
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao, 
         pre_mix_count, pre_positivacao_val,
         ramo, caixas, categoria_produto
     )
     WITH tmp_raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        SELECT dtped, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
         FROM public.data_detailed
         WHERE dtped >= p_start_date AND dtped < p_end_date
         UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        SELECT dtped, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
         FROM public.data_history
         WHERE dtped >= p_start_date AND dtped < p_end_date
     ),
@@ -2006,7 +2006,7 @@ BEGIN
             END as filial,
             COALESCE(s.cidade, c.cidade) as cidade, 
             s.codsupervisor,
-            s.codusur,
+            s.codusur as codusur,
             CASE 
                 WHEN s.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS')
                 ELSE s.codfor 
@@ -2022,7 +2022,7 @@ BEGIN
     ),
     product_agg AS (
         SELECT 
-            ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, categoria_produto, produto,
+            ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, ramo, categoria_produto, produto,
             SUM(vlvenda) as prod_val,
             SUM(totpesoliq) as prod_peso,
             SUM(vlbonific) as prod_bonific,
@@ -2033,7 +2033,7 @@ BEGIN
     ),
     client_agg AS (
         SELECT 
-            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo, pa.categoria_produto,
+            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur as codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo, pa.categoria_produto,
             SUM(pa.prod_val) as total_val,
             SUM(pa.prod_peso) as total_peso,
             SUM(pa.prod_bonific) as total_bonific,
@@ -2044,7 +2044,7 @@ BEGIN
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
     )
     SELECT 
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli,
         total_val, total_peso, total_bonific, total_devol,
         mix_calc,
         CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
@@ -2056,15 +2056,15 @@ BEGIN
 
     -- STEP C: Insert into data_summary_frequency using CTE
     INSERT INTO public.data_summary_frequency (
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede,
+        ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede,
         produtos_arr, categorias_arr, has_cheetos, has_doritos, has_fandangos, has_ruffles, has_torcida, has_toddynho, has_toddy, has_quaker, has_kerococo
     )
     WITH tmp_raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        SELECT dtped, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
         FROM public.data_detailed
         WHERE dtped >= p_start_date AND dtped < p_end_date
         UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        SELECT dtped, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
         FROM public.data_history
         WHERE dtped >= p_start_date AND dtped < p_end_date
     ),
@@ -2089,7 +2089,7 @@ BEGIN
             t.filial,
             t.cidade,
             t.codsupervisor,
-            t.codusur,
+            t.codusur as codusur,
             CASE
                 WHEN t.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS')
                 ELSE t.codfor
@@ -2113,7 +2113,7 @@ BEGIN
             op.filial,
             op.cidade,
             op.codsupervisor,
-            op.codusur,
+            op.codusur as codusur,
             op.codfor,
             op.codcli,
             op.tipovenda,
@@ -2140,7 +2140,7 @@ BEGIN
             op.filial,
             op.cidade,
             op.codsupervisor,
-            op.codusur,
+            op.codusur as codusur,
             op.codfor,
             op.codcli,
             op.tipovenda,
@@ -2152,7 +2152,7 @@ BEGIN
         f.filial,
         f.cidade,
         f.codsupervisor,
-        f.codusur,
+        f.codusur as codusur,
         f.codfor,
         f.codcli,
         f.tipovenda,
@@ -2206,7 +2206,7 @@ BEGIN
                 filial,
                 cidade,
                 codsupervisor,
-                codusur,
+                codusur as codusur,
                 codfor,
                 tipovenda,
                 ano,
@@ -2215,7 +2215,7 @@ BEGIN
                 categoria_produto
             FROM public.data_summary
             GROUP BY
-                filial, cidade, codsupervisor, codusur, codfor, tipovenda, ano, mes, ramo, categoria_produto
+                filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, ano, mes, ramo, categoria_produto
         )
         SELECT
             dc.filial,
@@ -2242,7 +2242,7 @@ BEGIN
             dc.categoria_produto
         FROM distinct_codes dc
         LEFT JOIN public.dim_supervisores ds ON dc.codsupervisor = ds.codigo
-        LEFT JOIN public.dim_vendedores dv ON dc.codusur = dv.codigo
+        LEFT JOIN public.dim_codusures dv ON dc.codusur = dv.codigo
         LEFT JOIN public.dim_fornecedores df ON dc.codfor = df.codigo;
 
         RETURN;
@@ -2258,7 +2258,7 @@ BEGIN
             filial, 
             cidade, 
             codsupervisor, 
-            codusur, 
+            codusur as codusur, 
             codfor, 
             tipovenda, 
             ano, 
@@ -2268,7 +2268,7 @@ BEGIN
         FROM public.data_summary
         WHERE ano = p_ano AND mes = p_mes
         GROUP BY 
-            filial, cidade, codsupervisor, codusur, codfor, tipovenda, ano, mes, ramo, categoria_produto
+            filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, ano, mes, ramo, categoria_produto
     )
     SELECT 
         dc.filial, 
@@ -2295,7 +2295,7 @@ BEGIN
         dc.categoria_produto
     FROM distinct_codes dc
     LEFT JOIN public.dim_supervisores ds ON dc.codsupervisor = ds.codigo
-    LEFT JOIN public.dim_vendedores dv ON dc.codusur = dv.codigo
+    LEFT JOIN public.dim_codusures dv ON dc.codusur = dv.codigo
     LEFT JOIN public.dim_fornecedores df ON dc.codfor = df.codigo;
 END;
 $$;
@@ -2360,7 +2360,7 @@ CREATE OR REPLACE FUNCTION get_dashboard_filters(
     p_filial text[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
-    p_vendedor text[] default null,
+    p_codusur text[] default null,
     p_fornecedor text[] default null,
     p_ano text default null,
     p_mes text default null,
@@ -2377,7 +2377,7 @@ DECLARE
     v_where_filial text := ' WHERE 1=1 ';
     v_where_cidade text := ' WHERE 1=1 ';
     v_where_supervisor text := ' WHERE 1=1 ';
-    v_where_vendedor text := ' WHERE 1=1 ';
+    v_where_codusur text := ' WHERE 1=1 ';
     v_where_fornecedor text := ' WHERE 1=1 ';
     v_where_tipovenda text := ' WHERE 1=1 ';
     v_where_rede text := ' WHERE 1=1 ';
@@ -2393,7 +2393,7 @@ BEGIN
         v_where_filial := v_where_filial || format(' AND ano = %L ', p_ano::int);
         v_where_cidade := v_where_cidade || format(' AND ano = %L ', p_ano::int);
         v_where_supervisor := v_where_supervisor || format(' AND ano = %L ', p_ano::int);
-        v_where_vendedor := v_where_vendedor || format(' AND ano = %L ', p_ano::int);
+        v_where_codusur := v_where_codusur || format(' AND ano = %L ', p_ano::int);
         v_where_fornecedor := v_where_fornecedor || format(' AND ano = %L ', p_ano::int);
         v_where_tipovenda := v_where_tipovenda || format(' AND ano = %L ', p_ano::int);
         v_where_rede := v_where_rede || format(' AND ano = %L ', p_ano::int);
@@ -2403,7 +2403,7 @@ BEGIN
         v_where_filial := v_where_filial || format(' AND mes = %L ', p_mes::int + 1);
         v_where_cidade := v_where_cidade || format(' AND mes = %L ', p_mes::int + 1);
         v_where_supervisor := v_where_supervisor || format(' AND mes = %L ', p_mes::int + 1);
-        v_where_vendedor := v_where_vendedor || format(' AND mes = %L ', p_mes::int + 1);
+        v_where_codusur := v_where_codusur || format(' AND mes = %L ', p_mes::int + 1);
         v_where_fornecedor := v_where_fornecedor || format(' AND mes = %L ', p_mes::int + 1);
         v_where_tipovenda := v_where_tipovenda || format(' AND mes = %L ', p_mes::int + 1);
         v_where_rede := v_where_rede || format(' AND mes = %L ', p_mes::int + 1);
@@ -2414,7 +2414,7 @@ BEGIN
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where_cidade := v_where_cidade || format(' AND filial = ANY(%L::text[]) ', p_filial);
         v_where_supervisor := v_where_supervisor || format(' AND filial = ANY(%L::text[]) ', p_filial);
-        v_where_vendedor := v_where_vendedor || format(' AND filial = ANY(%L::text[]) ', p_filial);
+        v_where_codusur := v_where_codusur || format(' AND filial = ANY(%L::text[]) ', p_filial);
         v_where_fornecedor := v_where_fornecedor || format(' AND filial = ANY(%L::text[]) ', p_filial);
         v_where_tipovenda := v_where_tipovenda || format(' AND filial = ANY(%L::text[]) ', p_filial);
         v_where_rede := v_where_rede || format(' AND filial = ANY(%L::text[]) ', p_filial);
@@ -2425,7 +2425,7 @@ BEGIN
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where_filial := v_where_filial || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
         v_where_supervisor := v_where_supervisor || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
-        v_where_vendedor := v_where_vendedor || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
+        v_where_codusur := v_where_codusur || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
         v_where_fornecedor := v_where_fornecedor || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
         v_where_tipovenda := v_where_tipovenda || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
         v_where_rede := v_where_rede || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
@@ -2436,7 +2436,7 @@ BEGIN
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where_filial := v_where_filial || format(' AND superv = ANY(%L::text[]) ', p_supervisor);
         v_where_cidade := v_where_cidade || format(' AND superv = ANY(%L::text[]) ', p_supervisor);
-        v_where_vendedor := v_where_vendedor || format(' AND superv = ANY(%L::text[]) ', p_supervisor);
+        v_where_codusur := v_where_codusur || format(' AND superv = ANY(%L::text[]) ', p_supervisor);
         v_where_fornecedor := v_where_fornecedor || format(' AND superv = ANY(%L::text[]) ', p_supervisor);
         v_where_tipovenda := v_where_tipovenda || format(' AND superv = ANY(%L::text[]) ', p_supervisor);
         v_where_rede := v_where_rede || format(' AND superv = ANY(%L::text[]) ', p_supervisor);
@@ -2444,14 +2444,14 @@ BEGIN
     END IF;
 
     -- Vendedor
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_filial := v_where_filial || format(' AND nome = ANY(%L::text[]) ', p_vendedor);
-        v_where_cidade := v_where_cidade || format(' AND nome = ANY(%L::text[]) ', p_vendedor);
-        v_where_supervisor := v_where_supervisor || format(' AND nome = ANY(%L::text[]) ', p_vendedor);
-        v_where_fornecedor := v_where_fornecedor || format(' AND nome = ANY(%L::text[]) ', p_vendedor);
-        v_where_tipovenda := v_where_tipovenda || format(' AND nome = ANY(%L::text[]) ', p_vendedor);
-        v_where_rede := v_where_rede || format(' AND nome = ANY(%L::text[]) ', p_vendedor);
-        v_where_cat := v_where_cat || format(' AND nome = ANY(%L::text[]) ', p_vendedor);
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+        v_where_filial := v_where_filial || format(' AND nome = ANY(%L::text[]) ', p_codusur);
+        v_where_cidade := v_where_cidade || format(' AND nome = ANY(%L::text[]) ', p_codusur);
+        v_where_supervisor := v_where_supervisor || format(' AND nome = ANY(%L::text[]) ', p_codusur);
+        v_where_fornecedor := v_where_fornecedor || format(' AND nome = ANY(%L::text[]) ', p_codusur);
+        v_where_tipovenda := v_where_tipovenda || format(' AND nome = ANY(%L::text[]) ', p_codusur);
+        v_where_rede := v_where_rede || format(' AND nome = ANY(%L::text[]) ', p_codusur);
+        v_where_cat := v_where_cat || format(' AND nome = ANY(%L::text[]) ', p_codusur);
     END IF;
 
     -- Fornecedor
@@ -2483,7 +2483,7 @@ BEGIN
                 v_where_filial := v_where_filial || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
                 v_where_cidade := v_where_cidade || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
                 v_where_supervisor := v_where_supervisor || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
-                v_where_vendedor := v_where_vendedor || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
+                v_where_codusur := v_where_codusur || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
                 v_where_tipovenda := v_where_tipovenda || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
                 v_where_rede := v_where_rede || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
                 v_where_cat := v_where_cat || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
@@ -2500,7 +2500,7 @@ BEGIN
         v_where_filial := v_where_filial || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
         v_where_cidade := v_where_cidade || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
         v_where_supervisor := v_where_supervisor || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
-        v_where_vendedor := v_where_vendedor || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
+        v_where_codusur := v_where_codusur || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
         v_where_fornecedor := v_where_fornecedor || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
         v_where_rede := v_where_rede || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
         v_where_cat := v_where_cat || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
@@ -2511,7 +2511,7 @@ BEGIN
         v_where_filial := v_where_filial || format(' AND rede = ANY(%L::text[]) ', p_rede);
         v_where_cidade := v_where_cidade || format(' AND rede = ANY(%L::text[]) ', p_rede);
         v_where_supervisor := v_where_supervisor || format(' AND rede = ANY(%L::text[]) ', p_rede);
-        v_where_vendedor := v_where_vendedor || format(' AND rede = ANY(%L::text[]) ', p_rede);
+        v_where_codusur := v_where_codusur || format(' AND rede = ANY(%L::text[]) ', p_rede);
         v_where_fornecedor := v_where_fornecedor || format(' AND rede = ANY(%L::text[]) ', p_rede);
         v_where_tipovenda := v_where_tipovenda || format(' AND rede = ANY(%L::text[]) ', p_rede);
         v_where_cat := v_where_cat || format(' AND rede = ANY(%L::text[]) ', p_rede);
@@ -2522,7 +2522,7 @@ BEGIN
         v_where_filial := v_where_filial || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_where_cidade := v_where_cidade || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_where_supervisor := v_where_supervisor || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_vendedor := v_where_vendedor || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_codusur := v_where_codusur || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_where_fornecedor := v_where_fornecedor || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_where_tipovenda := v_where_tipovenda || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_where_rede := v_where_rede || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
@@ -2537,7 +2537,7 @@ BEGIN
         ''filiais'', (SELECT array_agg(filial) FROM (SELECT DISTINCT filial FROM public.cache_filters ' || v_where_filial || ' ORDER BY filial) sub),
         ''cidades'', (SELECT array_agg(cidade) FROM (SELECT DISTINCT cidade FROM public.cache_filters ' || v_where_cidade || ' ORDER BY cidade) sub),
         ''supervisors'', (SELECT array_agg(superv) FROM (SELECT DISTINCT superv FROM public.cache_filters ' || v_where_supervisor || ' ORDER BY superv) sub),
-        ''vendedores'', (SELECT array_agg(nome) FROM (SELECT DISTINCT nome FROM public.cache_filters ' || v_where_vendedor || ' ORDER BY nome) sub),
+        ''codusures'', (SELECT array_agg(nome) FROM (SELECT DISTINCT nome FROM public.cache_filters ' || v_where_codusur || ' ORDER BY nome) sub),
         ''fornecedores'', (
             SELECT json_agg(jsonb_build_object(''cod'', codfor, ''name'', fornecedor)) 
             FROM (
@@ -2563,7 +2563,7 @@ BEGIN
                     ) as researcher_name
                     FROM public.data_nota_perfeita np
                     LEFT JOIN (SELECT DISTINCT tipo, cod_system, cod_involves FROM public.relacao_rota_involves) rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
-                    LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
+                    LEFT JOIN public.dim_codusures dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
                 ) subq_inner
                 WHERE researcher_name IS NOT NULL
             ) subq
@@ -2642,7 +2642,7 @@ BEGIN
 
     -- Recreate targeted optimized indexes (v2)
     CREATE INDEX IF NOT EXISTS idx_summary_composite_main ON public.data_summary (ano, mes, filial, cidade);
-    CREATE INDEX IF NOT EXISTS idx_summary_codes ON public.data_summary (codsupervisor, codusur, filial);
+    CREATE INDEX IF NOT EXISTS idx_summary_codes ON public.data_summary (codsupervisor, codusur as codusur, filial);
     CREATE INDEX IF NOT EXISTS idx_summary_ano_filial ON public.data_summary (ano, filial);
     CREATE INDEX IF NOT EXISTS idx_summary_ano_cidade ON public.data_summary (ano, cidade);
     CREATE INDEX IF NOT EXISTS idx_summary_ano_supcode ON public.data_summary (ano, codsupervisor);
@@ -2737,7 +2737,7 @@ CREATE OR REPLACE FUNCTION get_main_dashboard_data(
     p_filial text[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
-    p_vendedor text[] default null,
+    p_codusur text[] default null,
     p_fornecedor text[] default null,
     p_ano text default null,
     p_mes text default null,
@@ -2795,7 +2795,7 @@ DECLARE
     -- New KPI Logic Vars
     v_filial_cities text[];
     v_supervisor_rcas text[];
-    v_vendedor_rcas text[];
+    v_codusur_rcas text[];
 BEGIN
     IF NOT public.is_approved() THEN RAISE EXCEPTION 'Acesso negado'; END IF;
 
@@ -2858,8 +2858,8 @@ BEGIN
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
     END IF;
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-         v_where_base := v_where_base || format(' AND codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+         v_where_base := v_where_base || format(' AND codusur IN (SELECT codigo FROM public.dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
@@ -2937,13 +2937,13 @@ BEGIN
     END IF;
 
     -- VENDEDOR LOGIC FOR KPI
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        SELECT array_agg(DISTINCT codigo) INTO v_vendedor_rcas
-        FROM public.dim_vendedores
-        WHERE nome = ANY(p_vendedor);
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+        SELECT array_agg(DISTINCT codigo) INTO v_codusur_rcas
+        FROM public.dim_codusures
+        WHERE nome = ANY(p_codusur);
 
-        IF v_vendedor_rcas IS NOT NULL THEN
-            v_where_kpi := v_where_kpi || format(' AND rca1 = ANY(%L::text[]) ', v_vendedor_rcas);
+        IF v_codusur_rcas IS NOT NULL THEN
+            v_where_kpi := v_where_kpi || format(' AND rca1 = ANY(%L::text[]) ', v_codusur_rcas);
         ELSE
             v_where_kpi := v_where_kpi || ' AND 1=0 ';
         END IF;
@@ -3168,7 +3168,7 @@ CREATE OR REPLACE FUNCTION get_boxes_dashboard_data(
     p_filial text[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
-    p_vendedor text[] default null,
+    p_codusur text[] default null,
     p_fornecedor text[] default null,
     p_ano text default null,
     p_mes text default null,
@@ -3304,11 +3304,11 @@ BEGIN
          v_where_raw_base := v_where_raw_base || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
          v_where_summary_base := v_where_summary_base || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
     END IF;
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-         v_where_raw := v_where_raw || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-         v_where_summary := v_where_summary || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-         v_where_raw_base := v_where_raw_base || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-         v_where_summary_base := v_where_summary_base || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+         v_where_raw := v_where_raw || format(' AND codusur IN (SELECT codigo FROM dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
+         v_where_summary := v_where_summary || format(' AND codusur IN (SELECT codigo FROM dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
+         v_where_raw_base := v_where_raw_base || format(' AND codusur IN (SELECT codigo FROM dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
+         v_where_summary_base := v_where_summary_base || format(' AND codusur IN (SELECT codigo FROM dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where_raw := v_where_raw || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
@@ -3750,7 +3750,7 @@ CREATE OR REPLACE FUNCTION get_branch_comparison_data(
     p_filial text[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
-    p_vendedor text[] default null,
+    p_codusur text[] default null,
     p_fornecedor text[] default null,
     p_ano text default null,
     p_mes text default null,
@@ -3828,8 +3828,8 @@ BEGIN
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where := v_where || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
     END IF;
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+        v_where := v_where || format(' AND codusur IN (SELECT codigo FROM dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN v_where := v_where || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor); END IF;
@@ -3910,7 +3910,7 @@ CREATE OR REPLACE FUNCTION get_city_view_data(
     p_filial text[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
-    p_vendedor text[] default null,
+    p_codusur text[] default null,
     p_fornecedor text[] default null,
     p_ano text default null,
     p_mes text default null,
@@ -3980,9 +3980,9 @@ BEGIN
         v_where := v_where || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
         v_where_trend := v_where_trend || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
     END IF;
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-        v_where_trend := v_where_trend || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+        v_where := v_where || format(' AND codusur IN (SELECT codigo FROM dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
+        v_where_trend := v_where_trend || format(' AND codusur IN (SELECT codigo FROM dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
@@ -4228,7 +4228,7 @@ CREATE OR REPLACE FUNCTION get_comparison_view_data(
     p_filial text[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
-    p_vendedor text[] default null,
+    p_codusur text[] default null,
     p_fornecedor text[] default null,
     p_ano text default null,
     p_mes text default null,
@@ -4337,8 +4337,8 @@ BEGIN
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where := v_where || format(' AND codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
     END IF;
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+        v_where := v_where || format(' AND codusur IN (SELECT codigo FROM dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
     END IF;
 
     -- FORNECEDOR LOGIC (Modified to check joined dim_produtos for description)
@@ -4418,23 +4418,23 @@ BEGIN
 
     EXECUTE format('
         WITH target_sales AS (
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur as codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
             FROM public.data_detailed s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
             UNION ALL
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur as codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
             FROM public.data_history s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
         ),
         history_sales AS (
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur as codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
             FROM public.data_detailed s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
             UNION ALL
-            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
+            SELECT s.dtped, s.vlvenda, s.totpesoliq, s.codcli, s.codusur as codusur, s.codsupervisor, s.produto, dp.descricao, s.codfor, s.tipovenda
             FROM public.data_history s
             LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
             %s %s AND s.dtped >= %L AND s.dtped <= %L
@@ -4442,11 +4442,11 @@ BEGIN
         -- Current Aggregates
 
         curr_daily_clients AS (
-            SELECT dtped::date as d, codcli, MAX(codusur) as codusur, SUM(vlvenda) as val
+            SELECT dtped::date as d, codcli, MAX(codusur) as codusur as codusur, SUM(vlvenda) as val
             FROM target_sales GROUP BY 1, 2
         ),
         hist_daily_clients AS (
-            SELECT dtped::date as d, codcli, MAX(codusur) as codusur, SUM(vlvenda) as val
+            SELECT dtped::date as d, codcli, MAX(codusur) as codusur as codusur, SUM(vlvenda) as val
             FROM history_sales GROUP BY 1, 2
         ),
         curr_daily AS (
@@ -4485,12 +4485,12 @@ BEGIN
                 COALESCE((SELECT COUNT(1) FROM curr_mix_base WHERE has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1), 0) as pos_salty,
                 COALESCE((SELECT COUNT(1) FROM curr_mix_base WHERE has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1), 0) as pos_foods,
                 (SELECT COUNT(*) FROM curr_daily_clients cdc 
-                    LEFT JOIN public.dim_vendedores dv ON cdc.codusur = dv.codigo
+                    LEFT JOIN public.dim_codusures dv ON cdc.codusur = dv.codigo
                     WHERE cdc.val >= 1 
                     AND (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%%INATIVO%%'' AND dv.nome NOT ILIKE ''%%BALCAO%%'' AND dv.nome NOT ILIKE ''%%BALCÃO%%'' AND dv.nome NOT ILIKE ''%%AMERICANAS%%''))
                 ) as total_pos_diaria,
                 COALESCE(NULLIF((SELECT COUNT(DISTINCT s.codusur) FROM target_sales s 
-                    LEFT JOIN public.dim_vendedores dv ON s.codusur = dv.codigo
+                    LEFT JOIN public.dim_codusures dv ON s.codusur = dv.codigo
                     WHERE (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%%INATIVO%%'' AND dv.nome NOT ILIKE ''%%BALCAO%%'' AND dv.nome NOT ILIKE ''%%BALCÃO%%'' AND dv.nome NOT ILIKE ''%%AMERICANAS%%''))
                 ), 0), 1) as valid_vendors,
                 COALESCE(public.calc_working_days(
@@ -4540,12 +4540,12 @@ BEGIN
                 COUNT(CASE WHEN has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1 THEN 1 END) as monthly_pos_salty,
                 COUNT(CASE WHEN has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1 THEN 1 END) as monthly_pos_foods,
                 (SELECT COUNT(*) FROM hist_daily_clients hdc 
-                    LEFT JOIN public.dim_vendedores dv ON hdc.codusur = dv.codigo
+                    LEFT JOIN public.dim_codusures dv ON hdc.codusur = dv.codigo
                     WHERE hdc.val >= 1 AND date_trunc(''month'', hdc.d) = hist_monthly_mix.m_date
                     AND (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%%INATIVO%%'' AND dv.nome NOT ILIKE ''%%BALCAO%%'' AND dv.nome NOT ILIKE ''%%BALCÃO%%'' AND dv.nome NOT ILIKE ''%%AMERICANAS%%''))
                 ) as monthly_total_pos_diaria,
                 COALESCE(NULLIF((SELECT COUNT(DISTINCT hs.codusur) FROM history_sales hs 
-                    LEFT JOIN public.dim_vendedores dv ON hs.codusur = dv.codigo
+                    LEFT JOIN public.dim_codusures dv ON hs.codusur = dv.codigo
                     WHERE date_trunc(''month'', hs.dtped) = hist_monthly_mix.m_date
                     AND (dv.nome IS NULL OR (dv.nome NOT ILIKE ''%%INATIVO%%'' AND dv.nome NOT ILIKE ''%%BALCAO%%'' AND dv.nome NOT ILIKE ''%%BALCÃO%%'' AND dv.nome NOT ILIKE ''%%AMERICANAS%%''))
                 ), 0), 1) as monthly_valid_vendors,
@@ -4786,12 +4786,12 @@ BEGIN
 
     EXECUTE format('
         INSERT INTO public.%I (
-            pedido, codusur, codsupervisor, produto, codfor, codcli, cidade, 
+            pedido, codusur as codusur, codsupervisor, produto, codfor, codcli, cidade, 
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq, 
             dtped, dtsaida, tipovenda, filial
         )
         SELECT 
-            pedido, codusur, codsupervisor, produto, codfor, codcli, cidade, 
+            pedido, codusur as codusur, codsupervisor, produto, codfor, codcli, cidade, 
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq, 
             dtped, dtsaida, tipovenda, filial
         FROM jsonb_populate_recordset(null::public.%I, $1)
@@ -4871,12 +4871,12 @@ BEGIN
     -- Insert Batch
     EXECUTE format('
         INSERT INTO public.%I (
-            pedido, codusur, codsupervisor, produto, codfor, codcli, cidade,
+            pedido, codusur as codusur, codsupervisor, produto, codfor, codcli, cidade,
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq,
             dtped, dtsaida, tipovenda, filial
         )
         SELECT
-            pedido, codusur, codsupervisor, produto, codfor, codcli, cidade,
+            pedido, codusur as codusur, codsupervisor, produto, codfor, codcli, cidade,
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq,
             dtped, dtsaida, tipovenda, filial
         FROM jsonb_populate_recordset(null::public.%I, $1)
@@ -4926,7 +4926,7 @@ CREATE OR REPLACE FUNCTION get_loja_perfeita_data(
     p_filial text[] DEFAULT NULL,
     p_cidade text[] DEFAULT NULL,
     p_supervisor text[] DEFAULT NULL,
-    p_vendedor text[] DEFAULT NULL,
+    p_codusur text[] DEFAULT NULL,
     p_rede text[] DEFAULT NULL,
     p_codcli text DEFAULT NULL,
     p_ano integer DEFAULT NULL,
@@ -4975,9 +4975,9 @@ BEGIN
         END IF;
     END IF;
 
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND vendedor = ANY(%L::text[])', p_vendedor);
-        v_where_chart := v_where_chart || format(' AND vendedor = ANY(%L::text[])', p_vendedor);
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+        v_where_base := v_where_base || format(' AND codusur = ANY(%L::text[])', p_codusur);
+        v_where_chart := v_where_chart || format(' AND codusur = ANY(%L::text[])', p_codusur);
     END IF;
 
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
@@ -5012,10 +5012,10 @@ BEGIN
             SELECT codcli FROM t WHERE codcli IS NOT NULL
         ),
         client_mapping AS (
-            SELECT sub.codcli, sub.codsupervisor, sub.codusur, sub.filial
+            SELECT sub.codcli, sub.codsupervisor, sub.codusur as codusur, sub.filial
             FROM client_ids c
             LEFT JOIN LATERAL (
-                SELECT d.codcli, d.codsupervisor, d.codusur, d.filial
+                SELECT d.codcli, d.codsupervisor, d.codusur as codusur, d.filial
                 FROM public.data_summary_frequency d
                 WHERE d.codcli = c.codcli
                 ORDER BY d.codcli, d.ano DESC, d.mes DESC, d.created_at DESC
@@ -5029,7 +5029,7 @@ BEGIN
                 final_researcher.researcher_name as researcher,
                 dc.cidade as city,
                 dc.ramo,
-                dv.nome as vendedor,
+                dv.nome as codusur as codusur,
                 ds.nome as supervisor,
                 cb.filial,
                 np.nota_media as score,
@@ -5039,7 +5039,7 @@ BEGIN
                 np.ano
             FROM public.data_nota_perfeita np
             LEFT JOIN (SELECT DISTINCT tipo, cod_system, cod_involves FROM public.relacao_rota_involves) rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
-            LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
+            LEFT JOIN public.dim_codusures dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
             CROSS JOIN LATERAL (
                 SELECT COALESCE(
                     CASE
@@ -5052,7 +5052,7 @@ BEGIN
             LEFT JOIN public.data_clients dc ON np.codigo_cliente = dc.codigo_cliente
             LEFT JOIN public.config_city_branches cb ON dc.cidade = cb.cidade
             LEFT JOIN client_mapping cm ON np.codigo_cliente = cm.codcli
-            LEFT JOIN public.dim_vendedores dv ON cm.codusur = dv.codigo
+            LEFT JOIN public.dim_codusures dv ON cm.codusur = dv.codigo
             LEFT JOIN public.dim_supervisores ds ON cm.codsupervisor = ds.codigo
         ),
         filtered_data AS (
@@ -5155,7 +5155,7 @@ CREATE OR REPLACE FUNCTION public.search_loja_perfeita_clients(
     p_filial text[] DEFAULT NULL,
     p_cidade text[] DEFAULT NULL,
     p_supervisor text[] DEFAULT NULL,
-    p_vendedor text[] DEFAULT NULL,
+    p_codusur text[] DEFAULT NULL,
     p_rede text[] DEFAULT NULL,
     p_pesquisador text[] DEFAULT NULL
 )
@@ -5198,7 +5198,7 @@ BEGIN
 
     -- Only add joins if specific filters are provided
     IF (p_filial IS NOT NULL AND array_length(p_filial, 1) > 0) OR
-       (p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0) OR
+       (p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0) OR
        (p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0) OR
        (p_pesquisador IS NOT NULL AND array_length(p_pesquisador, 1) > 0) THEN
 
@@ -5208,8 +5208,8 @@ BEGIN
            v_where := v_where || format(' AND cm.filial = ANY(%L::text[])', p_filial);
        END IF;
 
-       IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-           v_where := v_where || format(' AND dv.nome = ANY(%L::text[])', p_vendedor);
+       IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+           v_where := v_where || format(' AND dv.nome = ANY(%L::text[])', p_codusur);
        END IF;
 
        IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
@@ -5233,10 +5233,10 @@ BEGIN
                 SELECT codcli FROM t WHERE codcli IS NOT NULL
             ),
             client_mapping AS (
-                SELECT sub.codcli, sub.codsupervisor, sub.codusur, sub.filial
+                SELECT sub.codcli, sub.codsupervisor, sub.codusur as codusur, sub.filial
                 FROM client_ids c
                 LEFT JOIN LATERAL (
-                    SELECT d.codcli, d.codsupervisor, d.codusur, d.filial
+                    SELECT d.codcli, d.codsupervisor, d.codusur as codusur, d.filial
                     FROM public.data_summary_frequency d
                     WHERE d.codcli = c.codcli
                     ORDER BY d.codcli, d.ano DESC, d.mes DESC, d.created_at DESC
@@ -5251,11 +5251,11 @@ BEGIN
                 dc.cnpj
             FROM public.data_clients dc
             INNER JOIN client_mapping cm ON dc.codigo_cliente = cm.codcli
-            LEFT JOIN public.dim_vendedores dv ON cm.codusur = dv.codigo
+            LEFT JOIN public.dim_codusures dv ON cm.codusur = dv.codigo
             LEFT JOIN public.dim_supervisores ds ON cm.codsupervisor = ds.codigo
             LEFT JOIN public.data_nota_perfeita np ON dc.codigo_cliente = np.codigo_cliente
             LEFT JOIN (SELECT DISTINCT tipo, cod_system, cod_involves FROM public.relacao_rota_involves) rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
-            LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
+            LEFT JOIN public.dim_codusures dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
             CROSS JOIN LATERAL (
                 SELECT COALESCE(
                     CASE
@@ -5279,7 +5279,7 @@ BEGIN
             FROM public.data_clients dc
             LEFT JOIN public.data_nota_perfeita np ON dc.codigo_cliente = np.codigo_cliente
             LEFT JOIN (SELECT DISTINCT tipo, cod_system, cod_involves FROM public.relacao_rota_involves) rri ON np.pesquisador = (CASE WHEN rri.tipo = ''promotor'' THEN rri.cod_system ELSE rri.cod_involves END)
-            LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
+            LEFT JOIN public.dim_codusures dv_rca ON rri.tipo = ''rca'' AND rri.cod_system = dv_rca.codigo
             CROSS JOIN LATERAL (
                 SELECT COALESCE(
                     CASE
@@ -5307,16 +5307,16 @@ ALTER FUNCTION public.sync_chunk_v2(p_table_name text, p_chunk_key text, p_rows 
 ALTER FUNCTION public.update_products_stock(p_stock_data jsonb) SET search_path = public;
 ALTER FUNCTION public.classify_product_mix() SET search_path = public;
 
-ALTER FUNCTION public.get_loja_perfeita_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[], p_codcli text, p_ano integer, p_mes integer, p_pesquisador text[]) SET search_path = public;
+ALTER FUNCTION public.get_loja_perfeita_data(p_filial text[], p_cidade text[], p_supervisor text[], p_codusur text[], p_rede text[], p_codcli text, p_ano integer, p_mes integer, p_pesquisador text[]) SET search_path = public;
 ALTER FUNCTION public.search_clients(p_search text) SET search_path = public;
-ALTER FUNCTION public.search_loja_perfeita_clients(p_search text, p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[], p_pesquisador text[]) SET search_path = public;
+ALTER FUNCTION public.search_loja_perfeita_clients(p_search text, p_filial text[], p_cidade text[], p_supervisor text[], p_codusur text[], p_rede text[], p_pesquisador text[]) SET search_path = public;
 CREATE OR REPLACE FUNCTION get_mix_salty_foods_data(
     p_ano text default null,
     p_mes text default null,
     p_cidade text[] default null,
     p_filial text[] default null,
     p_supervisor text[] default null,
-    p_vendedor text[] default null,
+    p_codusur text[] default null,
     p_fornecedor text[] default null,
     p_rede text[] default null,
     p_produto text[] default null,
@@ -5365,8 +5365,8 @@ BEGIN
         v_where_chart := v_where_chart || ' AND s.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = ANY(ARRAY[''' || array_to_string(p_supervisor, ''',''') || '''])) ';
     END IF;
 
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_chart := v_where_chart || ' AND s.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(ARRAY[''' || array_to_string(p_vendedor, ''',''') || '''])) ';
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+        v_where_chart := v_where_chart || ' AND s.codusur IN (SELECT codigo FROM public.dim_codusures WHERE nome = ANY(ARRAY[''' || array_to_string(p_codusur as codusur, ''',''') || '''])) ';
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
@@ -5482,7 +5482,7 @@ CREATE OR REPLACE FUNCTION get_innovations_data(
     p_filial text[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
-    p_vendedor text[] default null,
+    p_codusur text[] default null,
     p_rede text[] default null,
     p_tipovenda text[] default null,
     p_categoria_inovacao text default null,
@@ -5511,7 +5511,7 @@ DECLARE
     v_where_client_tipo text := '';
 
     v_supervisor_rcas text[];
-    v_vendedor_rcas text[];
+    v_codusur_rcas text[];
 
     v_has_com_rede boolean;
     v_has_sem_rede boolean;
@@ -5595,15 +5595,15 @@ BEGIN
         END IF;
     END IF;
 
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND d.codusur IN (SELECT codigo FROM public.dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+        v_where_base := v_where_base || format(' AND d.codusur IN (SELECT codigo FROM public.dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
 
-        SELECT array_agg(DISTINCT codigo) INTO v_vendedor_rcas
-        FROM public.dim_vendedores
-        WHERE nome = ANY(p_vendedor);
+        SELECT array_agg(DISTINCT codigo) INTO v_codusur_rcas
+        FROM public.dim_codusures
+        WHERE nome = ANY(p_codusur);
 
-        IF v_vendedor_rcas IS NOT NULL THEN
-            v_where_client_base := v_where_client_base || format(' AND rca1 = ANY(%L::text[]) ', v_vendedor_rcas);
+        IF v_codusur_rcas IS NOT NULL THEN
+            v_where_client_base := v_where_client_base || format(' AND rca1 = ANY(%L::text[]) ', v_codusur_rcas);
         ELSE
             v_where_client_base := v_where_client_base || ' AND 1=0 ';
         END IF;
@@ -5688,11 +5688,11 @@ BEGIN
         SELECT COUNT(*) as val FROM public.data_clients ' || v_where_client_base || '
     ),
     raw_sales AS (
-        SELECT codcli, dtped, produto, vlvenda, vlbonific, codsupervisor, codusur, tipovenda
+        SELECT codcli, dtped, produto, vlvenda, vlbonific, codsupervisor, codusur as codusur, tipovenda
         FROM data_detailed
         WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
         UNION ALL
-        SELECT codcli, dtped, produto, vlvenda, vlbonific, codsupervisor, codusur, tipovenda
+        SELECT codcli, dtped, produto, vlvenda, vlbonific, codsupervisor, codusur as codusur, tipovenda
         FROM data_history
         WHERE ((dtped >= ''' || v_12m_start || ''' AND dtped < ''' || v_curr_end || ''') OR (dtped >= ''' || v_prev_start || ''' AND dtped < ''' || v_prev_end || '''))
     ),
@@ -5844,7 +5844,7 @@ BEGIN
     RETURN v_result;
 END;
 $$;
-ALTER FUNCTION public.get_innovations_data(p_filial text[], p_cidade text[], p_supervisor text[], p_vendedor text[], p_rede text[], p_tipovenda text[], p_categoria_inovacao text, p_ano text, p_mes text) SET search_path = public;
+ALTER FUNCTION public.get_innovations_data(p_filial text[], p_cidade text[], p_supervisor text[], p_codusur text[], p_rede text[], p_tipovenda text[], p_categoria_inovacao text, p_ano text, p_mes text) SET search_path = public;
 
 -- =========================================================================================
 -- VIEW: n8n_agent_view (SUPER VIEW POR PEDIDO E ITENS)
@@ -5867,7 +5867,7 @@ WITH itens_brutos AS (
         s.dtped::date as data_pedido,
         s.tipovenda,
         s.filial,
-        s.codusur as vendedor_cod,
+        s.codusur as codusur_cod,
         s.codsupervisor as supervisor_cod,
         dp.descricao as produto,
         s.qtvenda as quantidade,
@@ -5886,7 +5886,7 @@ WITH itens_brutos AS (
         s.dtped::date as data_pedido,
         s.tipovenda,
         s.filial,
-        s.codusur as vendedor_cod,
+        s.codusur as codusur_cod,
         s.codsupervisor as supervisor_cod,
         dp.descricao as produto,
         s.qtvenda as quantidade,
@@ -5905,7 +5905,7 @@ pedidos_agrupados AS (
         MAX(data_pedido) as data_do_pedido,
         MAX(tipovenda) as tipo_venda,
         MAX(filial) as filial_pedido,
-        MAX(vendedor_cod) as vendedor_cod,
+        MAX(codusur_cod) as codusur_cod,
         MAX(supervisor_cod) as supervisor_cod,
         -- Soma o total do pedido
         SUM(valor_total_item) as valor_total_pedido,
@@ -5962,7 +5962,7 @@ SELECT
     CASE WHEN mm.has_toddynho=1 AND mm.has_toddy=1 AND mm.has_quaker=1 AND mm.has_kerococo=1 THEN 'SIM' ELSE 'NAO' END as mes_atingiu_mix_foods,
 
     -- Profissionais responsáveis por este pedido exato
-    v.nome as vendedor_responsavel_pedido,
+    v.nome as codusur_responsavel_pedido,
     s.nome as supervisor_responsavel_pedido,
     pa.filial_pedido as filial,
 
@@ -5973,7 +5973,7 @@ FROM public.data_clients c
 -- JOIN pelas vendas consolidadas por pedido. Um cliente terá várias linhas, uma para cada pedido que fez.
 JOIN pedidos_agrupados pa ON c.codigo_cliente = pa.codcli
 LEFT JOIN mix_mensal mm ON pa.codcli = mm.codcli AND pa.ano = mm.ano AND pa.mes = mm.mes
-LEFT JOIN public.dim_vendedores v ON pa.vendedor_cod = v.codigo
+LEFT JOIN public.dim_codusures v ON pa.codusur_cod = v.codigo
 LEFT JOIN public.dim_supervisores s ON pa.supervisor_cod = s.codigo;
 
 
@@ -5983,7 +5983,7 @@ CREATE OR REPLACE FUNCTION public.get_city_positivity_table(
     p_filial text[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
-    p_vendedor text[] default null,
+    p_codusur text[] default null,
     p_fornecedor text[] default null,
     p_tipovenda text[] default null,
     p_rede text[] default null,
@@ -6048,9 +6048,9 @@ BEGIN
         v_where_base_cidades := v_where_base_cidades || format(' AND ds.codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
         v_has_filters_no_city := true;
     END IF;
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND ds.codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-        v_where_base_cidades := v_where_base_cidades || format(' AND ds.codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+        v_where := v_where || format(' AND ds.codusur IN (SELECT codigo FROM dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
+        v_where_base_cidades := v_where_base_cidades || format(' AND ds.codusur IN (SELECT codigo FROM dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
         v_has_filters_no_city := true;
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
@@ -6209,7 +6209,7 @@ itens_brutos AS (
         s.dtped::date as data_pedido,
         s.tipovenda,
         s.filial,
-        s.codusur as vendedor_cod,
+        s.codusur as codusur_cod,
         s.codsupervisor as supervisor_cod,
         dp.descricao as produto,
         s.qtvenda as quantidade,
@@ -6230,7 +6230,7 @@ itens_brutos AS (
         s.dtped::date as data_pedido,
         s.tipovenda,
         s.filial,
-        s.codusur as vendedor_cod,
+        s.codusur as codusur_cod,
         s.codsupervisor as supervisor_cod,
         dp.descricao as produto,
         s.qtvenda as quantidade,
@@ -6250,7 +6250,7 @@ pedidos_agrupados AS (
         MAX(data_pedido) as data_do_pedido,
         MAX(tipovenda) as tipo_venda,
         MAX(filial) as filial_pedido,
-        MAX(vendedor_cod) as vendedor_cod,
+        MAX(codusur_cod) as codusur_cod,
         MAX(supervisor_cod) as supervisor_cod,
         SUM(valor_total_item) as valor_total_pedido,
         jsonb_agg(
@@ -6298,14 +6298,14 @@ SELECT
     pa.valor_total_pedido,
     CASE WHEN mm.has_cheetos=1 AND mm.has_doritos=1 AND mm.has_fandangos=1 AND mm.has_ruffles=1 AND mm.has_torcida=1 THEN 'SIM' ELSE 'NAO' END as mes_atingiu_mix_salty,
     CASE WHEN mm.has_toddynho=1 AND mm.has_toddy=1 AND mm.has_quaker=1 AND mm.has_kerococo=1 THEN 'SIM' ELSE 'NAO' END as mes_atingiu_mix_foods,
-    v.nome as vendedor_responsavel_pedido,
+    v.nome as codusur_responsavel_pedido,
     s.nome as supervisor_responsavel_pedido,
     pa.filial_pedido as filial,
     pa.lista_itens_comprados
 FROM public.data_clients c
 JOIN pedidos_agrupados pa ON c.codigo_cliente = pa.codcli
 LEFT JOIN mix_mensal mm ON pa.codcli = mm.codcli AND pa.ano = mm.ano AND pa.mes = mm.mes
-LEFT JOIN public.dim_vendedores v ON pa.vendedor_cod = v.codigo
+LEFT JOIN public.dim_codusures v ON pa.codusur_cod = v.codigo
 LEFT JOIN public.dim_supervisores s ON pa.supervisor_cod = s.codigo;
 
 /* Cria os indices normais para a nova tabela */
@@ -6322,7 +6322,7 @@ CREATE OR REPLACE FUNCTION public.get_city_positivity_table(
     p_filial text[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
-    p_vendedor text[] default null,
+    p_codusur text[] default null,
     p_fornecedor text[] default null,
     p_tipovenda text[] default null,
     p_segmentacao text[] default null,
@@ -6388,9 +6388,9 @@ BEGIN
         v_where_base_cidades := v_where_base_cidades || format(' AND ds.codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
         v_has_filters_no_city := true;
     END IF;
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND ds.codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
-        v_where_base_cidades := v_where_base_cidades || format(' AND ds.codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+        v_where := v_where || format(' AND ds.codusur IN (SELECT codigo FROM dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
+        v_where_base_cidades := v_where_base_cidades || format(' AND ds.codusur IN (SELECT codigo FROM dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
         v_has_filters_no_city := true;
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
@@ -6679,12 +6679,12 @@ AS $function$
 BEGIN
     EXECUTE format('
         INSERT INTO public.%I (
-            pedido, codusur, codsupervisor, produto, codfor, codcli, cidade, 
+            pedido, codusur as codusur, codsupervisor, produto, codfor, codcli, cidade, 
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq, 
             dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
         )
         SELECT 
-            pedido, codusur, codsupervisor, produto, codfor, codcli, cidade, 
+            pedido, codusur as codusur, codsupervisor, produto, codfor, codcli, cidade, 
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq, 
             dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
         FROM jsonb_populate_recordset(null::public.%I, $1)
@@ -6719,7 +6719,7 @@ BEGIN
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION public.get_dashboard_filters_optimized(p_filial text[] DEFAULT NULL::text[], p_cidade text[] DEFAULT NULL::text[], p_supervisor text[] DEFAULT NULL::text[], p_vendedor text[] DEFAULT NULL::text[], p_fornecedor text[] DEFAULT NULL::text[], p_ano text DEFAULT NULL::text, p_mes text DEFAULT NULL::text, p_tipovenda text[] DEFAULT NULL::text[], p_rede text[] DEFAULT NULL::text[])
+CREATE OR REPLACE FUNCTION public.get_dashboard_filters_optimized(p_filial text[] DEFAULT NULL::text[], p_cidade text[] DEFAULT NULL::text[], p_supervisor text[] DEFAULT NULL::text[], p_codusur text[] DEFAULT NULL::text[], p_fornecedor text[] DEFAULT NULL::text[], p_ano text DEFAULT NULL::text, p_mes text DEFAULT NULL::text, p_tipovenda text[] DEFAULT NULL::text[], p_rede text[] DEFAULT NULL::text[])
  RETURNS json
  LANGUAGE plpgsql
  SET search_path TO 'public'
@@ -6752,9 +6752,9 @@ BEGIN
         'anos', (
             SELECT COALESCE(json_agg(v), '[]'::json) FROM (
                 WITH RECURSIVE t AS (
-                    SELECT MIN(ano) AS v FROM public.cache_filters WHERE ano IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
+                    SELECT MIN(ano) AS v FROM public.cache_filters WHERE ano IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
                     UNION ALL
-                    SELECT (SELECT MIN(ano) FROM public.cache_filters WHERE ano > t.v AND ano IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
+                    SELECT (SELECT MIN(ano) FROM public.cache_filters WHERE ano > t.v AND ano IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
                     FROM t WHERE t.v IS NOT NULL
                 )
                 SELECT v FROM t WHERE v IS NOT NULL ORDER BY v DESC
@@ -6763,9 +6763,9 @@ BEGIN
         'filiais', (
             SELECT COALESCE(json_agg(v), '[]'::json) FROM (
                 WITH RECURSIVE t AS (
-                    SELECT MIN(filial) AS v FROM public.cache_filters WHERE filial IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
+                    SELECT MIN(filial) AS v FROM public.cache_filters WHERE filial IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
                     UNION ALL
-                    SELECT (SELECT MIN(filial) FROM public.cache_filters WHERE filial > t.v AND filial IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
+                    SELECT (SELECT MIN(filial) FROM public.cache_filters WHERE filial > t.v AND filial IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
                     FROM t WHERE t.v IS NOT NULL
                 )
                 SELECT v FROM t WHERE v IS NOT NULL ORDER BY v
@@ -6774,9 +6774,9 @@ BEGIN
         'cidades', (
             SELECT COALESCE(json_agg(v), '[]'::json) FROM (
                 WITH RECURSIVE t AS (
-                    SELECT MIN(cidade) AS v FROM public.cache_filters WHERE cidade IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
+                    SELECT MIN(cidade) AS v FROM public.cache_filters WHERE cidade IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
                     UNION ALL
-                    SELECT (SELECT MIN(cidade) FROM public.cache_filters WHERE cidade > t.v AND cidade IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
+                    SELECT (SELECT MIN(cidade) FROM public.cache_filters WHERE cidade > t.v AND cidade IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
                     FROM t WHERE t.v IS NOT NULL
                 )
                 SELECT v FROM t WHERE v IS NOT NULL ORDER BY v
@@ -6785,20 +6785,20 @@ BEGIN
         'supervisors', (
             SELECT COALESCE(json_agg(v), '[]'::json) FROM (
                 WITH RECURSIVE t AS (
-                    SELECT MIN(superv) AS v FROM public.cache_filters WHERE superv IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
+                    SELECT MIN(superv) AS v FROM public.cache_filters WHERE superv IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
                     UNION ALL
-                    SELECT (SELECT MIN(superv) FROM public.cache_filters WHERE superv > t.v AND superv IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
+                    SELECT (SELECT MIN(superv) FROM public.cache_filters WHERE superv > t.v AND superv IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
                     FROM t WHERE t.v IS NOT NULL
                 )
                 SELECT v FROM t WHERE v IS NOT NULL ORDER BY v
             ) sub
         ),
-        'vendedores', (
+        'codusures', (
             SELECT COALESCE(json_agg(v), '[]'::json) FROM (
                 WITH RECURSIVE t AS (
-                    SELECT MIN(nome) AS v FROM public.cache_filters WHERE nome IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
+                    SELECT MIN(nome) AS v FROM public.cache_filters WHERE nome IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
                     UNION ALL
-                    SELECT (SELECT MIN(nome) FROM public.cache_filters WHERE nome > t.v AND nome IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
+                    SELECT (SELECT MIN(nome) FROM public.cache_filters WHERE nome > t.v AND nome IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
                     FROM t WHERE t.v IS NOT NULL
                 )
                 SELECT v FROM t WHERE v IS NOT NULL ORDER BY v
@@ -6807,9 +6807,9 @@ BEGIN
         'redes', (
             SELECT COALESCE(json_agg(v), '[]'::json) FROM (
                 WITH RECURSIVE t AS (
-                    SELECT MIN(rede) AS v FROM public.cache_filters WHERE rede IS NOT NULL AND rede NOT IN ('N/A', 'N/D') AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
+                    SELECT MIN(rede) AS v FROM public.cache_filters WHERE rede IS NOT NULL AND rede NOT IN ('N/A', 'N/D') AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
                     UNION ALL
-                    SELECT (SELECT MIN(rede) FROM public.cache_filters WHERE rede > t.v AND rede IS NOT NULL AND rede NOT IN ('N/A', 'N/D') AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
+                    SELECT (SELECT MIN(rede) FROM public.cache_filters WHERE rede > t.v AND rede IS NOT NULL AND rede NOT IN ('N/A', 'N/D') AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
                     FROM t WHERE t.v IS NOT NULL
                 )
                 SELECT v FROM t WHERE v IS NOT NULL ORDER BY v
@@ -6818,9 +6818,9 @@ BEGIN
         'tipos_venda', (
             SELECT COALESCE(json_agg(v), '[]'::json) FROM (
                 WITH RECURSIVE t AS (
-                    SELECT MIN(tipovenda) AS v FROM public.cache_filters WHERE tipovenda IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
+                    SELECT MIN(tipovenda) AS v FROM public.cache_filters WHERE tipovenda IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
                     UNION ALL
-                    SELECT (SELECT MIN(tipovenda) FROM public.cache_filters WHERE tipovenda > t.v AND tipovenda IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
+                    SELECT (SELECT MIN(tipovenda) FROM public.cache_filters WHERE tipovenda > t.v AND tipovenda IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
                     FROM t WHERE t.v IS NOT NULL
                 )
                 SELECT v FROM t WHERE v IS NOT NULL ORDER BY v
@@ -6830,9 +6830,9 @@ BEGIN
             SELECT COALESCE(json_agg(json_build_object('cod', cod, 'name', nome) ORDER BY nome), '[]'::json)
             FROM (
                 WITH RECURSIVE t AS (
-                    SELECT MIN(codfor) AS v FROM public.cache_filters WHERE codfor IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
+                    SELECT MIN(codfor) AS v FROM public.cache_filters WHERE codfor IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede))
                     UNION ALL
-                    SELECT (SELECT MIN(codfor) FROM public.cache_filters WHERE codfor > t.v AND codfor IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_vendedor IS NULL OR nome = ANY(p_vendedor)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
+                    SELECT (SELECT MIN(codfor) FROM public.cache_filters WHERE codfor > t.v AND codfor IS NOT NULL AND (v_filter_year IS NULL OR ano = v_filter_year) AND (v_filter_month IS NULL OR mes = v_filter_month) AND (p_filial IS NULL OR filial = ANY(p_filial)) AND (p_cidade IS NULL OR cidade = ANY(p_cidade)) AND (p_supervisor IS NULL OR superv = ANY(p_supervisor)) AND (p_codusur IS NULL OR nome = ANY(p_codusur)) AND (p_fornecedor IS NULL OR codfor = ANY(p_fornecedor)) AND (p_tipovenda IS NULL OR tipovenda = ANY(p_tipovenda)) AND (p_rede IS NULL OR rede = ANY(p_rede)))
                     FROM t WHERE t.v IS NOT NULL
                 )
                 SELECT 
@@ -6855,7 +6855,7 @@ BEGIN
                 ) as researcher_name
                 FROM public.data_nota_perfeita np
                 LEFT JOIN (SELECT DISTINCT tipo, cod_system, cod_involves FROM public.relacao_rota_involves) rri ON np.pesquisador = (CASE WHEN rri.tipo = 'promotor' THEN rri.cod_system ELSE rri.cod_involves END)
-                LEFT JOIN public.dim_vendedores dv_rca ON rri.tipo = 'rca' AND rri.cod_system = dv_rca.codigo
+                LEFT JOIN public.dim_codusures dv_rca ON rri.tipo = 'rca' AND rri.cod_system = dv_rca.codigo
             ) subq
             WHERE researcher_name IS NOT NULL
         )
@@ -6880,7 +6880,7 @@ BEGIN
         ),
         detalhes_calc AS (
             SELECT
-                s.nome AS vendedor_nome,
+                s.nome AS codusur,
                 s.filial,
                 COALESCE(SUM(CASE WHEN s.codfor IN (''707'', ''708'', ''752'') THEN s.peso ELSE 0 END), 0) AS sellout_salty,
                 COALESCE(SUM(CASE WHEN s.codfor IN (''1119'') THEN s.peso ELSE 0 END), 0) AS sellout_foods
@@ -6908,16 +6908,16 @@ BEGIN
     TRUNCATE TABLE public.data_summary;
     
     INSERT INTO public.data_summary (
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, 
+        ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, 
         vlvenda, peso, bonificacao, devolucao, 
         pre_mix_count, pre_positivacao_val,
         ramo, caixas
     )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        SELECT dtped, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
         FROM public.data_detailed
         UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        SELECT dtped, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
         FROM public.data_history
     ),
     augmented_data AS (
@@ -6930,7 +6930,7 @@ BEGIN
             END as filial,
             COALESCE(s.cidade, c.cidade) as cidade, 
             s.codsupervisor, 
-            s.codusur, 
+            s.codusur as codusur, 
             CASE 
                 WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDYNHO%' OR dp.descricao ILIKE '%TODYNHO%') THEN '1119_TODDYNHO'
                 WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDY %' OR dp.descricao = 'TODDY') THEN '1119_TODDY'
@@ -6949,7 +6949,7 @@ BEGIN
     ),
     product_agg AS (
         SELECT 
-            ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, produto,
+            ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, ramo, produto,
             SUM(vlvenda) as prod_val,
             SUM(totpesoliq) as prod_peso,
             SUM(vlbonific) as prod_bonific,
@@ -6960,7 +6960,7 @@ BEGIN
     ),
     client_agg AS (
         SELECT 
-            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo,
+            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur as codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo,
             SUM(pa.prod_val) as total_val,
             SUM(pa.prod_peso) as total_peso,
             SUM(pa.prod_bonific) as total_bonific,
@@ -6971,7 +6971,7 @@ BEGIN
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
     )
     SELECT 
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli,
         total_val, total_peso, total_bonific, total_devol,
         mix_calc,
         CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
@@ -6993,13 +6993,13 @@ BEGIN
     SET LOCAL statement_timeout = '600s';
     
     INSERT INTO public.data_summary (
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao, 
         pre_mix_count, pre_positivacao_val,
         ramo, caixas
     )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        SELECT dtped, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
         FROM public.data_detailed
     ),
     augmented_data AS (
@@ -7012,7 +7012,7 @@ BEGIN
             END as filial,
             COALESCE(s.cidade, c.cidade) as cidade, 
             s.codsupervisor,
-            s.codusur,
+            s.codusur as codusur,
             CASE 
                 WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDYNHO%' OR dp.descricao ILIKE '%TODYNHO%') THEN '1119_TODDYNHO'
                 WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDY %' OR dp.descricao = 'TODDY') THEN '1119_TODDY'
@@ -7031,7 +7031,7 @@ BEGIN
     ),
     product_agg AS (
         SELECT 
-            ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, produto,
+            ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, ramo, produto,
             SUM(vlvenda) as prod_val,
             SUM(totpesoliq) as prod_peso,
             SUM(vlbonific) as prod_bonific,
@@ -7042,7 +7042,7 @@ BEGIN
     ),
     client_agg AS (
         SELECT 
-            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo,
+            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur as codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo,
             SUM(pa.prod_val) as total_val,
             SUM(pa.prod_peso) as total_peso,
             SUM(pa.prod_bonific) as total_bonific,
@@ -7053,7 +7053,7 @@ BEGIN
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
     )
     SELECT 
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli,
         total_val, total_peso, total_bonific, total_devol,
         mix_calc,
         CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
@@ -7077,13 +7077,13 @@ BEGIN
     TRUNCATE TABLE public.data_summary;
     
     INSERT INTO public.data_summary (
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao, 
         pre_mix_count, pre_positivacao_val,
         ramo, caixas
     )
     WITH raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
+        SELECT dtped, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda_embalagem_master
         FROM public.data_history
     ),
     augmented_data AS (
@@ -7096,7 +7096,7 @@ BEGIN
             END as filial,
             COALESCE(s.cidade, c.cidade) as cidade, 
             s.codsupervisor,
-            s.codusur,
+            s.codusur as codusur,
             CASE 
                 WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDYNHO%' OR dp.descricao ILIKE '%TODYNHO%') THEN '1119_TODDYNHO'
                 WHEN s.codfor = '1119' AND (dp.descricao ILIKE '%TODDY %' OR dp.descricao = 'TODDY') THEN '1119_TODDY'
@@ -7115,7 +7115,7 @@ BEGIN
     ),
     product_agg AS (
         SELECT 
-            ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, produto,
+            ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, ramo, produto,
             SUM(vlvenda) as prod_val,
             SUM(totpesoliq) as prod_peso,
             SUM(vlbonific) as prod_bonific,
@@ -7126,7 +7126,7 @@ BEGIN
     ),
     client_agg AS (
         SELECT 
-            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo,
+            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur as codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo,
             SUM(pa.prod_val) as total_val,
             SUM(pa.prod_peso) as total_peso,
             SUM(pa.prod_bonific) as total_bonific,
@@ -7137,7 +7137,7 @@ BEGIN
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
     )
     SELECT 
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli,
         total_val, total_peso, total_bonific, total_devol,
         mix_calc,
         CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
@@ -7189,17 +7189,17 @@ BEGIN
     
     -- STEP B: Insert into data_summary using CTE
     INSERT INTO public.data_summary (
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli,
         vlvenda, peso, bonificacao, devolucao, 
         pre_mix_count, pre_positivacao_val,
         ramo, caixas, categoria_produto
     )
     WITH tmp_raw_data AS (
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        SELECT dtped, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
         FROM public.data_detailed
         WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
         UNION ALL
-        SELECT dtped, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
+        SELECT dtped, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, vlvenda, totpesoliq, vlbonific, vldevolucao, produto, qtvenda, pedido
         FROM public.data_history
         WHERE dtped >= make_date(p_year, p_month, 1) AND dtped < (make_date(p_year, p_month, 1) + interval '1 month')
     ),
@@ -7227,7 +7227,7 @@ BEGIN
             END as filial,
             COALESCE(s.cidade, c.cidade) as cidade, 
             s.codsupervisor,
-            s.codusur,
+            s.codusur as codusur,
             CASE 
                 WHEN s.codfor = '1119' THEN COALESCE(dp.codfor_enhanced, '1119_OUTROS')
                 ELSE s.codfor 
@@ -7243,7 +7243,7 @@ BEGIN
     ),
     product_agg AS (
         SELECT 
-            ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli, ramo, categoria_produto, produto,
+            ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli, ramo, categoria_produto, produto,
             SUM(vlvenda) as prod_val,
             SUM(totpesoliq) as prod_peso,
             SUM(vlbonific) as prod_bonific,
@@ -7254,7 +7254,7 @@ BEGIN
     ),
     client_agg AS (
         SELECT 
-            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo, pa.categoria_produto,
+            pa.ano, pa.mes, pa.filial, pa.cidade, pa.codsupervisor, pa.codusur as codusur, pa.codfor, pa.tipovenda, pa.codcli, pa.ramo, pa.categoria_produto,
             SUM(pa.prod_val) as total_val,
             SUM(pa.prod_peso) as total_peso,
             SUM(pa.prod_bonific) as total_bonific,
@@ -7265,7 +7265,7 @@ BEGIN
         GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
     )
     SELECT 
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, tipovenda, codcli,
+        ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, tipovenda, codcli,
         total_val, total_peso, total_bonific, total_devol,
         mix_calc,
         CASE WHEN total_val >= 1 THEN 1 ELSE 0 END as pos_calc,
@@ -7277,7 +7277,7 @@ BEGIN
 
     -- STEP C: Insert into data_summary_frequency using the temporary table
     INSERT INTO public.data_summary_frequency (
-        ano, mes, filial, cidade, codsupervisor, codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede,
+        ano, mes, filial, cidade, codsupervisor, codusur as codusur, codfor, codcli, tipovenda, pedido, vlvenda, peso, produtos, categorias, rede,
         produtos_arr, categorias_arr, has_cheetos, has_doritos, has_fandangos, has_ruffles, has_torcida, has_toddynho, has_toddy, has_quaker, has_kerococo
     )
     WITH order_prod_agg AS (
@@ -7287,7 +7287,7 @@ BEGIN
             t.filial,
             t.cidade,
             t.codsupervisor,
-            t.codusur,
+            t.codusur as codusur,
             CASE
                 WHEN t.codfor = '1119' AND (dp.descricao ILIKE '%TODDYNHO%' OR dp.descricao ILIKE '%TODYNHO%') THEN '1119_TODDYNHO'
                 WHEN t.codfor = '1119' AND (dp.descricao ILIKE '%TODDY %' OR dp.descricao = 'TODDY') THEN '1119_TODDY'
@@ -7315,7 +7315,7 @@ BEGIN
             op.filial,
             op.cidade,
             op.codsupervisor,
-            op.codusur,
+            op.codusur as codusur,
             op.codfor,
             op.codcli,
             op.tipovenda,
@@ -7342,7 +7342,7 @@ BEGIN
             op.filial,
             op.cidade,
             op.codsupervisor,
-            op.codusur,
+            op.codusur as codusur,
             op.codfor,
             op.codcli,
             op.tipovenda,
@@ -7357,7 +7357,7 @@ BEGIN
         f.filial,
         f.cidade,
         f.codsupervisor,
-        f.codusur,
+        f.codusur as codusur,
         f.codfor,
         f.codcli,
         f.tipovenda,
@@ -7400,12 +7400,12 @@ BEGIN
     -- 2. Insert new rows without the dropped column
     EXECUTE format('
         INSERT INTO public.%I (
-            pedido, codusur, codsupervisor, produto, codfor, codcli, cidade, 
+            pedido, codusur as codusur, codsupervisor, produto, codfor, codcli, cidade, 
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq, 
             dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
         )
         SELECT 
-            pedido, codusur, codsupervisor, produto, codfor, codcli, cidade, 
+            pedido, codusur as codusur, codsupervisor, produto, codfor, codcli, cidade, 
             qtvenda, vlvenda, vlbonific, vldevolucao, totpesoliq, 
             dtped, dtsaida, posicao, estoqueunit, tipovenda, filial
         FROM jsonb_populate_recordset(null::public.%I, $2)
@@ -7443,7 +7443,7 @@ CREATE OR REPLACE FUNCTION public.get_jbp_data(
     p_filial text[] DEFAULT NULL,
     p_cidade text[] DEFAULT NULL,
     p_supervisor text[] DEFAULT NULL,
-    p_vendedor text[] DEFAULT NULL,
+    p_codusur text[] DEFAULT NULL,
     p_fornecedor text[] DEFAULT NULL,
     p_rede text[] DEFAULT NULL,
     p_produto text[] DEFAULT NULL,
@@ -7502,8 +7502,8 @@ BEGIN
         v_where := v_where || format(' AND s.codsupervisor = ANY(%L::text[]) ', p_supervisor);
     END IF;
 
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where := v_where || format(' AND s.codusur = ANY(%L::text[]) ', p_vendedor);
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+        v_where := v_where || format(' AND s.codusur = ANY(%L::text[]) ', p_codusur);
     END IF;
 
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
@@ -7707,7 +7707,7 @@ CREATE OR REPLACE FUNCTION public.get_city_segmentation_positivity_table(
     p_filial text[] default null,
     p_cidade text[] default null,
     p_supervisor text[] default null,
-    p_vendedor text[] default null,
+    p_codusur text[] default null,
     p_fornecedor text[] default null,
     p_tipovenda text[] default null,
     p_segmentacao text[] default null,
@@ -7756,8 +7756,8 @@ BEGIN
     IF p_supervisor IS NOT NULL AND array_length(p_supervisor, 1) > 0 THEN
         v_where_acumulado := v_where_acumulado || format(' AND ds.codsupervisor IN (SELECT codigo FROM dim_supervisores WHERE nome = ANY(%L::text[])) ', p_supervisor);
     END IF;
-    IF p_vendedor IS NOT NULL AND array_length(p_vendedor, 1) > 0 THEN
-        v_where_acumulado := v_where_acumulado || format(' AND ds.codusur IN (SELECT codigo FROM dim_vendedores WHERE nome = ANY(%L::text[])) ', p_vendedor);
+    IF p_codusur IS NOT NULL AND array_length(p_codusur as codusur, 1) > 0 THEN
+        v_where_acumulado := v_where_acumulado || format(' AND ds.codusur IN (SELECT codigo FROM dim_codusures WHERE nome = ANY(%L::text[])) ', p_codusur);
     END IF;
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_where_acumulado := v_where_acumulado || format(' AND ds.codfor = ANY(%L::text[]) ', p_fornecedor);
@@ -7882,7 +7882,7 @@ END $$;
 DROP FUNCTION IF EXISTS public.get_closing_presentation_data(text, text);
 
 -- INDICE OTIMIZADO PARA APRESENTAÇÃO DE FECHAMENTO
-CREATE INDEX IF NOT EXISTS idx_summary_closing_perf ON public.data_summary USING btree (ano, mes) INCLUDE (vlvenda, peso, codcli, filial, codusur, codsupervisor, codfor, tipovenda);
+CREATE INDEX IF NOT EXISTS idx_summary_closing_perf ON public.data_summary USING btree (ano, mes) INCLUDE (vlvenda, peso, codcli, filial, codusur as codusur, codsupervisor, codfor, tipovenda);
 
 CREATE OR REPLACE FUNCTION get_closing_presentation_data(
 
@@ -7944,7 +7944,7 @@ BEGIN
         SELECT
             ds.codcli,
             ds.filial,
-            ds.codusur,
+            ds.codusur as codusur,
             ds.codsupervisor,
             ds.ano,
             ds.mes,
@@ -7962,7 +7962,7 @@ BEGIN
         SELECT
             b.codcli,
             b.filial,
-            b.codusur,
+            b.codusur as codusur,
             b.codsupervisor,
             b.ano,
             b.mes,
@@ -7982,7 +7982,7 @@ BEGIN
 
     grouped_pos AS MATERIALIZED (
         SELECT
-            codusur,
+            codusur as codusur,
             codcli,
             ano,
             mes,
@@ -7990,7 +7990,7 @@ BEGIN
             SUM(CASE WHEN line_group = 'Salty' THEN vlvenda ELSE 0 END) as sum_vlvenda_salty,
             SUM(CASE WHEN line_group = 'Foods' THEN vlvenda ELSE 0 END) as sum_vlvenda_foods
         FROM classified_data
-        GROUP BY codusur, codcli, ano, mes
+        GROUP BY codusur as codusur, codcli, ano, mes
     ),
 
     -- AGGREGATES GLOBALS
@@ -8166,9 +8166,9 @@ BEGIN
     ),
 
     -- TOP VENDEDORES WITH FULL BREAKDOWN
-    top_vendedores_base AS (
+    top_codusures_base AS (
         SELECT
-            COALESCE(SPLIT_PART(MAX(dv.nome), ' ', 1), c.codusur) as vendedor,
+            COALESCE(SPLIT_PART(MAX(dv.nome), ' ', 1), c.codusur) as codusur as codusur,
             MAX(c.codsupervisor) as codsupervisor,
             COALESCE(
                 CASE 
@@ -8178,7 +8178,7 @@ BEGIN
                 END, 
                 MAX(c.codsupervisor)
             ) as supervisor_nome,
-            c.codusur,
+            c.codusur as codusur,
             
             -- GERAL
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) as fat_atual,
@@ -8219,19 +8219,19 @@ BEGIN
 
             SUM(CASE WHEN c.ano = $1 AND c.mes = $2 THEN c.vlvenda ELSE 0 END) - SUM(CASE WHEN c.ano = $3 AND c.mes = $4 THEN c.vlvenda ELSE 0 END) as var_abs
         FROM classified_data c
-        LEFT JOIN dim_vendedores dv ON c.codusur = dv.codigo
+        LEFT JOIN dim_codusures dv ON c.codusur = dv.codigo
         LEFT JOIN dim_supervisores ds ON c.codsupervisor = ds.codigo
         WHERE c.codusur IS NOT NULL AND c.codusur != ''
           AND c.codsupervisor != '8'
           AND c.codusur NOT ILIKE 'INAT_%'
           AND c.codusur NOT ILIKE '%BALCÃO%'
           AND c.codusur NOT ILIKE '%VENDAS DIRETAS%'
-        GROUP BY c.codusur, c.codsupervisor
+        GROUP BY c.codusur as codusur, c.codsupervisor
     ),
     
-    top_vendedores_pos AS (
+    top_codusures_pos AS (
         SELECT 
-            codusur,
+            codusur as codusur,
             COUNT(CASE WHEN ano = $1 AND mes = $2 AND sum_vlvenda >= 1 THEN 1 END) as pos_atual,
             (COUNT(CASE WHEN ano = $5 AND mes = $6 AND sum_vlvenda >= 1 THEN 1 END) + COUNT(CASE WHEN ano = $7 AND mes = $8 AND sum_vlvenda >= 1 THEN 1 END) + COUNT(CASE WHEN ano = $9 AND mes = $10 AND sum_vlvenda >= 1 THEN 1 END)) / 3.0 as pos_trim,
             COUNT(CASE WHEN ano = $3 AND mes = $4 AND sum_vlvenda >= 1 THEN 1 END) as pos_ant,
@@ -8247,17 +8247,17 @@ BEGIN
         GROUP BY codusur
     ),
     
-    top_vendedores AS (
+    top_codusures AS (
         SELECT 
-            b.vendedor, b.codsupervisor, b.supervisor_nome,
+            b.codusur as codusur, b.codsupervisor, b.supervisor_nome,
             b.fat_atual, b.fat_trim, b.fat_ant, b.ton_atual, b.ton_trim, b.ton_ant,
             b.fat_atual_salty, b.fat_trim_salty, b.fat_ant_salty, b.ton_atual_salty, b.ton_trim_salty, b.ton_ant_salty,
             b.fat_atual_foods, b.fat_trim_foods, b.fat_ant_foods, b.ton_atual_foods, b.ton_trim_foods, b.ton_ant_foods, b.var_abs, b.dev_atual, b.dev_trim, b.dev_ant, b.bon_atual, b.bon_trim, b.bon_ant, b.per_atual, b.per_trim, b.per_ant,
             COALESCE(p.pos_atual, 0) as pos_atual, COALESCE(p.pos_trim, 0) as pos_trim, COALESCE(p.pos_ant, 0) as pos_ant,
             COALESCE(p.pos_atual_salty, 0) as pos_atual_salty, COALESCE(p.pos_trim_salty, 0) as pos_trim_salty, COALESCE(p.pos_ant_salty, 0) as pos_ant_salty,
             COALESCE(p.pos_atual_foods, 0) as pos_atual_foods, COALESCE(p.pos_trim_foods, 0) as pos_trim_foods, COALESCE(p.pos_ant_foods, 0) as pos_ant_foods
-        FROM top_vendedores_base b
-        LEFT JOIN top_vendedores_pos p ON b.codusur = p.codusur
+        FROM top_codusures_base b
+        LEFT JOIN top_codusures_pos p ON b.codusur = p.codusur
     ),
 
     -- CATEGORIAS
@@ -8332,7 +8332,7 @@ BEGIN
         'filiais', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_filial a),
         'supervisores', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_supervisor a),
         'redes', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_redes a),
-        'top_vendedores', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM top_vendedores a),
+        'top_codusures', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM top_codusures a),
         'categorias', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_categorias a),
         'chart_data', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_chart a)
     )
@@ -8376,13 +8376,13 @@ CREATE TABLE IF NOT EXISTS public.metas_sv (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     ano INTEGER NOT NULL,
     mes INTEGER NOT NULL,
-    vendedor_nome TEXT NOT NULL,
+    codusur TEXT NOT NULL,
     categoria TEXT NOT NULL,
     metrica TEXT NOT NULL,
     valor_ajuste NUMERIC,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE (ano, mes, vendedor_nome, categoria, metrica)
+    UNIQUE (ano, mes, codusur, categoria, metrica)
 );
 
 -- RLS
@@ -8407,17 +8407,17 @@ DECLARE
 BEGIN
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_metas_json)
     LOOP
-        INSERT INTO public.metas_sv (ano, mes, vendedor_nome, categoria, metrica, valor_ajuste, updated_at)
+        INSERT INTO public.metas_sv (ano, mes, codusur, categoria, metrica, valor_ajuste, updated_at)
         VALUES (
             (v_item->>'ano')::INTEGER,
             (v_item->>'mes')::INTEGER,
-            v_item->>'vendedor_nome',
+            v_item->>'codusur',
             v_item->>'categoria',
             v_item->>'metrica',
             (v_item->>'valor_ajuste')::NUMERIC,
             NOW()
         )
-        ON CONFLICT (ano, mes, vendedor_nome, categoria, metrica)
+        ON CONFLICT (ano, mes, codusur, categoria, metrica)
         DO UPDATE SET
             valor_ajuste = EXCLUDED.valor_ajuste,
             updated_at = NOW();
@@ -8464,7 +8464,7 @@ BEGIN
     -- We will build a JSON array of sellers and their base metrics
     WITH seller_data AS (
         SELECT 
-            vendedor,
+            codusur as codusur,
             SUM(vlvenda) as fat_geral,
             SUM(vlpeso) as vol_geral,
             COUNT(DISTINCT codcli) as pos_geral,
@@ -8500,7 +8500,7 @@ BEGIN
             
         FROM public.data_summary
         WHERE ano = v_ano_anterior AND mes = p_mes
-        GROUP BY vendedor
+        GROUP BY codusur
     )
     SELECT jsonb_build_object(
         'crescimento_ytd', v_crescimento_ytd,
