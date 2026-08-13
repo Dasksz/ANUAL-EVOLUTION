@@ -6064,12 +6064,8 @@ BEGIN
         v_has_filters_no_city := true;
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND ds.categoria_produto,
-            ds.devolucao,
-            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
-        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto,
-            ds.devolucao,
-            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
+        v_where := v_where || format(' AND ds.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_has_filters_no_city := true;
     END IF;
 
@@ -6409,12 +6405,8 @@ BEGIN
         v_has_filters_no_city := true;
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where := v_where || format(' AND ds.categoria_produto,
-            ds.devolucao,
-            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
-        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto,
-            ds.devolucao,
-            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
+        v_where := v_where || format(' AND ds.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_base_cidades := v_where_base_cidades || format(' AND ds.categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_has_filters_no_city := true;
     END IF;
 
