@@ -7766,9 +7766,7 @@ BEGIN
         v_where_acumulado := v_where_acumulado || format(' AND ds.tipovenda = ANY(%L::text[]) ', p_tipovenda);
     END IF;
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
-        v_where_acumulado := v_where_acumulado || format(' AND ds.categoria_produto,
-            ds.devolucao,
-            ds.bonificacao = ANY(%L::text[]) ', p_categoria);
+        v_where_acumulado := v_where_acumulado || format(' AND ds.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
     IF p_segmentacao IS NOT NULL AND array_length(p_segmentacao, 1) > 0 THEN
         v_where_acumulado := v_where_acumulado || format(' AND dc.ramo_atividade = ANY(%L::text[]) ', p_segmentacao);
