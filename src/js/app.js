@@ -353,7 +353,6 @@ let estrelasSelectedCategorias = [];
     const navLojaPerfeitaBtn = document.getElementById('nav-loja-perfeita-btn');
     const navEstrelasBtn = document.getElementById('nav-estrelas-btn');
     const navAgendaBtn = document.getElementById('nav-agenda-btn');
-    const navGoalsBtn = document.getElementById("nav-goals-btn");
     const navJbpBtn = document.getElementById('nav-jbp-btn');
     // Export UI Logic
 
@@ -523,7 +522,6 @@ function getActiveExportView() {
             { id: 'loja-perfeita-view', navId: 'nav-loja-perfeita-btn', name: 'Loja Perfeita' },
             { id: 'estrelas-view', navId: 'nav-estrelas-btn', name: 'Estrelas' },
             { id: 'agenda-view', navId: 'nav-agenda-btn', name: 'Agenda' },
-            { id: "goals-view", navId: "nav-goals-btn", name: "Metas" },
             { id: 'jbp-view', navId: 'nav-jbp-btn', name: 'JBP' }
         ];
 
@@ -1406,7 +1404,7 @@ function getActiveExportView() {
         showScreen('app-layout');
 
         // Provide a default if the view wasn't set or is invalid
-        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison', 'innovations', 'loja-perfeita', 'estrelas', 'agenda', 'goals'];
+        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison', 'innovations', 'loja-perfeita', 'estrelas', 'agenda'];
         if (!view || !validViews.includes(view)) {
             view = 'dashboard';
         }
@@ -2015,8 +2013,6 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         if (estrelasView) estrelasView.classList.add('hidden');
         if (agendaView) agendaView.classList.add('hidden');
         if (jbpView) jbpView.classList.add('hidden');
-        const goalsView = document.getElementById("goals-view");
-        if (goalsView) goalsView.classList.add("hidden");
     };
 
     async function renderView(view, options = {}) {
@@ -2079,15 +2075,6 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                     window.showDashboardLoading('estrelas-view');
                     setActiveNavLink(navEstrelasBtn);
                     renderEstrelasView();
-                }
-                break;
-            case "goals":
-                const goalsView = document.getElementById("goals-view");
-                const navGoalsBtn = document.getElementById("nav-goals-btn");
-                if (goalsView && navGoalsBtn) {
-                    goalsView.classList.remove("hidden");
-                    setActiveNavLink(navGoalsBtn);
-                    renderGoalsView();
                 }
                 break;
             case 'agenda':
@@ -10958,341 +10945,3 @@ async function syncIbgePopulations() {
 // Handles the fetching, AI analysis, and PPT/Docx generation for Closing Presentations.
 
 window.initPresentationLogic = function() {};
-// --- GOALS VIEW LOGIC ---
-let goalsData = null;
-let savedMetas = [];
-let pendingImportUpdates = [];
-let importTablePage = 1;
-const importTablePageSize = 15;
-let currentGoalsAno = new Date().getFullYear();
-let currentGoalsMes = new Date().getMonth() + 1; // Current Month
-
-async function renderGoalsView() {
-    const tableHead = document.getElementById('goals-table-head');
-    const tableBody = document.getElementById('goals-table-body');
-    const loading = document.getElementById('goals-loading');
-    
-    // Check if dates are defined by filters, otherwise use current
-    if (window.availableFiltersState && window.availableFiltersState.mes && window.availableFiltersState.mes.length > 0) {
-        currentGoalsMes = parseInt(window.availableFiltersState.mes[0], 10);
-    }
-    if (window.availableFiltersState && window.availableFiltersState.ano && window.availableFiltersState.ano.length > 0) {
-        currentGoalsAno = parseInt(window.availableFiltersState.ano[0], 10);
-    }
-
-    loading.classList.remove('hidden');
-    tableHead.innerHTML = '';
-    tableBody.innerHTML = '';
-
-    try {
-        // Fetch Base and Metas
-        const [baseRes, metasRes] = await Promise.all([
-            window.supabaseClient.rpc('get_metas_base_comparativo', { p_ano: currentGoalsAno, p_mes: currentGoalsMes }),
-            window.supabaseClient.rpc('get_metas_sv', { p_ano: currentGoalsAno, p_mes: currentGoalsMes })
-        ]);
-
-        if (baseRes.error) throw baseRes.error;
-        if (metasRes.error) throw metasRes.error;
-
-        const baseData = baseRes.data;
-        savedMetas = metasRes.data || [];
-        goalsData = baseData;
-
-        // Render Table Headers
-        tableHead.innerHTML = `
-            <tr class="text-xs text-slate-400 uppercase tracking-wider text-center bg-slate-800">
-                <th rowspan="3" class="px-4 py-3 text-left border-r border-slate-700 bg-slate-800 sticky left-0 z-20 shadow-md">VENDEDOR</th>
-                <th colspan="4" class="px-2 py-2 border-r border-slate-700">TOTAL ELMA</th>
-                <th colspan="2" class="px-2 py-2 border-r border-slate-700">EXTRUSADOS (707)</th>
-                <th colspan="2" class="px-2 py-2 border-r border-slate-700">NÃO EXTRUSADOS (708)</th>
-                <th colspan="2" class="px-2 py-2 border-r border-slate-700">TORCIDA (752)</th>
-                <th colspan="3" class="px-2 py-2 border-r border-slate-700">KG ELMA</th>
-                <th colspan="4" class="px-2 py-2 border-r border-slate-700">TOTAL FOODS</th>
-                <th colspan="3" class="px-2 py-2">KG FOODS</th>
-            </tr>
-            <tr class="text-xs text-slate-400 uppercase bg-slate-800/80 text-center">
-                <th colspan="2" class="px-2 py-1 border-r border-slate-700">FATURAMENTO</th>
-                <th colspan="2" class="px-2 py-1 border-r border-slate-700">POSITIVAÇÃO</th>
-                
-                <th colspan="1" class="px-2 py-1">FATURAMENTO</th>
-                <th colspan="1" class="px-2 py-1 border-r border-slate-700">POSITIVAÇÃO</th>
-                <th colspan="1" class="px-2 py-1">FATURAMENTO</th>
-                <th colspan="1" class="px-2 py-1 border-r border-slate-700">POSITIVAÇÃO</th>
-                <th colspan="1" class="px-2 py-1">FATURAMENTO</th>
-                <th colspan="1" class="px-2 py-1 border-r border-slate-700">POSITIVAÇÃO</th>
-                
-                <th colspan="1" class="px-2 py-1">Base A/A</th>
-                <th colspan="2" class="px-2 py-1 border-r border-slate-700">META KG</th>
-                
-                <th colspan="2" class="px-2 py-1 border-r border-slate-700">FATURAMENTO</th>
-                <th colspan="2" class="px-2 py-1 border-r border-slate-700">POSITIVAÇÃO</th>
-                
-                <th colspan="1" class="px-2 py-1">Base A/A</th>
-                <th colspan="2" class="px-2 py-1">META KG</th>
-            </tr>
-            <tr class="text-[10px] text-slate-500 bg-slate-800 text-center border-b border-slate-700">
-                <th class="px-2 py-1">Meta</th><th class="px-2 py-1 border-r border-slate-700 text-yellow-500 bg-yellow-500/10">Ajuste</th>
-                <th class="px-2 py-1">Meta</th><th class="px-2 py-1 border-r border-slate-700 text-yellow-500 bg-yellow-500/10">Ajuste</th>
-                
-                <th class="px-2 py-1">Meta</th>
-                <th class="px-2 py-1 border-r border-slate-700">Meta</th>
-                <th class="px-2 py-1">Meta</th>
-                <th class="px-2 py-1 border-r border-slate-700">Meta</th>
-                <th class="px-2 py-1">Meta</th>
-                <th class="px-2 py-1 border-r border-slate-700">Meta</th>
-                
-                <th class="px-2 py-1">Volume</th>
-                <th class="px-2 py-1">Volume</th><th class="px-2 py-1 border-r border-slate-700 text-yellow-500 bg-yellow-500/10">Ajuste</th>
-                
-                <th class="px-2 py-1">Meta</th><th class="px-2 py-1 border-r border-slate-700 text-yellow-500 bg-yellow-500/10">Ajuste</th>
-                <th class="px-2 py-1">Meta</th><th class="px-2 py-1 border-r border-slate-700 text-yellow-500 bg-yellow-500/10">Ajuste</th>
-                
-                <th class="px-2 py-1">Volume</th>
-                <th class="px-2 py-1">Volume</th><th class="px-2 py-1 text-yellow-500 bg-yellow-500/10">Ajuste</th>
-            </tr>
-        `;
-
-        // Render Rows
-        let html = '';
-        if (goalsData.sellers && goalsData.sellers.length > 0) {
-            goalsData.sellers.forEach(s => {
-                const growth = 1 + parseFloat(goalsData.crescimento_ytd || 0);
-                
-                // Helper to get saved meta
-                const getMeta = (cat, metrica, defaultBase) => {
-                    const saved = savedMetas.find(m => m.vendedor_nome === s.vendedor && m.categoria === cat && m.metrica === metrica);
-                    return saved ? parseFloat(saved.valor_ajuste) : (defaultBase * growth);
-                };
-
-                // ELMA
-                const fatElma = getMeta('total_elma', 'FAT', s.fat_elma);
-                const posElma = getMeta('total_elma', 'POS', s.pos_elma);
-                const volElma = getMeta('tonelada_elma', 'VOL', s.vol_elma);
-                
-                // 707
-                const fat707 = getMeta('707', 'FAT', s.fat_707);
-                const pos707 = getMeta('707', 'POS', s.pos_707);
-                
-                // 708
-                const fat708 = getMeta('708', 'FAT', s.fat_708);
-                const pos708 = getMeta('708', 'POS', s.pos_708);
-                
-                // 752
-                const fat752 = getMeta('752', 'FAT', s.fat_752);
-                const pos752 = getMeta('752', 'POS', s.pos_752);
-                
-                // FOODS
-                const fatFoods = getMeta('total_foods', 'FAT', s.fat_foods);
-                const posFoods = getMeta('total_foods', 'POS', s.pos_foods);
-                const volFoods = getMeta('tonelada_foods', 'VOL', s.vol_foods);
-
-                html += `
-                <tr class="hover:bg-slate-700/30 text-sm text-slate-300">
-                    <td class="px-4 py-2 font-medium text-slate-200 border-r border-slate-700 bg-slate-900 sticky left-0 z-10 shadow-md">${window.escapeHtml(s.vendedor)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${window.formatCurrency(s.fat_elma * growth)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${window.formatCurrency(fatElma)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${Math.round(s.pos_elma * growth)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${Math.round(posElma)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${window.formatCurrency(fat707)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700">${Math.round(pos707)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${window.formatCurrency(fat708)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700">${Math.round(pos708)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${window.formatCurrency(fat752)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700">${Math.round(pos752)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${(s.vol_elma).toFixed(2)}</td>
-                    <td class="px-2 py-2 text-right">${(s.vol_elma * growth).toFixed(2)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${volElma.toFixed(2)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${window.formatCurrency(s.fat_foods * growth)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${window.formatCurrency(fatFoods)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${Math.round(s.pos_foods * growth)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${Math.round(posFoods)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${(s.vol_foods).toFixed(2)}</td>
-                    <td class="px-2 py-2 text-right">${(s.vol_foods * growth).toFixed(2)}</td>
-                    <td class="px-2 py-2 text-right text-yellow-400 bg-yellow-500/5 font-mono">${volFoods.toFixed(2)}</td>
-                </tr>
-                `;
-            });
-        } else {
-            html = `<tr><td colspan="21" class="px-4 py-8 text-center text-slate-500">Nenhum dado encontrado para o período selecionado.</td></tr>`;
-        }
-
-        tableBody.innerHTML = html;
-
-    } catch (err) {
-        console.error("Error loading goals view:", err);
-        tableBody.innerHTML = `<tr><td colspan="21" class="px-4 py-8 text-center text-red-400">Erro ao carregar metas: ${err.message}</td></tr>`;
-    } finally {
-        loading.classList.add('hidden');
-    }
-}
-
-// --- IMPORT MODAL LOGIC ---
-document.addEventListener('DOMContentLoaded', () => {
-    const importBtn = document.getElementById('goals-sv-import-btn');
-    const importModal = document.getElementById('import-goals-modal');
-    if (!importModal) return;
-
-    const importCloseBtn = document.getElementById('import-goals-close-btn');
-    const importCancelBtn = document.getElementById('import-goals-cancel-btn');
-    const importAnalyzeBtn = document.getElementById('import-goals-analyze-btn');
-    const importConfirmBtn = document.getElementById('import-goals-confirm-btn');
-    const importTextarea = document.getElementById('import-goals-textarea');
-    const analysisContainer = document.getElementById('import-analysis-container');
-    const analysisBody = document.getElementById('import-analysis-table-body');
-    const analysisBadges = document.getElementById('import-summary-badges');
-    const dropZone = document.getElementById('import-drop-zone');
-    const fileInput = document.getElementById('import-goals-file');
-    const importPaginationControls = document.getElementById('import-pagination-controls');
-    
-    // Setup event listeners for the modal visibility
-    if (importBtn) {
-        importBtn.addEventListener('click', () => {
-            importModal.classList.remove('hidden');
-            importTextarea.value = '';
-            analysisContainer.classList.add('hidden');
-            pendingImportUpdates = [];
-            importConfirmBtn.disabled = true;
-        });
-    }
-
-    const closeModal = () => importModal.classList.add('hidden');
-    importCloseBtn.addEventListener('click', closeModal);
-    importCancelBtn.addEventListener('click', closeModal);
-
-    // Analyze Button Logic
-    importAnalyzeBtn.addEventListener('click', () => {
-        try {
-            const text = importTextarea.value;
-            if (!text.trim()) {
-                alert("A área de texto está vazia. Cole os dados.");
-                return;
-            }
-            
-            // Reusing the parseGoalsSvStructure (from legacy code)
-            const updates = window.parseGoalsSvStructure(text);
-
-            if (!updates || updates.length === 0) {
-                alert("Nenhum dado válido encontrado para atualização. Verifique o formato.");
-                return;
-            }
-            
-            pendingImportUpdates = updates;
-            importTablePage = 1;
-            renderImportTable();
-            
-            analysisBadges.innerHTML = `<span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold">${updates.length} Registros</span>`;
-            analysisContainer.classList.remove('hidden');
-            analysisContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            
-            importConfirmBtn.disabled = false;
-        } catch (e) {
-            console.error("Erro ao analisar dados importados:", e);
-            alert("Erro ao analisar dados: " + e.message);
-        }
-    });
-
-    // Pagination for Import Analysis Table
-    function renderImportTable() {
-        if (!analysisBody) return;
-        const startIndex = (importTablePage - 1) * importTablePageSize;
-        const endIndex = startIndex + importTablePageSize;
-        const pageData = pendingImportUpdates.slice(startIndex, endIndex);
-
-        analysisBody.innerHTML = pageData.map(u => {
-            let catDisplay = u.category;
-            let valDisplay = u.val;
-            if (u.type === 'rev' || u.category.includes('fat')) valDisplay = window.formatCurrency(u.val);
-            if (u.type === 'vol') valDisplay = u.val.toFixed(2) + ' kg';
-            if (u.type === 'pos' || u.type === 'mix') valDisplay = Math.round(u.val) + ' unid.';
-            
-            return `
-                <tr class="hover:bg-slate-800/50">
-                    <td class="px-4 py-2 font-medium text-blue-400 uppercase text-xs">${window.escapeHtml(u.type)}</td>
-                    <td class="px-4 py-2 text-slate-300 text-xs truncate max-w-[150px]">${window.escapeHtml(u.seller)}</td>
-                    <td class="px-4 py-2 text-slate-400 text-xs">${window.escapeHtml(catDisplay)}</td>
-                    <td class="px-4 py-2 text-right font-mono text-yellow-400 text-xs">${valDisplay}</td>
-                </tr>
-            `;
-        }).join('');
-
-        const totalPages = Math.ceil(pendingImportUpdates.length / importTablePageSize);
-        document.getElementById('import-page-info-text').textContent = `Página ${importTablePage} de ${totalPages}`;
-        document.getElementById('import-prev-page-btn').disabled = importTablePage === 1;
-        document.getElementById('import-next-page-btn').disabled = importTablePage === totalPages;
-        
-        if (totalPages > 1) {
-            importPaginationControls.classList.remove('hidden');
-        } else {
-            importPaginationControls.classList.add('hidden');
-        }
-    }
-    
-    document.getElementById('import-prev-page-btn').addEventListener('click', () => {
-        if (importTablePage > 1) { importTablePage--; renderImportTable(); }
-    });
-    document.getElementById('import-next-page-btn').addEventListener('click', () => {
-        if (importTablePage < Math.ceil(pendingImportUpdates.length / importTablePageSize)) { importTablePage++; renderImportTable(); }
-    });
-
-    // Save logic
-    importConfirmBtn.addEventListener('click', async () => {
-        const originalText = importConfirmBtn.innerHTML;
-        importConfirmBtn.innerHTML = "Salvando...";
-        importConfirmBtn.disabled = true;
-
-        try {
-            // Map the parsed updates back to the DB schema
-            const dbPayload = pendingImportUpdates.map(u => {
-                let metrica = 'FAT';
-                if (u.type === 'vol') metrica = 'VOL';
-                if (u.type === 'pos') metrica = 'POS';
-                if (u.type === 'mix') metrica = 'MIX';
-                
-                return {
-                    ano: currentGoalsAno,
-                    mes: currentGoalsMes,
-                    vendedor_nome: u.seller,
-                    categoria: u.category,
-                    metrica: metrica,
-                    valor_ajuste: u.val
-                };
-            });
-
-            const res = await window.supabaseClient.rpc('upsert_metas', { p_metas_json: dbPayload });
-            
-            if (res.error) throw res.error;
-
-            alert("Metas atualizadas com sucesso!");
-            closeModal();
-            renderGoalsView(); // Refresh the table
-        } catch (e) {
-            console.error("Erro ao salvar metas:", e);
-            alert("Erro ao salvar metas: " + e.message);
-        } finally {
-            importConfirmBtn.innerHTML = originalText;
-            importConfirmBtn.disabled = false;
-        }
-    });
-
-    // Simple Drag/Drop Styling (ignoring SheetJS parsing for brevity since paste works identical)
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, e => {
-            e.preventDefault(); e.stopPropagation();
-        }, false);
-    });
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => dropZone.classList.add('border-teal-500', 'bg-slate-700/50'), false);
-    });
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => dropZone.classList.remove('border-teal-500', 'bg-slate-700/50'), false);
-    });
-});
