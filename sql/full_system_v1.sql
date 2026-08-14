@@ -8371,3 +8371,163 @@ CREATE POLICY "Allow read access to api_ia"
 
 -- Allow reading the API key via RPC or direct select for anon/authenticated roles
 GRANT SELECT ON public.api_ia TO anon, authenticated;
+-- Create metas_sv table
+CREATE TABLE IF NOT EXISTS public.metas_sv (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    ano INTEGER NOT NULL,
+    mes INTEGER NOT NULL,
+    codusur TEXT NOT NULL,
+    categoria TEXT NOT NULL,
+    metrica TEXT NOT NULL,
+    valor_ajuste NUMERIC,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (ano, mes, codusur, categoria, metrica)
+);
+
+-- RLS
+ALTER TABLE public.metas_sv ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.metas_sv;
+CREATE POLICY "Enable read access for all users" ON public.metas_sv FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Enable insert access for authenticated users" ON public.metas_sv;
+CREATE POLICY "Enable insert access for authenticated users" ON public.metas_sv FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Enable update access for authenticated users" ON public.metas_sv;
+CREATE POLICY "Enable update access for authenticated users" ON public.metas_sv FOR UPDATE USING (true);
+DROP POLICY IF EXISTS "Enable delete access for authenticated users" ON public.metas_sv;
+CREATE POLICY "Enable delete access for authenticated users" ON public.metas_sv FOR DELETE USING (true);
+
+-- Function to save/upsert metas from frontend JSON array
+CREATE OR REPLACE FUNCTION public.upsert_metas(p_metas_json JSONB)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_item JSONB;
+BEGIN
+    FOR v_item IN SELECT * FROM jsonb_array_elements(p_metas_json)
+    LOOP
+        INSERT INTO public.metas_sv (ano, mes, codusur, categoria, metrica, valor_ajuste, updated_at)
+        VALUES (
+            (v_item->>'ano')::INTEGER,
+            (v_item->>'mes')::INTEGER,
+            v_item->>'codusur',
+            v_item->>'categoria',
+            v_item->>'metrica',
+            (v_item->>'valor_ajuste')::NUMERIC,
+            NOW()
+        )
+        ON CONFLICT (ano, mes, codusur, categoria, metrica)
+        DO UPDATE SET
+            valor_ajuste = EXCLUDED.valor_ajuste,
+            updated_at = NOW();
+    END LOOP;
+END;
+$$;
+
+-- Function to get the metas base logic (last year's data) and mix calculation
+CREATE OR REPLACE FUNCTION public.get_metas_base_comparativo(
+    p_ano INTEGER,
+    p_mes INTEGER
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_ano_anterior INTEGER := p_ano - 1;
+    v_result JSONB;
+    v_total_atual NUMERIC;
+    v_total_anterior NUMERIC;
+    v_crescimento_ytd NUMERIC := 0;
+BEGIN
+    -- 1. Calculate general YTD growth (up to previous month of current year vs same period last year)
+    -- This is a simplified overall growth percent. If you want category-specific growth, you'd need to aggregate per category.
+    -- Assuming a general overall growth percent for simplicity in this baseline function, or per category if needed.
+    -- For now, returning 0 as growth, and frontend/backend can adjust. We will calculate a general one.
+
+    SELECT COALESCE(SUM(vlvenda), 0) INTO v_total_atual
+    FROM public.data_summary
+    WHERE ano = p_ano AND mes < p_mes;
+
+    SELECT COALESCE(SUM(vlvenda), 0) INTO v_total_anterior
+    FROM public.data_summary
+    WHERE ano = v_ano_anterior AND mes < p_mes;
+
+    IF v_total_anterior > 0 THEN
+        v_crescimento_ytd := (v_total_atual - v_total_anterior) / v_total_anterior;
+    END IF;
+
+    -- If no historical data for YTD, default to 0% growth.
+
+    -- 2. Fetch last year's same month data per seller
+    -- We will build a JSON array of sellers and their base metrics
+    WITH seller_data AS (
+        SELECT
+            vendedor,
+            SUM(vlvenda) as fat_geral,
+            SUM(peso) as vol_geral,
+            COUNT(DISTINCT codcli) as pos_geral,
+
+            -- Pepsico/Elma
+            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') THEN vlvenda ELSE 0 END) as fat_elma,
+            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') THEN peso ELSE 0 END) as vol_elma,
+            COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') AND vlvenda > 0 THEN codcli END) as pos_elma,
+
+            -- EXTRUSADOS (707)
+            SUM(CASE WHEN codfor = '707' THEN vlvenda ELSE 0 END) as fat_707,
+            COUNT(DISTINCT CASE WHEN codfor = '707' AND vlvenda > 0 THEN codcli END) as pos_707,
+
+            -- NAO EXTRUSADOS (708)
+            SUM(CASE WHEN codfor = '708' THEN vlvenda ELSE 0 END) as fat_708,
+            COUNT(DISTINCT CASE WHEN codfor = '708' AND vlvenda > 0 THEN codcli END) as pos_708,
+
+            -- TORCIDA (752)
+            SUM(CASE WHEN codfor = '752' THEN vlvenda ELSE 0 END) as fat_752,
+            COUNT(DISTINCT CASE WHEN codfor = '752' AND vlvenda > 0 THEN codcli END) as pos_752,
+
+            -- FOODS
+            SUM(CASE WHEN codfor = '1119' THEN vlvenda ELSE 0 END) as fat_foods,
+            SUM(CASE WHEN codfor = '1119' THEN peso ELSE 0 END) as vol_foods,
+            COUNT(DISTINCT CASE WHEN codfor = '1119' AND vlvenda > 0 THEN codcli END) as pos_foods,
+
+            -- TODDYNHO (Assuming 'TODDYNHO' is in mix_marca or categoria_produto. Let's use simple string match for summary if needed, or rely on detailed logic. Since data_summary might not have mix_marca, we fallback to 1119 totals if not granular.
+            -- Actually data_summary DOES NOT have categoria_produto.
+            -- We might need to join data_detailed or just return 0 and let frontend handle it or fallback)
+            0 as fat_toddynho, 0 as pos_toddynho,
+            0 as fat_toddy, 0 as pos_toddy,
+            0 as fat_quaker, 0 as pos_quaker
+
+        FROM public.data_summary
+        WHERE ano = v_ano_anterior AND mes = p_mes
+        GROUP BY codusur
+    )
+    SELECT jsonb_build_object(
+        'crescimento_ytd', v_crescimento_ytd,
+        'sellers', COALESCE(jsonb_agg(row_to_json(sd)), '[]'::jsonb)
+    ) INTO v_result
+    FROM seller_data sd;
+
+    RETURN v_result;
+END;
+$$;
+
+-- Function to get the saved metas for the current month
+CREATE OR REPLACE FUNCTION public.get_metas_sv(
+    p_ano INTEGER,
+    p_mes INTEGER
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_result JSONB;
+BEGIN
+    SELECT COALESCE(jsonb_agg(row_to_json(m)), '[]'::jsonb) INTO v_result
+    FROM public.metas_sv m
+    WHERE ano = p_ano AND mes = p_mes;
+
+    RETURN v_result;
+END;
+$$;

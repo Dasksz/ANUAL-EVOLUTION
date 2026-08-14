@@ -1,0 +1,1 @@
+sed -i '/navAgendaBtn\.addEventListener(.click., (e) => {/i \    if (navGoalsBtn) {\n        navGoalsBtn.addEventListener('\''click'\'', (e) => {\n            e.preventDefault();\n            if (window.innerWidth < 1024) closeSideMenu();\n            renderView('\''goals'\'');\n        });\n    }\n' src/js/app.js

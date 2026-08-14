@@ -20,13 +20,13 @@
     <meta itemprop="image" content="https://dasksz.github.io/ANUAL-EVOLUTION/logo.png">
 
     <link rel="icon" type="image/png" href="logo.png">
-    <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/idb@7/build/umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="src/css/styles.css">
@@ -509,6 +509,7 @@
                     <button type="button" id="nav-agenda-btn" aria-label="Agenda" class="nav-link side-nav-item"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>Agenda</button>
                     <a href="https://primeba.life/" target="_blank" rel="noopener noreferrer" aria-label="Logística" class="nav-link side-nav-item"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" /><path d="M15 18H9" /><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14" /><circle cx="17" cy="18" r="2" /><circle cx="7" cy="18" r="2" /></svg>Logística</a>
                     <a href="https://dasksz.github.io/RH-PRIME/#" target="_blank" rel="noopener noreferrer" aria-label="Recursos Humanos" class="nav-link side-nav-item"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17 2 2a1 1 0 1 0 3-3" /><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4" /><path d="m21 3 1 11h-2" /><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3" /><path d="M3 4h8" /></svg>Recursos Humanos</a>
+                    <button type="button" id="nav-goals-btn" aria-label="Metas" class="nav-link side-nav-item text-teal-400 hover:text-teal-300"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>Metas</button>
                     <button type="button" id="nav-presentation-btn" aria-label="Apresentação Fechamento" class="nav-link side-nav-item text-fuchsia-400 hover:text-fuchsia-300"><svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h20M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3m6 18h8M12 16v5"/></svg>Apresentação Fechamento</button>
 
                 </nav>
@@ -1291,6 +1292,134 @@
     </div>
 </div>
                     <!-- Comparison View Content -->
+                    <!-- Metas View -->
+                    <div id="goals-view" class="hidden relative pb-10">
+                        <header class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div class="flex items-center gap-3">
+                                <div>
+                                    <h1 class="text-3xl font-bold text-white">PAINEL DE METAS</h1>
+                                    <p class="text-slate-400 text-sm" id="goals-view-subtitle">Gerenciamento de Metas de Supervisores e Vendedores</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 w-full md:w-auto">
+                                <button id="goals-sv-export-btn" class="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2 shadow-lg transition-colors">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
+                                    Exportar Excel
+                                </button>
+                                <button id="goals-sv-import-btn" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2 shadow-lg transition-colors">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                    Importar Excel
+                                </button>
+                            </div>
+                        </header>
+
+                        <!-- Loading State -->
+                        <div id="goals-loading" class="flex flex-col items-center justify-center py-20 hidden">
+                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mb-4"></div>
+                            <p class="text-slate-400 font-medium">Calculando base de metas e carregando ajustes...</p>
+                        </div>
+
+                        <!-- Table Container -->
+                        <div id="goals-table-container" class="bg-[#1d2347] rounded-xl shadow-2xl border border-slate-700 overflow-hidden relative">
+                            <div class="overflow-x-auto max-h-[75vh]" style="scrollbar-width: thin;">
+                                <table class="w-full whitespace-nowrap min-w-max border-collapse">
+                                    <thead id="goals-table-head" class="sticky top-0 z-10 bg-slate-800 shadow-md">
+                                        <!-- Header rows dynamically generated -->
+                                    </thead>
+                                    <tbody id="goals-table-body" class="divide-y divide-slate-700/50">
+                                        <!-- Body rows dynamically generated -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Modal Importar Metas -->
+                        <div id="import-goals-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center">
+                            <div class="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-[95vw] max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+                                <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/80 sticky top-0 z-10">
+                                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                        Importar / Analisar Planilha de Metas
+                                    </h2>
+                                    <button id="import-goals-close-btn" class="text-slate-400 hover:text-white transition-colors">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                </div>
+                                <div class="p-6 overflow-y-auto flex-1 custom-scrollbar">
+                                    <div id="import-drop-zone" class="border-2 border-dashed border-slate-600 rounded-lg p-8 mb-6 flex flex-col items-center justify-center transition-colors hover:border-teal-500 hover:bg-slate-700/30 cursor-pointer">
+                                        <svg class="w-12 h-12 text-slate-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                        </svg>
+                                        <p class="text-slate-300 font-medium mb-2">Arraste e solte o arquivo Excel aqui</p>
+                                        <p class="text-slate-500 text-sm mb-4">ou</p>
+                                        <label for="import-goals-file" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg cursor-pointer transition-colors shadow-lg">
+                                            Selecionar Arquivo
+                                        </label>
+                                        <p class="text-xs text-slate-500 mt-4">Formatos suportados: .xlsx, .xls, .csv</p>
+                                    </div>
+                                    <input type="file" id="import-goals-file" class="hidden" accept=".xlsx, .xls, .csv">
+
+                                    <div class="relative">
+                                        <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                                            <div class="w-full border-t border-slate-700"></div>
+                                        </div>
+                                        <div class="relative flex justify-center mb-6">
+                                            <span class="px-3 bg-slate-800 text-slate-500 text-sm">OU COLE DIRETAMENTE</span>
+                                        </div>
+                                    </div>
+
+                                    <textarea id="import-goals-textarea" class="w-full h-32 bg-slate-900 border border-slate-600 rounded-lg p-3 text-xs font-mono text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent mb-4 placeholder:text-slate-600" placeholder="Cole os dados copiados do Excel aqui... (Selecione todas as colunas a partir do cabeçalho)"></textarea>
+
+                                    <div class="flex justify-end mb-6">
+                                        <button id="import-goals-analyze-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2 shadow-lg transition-colors">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                            Analisar Dados Colados
+                                        </button>
+                                    </div>
+
+                                    <div id="import-analysis-container" class="hidden border-t border-slate-700 pt-6">
+                                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
+                                            <h3 class="text-white font-bold flex items-center gap-2">
+                                                <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                                Resultado da Análise
+                                            </h3>
+                                            <div id="import-summary-badges" class="flex flex-wrap gap-2"></div>
+                                        </div>
+
+                                        <div class="bg-slate-900 rounded-lg border border-slate-700 overflow-hidden relative">
+                                            <div class="overflow-x-auto max-h-64" style="scrollbar-width: thin;">
+                                                <table class="w-full text-left text-sm text-slate-300">
+                                                    <thead class="text-xs text-slate-400 uppercase bg-slate-800/50 sticky top-0 z-10">
+                                                        <tr>
+                                                            <th scope="col" class="px-4 py-3">Tipo</th>
+                                                            <th scope="col" class="px-4 py-3">Vendedor</th>
+                                                            <th scope="col" class="px-4 py-3">Categoria</th>
+                                                            <th scope="col" class="px-4 py-3 text-right">Novo Valor (Ajuste)</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="import-analysis-table-body" class="divide-y divide-slate-800">
+                                                        <!-- Populate dynamically -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div id="import-pagination-controls" class="flex justify-between items-center mt-4 hidden">
+                                            <button id="import-prev-page-btn" class="bg-slate-700 border border-slate-600 hover:bg-slate-600 text-slate-300 font-bold py-1.5 px-4 rounded-lg disabled:opacity-50 text-xs transition-colors" disabled>Anterior</button>
+                                            <span id="import-page-info-text" class="text-slate-400 text-xs">Página 1 de 1</span>
+                                            <button id="import-next-page-btn" class="bg-slate-700 border border-slate-600 hover:bg-slate-600 text-slate-300 font-bold py-1.5 px-4 rounded-lg disabled:opacity-50 text-xs transition-colors" disabled>Próxima</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-4 border-t border-slate-700 bg-slate-800/80 flex justify-end gap-3 sticky bottom-0">
+                                    <button id="import-goals-cancel-btn" class="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition-colors">Cancelar</button>
+                                    <button id="import-goals-confirm-btn" class="px-6 py-2.5 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2" disabled>
+                                        Salvar Importação no Banco de Dados
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
                     <div id="comparison-view" class="hidden">
                         <header class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                             <div class="flex items-center gap-3">

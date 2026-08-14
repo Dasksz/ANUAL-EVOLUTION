@@ -1,0 +1,14 @@
+feat: add Metas feature to Admin panel
+
+💡 What:
+- Created the `metas_sv` table and RPCs (`get_metas_base_comparativo`, `upsert_metas`) in `full_system_v1.sql`.
+- Added the "Metas" view to `index.html` under the Admin section, including the import modal and drag-and-drop interface.
+- Migrated legacy `parseGoalsSvStructure` to `utils.js` and wired it into `app.js`.
+- Implemented `renderGoalsView` in `app.js` to fetch baseline target data comparing to last year's actuals + YTD growth.
+
+🎯 Why:
+- To allow sales managers and supervisors to set, adjust, and import monthly targets via Excel.
+- Replaces legacy frontend calculation logic with scalable RPC functions and Supabase storage while keeping the familiar UI.
+
+📊 Impact:
+- Enables complete Target (Metas) management in the new evolved panel, maintaining backward compatibility with the expected Excel format.

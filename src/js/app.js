@@ -1,6 +1,6 @@
 import supabase from './supabase.js?v=5';
 
-import {
+import { parseGoalsSvStructure,
     renderTableEmptyState,
     updateEl,
     generateYearOptionsHtml,
@@ -353,6 +353,7 @@ let estrelasSelectedCategorias = [];
     const navLojaPerfeitaBtn = document.getElementById('nav-loja-perfeita-btn');
     const navEstrelasBtn = document.getElementById('nav-estrelas-btn');
     const navAgendaBtn = document.getElementById('nav-agenda-btn');
+    const navGoalsBtn = document.getElementById("nav-goals-btn");
     const navJbpBtn = document.getElementById('nav-jbp-btn');
     // Export UI Logic
 
@@ -522,6 +523,7 @@ function getActiveExportView() {
             { id: 'loja-perfeita-view', navId: 'nav-loja-perfeita-btn', name: 'Loja Perfeita' },
             { id: 'estrelas-view', navId: 'nav-estrelas-btn', name: 'Estrelas' },
             { id: 'agenda-view', navId: 'nav-agenda-btn', name: 'Agenda' },
+            { id: "goals-view", navId: "nav-goals-btn", name: "Metas" },
             { id: 'jbp-view', navId: 'nav-jbp-btn', name: 'JBP' }
         ];
 
@@ -1404,7 +1406,7 @@ function getActiveExportView() {
         showScreen('app-layout');
 
         // Provide a default if the view wasn't set or is invalid
-        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison', 'innovations', 'loja-perfeita', 'estrelas', 'agenda'];
+        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison', 'innovations', 'loja-perfeita', 'estrelas', 'agenda', 'goals'];
         if (!view || !validViews.includes(view)) {
             view = 'dashboard';
         }
@@ -2013,6 +2015,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         if (estrelasView) estrelasView.classList.add('hidden');
         if (agendaView) agendaView.classList.add('hidden');
         if (jbpView) jbpView.classList.add('hidden');
+        const goalsView = document.getElementById("goals-view");
+        if (goalsView) goalsView.classList.add("hidden");
     };
 
     async function renderView(view, options = {}) {
@@ -2075,6 +2079,15 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                     window.showDashboardLoading('estrelas-view');
                     setActiveNavLink(navEstrelasBtn);
                     renderEstrelasView();
+                }
+                break;
+            case "goals":
+                const goalsView = document.getElementById("goals-view");
+                const navGoalsBtn = document.getElementById("nav-goals-btn");
+                if (goalsView && navGoalsBtn) {
+                    goalsView.classList.remove("hidden");
+                    setActiveNavLink(navGoalsBtn);
+                    renderGoalsView();
                 }
                 break;
             case 'agenda':
@@ -2171,6 +2184,14 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     }
 
     if (navAgendaBtn) {
+    if (navGoalsBtn) {
+        navGoalsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (window.innerWidth < 1024) closeSideMenu();
+            renderView('goals');
+        });
+    }
+
         navAgendaBtn.addEventListener('click', (e) => {
 
             if (navigateWithCtrl(e, 'agenda')) return;
@@ -10945,3 +10966,1020 @@ async function syncIbgePopulations() {
 // Handles the fetching, AI analysis, and PPT/Docx generation for Closing Presentations.
 
 window.initPresentationLogic = function() {};
+// --- GOALS VIEW LOGIC ---
+let goalsData = null;
+let savedMetas = [];
+let pendingImportUpdates = [];
+let importTablePage = 1;
+const importTablePageSize = 15;
+let currentGoalsAno = new Date().getFullYear();
+let currentGoalsMes = new Date().getMonth() + 1; // Current Month
+
+        function parseGoalsSvStructure(text) {
+            console.log("[Parser] Iniciando parse...");
+            const lines = text.replace(/[\r\n]+$/, '').split(/\r?\n/);
+            if (lines.length === 0) return null;
+
+            // 1. Detect Delimiter (Heuristic)
+            const firstLine = lines[0];
+            let delimiter = '\t';
+            if (firstLine.includes('\t')) delimiter = '\t';
+            else if (firstLine.includes(';')) delimiter = ';';
+            else if (firstLine.includes(',') && lines.length > 1) delimiter = ',';
+            // Fallback for space separated copy-paste if single line has spaces
+            else if (firstLine.trim().split(/\s{2,}/).length > 1) delimiter = /\s{2,}/; // At least 2 spaces
+
+            console.log("[Parser] Delimitador detectado:", delimiter);
+
+            const rows = lines.map(line => {
+                // If delimiter is regex, use split directly
+                if (delimiter instanceof RegExp) return line.trim().split(delimiter);
+                return line.split(delimiter);
+            });
+
+            console.log(`[Parser] Linhas encontradas: ${rows.length}`);
+
+            // 2. Identify Header Rows and Construct ColMap
+            const colMap = {};
+            let dataStartRow = 0;
+
+            if (rows.length >= 3) {
+                // Standard logic: Rows 0, 1, 2
+                const startRow = 0;
+
+                const header0 = rows[startRow].map(h => h ? h.trim().toUpperCase() : '');
+                const header1 = rows[startRow + 1].map(h => h ? h.trim().toUpperCase() : '');
+                const header2 = rows[startRow + 2].map(h => h ? h.trim().toUpperCase() : '');
+
+                console.log("[Parser] Header 0:", header0.join('|'));
+                console.log("[Parser] Header 1:", header1.join('|'));
+                console.log("[Parser] Header 2:", header2.join('|'));
+
+                let currentCategory = null;
+                let currentMetric = null;
+
+                // Map Headers
+                for (let i = 0; i < header0.length; i++) {
+                    if (header0[i]) currentCategory = header0[i];
+                    if (header1[i]) currentMetric = header1[i];
+                    let subMetric = header2[i]; // Meta, Ajuste, etc.
+
+                    if (currentCategory && subMetric) {
+                        if (subMetric === 'AJ.' || subMetric === 'AJ') subMetric = 'AJUSTE';
+
+                        let catKey = currentCategory;
+                        // Normalize Category Names to IDs (Fuzzy Matching)
+                        if (catKey.includes('NÃO EXTRUSADOS') || catKey.includes('NAO EXTRUSADOS')) catKey = '708';
+                        else if (catKey.includes('EXTRUSADOS')) catKey = '707';
+                        else if (catKey.includes('TORCIDA')) catKey = '752';
+                        else if (catKey.includes('TODDYNHO')) catKey = '1119_TODDYNHO';
+                        else if (catKey.includes('TODDY')) catKey = '1119_TODDY';
+                        else if (catKey.includes('QUAKER') || catKey.includes('KEROCOCO')) catKey = '1119_QUAKER_KEROCOCO';
+                        else if (catKey === 'KG ELMA') catKey = 'tonelada_elma';
+                        else if (catKey === 'KG FOODS') catKey = 'tonelada_foods';
+                        else if (catKey === 'TOTAL ELMA') catKey = 'total_elma';
+                        else if (catKey === 'TOTAL FOODS') catKey = 'total_foods';
+                        else if (catKey === 'MIX SALTY') catKey = 'mix_salty';
+                        else if (catKey === 'MIX FOODS') catKey = 'mix_foods';
+                        else if (catKey === 'PEPSICO_ALL_POS' || catKey === 'PEPSICO_ALL' || catKey === 'GERAL') catKey = 'pepsico_all';
+
+                        let metricKey = 'OTHER';
+                        if (currentMetric === 'FATURAMENTO' || currentMetric === 'MÉDIA TRIM.') metricKey = 'FAT';
+                        else if (currentMetric === 'POSITIVAÇÃO' || currentMetric === 'POSITIVACAO' || currentMetric.includes('POSITIVA')) metricKey = 'POS';
+                        else if (currentMetric === 'TONELADA' || currentMetric === 'META KG') metricKey = 'VOL';
+                        else if (currentMetric === 'META MIX' || currentMetric === 'MIX' || currentMetric === 'QTD') metricKey = 'MIX';
+
+                        const key = `${catKey}_${metricKey}_${subMetric}`;
+                        colMap[key] = i;
+                    }
+                }
+
+                dataStartRow = startRow + 3;
+            } else {
+                console.warn("[Parser] Menos de 3 linhas. Tentando modo simplificado...");
+                // Simplified Mode: Hardcoded Column Map based on Standard Export
+                // Columns structure matches exportGoalsSvXLSX
+
+                let colIdx = 2; // Start after Vendedor (Index 2)
+                const addKeys = (cat, keys) => {
+                    keys.forEach((k, i) => {
+                        if (k) colMap[`${cat}_${k}`] = colIdx + i;
+                    });
+                    colIdx += keys.length;
+                };
+
+                // 1. TOTAL ELMA (Standard Agg)
+                addKeys('total_elma', ['FAT_META', 'FAT_AJUSTE', 'POS_META', 'POS_AJUSTE']);
+                // 2. EXTRUSADOS (707)
+                addKeys('707', ['FAT_META', 'FAT_AJUSTE', 'POS_META', 'POS_AJUSTE']);
+                // 3. NÃO EXTRUSADOS (708)
+                addKeys('708', ['FAT_META', 'FAT_AJUSTE', 'POS_META', 'POS_AJUSTE']);
+                // 4. TORCIDA (752)
+                addKeys('752', ['FAT_META', 'FAT_AJUSTE', 'POS_META', 'POS_AJUSTE']);
+                // 5. KG ELMA (tonnage)
+                addKeys('tonelada_elma', [null, 'VOL_VOLUME', 'VOL_AJUSTE']);
+                // 6. MIX SALTY (mix)
+                addKeys('mix_salty', [null, 'MIX_META', 'MIX_AJUSTE']);
+
+                // 7. TOTAL FOODS (Standard Agg)
+                addKeys('total_foods', ['FAT_META', 'FAT_AJUSTE', 'POS_META', 'POS_AJUSTE']);
+                // 8. TODDYNHO (1119_TODDYNHO)
+                addKeys('1119_TODDYNHO', ['FAT_META', 'FAT_AJUSTE', 'POS_META', 'POS_AJUSTE']);
+                // 9. TODDY (1119_TODDY)
+                addKeys('1119_TODDY', ['FAT_META', 'FAT_AJUSTE', 'POS_META', 'POS_AJUSTE']);
+                // 10. QUAKER/KEROCOCO
+                addKeys('1119_QUAKER_KEROCOCO', ['FAT_META', 'FAT_AJUSTE', 'POS_META', 'POS_AJUSTE']);
+                // 11. KG FOODS (tonnage)
+                addKeys('tonelada_foods', [null, 'VOL_VOLUME', 'VOL_AJUSTE']);
+                // 12. MIX FOODS (mix)
+                addKeys('mix_foods', [null, 'MIX_META', 'MIX_AJUSTE']);
+
+                // 13. GERAL (pepsico_all)
+                addKeys('pepsico_all', [null, 'FAT_META', 'VOL_META', 'POS_META']);
+
+                // 14. PEDEV
+                colIdx += 1;
+
+                dataStartRow = 0; // Parse all rows
+            }
+
+            const updates = [];
+            const processedSellers = new Set();
+
+            const parseImportValue = (rawStr) => {
+                if (!rawStr) return NaN;
+                let clean = String(rawStr).trim().toUpperCase().replace(/[^0-9,.-]/g, '');
+                if (!clean) return NaN;
+
+                const dotIdx = clean.lastIndexOf('.');
+                const commaIdx = clean.lastIndexOf(',');
+
+                if (dotIdx > -1 && commaIdx > -1) {
+                    if (dotIdx > commaIdx) clean = clean.replace(/,/g, '');
+                    else clean = clean.replace(/\./g, '').replace(',', '.');
+                } else if (commaIdx > -1) {
+                    // Has comma, no dot. Assume comma is decimal in Brazil
+                    // However, if the user exported raw CSV without decimals for thousands (e.g. 1,234 meaning 1234)
+                    // it is highly ambiguous. In this system, we mostly use Brazilian format (1,234 is 1.234)
+                    // We remove the old /,\d{3}$/ check because volume is often 3 decimals (e.g., 2,600 kg = 2.6).
+                    clean = clean.replace(',', '.');
+                } else if (dotIdx > -1) {
+                    // Has dot, no comma.
+                    // If it has multiple dots, they are definitely thousands separators.
+                    if (clean.split('.').length > 2) {
+                        clean = clean.replace(/\./g, '');
+                    } else {
+                        // Single dot. In raw Excel data or standard floats (e.g., 1359.041), this is a decimal point.
+                        // We DO NOT remove it. Removing it would inflate the value 1000x for volume.
+                    }
+                }
+                return parseFloat(clean);
+            };
+            // Identify Vendor Column Index (Name)
+            // Usually Index 1 (Code, Name, ...)
+            // We scan first few rows to find valid seller names
+            let nameColIndex = 1;
+            // Basic Heuristic: If col 0 looks like a name and col 1 is number, maybe it's col 0.
+            // But standard template is [Code, Name, ...]. We stick to 1 for now or 0 if 1 is empty.
+
+            for (let i = dataStartRow; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row || row.length < 2) continue;
+
+                // Try col 1 for name, fallback to col 0 if col 1 is empty/numeric
+                let sellerName = row[1];
+                let sellerCodeCandidate = row[0]; // Candidate for Code
+
+                if (!sellerName || !isNaN(parseImportValue(sellerName))) {
+                     // If col 1 is number, maybe col 0 is name? Or col 2?
+                     // Standard: Col 0 = Code, Col 1 = Name.
+                     if (row[0] && isNaN(parseImportValue(row[0]))) {
+                         sellerName = row[0];
+                         sellerCodeCandidate = null; // Name is in Col 0
+                     }
+                }
+
+                if (!sellerName) continue;
+
+                // --- ENHANCED FILTER: Ignore Supervisors, Aggregates, and BALCAO ---
+                const upperName = sellerName.normalize('NFD').replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+
+                // 1. Explicit Blocklist
+                if (upperName === 'BALCAO' || upperName === 'BALCÃO' ||
+                    upperName.includes('TOTAL') || upperName.includes('SUPERVISOR') || upperName.includes('GERAL') ||
+                    upperName === 'VENDEDOR' || upperName === 'NOME' || upperName === 'CODIGO' || upperName === 'CÓDIGO') {
+                    continue;
+                }
+
+                // --- RESOLUTION LOGIC: Normalize Seller Name to System Canonical Name ---
+                let canonicalName = null;
+
+                // 1. Try by Code (Col 0)
+                if (sellerCodeCandidate) {
+                    const parsedCode = parseImportValue(sellerCodeCandidate);
+                    if (!isNaN(parsedCode)) {
+                        const codeStr = String(parsedCode);
+                        if (optimizedData.rcaNameByCode.has(codeStr)) {
+                            canonicalName = optimizedData.rcaNameByCode.get(codeStr);
+                        }
+                    }
+                }
+
+                // 2. Try by Name (Fuzzy/Case-Insensitive)
+                if (!canonicalName) {
+                    // Iterate existing system names to find case-insensitive match
+                    for (const [sysName, sysCode] of optimizedData.rcaCodeByName) {
+                         const sysUpper = sysName.normalize('NFD').replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+                         if (sysUpper === upperName) {
+                             canonicalName = sysName;
+                             break;
+                         }
+                    }
+                }
+
+                const finalSellerName = canonicalName || sellerName;
+
+                // 2. Dynamic Supervisor Check
+                // If the name is a known Supervisor (key in rcasBySupervisor), ignore it.
+                // Assuming supervisors are not also sellers in this context (or we only want leaf sellers).
+                if (optimizedData.rcasBySupervisor.has(finalSellerName) || optimizedData.rcasBySupervisor.has(finalSellerName.toUpperCase())) {
+                    continue;
+                }
+                // ------------------------------------------------
+
+                if (processedSellers.has(finalSellerName)) continue;
+                processedSellers.add(finalSellerName);
+
+                // Helper to get value with priority: Adjust > Meta
+                const getPriorityValue = (cat, metric) => {
+                    // 1. Try AJUSTE
+                    let idx = colMap[`${cat}_${metric}_AJUSTE`];
+                    if (idx !== undefined && row[idx]) {
+                        const val = parseImportValue(row[idx]);
+                        if (!isNaN(val)) return val;
+                    }
+                    // 2. Try META
+                    idx = colMap[`${cat}_${metric}_META`];
+                    if (idx !== undefined && row[idx]) {
+                        const val = parseImportValue(row[idx]);
+                        if (!isNaN(val)) return val;
+                    }
+                    return NaN;
+                };
+
+                // 1. Revenue
+                const revCats = ['707', '708', '752', '1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'];
+                revCats.forEach(cat => {
+                    const val = getPriorityValue(cat, 'FAT');
+                    if (!isNaN(val)) updates.push({ type: 'rev', seller: sellerName, category: cat, val: val });
+                });
+
+                // 2. Volume
+                // Metas de Volume são importadas pelos Totais (KG ELMA / KG FOODS) e distribuídas automaticamente
+                const volCats = ['tonelada_elma', 'tonelada_foods'];
+                volCats.forEach(cat => {
+                    const val = getPriorityValue(cat, 'VOL');
+                    if (!isNaN(val)) updates.push({ type: 'vol', seller: sellerName, category: cat, val: val });
+                });
+
+                // 3. Positivation
+                const posCats = ['pepsico_all', 'total_elma', 'total_foods', '707', '708', '752', '1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'];
+                posCats.forEach(cat => {
+                    const val = getPriorityValue(cat, 'POS');
+                    if (!isNaN(val)) updates.push({ type: 'pos', seller: sellerName, category: cat, val: Math.round(val) });
+                });
+
+                // 4. Mix
+                const mixCats = ['mix_salty', 'mix_foods'];
+                mixCats.forEach(cat => {
+                    const val = getPriorityValue(cat, 'MIX');
+                    if (!isNaN(val)) updates.push({ type: 'mix', seller: sellerName, category: cat, val: Math.round(val) });
+                });
+            }
+            return updates;
+        }
+
+        // --- Event Listeners for Import ---
+        const importBtn = document.getElementById('goals-sv-import-btn');
+        const importModal = document.getElementById('import-goals-modal');
+        const importCloseBtn = document.getElementById('import-goals-close-btn');
+        const importCancelBtn = document.getElementById('import-goals-cancel-btn');
+        const importAnalyzeBtn = document.getElementById('import-goals-analyze-btn');
+        const importConfirmBtn = document.getElementById('import-goals-confirm-btn');
+        const importTextarea = document.getElementById('import-goals-textarea');
+        const analysisContainer = document.getElementById('import-analysis-container');
+        const analysisBody = document.getElementById('import-analysis-table-body');
+        const analysisBadges = document.getElementById('import-summary-badges');
+            const importPaginationControls = document.createElement('div');
+            importPaginationControls.id = 'import-pagination-controls';
+            importPaginationControls.className = 'flex justify-between items-center mt-4 hidden';
+            importPaginationControls.innerHTML = `
+                <button id="import-prev-page-btn" class="bg-slate-700 border border-slate-600 hover:bg-slate-600 text-slate-300 font-bold py-2 px-4 rounded-lg disabled:opacity-50 text-xs" disabled>Anterior</button>
+                <span id="import-page-info-text" class="text-slate-400 text-xs">Página 1 de 1</span>
+                <button id="import-next-page-btn" class="bg-slate-700 border border-slate-600 hover:bg-slate-600 text-slate-300 font-bold py-2 px-4 rounded-lg disabled:opacity-50 text-xs" disabled>Próxima</button>
+            `;
+            // Insert after table container (which is inside analysisContainer -> div.bg-slate-900)
+            // analysisContainer contains a header div, result div, and then the table container div.
+            // We need to find the table container.
+
+        let pendingImportUpdates = [];
+            let importTablePage = 1;
+            const importTablePageSize = 19;
+
+            function renderImportTable() {
+                if (!analysisBody) return;
+                analysisBody.innerHTML = '';
+
+                const totalPages = Math.ceil(pendingImportUpdates.length / importTablePageSize);
+                if (importTablePage > totalPages && totalPages > 0) importTablePage = totalPages;
+                if (totalPages === 0) importTablePage = 1;
+
+                const start = (importTablePage - 1) * importTablePageSize;
+                const end = start + importTablePageSize;
+                const pageItems = pendingImportUpdates.slice(start, end);
+
+                const formatGoalValue = (val, type) => {
+                    if (type === 'rev') return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                    if (type === 'vol') return val.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' Kg';
+                    return Math.round(val).toString();
+                };
+
+                pageItems.forEach(u => {
+                    const row = document.createElement('tr');
+
+                    const currentVal = getSellerCurrentGoal(u.seller, u.category, u.type);
+                    const newVal = u.val;
+                    const diff = newVal - currentVal;
+
+                    const currentValStr = formatGoalValue(currentVal, u.type);
+                    const newValStr = formatGoalValue(newVal, u.type);
+                    const diffStr = formatGoalValue(diff, u.type);
+
+                    let diffClass = "text-slate-500";
+                    if (diff > 0.001) diffClass = "text-green-400 font-bold";
+                    else if (diff < -0.001) diffClass = "text-red-400 font-bold";
+
+                    const sellerCode = optimizedData.rcaCodeByName.get(u.seller) || '-';
+
+                    let displayCategory = u.category;
+                    if (u.type === 'pos') displayCategory += '_POS';
+
+                    row.innerHTML = `
+                        <td class="px-4 py-2 text-xs text-slate-300">${sellerCode}</td>
+                        <td class="px-4 py-2 text-xs text-slate-400">${u.seller}</td>
+                        <td class="px-4 py-2 text-xs text-blue-300">${displayCategory}</td>
+                        <td class="px-4 py-2 text-xs text-slate-400 font-mono text-right">${currentValStr}</td>
+                        <td class="px-4 py-2 text-xs text-white font-bold font-mono text-right">${newValStr}</td>
+                        <td class="px-4 py-2 text-xs ${diffClass} font-mono text-right">${diff > 0 ? '+' : ''}${diffStr}</td>
+                        <td class="px-4 py-2 text-center text-xs"><span class="px-2 py-1 rounded-full bg-blue-900/50 text-blue-200 text-[10px]">Importar</span></td>
+                    `;
+                    analysisBody.appendChild(row);
+                });
+
+                // Update Pagination Controls
+                const prevBtn = document.getElementById('import-prev-page-btn');
+                const nextBtn = document.getElementById('import-next-page-btn');
+                const infoText = document.getElementById('import-page-info-text');
+                const paginationContainer = document.getElementById('import-pagination-controls');
+
+                if (paginationContainer) {
+                    if (pendingImportUpdates.length > importTablePageSize) {
+                        paginationContainer.classList.remove('hidden');
+                        if(infoText) infoText.textContent = `Página ${importTablePage} de ${totalPages}`;
+                        if(prevBtn) prevBtn.disabled = importTablePage === 1;
+                        if(nextBtn) nextBtn.disabled = importTablePage === totalPages;
+                    } else {
+                        paginationContainer.classList.add('hidden');
+                    }
+                }
+            }
+
+        if (importBtn && importModal) {
+            const dropZone = document.getElementById('import-drop-zone');
+            const fileInput = document.getElementById('import-goals-file');
+
+            // Inject Pagination Controls into Analysis Container if not present
+            if (!document.getElementById('import-pagination-controls')) {
+                const tableContainer = analysisContainer.querySelector('.bg-slate-900.rounded-lg.border.border-slate-700');
+                if (tableContainer) {
+                    tableContainer.parentNode.insertBefore(importPaginationControls, tableContainer.nextSibling);
+                }
+            }
+
+            // Bind Pagination Listeners
+            const prevBtn = document.getElementById('import-prev-page-btn');
+            const nextBtn = document.getElementById('import-next-page-btn');
+
+            if (prevBtn) {
+                prevBtn.addEventListener('click', () => {
+                    if (importTablePage > 1) {
+                        importTablePage--;
+                        renderImportTable();
+                    }
+                });
+            }
+            if (nextBtn) {
+                nextBtn.addEventListener('click', () => {
+                    const totalPages = Math.ceil(pendingImportUpdates.length / importTablePageSize);
+                    if (importTablePage < totalPages) {
+                        importTablePage++;
+                        renderImportTable();
+                    }
+                });
+            }
+
+            importBtn.addEventListener('click', () => {
+                importModal.classList.remove('hidden');
+                importTextarea.value = '';
+                analysisContainer.classList.add('hidden');
+                importConfirmBtn.disabled = true;
+                importConfirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+                // Reset File Input
+                if (fileInput) fileInput.value = '';
+                if (dropZone) {
+                    dropZone.classList.remove('bg-slate-700/50', 'border-teal-500');
+                    dropZone.innerHTML = `
+                        <svg class="w-12 h-12 text-slate-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <p class="text-slate-300 font-medium mb-2">Arraste e solte o arquivo Excel aqui</p>
+                        <p class="text-slate-500 text-sm mb-4">ou</p>
+                        <label for="import-goals-file" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg cursor-pointer transition-colors shadow-lg">
+                            Selecionar Arquivo
+                        </label>
+                        <p class="text-xs text-slate-500 mt-4">Formatos suportados: .xlsx, .xls, .csv</p>
+                    `;
+                }
+            });
+
+            const closeModal = () => {
+                importModal.classList.add('hidden');
+            };
+
+            importCloseBtn.addEventListener('click', closeModal);
+            importCancelBtn.addEventListener('click', closeModal);
+
+            // Drag & Drop Logic
+            if (dropZone) {
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, preventDefaults, false);
+                });
+
+                function preventDefaults(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, () => {
+                        dropZone.classList.add('bg-slate-700/50', 'border-teal-500');
+                    });
+                });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, () => {
+                        dropZone.classList.remove('bg-slate-700/50', 'border-teal-500');
+                    });
+                });
+
+                dropZone.addEventListener('drop', (e) => {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    handleFiles(files);
+                });
+            }
+
+            if (fileInput) {
+                fileInput.addEventListener('change', (e) => {
+                    handleFiles(e.target.files);
+                });
+            }
+
+            function handleFiles(files) {
+                if (files.length === 0) return;
+                const file = files[0];
+
+                // Visual Feedback: Loading
+                if (dropZone) {
+                    dropZone.innerHTML = `
+                        <div class="flex flex-col items-center justify-center">
+                            <svg class="animate-spin h-10 w-10 text-teal-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <p class="text-slate-300 font-medium animate-pulse">Carregando ${file.name}...</p>
+                        </div>
+                    `;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, {type: 'array'});
+
+                        const sheetName = workbook.SheetNames[0];
+                        const sheet = workbook.Sheets[sheetName];
+
+                        // Convert to TSV for the parser
+                        const tsv = XLSX.utils.sheet_to_csv(sheet, {FS: "\t"});
+
+                        // Update UI
+                        importTextarea.value = tsv;
+                        if (dropZone) {
+                            dropZone.innerHTML = `
+                                <svg class="w-12 h-12 text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <p class="text-green-400 font-bold mb-2">Sucesso!</p>
+                                <p class="text-slate-400 text-sm">${file.name} carregado.</p>
+                            `;
+                        }
+
+                        // Auto-analyze
+                        setTimeout(() => importAnalyzeBtn.click(), 500);
+
+                    } catch (err) {
+                        console.error(err);
+                        if (dropZone) {
+                            dropZone.innerHTML = `
+                                <svg class="w-12 h-12 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                <p class="text-red-400 font-bold mb-2">Erro!</p>
+                                <p class="text-slate-400 text-sm">Falha ao ler o arquivo.</p>
+                            `;
+                        }
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+
+            function resolveGoalCategory(category) {
+                // Returns list of leaf categories and metric type hint if needed
+                if (category === 'tonelada_elma') return ['707', '708', '752'];
+                if (category === 'tonelada_foods') return ['1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'];
+                if (category === 'total_elma') return ['707', '708', '752'];
+                if (category === 'total_foods') return ['1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'];
+                return [category];
+            }
+
+            function getSellerCurrentGoal(sellerName, category, type) {
+                const sellerCode = optimizedData.rcaCodeByName.get(sellerName);
+                if (!sellerCode) return 0;
+
+                // Check for Overrides FIRST
+                const targets = goalsSellerTargets.get(sellerName);
+                if (type === 'rev' && targets && targets[`${category}_FAT`] !== undefined) {
+                    return targets[`${category}_FAT`];
+                }
+                if (type === 'vol' && targets && targets[`${category}_VOL`] !== undefined) {
+                    return targets[`${category}_VOL`];
+                }
+
+                if (type === 'pos' || type === 'mix') {
+                    // FIX: Return Default Calculated Value if Manual Target is Missing
+                    if (targets && targets[category] !== undefined) {
+                        return targets[category];
+                    } else {
+                        // Calculate Default
+                        const defaults = calculateSellerDefaults(sellerName);
+                        if (category === 'total_elma') return defaults.elmaPos;
+                        if (category === 'total_foods') return defaults.foodsPos;
+                        if (category === 'mix_salty') return defaults.mixSalty;
+                        if (category === 'mix_foods') return defaults.mixFoods;
+                        // Fallback for leaf components? Currently Pos adjustments are manual.
+                        // If category is a leaf (e.g. 707), default adjustment is 0 (Natural Base is not stored here).
+                        // Note: parseGoalsSvStructure sends '707', '708' etc for Positivação.
+                        // We assume 0 for leaf adjustments if not set.
+                        return 0;
+                    }
+                }
+
+                if (type === 'rev' || type === 'vol') {
+                    // Aggregate from globalClientGoals
+                    const clients = optimizedData.clientsByRca.get(sellerCode) || [];
+                    const activeClients = clients.filter(c => {
+                        const cod = String(c['Código'] || c['codigo_cliente']);
+                        const rca1 = String(c.rca1 || '').trim();
+                        const isAmericanas = (c.razaoSocial || '').toUpperCase().includes('AMERICANAS');
+                        return true; // return (isAmericanas || rca1 !== '53' || clientsWithSalesThisMonth.has(cod));
+                    });
+
+                    let total = 0;
+                    const leafCategories = resolveGoalCategory(category);
+
+                    activeClients.forEach(client => {
+                        const codCli = String(client['Código'] || client['codigo_cliente']);
+                        const clientGoals = globalClientGoals.get(codCli);
+                        if (clientGoals) {
+                            leafCategories.forEach(leaf => {
+                                const goal = clientGoals.get(leaf);
+                                if (goal) {
+                                    if (type === 'rev') total += (goal.fat || 0);
+                                    else if (type === 'vol') total += (goal.vol || 0);
+                                }
+                            });
+                        }
+                    });
+                    return total;
+                }
+                return 0;
+            }
+
+async function renderGoalsView() {
+    const tableHead = document.getElementById('goals-table-head');
+    const tableBody = document.getElementById('goals-table-body');
+    const loading = document.getElementById('goals-loading');
+
+    // Check if dates are defined by filters, otherwise use current
+    if (window.availableFiltersState && window.availableFiltersState.mes && window.availableFiltersState.mes.length > 0) {
+        currentGoalsMes = parseInt(window.availableFiltersState.mes[0], 10);
+    }
+    if (window.availableFiltersState && window.availableFiltersState.ano && window.availableFiltersState.ano.length > 0) {
+        currentGoalsAno = parseInt(window.availableFiltersState.ano[0], 10);
+    }
+
+    loading.classList.remove('hidden');
+    tableHead.innerHTML = '';
+    tableBody.innerHTML = '';
+
+    try {
+        // Fetch Base and Metas
+        const [baseRes, metasRes] = await Promise.all([
+            supabase.rpc('get_metas_base_comparativo', { p_ano: currentGoalsAno, p_mes: currentGoalsMes }),
+            supabase.rpc('get_metas_sv', { p_ano: currentGoalsAno, p_mes: currentGoalsMes })
+        ]);
+
+        if (baseRes.error) throw baseRes.error;
+        if (metasRes.error) throw metasRes.error;
+
+        const baseData = baseRes.data;
+        savedMetas = metasRes.data || [];
+        goalsData = baseData;
+
+        // Render Table Headers
+        tableHead.innerHTML = `
+            <tr class="text-xs text-slate-400 uppercase tracking-wider text-center bg-slate-800">
+                <th rowspan="3" class="px-4 py-3 text-left border-r border-slate-700 bg-slate-800 sticky left-0 z-20 shadow-md">VENDEDOR</th>
+                <th colspan="4" class="px-2 py-2 border-r border-slate-700">TOTAL ELMA</th>
+                <th colspan="2" class="px-2 py-2 border-r border-slate-700">EXTRUSADOS (707)</th>
+                <th colspan="2" class="px-2 py-2 border-r border-slate-700">NÃO EXTRUSADOS (708)</th>
+                <th colspan="2" class="px-2 py-2 border-r border-slate-700">TORCIDA (752)</th>
+                <th colspan="3" class="px-2 py-2 border-r border-slate-700">KG ELMA</th>
+                <th colspan="4" class="px-2 py-2 border-r border-slate-700">TOTAL FOODS</th>
+                <th colspan="3" class="px-2 py-2">KG FOODS</th>
+            </tr>
+            <tr class="text-xs text-slate-400 uppercase bg-slate-800/80 text-center">
+                <th colspan="2" class="px-2 py-1 border-r border-slate-700">FATURAMENTO</th>
+                <th colspan="2" class="px-2 py-1 border-r border-slate-700">POSITIVAÇÃO</th>
+
+                <th colspan="1" class="px-2 py-1">FATURAMENTO</th>
+                <th colspan="1" class="px-2 py-1 border-r border-slate-700">POSITIVAÇÃO</th>
+                <th colspan="1" class="px-2 py-1">FATURAMENTO</th>
+                <th colspan="1" class="px-2 py-1 border-r border-slate-700">POSITIVAÇÃO</th>
+                <th colspan="1" class="px-2 py-1">FATURAMENTO</th>
+                <th colspan="1" class="px-2 py-1 border-r border-slate-700">POSITIVAÇÃO</th>
+
+                <th colspan="1" class="px-2 py-1">Base A/A</th>
+                <th colspan="2" class="px-2 py-1 border-r border-slate-700">META KG</th>
+
+                <th colspan="2" class="px-2 py-1 border-r border-slate-700">FATURAMENTO</th>
+                <th colspan="2" class="px-2 py-1 border-r border-slate-700">POSITIVAÇÃO</th>
+
+                <th colspan="1" class="px-2 py-1">Base A/A</th>
+                <th colspan="2" class="px-2 py-1">META KG</th>
+            </tr>
+            <tr class="text-[10px] text-slate-500 bg-slate-800 text-center border-b border-slate-700">
+                <th class="px-2 py-1">Meta</th><th class="px-2 py-1 border-r border-slate-700 text-yellow-500 bg-yellow-500/10">Ajuste</th>
+                <th class="px-2 py-1">Meta</th><th class="px-2 py-1 border-r border-slate-700 text-yellow-500 bg-yellow-500/10">Ajuste</th>
+
+                <th class="px-2 py-1">Meta</th>
+                <th class="px-2 py-1 border-r border-slate-700">Meta</th>
+                <th class="px-2 py-1">Meta</th>
+                <th class="px-2 py-1 border-r border-slate-700">Meta</th>
+                <th class="px-2 py-1">Meta</th>
+                <th class="px-2 py-1 border-r border-slate-700">Meta</th>
+
+                <th class="px-2 py-1">Volume</th>
+                <th class="px-2 py-1">Volume</th><th class="px-2 py-1 border-r border-slate-700 text-yellow-500 bg-yellow-500/10">Ajuste</th>
+
+                <th class="px-2 py-1">Meta</th><th class="px-2 py-1 border-r border-slate-700 text-yellow-500 bg-yellow-500/10">Ajuste</th>
+                <th class="px-2 py-1">Meta</th><th class="px-2 py-1 border-r border-slate-700 text-yellow-500 bg-yellow-500/10">Ajuste</th>
+
+                <th class="px-2 py-1">Volume</th>
+                <th class="px-2 py-1">Volume</th><th class="px-2 py-1 text-yellow-500 bg-yellow-500/10">Ajuste</th>
+            </tr>
+        `;
+
+        // Render Rows
+        let html = '';
+        if (goalsData.sellers && goalsData.sellers.length > 0) {
+            goalsData.sellers.forEach(s => {
+                const growth = 1 + parseFloat(goalsData.crescimento_ytd || 0);
+
+                // Helper to get saved meta
+                const getMeta = (cat, metrica, defaultBase) => {
+                    const saved = savedMetas.find(m => m.codusur === s.codusur && m.categoria === cat && m.metrica === metrica);
+                    return saved ? parseFloat(saved.valor_ajuste) : (defaultBase * growth);
+                };
+
+                // ELMA
+                const fatElma = getMeta('total_elma', 'FAT', s.fat_elma);
+                const posElma = getMeta('total_elma', 'POS', s.pos_elma);
+                const volElma = getMeta('tonelada_elma', 'VOL', s.vol_elma);
+
+                // 707
+                const fat707 = getMeta('707', 'FAT', s.fat_707);
+                const pos707 = getMeta('707', 'POS', s.pos_707);
+
+                // 708
+                const fat708 = getMeta('708', 'FAT', s.fat_708);
+                const pos708 = getMeta('708', 'POS', s.pos_708);
+
+                // 752
+                const fat752 = getMeta('752', 'FAT', s.fat_752);
+                const pos752 = getMeta('752', 'POS', s.pos_752);
+
+                // FOODS
+                const fatFoods = getMeta('total_foods', 'FAT', s.fat_foods);
+                const posFoods = getMeta('total_foods', 'POS', s.pos_foods);
+                const volFoods = getMeta('tonelada_foods', 'VOL', s.vol_foods);
+
+                html += `
+                <tr class="hover:bg-slate-700/30 text-sm text-slate-300">
+                    <td class="px-4 py-2 font-medium text-slate-200 border-r border-slate-700 bg-slate-900 sticky left-0 z-10 shadow-md">${escapeHtml(s.codusur)}</td>
+
+                    <td class="px-2 py-2 text-right">${formatCurrency(s.fat_elma * growth)}</td>
+                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${formatCurrency(fatElma)}</td>
+
+                    <td class="px-2 py-2 text-right">${Math.round(s.pos_elma * growth)}</td>
+                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${Math.round(posElma)}</td>
+
+                    <td class="px-2 py-2 text-right">${formatCurrency(fat707)}</td>
+                    <td class="px-2 py-2 text-right border-r border-slate-700">${Math.round(pos707)}</td>
+
+                    <td class="px-2 py-2 text-right">${formatCurrency(fat708)}</td>
+                    <td class="px-2 py-2 text-right border-r border-slate-700">${Math.round(pos708)}</td>
+
+                    <td class="px-2 py-2 text-right">${formatCurrency(fat752)}</td>
+                    <td class="px-2 py-2 text-right border-r border-slate-700">${Math.round(pos752)}</td>
+
+                    <td class="px-2 py-2 text-right">${(s.vol_elma).toFixed(2)}</td>
+                    <td class="px-2 py-2 text-right">${(s.vol_elma * growth).toFixed(2)}</td>
+                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${volElma.toFixed(2)}</td>
+
+                    <td class="px-2 py-2 text-right">${formatCurrency(s.fat_foods * growth)}</td>
+                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${formatCurrency(fatFoods)}</td>
+
+                    <td class="px-2 py-2 text-right">${Math.round(s.pos_foods * growth)}</td>
+                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${Math.round(posFoods)}</td>
+
+                    <td class="px-2 py-2 text-right">${(s.vol_foods).toFixed(2)}</td>
+                    <td class="px-2 py-2 text-right">${(s.vol_foods * growth).toFixed(2)}</td>
+                    <td class="px-2 py-2 text-right text-yellow-400 bg-yellow-500/5 font-mono">${volFoods.toFixed(2)}</td>
+                </tr>
+                `;
+            });
+        } else {
+            html = `<tr><td colspan="21" class="px-4 py-8 text-center text-slate-500">Nenhum dado encontrado para o período selecionado.</td></tr>`;
+        }
+
+        tableBody.innerHTML = html;
+
+    } catch (err) {
+        console.error("Error loading goals view:", err);
+        tableBody.innerHTML = `<tr><td colspan="21" class="px-4 py-8 text-center text-red-400">Erro ao carregar metas: ${err.message}</td></tr>`;
+    } finally {
+        loading.classList.add('hidden');
+    }
+}
+
+// --- IMPORT MODAL LOGIC ---
+document.addEventListener('DOMContentLoaded', () => {
+    const importBtn = document.getElementById('goals-sv-import-btn');
+    const importModal = document.getElementById('import-goals-modal');
+    if (!importModal) return;
+
+    const importCloseBtn = document.getElementById('import-goals-close-btn');
+    const importCancelBtn = document.getElementById('import-goals-cancel-btn');
+    const importAnalyzeBtn = document.getElementById('import-goals-analyze-btn');
+    const importConfirmBtn = document.getElementById('import-goals-confirm-btn');
+    const importTextarea = document.getElementById('import-goals-textarea');
+    const analysisContainer = document.getElementById('import-analysis-container');
+    const analysisBody = document.getElementById('import-analysis-table-body');
+    const analysisBadges = document.getElementById('import-summary-badges');
+    const dropZone = document.getElementById('import-drop-zone');
+    const fileInput = document.getElementById('import-goals-file');
+    const importPaginationControls = document.getElementById('import-pagination-controls');
+
+    // Setup event listeners for the modal visibility
+    if (importBtn) {
+        importBtn.addEventListener('click', () => {
+            importModal.classList.remove('hidden');
+            importTextarea.value = '';
+            analysisContainer.classList.add('hidden');
+            pendingImportUpdates = [];
+            importConfirmBtn.disabled = true;
+        });
+    }
+
+    const closeModal = () => importModal.classList.add('hidden');
+    importCloseBtn.addEventListener('click', closeModal);
+    importCancelBtn.addEventListener('click', closeModal);
+
+    // Analyze Button Logic
+    importAnalyzeBtn.addEventListener('click', () => {
+        try {
+            const text = importTextarea.value;
+            if (!text.trim()) {
+                alert("A área de texto está vazia. Cole os dados.");
+                return;
+            }
+
+            // Reusing the parseGoalsSvStructure (from legacy code)
+            const updates = parseGoalsSvStructure(text);
+
+            if (!updates || updates.length === 0) {
+                alert("Nenhum dado válido encontrado para atualização. Verifique o formato.");
+                return;
+            }
+
+            pendingImportUpdates = updates;
+            importTablePage = 1;
+            renderImportTable();
+
+            analysisBadges.innerHTML = `<span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold">${updates.length} Registros</span>`;
+            analysisContainer.classList.remove('hidden');
+            analysisContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            importConfirmBtn.disabled = false;
+        } catch (e) {
+            console.error("Erro ao analisar dados importados:", e);
+            alert("Erro ao analisar dados: " + e.message);
+        }
+    });
+
+    // Pagination for Import Analysis Table
+    function renderImportTable() {
+        if (!analysisBody) return;
+        const startIndex = (importTablePage - 1) * importTablePageSize;
+        const endIndex = startIndex + importTablePageSize;
+        const pageData = pendingImportUpdates.slice(startIndex, endIndex);
+
+        analysisBody.innerHTML = pageData.map(u => {
+            let catDisplay = u.category;
+            let valDisplay = u.val;
+            if (u.type === 'rev' || u.category.includes('fat')) valDisplay = formatCurrency(u.val);
+            if (u.type === 'vol') valDisplay = u.val.toFixed(2) + ' kg';
+            if (u.type === 'pos' || u.type === 'mix') valDisplay = Math.round(u.val) + ' unid.';
+
+            return `
+                <tr class="hover:bg-slate-800/50">
+                    <td class="px-4 py-2 font-medium text-blue-400 uppercase text-xs">${escapeHtml(u.type)}</td>
+                    <td class="px-4 py-2 text-slate-300 text-xs truncate max-w-[150px]">${escapeHtml(u.seller)}</td>
+                    <td class="px-4 py-2 text-slate-400 text-xs">${escapeHtml(catDisplay)}</td>
+                    <td class="px-4 py-2 text-right font-mono text-yellow-400 text-xs">${valDisplay}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const totalPages = Math.ceil(pendingImportUpdates.length / importTablePageSize);
+        document.getElementById('import-page-info-text').textContent = `Página ${importTablePage} de ${totalPages}`;
+        document.getElementById('import-prev-page-btn').disabled = importTablePage === 1;
+        document.getElementById('import-next-page-btn').disabled = importTablePage === totalPages;
+
+        if (totalPages > 1) {
+            importPaginationControls.classList.remove('hidden');
+        } else {
+            importPaginationControls.classList.add('hidden');
+        }
+    }
+
+    document.getElementById('import-prev-page-btn').addEventListener('click', () => {
+        if (importTablePage > 1) { importTablePage--; renderImportTable(); }
+    });
+    document.getElementById('import-next-page-btn').addEventListener('click', () => {
+        if (importTablePage < Math.ceil(pendingImportUpdates.length / importTablePageSize)) { importTablePage++; renderImportTable(); }
+    });
+
+    // Save logic
+    importConfirmBtn.addEventListener('click', async () => {
+        const originalText = importConfirmBtn.innerHTML;
+        importConfirmBtn.innerHTML = "Salvando...";
+        importConfirmBtn.disabled = true;
+
+        try {
+            // Map the parsed updates back to the DB schema
+            const dbPayload = pendingImportUpdates.map(u => {
+                let metrica = 'FAT';
+                if (u.type === 'vol') metrica = 'VOL';
+                if (u.type === 'pos') metrica = 'POS';
+                if (u.type === 'mix') metrica = 'MIX';
+
+                return {
+                    ano: currentGoalsAno,
+                    mes: currentGoalsMes,
+                    codusur: u.seller,
+                    categoria: u.category,
+                    metrica: metrica,
+                    valor_ajuste: u.val
+                };
+            });
+
+            const res = await supabase.rpc('upsert_metas', { p_metas_json: dbPayload });
+
+            if (res.error) throw res.error;
+
+            alert("Metas atualizadas com sucesso!");
+            closeModal();
+            renderGoalsView(); // Refresh the table
+        } catch (e) {
+            console.error("Erro ao salvar metas:", e);
+            alert("Erro ao salvar metas: " + e.message);
+        } finally {
+            importConfirmBtn.innerHTML = originalText;
+            importConfirmBtn.disabled = false;
+        }
+    });
+
+
+    function processExcelFile(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+
+                // Convert to TSV for the parser
+                const tsv = XLSX.utils.sheet_to_csv(sheet, {FS: "\t"});
+
+                // Update UI
+                const importTextarea = document.getElementById('import-goals-textarea');
+                if (importTextarea) importTextarea.value = tsv;
+
+                if (dropZone) {
+                    dropZone.innerHTML = `
+                        <svg class="w-12 h-12 text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <p class="text-green-400 font-bold mb-2">Sucesso!</p>
+                        <p class="text-slate-400 text-sm">${file.name} carregado.</p>
+                    `;
+                }
+
+                // Auto-analyze
+                const importAnalyzeBtn = document.getElementById('import-analyze-btn');
+                if (importAnalyzeBtn) setTimeout(() => importAnalyzeBtn.click(), 500);
+
+            } catch (err) {
+                console.error(err);
+                if (dropZone) {
+                    dropZone.innerHTML = `
+                        <svg class="w-12 h-12 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        <p class="text-red-400 font-bold mb-2">Erro!</p>
+                        <p class="text-slate-400 text-sm">Falha ao ler o arquivo.</p>
+                    `;
+                }
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            processExcelFile(file);
+        });
+    }
+
+    if (dropZone) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add('border-teal-500', 'bg-slate-700/50');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove('border-teal-500', 'bg-slate-700/50');
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length > 0) {
+                processExcelFile(files[0]);
+            }
+        }, false);
+    }
+});
