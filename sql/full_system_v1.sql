@@ -8376,13 +8376,13 @@ CREATE TABLE IF NOT EXISTS public.metas_sv (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     ano INTEGER NOT NULL,
     mes INTEGER NOT NULL,
-    vendedor_nome TEXT NOT NULL,
+    codusur TEXT NOT NULL,
     categoria TEXT NOT NULL,
     metrica TEXT NOT NULL,
     valor_ajuste NUMERIC,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE (ano, mes, vendedor_nome, categoria, metrica)
+    UNIQUE (ano, mes, codusur, categoria, metrica)
 );
 
 -- RLS
@@ -8407,17 +8407,17 @@ DECLARE
 BEGIN
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_metas_json)
     LOOP
-        INSERT INTO public.metas_sv (ano, mes, vendedor_nome, categoria, metrica, valor_ajuste, updated_at)
+        INSERT INTO public.metas_sv (ano, mes, codusur, categoria, metrica, valor_ajuste, updated_at)
         VALUES (
             (v_item->>'ano')::INTEGER,
             (v_item->>'mes')::INTEGER,
-            v_item->>'vendedor_nome',
+            v_item->>'codusur',
             v_item->>'categoria',
             v_item->>'metrica',
             (v_item->>'valor_ajuste')::NUMERIC,
             NOW()
         )
-        ON CONFLICT (ano, mes, vendedor_nome, categoria, metrica)
+        ON CONFLICT (ano, mes, codusur, categoria, metrica)
         DO UPDATE SET
             valor_ajuste = EXCLUDED.valor_ajuste,
             updated_at = NOW();
@@ -8466,12 +8466,12 @@ BEGIN
         SELECT 
             vendedor,
             SUM(vlvenda) as fat_geral,
-            SUM(vlpeso) as vol_geral,
+            SUM(peso) as vol_geral,
             COUNT(DISTINCT codcli) as pos_geral,
             
             -- Pepsico/Elma
             SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') THEN vlvenda ELSE 0 END) as fat_elma,
-            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') THEN vlpeso ELSE 0 END) as vol_elma,
+            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') THEN peso ELSE 0 END) as vol_elma,
             COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') AND vlvenda > 0 THEN codcli END) as pos_elma,
             
             -- EXTRUSADOS (707)
@@ -8488,7 +8488,7 @@ BEGIN
             
             -- FOODS
             SUM(CASE WHEN codfor = '1119' THEN vlvenda ELSE 0 END) as fat_foods,
-            SUM(CASE WHEN codfor = '1119' THEN vlpeso ELSE 0 END) as vol_foods,
+            SUM(CASE WHEN codfor = '1119' THEN peso ELSE 0 END) as vol_foods,
             COUNT(DISTINCT CASE WHEN codfor = '1119' AND vlvenda > 0 THEN codcli END) as pos_foods,
             
             -- TODDYNHO (Assuming 'TODDYNHO' is in mix_marca or categoria_produto. Let's use simple string match for summary if needed, or rely on detailed logic. Since data_summary might not have mix_marca, we fallback to 1119 totals if not granular.
@@ -8500,7 +8500,7 @@ BEGIN
             
         FROM public.data_summary
         WHERE ano = v_ano_anterior AND mes = p_mes
-        GROUP BY vendedor
+        GROUP BY codusur
     )
     SELECT jsonb_build_object(
         'crescimento_ytd', v_crescimento_ytd,
