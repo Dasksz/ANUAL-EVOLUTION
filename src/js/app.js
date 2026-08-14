@@ -10995,8 +10995,8 @@ async function renderGoalsView() {
     try {
         // Fetch Base and Metas
         const [baseRes, metasRes] = await Promise.all([
-            window.supabaseClient.rpc('get_metas_base_comparativo', { p_ano: currentGoalsAno, p_mes: currentGoalsMes }),
-            window.supabaseClient.rpc('get_metas_sv', { p_ano: currentGoalsAno, p_mes: currentGoalsMes })
+            supabase.rpc('get_metas_base_comparativo', { p_ano: currentGoalsAno, p_mes: currentGoalsMes }),
+            supabase.rpc('get_metas_sv', { p_ano: currentGoalsAno, p_mes: currentGoalsMes })
         ]);
 
         if (baseRes.error) throw baseRes.error;
@@ -11096,29 +11096,29 @@ async function renderGoalsView() {
 
                 html += `
                 <tr class="hover:bg-slate-700/30 text-sm text-slate-300">
-                    <td class="px-4 py-2 font-medium text-slate-200 border-r border-slate-700 bg-slate-900 sticky left-0 z-10 shadow-md">${window.escapeHtml(s.codusur)}</td>
+                    <td class="px-4 py-2 font-medium text-slate-200 border-r border-slate-700 bg-slate-900 sticky left-0 z-10 shadow-md">${escapeHtml(s.codusur)}</td>
                     
-                    <td class="px-2 py-2 text-right">${window.formatCurrency(s.fat_elma * growth)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${window.formatCurrency(fatElma)}</td>
+                    <td class="px-2 py-2 text-right">${formatCurrency(s.fat_elma * growth)}</td>
+                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${formatCurrency(fatElma)}</td>
                     
                     <td class="px-2 py-2 text-right">${Math.round(s.pos_elma * growth)}</td>
                     <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${Math.round(posElma)}</td>
                     
-                    <td class="px-2 py-2 text-right">${window.formatCurrency(fat707)}</td>
+                    <td class="px-2 py-2 text-right">${formatCurrency(fat707)}</td>
                     <td class="px-2 py-2 text-right border-r border-slate-700">${Math.round(pos707)}</td>
                     
-                    <td class="px-2 py-2 text-right">${window.formatCurrency(fat708)}</td>
+                    <td class="px-2 py-2 text-right">${formatCurrency(fat708)}</td>
                     <td class="px-2 py-2 text-right border-r border-slate-700">${Math.round(pos708)}</td>
                     
-                    <td class="px-2 py-2 text-right">${window.formatCurrency(fat752)}</td>
+                    <td class="px-2 py-2 text-right">${formatCurrency(fat752)}</td>
                     <td class="px-2 py-2 text-right border-r border-slate-700">${Math.round(pos752)}</td>
                     
                     <td class="px-2 py-2 text-right">${(s.vol_elma).toFixed(2)}</td>
                     <td class="px-2 py-2 text-right">${(s.vol_elma * growth).toFixed(2)}</td>
                     <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${volElma.toFixed(2)}</td>
                     
-                    <td class="px-2 py-2 text-right">${window.formatCurrency(s.fat_foods * growth)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${window.formatCurrency(fatFoods)}</td>
+                    <td class="px-2 py-2 text-right">${formatCurrency(s.fat_foods * growth)}</td>
+                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${formatCurrency(fatFoods)}</td>
                     
                     <td class="px-2 py-2 text-right">${Math.round(s.pos_foods * growth)}</td>
                     <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${Math.round(posFoods)}</td>
@@ -11218,15 +11218,15 @@ document.addEventListener('DOMContentLoaded', () => {
         analysisBody.innerHTML = pageData.map(u => {
             let catDisplay = u.category;
             let valDisplay = u.val;
-            if (u.type === 'rev' || u.category.includes('fat')) valDisplay = window.formatCurrency(u.val);
+            if (u.type === 'rev' || u.category.includes('fat')) valDisplay = formatCurrency(u.val);
             if (u.type === 'vol') valDisplay = u.val.toFixed(2) + ' kg';
             if (u.type === 'pos' || u.type === 'mix') valDisplay = Math.round(u.val) + ' unid.';
             
             return `
                 <tr class="hover:bg-slate-800/50">
-                    <td class="px-4 py-2 font-medium text-blue-400 uppercase text-xs">${window.escapeHtml(u.type)}</td>
-                    <td class="px-4 py-2 text-slate-300 text-xs truncate max-w-[150px]">${window.escapeHtml(u.seller)}</td>
-                    <td class="px-4 py-2 text-slate-400 text-xs">${window.escapeHtml(catDisplay)}</td>
+                    <td class="px-4 py-2 font-medium text-blue-400 uppercase text-xs">${escapeHtml(u.type)}</td>
+                    <td class="px-4 py-2 text-slate-300 text-xs truncate max-w-[150px]">${escapeHtml(u.seller)}</td>
+                    <td class="px-4 py-2 text-slate-400 text-xs">${escapeHtml(catDisplay)}</td>
                     <td class="px-4 py-2 text-right font-mono text-yellow-400 text-xs">${valDisplay}</td>
                 </tr>
             `;
@@ -11275,7 +11275,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             });
 
-            const res = await window.supabaseClient.rpc('upsert_metas', { p_metas_json: dbPayload });
+            const res = await supabase.rpc('upsert_metas', { p_metas_json: dbPayload });
             
             if (res.error) throw res.error;
 
