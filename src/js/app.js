@@ -1,6 +1,6 @@
 import supabase from './supabase.js?v=5';
 
-import { parseGoalsSvStructure,
+import { 
     renderTableEmptyState,
     updateEl,
     generateYearOptionsHtml,
