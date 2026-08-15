@@ -11282,7 +11282,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
             // analysisContainer contains a header div, result div, and then the table container div.
             // We need to find the table container.
             
-        let pendingImportUpdates = [];
+        pendingImportUpdates = [];
             let importTablePage = 1;
             const importTablePageSize = 19;
 
