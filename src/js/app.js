@@ -11509,6 +11509,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 };
                 reader.readAsArrayBuffer(file);
             }
+}
 
             function resolveGoalCategory(category) {
                 // Returns list of leaf categories and metric type hint if needed
