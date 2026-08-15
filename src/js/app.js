@@ -10959,7 +10959,7 @@ async function syncIbgePopulations() {
 }
 
 
-});
+
 
 
 // Presentation Module
