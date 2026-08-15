@@ -11283,8 +11283,6 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
             // We need to find the table container.
             
         pendingImportUpdates = [];
-            let importTablePage = 1;
-            const importTablePageSize = 19;
 
             function renderImportTable() {
                 if (!analysisBody) return;
