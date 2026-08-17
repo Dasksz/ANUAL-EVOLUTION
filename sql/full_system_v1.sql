@@ -2459,25 +2459,32 @@ BEGIN
         DECLARE
             v_code text;
             v_conditions text[] := '{}';
+            v_prod_conditions text[] := '{}';
             v_simple_codes text[] := '{}';
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
                 IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categoria_produto = ''TODDYNHO'')');
+                    v_conditions := array_append(v_conditions, '(codfor = ''1119_TODDYNHO'')');
+                    v_prod_conditions := array_append(v_prod_conditions, '(codfor = ''1119'' AND categoria_produto = ''TODDYNHO'')');
                 ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categoria_produto = ''TODDY'')');
+                    v_conditions := array_append(v_conditions, '(codfor = ''1119_TODDY'')');
+                    v_prod_conditions := array_append(v_prod_conditions, '(codfor = ''1119'' AND categoria_produto = ''TODDY'')');
                 ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categoria_produto = ''QUAKER'')');
+                    v_conditions := array_append(v_conditions, '(codfor = ''1119_QUAKER'')');
+                    v_prod_conditions := array_append(v_prod_conditions, '(codfor = ''1119'' AND categoria_produto = ''QUAKER'')');
                 ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categoria_produto = ''KEROCOCO'')');
+                    v_conditions := array_append(v_conditions, '(codfor = ''1119_KEROCOCO'')');
+                    v_prod_conditions := array_append(v_prod_conditions, '(codfor = ''1119'' AND categoria_produto = ''KEROCOCO'')');
                 ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(codfor = ''1119'' AND categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
+                    v_conditions := array_append(v_conditions, '(codfor = ''1119_OUTROS'')');
+                    v_prod_conditions := array_append(v_prod_conditions, '(codfor = ''1119'' AND categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
                 ELSE
                     v_simple_codes := array_append(v_simple_codes, v_code);
                 END IF;
             END LOOP;
             IF array_length(v_simple_codes, 1) > 0 THEN
                 v_conditions := array_append(v_conditions, format('codfor = ANY(%L::text[])', v_simple_codes));
+                v_prod_conditions := array_append(v_prod_conditions, format('codfor = ANY(%L::text[])', v_simple_codes));
             END IF;
             IF array_length(v_conditions, 1) > 0 THEN
                 v_where_filial := v_where_filial || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
@@ -2490,7 +2497,7 @@ BEGIN
                 
                 -- Note: v_where_prod applies to public.dim_produtos (codigo, descricao, categoria_produto)
                 -- We use substring replacements to adapt the condition syntax since we removed aliases
-                v_where_prod := v_where_prod || ' AND (' || replace(replace(array_to_string(v_conditions, ' OR '), 'codfor', 'codigo'), 'fornecedor', 'descricao') || ') ';
+                v_where_prod := v_where_prod || ' AND (' || replace(replace(array_to_string(v_prod_conditions, ' OR '), 'codfor', 'codigo'), 'fornecedor', 'descricao') || ') ';
             END IF;
         END;
     END IF;
