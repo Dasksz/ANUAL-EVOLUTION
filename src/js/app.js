@@ -6785,7 +6785,7 @@ const body = document.getElementById('city-segmentation-table-body');
                 redes: jbpSelectedRedes
             });
 
-            const currentMesVal = jbpMesFilter?.value || 'todos';
+            const currentMesVal = jbpMesFilter?.value || "todos";
 
             const dbChanged = currentDbFiltersStr !== lastJbpFiltersDbStr;
             const mesChanged = currentMesVal !== lastJbpMesVal;
@@ -6797,17 +6797,49 @@ const body = document.getElementById('city-segmentation-table-body');
 
             clearTimeout(jbpFilterDebounceTimer);
             jbpFilterDebounceTimer = setTimeout(async () => {
+                window.showDashboardLoading("jbp-view");
+                try {
+                    // 1. Reload dynamic filters (cascading behavior)
+                    const reqFilters = {
+                        p_ano: jbpAnoFilter?.value === "todos" ? null : jbpAnoFilter?.value,
+                        p_mes: null, // JBP doesn"t filter cascading dimensions by month
+                        p_filial: jbpSelectedFiliais,
+                        p_cidade: jbpSelectedCidades,
+                        p_fornecedor: jbpSelectedFornecedores,
+                        p_tipovenda: [],
+                        p_rede: jbpSelectedRedes,
+                        p_categoria: jbpSelectedCategorias
+                    };
+
+                    const { data: filterData, error } = await supabase.rpc("get_dashboard_filters_optimized", reqFilters);
+                    if (!error && filterData) {
+                        const jbpCidadeFilterList = document.getElementById("jbp-cidade-filter-list");
+                        const jbpFornecedorFilterList = document.getElementById("jbp-fornecedor-filter-list");
+                        const jbpProdutoFilterList = document.getElementById("jbp-produto-filter-list");
+
+                        window.setupMultiSelect(jbpFilialFilterBtn, jbpFilialFilterDropdown, jbpFilialFilterDropdown, filterData.filiais || [], jbpSelectedFiliais, () => {});
+                        if(jbpCidadeFilterList) window.setupMultiSelect(jbpCidadeFilterBtn, jbpCidadeFilterDropdown, jbpCidadeFilterList, filterData.cidades || [], jbpSelectedCidades, () => {}, false, document.getElementById("jbp-cidade-search"));
+                        if(jbpFornecedorFilterList) window.setupMultiSelect(jbpFornecedorFilterBtn, jbpFornecedorFilterDropdown, jbpFornecedorFilterList, filterData.fornecedores || [], jbpSelectedFornecedores, () => {}, true, document.getElementById("jbp-fornecedor-search"));
+                        window.setupMultiSelect(jbpRedeFilterBtn, jbpRedeFilterDropdown, jbpRedeFilterDropdown, filterData.redes || [], jbpSelectedRedes, () => {}, false, null);
+                        window.setupMultiSelect(jbpCategoriaFilterBtn, jbpCategoriaFilterDropdown, jbpCategoriaFilterDropdown, filterData.categorias || [], jbpSelectedCategorias, () => {}, false, null);
+                        if(jbpProdutoFilterList) window.setupMultiSelect(jbpProdutoFilterBtn, jbpProdutoFilterDropdown, jbpProdutoFilterList, filterData.produtos || [], jbpSelectedProdutos, () => {}, true, document.getElementById("jbp-produto-search"));
+                    }
+                } catch (e) {
+                    AppLog.error("Error updating cascading JBP filters", e);
+                }
+
                 if (jbpPanelEntities.length > 0) {
                     if (dbChanged) {
-                        // If DB filters changed, we need to fetch new data from Supabase
                         await refreshJbpData();
                     } else if (mesChanged) {
-                        // If only the month filter changed, we can just re-render the mini charts locally
                         renderJbpMiniCharts();
                     }
                 }
+                window.hideDashboardLoading("jbp-view");
             }, 300);
         };
+
+
 
         if (jbpAnoFilter) jbpAnoFilter.addEventListener("change", handleJbpFilterChange);
         if (jbpMesFilter) jbpMesFilter.addEventListener("change", handleJbpFilterChange);
