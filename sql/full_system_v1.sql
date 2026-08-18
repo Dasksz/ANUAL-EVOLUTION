@@ -5682,6 +5682,7 @@ BEGIN
             v_rede_condition := v_rede_condition || ' (c.ramo IS NULL OR c.ramo IN (''N/A'', ''N/D'')) ';
         END IF;
         IF v_rede_condition != '' THEN
+            v_rede_condition := regexp_replace(v_rede_condition, '^\s*OR\s+', '', 'i');
             v_where_base := v_where_base || ' AND (' || v_rede_condition || ') ';
         END IF;
 
@@ -5699,6 +5700,7 @@ BEGIN
             v_rede_condition := v_rede_condition || ' (ramo IS NULL OR ramo IN (''N/A'', ''N/D'')) ';
         END IF;
         IF v_rede_condition != '' THEN
+            v_rede_condition := regexp_replace(v_rede_condition, '^\s*OR\s+', '', 'i');
             v_where_client_base := v_where_client_base || ' AND (' || v_rede_condition || ') ';
         END IF;
     END IF;
