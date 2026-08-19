@@ -3197,8 +3197,6 @@ DECLARE
     v_ref_date date;
     v_tri_start date;
     v_tri_end date;
-    v_prod_start_date date;
-    v_prod_end_date date;
     
     v_where_summary text := ' WHERE 1=1 ';
     v_where_raw text := ' WHERE 1=1 ';
@@ -3255,18 +3253,8 @@ BEGIN
         END IF;
     END IF;
 
-
     v_tri_end := (v_ref_date - interval '1 day')::date;
     v_tri_start := (v_ref_date - interval '3 months')::date;
-
-    IF p_mes IS NOT NULL AND p_mes != '' AND p_mes != 'todos' THEN
-        v_prod_start_date := make_date(v_current_year, v_target_month, 1);
-        v_prod_end_date := (v_prod_start_date + interval '1 month')::date;
-    ELSE
-        v_prod_start_date := make_date(v_current_year, 1, 1);
-        v_prod_end_date := make_date(v_current_year + 1, 1, 1);
-    END IF;
-
 
     -- Trend Logic Calculation
     v_max_sale_date := (SELECT MAX(dtped)::date FROM public.data_detailed);
@@ -3483,7 +3471,7 @@ BEGIN
                        MAX(s.dtped) as ultima_venda
                 FROM public.data_detailed s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                %s AND s.dtped >= %L::date AND s.dtped < %L::date
+                %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                 GROUP BY s.produto
                 UNION ALL
                 SELECT s.produto,
@@ -3494,7 +3482,7 @@ BEGIN
                        MAX(s.dtped) as ultima_venda
                 FROM public.data_history s
                 LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
-                %s AND s.dtped >= %L::date AND s.dtped < %L::date
+                %s AND s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                 GROUP BY s.produto
             ),
             prod_grouped AS (
@@ -3532,8 +3520,8 @@ BEGIN
         v_active_client_cond, v_where_summary, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Curr
         v_active_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
         v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
-        v_active_client_cond_slow, v_where_raw, v_prod_start_date, v_prod_end_date, -- Prod Detailed
-        v_active_client_cond_slow, v_where_raw, v_prod_start_date, v_prod_end_date -- Prod History
+        v_active_client_cond_slow, v_where_raw, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND dtped >= make_date(%L, %L, 1) AND dtped <= (make_date(%L, %L, 1) + interval ''1 month'' - interval ''1 day'') ', v_current_year, v_target_month, v_current_year, v_target_month) ELSE '' END, -- Prod Detailed
+        v_active_client_cond_slow, v_where_raw, v_previous_year, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND dtped >= make_date(%L, %L, 1) AND dtped <= (make_date(%L, %L, 1) + interval ''1 month'' - interval ''1 day'') ', v_previous_year, v_target_month, v_previous_year, v_target_month) ELSE '' END -- Prod History
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     
@@ -3580,7 +3568,7 @@ BEGIN
                     SUM(COALESCE(qtvenda, 0)) as total_qtvenda,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM base_data s
-                WHERE s.dtped >= %L::date AND s.dtped < %L::date
+                WHERE s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                 GROUP BY produto
             ),
             kpi_curr AS (
@@ -3600,7 +3588,7 @@ BEGIN
                     SUM(COALESCE(qtvenda, 0)) as total_qtvenda,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM base_data s
-                WHERE s.dtped >= %L::date AND s.dtped < %L::date
+                WHERE s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                 GROUP BY produto
             ),
             kpi_prev AS (
@@ -3647,7 +3635,7 @@ BEGIN
                        COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes,
                        MAX(dtped) as ultima_venda
                 FROM base_data s
-                WHERE s.dtped >= %L::date AND s.dtped < %L::date
+                WHERE s.dtped >= make_date(%L, 1, 1) AND s.dtped <= make_date(%L, 12, 31) %s
                 GROUP BY produto
             ),
             prod_agg AS (
@@ -3685,7 +3673,7 @@ BEGIN
         v_active_client_cond_slow, v_tri_start, v_tri_end, -- kpi_tri monthly clients subquery (1 %s, 2 %L)
 
         -- ⚡ QueryTuner: Updated prod_agg to use sargable date boundaries instead of EXTRACT(YEAR), passing v_current_year twice
-        v_active_client_cond_slow, v_prod_start_date, v_prod_end_date -- prod_agg (1 %s, 2 %L)
+        v_active_client_cond_slow, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND s.dtped <= (make_date(%L, %L, 1) + interval ''1 month'' - interval ''1 day'') ', v_current_year, v_target_month) ELSE '' END -- prod_agg (1 %s, 2 %L, 1 %s)
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     END IF;

@@ -2970,8 +2970,6 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     let boxesSelectedFornecedores = [];
     let boxesSelectedProducts = [];
     let boxesSelectedTiposVenda = [];
-    boxesSelectedRedes = [];
-let boxesSelectedRedes = [];
     let boxesSelectedCategorias = [];
     let boxesTrendActive = false; // State for Trend Toggle
 
@@ -2986,8 +2984,6 @@ let boxesSelectedRedes = [];
                 p_fornecedor: boxesSelectedFornecedores.length > 0 ? boxesSelectedFornecedores : null,
                 p_produto: boxesSelectedProducts.length > 0 ? boxesSelectedProducts : null,
                 p_tipovenda: boxesSelectedTiposVenda.length > 0 ? boxesSelectedTiposVenda : null,
-            p_rede: boxesSelectedRedes.length > 0 ? boxesSelectedRedes : null,
-
                 p_categoria: boxesSelectedCategorias.length > 0 ? boxesSelectedCategorias : null,
                 p_ano: boxesAnoFilter.value === 'todos' ? null : boxesAnoFilter.value,
                 p_mes: boxesMesFilter.value === '' ? null : boxesMesFilter.value
@@ -3094,8 +3090,7 @@ let boxesSelectedRedes = [];
             Supervisores: boxesSelectedSupervisores.length > 0 ? `${boxesSelectedSupervisores.length} selecionados` : 'Todos',
             Fornecedores: boxesSelectedFornecedores.length > 0 ? `${boxesSelectedFornecedores.length} selecionados` : 'Todos',
             Vendedores: boxesSelectedVendedores.length > 0 ? `${boxesSelectedVendedores.length} selecionados` : 'Todos',
-            Cidades: boxesSelectedCidades.length > 0 ? `${boxesSelectedCidades.length} selecionadas` : 'Todas',
-            Redes: boxesSelectedRedes.length > 0 ? `${boxesSelectedRedes.length} selecionadas` : 'Todas'
+            Cidades: boxesSelectedCidades.length > 0 ? `${boxesSelectedCidades.length} selecionadas` : 'Todas'
         };
 
         const reportData = currentBoxesTableData.map(row => ({
@@ -3364,8 +3359,6 @@ async function loadBoxesView() {
             p_fornecedor: boxesSelectedFornecedores.length > 0 ? boxesSelectedFornecedores : null,
             p_produto: boxesSelectedProducts.length > 0 ? boxesSelectedProducts : null,
             p_tipovenda: boxesSelectedTiposVenda.length > 0 ? boxesSelectedTiposVenda : null,
-            p_rede: boxesSelectedRedes.length > 0 ? boxesSelectedRedes : null,
-
             p_categoria: boxesSelectedCategorias.length > 0 ? boxesSelectedCategorias : null,
             p_ano: boxesAnoFilter.value === 'todos' ? null : boxesAnoFilter.value,
             p_mes: boxesMesFilter.value === '' ? null : boxesMesFilter.value
