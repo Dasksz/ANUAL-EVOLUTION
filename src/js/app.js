@@ -7030,8 +7030,8 @@ const body = document.getElementById('city-segmentation-table-body');
         function updateJbpFiltersDisabledState() {
             const btns = [
                 jbpFilialFilterBtn, jbpCidadeFilterBtn, jbpFornecedorFilterBtn,
-                jbpCategoriaFilterBtn, jbpRedeFilterBtn, jbpProdutoFilterBtn, jbpInovacoesFilterBtn
-            ];
+                jbpCategoriaFilterBtn, jbpProdutoFilterBtn, jbpInovacoesFilterBtn
+            ]; // Removed jbpRedeFilterBtn so it's always enabled
             const hasEntities = jbpPanelEntities.length > 0;
 
             btns.forEach(btn => {

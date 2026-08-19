@@ -5683,7 +5683,11 @@ BEGIN
             v_rede_condition := v_rede_condition || ' (c.ramo IS NULL OR TRIM(c.ramo) = '''' OR c.ramo IN (''N/A'', ''N/D'')) ';
         END IF;
         IF v_rede_condition != '' THEN
-            v_rede_condition := regexp_replace(v_rede_condition, '^\s*OR\s+', '', 'i');
+            -- In postgres regex, need correct escaping. Actually better without regex replace if we handled OR properly above.
+            -- Using a simpler replace to avoid regexp_replace edge cases:
+            IF v_rede_condition LIKE ' OR %' THEN
+                v_rede_condition := substring(v_rede_condition from 5);
+            END IF;
             v_where_base := v_where_base || ' AND (' || v_rede_condition || ') ';
         END IF;
 
@@ -5701,7 +5705,9 @@ BEGIN
             v_rede_condition := v_rede_condition || ' (ramo IS NULL OR TRIM(ramo) = '''' OR ramo IN (''N/A'', ''N/D'')) ';
         END IF;
         IF v_rede_condition != '' THEN
-            v_rede_condition := regexp_replace(v_rede_condition, '^\s*OR\s+', '', 'i');
+            IF v_rede_condition LIKE ' OR %' THEN
+                v_rede_condition := substring(v_rede_condition from 5);
+            END IF;
             v_where_client_base := v_where_client_base || ' AND (' || v_rede_condition || ') ';
         END IF;
     END IF;
