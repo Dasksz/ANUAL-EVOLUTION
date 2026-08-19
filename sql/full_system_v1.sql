@@ -4951,6 +4951,10 @@ DECLARE
     v_where_base text := '1=1';
     v_where_chart text := '1=1';
     v_sql text;
+    v_rede_condition text := '';
+    v_has_com_rede boolean := false;
+    v_has_sem_rede boolean := false;
+    v_specific_redes text[];
 BEGIN
     -- Base Filters
     IF p_codcli IS NOT NULL THEN
@@ -4973,12 +4977,27 @@ BEGIN
     END IF;
 
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
-        IF 'S/ REDE' = ANY(p_rede) THEN
-            v_where_base := v_where_base || format(' AND (ramo = ANY(%L::text[]) OR ramo IS NULL OR ramo IN (''N/A'', ''N/D''))', p_rede);
-            v_where_chart := v_where_chart || format(' AND (ramo = ANY(%L::text[]) OR ramo IS NULL OR ramo IN (''N/A'', ''N/D''))', p_rede);
-        ELSE
-            v_where_base := v_where_base || format(' AND ramo = ANY(%L::text[])', p_rede);
-            v_where_chart := v_where_chart || format(' AND ramo = ANY(%L::text[])', p_rede);
+        v_has_com_rede := ('C/ REDE' = ANY(p_rede));
+        v_has_sem_rede := ('S/ REDE' = ANY(p_rede));
+        v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
+
+        IF array_length(v_specific_redes, 1) > 0 THEN
+            v_rede_condition := format('ramo = ANY(%L::text[])', v_specific_redes);
+        END IF;
+
+        IF v_has_com_rede THEN
+            IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+            v_rede_condition := v_rede_condition || ' (ramo IS NOT NULL AND ramo NOT IN (''N/A'', ''N/D'')) ';
+        END IF;
+
+        IF v_has_sem_rede THEN
+            IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+            v_rede_condition := v_rede_condition || ' (ramo IS NULL OR ramo IN (''N/A'', ''N/D'')) ';
+        END IF;
+
+        IF v_rede_condition != '' THEN
+            v_where_base := v_where_base || ' AND (' || v_rede_condition || ') ';
+            v_where_chart := v_where_chart || ' AND (' || v_rede_condition || ') ';
         END IF;
     END IF;
 
@@ -5663,6 +5682,7 @@ BEGIN
             v_rede_condition := v_rede_condition || ' (c.ramo IS NULL OR c.ramo IN (''N/A'', ''N/D'')) ';
         END IF;
         IF v_rede_condition != '' THEN
+            v_rede_condition := regexp_replace(v_rede_condition, '^\s*OR\s+', '', 'i');
             v_where_base := v_where_base || ' AND (' || v_rede_condition || ') ';
         END IF;
 
@@ -5680,6 +5700,7 @@ BEGIN
             v_rede_condition := v_rede_condition || ' (ramo IS NULL OR ramo IN (''N/A'', ''N/D'')) ';
         END IF;
         IF v_rede_condition != '' THEN
+            v_rede_condition := regexp_replace(v_rede_condition, '^\s*OR\s+', '', 'i');
             v_where_client_base := v_where_client_base || ' AND (' || v_rede_condition || ') ';
         END IF;
     END IF;
