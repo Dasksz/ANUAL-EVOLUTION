@@ -1150,8 +1150,17 @@ CREATE OR REPLACE FUNCTION public.update_products_stock(p_stock_data jsonb)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
+    -- First, zero out all existing stock to ensure products not in the new spreadsheet are reset
+    UPDATE public.dim_produtos SET estoque_filial = '{}'::jsonb;
+
+    -- If no stock data is provided, we just exit after clearing
+    IF jsonb_array_length(p_stock_data) = 0 THEN
+        RETURN;
+    END IF;
+
     -- p_stock_data expects: [{"codigo": "123", "filial": "05", "estoque": 100}, ...]
     WITH raw_stock AS (
         SELECT 
@@ -1169,7 +1178,8 @@ BEGIN
         GROUP BY codigo
     )
     UPDATE public.dim_produtos p
-    SET estoque_filial = COALESCE(p.estoque_filial, '{}'::jsonb) || agg_stock.j
+    -- Overwrite the stock completely with the new aggregated stock data
+    SET estoque_filial = agg_stock.j
     FROM agg_stock
     WHERE p.codigo = agg_stock.codigo;
 END;

@@ -2792,7 +2792,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                  updateStatus('Atualizando Fornecedores...', 3);
                  await performDimensionUpsert('dim_fornecedores', data.newProviders);
             }
-            if (data.productStock && data.productStock.length > 0) {
+            if (data.productStock !== null && data.productStock !== undefined) {
                  updateStatus('Atualizando Estoque de Produtos...', 4);
                  await retryOperation(async () => {
                      const { error } = await supabase.rpc('update_products_stock', { p_stock_data: data.productStock });
