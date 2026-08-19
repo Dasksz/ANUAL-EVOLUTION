@@ -16,6 +16,48 @@ if (typeof window !== 'undefined' && typeof window.Chart !== 'undefined') {
 let estrelasDetailedData = [];
 let estrelasQtdMarcas = 0;
 
+
+    // --- Loading Helpers ---
+    window.showDashboardLoading = function(targetId = 'main-dashboard-view', loadingText = '') {
+        const container = document.getElementById(targetId);
+        let overlay = document.getElementById('dashboard-loading-overlay');
+
+        // If overlay exists but is in a different container, move it
+        if (overlay && overlay.parentElement !== container) {
+            overlay.remove();
+            overlay = null;
+        }
+
+        if (!overlay && container) {
+            overlay = document.createElement('div');
+            overlay.id = 'dashboard-loading-overlay';
+            overlay.className = 'dashboard-loading-overlay';
+            overlay.innerHTML = `<div class="dashboard-loading-spinner"></div>${loadingText ? `<div class="mt-2 text-sm text-slate-400 font-semibold">${loadingText}</div>` : ''}`;
+            // Make sure container is relative for absolute positioning
+            if (getComputedStyle(container).position === 'static') {
+                container.style.position = 'relative';
+            }
+            container.appendChild(overlay);
+        }
+
+        if (overlay && loadingText) {
+            const textDiv = overlay.querySelector('.mt-2');
+            if (textDiv) {
+                textDiv.textContent = loadingText;
+            } else {
+                overlay.innerHTML += `<div class="mt-2 text-sm text-slate-400 font-semibold">${loadingText}</div>`;
+            }
+        }
+ else if (overlay) {
+            overlay.classList.remove('hidden');
+        }
+    }
+
+    window.hideDashboardLoading = function() {
+        const overlay = document.getElementById('dashboard-loading-overlay');
+        if (overlay) overlay.classList.add('hidden');
+    }
+
 // Modal functions
 
 /**
@@ -2970,8 +3012,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     let boxesSelectedFornecedores = [];
     let boxesSelectedProducts = [];
     let boxesSelectedTiposVenda = [];
-    boxesSelectedRedes = [];
-let boxesSelectedRedes = [];
+    let boxesSelectedRedes = [];
     let boxesSelectedCategorias = [];
     let boxesTrendActive = false; // State for Trend Toggle
 
@@ -3854,46 +3895,7 @@ async function loadBoxesView() {
     let prefetchQueue = [];
     let isPrefetching = false;
 
-    // --- Loading Helpers ---
-    window.showDashboardLoading = function(targetId = 'main-dashboard-view', loadingText = '') {
-        const container = document.getElementById(targetId);
-        let overlay = document.getElementById('dashboard-loading-overlay');
 
-        // If overlay exists but is in a different container, move it
-        if (overlay && overlay.parentElement !== container) {
-            overlay.remove();
-            overlay = null; 
-        }
-
-        if (!overlay && container) {
-            overlay = document.createElement('div');
-            overlay.id = 'dashboard-loading-overlay';
-            overlay.className = 'dashboard-loading-overlay';
-            overlay.innerHTML = `<div class="dashboard-loading-spinner"></div>${loadingText ? `<div class="mt-2 text-sm text-slate-400 font-semibold">${loadingText}</div>` : ''}`;
-            // Make sure container is relative for absolute positioning
-            if (getComputedStyle(container).position === 'static') {
-                container.style.position = 'relative';
-            }
-            container.appendChild(overlay);
-        }
-
-        if (overlay && loadingText) {
-            const textDiv = overlay.querySelector('.mt-2');
-            if (textDiv) {
-                textDiv.textContent = loadingText;
-            } else {
-                overlay.innerHTML += `<div class="mt-2 text-sm text-slate-400 font-semibold">${loadingText}</div>`;
-            }
-        }
- else if (overlay) {
-            overlay.classList.remove('hidden');
-        }
-    }
-
-    window.hideDashboardLoading = function() {
-        const overlay = document.getElementById('dashboard-loading-overlay');
-        if (overlay) overlay.classList.add('hidden');
-    }
 
     async function initDashboard() {
         window.showDashboardLoading();
