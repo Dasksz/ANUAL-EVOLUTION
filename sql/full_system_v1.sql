@@ -8655,15 +8655,23 @@ BEGIN
 
         v_where := v_where || ') ';
     ELSE
-        -- If no clients or networks added to the panel, return empty options
-        RETURN json_build_object(
-            'filiais', '[]'::json,
-            'cidades', '[]'::json,
-            'fornecedores', '[]'::json,
-            'categorias', '[]'::json,
-            'produtos', '[]'::json,
-            'redes', '[]'::json
-        );
+        -- If no clients or networks added to the panel, return empty options for cascading filters
+        -- BUT we MUST return the list of 'redes' so the user can actually pick a network to start with.
+        -- We will execute a query just for 'redes' using the base filters (year, etc).
+        EXECUTE '
+            SELECT json_build_object(
+                ''filiais'', ''[]''::json,
+                ''cidades'', ''[]''::json,
+                ''fornecedores'', ''[]''::json,
+                ''categorias'', ''[]''::json,
+                ''produtos'', ''[]''::json,
+                ''redes'', COALESCE(json_agg(DISTINCT rede) FILTER (WHERE rede IS NOT NULL AND rede NOT IN (''N/A'', ''N/D'')), ''[]''::json)
+            )
+            FROM public.cache_filters
+            ' || v_where
+        INTO v_result;
+
+        RETURN v_result;
     END IF;
 
     -- Execute query using cache_filters table for speed
