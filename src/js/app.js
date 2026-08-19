@@ -6785,13 +6785,18 @@ const body = document.getElementById('city-segmentation-table-body');
         let lastJbpMesVal = "";
 
         const handleJbpFilterChange = async () => {
+            const clientesArray = jbpPanelEntities.filter(e => e.type === "cliente").map(e => e.id);
+            const redesArray = jbpPanelEntities.filter(e => e.type === "rede").map(e => e.id);
+
             const currentDbFiltersStr = JSON.stringify({
                 ano: jbpAnoFilter?.value,
                 filiais: jbpSelectedFiliais,
                 cidades: jbpSelectedCidades,
                 fornecedores: jbpSelectedFornecedores,
                 categorias: jbpSelectedCategorias,
-                redes: jbpSelectedRedes
+                redes: jbpSelectedRedes,
+                clientes_painel: clientesArray,
+                redes_painel: redesArray
             });
 
             const currentMesVal = jbpMesFilter?.value || "todos";
@@ -6809,9 +6814,6 @@ const body = document.getElementById('city-segmentation-table-body');
                 window.showDashboardLoading("jbp-view");
                 try {
                     // 1. Reload dynamic filters (cascading behavior)
-                    const clientesArray = jbpPanelEntities.filter(e => e.type === "cliente").map(e => e.id);
-                    const redesArray = jbpPanelEntities.filter(e => e.type === "rede").map(e => e.id);
-
                     const reqFilters = {
                         p_ano: jbpAnoFilter?.value === "todos" ? null : jbpAnoFilter?.value,
                         p_filial: jbpSelectedFiliais,
