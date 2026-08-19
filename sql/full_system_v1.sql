@@ -5670,16 +5670,17 @@ BEGIN
         v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
 
         -- Base WHERE
+        v_rede_condition := '';
         IF array_length(v_specific_redes, 1) > 0 THEN
             v_rede_condition := format('c.ramo = ANY(%L::text[])', v_specific_redes);
         END IF;
         IF v_has_com_rede THEN
             IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
-            v_rede_condition := v_rede_condition || ' (c.ramo IS NOT NULL AND c.ramo NOT IN (''N/A'', ''N/D'')) ';
+            v_rede_condition := v_rede_condition || ' (c.ramo IS NOT NULL AND TRIM(c.ramo) != '''' AND c.ramo NOT IN (''N/A'', ''N/D'')) ';
         END IF;
         IF v_has_sem_rede THEN
             IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
-            v_rede_condition := v_rede_condition || ' (c.ramo IS NULL OR c.ramo IN (''N/A'', ''N/D'')) ';
+            v_rede_condition := v_rede_condition || ' (c.ramo IS NULL OR TRIM(c.ramo) = '''' OR c.ramo IN (''N/A'', ''N/D'')) ';
         END IF;
         IF v_rede_condition != '' THEN
             v_rede_condition := regexp_replace(v_rede_condition, '^\s*OR\s+', '', 'i');
@@ -5689,15 +5690,15 @@ BEGIN
         -- Client Base WHERE (no table prefix)
         v_rede_condition := '';
         IF array_length(v_specific_redes, 1) > 0 THEN
-            v_rede_condition := format('UPPER(ramo) = ANY(ARRAY(SELECT UPPER(x) FROM unnest(%L::text[]) x))', v_specific_redes);
+            v_rede_condition := format('ramo = ANY(%L::text[])', v_specific_redes);
         END IF;
         IF v_has_com_rede THEN
             IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
-            v_rede_condition := v_rede_condition || ' (ramo IS NOT NULL AND ramo NOT IN (''N/A'', ''N/D'')) ';
+            v_rede_condition := v_rede_condition || ' (ramo IS NOT NULL AND TRIM(ramo) != '''' AND ramo NOT IN (''N/A'', ''N/D'')) ';
         END IF;
         IF v_has_sem_rede THEN
             IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
-            v_rede_condition := v_rede_condition || ' (ramo IS NULL OR ramo IN (''N/A'', ''N/D'')) ';
+            v_rede_condition := v_rede_condition || ' (ramo IS NULL OR TRIM(ramo) = '''' OR ramo IN (''N/A'', ''N/D'')) ';
         END IF;
         IF v_rede_condition != '' THEN
             v_rede_condition := regexp_replace(v_rede_condition, '^\s*OR\s+', '', 'i');
@@ -8555,6 +8556,123 @@ BEGIN
     SELECT COALESCE(jsonb_agg(row_to_json(m)), '[]'::jsonb) INTO v_result
     FROM public.metas_sv m
     WHERE ano = p_ano AND mes = p_mes;
+
+    RETURN v_result;
+END;
+$$;
+CREATE OR REPLACE FUNCTION public.get_jbp_dashboard_filters(
+    p_filial text[] DEFAULT NULL::text[],
+    p_cidade text[] DEFAULT NULL::text[],
+    p_fornecedor text[] DEFAULT NULL::text[],
+    p_rede text[] DEFAULT NULL::text[],
+    p_categoria text[] DEFAULT NULL::text[],
+    p_ano text DEFAULT NULL::text,
+    p_clientes text[] DEFAULT NULL::text[],
+    p_redes_adicionadas text[] DEFAULT NULL::text[]
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+    v_where text := ' WHERE 1=1 ';
+    v_result json;
+
+    v_has_com_rede boolean;
+    v_has_sem_rede boolean;
+    v_specific_redes text[];
+    v_rede_condition text := '';
+
+    v_filter_year int;
+BEGIN
+    SET LOCAL statement_timeout = '500s';
+
+    IF p_ano IS NOT NULL AND p_ano != '' AND p_ano != 'todos' THEN
+        v_filter_year := p_ano::int;
+        v_where := v_where || format(' AND ano = %L ', v_filter_year);
+    END IF;
+
+    IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
+        v_where := v_where || format(' AND filial = ANY(%L::text[]) ', p_filial);
+    END IF;
+
+    IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
+        v_where := v_where || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
+    END IF;
+
+    IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
+        v_where := v_where || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
+    END IF;
+
+    IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
+        v_where := v_where || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
+    END IF;
+
+    IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
+       v_has_com_rede := ('C/ REDE' = ANY(p_rede));
+       v_has_sem_rede := ('S/ REDE' = ANY(p_rede));
+       v_specific_redes := array_remove(array_remove(p_rede, 'C/ REDE'), 'S/ REDE');
+
+       IF array_length(v_specific_redes, 1) > 0 THEN
+           v_rede_condition := format('rede = ANY(%L::text[])', v_specific_redes);
+       END IF;
+
+       IF v_has_com_rede THEN
+           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+           v_rede_condition := v_rede_condition || ' (rede IS NOT NULL AND rede NOT IN (''N/A'', ''N/D'')) ';
+       END IF;
+
+       IF v_has_sem_rede THEN
+           IF v_rede_condition != '' THEN v_rede_condition := v_rede_condition || ' OR '; END IF;
+           v_rede_condition := v_rede_condition || ' (rede IS NULL OR rede IN (''N/A'', ''N/D'')) ';
+       END IF;
+
+       IF v_rede_condition != '' THEN
+           v_where := v_where || ' AND (' || v_rede_condition || ') ';
+       END IF;
+    END IF;
+
+    -- JBP Specific Filtering logic
+    IF (p_clientes IS NOT NULL AND array_length(p_clientes, 1) > 0) OR (p_redes_adicionadas IS NOT NULL AND array_length(p_redes_adicionadas, 1) > 0) THEN
+        v_where := v_where || ' AND (';
+
+        IF p_clientes IS NOT NULL AND array_length(p_clientes, 1) > 0 THEN
+            v_where := v_where || format(' codcli = ANY(%L::text[]) ', p_clientes);
+        ELSE
+            v_where := v_where || ' 1=0 ';
+        END IF;
+
+        IF p_redes_adicionadas IS NOT NULL AND array_length(p_redes_adicionadas, 1) > 0 THEN
+            v_where := v_where || format(' OR rede = ANY(%L::text[]) ', p_redes_adicionadas);
+        END IF;
+
+        v_where := v_where || ') ';
+    ELSE
+        -- If no clients or networks added to the panel, return empty options
+        RETURN json_build_object(
+            'filiais', '[]'::json,
+            'cidades', '[]'::json,
+            'fornecedores', '[]'::json,
+            'categorias', '[]'::json,
+            'produtos', '[]'::json,
+            'redes', '[]'::json
+        );
+    END IF;
+
+    -- Execute query using cache_filters table for speed
+    EXECUTE '
+        SELECT json_build_object(
+            ''filiais'', COALESCE(json_agg(DISTINCT filial) FILTER (WHERE filial IS NOT NULL), ''[]''::json),
+            ''cidades'', COALESCE(json_agg(DISTINCT cidade) FILTER (WHERE cidade IS NOT NULL), ''[]''::json),
+            ''fornecedores'', COALESCE(json_agg(DISTINCT jsonb_build_object(''codigo'', codfor, ''nome'', fornecedor)) FILTER (WHERE codfor IS NOT NULL AND fornecedor IS NOT NULL), ''[]''::json),
+            ''categorias'', COALESCE(json_agg(DISTINCT categoria_produto) FILTER (WHERE categoria_produto IS NOT NULL), ''[]''::json),
+            ''produtos'', COALESCE(json_agg(DISTINCT jsonb_build_object(''codigo'', codprod, ''nome'', produto)) FILTER (WHERE codprod IS NOT NULL AND produto IS NOT NULL), ''[]''::json),
+            ''redes'', COALESCE(json_agg(DISTINCT rede) FILTER (WHERE rede IS NOT NULL AND rede NOT IN (''N/A'', ''N/D'')), ''[]''::json)
+        )
+        FROM public.cache_filters
+        ' || v_where
+    INTO v_result;
 
     RETURN v_result;
 END;
