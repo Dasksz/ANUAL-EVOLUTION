@@ -6684,26 +6684,33 @@ const body = document.getElementById('city-segmentation-table-body');
             try {
                 if (!jbpAnoFilter) return;
 
+                const clientesArray = jbpPanelEntities.filter(e => e.type === "cliente").map(e => e.id);
+                const redesArray = jbpPanelEntities.filter(e => e.type === "rede").map(e => e.id);
+
+                // Load global years first using fast get_dashboard_filters_optimized
+                const { data: globalFilters, error: globalErr } = await supabase.rpc("get_dashboard_filters_optimized", { p_ano: null, p_mes: null });
+                if (!globalErr && globalFilters && globalFilters.anos) {
+                    const currentFilters = getCurrentFilters();
+                    jbpAnoFilter.innerHTML = generateYearOptionsHtml(globalFilters.anos);
+                    jbpAnoFilter.value = currentFilters.p_ano || new Date().getFullYear().toString();
+                }
+
                 const reqFilters = {
                     p_ano: null,
-                    p_mes: null,
                     p_filial: [],
                     p_cidade: [],
                     p_fornecedor: [],
-                    p_tipovenda: [],
                     p_rede: [],
-                    p_categoria: []
+                    p_categoria: [],
+                    p_clientes: clientesArray.length > 0 ? clientesArray : null,
+                    p_redes_adicionadas: redesArray.length > 0 ? redesArray : null
                 };
 
-                const { data: filterData, error } = await supabase.rpc("get_dashboard_filters", reqFilters);
+                const { data: filterData, error } = await supabase.rpc("get_jbp_dashboard_filters", reqFilters);
                 if (error) throw error;
                 if (!filterData) return;
 
                 const currentFilters = getCurrentFilters();
-                if (filterData.anos) {
-                    jbpAnoFilter.innerHTML = generateYearOptionsHtml(filterData.anos);
-                    jbpAnoFilter.value = currentFilters.p_ano || new Date().getFullYear().toString();
-                }
                 
                 jbpMesFilter.innerHTML = generateMonthOptionsHtml("Todos", "todos", true);
                 jbpMesFilter.value = currentFilters.p_mes || "todos";
@@ -6745,6 +6752,8 @@ const body = document.getElementById('city-segmentation-table-body');
 
         async function loadJbpView() {
             window.showDashboardLoading("jbp-view");
+
+            updateJbpFiltersDisabledState();
 
             if (typeof initJbpFilters === "function" && (!jbpFilialFilterDropdown.children.length || jbpFilialFilterDropdown.children.length === 0)) {
                 await initJbpFilters();
@@ -6800,18 +6809,21 @@ const body = document.getElementById('city-segmentation-table-body');
                 window.showDashboardLoading("jbp-view");
                 try {
                     // 1. Reload dynamic filters (cascading behavior)
+                    const clientesArray = jbpPanelEntities.filter(e => e.type === "cliente").map(e => e.id);
+                    const redesArray = jbpPanelEntities.filter(e => e.type === "rede").map(e => e.id);
+
                     const reqFilters = {
                         p_ano: jbpAnoFilter?.value === "todos" ? null : jbpAnoFilter?.value,
-                        p_mes: null, // JBP doesn"t filter cascading dimensions by month
                         p_filial: jbpSelectedFiliais,
                         p_cidade: jbpSelectedCidades,
                         p_fornecedor: jbpSelectedFornecedores,
-                        p_tipovenda: [],
                         p_rede: jbpSelectedRedes,
-                        p_categoria: jbpSelectedCategorias
+                        p_categoria: jbpSelectedCategorias,
+                        p_clientes: clientesArray.length > 0 ? clientesArray : null,
+                        p_redes_adicionadas: redesArray.length > 0 ? redesArray : null
                     };
                     
-                    const { data: filterData, error } = await supabase.rpc("get_dashboard_filters_optimized", reqFilters);
+                    const { data: filterData, error } = await supabase.rpc("get_jbp_dashboard_filters", reqFilters);
                     if (!error && filterData) {
                         const jbpCidadeFilterList = document.getElementById("jbp-cidade-filter-list");
                         const jbpFornecedorFilterList = document.getElementById("jbp-fornecedor-filter-list");
@@ -6945,6 +6957,8 @@ const body = document.getElementById('city-segmentation-table-body');
         if (jbpClearPanelBtn) {
             jbpClearPanelBtn.addEventListener("click", () => {
                 clearArrays(jbpPanelEntities, jbpPanelData);
+                updateJbpFiltersDisabledState();
+                handleJbpFilterChange();
                 renderJbpPanel();
             });
         }
@@ -7012,9 +7026,32 @@ const body = document.getElementById('city-segmentation-table-body');
             });
         }
 
+
+        function updateJbpFiltersDisabledState() {
+            const btns = [
+                jbpFilialFilterBtn, jbpCidadeFilterBtn, jbpFornecedorFilterBtn,
+                jbpCategoriaFilterBtn, jbpRedeFilterBtn, jbpProdutoFilterBtn, jbpInovacoesFilterBtn
+            ];
+            const hasEntities = jbpPanelEntities.length > 0;
+
+            btns.forEach(btn => {
+                if (btn) {
+                    if (!hasEntities) {
+                        btn.classList.add('opacity-50', 'pointer-events-none');
+                        // Also clear their visual text if disabled
+                        btn.innerHTML = "<span class=\"truncate\">Aguardando...</span><svg aria-hidden=\"true\" class=\"w-4 h-4 ml-2 text-slate-400 pointer-events-none\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path></svg>";
+                    } else {
+                        btn.classList.remove('opacity-50', 'pointer-events-none');
+                    }
+                }
+            });
+        }
+
         function addJbpEntity(type, id, name) {
             if (!jbpPanelEntities.find(e => e.type === type && e.id === id)) {
                 jbpPanelEntities.push({ type, id, name });
+                updateJbpFiltersDisabledState();
+                handleJbpFilterChange(); // Update cascading filters based on new entity
                 refreshJbpData();
             } else {
                 window.showToast(`${type === "cliente" ? "Cliente" : "Rede"} já adicionado ao painel.`, "info");
@@ -7023,12 +7060,14 @@ const body = document.getElementById('city-segmentation-table-body');
 
         function removeJbpEntity(type, id) {
             jbpPanelEntities = jbpPanelEntities.filter(e => !(e.type === type && e.id === id));
+            updateJbpFiltersDisabledState();
             if (jbpPanelEntities.length === 0) {
                 jbpPanelData = [];
                 renderJbpPanel();
             } else {
                 refreshJbpData();
             }
+            handleJbpFilterChange(); // Update cascading filters based on removed entity
         }
 
         async function refreshJbpData() {
