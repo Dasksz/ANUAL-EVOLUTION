@@ -5683,7 +5683,11 @@ BEGIN
             v_rede_condition := v_rede_condition || ' (c.ramo IS NULL OR TRIM(c.ramo) = '''' OR c.ramo IN (''N/A'', ''N/D'')) ';
         END IF;
         IF v_rede_condition != '' THEN
-            v_rede_condition := regexp_replace(v_rede_condition, '^\s*OR\s+', '', 'i');
+            -- In postgres regex, need correct escaping. Actually better without regex replace if we handled OR properly above.
+            -- Using a simpler replace to avoid regexp_replace edge cases:
+            IF v_rede_condition LIKE ' OR %' THEN 
+                v_rede_condition := substring(v_rede_condition from 5); 
+            END IF;
             v_where_base := v_where_base || ' AND (' || v_rede_condition || ') ';
         END IF;
 
@@ -5701,7 +5705,9 @@ BEGIN
             v_rede_condition := v_rede_condition || ' (ramo IS NULL OR TRIM(ramo) = '''' OR ramo IN (''N/A'', ''N/D'')) ';
         END IF;
         IF v_rede_condition != '' THEN
-            v_rede_condition := regexp_replace(v_rede_condition, '^\s*OR\s+', '', 'i');
+            IF v_rede_condition LIKE ' OR %' THEN 
+                v_rede_condition := substring(v_rede_condition from 5); 
+            END IF;
             v_where_client_base := v_where_client_base || ' AND (' || v_rede_condition || ') ';
         END IF;
     END IF;
@@ -8578,12 +8584,12 @@ AS $$
 DECLARE
     v_where text := ' WHERE 1=1 ';
     v_result json;
-
+    
     v_has_com_rede boolean;
     v_has_sem_rede boolean;
     v_specific_redes text[];
     v_rede_condition text := '';
-
+    
     v_filter_year int;
 BEGIN
     SET LOCAL statement_timeout = '500s';
@@ -8592,7 +8598,7 @@ BEGIN
         v_filter_year := p_ano::int;
         v_where := v_where || format(' AND ano = %L ', v_filter_year);
     END IF;
-
+    
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
         v_where := v_where || format(' AND filial = ANY(%L::text[]) ', p_filial);
     END IF;
@@ -8608,7 +8614,7 @@ BEGIN
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where := v_where || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
-
+    
     IF p_rede IS NOT NULL AND array_length(p_rede, 1) > 0 THEN
        v_has_com_rede := ('C/ REDE' = ANY(p_rede));
        v_has_sem_rede := ('S/ REDE' = ANY(p_rede));
@@ -8632,11 +8638,11 @@ BEGIN
            v_where := v_where || ' AND (' || v_rede_condition || ') ';
        END IF;
     END IF;
-
+    
     -- JBP Specific Filtering logic
     IF (p_clientes IS NOT NULL AND array_length(p_clientes, 1) > 0) OR (p_redes_adicionadas IS NOT NULL AND array_length(p_redes_adicionadas, 1) > 0) THEN
         v_where := v_where || ' AND (';
-
+        
         IF p_clientes IS NOT NULL AND array_length(p_clientes, 1) > 0 THEN
             v_where := v_where || format(' codcli = ANY(%L::text[]) ', p_clientes);
         ELSE
@@ -8659,7 +8665,7 @@ BEGIN
             'redes', '[]'::json
         );
     END IF;
-
+    
     -- Execute query using cache_filters table for speed
     EXECUTE '
         SELECT json_build_object(
