@@ -3590,7 +3590,7 @@ BEGIN
                     SUM(COALESCE(qtvenda, 0)) as total_qtvenda,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM base_data s
-                WHERE s.dtped >= %L::date AND s.dtped < %L::date
+                WHERE s.dtped >= %L::date AND s.dtped < %L::date %s
                 GROUP BY produto
             ),
             kpi_curr AS (
@@ -3610,7 +3610,7 @@ BEGIN
                     SUM(COALESCE(qtvenda, 0)) as total_qtvenda,
                     COUNT(DISTINCT CASE WHEN %s THEN codcli END) as clientes
                 FROM base_data s
-                WHERE s.dtped >= %L::date AND s.dtped < %L::date
+                WHERE s.dtped >= %L::date AND s.dtped < %L::date %s
                 GROUP BY produto
             ),
             kpi_prev AS (
