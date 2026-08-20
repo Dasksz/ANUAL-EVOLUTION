@@ -1154,7 +1154,7 @@ SET search_path = public
 AS $$
 BEGIN
     -- First, zero out all existing stock to ensure products not in the new spreadsheet are reset
-    UPDATE public.dim_produtos SET estoque_filial = '{}'::jsonb;
+    UPDATE public.dim_produtos SET estoque_filial = '{}'::jsonb WHERE codigo IS NOT NULL;
 
     -- If no stock data is provided, we just exit after clearing
     IF jsonb_array_length(p_stock_data) = 0 THEN
