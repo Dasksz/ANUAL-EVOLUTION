@@ -3686,10 +3686,10 @@ BEGIN
         v_active_client_cond_slow, -- chart_agg_base (1 %s)
         
         -- ⚡ QueryTuner: Updated kpi_curr to use sargable date boundaries instead of EXTRACT(YEAR), passing v_current_year twice
-        v_active_client_cond_slow, v_current_year, v_current_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END, -- kpi_curr base query (1 %s, 2 %L, 1 %s)
+        v_active_client_cond_slow, make_date(v_current_year, 1, 1), make_date(v_current_year + 1, 1, 1), CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END, -- kpi_curr base query (1 %s, 2 %L, 1 %s)
         
         -- ⚡ QueryTuner: Updated kpi_prev to use sargable date boundaries instead of EXTRACT(YEAR), passing v_previous_year twice
-        v_active_client_cond_slow, v_previous_year, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END, -- kpi_prev base query (1 %s, 2 %L, 1 %s)
+        v_active_client_cond_slow, make_date(v_previous_year, 1, 1), make_date(v_previous_year + 1, 1, 1), CASE WHEN v_target_month IS NOT NULL THEN format(' AND EXTRACT(MONTH FROM s.dtped) <= %L ', v_target_month) ELSE '' END, -- kpi_prev base query (1 %s, 2 %L, 1 %s)
 
         v_tri_start, v_tri_end, -- kpi_tri_raw base query (2 %L)
         v_active_client_cond_slow, v_tri_start, v_tri_end, -- kpi_tri monthly clients subquery (1 %s, 2 %L)
