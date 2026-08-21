@@ -884,6 +884,7 @@ self.onmessage = async (event) => {
         self.postMessage({ type: 'progress', status: 'Criando mapa mestre de vendedores...', percentage: 40 });
         const rcaInfoMap = new Map();
         const supervisorCodeMap = new Map(); // CODSUPERVISOR -> SUPERV NAME
+        const supervisorNameMap = new Map(); // SUPERV NAME -> CODSUPERVISOR
         const clientLastVendorMap = new Map(); // CODCLI -> CODUSUR
         const vendorCitiesMap = new Map(); // CODUSUR -> Set(MUNICIPIO)
 
@@ -910,6 +911,7 @@ self.onmessage = async (event) => {
 
             if (codSupervisor && supervisor) {
                 supervisorCodeMap.set(codSupervisor, supervisor);
+                supervisorNameMap.set(supervisor, codSupervisor);
             }
 
             const existingEntry = rcaInfoMap.get(codusur);
@@ -1032,6 +1034,11 @@ self.onmessage = async (event) => {
                     newSale['SUPERV'] = targetSupervisor;
                     newSale['CODUSUR'] = `INAT_${sanitizedSupervisor}`;
                     newSale['NOME'] = `INATIVOS ${targetSupervisor}`;
+
+                    const targetSupervisorCode = supervisorNameMap.get(targetSupervisor);
+                    if (targetSupervisorCode) {
+                        newSale['CODSUPERVISOR'] = targetSupervisorCode;
+                    }
 
                 } else {
                     // 4. Active Logic: Supervisor by Vendor's Latest Status
