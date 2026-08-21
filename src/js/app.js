@@ -264,6 +264,7 @@ const AppLog = {
 window.showToast = showToast;
 
 document.addEventListener('DOMContentLoaded', () => {
+    setupGoalsFilters();
     AppLog.log("App Version: 2.0 (Cache Refresh Split)");
     let isMainDashboardInitialized = false;
     let isInnovationsInitialized = false;
@@ -11665,20 +11666,31 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 return 0;
             }
 
+let goalsChartInstance = null;
+let currentGoalsMetric = 'fat'; // fat, vol, pos, salty, foods
+
 async function renderGoalsView() {
     const tableHead = document.getElementById('goals-table-head');
     const tableBody = document.getElementById('goals-table-body');
     const loading = document.getElementById('goals-loading');
     
-    // Check if dates are defined by filters, otherwise use current
-    if (window.availableFiltersState && window.availableFiltersState.mes && window.availableFiltersState.mes.length > 0) {
-        currentGoalsMes = parseInt(window.availableFiltersState.mes[0], 10);
-    }
-    if (window.availableFiltersState && window.availableFiltersState.ano && window.availableFiltersState.ano.length > 0) {
-        currentGoalsAno = parseInt(window.availableFiltersState.ano[0], 10);
-    }
+    // Read from local filters
+    const anoSelect = document.getElementById('goals-filter-ano');
+    const mesSelect = document.getElementById('goals-filter-mes');
+    const supSelect = document.getElementById('goals-filter-supervisor');
+    const venSelect = document.getElementById('goals-filter-vendedor');
+
+    if (anoSelect && anoSelect.value) currentGoalsAno = parseInt(anoSelect.value, 10);
+    if (mesSelect && mesSelect.value) currentGoalsMes = parseInt(mesSelect.value, 10);
+
+    const p_codsupervisor = supSelect && supSelect.value ? supSelect.value : null;
+    const p_codusur = venSelect && venSelect.value ? venSelect.value : null;
 
     loading.classList.remove('hidden');
+
+    // Update Chart
+    await renderGoalsChart(currentGoalsAno, p_codsupervisor, p_codusur);
+
     tableHead.innerHTML = '';
     tableBody.innerHTML = '';
 
@@ -11687,6 +11699,9 @@ async function renderGoalsView() {
         const [baseRes, metasRes] = await Promise.all([
             supabase.rpc('get_metas_base_comparativo', { p_ano: currentGoalsAno, p_mes: currentGoalsMes }),
             supabase.rpc('get_metas_sv', { p_ano: currentGoalsAno, p_mes: currentGoalsMes })
+            // Se precisarmos passar codsupervisor/codusur para a base de tabela no futuro, podemos adicionar aqui.
+            // A func atual get_metas_base_comparativo nao recebe, vamos focar a tabela no global, ou seria ideal a tabela seguir o filtro tbm?
+            // O requisito foca nos graficos e nos filtros no topo. A tabela hoje lista todos os vendedores.
         ]);
 
         if (baseRes.error) throw baseRes.error;
@@ -11832,6 +11847,229 @@ async function renderGoalsView() {
         loading.classList.add('hidden');
     }
 }
+
+
+async function renderGoalsChart(ano, codsupervisor, codusur) {
+    const canvas = document.getElementById('goals-annual-chart');
+    const loading = document.getElementById('goals-chart-loading');
+    if(!canvas) return;
+
+    if(loading) loading.classList.remove('hidden');
+
+    try {
+        const { data, error } = await supabase.rpc('get_metas_anuais_chart', {
+            p_ano: ano,
+            p_codsupervisor: codsupervisor,
+            p_codusur: codusur
+        });
+
+        if (error) throw error;
+
+        let chartData = data || [];
+        // Ensure 12 months
+        if (chartData.length === 0) {
+            for(let i=1; i<=12; i++) chartData.push({mes: i});
+        }
+
+        const labels = chartData.map(d => window.MONTHS_PT_SHORT ? window.MONTHS_PT_SHORT[d.mes] : d.mes);
+
+        let dataReal = [];
+        let dataMeta = [];
+        let formatVal = (v) => v;
+
+        chartData.forEach(d => {
+            switch(currentGoalsMetric) {
+                case 'fat':
+                    dataReal.push(d.real_fat_geral || 0);
+                    dataMeta.push(d.meta_fat_geral || 0);
+                    formatVal = window.formatCurrency;
+                    break;
+                case 'vol':
+                    dataReal.push(d.real_vol_geral || 0);
+                    dataMeta.push(d.meta_vol_geral || 0);
+                    formatVal = window.formatTons;
+                    break;
+                case 'pos':
+                    dataReal.push(d.real_pos_geral || 0);
+                    dataMeta.push(d.meta_pos_geral || 0);
+                    formatVal = window.formatInteger;
+                    break;
+                case 'salty':
+                    dataReal.push(d.real_pos_salty || 0);
+                    dataMeta.push(d.meta_pos_salty || 0);
+                    formatVal = window.formatInteger;
+                    break;
+                case 'foods':
+                    dataReal.push(d.real_pos_foods || 0);
+                    dataMeta.push(d.meta_pos_foods || 0);
+                    formatVal = window.formatInteger;
+                    break;
+            }
+        });
+
+        if (goalsChartInstance) {
+            goalsChartInstance.destroy();
+        }
+
+        const ctx = canvas.getContext('2d');
+        goalsChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Meta',
+                        data: dataMeta,
+                        backgroundColor: 'rgba(94, 234, 212, 0.2)', // teal-300 with opacity
+                        borderColor: 'rgb(94, 234, 212)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Realizado',
+                        data: dataReal,
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)', // blue-500
+                        borderColor: 'rgb(59, 130, 246)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#94a3b8' } // slate-400
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null && formatVal) {
+                                    label += formatVal(context.parsed.y);
+                                }
+                                return label;
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: false // Hide by default to avoid clutter
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#334155' }, // slate-700
+                        ticks: {
+                            color: '#94a3b8',
+                            callback: function(value) {
+                                if(currentGoalsMetric === 'fat') {
+                                    return 'R$ ' + (value/1000).toFixed(0) + 'k';
+                                }
+                                return value;
+                            }
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+
+    } catch(err) {
+        console.error("Erro ao renderizar grafico de metas:", err);
+    } finally {
+        if(loading) loading.classList.add('hidden');
+    }
+}
+
+// Setup Goals Filters
+async function setupGoalsFilters() {
+    const anoSelect = document.getElementById('goals-filter-ano');
+    const mesSelect = document.getElementById('goals-filter-mes');
+    const supSelect = document.getElementById('goals-filter-supervisor');
+    const venSelect = document.getElementById('goals-filter-vendedor');
+    const impAno = document.getElementById('import-goals-ano');
+    const impMes = document.getElementById('import-goals-mes');
+
+    if(!anoSelect) return;
+
+    // Populate Anos
+    const currentYear = new Date().getFullYear();
+    const anos = [currentYear - 1, currentYear, currentYear + 1];
+    const anoHtml = anos.map(a => `<option value="${a}">${a}</option>`).join('');
+    anoSelect.innerHTML = anoHtml;
+    if(impAno) impAno.innerHTML = anoHtml;
+
+    anoSelect.value = currentYear;
+    if(impAno) impAno.value = currentYear;
+
+    // Populate Meses
+    let mesHtml = '';
+    for(let i=1; i<=12; i++) {
+        mesHtml += `<option value="${i}">${window.MONTHS_PT ? window.MONTHS_PT[i] : i}</option>`;
+    }
+    mesSelect.innerHTML = mesHtml;
+    if(impMes) impMes.innerHTML = mesHtml;
+
+    const currentMonth = new Date().getMonth() + 1;
+    mesSelect.value = currentMonth;
+    if(impMes) impMes.value = currentMonth;
+
+    // Populate Sup / Ven using existing window.availableFiltersState if available, or fetch them
+    try {
+        const { data: sups } = await supabase.from('dim_supervisores').select('*').order('nome');
+        if(sups) {
+            supSelect.innerHTML = '<option value="">Todos</option>' + sups.map(s => `<option value="${s.codigo}">${s.nome}</option>`).join('');
+        }
+
+        const { data: vens } = await supabase.from('dim_vendedores').select('*').order('nome');
+        if(vens) {
+            venSelect.innerHTML = '<option value="">Todos</option>' + vens.map(v => `<option value="${v.codigo}">${v.nome}</option>`).join('');
+        }
+    } catch(e) {
+        console.error("Erro populando dropdowns:", e);
+    }
+
+    // Listeners
+    const triggerRender = () => {
+        if(!document.getElementById('goals-view').classList.contains('hidden')) {
+            renderGoalsView();
+        }
+    };
+
+    anoSelect.addEventListener('change', triggerRender);
+    mesSelect.addEventListener('change', triggerRender);
+    supSelect.addEventListener('change', triggerRender);
+    venSelect.addEventListener('change', triggerRender);
+
+    // Metric Buttons
+    const metricBtns = document.querySelectorAll('.goals-metric-btn');
+    metricBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            metricBtns.forEach(b => {
+                b.classList.remove('active', 'bg-blue-600', 'text-white');
+                b.classList.add('bg-slate-700', 'text-slate-300');
+            });
+            e.target.classList.remove('bg-slate-700', 'text-slate-300');
+            e.target.classList.add('active', 'bg-blue-600', 'text-white');
+            currentGoalsMetric = e.target.dataset.metric;
+
+            // Re-render chart without fetching table again if possible, but simplest is to just re-render
+            const a = document.getElementById('goals-filter-ano')?.value;
+            const s = document.getElementById('goals-filter-supervisor')?.value;
+            const v = document.getElementById('goals-filter-vendedor')?.value;
+            renderGoalsChart(parseInt(a,10)||currentYear, s||null, v||null);
+        });
+    });
+}
+
 
 // --- IMPORT MODAL LOGIC ---
 document.addEventListener('DOMContentLoaded', () => {
