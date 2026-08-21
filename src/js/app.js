@@ -5389,7 +5389,6 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             p_vendedor: citySelectedVendedores.length > 0 ? citySelectedVendedores : null,
             p_fornecedor: citySelectedFornecedores.length > 0 ? citySelectedFornecedores : null,
             p_tipovenda: citySelectedTiposVenda.length > 0 ? citySelectedTiposVenda : null,
-            p_segmentacao: citySelectedSegmentacoes.length > 0 ? citySelectedSegmentacoes : null,
             p_rede: citySelectedRedes.length > 0 ? citySelectedRedes : null,
             p_categoria: citySelectedCategorias.length > 0 ? citySelectedCategorias : null,
             p_ano: cityAnoFilter && cityAnoFilter.value !== 'todos' ? cityAnoFilter.value : null,
