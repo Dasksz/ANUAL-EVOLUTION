@@ -1302,16 +1302,62 @@
                                 </div>
                             </div>
                             <div class="flex items-center gap-3 w-full md:w-auto">
-                                <button id="goals-sv-export-btn" class="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2 shadow-lg transition-colors">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
-                                    Exportar Excel
-                                </button>
-                                <button id="goals-sv-import-btn" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2 shadow-lg transition-colors">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                                    Importar Excel
+                                <button id="goals-sv-import-btn" class="w-full md:w-auto bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-blue-500/30 text-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                    Importar Metas
                                 </button>
                             </div>
                         </header>
+
+                        <!-- Goals Filters -->
+                        <div class="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700 mb-6">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <label class="block text-xs text-slate-400 uppercase mb-1">Ano</label>
+                                    <select id="goals-filter-ano" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"></select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 uppercase mb-1">Mês (Tabela)</label>
+                                    <select id="goals-filter-mes" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"></select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 uppercase mb-1">Supervisor</label>
+                                    <select id="goals-filter-supervisor" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 uppercase mb-1">Vendedor</label>
+                                    <select id="goals-filter-vendedor" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chart Section -->
+                        <div class="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700 mb-6">
+                            <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                    Evolução Anual
+                                </h2>
+                                <div class="flex gap-2 flex-wrap" id="goals-metric-buttons">
+                                    <button class="goals-metric-btn active bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-metric="fat">Faturamento</button>
+                                    <button class="goals-metric-btn bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-metric="vol">Tonelada</button>
+                                    <button class="goals-metric-btn bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-metric="pos">Positivação Geral</button>
+                                    <button class="goals-metric-btn bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-metric="salty">Mix Salty</button>
+                                    <button class="goals-metric-btn bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-metric="foods">Mix Foods</button>
+                                </div>
+                            </div>
+                            <div class="h-80 w-full relative flex items-center justify-center">
+                                <div id="goals-chart-loading" class="absolute z-10 flex flex-col items-center justify-center bg-slate-800/80 inset-0 hidden backdrop-blur-sm rounded-lg">
+                                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+                                    <p class="text-slate-400 text-sm">Carregando gráfico...</p>
+                                </div>
+                                <canvas id="goals-annual-chart" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                        </div>
 
                         <!-- Loading State -->
                         <div id="goals-loading" class="flex flex-col items-center justify-center py-20 hidden">
@@ -1344,6 +1390,16 @@
                                     <button id="import-goals-close-btn" class="text-slate-400 hover:text-white transition-colors">
                                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                     </button>
+                                </div>
+                                <div class="p-4 bg-slate-900 border-b border-slate-700 grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs text-slate-400 uppercase mb-1">Ano Alvo da Importação</label>
+                                        <select id="import-goals-ano" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"></select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-400 uppercase mb-1">Mês Alvo da Importação</label>
+                                        <select id="import-goals-mes" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"></select>
+                                    </div>
                                 </div>
                                 <div class="p-6 overflow-y-auto flex-1 custom-scrollbar">
                                     <div id="import-drop-zone" class="border-2 border-dashed border-slate-600 rounded-lg p-8 mb-6 flex flex-col items-center justify-center transition-colors hover:border-teal-500 hover:bg-slate-700/30 cursor-pointer">

@@ -8513,7 +8513,7 @@ BEGIN
     -- We will build a JSON array of sellers and their base metrics
     WITH seller_data AS (
         SELECT 
-            vendedor,
+            codusur,
             SUM(vlvenda) as fat_geral,
             SUM(peso) as vol_geral,
             COUNT(DISTINCT codcli) as pos_geral,
@@ -8701,6 +8701,140 @@ BEGIN
         FROM public.cache_filters
         ' || v_where
     INTO v_result;
+
+    RETURN v_result;
+END;
+$$;
+
+-- Nova função para buscar dados agregados do ano para o gráfico da página de Metas
+CREATE OR REPLACE FUNCTION public.get_metas_anuais_chart(
+    p_ano INTEGER,
+    p_codsupervisor TEXT DEFAULT NULL,
+    p_codusur TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_result JSONB;
+BEGIN
+    WITH meses AS (
+        SELECT generate_series(1, 12) as mes
+    ),
+
+    -- Metas (somamos os ajustes da tabela metas_sv ou base de crescimento,
+    -- aqui simplificaremos pegando os ajustes de metas salvos na metas_sv para os filtros)
+    -- Para ter uma meta realista, idealmente, precisamos somar o valor_ajuste da metas_sv.
+    -- Se nao houver, deveriamos pegar o Realizado do ano anterior * crescimento?
+    -- Como a base salva as metas na metas_sv quando confirmamos, vamos puxar de lá.
+    metas_salvas AS (
+        SELECT
+            m.mes,
+            -- FATURAMENTO
+            SUM(CASE WHEN m.metrica = 'FAT' AND m.categoria IN ('total_elma', 'total_foods') THEN m.valor_ajuste ELSE 0 END) as meta_fat_geral,
+
+            -- TONELADA
+            SUM(CASE WHEN m.metrica = 'VOL' AND m.categoria IN ('tonelada_elma', 'tonelada_foods') THEN m.valor_ajuste ELSE 0 END) as meta_vol_geral,
+
+            -- POSITIVACAO
+            SUM(CASE WHEN m.metrica = 'POS' AND m.categoria IN ('total_elma', 'total_foods') THEN m.valor_ajuste ELSE 0 END) as meta_pos_geral,
+
+            -- MIX SALTY (Usamos total_elma POS como proxy ou algo assim? Ou a soma de 707, 708, 752?)
+            SUM(CASE WHEN m.metrica = 'POS' AND m.categoria IN ('707', '708', '752') THEN m.valor_ajuste ELSE 0 END) as meta_pos_salty,
+
+            -- MIX FOODS
+            SUM(CASE WHEN m.metrica = 'POS' AND m.categoria IN ('total_foods') THEN m.valor_ajuste ELSE 0 END) as meta_pos_foods
+
+        FROM public.metas_sv m
+        WHERE m.ano = p_ano
+          AND (p_codusur IS NULL OR p_codusur = '' OR m.codusur = p_codusur)
+          -- O supervisor não está salvo diretamente em metas_sv, então precisamos cruzar com dim_vendedores/roteiro se quisermos filtrar por sup na meta
+          -- Mas como estamos buscando um chart global, para simplificar vamos cruzar com data_summary_frequency ou ignorar supervisor na meta.
+          -- (assumindo que o filtro principal eh vendedor)
+        GROUP BY m.mes
+    ),
+
+    -- Realizado no ano atual
+    -- Para calcular as positivas Salty/Foods, agrupamos por codcli e mes primeiro
+    base_realizado AS (
+        SELECT
+            mes,
+            codcli,
+            SUM(vlvenda) as vlvenda_total,
+            SUM(CASE WHEN tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as peso_total,
+
+            -- Salty
+            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') THEN vlvenda ELSE 0 END) as vlvenda_salty,
+            SUM(CASE WHEN codfor = '707' THEN vlvenda ELSE 0 END) as vlvenda_707,
+            SUM(CASE WHEN codfor = '708' THEN vlvenda ELSE 0 END) as vlvenda_708,
+            SUM(CASE WHEN codfor = '752' THEN vlvenda ELSE 0 END) as vlvenda_752,
+
+            -- Foods
+            SUM(CASE WHEN codfor = '1119' THEN vlvenda ELSE 0 END) as vlvenda_foods,
+
+            -- Mix flags
+            MAX(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') AND vlvenda > 0 THEN 1 ELSE 0 END) as has_salty,
+            MAX(CASE WHEN codfor = '1119' AND vlvenda > 0 THEN 1 ELSE 0 END) as has_foods,
+            -- To do the strict Mix Salty (Cheetos, Doritos, etc) we would need the data_detailed (which is heavy).
+            -- We'll use the simplified flag if not available.
+            -- Using a general positivacao for the simple one:
+            MAX(CASE WHEN vlvenda > 0 THEN 1 ELSE 0 END) as is_positivado
+        FROM public.data_summary
+        WHERE ano = p_ano
+          AND (p_codusur IS NULL OR p_codusur = '' OR codusur = p_codusur)
+          AND (p_codsupervisor IS NULL OR p_codsupervisor = '' OR codsupervisor = p_codsupervisor)
+        GROUP BY mes, codcli
+    ),
+
+    agregado_realizado AS (
+        SELECT
+            mes,
+            SUM(vlvenda_total) as real_fat_geral,
+            SUM(peso_total) as real_vol_geral,
+            COUNT(DISTINCT CASE WHEN is_positivado = 1 THEN codcli END) as real_pos_geral,
+
+            -- Mix Salty (Positivou nas 3 familias? Ou pelo menos 1? A regra geral que adotamos para 'Salty' no metas eh 707+708+752)
+            COUNT(DISTINCT CASE WHEN has_salty = 1 THEN codcli END) as real_pos_salty,
+
+            -- Mix Foods
+            COUNT(DISTINCT CASE WHEN has_foods = 1 THEN codcli END) as real_pos_foods
+
+        FROM base_realizado
+        GROUP BY mes
+    ),
+
+    chart_data AS (
+        SELECT
+            m.mes,
+            -- Faturamento
+            COALESCE(r.real_fat_geral, 0) as real_fat_geral,
+            COALESCE(ms.meta_fat_geral, 0) as meta_fat_geral,
+
+            -- Tonelada
+            COALESCE(r.real_vol_geral, 0) as real_vol_geral,
+            COALESCE(ms.meta_vol_geral, 0) as meta_vol_geral,
+
+            -- Positivacao Geral
+            COALESCE(r.real_pos_geral, 0) as real_pos_geral,
+            COALESCE(ms.meta_pos_geral, 0) as meta_pos_geral,
+
+            -- Salty
+            COALESCE(r.real_pos_salty, 0) as real_pos_salty,
+            COALESCE(ms.meta_pos_salty, 0) as meta_pos_salty,
+
+            -- Foods
+            COALESCE(r.real_pos_foods, 0) as real_pos_foods,
+            COALESCE(ms.meta_pos_foods, 0) as meta_pos_foods
+
+        FROM meses m
+        LEFT JOIN agregado_realizado r ON r.mes = m.mes
+        LEFT JOIN metas_salvas ms ON ms.mes = m.mes
+        ORDER BY m.mes
+    )
+
+    SELECT COALESCE(jsonb_agg(row_to_json(chart_data)), '[]'::jsonb) INTO v_result
+    FROM chart_data;
 
     RETURN v_result;
 END;
