@@ -1,0 +1,3 @@
+## 2026-08-21 - [Loja Perfeita: Missing CNPJs Drop Fix]
+**Learning:** During Excel ingestion, if a `CNPJ` from the "Loja Perfeita" sheet is not found in the baseline clients mapping, doing a hard `return;` ignores valid audits. These "orphan" audits often happen for inactive/new clients not present in the master list.
+**Action:** Do not drop audits if `codCli` is missing. Instead, create a mock `codCli` like `INTV-<cnpj>` and infer its branch/city based on the primary branch of the `Pesquisador` handling that audit, preserving the audit count while allowing it to surface on branch-level filters.

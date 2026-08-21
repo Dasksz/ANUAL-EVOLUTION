@@ -388,7 +388,58 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
             return results;
         }
 
-        function processLojaPerfeita(filesData, clientCnpjMap) {
+        function processLojaPerfeita(filesData, clientCnpjMap, clientsToInsert) {
+            // Pre-process: Infer city by researcher for fallback
+            const researcherCities = new Map();
+            const getPesqVal = (row) => {
+                for (const k in row) {
+                    if (k.toUpperCase().includes('PESQUISADOR')) return String(row[k] || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '').toLowerCase();
+                }
+                return '';
+            };
+            // 1. Build frequency map of cities per researcher based on KNOWN clients
+            const combinedForInference = filesData.flat();
+            combinedForInference.forEach(row => {
+                let cnpjRaw = null;
+                for (const k in row) {
+                    if (k.toUpperCase().includes('CNPJ') || k.toUpperCase().includes('CPF')) { cnpjRaw = row[k]; break; }
+                }
+                if (!cnpjRaw) return;
+                let cnpjStr = String(cnpjRaw);
+                if (typeof cnpjRaw === 'number' && cnpjStr.includes('e')) {
+                    try { cnpjStr = cnpjRaw.toLocaleString('fullwide', { useGrouping: false }); } catch(e) {}
+                }
+                const cnpjClean = cnpjStr.replace(/[^0-9]/g, '');
+
+                let codCli = clientCnpjMap.get(cnpjClean);
+                if (!codCli && cnpjClean.length <= 14) codCli = clientCnpjMap.get(cnpjClean.padStart(14, '0'));
+                if (!codCli && cnpjClean.length <= 11) codCli = clientCnpjMap.get(cnpjClean.padStart(11, '0'));
+
+                if (codCli) {
+                    const pesquisador = getPesqVal(row);
+                    if (pesquisador) {
+                        // Find the city for this codCli in clientsToInsert
+                        const clientInfo = clientsToInsert.find(c => c.codigo_cliente === codCli);
+                        if (clientInfo && clientInfo.cidade) {
+                            if (!researcherCities.has(pesquisador)) researcherCities.set(pesquisador, new Map());
+                            const cityCounts = researcherCities.get(pesquisador);
+                            cityCounts.set(clientInfo.cidade, (cityCounts.get(clientInfo.cidade) || 0) + 1);
+                        }
+                    }
+                }
+            });
+
+            // 2. Resolve to most frequent city per researcher
+            const bestCityByResearcher = new Map();
+            for (const [pesq, cityCounts] of researcherCities.entries()) {
+                let bestCity = 'INTV';
+                let maxCount = 0;
+                for (const [city, count] of cityCounts.entries()) {
+                    if (count > maxCount) { maxCount = count; bestCity = city; }
+                }
+                bestCityByResearcher.set(pesq, bestCity);
+            }
+
             const combined = filesData.flat();
             const finalData = [];
             const uniqueClientsFound = new Set();
@@ -540,11 +591,43 @@ const processSalesData = (rawData, clientMap, productMasterMap) => {
                     }
                 }
 
-                if (!codCli) return;
+                const pesquisador = String(getVal(row, 'Pesquisador') || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '').toLowerCase();
+
+                // If still no codCli, we handle it as INTV
+                if (!codCli) {
+                    // Extract client name from PDV column
+                    const pdvRaw = String(getVal(row, 'PDV') || getVal(row, 'Nome') || getVal(row, 'Cliente') || 'Cliente Desconhecido');
+                    let clientName = pdvRaw;
+                    // Remove ending " - CNPJ" if exists (e.g. "LOJA ZEZINHO - 61.668.440/0001-06")
+                    const dashIndex = pdvRaw.lastIndexOf(' - ');
+                    if (dashIndex > 0) {
+                        clientName = pdvRaw.substring(0, dashIndex).trim();
+                    }
+
+                    codCli = `INTV-${finalCnpj}`;
+                    const inferredCity = bestCityByResearcher.get(pesquisador) || 'INTV';
+
+                    // Inject into clients array
+                    if (!clientCnpjMap.has(finalCnpj)) {
+                        clientCnpjMap.set(finalCnpj, codCli);
+                        clientsToInsert.push({
+                            codigo_cliente: codCli,
+                            rca1: 'INTV',
+                            cnpj: finalCnpj,
+                            cidade: inferredCity,
+                            nomecliente: clientName,
+                            bairro: 'INTV',
+                            razaosocial: clientName,
+                            fantasia: clientName,
+                            ramo: 'INTV',
+                            ramo_atividade: 'INTV',
+                            ultimacompra: null,
+                            bloqueio: 'INTV'
+                        });
+                    }
+                }
 
                 uniqueClientsFound.add(codCli);
-
-                const pesquisador = String(getVal(row, 'Pesquisador') || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '').toLowerCase();
 
                 const notaRaw = getVal(row, 'Nota Média Total Alavancada') || getVal(row, 'Nota Media Total Alavancada') || getVal(row, 'Nota Média') || getVal(row, 'Nota Media');
                 const nota = typeof notaRaw === 'number' ? notaRaw : parseFloat(String(notaRaw || '0').replace(',', '.'));
@@ -1296,7 +1379,7 @@ self.onmessage = async (event) => {
                      }
                  }
              }
-             const notaResult = processLojaPerfeita([nota1DataRaw, nota2DataRaw], clientCnpjMap);
+             const notaResult = processLojaPerfeita([nota1DataRaw, nota2DataRaw], clientCnpjMap, clientsToInsert);
              finalNotaPerfeita = notaResult.data;
         }
 
