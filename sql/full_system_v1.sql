@@ -8695,7 +8695,7 @@ BEGIN
             ''cidades'', COALESCE(json_agg(DISTINCT cidade) FILTER (WHERE cidade IS NOT NULL), ''[]''::json),
             ''fornecedores'', COALESCE(json_agg(DISTINCT jsonb_build_object(''codigo'', codfor, ''nome'', fornecedor)) FILTER (WHERE codfor IS NOT NULL AND fornecedor IS NOT NULL), ''[]''::json),
             ''categorias'', COALESCE(json_agg(DISTINCT categoria_produto) FILTER (WHERE categoria_produto IS NOT NULL), ''[]''::json),
-            ''produtos'', COALESCE(json_agg(DISTINCT jsonb_build_object(''codigo'', codprod, ''nome'', produto)) FILTER (WHERE codprod IS NOT NULL AND produto IS NOT NULL), ''[]''::json),
+            ''produtos'', ''[]''::json,
             ''redes'', COALESCE(json_agg(DISTINCT rede) FILTER (WHERE rede IS NOT NULL AND rede NOT IN (''N/A'', ''N/D'')), ''[]''::json)
         )
         FROM public.cache_filters
