@@ -1119,7 +1119,13 @@ self.onmessage = async (event) => {
 
         const collectDimensions = (salesArray) => {
             salesArray.forEach(sale => {
-                if (sale.codsupervisor && sale.superv) dimSupervisors.set(sale.codsupervisor, sale.superv);
+                if (sale.codsupervisor && sale.superv) {
+                    if (String(sale.codsupervisor) === '8') {
+                        dimSupervisors.set(sale.codsupervisor, 'BALCAO');
+                    } else {
+                        dimSupervisors.set(sale.codsupervisor, sale.superv);
+                    }
+                }
                 if (sale.codusur && sale.nome) dimVendors.set(sale.codusur, sale.nome);
                 if (sale.codfor && sale.fornecedor) dimProviders.set(sale.codfor, sale.fornecedor);
                 if (sale.produto && !dimProducts.has(sale.produto)) {
