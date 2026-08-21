@@ -9428,6 +9428,7 @@ window.toggleLpColorFilter = function(color) {
     });
 
     // Re-render table with filtering
+    lpCurrentPage = 1;
     renderLpTable();
 };
 
@@ -9449,8 +9450,7 @@ function renderLpTable(clients) {
         lpTableData = [...lpOriginalTableData];
     }
 
-    // Always reset to page 1 when filtering, unless clients were passed (already reset)
-    if (!clients) lpCurrentPage = 1;
+    // Removed reset to page 1 to allow pagination to work
 
     const tbody = document.getElementById('lp-table-body');
     if (!tbody) return;
