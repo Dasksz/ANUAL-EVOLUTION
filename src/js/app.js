@@ -5339,8 +5339,10 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         lastCityFiltersStr = currentFiltersStr;
         
         clearTimeout(cityFilterDebounceTimer);
-        cityFilterDebounceTimer = setTimeout(() => {
+        cityFilterDebounceTimer = setTimeout(async () => {
             currentCityPage = 0; 
+            window.showDashboardLoading('city-view');
+            try { await initCityFilters(); } catch(e) { console.error(e); }
             loadCityView();
         }, 500);
     };
@@ -5381,16 +5383,17 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
 
     async function initCityFilters() {
         const filters = {
-            p_ano: null,
-            p_mes: null,
-            p_filial: [],
-            p_cidade: [],
-            p_supervisor: [],
-            p_vendedor: [],
-            p_fornecedor: [],
-            p_tipovenda: [],
-            p_rede: [],
-            p_categoria: []
+            p_filial: citySelectedFiliais.length > 0 ? citySelectedFiliais : null,
+            p_cidade: citySelectedCidades.length > 0 ? citySelectedCidades : null,
+            p_supervisor: citySelectedSupervisores.length > 0 ? citySelectedSupervisores : null,
+            p_vendedor: citySelectedVendedores.length > 0 ? citySelectedVendedores : null,
+            p_fornecedor: citySelectedFornecedores.length > 0 ? citySelectedFornecedores : null,
+            p_tipovenda: citySelectedTiposVenda.length > 0 ? citySelectedTiposVenda : null,
+            p_segmentacao: citySelectedSegmentacoes.length > 0 ? citySelectedSegmentacoes : null,
+            p_rede: citySelectedRedes.length > 0 ? citySelectedRedes : null,
+            p_categoria: citySelectedCategorias.length > 0 ? citySelectedCategorias : null,
+            p_ano: cityAnoFilter && cityAnoFilter.value !== 'todos' ? cityAnoFilter.value : null,
+            p_mes: cityMesFilter && cityMesFilter.value !== '' ? cityMesFilter.value : null
         };
          const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', filters);
          if (error) AppLog.error('Error fetching city filters:', error);
