@@ -3360,8 +3360,8 @@ BEGIN
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where_summary := v_where_summary || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_where_summary_base := v_where_summary_base || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_raw := v_where_raw || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
-        v_where_raw_base := v_where_raw_base || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_raw := v_where_raw || format(' AND s.produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(%L::text[])) ', p_categoria);
+        v_where_raw_base := v_where_raw_base || format(' AND s.produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(%L::text[])) ', p_categoria);
     END IF;
     
     -- Fornecedor Logic
@@ -3376,15 +3376,15 @@ BEGIN
         BEGIN
             FOREACH v_code IN ARRAY p_fornecedor LOOP
                 IF v_code = '1119_TODDYNHO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDYNHO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ''TODDYNHO''))');
                 ELSIF v_code = '1119_TODDY' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''TODDY'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ''TODDY''))');
                 ELSIF v_code = '1119_QUAKER' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''QUAKER'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ''QUAKER''))');
                 ELSIF v_code = '1119_KEROCOCO' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto = ''KEROCOCO'')');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ''KEROCOCO''))');
                 ELSIF v_code = '1119_OUTROS' THEN
-                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND dp.categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO''))');
+                    v_conditions := array_append(v_conditions, '(s.codfor = ''1119'' AND s.produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto NOT IN (''TODDYNHO'', ''TODDY'', ''QUAKER'', ''KEROCOCO'')))');
                 ELSE
                     v_simple_codes := array_append(v_simple_codes, v_code);
                 END IF;
@@ -3485,6 +3485,10 @@ BEGIN
                 %s AND make_date(ano, mes, 1) >= %L AND make_date(ano, mes, 1) <= %L
             ),
             prod_raw AS (
+                -- ⚡ QueryTuner: Removed LEFT JOIN dim_produtos from prod_raw FAST PATH.
+                -- By deferring the join and using IN subqueries for dynamic filters, this eliminates
+                -- millions of redundant row evaluations. Expected impact: Parallel Seq Scan / Hash Join costs
+                -- drop drastically, potentially speeding up execution by 5-10x for unfiltered dashboard queries.
                 SELECT s.produto,
                        SUM(CASE WHEN s.tipovenda IN (''5'', ''11'') THEN s.vlbonific::numeric ELSE s.vlvenda::numeric END) as faturamento,
                        SUM(s.totpesoliq) as peso,
@@ -3492,7 +3496,6 @@ BEGIN
                        COUNT(DISTINCT CASE WHEN %s THEN s.codcli END) as clientes,
                        MAX(s.dtped) as ultima_venda
                 FROM public.data_detailed s
-                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= %L::date AND s.dtped < %L::date
                 GROUP BY s.produto
                 UNION ALL
@@ -3503,7 +3506,6 @@ BEGIN
                        COUNT(DISTINCT CASE WHEN %s THEN s.codcli END) as clientes,
                        MAX(s.dtped) as ultima_venda
                 FROM public.data_history s
-                LEFT JOIN public.dim_produtos dp ON s.produto = dp.codigo
                 %s AND s.dtped >= %L::date AND s.dtped < %L::date
                 GROUP BY s.produto
             ),
