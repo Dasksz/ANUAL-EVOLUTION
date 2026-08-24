@@ -8427,13 +8427,13 @@ CREATE TABLE IF NOT EXISTS public.metas_sv (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     ano INTEGER NOT NULL,
     mes INTEGER NOT NULL,
-    codusur TEXT NOT NULL,
+    vendedor_nome TEXT NOT NULL,
     categoria TEXT NOT NULL,
     metrica TEXT NOT NULL,
     valor_ajuste NUMERIC,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE (ano, mes, codusur, categoria, metrica)
+    UNIQUE (ano, mes, vendedor_nome, categoria, metrica)
 );
 
 -- RLS
@@ -8458,17 +8458,17 @@ DECLARE
 BEGIN
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_metas_json)
     LOOP
-        INSERT INTO public.metas_sv (ano, mes, codusur, categoria, metrica, valor_ajuste, updated_at)
+        INSERT INTO public.metas_sv (ano, mes, vendedor_nome, categoria, metrica, valor_ajuste, updated_at)
         VALUES (
             (v_item->>'ano')::INTEGER,
             (v_item->>'mes')::INTEGER,
-            v_item->>'codusur',
+            v_item->>'vendedor_nome',
             v_item->>'categoria',
             v_item->>'metrica',
             (v_item->>'valor_ajuste')::NUMERIC,
             NOW()
         )
-        ON CONFLICT (ano, mes, codusur, categoria, metrica)
+        ON CONFLICT (ano, mes, vendedor_nome, categoria, metrica)
         DO UPDATE SET
             valor_ajuste = EXCLUDED.valor_ajuste,
             updated_at = NOW();
@@ -8750,7 +8750,7 @@ BEGIN
 
         FROM public.metas_sv m
         WHERE m.ano = p_ano
-          AND (p_codusur IS NULL OR p_codusur = '' OR m.codusur = p_codusur)
+          AND (p_codusur IS NULL OR p_codusur = '' OR m.vendedor_nome = p_codusur)
           -- O supervisor não está salvo diretamente em metas_sv, então precisamos cruzar com dim_vendedores/roteiro se quisermos filtrar por sup na meta
           -- Mas como estamos buscando um chart global, para simplificar vamos cruzar com data_summary_frequency ou ignorar supervisor na meta.
           -- (assumindo que o filtro principal eh vendedor)
