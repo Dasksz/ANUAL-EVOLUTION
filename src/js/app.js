@@ -3251,7 +3251,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             boxesAnoFilter.dispatchEvent(new Event('change', { bubbles: true }));
             boxesMesFilter.value = '';
             boxesMesFilter.dispatchEvent(new Event('change', { bubbles: true }));
-            clearArrays(boxesSelectedFiliais, boxesSelectedProducts, boxesSelectedSupervisores, boxesSelectedVendedores, boxesSelectedFornecedores, boxesSelectedCidades, boxesSelectedTiposVenda, boxesSelectedCategorias);
+            clearArrays(boxesSelectedFiliais, boxesSelectedProducts, boxesSelectedSupervisores, boxesSelectedVendedores, boxesSelectedFornecedores, boxesSelectedCidades, boxesSelectedTiposVenda, boxesSelectedCategorias, boxesSelectedRedes);
             boxesTrendActive = false; // Reset Trend
             updateEl('boxes-trend-text', 'Calcular Tendência');
             if(boxesTrendToggleBtn) {
