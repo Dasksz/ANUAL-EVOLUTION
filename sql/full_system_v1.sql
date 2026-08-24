@@ -8763,25 +8763,25 @@ BEGIN
         SELECT
             mes,
             codcli,
-            SUM(vlvenda) as vlvenda_total,
-            SUM(CASE WHEN tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as peso_total,
+            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda IN ('1', '9') THEN vlvenda ELSE 0 END) as vlvenda_total,
+            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as peso_total,
 
             -- Salty
-            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') THEN vlvenda ELSE 0 END) as vlvenda_salty,
-            SUM(CASE WHEN codfor = '707' THEN vlvenda ELSE 0 END) as vlvenda_707,
-            SUM(CASE WHEN codfor = '708' THEN vlvenda ELSE 0 END) as vlvenda_708,
-            SUM(CASE WHEN codfor = '752' THEN vlvenda ELSE 0 END) as vlvenda_752,
+            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') AND tipovenda IN ('1', '9') THEN vlvenda ELSE 0 END) as vlvenda_salty,
+            SUM(CASE WHEN codfor = '707' AND tipovenda IN ('1', '9') THEN vlvenda ELSE 0 END) as vlvenda_707,
+            SUM(CASE WHEN codfor = '708' AND tipovenda IN ('1', '9') THEN vlvenda ELSE 0 END) as vlvenda_708,
+            SUM(CASE WHEN codfor = '752' AND tipovenda IN ('1', '9') THEN vlvenda ELSE 0 END) as vlvenda_752,
 
             -- Foods
-            SUM(CASE WHEN codfor = '1119' THEN vlvenda ELSE 0 END) as vlvenda_foods,
+            SUM(CASE WHEN codfor = '1119' AND tipovenda IN ('1', '9') THEN vlvenda ELSE 0 END) as vlvenda_foods,
 
             -- Mix flags
-            MAX(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') AND vlvenda > 0 THEN 1 ELSE 0 END) as has_salty,
-            MAX(CASE WHEN codfor = '1119' AND vlvenda > 0 THEN 1 ELSE 0 END) as has_foods,
+            MAX(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') AND tipovenda IN ('1', '9') AND vlvenda > 0 THEN 1 ELSE 0 END) as has_salty,
+            MAX(CASE WHEN codfor = '1119' AND tipovenda IN ('1', '9') AND vlvenda > 0 THEN 1 ELSE 0 END) as has_foods,
             -- To do the strict Mix Salty (Cheetos, Doritos, etc) we would need the data_detailed (which is heavy).
             -- We'll use the simplified flag if not available.
             -- Using a general positivacao for the simple one:
-            MAX(CASE WHEN vlvenda > 0 THEN 1 ELSE 0 END) as is_positivado
+            MAX(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND vlvenda > 0 THEN 1 ELSE 0 END) as is_positivado
         FROM public.data_summary
         WHERE ano = p_ano
           AND (p_codusur IS NULL OR p_codusur = '' OR codusur = p_codusur)

@@ -11881,7 +11881,7 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
             for(let i=1; i<=12; i++) chartData.push({mes: i});
         }
 
-        const labels = chartData.map(d => window.MONTHS_PT_SHORT ? window.MONTHS_PT_SHORT[d.mes] : d.mes);
+        const labels = chartData.map(d => MONTHS_PT_SHORT ? MONTHS_PT_SHORT[d.mes] : d.mes);
 
         let dataReal = [];
         let dataMeta = [];
@@ -11892,27 +11892,27 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
                 case 'fat':
                     dataReal.push(d.real_fat_geral || 0);
                     dataMeta.push(d.meta_fat_geral || 0);
-                    formatVal = window.formatCurrency;
+                    formatVal = formatCurrency;
                     break;
                 case 'vol':
                     dataReal.push(d.real_vol_geral || 0);
                     dataMeta.push(d.meta_vol_geral || 0);
-                    formatVal = window.formatTons;
+                    formatVal = formatTons;
                     break;
                 case 'pos':
                     dataReal.push(d.real_pos_geral || 0);
                     dataMeta.push(d.meta_pos_geral || 0);
-                    formatVal = window.formatInteger;
+                    formatVal = formatInteger;
                     break;
                 case 'salty':
                     dataReal.push(d.real_pos_salty || 0);
                     dataMeta.push(d.meta_pos_salty || 0);
-                    formatVal = window.formatInteger;
+                    formatVal = formatInteger;
                     break;
                 case 'foods':
                     dataReal.push(d.real_pos_foods || 0);
                     dataMeta.push(d.meta_pos_foods || 0);
-                    formatVal = window.formatInteger;
+                    formatVal = formatInteger;
                     break;
             }
         });
