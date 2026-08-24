@@ -8777,7 +8777,7 @@ BEGIN
 
             -- Mix flags
             MAX(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') AND tipovenda IN ('1', '9') AND vlvenda > 0 THEN 1 ELSE 0 END) as has_salty,
-            MAX(CASE WHEN codfor = '1119' AND tipovenda IN ('1', '9') AND vlvenda > 0 THEN 1 ELSE 0 END) as has_foods,
+            MAX(CASE WHEN LTRIM(codfor::text, '0') = '1119' AND tipovenda IN ('1', '9') AND vlvenda > 0 THEN 1 ELSE 0 END) as has_foods,
             -- To do the strict Mix Salty (Cheetos, Doritos, etc) we would need the data_detailed (which is heavy).
             -- We'll use the simplified flag if not available.
             -- Using a general positivacao for the simple one:
