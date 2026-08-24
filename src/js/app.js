@@ -901,6 +901,10 @@ function getActiveExportView() {
     const boxesCidadeFilterSearch = document.getElementById('boxes-cidade-filter-search');
     const boxesTipovendaFilterBtn = document.getElementById('boxes-tipovenda-filter-btn');
     const boxesTipovendaFilterDropdown = document.getElementById('boxes-tipovenda-filter-dropdown');
+    const boxesRedeFilterBtn = document.getElementById('boxes-rede-filter-btn');
+    const boxesRedeFilterDropdown = document.getElementById('boxes-rede-filter-dropdown');
+    const boxesRedeFilterList = document.getElementById('boxes-rede-filter-list');
+    const boxesRedeFilterSearch = document.getElementById('boxes-rede-filter-search');
     const boxesClearFiltersBtn = document.getElementById('boxes-clear-filters-btn');
     const boxesTrendToggleBtn = document.getElementById('boxes-trend-toggle-btn');
     // Boxes Export
@@ -3069,6 +3073,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
              window.setupDefaultMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, data.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
              window.setupDefaultMultiSelect(boxesProdutoFilterBtn, boxesProdutoFilterDropdown, boxesProdutoFilterList, data.produtos || [], boxesSelectedProducts, boxesProdutoFilterSearch, true);
              window.setupDefaultMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, data.tipos_venda || [], boxesSelectedTiposVenda);
+             const redes1 = ['C/ REDE', 'S/ REDE', ...(data.redes || [])];
+             window.setupDefaultMultiSelect(boxesRedeFilterBtn, boxesRedeFilterDropdown, boxesRedeFilterList, redes1, boxesSelectedRedes, boxesRedeFilterSearch);
              window.setupDefaultMultiSelect(boxesCategoriaFilterBtn, boxesCategoriaFilterDropdown, boxesCategoriaFilterList, data.categorias || [], boxesSelectedCategorias, boxesCategoriaFilterSearch);
         }
     }
@@ -3225,8 +3231,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     }
 
     document.addEventListener('click', (e) => {
-        const dropdowns = [boxesFilialFilterDropdown, boxesProdutoFilterDropdown, boxesSupervisorFilterDropdown, boxesVendedorFilterDropdown, boxesFornecedorFilterDropdown, boxesCidadeFilterDropdown, boxesTipovendaFilterDropdown, boxesCategoriaFilterDropdown];
-        const btns = [boxesFilialFilterBtn, boxesProdutoFilterBtn, boxesSupervisorFilterBtn, boxesVendedorFilterBtn, boxesFornecedorFilterBtn, boxesCidadeFilterBtn, boxesTipovendaFilterBtn, boxesCategoriaFilterBtn];
+        const dropdowns = [boxesFilialFilterDropdown, boxesProdutoFilterDropdown, boxesSupervisorFilterDropdown, boxesVendedorFilterDropdown, boxesFornecedorFilterDropdown, boxesCidadeFilterDropdown, boxesTipovendaFilterDropdown, boxesCategoriaFilterDropdown, boxesRedeFilterDropdown];
+        const btns = [boxesFilialFilterBtn, boxesProdutoFilterBtn, boxesSupervisorFilterBtn, boxesVendedorFilterBtn, boxesFornecedorFilterBtn, boxesCidadeFilterBtn, boxesTipovendaFilterBtn, boxesCategoriaFilterBtn, boxesRedeFilterBtn];
         let anyClosed = handleDropdownsClickaway(e, dropdowns, btns);
         
         // Close export dropdown if clicked outside
@@ -3301,6 +3307,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         window.setupDefaultMultiSelect(boxesFornecedorFilterBtn, boxesFornecedorFilterDropdown, boxesFornecedorFilterList, filterData.fornecedores, boxesSelectedFornecedores, boxesFornecedorFilterSearch, true);
         window.setupDefaultMultiSelect(boxesCidadeFilterBtn, boxesCidadeFilterDropdown, boxesCidadeFilterList, filterData.cidades, boxesSelectedCidades, boxesCidadeFilterSearch);
         window.setupDefaultMultiSelect(boxesTipovendaFilterBtn, boxesTipovendaFilterDropdown, boxesTipovendaFilterDropdown, filterData.tipos_venda || [], boxesSelectedTiposVenda);
+        const redes2 = ['C/ REDE', 'S/ REDE', ...(filterData.redes || [])];
+        window.setupDefaultMultiSelect(boxesRedeFilterBtn, boxesRedeFilterDropdown, boxesRedeFilterList, redes2, boxesSelectedRedes, boxesRedeFilterSearch);
         window.setupDefaultMultiSelect(boxesCategoriaFilterBtn, boxesCategoriaFilterDropdown, boxesCategoriaFilterList, filterData.categorias || [], boxesSelectedCategorias, boxesCategoriaFilterSearch);
         
         // Products - filterData.produtos
