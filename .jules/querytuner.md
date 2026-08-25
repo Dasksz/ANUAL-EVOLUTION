@@ -16,3 +16,6 @@ Action: Test specifically patched live function schema strings during shadow run
 2024/08/22 - Defer dimension joins in dynamic SQL FAST PATHs
 Learning: Using a LEFT JOIN to a dimension table (like dim_produtos) on massive fact tables (data_detailed) solely to support optional dynamic WHERE filters (like categoria_produto) forces the query planner to evaluate the join for millions of rows even when the filter is not applied.
 Action: Remove the LEFT JOIN from the heavy aggregation step. Instead, build the dynamic filter string using an IN (SELECT ...) subquery. This allows Postgres to use an efficient semi-join when filtering, and avoids the join overhead entirely when no filter is provided.
+2026/08/25 - Ensure logical parity between targets (Metas) and actuals (Realizado) definitions
+Learning: When aggregating goals (metas) for custom KPIs like Mix Foods, verify the frontend import structure directly. In this project, targets are mapped as metrica='MIX' and categoria='mix_foods', whereas the older SQL searched for metrica='POS' and categoria='total_foods', yielding zeros.
+Action: Always map SQL Target filter variables exactly to how they are inserted into the system, and map SQL Realized variables (has_foods) precisely to the same rules used elsewhere (e.g. dashboard 4-family rules) to prevent data visualization mismatches.
