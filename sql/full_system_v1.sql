@@ -3215,6 +3215,7 @@ DECLARE
     v_where_raw text := ' WHERE 1=1 ';
     v_where_summary_base text := ' WHERE 1=1 ';
     v_where_raw_base text := ' WHERE 1=1 ';
+    v_where_dim_produtos text := ' WHERE 1=1 ';
     
     v_chart_data json;
     v_kpis_current json;
@@ -3313,6 +3314,7 @@ BEGIN
         v_use_cache := false;
         v_where_raw := v_where_raw || format(' AND s.produto = ANY(%L::text[]) ', p_produto);
         v_where_raw_base := v_where_raw_base || format(' AND s.produto = ANY(%L::text[]) ', p_produto);
+        v_where_dim_produtos := v_where_dim_produtos || format(' AND dp.codigo = ANY(%L::text[]) ', p_produto);
     END IF;
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
@@ -3363,6 +3365,7 @@ BEGIN
         v_where_summary_base := v_where_summary_base || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_where_raw := v_where_raw || format(' AND s.produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(%L::text[])) ', p_categoria);
         v_where_raw_base := v_where_raw_base || format(' AND s.produto IN (SELECT codigo FROM public.dim_produtos WHERE categoria_produto = ANY(%L::text[])) ', p_categoria);
+        v_where_dim_produtos := v_where_dim_produtos || format(' AND dp.categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
     
     -- Fornecedor Logic
@@ -3396,6 +3399,7 @@ BEGIN
             IF array_length(v_conditions, 1) > 0 THEN
                 v_where_raw := v_where_raw || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
                 v_where_raw_base := v_where_raw_base || ' AND (' || array_to_string(v_conditions, ' OR ') || ') ';
+                v_where_dim_produtos := v_where_dim_produtos || format(' AND dp.codfor = ANY(%L::text[]) ', p_fornecedor);
             END IF;
         END;
     END IF;
@@ -3487,9 +3491,6 @@ BEGIN
             ),
             prod_raw AS (
                 -- ⚡ QueryTuner: Removed LEFT JOIN dim_produtos from prod_raw FAST PATH.
-                -- By deferring the join and using IN subqueries for dynamic filters, this eliminates
-                -- millions of redundant row evaluations. Expected impact: Parallel Seq Scan / Hash Join costs
-                -- drop drastically, potentially speeding up execution by 5-10x for unfiltered dashboard queries.
                 SELECT s.produto,
                        SUM(CASE WHEN s.tipovenda IN (''5'', ''11'') THEN s.vlbonific::numeric ELSE s.vlvenda::numeric END) as faturamento,
                        SUM(s.totpesoliq) as peso,
@@ -3521,16 +3522,19 @@ BEGIN
                 GROUP BY produto
             ),
             prod_agg AS (
-                SELECT p.produto,
+                SELECT dp.codigo as produto,
                        MAX(dp.descricao) as descricao,
-                       (p.total_qtvenda / COALESCE(NULLIF(MAX(dp.qtde_embalagem_master), 0), 1)) as caixas,
-                       p.faturamento,
-                       p.peso,
-                       p.clientes,
+                       (COALESCE(p.total_qtvenda, 0) / COALESCE(NULLIF(MAX(dp.qtde_embalagem_master), 0), 1)) as caixas,
+                       COALESCE(p.faturamento, 0) as faturamento,
+                       COALESCE(p.peso, 0) as peso,
+                       COALESCE(p.clientes, 0) as clientes,
                        p.ultima_venda
-                FROM prod_grouped p
-                LEFT JOIN public.dim_produtos dp ON p.produto = dp.codigo
-                GROUP BY p.produto, p.faturamento, p.peso, p.total_qtvenda, p.clientes, p.ultima_venda
+                FROM public.dim_produtos dp
+                LEFT JOIN prod_grouped p ON dp.codigo = p.produto
+                %s
+                AND (COALESCE(p.total_qtvenda, 0) > 0 OR COALESCE(p.faturamento, 0) > 0 OR
+                     (SELECT COALESCE(SUM(val::numeric), 0) FROM jsonb_each_text(dp.estoque_filial) AS f(key, val) WHERE (%L IS NULL OR array_length(%L::text[], 1) IS NULL OR key = ANY(%L::text[]))) > 0)
+                GROUP BY dp.codigo, p.faturamento, p.peso, p.total_qtvenda, p.clientes, p.ultima_venda
                 ORDER BY caixas DESC
                 LIMIT 1000
             )
@@ -3546,7 +3550,8 @@ BEGIN
         v_active_client_cond, v_where_summary, v_previous_year, CASE WHEN v_target_month IS NOT NULL THEN format(' AND mes = %L ', v_target_month) ELSE '' END, -- KPI Prev
         v_active_client_cond, v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), v_where_summary, date_trunc('month', v_tri_start), date_trunc('month', v_tri_end), -- KPI Tri
         v_active_client_cond_slow, v_where_raw, v_prod_start_date, v_prod_end_date, -- Prod Detailed
-        v_active_client_cond_slow, v_where_raw, v_prod_start_date, v_prod_end_date -- Prod History
+        v_active_client_cond_slow, v_where_raw, v_prod_start_date, v_prod_end_date, -- Prod History
+        v_where_dim_produtos, p_filial, p_filial, p_filial -- prod_agg
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     
@@ -3664,15 +3669,18 @@ BEGIN
                 GROUP BY produto
             ),
             prod_agg AS (
-                SELECT p.produto,
+                SELECT dp.codigo as produto,
                        dp.descricao as descricao,
-                       (p.total_qtvenda / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)) as caixas,
-                       p.faturamento,
-                       p.peso,
-                       p.clientes,
+                       (COALESCE(p.total_qtvenda, 0) / COALESCE(NULLIF(dp.qtde_embalagem_master, 0), 1)) as caixas,
+                       COALESCE(p.faturamento, 0) as faturamento,
+                       COALESCE(p.peso, 0) as peso,
+                       COALESCE(p.clientes, 0) as clientes,
                        p.ultima_venda
-                FROM prod_raw p
-                LEFT JOIN public.dim_produtos dp ON p.produto = dp.codigo
+                FROM public.dim_produtos dp
+                LEFT JOIN prod_raw p ON dp.codigo = p.produto
+                %s
+                AND (COALESCE(p.total_qtvenda, 0) > 0 OR COALESCE(p.faturamento, 0) > 0 OR
+                     (SELECT COALESCE(SUM(val::numeric), 0) FROM jsonb_each_text(dp.estoque_filial) AS f(key, val) WHERE (%L IS NULL OR array_length(%L::text[], 1) IS NULL OR key = ANY(%L::text[]))) > 0)
                 ORDER BY caixas DESC
                 LIMIT 1000
             )
@@ -3698,7 +3706,8 @@ BEGIN
         v_active_client_cond_slow, v_tri_start, v_tri_end, -- kpi_tri monthly clients subquery (1 %s, 2 %L)
 
         -- ⚡ QueryTuner: Updated prod_agg to use sargable date boundaries instead of EXTRACT(YEAR), passing v_current_year twice
-        v_active_client_cond_slow, v_prod_start_date, v_prod_end_date -- prod_agg (1 %s, 2 %L)
+        v_active_client_cond_slow, v_prod_start_date, v_prod_end_date, -- prod_raw (1 %s, 2 %L)
+        v_where_dim_produtos, p_filial, p_filial, p_filial -- prod_agg
         )
         INTO v_chart_data, v_kpis_current, v_kpis_previous, v_kpis_tri_avg, v_products_table;
     END IF;
