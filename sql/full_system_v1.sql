@@ -1591,6 +1591,7 @@ BEGIN
     -- General Matches
     ELSIF NEW.descricao ILIKE '%BACONZITOS%' THEN NEW.categoria_produto := 'BACONZITOS';
     ELSIF NEW.descricao ILIKE '%CEBOLITOS%' THEN NEW.categoria_produto := 'CEBOLITOS';
+    ELSIF NEW.descricao ILIKE '%SKINY%' THEN NEW.categoria_produto := 'SKINY';
     ELSIF NEW.descricao ILIKE '%CHEETOS%' THEN NEW.categoria_produto := 'CHEETOS';
     ELSIF NEW.descricao ILIKE '%DORITOS%' THEN NEW.categoria_produto := 'DORITOS';
     ELSIF NEW.descricao ILIKE '%AMENDOIM%' THEN NEW.categoria_produto := 'ELMA-CHIPS AMENDOIM';
@@ -8318,6 +8319,7 @@ BEGIN
             CASE
                 WHEN b.categoria_produto = 'TODDY' THEN 'TODDY'
                 WHEN b.categoria_produto = 'TODDYNHO' THEN 'TODDYNHO'
+                WHEN b.categoria_produto ILIKE '%SKINY%' THEN 'SKINY'
                 WHEN b.categoria_produto ILIKE '%CHEETOS%' THEN 'CHEETOS'
                 WHEN b.categoria_produto ILIKE '%FANDANGOS%' THEN 'FANDANGOS'
                 WHEN b.categoria_produto ILIKE '%DORITOS%' THEN 'DORITOS'
@@ -8335,6 +8337,7 @@ BEGIN
         HAVING CASE
                 WHEN b.categoria_produto = 'TODDY' THEN 'TODDY'
                 WHEN b.categoria_produto = 'TODDYNHO' THEN 'TODDYNHO'
+                WHEN b.categoria_produto ILIKE '%SKINY%' THEN 'SKINY'
                 WHEN b.categoria_produto ILIKE '%CHEETOS%' THEN 'CHEETOS'
                 WHEN b.categoria_produto ILIKE '%FANDANGOS%' THEN 'FANDANGOS'
                 WHEN b.categoria_produto ILIKE '%DORITOS%' THEN 'DORITOS'
