@@ -3155,7 +3155,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             "Posit.": row.clientes || 0,
             "Estoque (cx)": row.estoque || 0,
             "Tend. EstQ (dias)": row.tend_estq || 0,
-            "Última Venda": row.ultima_venda ? row.ultima_venda.split('T')[0].split('-').reverse().join('/') : '-'
+            "Última Saída": row.ultima_venda ? row.ultima_venda.split('T')[0].split('-').reverse().join('/') : '-'
         }));
 
         if (format === 'excel') {
