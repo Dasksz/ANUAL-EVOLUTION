@@ -4,7 +4,7 @@ import {
     renderTableEmptyState,
     updateEl,
     generateYearOptionsHtml,
-    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
+    generateMonthOptionsHtml,  formatNumber, formatPercentage, escapeHtml, formatCurrency, formatTons, formatInteger, formatDecimal1, MONTHS_PT, MONTHS_PT_SHORT, MONTHS_PT_INITIALS, setElementLoading, restoreElementState , handleDropdownsClickaway, closeAllDropdowns, TABLE_ICONS, updateSvgPaths, uncheckAllCheckboxes, debounce, clearArrays , showToast} from './utils.js';
 
 // Improve Chart.js resolution
 if (typeof window !== 'undefined' && typeof window.Chart !== 'undefined') {
@@ -3217,7 +3217,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                     formatInteger(r["Caixas"]),
                     formatCurrency(r["Faturamento"]),
                     formatTons(r["Peso (kg)"], 1),
-                    formatInteger(r["Estoque (cx)"]) + " cx",
+                    formatDecimal1(r["Estoque (cx)"]) + " cx",
                     formatInteger(r["Tend. EstQ (dias)"]) + " d",
                     r["Última Venda"]
                 ]),
@@ -3578,7 +3578,7 @@ async function loadBoxesView() {
                     <td class="p-2 text-right">${escapeHtml(formatCurrency(p.faturamento || 0))}</td>
                     <td class="p-2 text-right">${escapeHtml(formatTons(p.peso || 0, 2))}</td>
                     <td class="p-2 text-right text-slate-300 font-bold">${escapeHtml(formatInteger(p.clientes || 0))}</td>
-                    <td class="p-2 text-right text-slate-400 font-bold">${escapeHtml(formatInteger(p.estoque || 0))} cx</td>
+                    <td class="p-2 text-right text-slate-400 font-bold">${escapeHtml(formatDecimal1(p.estoque || 0))} cx</td>
                     <td class="p-2 text-center font-bold ${
                         (p.tend_estq || 0) <= 14 ? 'text-red-400' :
                         (p.tend_estq || 0) <= 21 ? 'text-yellow-400' :
