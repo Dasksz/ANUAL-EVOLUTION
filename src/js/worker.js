@@ -1521,12 +1521,18 @@ if (typeof self !== "undefined") {
           stockVal = Math.round(stockVal * 1000) / 1000;
 
           const key = `${productCode}-${filialValue}`;
-          if (!productStockMap.has(key)) {
+          const currentEntry = productStockMap.get(key);
+          if (!currentEntry) {
             productStockMap.set(key, {
               codigo: productCode,
               filial: filialValue,
               estoque: stockVal,
             });
+          } else {
+            // Keep the maximum stock found for this product/filial combination to prevent 0-overwrites
+            if (stockVal > currentEntry.estoque) {
+              currentEntry.estoque = stockVal;
+            }
           }
         }
       });
