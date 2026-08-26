@@ -850,6 +850,9 @@ if (typeof self !== "undefined") {
       const combinedFilter = (sale) =>
         pepsicoFilter(sale) && validRowFilter(sale);
 
+      // Save an unfiltered copy specifically for extracting stock for products with 0 sales
+      const salesCurrMonthDataUnfiltered = salesCurrMonthDataRaw || [];
+
       salesPrevYearDataRaw = (salesPrevYearDataRaw || []).filter(
         combinedFilter,
       );
@@ -1506,7 +1509,7 @@ if (typeof self !== "undefined") {
         percentage: 75,
       });
       const productStockMap = new Map(); // "codigo-filial" -> { codigo, filial, estoque }
-      salesCurrMonthDataRaw.forEach((row) => {
+      salesCurrMonthDataUnfiltered.forEach((row) => {
         const productCode = String(row["PRODUTO"] || "").trim();
         if (!productCode) return;
 
@@ -1515,7 +1518,17 @@ if (typeof self !== "undefined") {
         if (filialValue === "8") filialValue = "08";
         if (!filialValue) return;
 
-        const stockStr = row["ESTOQUECX"];
+        let stockStr = row["ESTOQUECX"];
+        // If ESTOQUECX is missing or zero, fallback to ESTOQUEUNIT to try to capture stock
+        if (!stockStr || stockStr === "0" || stockStr === 0) {
+          if (row["ESTOQUEUNIT"] !== undefined && row["ESTOQUEUNIT"] !== null && row["ESTOQUEUNIT"] !== "") {
+            // Divide the unit stock by the qtde_embalagem_master (if available) to get boxes
+            const qtdeMaster = productMasterMap.get(productCode) || 1;
+            const unitVal = parseBrazilianNumber(row["ESTOQUEUNIT"]);
+            stockStr = String(unitVal / qtdeMaster);
+          }
+        }
+        
         if (stockStr !== undefined && stockStr !== null && stockStr !== "") {
           let stockVal = parseBrazilianNumber(stockStr);
           stockVal = Math.round(stockVal * 1000) / 1000;
