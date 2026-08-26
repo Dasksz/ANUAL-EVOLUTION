@@ -5121,19 +5121,29 @@ BEGIN
         chart_filtered_data AS (
             SELECT * FROM base_data WHERE %s
         ),
+        kpi_client_avgs AS (
+            SELECT codcli, AVG(score) as avg_score
+            FROM filtered_data
+            GROUP BY codcli
+        ),
         kpis AS (
             SELECT 
-                COALESCE(AVG(score), 0) as avg_score,
-                COUNT(DISTINCT codcli) as total_audits,
-                COUNT(DISTINCT CASE WHEN score >= 80 THEN codcli END) as perfect_stores
-            FROM filtered_data
+                COALESCE(AVG(avg_score), 0) as avg_score,
+                COUNT(codcli) as total_audits,
+                COUNT(CASE WHEN avg_score >= 80 THEN codcli END) as perfect_stores
+            FROM kpi_client_avgs
+        ),
+        chart_client_month_avgs AS (
+            SELECT mes, codcli, AVG(score) as avg_score
+            FROM chart_filtered_data
+            GROUP BY mes, codcli
         ),
         chart_data AS (
             SELECT
                 mes,
-                COUNT(DISTINCT codcli) as total_audits,
-                COUNT(DISTINCT CASE WHEN score >= 80 THEN codcli END) as perfect_stores
-            FROM chart_filtered_data
+                COUNT(codcli) as total_audits,
+                COUNT(CASE WHEN avg_score >= 80 THEN codcli END) as perfect_stores
+            FROM chart_client_month_avgs
             GROUP BY mes
             ORDER BY mes
         ),
