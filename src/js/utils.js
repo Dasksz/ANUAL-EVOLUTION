@@ -149,6 +149,18 @@ export function formatInteger(value) {
 }
 
 /**
+ * Formats a value with exactly 1 decimal place in pt-BR locale.
+ */
+let _decimal1Formatter = null;
+export function formatDecimal1(value) {
+    if (value == null || isNaN(Number(value))) return '0,0';
+    if (!_decimal1Formatter) {
+        _decimal1Formatter = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    }
+    return _decimal1Formatter.format(Number(value));
+}
+
+/**
  * Sets a loading spinner on a button. Replaces the innerHTML of the target element.
  * Helps reduce duplicated long SVG spinner strings.
  * @param {HTMLElement} target - The DOM element where the text and spinner will be injected. (Could be the button or a .btn-text span)
