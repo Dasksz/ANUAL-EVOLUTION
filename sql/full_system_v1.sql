@@ -3974,6 +3974,7 @@ DECLARE
     v_target_month int;
     v_eval_target_month int;
     v_where text := ' WHERE 1=1 ';
+    v_where_cat text := ' WHERE categoria_produto IS NOT NULL AND categoria_produto != '''' ';
     v_where_clients text := ' WHERE bloqueio != ''S'' ';
     v_sql text;
     v_active_clients json;
@@ -4029,6 +4030,7 @@ BEGIN
     IF p_fornecedor IS NOT NULL AND array_length(p_fornecedor, 1) > 0 THEN
         v_where := v_where || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
         v_where_trend := v_where_trend || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
+        v_where_cat := v_where_cat || format(' AND codfor = ANY(%L::text[]) ', p_fornecedor);
     END IF;
     IF p_tipovenda IS NOT NULL AND array_length(p_tipovenda, 1) > 0 THEN
         v_where := v_where || format(' AND tipovenda = ANY(%L::text[]) ', p_tipovenda);
@@ -4045,6 +4047,7 @@ BEGIN
     IF p_categoria IS NOT NULL AND array_length(p_categoria, 1) > 0 THEN
         v_where := v_where || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
         v_where_trend := v_where_trend || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
+        v_where_cat := v_where_cat || format(' AND categoria_produto = ANY(%L::text[]) ', p_categoria);
     END IF;
 
     -- REDE Logic
@@ -4201,7 +4204,12 @@ BEGIN
     -- In 'Share' view we count positivacao as unique clients. Let's use the provided logic:
     
     v_sql := '
-        WITH base_salty AS (
+        WITH all_cats AS (
+            SELECT DISTINCT categoria_produto as categoria
+            FROM public.dim_produtos
+            ' || v_where_cat || '
+        ),
+        base_salty AS (
             SELECT codcli
             FROM public.data_summary
             ' || v_where || '
@@ -4229,16 +4237,17 @@ BEGIN
         ),
         ranking AS (
             SELECT 
-                c.categoria,
-                c.pos_cat,
+                COALESCE(a.categoria, c.categoria) as categoria,
+                COALESCE(c.pos_cat, 0) as pos_cat,
                 t.total,
                 CASE 
-                    WHEN t.total > 0 THEN (c.pos_cat::numeric / t.total::numeric) * 100 
+                    WHEN t.total > 0 THEN (COALESCE(c.pos_cat, 0)::numeric / t.total::numeric) * 100
                     ELSE 0 
                 END as share_salty
-            FROM cat_pos c
+            FROM all_cats a
+            FULL OUTER JOIN cat_pos c ON a.categoria = c.categoria
             CROSS JOIN total_salty t
-            ORDER BY c.pos_cat DESC, c.categoria
+            ORDER BY pos_cat DESC, categoria
         )
         SELECT 
             (SELECT total FROM total_salty),
