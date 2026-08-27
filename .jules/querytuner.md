@@ -22,3 +22,7 @@ Action: Remove the LEFT JOIN from the heavy aggregation step. Instead, build the
 2026/08/25 - Ensure logical parity between targets (Metas) and actuals (Realizado) definitions
 Learning: When aggregating goals (metas) for custom KPIs like Mix Foods, verify the frontend import structure directly. In this project, targets are mapped as metrica='MIX' and categoria='mix_foods', whereas the older SQL searched for metrica='POS' and categoria='total_foods', yielding zeros.
 Action: Always map SQL Target filter variables exactly to how they are inserted into the system, and map SQL Realized variables (has_foods) precisely to the same rules used elsewhere (e.g. dashboard 4-family rules) to prevent data visualization mismatches.
+
+## 2024-05-18 - [City View Category Ranking]
+ **Learning:** When rendering category rankings filtered by dynamic conditions, using a FULL OUTER JOIN with a separate list of distinct dimensions allows rows with 0 metrics to appear in the result set rather than being implicitly removed by inner joins/aggregations.
+ **Action:** For "show all zero" metric lists, derive a CTE (`all_cats`) from the dimension table (`dim_produtos`) filtered by the exact dimensions being queried, then `FULL OUTER JOIN` it with the aggregation CTE.
