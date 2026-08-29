@@ -4143,7 +4143,7 @@ BEGIN
     -- ACTIVE CLIENTS QUERY
     v_sql := '
     WITH client_totals AS (
-        SELECT codcli, MAX(cidade) as cidade_fat, SUM(vlvenda) as total_fat
+        SELECT codcli, SUM(vlvenda) as total_fat
         FROM public.data_summary
         ' || v_where || '
         GROUP BY codcli
@@ -4151,7 +4151,7 @@ BEGIN
     ),
     count_cte AS (SELECT COUNT(*) as cnt FROM client_totals),
     paginated_clients AS (
-        SELECT ct.codcli, ct.total_fat, c.fantasia, c.razaosocial, COALESCE(ct.cidade_fat, c.cidade) as cidade, c.bairro, c.rca1
+        SELECT ct.codcli, ct.total_fat, c.fantasia, c.razaosocial, c.cidade, c.bairro, c.rca1
         FROM client_totals ct
         JOIN public.data_clients c ON c.codigo_cliente = ct.codcli
         ORDER BY ct.total_fat DESC
@@ -7909,18 +7909,18 @@ BEGIN
             SELECT
                 ac.segmentacao,
                 COALESCE(ac.pos_acumulado, 0) as pos_acumulado,
-                COALESCE(MAX(CASE WHEN pos.mes = ''01'' THEN pos.pos ELSE 0 END), 0) as m1_pos,
-                COALESCE(MAX(CASE WHEN pos.mes = ''02'' THEN pos.pos ELSE 0 END), 0) as m2_pos,
-                COALESCE(MAX(CASE WHEN pos.mes = ''03'' THEN pos.pos ELSE 0 END), 0) as m3_pos,
-                COALESCE(MAX(CASE WHEN pos.mes = ''04'' THEN pos.pos ELSE 0 END), 0) as m4_pos,
-                COALESCE(MAX(CASE WHEN pos.mes = ''05'' THEN pos.pos ELSE 0 END), 0) as m5_pos,
-                COALESCE(MAX(CASE WHEN pos.mes = ''06'' THEN pos.pos ELSE 0 END), 0) as m6_pos,
-                COALESCE(MAX(CASE WHEN pos.mes = ''07'' THEN pos.pos ELSE 0 END), 0) as m7_pos,
-                COALESCE(MAX(CASE WHEN pos.mes = ''08'' THEN pos.pos ELSE 0 END), 0) as m8_pos,
-                COALESCE(MAX(CASE WHEN pos.mes = ''09'' THEN pos.pos ELSE 0 END), 0) as m9_pos,
-                COALESCE(MAX(CASE WHEN pos.mes = ''10'' THEN pos.pos ELSE 0 END), 0) as m10_pos,
-                COALESCE(MAX(CASE WHEN pos.mes = ''11'' THEN pos.pos ELSE 0 END), 0) as m11_pos,
-                COALESCE(MAX(CASE WHEN pos.mes = ''12'' THEN pos.pos ELSE 0 END), 0) as m12_pos
+                COALESCE(MAX(CASE WHEN pos.mes = 1 THEN pos.pos ELSE 0 END), 0) as m1_pos,
+                COALESCE(MAX(CASE WHEN pos.mes = 2 THEN pos.pos ELSE 0 END), 0) as m2_pos,
+                COALESCE(MAX(CASE WHEN pos.mes = 3 THEN pos.pos ELSE 0 END), 0) as m3_pos,
+                COALESCE(MAX(CASE WHEN pos.mes = 4 THEN pos.pos ELSE 0 END), 0) as m4_pos,
+                COALESCE(MAX(CASE WHEN pos.mes = 5 THEN pos.pos ELSE 0 END), 0) as m5_pos,
+                COALESCE(MAX(CASE WHEN pos.mes = 6 THEN pos.pos ELSE 0 END), 0) as m6_pos,
+                COALESCE(MAX(CASE WHEN pos.mes = 7 THEN pos.pos ELSE 0 END), 0) as m7_pos,
+                COALESCE(MAX(CASE WHEN pos.mes = 8 THEN pos.pos ELSE 0 END), 0) as m8_pos,
+                COALESCE(MAX(CASE WHEN pos.mes = 9 THEN pos.pos ELSE 0 END), 0) as m9_pos,
+                COALESCE(MAX(CASE WHEN pos.mes = 10 THEN pos.pos ELSE 0 END), 0) as m10_pos,
+                COALESCE(MAX(CASE WHEN pos.mes = 11 THEN pos.pos ELSE 0 END), 0) as m11_pos,
+                COALESCE(MAX(CASE WHEN pos.mes = 12 THEN pos.pos ELSE 0 END), 0) as m12_pos
             FROM acumulado_segmentacao ac
             LEFT JOIN pos_por_segmentacao_mes pos ON ac.segmentacao = pos.segmentacao
             GROUP BY ac.segmentacao, ac.pos_acumulado
