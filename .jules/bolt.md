@@ -89,3 +89,6 @@ Increased `statement_timeout` to `600s` in complex dashboard RPCs (like `get_mai
 ## 2024-05-18 - Fix pagination bug by removing internal state reset from render function
 **Learning:** When debugging unresponsive UI interactions (like pagination), ensure that the function responsible for re-rendering the component does not indiscriminately overwrite the UI state variables that were just updated by the interaction handler (e.g., unconditionally resetting `currentPage` back to 1 inside `renderTable`).
 **Action:** Always check the start of rendering functions for unintended state resets, and move those resets to the specific interaction handlers (like filter toggle buttons) that genuinely require a state reset.
+## 2026-08-20 - [Optimize DOM Table Rendering]
+**Learning:** Using `document.createElement('tr')` followed by setting `innerHTML` inside a loop and appending to a container one by one (`appendChild`) causes multiple layout and paint recalculations.
+**Action:** Always prefer using `Array.map()` to generate a full HTML template string of rows, and then assigning it once using `.join('')` to the container's `innerHTML`. This batches DOM updates and is significantly faster, reducing overhead in frontend table views.

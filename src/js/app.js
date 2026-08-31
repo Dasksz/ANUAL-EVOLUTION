@@ -11395,9 +11395,8 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                     return Math.round(val).toString();
                 };
 
-                pageItems.forEach(u => {
-                    const row = document.createElement('tr');
-                    
+                // ⚡ Bolt Optimization: Use map and join for faster DOM rendering and avoid appendChild in loop
+                analysisBody.innerHTML = pageItems.map(u => {
                     const currentVal = getSellerCurrentGoal(u.seller, u.category, u.type);
                     const newVal = u.val;
                     const diff = newVal - currentVal;
@@ -11415,17 +11414,18 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                     let displayCategory = u.category;
                     if (u.type === 'pos') displayCategory += '_POS';
 
-                    row.innerHTML = `
-                        <td class="px-4 py-2 text-xs text-slate-300">${sellerCode}</td>
-                        <td class="px-4 py-2 text-xs text-slate-400">${u.seller}</td>
-                        <td class="px-4 py-2 text-xs text-blue-300">${displayCategory}</td>
-                        <td class="px-4 py-2 text-xs text-slate-400 font-mono text-right">${currentValStr}</td>
-                        <td class="px-4 py-2 text-xs text-white font-bold font-mono text-right">${newValStr}</td>
-                        <td class="px-4 py-2 text-xs ${diffClass} font-mono text-right">${diff > 0 ? '+' : ''}${diffStr}</td>
-                        <td class="px-4 py-2 text-center text-xs"><span class="px-2 py-1 rounded-full bg-blue-900/50 text-blue-200 text-[10px]">Importar</span></td>
+                    return `
+                        <tr>
+                            <td class="px-4 py-2 text-xs text-slate-300">${sellerCode}</td>
+                            <td class="px-4 py-2 text-xs text-slate-400">${u.seller}</td>
+                            <td class="px-4 py-2 text-xs text-blue-300">${displayCategory}</td>
+                            <td class="px-4 py-2 text-xs text-slate-400 font-mono text-right">${currentValStr}</td>
+                            <td class="px-4 py-2 text-xs text-white font-bold font-mono text-right">${newValStr}</td>
+                            <td class="px-4 py-2 text-xs ${diffClass} font-mono text-right">${diff > 0 ? '+' : ''}${diffStr}</td>
+                            <td class="px-4 py-2 text-center text-xs"><span class="px-2 py-1 rounded-full bg-blue-900/50 text-blue-200 text-[10px]">Importar</span></td>
+                        </tr>
                     `;
-                    analysisBody.appendChild(row);
-                });
+                }).join('');
 
                 // Update Pagination Controls
                 const prevBtn = document.getElementById('import-prev-page-btn');
