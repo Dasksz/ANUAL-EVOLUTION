@@ -1,6 +1,7 @@
 import supabase from './supabase.js?v=5';
 
-import { 
+import {
+    calcVariation,
     renderTableEmptyState,
     updateEl,
     generateYearOptionsHtml,
@@ -3654,10 +3655,6 @@ async function loadBoxesView() {
         const fmtKg = (v) => formatTons(safeVal(v), 1);
         const fmtCaixas = (v) => formatInteger(safeVal(v));
         
-        const calcVar = (curr, prev) => {
-            if (prev > 0) return ((curr / prev) - 1) * 100;
-            return curr > 0 ? 100 : 0;
-        };
         const fmtVar = (v) => {
             const cls = v >= 0 ? 'text-emerald-400' : 'text-red-400';
             const sign = v > 0 ? '+' : '';
@@ -3782,9 +3779,9 @@ async function loadBoxesView() {
             // Year vs Year variation (using Main Display Val which might be Trended Month or Realized Year)
             // If Year View: Realized Year vs Previous Year.
             // If Month View + Trend: Trended Month vs Previous Month (same period prev year).
-            // Logic: calcVar(mainDisplayVal, prev).
+            // Logic: calcVariation(mainDisplayVal, prev).
             if(elPrevVar) {
-                elPrevVar.innerHTML = fmtVar(calcVar(mainDisplayVal, prev));
+                elPrevVar.innerHTML = fmtVar(calcVariation(mainDisplayVal, prev));
             }
 
             const elTriVal = document.getElementById(`boxes-kpi-${prefix}-tri`);
@@ -3793,7 +3790,7 @@ async function loadBoxesView() {
             
             // Tri Variation: Always Monthly (Recent/Trended) vs Tri Avg
             if(elTriVar) {
-                elTriVar.innerHTML = fmtVar(calcVar(triComparisonVal, tri));
+                elTriVar.innerHTML = fmtVar(calcVariation(triComparisonVal, tri));
             }
         };
 
@@ -4848,8 +4845,6 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         }
 
         // Variation Calc
-        const calcEvo = (curr, prev) => prev > 0 ? ((curr / prev) - 1) * 100 : (curr > 0 ? 100 : 0);
-
         // --- KPI Updates ---
         // Calc indicators for table (Perda/Devolução)
         const processIndicators = (d) => {
@@ -4926,9 +4921,9 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             const percBonif = kpiTotalSoldBaseCurr > 0 ? (kpiBonifCurr / kpiTotalSoldBaseCurr) * 100 : 0;
             const percDevol = kpiTotalSoldBaseCurr > 0 ? (kpiDevolCurr / kpiTotalSoldBaseCurr) * 100 : 0;
 
-            const varBonif = calcEvo(kpiBonifCurr, kpiBonifPrev);
-            const varDevol = calcEvo(kpiDevolCurr, kpiDevolPrev);
-            const varMix = calcEvo(avgMixCurr, avgMixPrev);
+            const varBonif = calcVariation(kpiBonifCurr, kpiBonifPrev);
+            const varDevol = calcVariation(kpiDevolCurr, kpiDevolPrev);
+            const varMix = calcVariation(avgMixCurr, avgMixPrev);
 
             // Render New KPIs
             const fmtBRL = (v) => formatCurrency(v);
@@ -4984,7 +4979,7 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             trendVal: currFat,
             prevVal: prevFat,
             fmt: (v) => formatCurrency(v),
-            calcEvo
+            calcVariation
         });
         
         updateKpiCard({
@@ -4992,7 +4987,7 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             trendVal: currKg,
             prevVal: prevKg,
             fmt: (v) => formatTons(v, 1),
-            calcEvo
+            calcVariation
         });
 
         // --- KPI Month vs Trimester (Keep standard logic based on target month) ---
@@ -5035,7 +5030,7 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             trendVal: currMonthFatForTri,
             prevVal: triAvgFat,
             fmt: (v) => formatCurrency(v),
-            calcEvo
+            calcVariation
         });
 
         updateKpiCard({
@@ -5043,7 +5038,7 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             trendVal: currMonthKgForTri,
             prevVal: triAvgPeso,
             fmt: (v) => formatTons(v, 2),
-            calcEvo
+            calcVariation
         });
 
         const mName = monthNames[targetIndex]?.toUpperCase() || "";
@@ -5117,8 +5112,8 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         el.className = `text-2xl font-bold ${value >= 0 ? 'text-green-400' : 'text-red-400'}`;
     }
 
-    function updateKpiCard({ prefix, trendVal, prevVal, fmt, calcEvo }) {
-        const evo = calcEvo(trendVal, prevVal);
+    function updateKpiCard({ prefix, trendVal, prevVal, fmt, calcVariation }) {
+        const evo = calcVariation(trendVal, prevVal);
         
         const elTrend = document.getElementById(`kpi-value-trend-${prefix}`);
         const elPrev = document.getElementById(`kpi-value-prev-${prefix}`);
@@ -8198,7 +8193,7 @@ Valor: ${formatValue(item.valor, indicator)}`;
 
             // ⚡ Bolt Optimization: Use template strings instead of multiple document.createElement calls
             container.innerHTML = kpis.map(kpi => {
-                const variation = kpi.history > 0 ? ((kpi.current - kpi.history) / kpi.history) * 100 : 0;
+                const variation = calcVariation(kpi.current, kpi.history);
                 const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
 
                 // Determine glow color
@@ -8265,7 +8260,7 @@ Valor: ${formatValue(item.valor, indicator)}`;
             if (!tbody) return;
 
             tbody.innerHTML = Object.entries(data).map(([sup, vals]) => {
-                const variation = vals.history > 0 ? ((vals.current - vals.history) / vals.history) * 100 : 0;
+                const variation = calcVariation(vals.current, vals.history);
                 const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
                 return `
                     <tr class="hover:bg-slate-700">
@@ -8629,7 +8624,7 @@ window.renderInnovationsTable = function(data) {
         let catPosAvg12m = Math.round(cat.pos_avg_12m || 0);
         let catEstoque = Math.round(cat.estoque_current || 0);
         
-        let varPercent = cat.pos_prev_m1 > 0 ? (((cat.pos_current - cat.pos_prev_m1) / cat.pos_prev_m1) * 100).toFixed(1) : (cat.pos_current > 0 ? 100 : 0);
+        let varPercent = calcVariation(cat.pos_current, cat.pos_prev_m1).toFixed(1);
         let varColor = varPercent >= 0 ? 'text-green-400' : 'text-red-400';
         
         const safeId = cat.name.replace(/[^a-zA-Z0-9]/g, '_');
@@ -8660,7 +8655,7 @@ window.renderInnovationsTable = function(data) {
             let posAvg12m = Math.round(p.pos_avg_12m || 0);
             let pEstoque = Math.round(p.estoque_current || 0);
             
-            let pVarPercent = p.pos_prev_m1 > 0 ? (((p.pos_current - p.pos_prev_m1) / p.pos_prev_m1) * 100).toFixed(1) : (p.pos_current > 0 ? 100 : 0);
+            let pVarPercent = calcVariation(p.pos_current, p.pos_prev_m1).toFixed(1);
             let pVarColor = pVarPercent >= 0 ? 'text-green-400' : 'text-red-400';
 
             html += `
