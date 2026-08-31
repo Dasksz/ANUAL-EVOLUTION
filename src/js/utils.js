@@ -704,3 +704,16 @@ export function updateEl(id, val, isStyle = false) {
 if (typeof window.optimizedData === 'undefined') {
     window.optimizedData = { rcasBySupervisor: new Map() };
 }
+
+
+/**
+ * Calculates the percentage variation (evolution) between two values.
+ * Improves readability by centralizing the standard formula and division by zero protection.
+ * @param {number} current - The current/recent value.
+ * @param {number} previous - The previous/historical value.
+ * @returns {number} The percentage variation.
+ */
+export function calcVariation(current, previous) {
+    if (previous > 0) return ((current / previous) - 1) * 100;
+    return current > 0 ? 100 : 0;
+}
