@@ -9,3 +9,7 @@
 ## 2026-08-21 - [Loja Perfeita: Missing CNPJs Drop Fix]
 **Learning:** During Excel ingestion, if a `CNPJ` from the "Loja Perfeita" sheet is not found in the baseline clients mapping, doing a hard `return;` ignores valid audits. These "orphan" audits often happen for inactive/new clients not present in the master list.
 **Action:** Do not drop audits if `codCli` is missing. Instead, create a mock `codCli` like `INTV-<cnpj>` and infer its branch/city based on the primary branch of the `Pesquisador` handling that audit, preserving the audit count while allowing it to surface on branch-level filters.
+## 2026-09-01 - Tidy: Real Accumulated KPI Update\n**Learning:** In order to conditionally show elements based on 'current year', we can rely on existing flags like  which strictly applies to current year accumulation logic in this specific view without hardcoding dates.\n**Action:** Use existing computed dashboard context flags for UI conditional states.
+## 2026-09-01 - Tidy: Real Accumulated KPI Update
+**Learning:** In order to conditionally show elements based on 'current year', we can rely on existing flags like `data.trend_allowed` which strictly applies to current year accumulation logic in this specific view without hardcoding dates.
+**Action:** Use existing computed dashboard context flags for UI conditional states.
