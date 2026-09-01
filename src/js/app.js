@@ -4769,6 +4769,7 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         // KPI Calculation Variables
         let currFat, currKg, prevFat, prevKg, triAvgFat, triAvgPeso;
         let kpiTitleFat, kpiTitleKg;
+        let currSumsReal = { faturamento: 0, peso: 0 };
         
         // --- KPI LOGIC (Scenario Check) ---
         if (mesFilter.value === '') {
@@ -4794,6 +4795,9 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             const currSums = sumData(currentData, true);
             const prevSums = sumData(previousData, false);
 
+            // New KPI: Real accumulated (without trend)
+            currSumsReal = sumData(currentData, false);
+
             // Logic for Annual Trend Projection (Current Year Only)
             if (data.trend_allowed && data.trend_data) {
                 // Formula: (Accumulated YTD + Projected Current Month) / (Months Passed) * 12
@@ -4815,6 +4819,7 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
 
         } else {
             // SCENARIO B: Default (Month vs Month or Filtered Month)
+            currSumsReal = { faturamento: 0, peso: 0 }; // explicitly 0 or calculate if needed, though hidden anyway
             
             // [Tidy: The user wants the chart to continue displaying all months even if a month filter is applied.]
             // if (mesFilter.value !== '') {
@@ -5070,6 +5075,28 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             mainChartTitle.textContent = isBonifMode ? "BONIFICADO MENSAL" : "FATURAMENTO MENSAL";
         } else {
             mainChartTitle.textContent = "TONELAGEM MENSAL";
+        }
+
+        // --- Real Accumulated KPI UI Update ---
+        const realAccumulatedIndicator = document.getElementById('real-accumulated-indicator');
+        const realAccumulatedLabel = document.getElementById('real-accumulated-label');
+        const realAccumulatedValue = document.getElementById('real-accumulated-value');
+
+        if (realAccumulatedIndicator && realAccumulatedLabel && realAccumulatedValue) {
+            // Check if we are showing all months and trend data is active (which implies current year)
+            if (mesFilter.value === '' && data.trend_allowed && data.trend_data) {
+                realAccumulatedIndicator.classList.remove('hidden');
+
+                if (currentChartMode === 'faturamento') {
+                    realAccumulatedLabel.textContent = 'R$ Acumulado';
+                    realAccumulatedValue.textContent = formatCurrency(currSumsReal.faturamento);
+                } else {
+                    realAccumulatedLabel.textContent = 'Ton Acumulado';
+                    realAccumulatedValue.textContent = formatTons(currSumsReal.peso, 1);
+                }
+            } else {
+                realAccumulatedIndicator.classList.add('hidden');
+            }
         }
 
         const mapTo12 = (arr) => { 
