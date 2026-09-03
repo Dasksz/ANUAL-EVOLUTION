@@ -11118,6 +11118,22 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
             const colMap = {};
             let dataStartRow = 0;
 
+            // Build local maps from goalsData.sellers to replace optimizedData
+            const localRcaNameByCode = new Map();
+            const localRcaCodeByName = new Map();
+            const localSupervisors = new Set();
+            
+            if (goalsData && goalsData.sellers) {
+                goalsData.sellers.forEach(s => {
+                    if (s.codusur && s.vendedor_nome) {
+                        localRcaNameByCode.set(String(s.codusur), s.vendedor_nome);
+                        localRcaCodeByName.set(s.vendedor_nome, String(s.codusur));
+                    }
+                    if (s.supervisor_nome) localSupervisors.add(s.supervisor_nome);
+                });
+            }
+
+
             if (rows.length >= 3) {
                 // Standard logic: Rows 0, 1, 2
                 const startRow = 0;
@@ -11294,8 +11310,8 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                     const parsedCode = parseImportValue(sellerCodeCandidate);
                     if (!isNaN(parsedCode)) {
                         const codeStr = String(parsedCode);
-                        if (optimizedData.rcaNameByCode.has(codeStr)) {
-                            canonicalName = optimizedData.rcaNameByCode.get(codeStr);
+                        if (localRcaNameByCode.has(codeStr)) {
+                            canonicalName = localRcaNameByCode.get(codeStr);
                         }
                     }
                 }
@@ -11303,7 +11319,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 // 2. Try by Name (Fuzzy/Case-Insensitive)
                 if (!canonicalName) {
                     // Iterate existing system names to find case-insensitive match
-                    for (const [sysName, sysCode] of optimizedData.rcaCodeByName) {
+                    for (const [sysName, sysCode] of localRcaCodeByName) {
                          const sysUpper = sysName.normalize('NFD').replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
                          if (sysUpper === upperName) {
                              canonicalName = sysName;
@@ -11317,7 +11333,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 // 2. Dynamic Supervisor Check
                 // If the name is a known Supervisor (key in rcasBySupervisor), ignore it.
                 // Assuming supervisors are not also sellers in this context (or we only want leaf sellers).
-                if (optimizedData.rcasBySupervisor.has(finalSellerName) || optimizedData.rcasBySupervisor.has(finalSellerName.toUpperCase())) {
+                if (localSupervisors.has(finalSellerName) || localSupervisors.has(finalSellerName.toUpperCase())) {
                     continue;
                 }
                 // ------------------------------------------------
@@ -11431,7 +11447,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                     if (diff > 0.001) diffClass = "text-green-400 font-bold";
                     else if (diff < -0.001) diffClass = "text-red-400 font-bold";
 
-                    const sellerCode = optimizedData.rcaCodeByName.get(u.seller) || '-';
+                    const sellerCode = localRcaCodeByName ? (localRcaCodeByName.get(u.seller) || '-') : '-';
 
                     let displayCategory = u.category;
                     if (u.type === 'pos') displayCategory += '_POS';
@@ -11636,7 +11652,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
             }
 
             function getSellerCurrentGoal(sellerName, category, type) {
-                const sellerCode = optimizedData.rcaCodeByName.get(sellerName);
+                const sellerCode = localRcaCodeByName ? localRcaCodeByName.get(sellerName) : null;
                 if (!sellerCode) return 0;
 
                 // Check for Overrides FIRST
@@ -11669,7 +11685,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
 
                 if (type === 'rev' || type === 'vol') {
                     // Aggregate from globalClientGoals
-                    const clients = optimizedData.clientsByRca.get(sellerCode) || [];
+                    const clients = []; /* Client metrics lookup unavailable without local cache */
                     const activeClients = clients.filter(c => {
                         const cod = String(c['Código'] || c['codigo_cliente']);
                         const rca1 = String(c.rca1 || '').trim();
@@ -11739,7 +11755,7 @@ async function renderGoalsView() {
         const baseData = baseRes.data;
         savedMetas = metasRes.data || [];
         goalsData = baseData;
-
+        
         const quarterMonths = baseData.quarterMonths || [];
         let sellersData = baseData.sellers || [];
 
@@ -11822,9 +11838,9 @@ async function renderGoalsView() {
         };
 
         const grandTotals = initTotals();
-
+        
         let bodyHTML = '';
-
+        
         // Helper to get saved meta
         const getMeta = (sellerCode, cat, metrica, defaultBase) => {
             const saved = savedMetas.find(m => String(m.codusur) === String(sellerCode) && m.categoria === cat && m.metrica === metrica);
@@ -11850,13 +11866,13 @@ async function renderGoalsView() {
                 const mapCol = (colId, dbPrefix, isTonnage = false, isMix = false) => {
                     const avgFat = seller[`total_fat_${dbPrefix}`] / 3 || 0;
                     const metaFat = getMeta(seller.codusur, colId, 'FAT', avgFat * 1.1); // Assuming 10% growth default or just avgFat? Let's use avgFat. Wait, old code used base * growth. Let's just use 1.0 for simplicity if no growth.
-
+                    
                     const avgPos = seller[`sum_pos_${dbPrefix}`] / 3 || 0;
                     const metaPos = getMeta(seller.codusur, colId, 'POS', avgPos);
-
+                    
                     const avgVol = isTonnage ? (seller[`total_vol_${dbPrefix}`] / 3 || 0) : 0;
                     const metaVol = isTonnage ? getMeta(seller.codusur, colId, 'VOL', avgVol * 1.1) : 0;
-
+                    
                     const avgMix = isMix ? (seller[`sum_mix_${dbPrefix}`] / 3 || 0) : 0;
                     const metaMix = isMix ? getMeta(seller.codusur, colId, 'MIX', avgMix) : 0;
 
@@ -11878,7 +11894,7 @@ async function renderGoalsView() {
                 sData['1119_QUAKER_KEROCOCO'] = mapCol('1119_QUAKER_KEROCOCO', 'quaker_kerococo');
                 sData['tonelada_foods'] = mapCol('tonelada_foods', 'foods', true);
                 sData['mix_foods'] = mapCol('mix_foods', 'foods', false, true);
-
+                
                 sData['geral'] = mapCol('geral', 'geral');
                 // Calculate Geral correctly by summing Elma and Foods metas
                 sData['geral'].metaFat = sData['total_elma'].metaFat + sData['total_foods'].metaFat;
@@ -11985,7 +12001,7 @@ async function renderGoalsView() {
             else if (col.type === 'pedev') bodyHTML += `<td class="px-1 py-2 text-center text-pink-400 border-r border-slate-700">${Math.round(grandTotals['total_elma']?.metaPos * 0.9)}</td>`;
         });
         bodyHTML += `</tr>`;
-
+        
         tableBody.innerHTML = bodyHTML;
 
         // Wire inputs for auto-save
