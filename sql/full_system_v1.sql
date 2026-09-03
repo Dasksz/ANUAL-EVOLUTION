@@ -8688,7 +8688,7 @@ BEGIN
         LEFT JOIN LATERAL (
             SELECT codsupervisor
             FROM public.data_clients dc
-            WHERE dc.codusur = sma.codusur
+            WHERE dc.vendedor = sma.codusur
             GROUP BY codsupervisor
             ORDER BY COUNT(*) DESC
             LIMIT 1
