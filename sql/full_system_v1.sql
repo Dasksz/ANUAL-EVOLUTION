@@ -8517,78 +8517,195 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-    v_ano_anterior INTEGER := p_ano - 1;
+    v_date DATE := make_date(p_ano, p_mes, 1);
+    v_start_date DATE := v_date - INTERVAL '3 months';
+    v_m1 DATE := v_start_date;
+    v_m2 DATE := v_start_date + INTERVAL '1 month';
+    v_m3 DATE := v_start_date + INTERVAL '2 months';
+    
+    v_m1_key TEXT := to_char(v_m1, 'YYYY-MM');
+    v_m2_key TEXT := to_char(v_m2, 'YYYY-MM');
+    v_m3_key TEXT := to_char(v_m3, 'YYYY-MM');
+    
+    v_m1_label TEXT := upper(to_char(v_m1, 'TMMon YY'));
+    v_m2_label TEXT := upper(to_char(v_m2, 'TMMon YY'));
+    v_m3_label TEXT := upper(to_char(v_m3, 'TMMon YY'));
+
     v_result JSONB;
-    v_total_atual NUMERIC;
-    v_total_anterior NUMERIC;
-    v_crescimento_ytd NUMERIC := 0;
 BEGIN
-    -- 1. Calculate general YTD growth (up to previous month of current year vs same period last year)
-    -- This is a simplified overall growth percent. If you want category-specific growth, you'd need to aggregate per category.
-    -- Assuming a general overall growth percent for simplicity in this baseline function, or per category if needed.
-    -- For now, returning 0 as growth, and frontend/backend can adjust. We will calculate a general one.
-    
-    SELECT COALESCE(SUM(vlvenda), 0) INTO v_total_atual
-    FROM public.data_summary
-    WHERE ano = p_ano AND mes < p_mes;
+    WITH raw_sales AS (
+        SELECT
+            d.codusur,
+            to_char(d.dtped, 'YYYY-MM') AS month_key,
+            d.codfor,
+            dp.categoria_produto,
+            dp.mix_marca,
+            d.vlvenda,
+            d.totpesoliq,
+            d.codcli,
+            d.tipovenda
+        FROM public.data_detailed d
+        LEFT JOIN public.dim_produtos dp ON d.produto = dp.codigo
+        WHERE d.dtped >= v_start_date AND d.dtped < v_date
+          AND d.tipovenda IN ('1', '9')
+    ),
+    client_month_mix AS (
+        SELECT
+            codusur,
+            month_key,
+            codcli,
+            MAX(CASE WHEN mix_marca = 'CHEETOS' AND vlvenda > 0 THEN 1 ELSE 0 END) AS has_cheetos,
+            MAX(CASE WHEN mix_marca = 'DORITOS' AND vlvenda > 0 THEN 1 ELSE 0 END) AS has_doritos,
+            MAX(CASE WHEN mix_marca = 'FANDANGOS' AND vlvenda > 0 THEN 1 ELSE 0 END) AS has_fandangos,
+            MAX(CASE WHEN mix_marca = 'RUFFLES' AND vlvenda > 0 THEN 1 ELSE 0 END) AS has_ruffles,
+            MAX(CASE WHEN mix_marca = 'TORCIDA' AND vlvenda > 0 THEN 1 ELSE 0 END) AS has_torcida,
 
-    SELECT COALESCE(SUM(vlvenda), 0) INTO v_total_anterior
-    FROM public.data_summary
-    WHERE ano = v_ano_anterior AND mes < p_mes;
-
-    IF v_total_anterior > 0 THEN
-        v_crescimento_ytd := (v_total_atual - v_total_anterior) / v_total_anterior;
-    END IF;
-    
-    -- If no historical data for YTD, default to 0% growth.
-
-    -- 2. Fetch last year's same month data per seller
-    -- We will build a JSON array of sellers and their base metrics
-    WITH seller_data AS (
+            MAX(CASE WHEN mix_marca = 'TODDYNHO' AND vlvenda > 0 THEN 1 ELSE 0 END) AS has_toddynho,
+            MAX(CASE WHEN mix_marca = 'TODDY' AND vlvenda > 0 THEN 1 ELSE 0 END) AS has_toddy,
+            MAX(CASE WHEN mix_marca = 'QUAKER' AND vlvenda > 0 THEN 1 ELSE 0 END) AS has_quaker,
+            MAX(CASE WHEN mix_marca = 'KEROCOCO' AND vlvenda > 0 THEN 1 ELSE 0 END) AS has_kerococo
+        FROM raw_sales
+        GROUP BY codusur, month_key, codcli
+    ),
+    seller_month_mix_agg AS (
+        SELECT
+            codusur,
+            month_key,
+            COUNT(CASE WHEN has_cheetos=1 AND has_doritos=1 AND has_fandangos=1 AND has_ruffles=1 AND has_torcida=1 THEN 1 END) AS mix_salty,
+            COUNT(CASE WHEN has_toddynho=1 AND has_toddy=1 AND has_quaker=1 AND has_kerococo=1 THEN 1 END) AS mix_foods
+        FROM client_month_mix
+        GROUP BY codusur, month_key
+    ),
+    seller_month_agg AS (
         SELECT 
             codusur,
-            SUM(vlvenda) as fat_geral,
-            SUM(peso) as vol_geral,
-            COUNT(DISTINCT codcli) as pos_geral,
+            month_key,
             
-            -- Pepsico/Elma
-            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') THEN vlvenda ELSE 0 END) as fat_elma,
-            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') THEN peso ELSE 0 END) as vol_elma,
-            COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') AND vlvenda > 0 THEN codcli END) as pos_elma,
+            -- GERAL
+            SUM(vlvenda) AS fat_geral,
+            SUM(totpesoliq) AS vol_geral,
+            COUNT(DISTINCT codcli) AS pos_geral,
+
+            -- TOTAL ELMA
+            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') THEN vlvenda ELSE 0 END) AS fat_elma,
+            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') THEN totpesoliq ELSE 0 END) AS vol_elma,
+            COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') AND vlvenda > 0 THEN codcli END) AS pos_elma,
+
+            -- 707
+            SUM(CASE WHEN LTRIM(codfor::text, '0') = '707' THEN vlvenda ELSE 0 END) AS fat_707,
+            COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') = '707' AND vlvenda > 0 THEN codcli END) AS pos_707,
+
+            -- 708
+            SUM(CASE WHEN LTRIM(codfor::text, '0') = '708' THEN vlvenda ELSE 0 END) AS fat_708,
+            COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') = '708' AND vlvenda > 0 THEN codcli END) AS pos_708,
+
+            -- 752
+            SUM(CASE WHEN LTRIM(codfor::text, '0') = '752' THEN vlvenda ELSE 0 END) AS fat_752,
+            COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') = '752' AND vlvenda > 0 THEN codcli END) AS pos_752,
+
+            -- TOTAL FOODS
+            SUM(CASE WHEN LTRIM(codfor::text, '0') = '1119' THEN vlvenda ELSE 0 END) AS fat_foods,
+            SUM(CASE WHEN LTRIM(codfor::text, '0') = '1119' THEN totpesoliq ELSE 0 END) AS vol_foods,
+            COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') = '1119' AND vlvenda > 0 THEN codcli END) AS pos_foods,
+
+            -- TODDYNHO
+            SUM(CASE WHEN LTRIM(codfor::text, '0') = '1119' AND (categoria_produto ILIKE '%TODDYNHO%' OR categoria_produto ILIKE '%TODYNHO%') THEN vlvenda ELSE 0 END) AS fat_toddynho,
+            COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') = '1119' AND (categoria_produto ILIKE '%TODDYNHO%' OR categoria_produto ILIKE '%TODYNHO%') AND vlvenda > 0 THEN codcli END) AS pos_toddynho,
+
+            -- TODDY
+            SUM(CASE WHEN LTRIM(codfor::text, '0') = '1119' AND (categoria_produto ILIKE '%TODDY %' OR categoria_produto = 'TODDY') THEN vlvenda ELSE 0 END) AS fat_toddy,
+            COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') = '1119' AND (categoria_produto ILIKE '%TODDY %' OR categoria_produto = 'TODDY') AND vlvenda > 0 THEN codcli END) AS pos_toddy,
+
+            -- QUAKER KEROCOCO
+            SUM(CASE WHEN LTRIM(codfor::text, '0') = '1119' AND (categoria_produto ILIKE '%QUAKER%' OR categoria_produto ILIKE '%KEROCOCO%') THEN vlvenda ELSE 0 END) AS fat_quaker_kerococo,
+            COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') = '1119' AND (categoria_produto ILIKE '%QUAKER%' OR categoria_produto ILIKE '%KEROCOCO%') AND vlvenda > 0 THEN codcli END) AS pos_quaker_kerococo
+
+        FROM raw_sales
+        GROUP BY codusur, month_key
+    ),
+    seller_totals AS (
+        SELECT
+            sma.codusur,
+            dv.nome AS vendedor_nome,
+            ds.nome AS supervisor_nome,
+            ds.codigo AS supervisor_codigo,
+
+            -- GERAL
+            COALESCE(SUM(fat_geral), 0) AS total_fat_geral,
+            COALESCE(SUM(vol_geral), 0) AS total_vol_geral,
+            COALESCE(SUM(pos_geral), 0) AS sum_pos_geral,
             
-            -- EXTRUSADOS (707)
-            SUM(CASE WHEN codfor = '707' THEN vlvenda ELSE 0 END) as fat_707,
-            COUNT(DISTINCT CASE WHEN codfor = '707' AND vlvenda > 0 THEN codcli END) as pos_707,
+            -- ELMA
+            COALESCE(SUM(fat_elma), 0) AS total_fat_elma,
+            COALESCE(SUM(vol_elma), 0) AS total_vol_elma,
+            COALESCE(SUM(pos_elma), 0) AS sum_pos_elma,
+            jsonb_object_agg(sma.month_key, COALESCE(fat_elma, 0)) AS history_fat_elma,
             
-            -- NAO EXTRUSADOS (708)
-            SUM(CASE WHEN codfor = '708' THEN vlvenda ELSE 0 END) as fat_708,
-            COUNT(DISTINCT CASE WHEN codfor = '708' AND vlvenda > 0 THEN codcli END) as pos_708,
+            -- 707
+            COALESCE(SUM(fat_707), 0) AS total_fat_707,
+            COALESCE(SUM(pos_707), 0) AS sum_pos_707,
+            jsonb_object_agg(sma.month_key, COALESCE(fat_707, 0)) AS history_fat_707,
             
-            -- TORCIDA (752)
-            SUM(CASE WHEN codfor = '752' THEN vlvenda ELSE 0 END) as fat_752,
-            COUNT(DISTINCT CASE WHEN codfor = '752' AND vlvenda > 0 THEN codcli END) as pos_752,
+            -- 708
+            COALESCE(SUM(fat_708), 0) AS total_fat_708,
+            COALESCE(SUM(pos_708), 0) AS sum_pos_708,
+            jsonb_object_agg(sma.month_key, COALESCE(fat_708, 0)) AS history_fat_708,
+
+            -- 752
+            COALESCE(SUM(fat_752), 0) AS total_fat_752,
+            COALESCE(SUM(pos_752), 0) AS sum_pos_752,
+            jsonb_object_agg(sma.month_key, COALESCE(fat_752, 0)) AS history_fat_752,
             
             -- FOODS
-            SUM(CASE WHEN codfor = '1119' THEN vlvenda ELSE 0 END) as fat_foods,
-            SUM(CASE WHEN codfor = '1119' THEN peso ELSE 0 END) as vol_foods,
-            COUNT(DISTINCT CASE WHEN codfor = '1119' AND vlvenda > 0 THEN codcli END) as pos_foods,
+            COALESCE(SUM(fat_foods), 0) AS total_fat_foods,
+            COALESCE(SUM(vol_foods), 0) AS total_vol_foods,
+            COALESCE(SUM(pos_foods), 0) AS sum_pos_foods,
+            jsonb_object_agg(sma.month_key, COALESCE(fat_foods, 0)) AS history_fat_foods,
             
-            -- TODDYNHO (Assuming 'TODDYNHO' is in mix_marca or categoria_produto. Let's use simple string match for summary if needed, or rely on detailed logic. Since data_summary might not have mix_marca, we fallback to 1119 totals if not granular.
-            -- Actually data_summary DOES NOT have categoria_produto. 
-            -- We might need to join data_detailed or just return 0 and let frontend handle it or fallback)
-            0 as fat_toddynho, 0 as pos_toddynho,
-            0 as fat_toddy, 0 as pos_toddy,
-            0 as fat_quaker, 0 as pos_quaker
+            -- TODDYNHO
+            COALESCE(SUM(fat_toddynho), 0) AS total_fat_toddynho,
+            COALESCE(SUM(pos_toddynho), 0) AS sum_pos_toddynho,
+            jsonb_object_agg(sma.month_key, COALESCE(fat_toddynho, 0)) AS history_fat_toddynho,
             
-        FROM public.data_summary
-        WHERE ano = v_ano_anterior AND mes = p_mes
-        GROUP BY codusur
+            -- TODDY
+            COALESCE(SUM(fat_toddy), 0) AS total_fat_toddy,
+            COALESCE(SUM(pos_toddy), 0) AS sum_pos_toddy,
+            jsonb_object_agg(sma.month_key, COALESCE(fat_toddy, 0)) AS history_fat_toddy,
+
+            -- QUAKER KEROCOCO
+            COALESCE(SUM(fat_quaker_kerococo), 0) AS total_fat_quaker_kerococo,
+            COALESCE(SUM(pos_quaker_kerococo), 0) AS sum_pos_quaker_kerococo,
+            jsonb_object_agg(sma.month_key, COALESCE(fat_quaker_kerococo, 0)) AS history_fat_quaker_kerococo,
+
+            -- MIX
+            COALESCE(SUM(smma.mix_salty), 0) AS sum_mix_salty,
+            COALESCE(SUM(smma.mix_foods), 0) AS sum_mix_foods
+
+        FROM seller_month_agg sma
+        LEFT JOIN seller_month_mix_agg smma ON sma.codusur = smma.codusur AND sma.month_key = smma.month_key
+        LEFT JOIN public.dim_vendedores dv ON sma.codusur = dv.codigo
+        -- Assuming dim_vendedores doesn't have supervisor directly, we can get it from data_clients by finding the most common supervisor for this seller
+        LEFT JOIN LATERAL (
+            SELECT codsupervisor
+            FROM public.data_clients dc
+            WHERE dc.codusur = sma.codusur
+            GROUP BY codsupervisor
+            ORDER BY COUNT(*) DESC
+            LIMIT 1
+        ) as sup ON true
+        LEFT JOIN public.dim_supervisores ds ON sup.codsupervisor = ds.codigo
+        GROUP BY sma.codusur, dv.nome, ds.nome, ds.codigo
     )
     SELECT jsonb_build_object(
-        'crescimento_ytd', v_crescimento_ytd,
-        'sellers', COALESCE(jsonb_agg(row_to_json(sd)), '[]'::jsonb)
+        'quarterMonths', jsonb_build_array(
+            jsonb_build_object('key', v_m1_key, 'label', v_m1_label, 'ano', EXTRACT(YEAR FROM v_m1), 'mes', EXTRACT(MONTH FROM v_m1)),
+            jsonb_build_object('key', v_m2_key, 'label', v_m2_label, 'ano', EXTRACT(YEAR FROM v_m2), 'mes', EXTRACT(MONTH FROM v_m2)),
+            jsonb_build_object('key', v_m3_key, 'label', v_m3_label, 'ano', EXTRACT(YEAR FROM v_m3), 'mes', EXTRACT(MONTH FROM v_m3))
+        ),
+        'sellers', COALESCE(jsonb_agg(row_to_json(st)), '[]'::jsonb)
     ) INTO v_result
-    FROM seller_data sd;
+    FROM seller_totals st
+    WHERE st.vendedor_nome IS NOT NULL AND st.vendedor_nome != 'BALCAO' AND st.vendedor_nome != 'INATIVOS';
 
     RETURN v_result;
 END;

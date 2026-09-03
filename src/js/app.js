@@ -11731,9 +11731,6 @@ async function renderGoalsView() {
         const [baseRes, metasRes] = await Promise.all([
             supabase.rpc('get_metas_base_comparativo', { p_ano: currentGoalsAno, p_mes: currentGoalsMes }),
             supabase.rpc('get_metas_sv', { p_ano: currentGoalsAno, p_mes: currentGoalsMes })
-            // Se precisarmos passar codsupervisor/codusur para a base de tabela no futuro, podemos adicionar aqui.
-            // A func atual get_metas_base_comparativo nao recebe, vamos focar a tabela no global, ou seria ideal a tabela seguir o filtro tbm?
-            // O requisito foca nos graficos e nos filtros no topo. A tabela hoje lista todos os vendedores.
         ]);
 
         if (baseRes.error) throw baseRes.error;
@@ -11743,138 +11740,293 @@ async function renderGoalsView() {
         savedMetas = metasRes.data || [];
         goalsData = baseData;
 
-        // Render Table Headers
-        tableHead.innerHTML = `
-            <tr class="text-xs text-slate-400 uppercase tracking-wider text-center bg-slate-800">
-                <th rowspan="3" class="px-4 py-3 text-left border-r border-slate-700 bg-slate-800 sticky left-0 z-20 shadow-md">VENDEDOR</th>
-                <th colspan="4" class="px-2 py-2 border-r border-slate-700">TOTAL ELMA</th>
-                <th colspan="2" class="px-2 py-2 border-r border-slate-700">EXTRUSADOS (707)</th>
-                <th colspan="2" class="px-2 py-2 border-r border-slate-700">NÃO EXTRUSADOS (708)</th>
-                <th colspan="2" class="px-2 py-2 border-r border-slate-700">TORCIDA (752)</th>
-                <th colspan="3" class="px-2 py-2 border-r border-slate-700">KG ELMA</th>
-                <th colspan="4" class="px-2 py-2 border-r border-slate-700">TOTAL FOODS</th>
-                <th colspan="3" class="px-2 py-2">KG FOODS</th>
-            </tr>
-            <tr class="text-xs text-slate-400 uppercase bg-slate-800/80 text-center">
-                <th colspan="2" class="px-2 py-1 border-r border-slate-700">FATURAMENTO</th>
-                <th colspan="2" class="px-2 py-1 border-r border-slate-700">POSITIVAÇÃO</th>
-                
-                <th colspan="1" class="px-2 py-1">FATURAMENTO</th>
-                <th colspan="1" class="px-2 py-1 border-r border-slate-700">POSITIVAÇÃO</th>
-                <th colspan="1" class="px-2 py-1">FATURAMENTO</th>
-                <th colspan="1" class="px-2 py-1 border-r border-slate-700">POSITIVAÇÃO</th>
-                <th colspan="1" class="px-2 py-1">FATURAMENTO</th>
-                <th colspan="1" class="px-2 py-1 border-r border-slate-700">POSITIVAÇÃO</th>
-                
-                <th colspan="1" class="px-2 py-1">Base A/A</th>
-                <th colspan="2" class="px-2 py-1 border-r border-slate-700">META KG</th>
-                
-                <th colspan="2" class="px-2 py-1 border-r border-slate-700">FATURAMENTO</th>
-                <th colspan="2" class="px-2 py-1 border-r border-slate-700">POSITIVAÇÃO</th>
-                
-                <th colspan="1" class="px-2 py-1">Base A/A</th>
-                <th colspan="2" class="px-2 py-1">META KG</th>
-            </tr>
-            <tr class="text-[10px] text-slate-500 bg-slate-800 text-center border-b border-slate-700">
-                <th class="px-2 py-1">Meta</th><th class="px-2 py-1 border-r border-slate-700 text-yellow-500 bg-yellow-500/10">Ajuste</th>
-                <th class="px-2 py-1">Meta</th><th class="px-2 py-1 border-r border-slate-700 text-yellow-500 bg-yellow-500/10">Ajuste</th>
-                
-                <th class="px-2 py-1">Meta</th>
-                <th class="px-2 py-1 border-r border-slate-700">Meta</th>
-                <th class="px-2 py-1">Meta</th>
-                <th class="px-2 py-1 border-r border-slate-700">Meta</th>
-                <th class="px-2 py-1">Meta</th>
-                <th class="px-2 py-1 border-r border-slate-700">Meta</th>
-                
-                <th class="px-2 py-1">Volume</th>
-                <th class="px-2 py-1">Volume</th><th class="px-2 py-1 border-r border-slate-700 text-yellow-500 bg-yellow-500/10">Ajuste</th>
-                
-                <th class="px-2 py-1">Meta</th><th class="px-2 py-1 border-r border-slate-700 text-yellow-500 bg-yellow-500/10">Ajuste</th>
-                <th class="px-2 py-1">Meta</th><th class="px-2 py-1 border-r border-slate-700 text-yellow-500 bg-yellow-500/10">Ajuste</th>
-                
-                <th class="px-2 py-1">Volume</th>
-                <th class="px-2 py-1">Volume</th><th class="px-2 py-1 text-yellow-500 bg-yellow-500/10">Ajuste</th>
-            </tr>
-        `;
+        const quarterMonths = baseData.quarterMonths || [];
+        let sellersData = baseData.sellers || [];
 
-        // Render Rows
-        let html = '';
-        if (goalsData.sellers && goalsData.sellers.length > 0) {
-            goalsData.sellers.forEach(s => {
-                const growth = 1 + parseFloat(goalsData.crescimento_ytd || 0);
-                
-                // Helper to get saved meta
-                const getMeta = (cat, metrica, defaultBase) => {
-                    const saved = savedMetas.find(m => m.codusur === s.codusur && m.categoria === cat && m.metrica === metrica);
-                    return saved ? parseFloat(saved.valor_ajuste) : (defaultBase * growth);
-                };
-
-                // ELMA
-                const fatElma = getMeta('total_elma', 'FAT', s.fat_elma);
-                const posElma = getMeta('total_elma', 'POS', s.pos_elma);
-                const volElma = getMeta('tonelada_elma', 'VOL', s.vol_elma);
-                
-                // 707
-                const fat707 = getMeta('707', 'FAT', s.fat_707);
-                const pos707 = getMeta('707', 'POS', s.pos_707);
-                
-                // 708
-                const fat708 = getMeta('708', 'FAT', s.fat_708);
-                const pos708 = getMeta('708', 'POS', s.pos_708);
-                
-                // 752
-                const fat752 = getMeta('752', 'FAT', s.fat_752);
-                const pos752 = getMeta('752', 'POS', s.pos_752);
-                
-                // FOODS
-                const fatFoods = getMeta('total_foods', 'FAT', s.fat_foods);
-                const posFoods = getMeta('total_foods', 'POS', s.pos_foods);
-                const volFoods = getMeta('tonelada_foods', 'VOL', s.vol_foods);
-
-                html += `
-                <tr class="hover:bg-slate-700/30 text-sm text-slate-300">
-                    <td class="px-4 py-2 font-medium text-slate-200 border-r border-slate-700 bg-slate-900 sticky left-0 z-10 shadow-md">${escapeHtml(s.codusur)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${formatCurrency(s.fat_elma * growth)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${formatCurrency(fatElma)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${Math.round(s.pos_elma * growth)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${Math.round(posElma)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${formatCurrency(fat707)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700">${Math.round(pos707)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${formatCurrency(fat708)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700">${Math.round(pos708)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${formatCurrency(fat752)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700">${Math.round(pos752)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${(s.vol_elma).toFixed(2)}</td>
-                    <td class="px-2 py-2 text-right">${(s.vol_elma * growth).toFixed(2)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${volElma.toFixed(2)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${formatCurrency(s.fat_foods * growth)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${formatCurrency(fatFoods)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${Math.round(s.pos_foods * growth)}</td>
-                    <td class="px-2 py-2 text-right border-r border-slate-700 text-yellow-400 bg-yellow-500/5 font-mono">${Math.round(posFoods)}</td>
-                    
-                    <td class="px-2 py-2 text-right">${(s.vol_foods).toFixed(2)}</td>
-                    <td class="px-2 py-2 text-right">${(s.vol_foods * growth).toFixed(2)}</td>
-                    <td class="px-2 py-2 text-right text-yellow-400 bg-yellow-500/5 font-mono">${volFoods.toFixed(2)}</td>
-                </tr>
-                `;
-            });
-        } else {
-            html = `<tr><td colspan="21" class="px-4 py-8 text-center text-slate-500">Nenhum dado encontrado para o período selecionado.</td></tr>`;
+        // Apply filters
+        if (p_codsupervisor) {
+            sellersData = sellersData.filter(s => String(s.supervisor_codigo) === String(p_codsupervisor));
+        }
+        if (p_codusur) {
+            sellersData = sellersData.filter(s => String(s.codusur) === String(p_codusur));
         }
 
-        tableBody.innerHTML = html;
+        // Define Column Blocks (Metrics Config)
+        const svColumns = [
+            { id: 'total_elma', label: 'TOTAL ELMA', type: 'standard', isAgg: true, colorClass: 'text-teal-400' },
+            { id: '707', label: 'EXTRUSADOS', type: 'standard', colorClass: 'text-slate-300' },
+            { id: '708', label: 'NÃO EXTRUSADOS', type: 'standard', colorClass: 'text-slate-300' },
+            { id: '752', label: 'TORCIDA', type: 'standard', colorClass: 'text-slate-300' },
+            { id: 'tonelada_elma', label: 'KG ELMA', type: 'tonnage', isAgg: true, colorClass: 'text-orange-400' },
+            { id: 'mix_salty', label: 'MIX SALTY', type: 'mix', isAgg: true, colorClass: 'text-teal-400' },
+            { id: 'total_foods', label: 'TOTAL FOODS', type: 'standard', isAgg: true, colorClass: 'text-yellow-400' },
+            { id: '1119_TODDYNHO', label: 'TODDYNHO', type: 'standard', colorClass: 'text-slate-300' },
+            { id: '1119_TODDY', label: 'TODDY', type: 'standard', colorClass: 'text-slate-300' },
+            { id: '1119_QUAKER_KEROCOCO', label: 'QUAKER / KEROCOCO', type: 'standard', colorClass: 'text-slate-300' },
+            { id: 'tonelada_foods', label: 'KG FOODS', type: 'tonnage', isAgg: true, colorClass: 'text-orange-400' },
+            { id: 'mix_foods', label: 'MIX FOODS', type: 'mix', isAgg: true, colorClass: 'text-yellow-400' },
+            { id: 'geral', label: 'GERAL', type: 'geral', isAgg: true, colorClass: 'text-white' },
+            { id: 'pedev', label: 'AUDITORIA PEDEV', type: 'pedev', isAgg: true, colorClass: 'text-pink-400' }
+        ];
 
-    } catch (err) {
+        const monthsCount = quarterMonths.length;
+        let headerHTML = `<thead class="text-[10px] uppercase sticky top-0 z-20 bg-[#0f172a] text-slate-400"><tr><th rowspan="3" class="px-2 py-2 text-center w-16 border-r border-b border-slate-700">CÓD</th><th rowspan="3" class="px-3 py-2 text-left w-48 border-r border-b border-slate-700">VENDEDOR</th>`;
+        svColumns.forEach(col => {
+            let colspan = 2;
+            if (col.type === 'standard') colspan = monthsCount + 1 + 4;
+            if (col.type === 'tonnage') colspan = 3; if (col.type === 'mix') colspan = 3; if (col.type === 'geral') colspan = 4;
+            headerHTML += `<th colspan="${colspan}" class="px-2 py-2 text-center font-bold border-r border-b border-slate-700 ${col.colorClass}">${col.label}</th>`;
+        });
+        headerHTML += `</tr><tr>`;
+        svColumns.forEach(col => {
+            if (col.type === 'standard') headerHTML += `<th colspan="${monthsCount + 1}" class="px-1 py-1 text-center border-r border-slate-700/50 bg-slate-800/50">HISTÓRICO FAT.</th><th colspan="2" class="px-1 py-1 text-center border-r border-slate-700/50 bg-slate-800/50">FATURAMENTO</th><th colspan="2" class="px-1 py-1 text-center border-r border-slate-700 bg-slate-800/50">POSITIVAÇÃO</th>`;
+            else if (col.type === 'tonnage') headerHTML += `<th class="px-1 py-1 text-right border-r border-slate-700/50 bg-slate-800/50">MÉDIA TRIM.</th><th colspan="2" class="px-1 py-1 text-center border-r border-slate-700 bg-slate-800/50">META KG</th>`;
+            else if (col.type === 'mix') headerHTML += `<th class="px-1 py-1 text-right border-r border-slate-700/50 bg-slate-800/50">MÉDIA TRIM.</th><th colspan="2" class="px-1 py-1 text-center border-r border-slate-700 bg-slate-800/50">META MIX</th>`;
+            else if (col.type === 'geral') headerHTML += `<th colspan="2" class="px-1 py-1 text-center border-r border-slate-700/50 bg-slate-800/50">FATURAMENTO</th><th class="px-1 py-1 text-center border-r border-slate-700/50 bg-slate-800/50">KG</th><th class="px-1 py-1 text-center border-r border-slate-700 bg-slate-800/50">POSITIVAÇÃO</th>`;
+            else if (col.type === 'pedev') headerHTML += `<th class="px-1 py-1 text-center border-r border-slate-700/50 bg-slate-800/50">META</th>`;
+        });
+        headerHTML += `</tr><tr>`;
+        svColumns.forEach(col => {
+            if (col.type === 'standard') {
+                quarterMonths.forEach(m => headerHTML += `<th class="px-1 py-1 text-right border-r border-b border-slate-700 text-slate-500 font-normal w-12">${m.label}</th>`);
+                headerHTML += `<th class="px-1 py-1 text-right border-r border-b border-slate-700 text-slate-500 font-normal">Média</th><th class="px-1 py-1 text-right border-r border-b border-slate-700 text-slate-500 font-normal">Meta</th><th class="px-1 py-1 text-center border-r border-b border-slate-700 text-slate-500 font-normal">Aj.</th><th class="px-1 py-1 text-center border-r border-b border-slate-700 text-slate-500 font-normal">Meta</th><th class="px-1 py-1 text-center border-r border-b border-slate-700 text-slate-500 font-normal">Aj.</th>`;
+            } else if (col.type === 'tonnage') headerHTML += `<th class="px-1 py-1 text-right border-r border-b border-slate-700 text-slate-500 font-normal">Volume</th><th class="px-1 py-1 text-right border-r border-b border-slate-700 text-slate-500 font-normal">Volume</th><th class="px-1 py-1 text-center border-r border-b border-slate-700 text-slate-500 font-normal">Aj.</th>`;
+            else if (col.type === 'mix') headerHTML += `<th class="px-1 py-1 text-right border-r border-b border-slate-700 text-slate-500 font-normal">Qtd</th><th class="px-1 py-1 text-right border-r border-b border-slate-700 text-slate-500 font-normal">Meta</th><th class="px-1 py-1 text-center border-r border-b border-slate-700 text-slate-500 font-normal">Aj.</th>`;
+            else if (col.type === 'geral') headerHTML += `<th class="px-1 py-1 text-right border-r border-b border-slate-700 text-slate-500 font-normal">Média Trim.</th><th class="px-1 py-1 text-right border-r border-b border-slate-700 text-slate-500 font-normal">Meta</th><th class="px-1 py-1 text-right border-r border-b border-slate-700 text-slate-500 font-normal">Meta</th><th class="px-1 py-1 text-center border-r border-b border-slate-700 text-slate-500 font-normal">Meta</th>`;
+            else if (col.type === 'pedev') headerHTML += `<th class="px-1 py-1 text-center border-r border-b border-slate-700 text-slate-500 font-normal">Meta</th>`;
+        });
+        headerHTML += `</tr></thead>`;
+
+        tableHead.outerHTML = headerHTML;
+
+        // Group by Supervisor
+        const supervisorsMap = new Map();
+        sellersData.forEach(seller => {
+            const supName = seller.supervisor_nome || 'SEM SUPERVISOR';
+            if (!supervisorsMap.has(supName)) {
+                supervisorsMap.set(supName, { name: supName, code: seller.supervisor_codigo || '', sellers: [], totals: {} });
+            }
+            supervisorsMap.get(supName).sellers.push(seller);
+        });
+
+        // Initialize Totals structure
+        const initTotals = () => {
+            const t = {};
+            svColumns.forEach(col => {
+                t[col.id] = { metaFat: 0, metaVol: 0, metaPos: 0, avgVol: 0, avgMix: 0, metaMix: 0, avgFat: 0, monthlyValues: {} };
+                if (col.type === 'standard') {
+                    quarterMonths.forEach(m => t[col.id].monthlyValues[m.key] = 0);
+                }
+            });
+            return t;
+        };
+
+        const grandTotals = initTotals();
+
+        let bodyHTML = '';
+
+        // Helper to get saved meta
+        const getMeta = (sellerCode, cat, metrica, defaultBase) => {
+            const saved = savedMetas.find(m => String(m.codusur) === String(sellerCode) && m.categoria === cat && m.metrica === metrica);
+            return saved ? parseFloat(saved.valor_ajuste) : parseFloat(defaultBase || 0);
+        };
+
+        const formatCurrency = (val) => val.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+        const sortedSupervisors = Array.from(supervisorsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+        sortedSupervisors.forEach((sup, supIndex) => {
+            sup.id = `sup-${supIndex}`;
+            sup.totals = initTotals();
+
+            // Sort sellers by Total Elma Faturamento DESC
+            sup.sellers.sort((a, b) => b.total_fat_elma - a.total_fat_elma);
+
+            sup.sellers.forEach(seller => {
+                // Pre-calculate Seller Metrics
+                const sData = {};
+                
+                // Helper to map DB fields to our column IDs
+                const mapCol = (colId, dbPrefix, isTonnage = false, isMix = false) => {
+                    const avgFat = seller[`total_fat_${dbPrefix}`] / 3 || 0;
+                    const metaFat = getMeta(seller.codusur, colId, 'FAT', avgFat * 1.1); // Assuming 10% growth default or just avgFat? Let's use avgFat. Wait, old code used base * growth. Let's just use 1.0 for simplicity if no growth.
+
+                    const avgPos = seller[`sum_pos_${dbPrefix}`] / 3 || 0;
+                    const metaPos = getMeta(seller.codusur, colId, 'POS', avgPos);
+
+                    const avgVol = isTonnage ? (seller[`total_vol_${dbPrefix}`] / 3 || 0) : 0;
+                    const metaVol = isTonnage ? getMeta(seller.codusur, colId, 'VOL', avgVol * 1.1) : 0;
+
+                    const avgMix = isMix ? (seller[`sum_mix_${dbPrefix}`] / 3 || 0) : 0;
+                    const metaMix = isMix ? getMeta(seller.codusur, colId, 'MIX', avgMix) : 0;
+
+                    const histFat = seller[`history_fat_${dbPrefix}`] || {};
+
+                    return { avgFat, metaFat, avgPos, metaPos: Math.round(metaPos), avgVol, metaVol, avgMix, metaMix: Math.round(metaMix), monthlyValues: histFat };
+                };
+
+                sData['total_elma'] = mapCol('total_elma', 'elma');
+                sData['707'] = mapCol('707', '707');
+                sData['708'] = mapCol('708', '708');
+                sData['752'] = mapCol('752', '752');
+                sData['tonelada_elma'] = mapCol('tonelada_elma', 'elma', true);
+                sData['mix_salty'] = mapCol('mix_salty', 'salty', false, true);
+                
+                sData['total_foods'] = mapCol('total_foods', 'foods');
+                sData['1119_TODDYNHO'] = mapCol('1119_TODDYNHO', 'toddynho');
+                sData['1119_TODDY'] = mapCol('1119_TODDY', 'toddy');
+                sData['1119_QUAKER_KEROCOCO'] = mapCol('1119_QUAKER_KEROCOCO', 'quaker_kerococo');
+                sData['tonelada_foods'] = mapCol('tonelada_foods', 'foods', true);
+                sData['mix_foods'] = mapCol('mix_foods', 'foods', false, true);
+
+                sData['geral'] = mapCol('geral', 'geral');
+                // Calculate Geral correctly by summing Elma and Foods metas
+                sData['geral'].metaFat = sData['total_elma'].metaFat + sData['total_foods'].metaFat;
+                sData['geral'].metaVol = sData['tonelada_elma'].metaVol + sData['tonelada_foods'].metaVol;
+                sData['geral'].metaPos = sData['geral'].metaPos || Math.round(sData['geral'].avgPos);
+
+                sData['pedev'] = { metaPos: Math.round(sData['total_elma'].metaPos * 0.9) };
+
+                seller.calculatedData = sData;
+
+                // Add to Supervisor Totals
+                svColumns.forEach(col => {
+                    const cData = sData[col.id];
+                    if(cData) {
+                        sup.totals[col.id].metaFat += cData.metaFat || 0;
+                        sup.totals[col.id].metaVol += cData.metaVol || 0;
+                        sup.totals[col.id].metaPos += cData.metaPos || 0;
+                        sup.totals[col.id].avgFat += cData.avgFat || 0;
+                        sup.totals[col.id].avgVol += cData.avgVol || 0;
+                        sup.totals[col.id].avgMix += cData.avgMix || 0;
+                        sup.totals[col.id].metaMix += cData.metaMix || 0;
+                        if (col.type === 'standard') {
+                            quarterMonths.forEach(m => sup.totals[col.id].monthlyValues[m.key] += (cData.monthlyValues[m.key] || 0));
+                        }
+                    }
+                });
+
+                bodyHTML += `<tr class="hover:bg-slate-800 border-b border-slate-800 text-slate-300">
+                    <td class="px-2 py-1 text-center text-slate-400 font-mono bg-slate-900 border-r border-slate-700 sticky left-0 z-10">${seller.codusur}</td>
+                    <td class="px-2 py-1 text-left font-medium truncate max-w-[200px] border-r border-slate-700" title="${seller.vendedor_nome}">${seller.vendedor_nome}</td>`;
+                
+                svColumns.forEach(col => {
+                    const d = sData[col.id] || { metaFat: 0, metaVol: 0, metaPos: 0, avgVol: 0, avgMix: 0, metaMix: 0, avgFat: 0, monthlyValues: {} };
+                    if (col.type === 'standard') {
+                        const isFatEditable = !col.isAgg;
+                        const isPosEditable = (col.id === 'total_elma' || col.id === 'total_foods');
+
+                        const fatInputClass = isFatEditable ? 'text-yellow-300' : 'text-slate-400 font-bold opacity-70';
+                        const fatReadonlyAttr = isFatEditable ? '' : 'readonly disabled';
+                        const fatCellBg = isFatEditable ? 'bg-[#1e293b]' : 'bg-[#151c36]';
+
+                        const posInputClass = isPosEditable ? 'text-yellow-300' : 'text-slate-400 font-bold opacity-70';
+                        const posReadonlyAttr = isPosEditable ? '' : 'readonly disabled';
+                        const posCellBg = isPosEditable ? 'bg-[#1e293b]' : 'bg-[#151c36]';
+
+                        quarterMonths.forEach(m => bodyHTML += `<td class="px-1 py-1 text-right text-slate-400 border-r border-slate-700/50 text-[10px] bg-blue-900/5">${formatCurrency(d.monthlyValues[m.key] || 0)}</td>`);
+                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 bg-blue-900/10 font-medium">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right ${col.colorClass} border-r border-slate-700/50 text-xs font-mono">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 ${fatCellBg} border-r border-slate-700/50"><input type="text" value="${formatCurrency(d.metaFat)}" class="goals-sv-input bg-transparent text-right w-full outline-none ${fatInputClass} text-xs font-mono" ${fatReadonlyAttr} data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="FAT"></td><td class="px-1 py-1 text-center text-slate-300 border-r border-slate-700/50">${d.metaPos}</td><td class="px-1 py-1 ${posCellBg} border-r border-slate-700/50"><input type="text" value="${d.metaPos}" class="goals-sv-input bg-transparent text-center w-full outline-none ${posInputClass} text-xs font-mono" ${posReadonlyAttr} data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="POS"></td>`;
+                    } else if (col.type === 'tonnage') {
+                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-mono text-xs">${formatCurrency(d.avgVol)} Kg</td><td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-bold font-mono text-xs">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 bg-[#1e293b] border-r border-slate-700/50"><input type="text" value="${formatCurrency(d.metaVol)}" class="goals-sv-input bg-transparent text-right w-full outline-none text-yellow-300 text-xs font-mono" data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="VOL"></td>`;
+                    } else if (col.type === 'mix') {
+                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50">${d.avgMix.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}</td><td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-bold">${d.metaMix}</td><td class="px-1 py-1 bg-[#1e293b] border-r border-slate-700/50"><input type="text" value="${d.metaMix}" class="goals-sv-input bg-transparent text-right w-full outline-none text-yellow-300 text-xs font-mono" data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="MIX"></td>`;
+                    } else if (col.type === 'geral') {
+                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-400 border-r border-slate-700/50 font-mono text-xs">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right text-white font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 text-right text-white font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 text-center text-yellow-300 font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${d.metaPos}</td>`;
+                    } else if (col.type === 'pedev') {
+                        bodyHTML += `<td class="px-1 py-1 text-center text-pink-400 font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${d.metaPos}</td>`;
+                    }
+                });
+                bodyHTML += `</tr>`;
+            });
+
+            // Add Supervisor to Grand Totals
+            svColumns.forEach(col => {
+                grandTotals[col.id].metaFat += sup.totals[col.id].metaFat;
+                grandTotals[col.id].metaVol += sup.totals[col.id].metaVol;
+                grandTotals[col.id].metaPos += sup.totals[col.id].metaPos;
+                grandTotals[col.id].avgVol += sup.totals[col.id].avgVol;
+                grandTotals[col.id].avgMix += sup.totals[col.id].avgMix;
+                grandTotals[col.id].metaMix += sup.totals[col.id].metaMix;
+                grandTotals[col.id].avgFat += sup.totals[col.id].avgFat;
+                if (col.type === 'standard') {
+                    quarterMonths.forEach(m => grandTotals[col.id].monthlyValues[m.key] += sup.totals[col.id].monthlyValues[m.key]);
+                }
+            });
+
+            // Supervisor Total Row
+            bodyHTML += `<tr class="bg-slate-800 font-bold border-b border-slate-600">
+                <td class="px-2 py-2 text-center text-slate-400 font-mono border-r border-slate-700 bg-slate-800 sticky left-0 z-10">${sup.code}</td>
+                <td class="px-2 py-2 text-left text-white uppercase tracking-wider border-r border-slate-700">${sup.name}</td>`;
+            svColumns.forEach(col => {
+                const d = sup.totals[col.id]; const color = col.id.includes('total') || col.type === 'tonnage' || col.type === 'mix' ? 'text-white' : 'text-slate-300';
+                if (col.type === 'standard') {
+                    quarterMonths.forEach(m => bodyHTML += `<td class="px-1 py-1 text-right text-slate-400 border-r border-slate-700 text-[10px] bg-blue-900/5">${formatCurrency(d.monthlyValues[m.key])}</td>`);
+                    bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700 bg-blue-900/10 font-medium">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right ${color} border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 text-right text-yellow-500/70 border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 text-center ${color} border-r border-slate-700">${d.metaPos}</td><td class="px-1 py-1 text-center text-yellow-500/70 border-r border-slate-700">${d.metaPos}</td>`;
+                } else if (col.type === 'tonnage') bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700">${formatCurrency(d.avgVol)} Kg</td><td class="px-1 py-1 text-right ${color} border-r border-slate-700">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 text-right text-yellow-500/70 border-r border-slate-700">${formatCurrency(d.metaVol)} Kg</td>`;
+                else if (col.type === 'mix') bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700">${d.avgMix.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}</td><td class="px-1 py-1 text-right ${color} border-r border-slate-700">${d.metaMix}</td><td class="px-1 py-1 text-right text-yellow-500/70 border-r border-slate-700">${d.metaMix}</td>`;
+                else if (col.type === 'geral') bodyHTML += `<td class="px-1 py-1 text-right text-slate-400 border-r border-slate-700">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right text-white border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 text-right text-white border-r border-slate-700">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 text-center text-white border-r border-slate-700">${d.metaPos}</td>`;
+                else if (col.type === 'pedev') bodyHTML += `<td class="px-1 py-1 text-center text-pink-400 border-r border-slate-700">${Math.round(sup.totals['total_elma']?.metaPos * 0.9)}</td>`;
+            });
+            bodyHTML += `</tr>`;
+        });
+
+        // Grand Total
+        bodyHTML += `<tr class="bg-[#0f172a] font-bold text-white border-t-2 border-slate-500 sticky bottom-0 z-20">
+            <td class="px-2 py-3 text-center uppercase tracking-wider border-r border-slate-700 sticky left-0 z-10 bg-[#0f172a]">GV</td>
+            <td class="px-2 py-3 text-left uppercase tracking-wider border-r border-slate-700">Geral PRIME</td>`;
+        svColumns.forEach(col => {
+            const d = grandTotals[col.id];
+            if (col.type === 'standard') {
+                quarterMonths.forEach(m => bodyHTML += `<td class="px-1 py-2 text-right text-slate-400 border-r border-slate-700 text-[10px] bg-blue-900/5">${formatCurrency(d.monthlyValues[m.key])}</td>`);
+                bodyHTML += `<td class="px-1 py-2 text-right text-teal-400 border-r border-slate-700 bg-blue-900/10">${formatCurrency(d.avgFat)}</td><td class="px-1 py-2 text-right text-teal-400 border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-2 text-right text-teal-600/70 border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-2 text-center text-purple-400 border-r border-slate-700">${d.metaPos}</td><td class="px-1 py-2 text-center text-purple-600/70 border-r border-slate-700">${d.metaPos}</td>`;
+            } else if (col.type === 'tonnage') bodyHTML += `<td class="px-1 py-2 text-right text-slate-400 border-r border-slate-700">${formatCurrency(d.avgVol)}</td><td class="px-1 py-2 text-right text-orange-400 border-r border-slate-700">${formatCurrency(d.metaVol)}</td><td class="px-1 py-2 text-right text-orange-600/70 border-r border-slate-700">${formatCurrency(d.metaVol)}</td>`;
+            else if (col.type === 'mix') bodyHTML += `<td class="px-1 py-2 text-right text-slate-400 border-r border-slate-700">${d.avgMix.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}</td><td class="px-1 py-2 text-right text-cyan-400 border-r border-slate-700">${d.metaMix}</td><td class="px-1 py-2 text-right text-cyan-600/70 border-r border-slate-700">${d.metaMix}</td>`;
+            else if (col.type === 'geral') bodyHTML += `<td class="px-1 py-2 text-right text-slate-500 border-r border-slate-700">${formatCurrency(d.avgFat)}</td><td class="px-1 py-2 text-right text-white border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-2 text-right text-white border-r border-slate-700">${formatCurrency(d.metaVol)}</td><td class="px-1 py-2 text-center text-white border-r border-slate-700">${d.metaPos}</td>`;
+            else if (col.type === 'pedev') bodyHTML += `<td class="px-1 py-2 text-center text-pink-400 border-r border-slate-700">${Math.round(grandTotals['total_elma']?.metaPos * 0.9)}</td>`;
+        });
+        bodyHTML += `</tr>`;
+
+        tableBody.innerHTML = bodyHTML;
+
+        // Wire inputs for auto-save
+        document.querySelectorAll('.goals-sv-input').forEach(input => {
+            input.addEventListener('change', async (e) => {
+                const target = e.target;
+                const valStr = target.value;
+                const valNum = parseFloat(valStr.replace(/\./g, '').replace(',', '.'));
+                
+                if (isNaN(valNum)) return;
+                
+                const codusur = target.dataset.seller;
+                const categoria = target.dataset.cat;
+                const metrica = target.dataset.metrica;
+                const ano = currentGoalsAno;
+                const mes = currentGoalsMes;
+
+                try {
+                    // Update in DB
+                    const { error } = await supabase.rpc('save_meta_sv', {
+                        p_ano: ano,
+                        p_mes: mes,
+                        p_vendedor_nome: codusur,
+                        p_categoria: categoria,
+                        p_metrica: metrica,
+                        p_valor_ajuste: valNum
+                    });
+                    if (error) throw error;
+                    
+                    // Re-render to update totals
+                    renderGoalsView();
+                } catch(err) {
+                    console.error("Failed to save goal adjustment", err);
+                    alert("Erro ao salvar o ajuste da meta.");
+                }
+            });
+        });
+
+    } catch(err) {
         console.error("Error loading goals view:", err);
-        tableBody.innerHTML = `<tr><td colspan="21" class="px-4 py-8 text-center text-red-400">Erro ao carregar metas: ${err.message}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="40" class="text-center py-10 text-red-400">Erro ao carregar os dados das metas.</td></tr>`;
     } finally {
         loading.classList.add('hidden');
     }
