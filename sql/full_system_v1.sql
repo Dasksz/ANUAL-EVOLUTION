@@ -8534,7 +8534,7 @@ DECLARE
     v_result JSONB;
 BEGIN
     WITH raw_sales AS (
-        SELECT
+        SELECT 
             d.codusur,
             to_char(d.dtped, 'YYYY-MM') AS month_key,
             d.codfor,
@@ -8550,7 +8550,7 @@ BEGIN
           AND d.tipovenda IN ('1', '9')
     ),
     client_month_mix AS (
-        SELECT
+        SELECT 
             codusur,
             month_key,
             codcli,
@@ -8559,7 +8559,7 @@ BEGIN
             MAX(CASE WHEN mix_marca = 'FANDANGOS' AND vlvenda > 0 THEN 1 ELSE 0 END) AS has_fandangos,
             MAX(CASE WHEN mix_marca = 'RUFFLES' AND vlvenda > 0 THEN 1 ELSE 0 END) AS has_ruffles,
             MAX(CASE WHEN mix_marca = 'TORCIDA' AND vlvenda > 0 THEN 1 ELSE 0 END) AS has_torcida,
-
+            
             MAX(CASE WHEN mix_marca = 'TODDYNHO' AND vlvenda > 0 THEN 1 ELSE 0 END) AS has_toddynho,
             MAX(CASE WHEN mix_marca = 'TODDY' AND vlvenda > 0 THEN 1 ELSE 0 END) AS has_toddy,
             MAX(CASE WHEN mix_marca = 'QUAKER' AND vlvenda > 0 THEN 1 ELSE 0 END) AS has_quaker,
@@ -8585,37 +8585,37 @@ BEGIN
             SUM(vlvenda) AS fat_geral,
             SUM(totpesoliq) AS vol_geral,
             COUNT(DISTINCT codcli) AS pos_geral,
-
+            
             -- TOTAL ELMA
             SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') THEN vlvenda ELSE 0 END) AS fat_elma,
             SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') THEN totpesoliq ELSE 0 END) AS vol_elma,
             COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752') AND vlvenda > 0 THEN codcli END) AS pos_elma,
-
+            
             -- 707
             SUM(CASE WHEN LTRIM(codfor::text, '0') = '707' THEN vlvenda ELSE 0 END) AS fat_707,
             COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') = '707' AND vlvenda > 0 THEN codcli END) AS pos_707,
-
+            
             -- 708
             SUM(CASE WHEN LTRIM(codfor::text, '0') = '708' THEN vlvenda ELSE 0 END) AS fat_708,
             COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') = '708' AND vlvenda > 0 THEN codcli END) AS pos_708,
-
+            
             -- 752
             SUM(CASE WHEN LTRIM(codfor::text, '0') = '752' THEN vlvenda ELSE 0 END) AS fat_752,
             COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') = '752' AND vlvenda > 0 THEN codcli END) AS pos_752,
-
+            
             -- TOTAL FOODS
             SUM(CASE WHEN LTRIM(codfor::text, '0') = '1119' THEN vlvenda ELSE 0 END) AS fat_foods,
             SUM(CASE WHEN LTRIM(codfor::text, '0') = '1119' THEN totpesoliq ELSE 0 END) AS vol_foods,
             COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') = '1119' AND vlvenda > 0 THEN codcli END) AS pos_foods,
-
+            
             -- TODDYNHO
             SUM(CASE WHEN LTRIM(codfor::text, '0') = '1119' AND (categoria_produto ILIKE '%TODDYNHO%' OR categoria_produto ILIKE '%TODYNHO%') THEN vlvenda ELSE 0 END) AS fat_toddynho,
             COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') = '1119' AND (categoria_produto ILIKE '%TODDYNHO%' OR categoria_produto ILIKE '%TODYNHO%') AND vlvenda > 0 THEN codcli END) AS pos_toddynho,
-
+            
             -- TODDY
             SUM(CASE WHEN LTRIM(codfor::text, '0') = '1119' AND (categoria_produto ILIKE '%TODDY %' OR categoria_produto = 'TODDY') THEN vlvenda ELSE 0 END) AS fat_toddy,
             COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') = '1119' AND (categoria_produto ILIKE '%TODDY %' OR categoria_produto = 'TODDY') AND vlvenda > 0 THEN codcli END) AS pos_toddy,
-
+            
             -- QUAKER KEROCOCO
             SUM(CASE WHEN LTRIM(codfor::text, '0') = '1119' AND (categoria_produto ILIKE '%QUAKER%' OR categoria_produto ILIKE '%KEROCOCO%') THEN vlvenda ELSE 0 END) AS fat_quaker_kerococo,
             COUNT(DISTINCT CASE WHEN LTRIM(codfor::text, '0') = '1119' AND (categoria_produto ILIKE '%QUAKER%' OR categoria_produto ILIKE '%KEROCOCO%') AND vlvenda > 0 THEN codcli END) AS pos_quaker_kerococo
@@ -8624,12 +8624,12 @@ BEGIN
         GROUP BY codusur, month_key
     ),
     seller_totals AS (
-        SELECT
+        SELECT 
             sma.codusur,
             dv.nome AS vendedor_nome,
             ds.nome AS supervisor_nome,
             ds.codigo AS supervisor_codigo,
-
+            
             -- GERAL
             COALESCE(SUM(fat_geral), 0) AS total_fat_geral,
             COALESCE(SUM(vol_geral), 0) AS total_vol_geral,
@@ -8650,7 +8650,7 @@ BEGIN
             COALESCE(SUM(fat_708), 0) AS total_fat_708,
             COALESCE(SUM(pos_708), 0) AS sum_pos_708,
             jsonb_object_agg(sma.month_key, COALESCE(fat_708, 0)) AS history_fat_708,
-
+            
             -- 752
             COALESCE(SUM(fat_752), 0) AS total_fat_752,
             COALESCE(SUM(pos_752), 0) AS sum_pos_752,
@@ -8671,12 +8671,12 @@ BEGIN
             COALESCE(SUM(fat_toddy), 0) AS total_fat_toddy,
             COALESCE(SUM(pos_toddy), 0) AS sum_pos_toddy,
             jsonb_object_agg(sma.month_key, COALESCE(fat_toddy, 0)) AS history_fat_toddy,
-
+            
             -- QUAKER KEROCOCO
             COALESCE(SUM(fat_quaker_kerococo), 0) AS total_fat_quaker_kerococo,
             COALESCE(SUM(pos_quaker_kerococo), 0) AS sum_pos_quaker_kerococo,
             jsonb_object_agg(sma.month_key, COALESCE(fat_quaker_kerococo, 0)) AS history_fat_quaker_kerococo,
-
+            
             -- MIX
             COALESCE(SUM(smma.mix_salty), 0) AS sum_mix_salty,
             COALESCE(SUM(smma.mix_foods), 0) AS sum_mix_foods
@@ -8686,11 +8686,11 @@ BEGIN
         LEFT JOIN public.dim_vendedores dv ON sma.codusur = dv.codigo
         -- Assuming dim_vendedores doesn't have supervisor directly, we can get it from data_clients by finding the most common supervisor for this seller
         LEFT JOIN LATERAL (
-            SELECT codsupervisor
-            FROM public.data_clients dc
-            WHERE dc.codusur = sma.codusur
-            GROUP BY codsupervisor
-            ORDER BY COUNT(*) DESC
+            SELECT codsupervisor 
+            FROM public.data_clients dc 
+            WHERE dc.vendedor = sma.codusur 
+            GROUP BY codsupervisor 
+            ORDER BY COUNT(*) DESC 
             LIMIT 1
         ) as sup ON true
         LEFT JOIN public.dim_supervisores ds ON sup.codsupervisor = ds.codigo
