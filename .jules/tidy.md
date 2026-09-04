@@ -14,3 +14,6 @@
 **Learning:** In order to conditionally show elements based on 'current year', we can rely on existing flags like `data.trend_allowed` which strictly applies to current year accumulation logic in this specific view without hardcoding dates.
 **Action:** Use existing computed dashboard context flags for UI conditional states.
 ## 2026/09/04 : Fix UI Pagination Map Scope **Learning:** In monolithic JS architectures, variables like Maps/Sets intended to be populated by one major function (e.g. data parse/fetch) but needed by downstream detached functions (e.g. a separate render table/pagination event handler) must be declared at the module's top-level or global scope, rather than inside block scope, to prevent ReferenceErrors upon user interaction. **Action:** Audit function dependencies on data maps to ensure they are available in scope; hoist variables if accessed across multiple decoupled event listeners.
+## 2024-05-19 : (Fix Table Headers)
+**Learning:** When debugging table headers not matching data in a UI component, check both the HTML `thead` and JS `.innerHTML` definitions for column count and order mismatches.
+**Action:** Always ensure that when modifying the data payload in the Javascript to display more info (e.g. `sellerCode`), the HTML column definitions are updated alongside it.
