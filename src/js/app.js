@@ -11813,7 +11813,7 @@ async function renderGoalsView() {
         });
         headerHTML += `</tr></thead>`;
 
-        tableHead.outerHTML = headerHTML;
+        tableHead.innerHTML = headerHTML.replace('<thead class="text-[10px] uppercase sticky top-0 z-20 bg-[#0f172a] text-slate-400">', '').replace('</thead>', '');
 
         // Group by Supervisor
         const supervisorsMap = new Map();
