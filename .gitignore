@@ -1,7 +1,8 @@
-# Supabase Configuration (Secret)
-
-# OS files
-.DS_Store
-Thumbs.db
-node_modules
-test-results/
+node_modules/
+package.json
+package-lock.json
+server_output.log
+patch_render_goals.py
+patch_parser_maps.py
+patch_renderImportTable.py
+patch_upsert_payload.py
