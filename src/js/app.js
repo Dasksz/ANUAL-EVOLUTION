@@ -11090,11 +11090,6 @@ const importTablePageSize = 15;
 let currentGoalsAno = new Date().getFullYear();
 let currentGoalsMes = new Date().getMonth() + 1; // Current Month
 
-// Local caching variables for import logic mappings
-let localRcaNameByCode = new Map();
-let localRcaCodeByName = new Map();
-let localSupervisors = new Set();
-
         function parseGoalsSvStructure(text) {
             console.log("[Parser] Iniciando parse...");
             const lines = text.replace(/[\r\n]+$/, '').split(/\r?\n/);
@@ -11123,7 +11118,20 @@ let localSupervisors = new Set();
             const colMap = {};
             let dataStartRow = 0;
 
-
+            // Build local maps from goalsData.sellers to replace optimizedData
+            const localRcaNameByCode = new Map();
+            const localRcaCodeByName = new Map();
+            const localSupervisors = new Set();
+            
+            if (goalsData && goalsData.sellers) {
+                goalsData.sellers.forEach(s => {
+                    if (s.codusur && s.vendedor_nome) {
+                        localRcaNameByCode.set(String(s.codusur), s.vendedor_nome);
+                        localRcaCodeByName.set(s.vendedor_nome, String(s.codusur));
+                    }
+                    if (s.supervisor_nome) localSupervisors.add(s.supervisor_nome);
+                });
+            }
 
 
             if (rows.length >= 3) {
@@ -11382,7 +11390,331 @@ let localSupervisors = new Set();
             return updates;
         }
 
-        let goalsChartInstance = null;
+        // --- Event Listeners for Import ---
+        const importBtn = document.getElementById('goals-sv-import-btn');
+        const importModal = document.getElementById('import-goals-modal');
+        const importCloseBtn = document.getElementById('import-goals-close-btn');
+        const importCancelBtn = document.getElementById('import-goals-cancel-btn');
+        const importAnalyzeBtn = document.getElementById('import-goals-analyze-btn');
+        const importConfirmBtn = document.getElementById('import-goals-confirm-btn');
+        const importTextarea = document.getElementById('import-goals-textarea');
+        const analysisContainer = document.getElementById('import-analysis-container');
+        const analysisBody = document.getElementById('import-analysis-table-body');
+        const analysisBadges = document.getElementById('import-summary-badges');
+            const importPaginationControls = document.createElement('div');
+            importPaginationControls.id = 'import-pagination-controls';
+            importPaginationControls.className = 'flex justify-between items-center mt-4 hidden';
+            importPaginationControls.innerHTML = `
+                <button id="import-prev-page-btn" class="bg-slate-700 border border-slate-600 hover:bg-slate-600 text-slate-300 font-bold py-2 px-4 rounded-lg disabled:opacity-50 text-xs" disabled>Anterior</button>
+                <span id="import-page-info-text" class="text-slate-400 text-xs">Página 1 de 1</span>
+                <button id="import-next-page-btn" class="bg-slate-700 border border-slate-600 hover:bg-slate-600 text-slate-300 font-bold py-2 px-4 rounded-lg disabled:opacity-50 text-xs" disabled>Próxima</button>
+            `;
+            // Insert after table container (which is inside analysisContainer -> div.bg-slate-900)
+            // analysisContainer contains a header div, result div, and then the table container div.
+            // We need to find the table container.
+            
+        pendingImportUpdates = [];
+
+            function renderImportTable() {
+                if (!analysisBody) return;
+                analysisBody.innerHTML = '';
+                
+                const totalPages = Math.ceil(pendingImportUpdates.length / importTablePageSize);
+                if (importTablePage > totalPages && totalPages > 0) importTablePage = totalPages;
+                if (totalPages === 0) importTablePage = 1;
+
+                const start = (importTablePage - 1) * importTablePageSize;
+                const end = start + importTablePageSize;
+                const pageItems = pendingImportUpdates.slice(start, end);
+
+                const formatGoalValue = (val, type) => {
+                    if (type === 'rev') return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                    if (type === 'vol') return val.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' Kg';
+                    return Math.round(val).toString();
+                };
+
+                // ⚡ Bolt Optimization: Use map and join for faster DOM rendering and avoid appendChild in loop
+                analysisBody.innerHTML = pageItems.map(u => {
+                    const currentVal = getSellerCurrentGoal(u.seller, u.category, u.type);
+                    const newVal = u.val;
+                    const diff = newVal - currentVal;
+
+                    const currentValStr = formatGoalValue(currentVal, u.type);
+                    const newValStr = formatGoalValue(newVal, u.type);
+                    const diffStr = formatGoalValue(diff, u.type);
+
+                    let diffClass = "text-slate-500";
+                    if (diff > 0.001) diffClass = "text-green-400 font-bold";
+                    else if (diff < -0.001) diffClass = "text-red-400 font-bold";
+
+                    const sellerCode = localRcaCodeByName ? (localRcaCodeByName.get(u.seller) || '-') : '-';
+
+                    let displayCategory = u.category;
+                    if (u.type === 'pos') displayCategory += '_POS';
+
+                    return `
+                        <tr>
+                            <td class="px-4 py-2 text-xs text-slate-300">${sellerCode}</td>
+                            <td class="px-4 py-2 text-xs text-slate-400">${u.seller}</td>
+                            <td class="px-4 py-2 text-xs text-blue-300">${displayCategory}</td>
+                            <td class="px-4 py-2 text-xs text-slate-400 font-mono text-right">${currentValStr}</td>
+                            <td class="px-4 py-2 text-xs text-white font-bold font-mono text-right">${newValStr}</td>
+                            <td class="px-4 py-2 text-xs ${diffClass} font-mono text-right">${diff > 0 ? '+' : ''}${diffStr}</td>
+                            <td class="px-4 py-2 text-center text-xs"><span class="px-2 py-1 rounded-full bg-blue-900/50 text-blue-200 text-[10px]">Importar</span></td>
+                        </tr>
+                    `;
+                }).join('');
+
+                // Update Pagination Controls
+                const prevBtn = document.getElementById('import-prev-page-btn');
+                const nextBtn = document.getElementById('import-next-page-btn');
+                const infoText = document.getElementById('import-page-info-text');
+                const paginationContainer = document.getElementById('import-pagination-controls');
+
+                if (paginationContainer) {
+                    if (pendingImportUpdates.length > importTablePageSize) {
+                        paginationContainer.classList.remove('hidden');
+                        if(infoText) infoText.textContent = `Página ${importTablePage} de ${totalPages}`;
+                        if(prevBtn) prevBtn.disabled = importTablePage === 1;
+                        if(nextBtn) nextBtn.disabled = importTablePage === totalPages;
+                    } else {
+                        paginationContainer.classList.add('hidden');
+                    }
+                }
+            }
+
+        if (importBtn && importModal) {
+            const dropZone = document.getElementById('import-drop-zone');
+            const fileInput = document.getElementById('import-goals-file');
+
+            // Inject Pagination Controls into Analysis Container if not present
+            if (!document.getElementById('import-pagination-controls')) {
+                const tableContainer = analysisContainer.querySelector('.bg-slate-900.rounded-lg.border.border-slate-700');
+                if (tableContainer) {
+                    tableContainer.parentNode.insertBefore(importPaginationControls, tableContainer.nextSibling);
+                }
+            }
+
+            // Bind Pagination Listeners
+            const prevBtn = document.getElementById('import-prev-page-btn');
+            const nextBtn = document.getElementById('import-next-page-btn');
+            
+            if (prevBtn) {
+                prevBtn.addEventListener('click', () => {
+                    if (importTablePage > 1) {
+                        importTablePage--;
+                        renderImportTable();
+                    }
+                });
+            }
+            if (nextBtn) {
+                nextBtn.addEventListener('click', () => {
+                    const totalPages = Math.ceil(pendingImportUpdates.length / importTablePageSize);
+                    if (importTablePage < totalPages) {
+                        importTablePage++;
+                        renderImportTable();
+                    }
+                });
+            }
+
+            importBtn.addEventListener('click', () => {
+                importModal.classList.remove('hidden');
+                importTextarea.value = '';
+                analysisContainer.classList.add('hidden');
+                importConfirmBtn.disabled = true;
+                importConfirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                
+                // Reset File Input
+                if (fileInput) fileInput.value = '';
+                if (dropZone) {
+                    dropZone.classList.remove('bg-slate-700/50', 'border-teal-500');
+                    dropZone.innerHTML = `
+                        <svg class="w-12 h-12 text-slate-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <p class="text-slate-300 font-medium mb-2">Arraste e solte o arquivo Excel aqui</p>
+                        <p class="text-slate-500 text-sm mb-4">ou</p>
+                        <label for="import-goals-file" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg cursor-pointer transition-colors shadow-lg">
+                            Selecionar Arquivo
+                        </label>
+                        <p class="text-xs text-slate-500 mt-4">Formatos suportados: .xlsx, .xls, .csv</p>
+                    `;
+                }
+            });
+
+            const closeModal = () => {
+                importModal.classList.add('hidden');
+            };
+
+            importCloseBtn.addEventListener('click', closeModal);
+            importCancelBtn.addEventListener('click', closeModal);
+
+            // Drag & Drop Logic
+            if (dropZone) {
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, preventDefaults, false);
+                });
+
+                function preventDefaults(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, () => {
+                        dropZone.classList.add('bg-slate-700/50', 'border-teal-500');
+                    });
+                });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, () => {
+                        dropZone.classList.remove('bg-slate-700/50', 'border-teal-500');
+                    });
+                });
+
+                dropZone.addEventListener('drop', (e) => {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    handleFiles(files);
+                });
+            }
+
+            if (fileInput) {
+                fileInput.addEventListener('change', (e) => {
+                    handleFiles(e.target.files);
+                });
+            }
+
+            function handleFiles(files) {
+                if (files.length === 0) return;
+                const file = files[0];
+                
+                // Visual Feedback: Loading
+                if (dropZone) {
+                    dropZone.innerHTML = `
+                        <div class="flex flex-col items-center justify-center">
+                            <svg class="animate-spin h-10 w-10 text-teal-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <p class="text-slate-300 font-medium animate-pulse">Carregando ${file.name}...</p>
+                        </div>
+                    `;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, {type: 'array'});
+                        
+                        const sheetName = workbook.SheetNames[0];
+                        const sheet = workbook.Sheets[sheetName];
+                        
+                        // Convert to TSV for the parser
+                        const tsv = XLSX.utils.sheet_to_csv(sheet, {FS: "\t"});
+                        
+                        // Update UI
+                        importTextarea.value = tsv;
+                        if (dropZone) {
+                            dropZone.innerHTML = `
+                                <svg class="w-12 h-12 text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <p class="text-green-400 font-bold mb-2">Sucesso!</p>
+                                <p class="text-slate-400 text-sm">${file.name} carregado.</p>
+                            `;
+                        }
+                        
+                        // Auto-analyze
+                        setTimeout(() => importAnalyzeBtn.click(), 500);
+
+                    } catch (err) {
+                        console.error(err);
+                        if (dropZone) {
+                            dropZone.innerHTML = `
+                                <svg class="w-12 h-12 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                <p class="text-red-400 font-bold mb-2">Erro!</p>
+                                <p class="text-slate-400 text-sm">Falha ao ler o arquivo.</p>
+                            `;
+                        }
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+            function resolveGoalCategory(category) {
+                // Returns list of leaf categories and metric type hint if needed
+                if (category === 'tonelada_elma') return ['707', '708', '752'];
+                if (category === 'tonelada_foods') return ['1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'];
+                if (category === 'total_elma') return ['707', '708', '752'];
+                if (category === 'total_foods') return ['1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'];
+                return [category];
+            }
+
+            function getSellerCurrentGoal(sellerName, category, type) {
+                const sellerCode = localRcaCodeByName ? localRcaCodeByName.get(sellerName) : null;
+                if (!sellerCode) return 0;
+
+                // Check for Overrides FIRST
+                const targets = goalsSellerTargets.get(sellerName);
+                if (type === 'rev' && targets && targets[`${category}_FAT`] !== undefined) {
+                    return targets[`${category}_FAT`];
+                }
+                if (type === 'vol' && targets && targets[`${category}_VOL`] !== undefined) {
+                    return targets[`${category}_VOL`];
+                }
+
+                if (type === 'pos' || type === 'mix') {
+                    // FIX: Return Default Calculated Value if Manual Target is Missing
+                    if (targets && targets[category] !== undefined) {
+                        return targets[category];
+                    } else {
+                        // Calculate Default
+                        const defaults = calculateSellerDefaults(sellerName);
+                        if (category === 'total_elma') return defaults.elmaPos;
+                        if (category === 'total_foods') return defaults.foodsPos;
+                        if (category === 'mix_salty') return defaults.mixSalty;
+                        if (category === 'mix_foods') return defaults.mixFoods;
+                        // Fallback for leaf components? Currently Pos adjustments are manual.
+                        // If category is a leaf (e.g. 707), default adjustment is 0 (Natural Base is not stored here).
+                        // Note: parseGoalsSvStructure sends '707', '708' etc for Positivação.
+                        // We assume 0 for leaf adjustments if not set.
+                        return 0;
+                    }
+                }
+
+                if (type === 'rev' || type === 'vol') {
+                    // Aggregate from globalClientGoals
+                    const clients = []; /* Client metrics lookup unavailable without local cache */
+                    const activeClients = clients.filter(c => {
+                        const cod = String(c['Código'] || c['codigo_cliente']);
+                        const rca1 = String(c.rca1 || '').trim();
+                        const isAmericanas = (c.razaoSocial || '').toUpperCase().includes('AMERICANAS');
+                        return true; // return (isAmericanas || rca1 !== '53' || clientsWithSalesThisMonth.has(cod));
+                    });
+
+                    let total = 0;
+                    const leafCategories = resolveGoalCategory(category);
+                    
+                    activeClients.forEach(client => {
+                        const codCli = String(client['Código'] || client['codigo_cliente']);
+                        const clientGoals = globalClientGoals.get(codCli);
+                        if (clientGoals) {
+                            leafCategories.forEach(leaf => {
+                                const goal = clientGoals.get(leaf);
+                                if (goal) {
+                                    if (type === 'rev') total += (goal.fat || 0);
+                                    else if (type === 'vol') total += (goal.vol || 0);
+                                }
+                            });
+                        }
+                    });
+                    return total;
+                }
+                return 0;
+            }
+
+let goalsChartInstance = null;
 let currentGoalsMetric = 'fat'; // fat, vol, pos, salty, foods
 
 async function renderGoalsView() {
@@ -11423,20 +11755,6 @@ async function renderGoalsView() {
         const baseData = baseRes.data;
         savedMetas = metasRes.data || [];
         goalsData = baseData;
-        
-        // Populate local maps for import logic
-        localRcaNameByCode.clear();
-        localRcaCodeByName.clear();
-        localSupervisors.clear();
-        if (goalsData.sellers) {
-            goalsData.sellers.forEach(s => {
-                if (s.codusur && s.vendedor_nome) {
-                    localRcaNameByCode.set(String(s.codusur), s.vendedor_nome);
-                    localRcaCodeByName.set(s.vendedor_nome, String(s.codusur));
-                }
-                if (s.supervisor_nome) localSupervisors.add(s.supervisor_nome);
-            });
-        }
         
         const quarterMonths = baseData.quarterMonths || [];
         let sellersData = baseData.sellers || [];
@@ -12069,25 +12387,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // Map the parsed updates back to the DB schema
-            // Map the parsed updates back to the DB schema
             const dbPayload = pendingImportUpdates.map(u => {
                 let metrica = 'FAT';
                 if (u.type === 'vol') metrica = 'VOL';
                 if (u.type === 'pos') metrica = 'POS';
                 if (u.type === 'mix') metrica = 'MIX';
                 
-                // seller name should be codusur technically, but the DB schema for metas_sv uses 'vendedor_nome' historically
-                // Wait, in previous PR we saved via 'save_meta_sv' taking 'p_vendedor_nome' which is actually the seller codusur or name depending on how it was created.
-                // Looking at the table definition: vendedor_nome text
-                // Let's pass the exact same parameters that 'save_meta_sv' uses, except we use upsert_metas which expects 'vendedor_nome' inside JSON.
-                
-                // Wait, we can get the codusur from localRcaCodeByName
-                const sellerCode = localRcaCodeByName ? (localRcaCodeByName.get(u.seller) || u.seller) : u.seller;
-                
                 return {
                     ano: currentGoalsAno,
                     mes: currentGoalsMes,
-                    vendedor_nome: sellerCode,
+                    codusur: u.seller,
                     categoria: u.category,
                     metrica: metrica,
                     valor_ajuste: u.val
