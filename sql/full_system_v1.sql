@@ -4142,8 +4142,11 @@ BEGIN
 
     -- ACTIVE CLIENTS QUERY
     v_sql := '
+    -- ⚡ QueryTuner: Removed non-grouping string dimension MAX(cidade) from the heavy aggregation step
+    -- over data_summary. The dimension is instead fetched during the final pagination step by joining
+    -- the reduced result set back to data_clients, reducing memory footprint and aggregation time.
     WITH client_totals AS (
-        SELECT codcli, MAX(cidade) as cidade_fat, SUM(vlvenda) as total_fat
+        SELECT codcli, SUM(vlvenda) as total_fat
         FROM public.data_summary
         ' || v_where || '
         GROUP BY codcli
@@ -4151,7 +4154,7 @@ BEGIN
     ),
     count_cte AS (SELECT COUNT(*) as cnt FROM client_totals),
     paginated_clients AS (
-        SELECT ct.codcli, ct.total_fat, c.fantasia, c.razaosocial, COALESCE(ct.cidade_fat, c.cidade) as cidade, c.bairro, c.rca1
+        SELECT ct.codcli, ct.total_fat, c.fantasia, c.razaosocial, c.cidade, c.bairro, c.rca1
         FROM client_totals ct
         JOIN public.data_clients c ON c.codigo_cliente = ct.codcli
         ORDER BY ct.total_fat DESC
@@ -8687,8 +8690,8 @@ BEGIN
         -- Assuming dim_vendedores doesn't have supervisor directly, we can get it from data_clients by finding the most common supervisor for this seller
         LEFT JOIN LATERAL (
             SELECT codsupervisor 
-            FROM public.data_summary ds_lat 
-            WHERE ds_lat.codusur = sma.codusur 
+            FROM public.data_clients dc 
+            WHERE dc.vendedor = sma.codusur 
             GROUP BY codsupervisor 
             ORDER BY COUNT(*) DESC 
             LIMIT 1

@@ -11083,9 +11083,6 @@ async function syncIbgePopulations() {
 window.initPresentationLogic = function() {};
 // --- GOALS VIEW LOGIC ---
 let goalsData = null;
-let globalRcaCodeByName = new Map();
-let globalRcaNameByCode = new Map();
-let globalSupervisors = new Set();
 let savedMetas = [];
 let pendingImportUpdates = [];
 let importTablePage = 1;
@@ -11121,8 +11118,20 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
             const colMap = {};
             let dataStartRow = 0;
 
-            // We now use globalRcaNameByCode, globalRcaCodeByName, and globalSupervisors
-            // which are populated when renderGoalsView fetches goalsData.
+            // Build local maps from goalsData.sellers to replace optimizedData
+            const localRcaNameByCode = new Map();
+            const localRcaCodeByName = new Map();
+            const localSupervisors = new Set();
+            
+            if (goalsData && goalsData.sellers) {
+                goalsData.sellers.forEach(s => {
+                    if (s.codusur && s.vendedor_nome) {
+                        localRcaNameByCode.set(String(s.codusur), s.vendedor_nome);
+                        localRcaCodeByName.set(s.vendedor_nome, String(s.codusur));
+                    }
+                    if (s.supervisor_nome) localSupervisors.add(s.supervisor_nome);
+                });
+            }
 
 
             if (rows.length >= 3) {
@@ -11301,8 +11310,8 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                     const parsedCode = parseImportValue(sellerCodeCandidate);
                     if (!isNaN(parsedCode)) {
                         const codeStr = String(parsedCode);
-                        if (globalRcaNameByCode.has(codeStr)) {
-                            canonicalName = globalRcaNameByCode.get(codeStr);
+                        if (localRcaNameByCode.has(codeStr)) {
+                            canonicalName = localRcaNameByCode.get(codeStr);
                         }
                     }
                 }
@@ -11310,7 +11319,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 // 2. Try by Name (Fuzzy/Case-Insensitive)
                 if (!canonicalName) {
                     // Iterate existing system names to find case-insensitive match
-                    for (const [sysName, sysCode] of globalRcaCodeByName) {
+                    for (const [sysName, sysCode] of localRcaCodeByName) {
                          const sysUpper = sysName.normalize('NFD').replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
                          if (sysUpper === upperName) {
                              canonicalName = sysName;
@@ -11324,7 +11333,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 // 2. Dynamic Supervisor Check
                 // If the name is a known Supervisor (key in rcasBySupervisor), ignore it.
                 // Assuming supervisors are not also sellers in this context (or we only want leaf sellers).
-                if (globalSupervisors.has(finalSellerName) || globalSupervisors.has(finalSellerName.toUpperCase())) {
+                if (localSupervisors.has(finalSellerName) || localSupervisors.has(finalSellerName.toUpperCase())) {
                     continue;
                 }
                 // ------------------------------------------------
@@ -11438,7 +11447,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                     if (diff > 0.001) diffClass = "text-green-400 font-bold";
                     else if (diff < -0.001) diffClass = "text-red-400 font-bold";
 
-                    const sellerCode = globalRcaCodeByName ? (globalRcaCodeByName.get(u.seller) || '-') : '-';
+                    const sellerCode = localRcaCodeByName ? (localRcaCodeByName.get(u.seller) || '-') : '-';
 
                     let displayCategory = u.category;
                     if (u.type === 'pos') displayCategory += '_POS';
@@ -11643,7 +11652,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
             }
 
             function getSellerCurrentGoal(sellerName, category, type) {
-                const sellerCode = globalRcaCodeByName ? globalRcaCodeByName.get(sellerName) : null;
+                const sellerCode = localRcaCodeByName ? localRcaCodeByName.get(sellerName) : null;
                 if (!sellerCode) return 0;
 
                 // Check for Overrides FIRST
@@ -11747,21 +11756,6 @@ async function renderGoalsView() {
         savedMetas = metasRes.data || [];
         goalsData = baseData;
         
-        // Populate global maps for import processing
-        globalRcaCodeByName.clear();
-        globalRcaNameByCode.clear();
-        globalSupervisors.clear();
-
-        if (goalsData && goalsData.sellers) {
-            goalsData.sellers.forEach(s => {
-                if (s.codusur && s.vendedor_nome) {
-                    globalRcaNameByCode.set(String(s.codusur), s.vendedor_nome);
-                    globalRcaCodeByName.set(s.vendedor_nome, String(s.codusur));
-                }
-                if (s.supervisor_nome) globalSupervisors.add(s.supervisor_nome);
-            });
-        }
-
         const quarterMonths = baseData.quarterMonths || [];
         let sellersData = baseData.sellers || [];
 
@@ -11819,7 +11813,7 @@ async function renderGoalsView() {
         });
         headerHTML += `</tr></thead>`;
 
-        tableHead.innerHTML = headerHTML.replace('<thead class="text-[10px] uppercase sticky top-0 z-20 bg-[#0f172a] text-slate-400">', '').replace('</thead>', '');
+        tableHead.outerHTML = headerHTML;
 
         // Group by Supervisor
         const supervisorsMap = new Map();
@@ -12342,7 +12336,48 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Pagination for Import Analysis Table
+    function renderImportTable() {
+        if (!analysisBody) return;
+        const startIndex = (importTablePage - 1) * importTablePageSize;
+        const endIndex = startIndex + importTablePageSize;
+        const pageData = pendingImportUpdates.slice(startIndex, endIndex);
 
+        analysisBody.innerHTML = pageData.map(u => {
+            let catDisplay = u.category;
+            let valDisplay = u.val;
+            if (u.type === 'rev' || u.category.includes('fat')) valDisplay = formatCurrency(u.val);
+            if (u.type === 'vol') valDisplay = u.val.toFixed(2) + ' kg';
+            if (u.type === 'pos' || u.type === 'mix') valDisplay = Math.round(u.val) + ' unid.';
+            
+            return `
+                <tr class="hover:bg-slate-800/50">
+                    <td class="px-4 py-2 font-medium text-blue-400 uppercase text-xs">${escapeHtml(u.type)}</td>
+                    <td class="px-4 py-2 text-slate-300 text-xs truncate max-w-[150px]">${escapeHtml(u.seller)}</td>
+                    <td class="px-4 py-2 text-slate-400 text-xs">${escapeHtml(catDisplay)}</td>
+                    <td class="px-4 py-2 text-right font-mono text-yellow-400 text-xs">${valDisplay}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const totalPages = Math.ceil(pendingImportUpdates.length / importTablePageSize);
+        document.getElementById('import-page-info-text').textContent = `Página ${importTablePage} de ${totalPages}`;
+        document.getElementById('import-prev-page-btn').disabled = importTablePage === 1;
+        document.getElementById('import-next-page-btn').disabled = importTablePage === totalPages;
+        
+        if (totalPages > 1) {
+            importPaginationControls.classList.remove('hidden');
+        } else {
+            importPaginationControls.classList.add('hidden');
+        }
+    }
+    
+    document.getElementById('import-prev-page-btn').addEventListener('click', () => {
+        if (importTablePage > 1) { importTablePage--; renderImportTable(); }
+    });
+    document.getElementById('import-next-page-btn').addEventListener('click', () => {
+        if (importTablePage < Math.ceil(pendingImportUpdates.length / importTablePageSize)) { importTablePage++; renderImportTable(); }
+    });
 
     // Save logic
     importConfirmBtn.addEventListener('click', async () => {
@@ -12361,8 +12396,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return {
                     ano: currentGoalsAno,
                     mes: currentGoalsMes,
-                    codusur: globalRcaCodeByName.get(u.seller) || u.seller,
-                    vendedor_nome: u.seller,
+                    codusur: u.seller,
                     categoria: u.category,
                     metrica: metrica,
                     valor_ajuste: u.val
