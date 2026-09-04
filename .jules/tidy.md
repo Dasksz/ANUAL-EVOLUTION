@@ -13,3 +13,4 @@
 ## 2026-09-01 - Tidy: Real Accumulated KPI Update
 **Learning:** In order to conditionally show elements based on 'current year', we can rely on existing flags like `data.trend_allowed` which strictly applies to current year accumulation logic in this specific view without hardcoding dates.
 **Action:** Use existing computed dashboard context flags for UI conditional states.
+## 2026/09/04 : Fix UI Pagination Map Scope **Learning:** In monolithic JS architectures, variables like Maps/Sets intended to be populated by one major function (e.g. data parse/fetch) but needed by downstream detached functions (e.g. a separate render table/pagination event handler) must be declared at the module's top-level or global scope, rather than inside block scope, to prevent ReferenceErrors upon user interaction. **Action:** Audit function dependencies on data maps to ensure they are available in scope; hoist variables if accessed across multiple decoupled event listeners.
