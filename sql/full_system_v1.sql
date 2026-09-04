@@ -8687,8 +8687,8 @@ BEGIN
         -- Assuming dim_vendedores doesn't have supervisor directly, we can get it from data_clients by finding the most common supervisor for this seller
         LEFT JOIN LATERAL (
             SELECT codsupervisor 
-            FROM public.data_clients dc 
-            WHERE dc.vendedor = sma.codusur 
+            FROM public.data_summary ds_lat 
+            WHERE ds_lat.codusur = sma.codusur 
             GROUP BY codsupervisor 
             ORDER BY COUNT(*) DESC 
             LIMIT 1
