@@ -471,85 +471,20 @@
           </div>
         </div>
 
-        <!-- Slide 3: Disputa de Categorias -->
-        <div class="swiper-slide h-full overflow-y-auto custom-scrollbar pb-10">
-          <div class="flex justify-between items-center border-b border-fuchsia-500/30 pb-2 mb-6 sticky top-0 bg-[#07050e] z-10 pt-2">
-            <div class="section-title mb-0">Disputa de Categorias</div>
-            <div class="flex space-x-2" id="categorias-metric-filters">
-                <button class="px-3 py-1 text-xs font-semibold rounded bg-[#fc0100] text-white transition-all metric-btn" data-metric="geral">Geral</button>
-                <button class="px-3 py-1 text-xs font-semibold rounded bg-white/5 text-slate-300 hover:bg-white/10 transition-all metric-btn" data-metric="faturamento">Faturamento</button>
-                <button class="px-3 py-1 text-xs font-semibold rounded bg-white/5 text-slate-300 hover:bg-white/10 transition-all metric-btn" data-metric="tonelada">Tonelada</button>
-                <button class="px-3 py-1 text-xs font-semibold rounded bg-white/5 text-slate-300 hover:bg-white/10 transition-all metric-btn" data-metric="posituacao">Positivação</button>
-            </div>
-          </div>
-
-          <div id="presentation-categorias-content" class="flex flex-col gap-6">
-             <!-- KPIs Header injected via JS -->
-             <div id="categorias-kpis" class="grid grid-cols-4 gap-4 mb-4"></div>
-
-             <!-- Simple Share Ranking injected via JS -->
-             <div class="card p-4 rounded-xl">
-                 <h3 class="text-sm font-bold text-white mb-4 uppercase tracking-wider flex items-center justify-between">
-                     <span>Ranking de Share (Participação Atual)</span>
-                 </h3>
-                 <div id="categorias-share-ranking" class="flex flex-col gap-2"></div>
-             </div>
-
-             <!-- Top Sellers injected via JS -->
-             <div class="grid grid-cols-2 gap-6">
-                 <div class="card p-4 rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-900/10 to-transparent">
-                     <h3 class="text-sm font-bold text-blue-400 mb-4 flex items-center justify-between">
-                         <span class="uppercase tracking-wider">Top Vendedores Shark</span>
-                         <img src="src/assets/images/SHARK.png" class="h-6 w-6 object-contain rounded-full shadow-lg shadow-black/50">
-                     </h3>
-                     <div id="categorias-sellers-shark" class="flex flex-col gap-3"></div>
-                 </div>
-                 <div class="card p-4 rounded-xl border border-red-500/30 bg-gradient-to-br from-red-900/10 to-transparent">
-                     <h3 class="text-sm font-bold text-red-400 mb-4 flex items-center justify-between">
-                         <span class="uppercase tracking-wider">Top Vendedores Águia</span>
-                         <img src="src/assets/images/AGUIA.png" class="h-6 w-6 object-contain rounded-full shadow-lg shadow-black/50">
-                     </h3>
-                     <div id="categorias-sellers-aguia" class="flex flex-col gap-3"></div>
-                 </div>
-             </div>
-
-             <!-- Growth vs Quarter Ranking injected via JS -->
-             <div class="card p-4 rounded-xl mt-2">
-                 <h3 class="text-sm font-bold text-white mb-4 uppercase tracking-wider flex items-center justify-between">
-                     <span>Crescimento vs Trimestre</span>
-                     <span class="text-xs text-slate-400 normal-case" id="growth-metric-label">Métrica: Geral</span>
-                 </h3>
-                 <div id="categorias-growth-ranking" class="flex flex-col gap-4"></div>
-             </div>
-          </div>
-        </div>
-
-        <!-- Slide 4: Loja Perfeita -->
-        <div class="swiper-slide h-full flex flex-col">
+        <!-- Slide 3: Por Atacado -->
+        <div class="swiper-slide">
           <div class="flex justify-between items-center border-b border-fuchsia-500/30 pb-2 mb-6">
-            <div class="section-title mb-0">Loja Perfeita Histórico</div>
-            <div class="flex items-center space-x-3">
-              <label class="text-xs text-slate-400">Supervisor:</label>
-              <select id="loja-perfeita-supervisor-filter" class="bg-[#0f0e13] border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-[#fc0100]">
-                 <option value="">Todos</option>
-              </select>
-              <label class="text-xs text-slate-400 ml-2">Pesquisador:</label>
-              <select id="loja-perfeita-pesquisador-filter" class="bg-[#0f0e13] border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-[#fc0100]">
-                 <option value="">Todos</option>
-              </select>
-            </div>
+            <div class="section-title mb-0">Por Atacado</div>
           </div>
-          <div class="flex-grow flex flex-col relative w-full h-[600px]">
-              <div id="loja-perfeita-loading" class="absolute inset-0 bg-[#07050e]/80 flex items-center justify-center z-10 hidden rounded-xl">
-                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-fuchsia-500"></div>
-              </div>
-              <div class="card p-4 rounded-xl w-full h-full">
-                  <canvas id="lojaPerfeitaChart"></canvas>
-              </div>
+          <div
+            class="flex flex-col gap-6"
+            id="presentation-rede-cards"
+          >
+            <!-- Injected via JS (Geral de Redes + Americanas) -->
           </div>
         </div>
 
-        <!-- Slide 5: Top Vendedores -->
+        <!-- Slide 4: Top Vendedores -->
         <div class="swiper-slide relative">
           <div
             class="flex justify-between items-center border-b border-fuchsia-500/30 pb-2 mb-6"

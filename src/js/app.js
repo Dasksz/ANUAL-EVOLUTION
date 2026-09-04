@@ -12359,8 +12359,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (u.type === 'mix') metrica = 'MIX';
                 
                 return {
-                    ano: parseInt(document.getElementById('import-goals-ano').value, 10) || currentGoalsAno,
-                    mes: parseInt(document.getElementById('import-goals-mes').value, 10) || currentGoalsMes,
+                    ano: currentGoalsAno,
+                    mes: currentGoalsMes,
                     codusur: globalRcaCodeByName.get(u.seller) || u.seller,
                     vendedor_nome: u.seller,
                     categoria: u.category,
@@ -12375,15 +12375,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             alert("Metas atualizadas com sucesso!");
             closeModal();
-
-            // Switch the main dashboard filters to the imported month/year to immediately show the new data
-            const importedAno = document.getElementById('import-goals-ano').value;
-            const importedMes = document.getElementById('import-goals-mes').value;
-            const anoSelect = document.getElementById('goals-filter-ano');
-            const mesSelect = document.getElementById('goals-filter-mes');
-            if (anoSelect && importedAno) anoSelect.value = importedAno;
-            if (mesSelect && importedMes) mesSelect.value = importedMes;
-
             renderGoalsView(); // Refresh the table
         } catch (e) {
             console.error("Erro ao salvar metas:", e);
