@@ -98,7 +98,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         throw new Error("Nenhum dado encontrado no banco.");
       }
 
-      presentationData = rpcData;
+      window.currentPresentationData = rpcData;
 
       // Set header subtitle based on data returned
       if (rpcData.global && rpcData.global.length > 0) {
@@ -123,6 +123,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       renderSlides(rpcData);
+
+      // Init new slides
+      if (typeof window.renderCategoriasDispute === 'function') {
+          window.renderCategoriasDispute(rpcData, 'geral');
+      }
+
+      if (typeof window.initLojaPerfeitaSlide === 'function') {
+          const m = rpcData.meta.curr.mes;
+          const a = rpcData.meta.curr.ano;
+          window.initLojaPerfeitaSlide(a, m);
+      }
+
 
       // Fetch AI
       document.getElementById("loader-text").textContent =
@@ -161,6 +173,403 @@ document.addEventListener("DOMContentLoaded", async () => {
       overlay.style.display = "none";
     }
   }
+
+
+  // --- Categorias Dispute Logic ---
+  window.renderCategoriasDispute = function(data, activeMetric) {
+    if (!data.categorias_disputa) return;
+
+    // Growth calculation
+    let growthData = [];
+    data.categorias_disputa.forEach(d => {
+        let fatGrowth = d.fat_trim > 0 ? ((d.fat_atual - d.fat_trim) / d.fat_trim) * 100 : (d.fat_atual > 0 ? 100 : 0);
+        let tonGrowth = d.ton_trim > 0 ? ((d.ton_atual - d.ton_trim) / d.ton_trim) * 100 : (d.ton_atual > 0 ? 100 : 0);
+        let posGrowth = d.pos_trim > 0 ? ((d.pos_atual - d.pos_trim) / d.pos_trim) * 100 : (d.pos_atual > 0 ? 100 : 0);
+
+        let score = 0;
+        if (activeMetric === 'faturamento') score = fatGrowth;
+        else if (activeMetric === 'tonelada') score = tonGrowth;
+        else if (activeMetric === 'posituacao') score = posGrowth;
+        else score = fatGrowth + tonGrowth + posGrowth; // Geral
+
+        growthData.push({ ...d, fatGrowth, tonGrowth, posGrowth, score });
+    });
+
+    // KPI Calc (Salty)
+    let saltyShark = data.kpi_salty?.find(k => k.equipe === 'SHARK')?.clientes_salty || 0;
+    let saltyAguia = data.kpi_salty?.find(k => k.equipe === 'ÁGUIA')?.clientes_salty || 0;
+
+    // Cross check categories share (Faturamento base for general share dominance)
+    let sharkDom = 0;
+    let aguiaDom = 0;
+
+    // Group by category to find total
+    let catTotals = {};
+    data.categorias_disputa.forEach(d => {
+        if (!catTotals[d.categoria]) catTotals[d.categoria] = { totalFat: 0 };
+        catTotals[d.categoria].totalFat += Number(d.fat_atual);
+    });
+
+    let shareRankings = [];
+
+    Object.keys(catTotals).forEach(cat => {
+        let fatShark = Number(data.categorias_disputa.find(d => d.categoria === cat && d.equipe === 'SHARK')?.fat_atual || 0);
+        let fatAguia = Number(data.categorias_disputa.find(d => d.categoria === cat && d.equipe === 'ÁGUIA')?.fat_atual || 0);
+        let total = catTotals[cat].totalFat;
+
+        if (total > 0) {
+             let pShark = (fatShark / total) * 100;
+             let pAguia = (fatAguia / total) * 100;
+
+             if (pShark > 50) sharkDom++;
+             if (pAguia > 50) aguiaDom++;
+
+             shareRankings.push({
+                 categoria: cat,
+                 pShark,
+                 pAguia,
+                 total
+             });
+        }
+    });
+
+    shareRankings.sort((a,b) => b.total - a.total); // Sort by biggest category total
+
+    const kpiDiv = document.getElementById("categorias-kpis");
+    if(kpiDiv) {
+        kpiDiv.innerHTML = `
+            <div class="bg-blue-900/20 border border-blue-500/30 p-3 rounded-lg text-center">
+               <div class="text-[10px] text-blue-400 font-bold uppercase mb-1">Clientes Salty (Shark)</div>
+               <div class="text-xl font-bold text-white">${saltyShark}</div>
+            </div>
+            <div class="bg-blue-900/20 border border-blue-500/30 p-3 rounded-lg text-center">
+               <div class="text-[10px] text-blue-400 font-bold uppercase mb-1">Domínio Categorias (Shark)</div>
+               <div class="text-xl font-bold text-white">${sharkDom}</div>
+            </div>
+            <div class="bg-red-900/20 border border-red-500/30 p-3 rounded-lg text-center">
+               <div class="text-[10px] text-red-400 font-bold uppercase mb-1">Domínio Categorias (Águia)</div>
+               <div class="text-xl font-bold text-white">${aguiaDom}</div>
+            </div>
+            <div class="bg-red-900/20 border border-red-500/30 p-3 rounded-lg text-center">
+               <div class="text-[10px] text-red-400 font-bold uppercase mb-1">Clientes Salty (Águia)</div>
+               <div class="text-xl font-bold text-white">${saltyAguia}</div>
+            </div>
+        `;
+    }
+
+    const shareDiv = document.getElementById("categorias-share-ranking");
+    if (shareDiv) {
+        shareDiv.innerHTML = shareRankings.map(s => `
+            <div class="flex items-center justify-between text-xs mb-1">
+                <span class="w-1/3 truncate text-slate-300" title="${s.categoria}">${s.categoria}</span>
+                <div class="w-2/3 flex h-3 bg-[#0f0e13] rounded-full overflow-hidden border border-white/5 relative">
+                    <div style="width: ${s.pShark}%" class="bg-blue-600 h-full"></div>
+                    <div style="width: ${s.pAguia}%" class="bg-red-600 h-full"></div>
+                    <div class="absolute inset-0 flex justify-between px-2 items-center mix-blend-difference text-[8px] font-bold text-white">
+                        <span>${s.pShark > 0 ? s.pShark.toFixed(1)+'%' : ''}</span>
+                        <span>${s.pAguia > 0 ? s.pAguia.toFixed(1)+'%' : ''}</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Top Vendedores
+    if (data.vendedores_categorias) {
+        let sortedVendors = [...data.vendedores_categorias].sort((a, b) => {
+            if (b.categorias_distintas !== a.categorias_distintas) {
+                return b.categorias_distintas - a.categorias_distintas;
+            }
+            return b.faturamento - a.faturamento;
+        });
+
+        let topShark = sortedVendors.filter(v => v.equipe === 'SHARK').slice(0, 3);
+        let topAguia = sortedVendors.filter(v => v.equipe === 'ÁGUIA').slice(0, 3);
+
+        const renderVendor = (v, i) => `
+            <div class="flex justify-between items-center bg-[#07050e] p-2 rounded border border-white/5">
+                <div class="flex items-center gap-2">
+                    <div class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold text-white">${i+1}</div>
+                    <div class="text-xs font-semibold text-slate-200 truncate w-32" title="${v.vendedor}">${v.vendedor}</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs font-bold text-white">${v.categorias_distintas} <span class="text-[9px] text-slate-400 font-normal">Cats</span></div>
+                    <div class="text-[9px] text-emerald-400">${formatCurrency(v.faturamento)}</div>
+                </div>
+            </div>
+        `;
+
+        const divShark = document.getElementById("categorias-sellers-shark");
+        const divAguia = document.getElementById("categorias-sellers-aguia");
+        if (divShark) divShark.innerHTML = topShark.map((v, i) => renderVendor(v, i)).join('');
+        if (divAguia) divAguia.innerHTML = topAguia.map((v, i) => renderVendor(v, i)).join('');
+    }
+
+    // Growth Ranking
+    growthData.sort((a,b) => b.score - a.score);
+    const growthDiv = document.getElementById("categorias-growth-ranking");
+    if(growthDiv) {
+        growthDiv.innerHTML = growthData.map(g => {
+            let color = g.equipe === 'SHARK' ? 'text-blue-400' : 'text-red-400';
+            return `
+            <div class="flex justify-between items-center border-b border-white/5 pb-1 last:border-0 last:pb-0">
+                <div class="flex flex-col w-1/3">
+                     <span class="text-xs text-white font-semibold truncate" title="${g.categoria}">${g.categoria}</span>
+                     <span class="text-[10px] ${color} font-bold">${g.equipe}</span>
+                </div>
+                <div class="flex space-x-4 w-2/3 justify-end">
+                    <div class="text-right w-16">
+                        <div class="text-[9px] text-slate-400 mb-0.5">Fat.</div>
+                        <div class="text-xs ${g.fatGrowth >= 0 ? 'text-emerald-400' : 'text-red-400'} font-bold">${g.fatGrowth > 0 ? '+' : ''}${g.fatGrowth.toFixed(1)}%</div>
+                    </div>
+                    <div class="text-right w-16">
+                        <div class="text-[9px] text-slate-400 mb-0.5">Ton.</div>
+                        <div class="text-xs ${g.tonGrowth >= 0 ? 'text-emerald-400' : 'text-red-400'} font-bold">${g.tonGrowth > 0 ? '+' : ''}${g.tonGrowth.toFixed(1)}%</div>
+                    </div>
+                    <div class="text-right w-16">
+                        <div class="text-[9px] text-slate-400 mb-0.5">Pos.</div>
+                        <div class="text-xs ${g.posGrowth >= 0 ? 'text-emerald-400' : 'text-red-400'} font-bold">${g.posGrowth > 0 ? '+' : ''}${g.posGrowth.toFixed(1)}%</div>
+                    </div>
+                </div>
+            </div>
+            `;
+        }).join('');
+    }
+  };
+
+  // Button logic setup
+  document.querySelectorAll('#categorias-metric-filters .metric-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+          // Remove active styles from all
+          document.querySelectorAll('#categorias-metric-filters .metric-btn').forEach(b => {
+              b.classList.remove('bg-[#fc0100]', 'text-white');
+              b.classList.add('bg-white/5', 'text-slate-300', 'hover:bg-white/10');
+          });
+
+          // Add active style to clicked
+          const target = e.target;
+          target.classList.remove('bg-white/5', 'text-slate-300', 'hover:bg-white/10');
+          target.classList.add('bg-[#fc0100]', 'text-white');
+
+          let metric = target.getAttribute('data-metric');
+          document.getElementById('growth-metric-label').innerText = `Métrica: ${target.innerText}`;
+
+          if (presentationData) {
+              window.renderCategoriasDispute(window.currentPresentationData, metric);
+          }
+      });
+  });
+
+
+  // --- Loja Perfeita Histórico Logic ---
+  let lojaPerfeitaChartInstance = null;
+  let lojaPerfeitaBaseAno = null;
+  let lojaPerfeitaBaseMes = null;
+
+  async function fetchLojaPerfeitaFilters() {
+      try {
+          const supSelect = document.getElementById("loja-perfeita-supervisor-filter");
+          const pesqSelect = document.getElementById("loja-perfeita-pesquisador-filter");
+          if (!supSelect || !pesqSelect) return;
+
+          // Fetch all unique supervisors using pagination
+          let supervisores = new Set();
+          let pesquisadores = new Set();
+          let page = 0;
+          const pageSize = 1000;
+          let hasMore = true;
+
+          while (hasMore) {
+              const { data, error } = await supabase
+                  .from("data_nota_perfeita")
+                  .select("supervisor, pesquisador")
+                  .range(page * pageSize, (page + 1) * pageSize - 1);
+
+              if (error) throw error;
+              if (data.length === 0) {
+                  hasMore = false;
+              } else {
+                  data.forEach(row => {
+                      if (row.supervisor) supervisores.add(row.supervisor);
+                      if (row.pesquisador) pesquisadores.add(row.pesquisador);
+                  });
+                  if (data.length < pageSize) hasMore = false;
+              }
+              page++;
+          }
+
+          // Populate selects
+          let supHtml = '<option value="">Todos</option>';
+          Array.from(supervisores).sort().forEach(s => supHtml += `<option value="${s}">${s}</option>`);
+          supSelect.innerHTML = supHtml;
+
+          let pesqHtml = '<option value="">Todos</option>';
+          Array.from(pesquisadores).sort().forEach(p => pesqHtml += `<option value="${p}">${p}</option>`);
+          pesqSelect.innerHTML = pesqHtml;
+
+      } catch (err) {
+          console.error("Erro ao buscar filtros de loja perfeita:", err);
+      }
+  }
+
+  async function loadLojaPerfeitaData() {
+      const loader = document.getElementById("loja-perfeita-loading");
+      if (loader) loader.classList.remove("hidden");
+
+      try {
+          const supSelect = document.getElementById("loja-perfeita-supervisor-filter");
+          const pesqSelect = document.getElementById("loja-perfeita-pesquisador-filter");
+
+          let p_supervisor = supSelect && supSelect.value ? [supSelect.value] : null;
+          let p_pesquisador = pesqSelect && pesqSelect.value ? [pesqSelect.value] : null;
+
+          // Build last 6 months list based on current presentation month
+          let periods = [];
+          for (let i = 5; i >= 0; i--) {
+              let targetMes = lojaPerfeitaBaseMes - i;
+              let targetAno = lojaPerfeitaBaseAno;
+
+              if (targetMes <= 0) {
+                  targetMes += 12;
+                  targetAno -= 1;
+              }
+              periods.push({ ano: targetAno, mes: targetMes });
+          }
+
+          // Fetch data for all 6 months concurrently via RPC get_loja_perfeita_data
+          const promises = periods.map(async (period) => {
+              const { data, error } = await supabase.rpc("get_loja_perfeita_data", {
+                  p_filial: null,
+                  p_cidade: null,
+                  p_supervisor: p_supervisor,
+                  p_vendedor: null,
+                  p_rede: null,
+                  p_codcli: null,
+                  p_ano: period.ano,
+                  p_mes: period.mes,
+                  p_pesquisador: p_pesquisador
+              });
+
+              if (error) {
+                  console.error(`Erro ao carregar Mês ${period.mes}/${period.ano}:`, error);
+                  return { period, media: 0 };
+              }
+
+              let media = 0;
+              if (data && data.length > 0) {
+                  let totalGeral = 0;
+                  let validCount = 0;
+                  data.forEach(d => {
+                      if (d.pontuacao_geral !== null) {
+                          totalGeral += Number(d.pontuacao_geral);
+                          validCount++;
+                      }
+                  });
+                  media = validCount > 0 ? (totalGeral / validCount) : 0;
+              }
+              return { period, media };
+          });
+
+          const results = await Promise.all(promises);
+
+          renderLojaPerfeitaChart(results);
+
+      } catch (err) {
+          console.error("Erro ao carregar dados do grafico Loja Perfeita:", err);
+      } finally {
+          if (loader) loader.classList.add("hidden");
+      }
+  }
+
+  function renderLojaPerfeitaChart(results) {
+      const canvas = document.getElementById("lojaPerfeitaChart");
+      if (!canvas) return;
+
+      if (lojaPerfeitaChartInstance) {
+          lojaPerfeitaChartInstance.destroy();
+      }
+
+      const labels = results.map(r => {
+          const mNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+          return `${mNames[r.period.mes - 1]}/${String(r.period.ano).slice(-2)}`;
+      });
+      const dataPoints = results.map(r => r.media);
+
+      const ctx = canvas.getContext("2d");
+      lojaPerfeitaChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+              labels: labels,
+              datasets: [{
+                  label: 'Média Geral (%)',
+                  data: dataPoints,
+                  borderColor: '#fc0100',
+                  backgroundColor: 'rgba(252, 1, 0, 0.1)',
+                  borderWidth: 2,
+                  pointBackgroundColor: '#fff',
+                  pointBorderColor: '#fc0100',
+                  pointBorderWidth: 2,
+                  pointRadius: 4,
+                  pointHoverRadius: 6,
+                  fill: true,
+                  tension: 0.3
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                  legend: {
+                      labels: { color: 'rgba(255, 255, 255, 0.7)' }
+                  },
+                  tooltip: {
+                      callbacks: {
+                          label: function(context) {
+                              return context.parsed.y.toFixed(1) + '%';
+                          }
+                      }
+                  }
+              },
+              scales: {
+                  y: {
+                      beginAtZero: true,
+                      max: 100,
+                      grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                      ticks: {
+                          color: 'rgba(255, 255, 255, 0.5)',
+                          callback: function(value) {
+                              return value + '%';
+                          }
+                      }
+                  },
+                  x: {
+                      grid: { display: false },
+                      ticks: { color: 'rgba(255, 255, 255, 0.5)' }
+                  }
+              }
+          }
+      });
+  }
+
+  window.initLojaPerfeitaSlide = async function(ano, mes) {
+      if (!ano || !mes) {
+          lojaPerfeitaBaseAno = new Date().getFullYear();
+          lojaPerfeitaBaseMes = new Date().getMonth() + 1;
+      } else {
+          lojaPerfeitaBaseAno = ano;
+          lojaPerfeitaBaseMes = mes;
+      }
+
+      await fetchLojaPerfeitaFilters();
+
+      const supSelect = document.getElementById("loja-perfeita-supervisor-filter");
+      const pesqSelect = document.getElementById("loja-perfeita-pesquisador-filter");
+
+      if (supSelect) supSelect.addEventListener("change", loadLojaPerfeitaData);
+      if (pesqSelect) pesqSelect.addEventListener("change", loadLojaPerfeitaData);
+
+      await loadLojaPerfeitaData();
+  };
 
   // --- RENDER LOGIC (Adapted from app.js) ---
     function renderSlides(data) {
