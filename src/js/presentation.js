@@ -354,7 +354,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           let metric = target.getAttribute('data-metric');
           document.getElementById('growth-metric-label').innerText = `Métrica: ${target.innerText}`;
 
-          if (presentationData) {
+          if (window.currentPresentationData) {
               window.renderCategoriasDispute(window.currentPresentationData, metric);
           }
       });
@@ -847,7 +847,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function setupFilial(filialData, supervisoresData) {
     if (filialData) globalFilialData = filialData;
-    const categoriasData = presentationData.categorias || [];
+    const categoriasData = (window.currentPresentationData && window.currentPresentationData.categorias) || [];
     const select = document.getElementById("presentation-filial-select");
     const containerCards = document.getElementById("presentation-filial-cards");
     const tbodySup = document.getElementById("presentation-supervisor-tbody");
