@@ -8409,7 +8409,7 @@ BEGIN
         SELECT
             ce.equipe,
             ds.codusur,
-            dp.categoria,
+            ds.categoria_produto as categoria,
             ds.codcli,
             ds.ano,
             ds.mes,
@@ -8417,11 +8417,10 @@ BEGIN
             ds.peso,
             ds.codfor
         FROM public.data_summary ds
-        JOIN public.dim_produtos dp ON ds.produto = dp.codigo
         JOIN public.config_equipes ce ON LTRIM(ds.codsupervisor::text, '0') = ce.codsupervisor
         WHERE ds.ano IN ($1, $5, $7, $9)
-          AND dp.categoria IS NOT NULL
-          AND dp.categoria != ''
+          AND ds.categoria_produto IS NOT NULL
+          AND ds.categoria_produto != ''
     )
     -- CTE: categorias_disputa_raw
     , categorias_disputa_raw AS (
