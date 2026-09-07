@@ -171,8 +171,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const targetMonthIdx =
       (data.meta?.curr?.mes || new Date().getMonth() + 1) - 1;
     setupFilial(data.filiais, data.supervisores);
-    renderRede(data.redes, data.meta, data.global); // Actually Atacado
-    setupVendedores(data.top_vendedores);
+        setupVendedores(data.top_vendedores);
   }
 
   function buildCard(

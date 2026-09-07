@@ -4142,11 +4142,8 @@ BEGIN
 
     -- ACTIVE CLIENTS QUERY
     v_sql := '
-    -- ⚡ QueryTuner: Removed non-grouping string dimension MAX(cidade) from the heavy aggregation step
-    -- over data_summary. The dimension is instead fetched during the final pagination step by joining
-    -- the reduced result set back to data_clients, reducing memory footprint and aggregation time.
     WITH client_totals AS (
-        SELECT codcli, SUM(vlvenda) as total_fat
+        SELECT codcli, MAX(cidade) as cidade_fat, SUM(vlvenda) as total_fat
         FROM public.data_summary
         ' || v_where || '
         GROUP BY codcli
@@ -4154,7 +4151,7 @@ BEGIN
     ),
     count_cte AS (SELECT COUNT(*) as cnt FROM client_totals),
     paginated_clients AS (
-        SELECT ct.codcli, ct.total_fat, c.fantasia, c.razaosocial, c.cidade, c.bairro, c.rca1
+        SELECT ct.codcli, ct.total_fat, c.fantasia, c.razaosocial, COALESCE(ct.cidade_fat, c.cidade) as cidade, c.bairro, c.rca1
         FROM client_totals ct
         JOIN public.data_clients c ON c.codigo_cliente = ct.codcli
         ORDER BY ct.total_fat DESC
@@ -8406,7 +8403,82 @@ BEGIN
             END, ano, mes
     )
 
-    -- FINAL JSON ASSEMBLY
+
+    -- CTE: categorias_base
+    , categorias_base AS (
+        SELECT
+            ce.equipe,
+            ds.codusur,
+            dp.categoria,
+            ds.codcli,
+            ds.ano,
+            ds.mes,
+            ds.vlvenda,
+            ds.peso,
+            ds.codfor
+        FROM public.data_summary ds
+        JOIN public.dim_produtos dp ON ds.produto = dp.codigo
+        JOIN public.config_equipes ce ON LTRIM(ds.codsupervisor::text, '0') = ce.codsupervisor
+        WHERE ds.ano IN ($1, $5, $7, $9)
+          AND dp.categoria IS NOT NULL
+          AND dp.categoria != ''
+    )
+    -- CTE: categorias_disputa_raw
+    , categorias_disputa_raw AS (
+        SELECT
+            cb.categoria,
+            cb.equipe,
+            cb.ano,
+            cb.mes,
+            SUM(cb.vlvenda) as faturamento,
+            SUM(cb.peso) as tonelada,
+            COUNT(DISTINCT cb.codcli) as posituacoes
+        FROM categorias_base cb
+        GROUP BY cb.categoria, cb.equipe, cb.ano, cb.mes
+    )
+    -- CTE: categorias_disputa_aggregated
+    , categorias_disputa_aggregated AS (
+        SELECT
+            categoria,
+            equipe,
+            -- Current Month
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN faturamento ELSE 0 END) as fat_atual,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN tonelada ELSE 0 END) as ton_atual,
+            SUM(CASE WHEN ano = $1 AND mes = $2 THEN posituacoes ELSE 0 END) as pos_atual,
+            -- Previous Quarter (Average)
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN faturamento ELSE 0 END) / 3.0 as fat_trim,
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN tonelada ELSE 0 END) / 3.0 as ton_trim,
+            SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN posituacoes ELSE 0 END) / 3.0 as pos_trim
+        FROM categorias_disputa_raw
+        GROUP BY categoria, equipe
+    )
+    -- CTE: vendedores_categorias
+    , vendedores_categorias AS (
+        SELECT
+            cb.equipe,
+            MAX(dv.nome) as vendedor,
+            cb.codusur,
+            COUNT(DISTINCT cb.categoria) as categorias_distintas,
+            SUM(cb.vlvenda) as faturamento,
+            SUM(cb.peso) as tonelada,
+            COUNT(DISTINCT cb.codcli) as posituacoes
+        FROM categorias_base cb
+        LEFT JOIN public.dim_vendedores dv ON LTRIM(cb.codusur::text, '0') = dv.codigo
+        WHERE cb.ano = $1 AND cb.mes = $2
+        GROUP BY cb.equipe, cb.codusur
+    )
+    -- CTE: kpi_salty
+    , kpi_salty AS (
+        SELECT
+            cb.equipe,
+            COUNT(DISTINCT cb.codcli) as clientes_salty
+        FROM categorias_base cb
+        WHERE cb.ano = $1 AND cb.mes = $2
+          AND LTRIM(cb.codfor::text, '0') IN ('707', '708', '752')
+        GROUP BY cb.equipe
+    )
+
+
     SELECT json_build_object(
         'meta', json_build_object(
             'curr', json_build_object('ano', $1, 'mes', $2),
@@ -8419,7 +8491,10 @@ BEGIN
         'redes', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_redes a),
         'top_vendedores', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM top_vendedores a),
         'categorias', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_categorias a),
-        'chart_data', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_chart a)
+        'chart_data', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM agg_chart a),
+        'categorias_disputa', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM categorias_disputa_aggregated a),
+        'vendedores_categorias', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM vendedores_categorias a),
+        'kpi_salty', (SELECT COALESCE(json_agg(row_to_json(a)), '[]'::json) FROM kpi_salty a)
     )
     $dyn$ INTO v_result
     USING
@@ -8690,8 +8765,8 @@ BEGIN
         -- Assuming dim_vendedores doesn't have supervisor directly, we can get it from data_clients by finding the most common supervisor for this seller
         LEFT JOIN LATERAL (
             SELECT codsupervisor 
-            FROM public.data_clients dc 
-            WHERE dc.vendedor = sma.codusur 
+            FROM public.data_summary ds_lat 
+            WHERE ds_lat.codusur = sma.codusur 
             GROUP BY codsupervisor 
             ORDER BY COUNT(*) DESC 
             LIMIT 1
