@@ -677,10 +677,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderGeral(geralData) {
     if (geralData) globalGeralData = geralData;
-    if (presentationData && presentationData.chart_data) {
-        const targetYear = presentationData.meta?.curr?.ano || new Date().getFullYear();
-        const targetMonthIdx = (presentationData.meta?.curr?.mes || new Date().getMonth() + 1) - 1;
-        renderEvolutionChart(presentationData.chart_data, targetYear, targetMonthIdx);
+    if (window.currentPresentationData && window.currentPresentationData.chart_data) {
+        const targetYear = window.currentPresentationData.meta?.curr?.ano || new Date().getFullYear();
+        const targetMonthIdx = (window.currentPresentationData.meta?.curr?.mes || new Date().getMonth() + 1) - 1;
+        renderEvolutionChart(window.currentPresentationData.chart_data, targetYear, targetMonthIdx);
     }
     const containerTop = document.getElementById("presentation-geral-cards-top");
     const containerMiddle = document.getElementById("presentation-geral-cards-middle");
