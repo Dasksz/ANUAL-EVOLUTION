@@ -123,7 +123,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       renderSlides(rpcData);
-
+      
       // Init new slides
       if (typeof window.renderCategoriasDispute === 'function') {
           window.renderCategoriasDispute(rpcData, 'geral');
@@ -178,20 +178,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   // --- Categorias Dispute Logic ---
   window.renderCategoriasDispute = function(data, activeMetric) {
     if (!data.categorias_disputa) return;
-
+    
     // Growth calculation
     let growthData = [];
     data.categorias_disputa.forEach(d => {
         let fatGrowth = d.fat_trim > 0 ? ((d.fat_atual - d.fat_trim) / d.fat_trim) * 100 : (d.fat_atual > 0 ? 100 : 0);
         let tonGrowth = d.ton_trim > 0 ? ((d.ton_atual - d.ton_trim) / d.ton_trim) * 100 : (d.ton_atual > 0 ? 100 : 0);
         let posGrowth = d.pos_trim > 0 ? ((d.pos_atual - d.pos_trim) / d.pos_trim) * 100 : (d.pos_atual > 0 ? 100 : 0);
-
+        
         let score = 0;
         if (activeMetric === 'faturamento') score = fatGrowth;
         else if (activeMetric === 'tonelada') score = tonGrowth;
         else if (activeMetric === 'posituacao') score = posGrowth;
         else score = fatGrowth + tonGrowth + posGrowth; // Geral
-
+        
         growthData.push({ ...d, fatGrowth, tonGrowth, posGrowth, score });
     });
 
@@ -202,28 +202,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Cross check categories share (Faturamento base for general share dominance)
     let sharkDom = 0;
     let aguiaDom = 0;
-
+    
     // Group by category to find total
     let catTotals = {};
     data.categorias_disputa.forEach(d => {
         if (!catTotals[d.categoria]) catTotals[d.categoria] = { totalFat: 0 };
         catTotals[d.categoria].totalFat += Number(d.fat_atual);
     });
-
+    
     let shareRankings = [];
 
     Object.keys(catTotals).forEach(cat => {
         let fatShark = Number(data.categorias_disputa.find(d => d.categoria === cat && d.equipe === 'SHARK')?.fat_atual || 0);
         let fatAguia = Number(data.categorias_disputa.find(d => d.categoria === cat && d.equipe === 'ÁGUIA')?.fat_atual || 0);
         let total = catTotals[cat].totalFat;
-
+        
         if (total > 0) {
              let pShark = (fatShark / total) * 100;
              let pAguia = (fatAguia / total) * 100;
-
+             
              if (pShark > 50) sharkDom++;
              if (pAguia > 50) aguiaDom++;
-
+             
              shareRankings.push({
                  categoria: cat,
                  pShark,
@@ -232,7 +232,7 @@ document.addEventListener("DOMContentLoaded", async () => {
              });
         }
     });
-
+    
     shareRankings.sort((a,b) => b.total - a.total); // Sort by biggest category total
 
     const kpiDiv = document.getElementById("categorias-kpis");
@@ -256,7 +256,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             </div>
         `;
     }
-
+    
     const shareDiv = document.getElementById("categorias-share-ranking");
     if (shareDiv) {
         shareDiv.innerHTML = shareRankings.map(s => `
@@ -345,16 +345,16 @@ document.addEventListener("DOMContentLoaded", async () => {
               b.classList.remove('bg-[#fc0100]', 'text-white');
               b.classList.add('bg-white/5', 'text-slate-300', 'hover:bg-white/10');
           });
-
+          
           // Add active style to clicked
           const target = e.target;
           target.classList.remove('bg-white/5', 'text-slate-300', 'hover:bg-white/10');
           target.classList.add('bg-[#fc0100]', 'text-white');
-
+          
           let metric = target.getAttribute('data-metric');
           document.getElementById('growth-metric-label').innerText = `Métrica: ${target.innerText}`;
-
-          if (presentationData) {
+          
+          if (window.currentPresentationData) {
               window.renderCategoriasDispute(window.currentPresentationData, metric);
           }
       });
@@ -419,7 +419,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       try {
           const supSelect = document.getElementById("loja-perfeita-supervisor-filter");
           const pesqSelect = document.getElementById("loja-perfeita-pesquisador-filter");
-
+          
           let p_supervisor = supSelect && supSelect.value ? [supSelect.value] : null;
           let p_pesquisador = pesqSelect && pesqSelect.value ? [pesqSelect.value] : null;
 
@@ -428,7 +428,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           for (let i = 5; i >= 0; i--) {
               let targetMes = lojaPerfeitaBaseMes - i;
               let targetAno = lojaPerfeitaBaseAno;
-
+              
               if (targetMes <= 0) {
                   targetMes += 12;
                   targetAno -= 1;
@@ -449,7 +449,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                   p_mes: period.mes,
                   p_pesquisador: p_pesquisador
               });
-
+              
               if (error) {
                   console.error(`Erro ao carregar Mês ${period.mes}/${period.ano}:`, error);
                   return { period, media: 0 };
@@ -561,10 +561,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       await fetchLojaPerfeitaFilters();
-
+      
       const supSelect = document.getElementById("loja-perfeita-supervisor-filter");
       const pesqSelect = document.getElementById("loja-perfeita-pesquisador-filter");
-
+      
       if (supSelect) supSelect.addEventListener("change", loadLojaPerfeitaData);
       if (pesqSelect) pesqSelect.addEventListener("change", loadLojaPerfeitaData);
 
@@ -847,7 +847,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function setupFilial(filialData, supervisoresData) {
     if (filialData) globalFilialData = filialData;
-    const categoriasData = presentationData.categorias || [];
+    const categoriasData = (window.currentPresentationData && window.currentPresentationData.categorias) || [];
     const select = document.getElementById("presentation-filial-select");
     const containerCards = document.getElementById("presentation-filial-cards");
     const tbodySup = document.getElementById("presentation-supervisor-tbody");
