@@ -372,8 +372,15 @@ document.addEventListener("DOMContentLoaded", async () => {
           const pesqSelect = document.getElementById("loja-perfeita-pesquisador-filter");
           if (!supSelect || !pesqSelect) return;
 
-          // Fetch all unique supervisors using pagination
+          // Pega supervisores globais já carregados
           let supervisores = new Set();
+          if (window.currentPresentationData && window.currentPresentationData.supervisores) {
+              window.currentPresentationData.supervisores.forEach(s => {
+                  if (s.name && s.name !== 'N/A') supervisores.add(s.name);
+              });
+          }
+
+          // Fetch only pesquisadores using pagination
           let pesquisadores = new Set();
           let page = 0;
           const pageSize = 1000;
@@ -382,7 +389,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           while (hasMore) {
               const { data, error } = await supabase
                   .from("data_nota_perfeita")
-                  .select("supervisor, pesquisador")
+                  .select("pesquisador")
                   .range(page * pageSize, (page + 1) * pageSize - 1);
 
               if (error) throw error;
@@ -390,7 +397,6 @@ document.addEventListener("DOMContentLoaded", async () => {
                   hasMore = false;
               } else {
                   data.forEach(row => {
-                      if (row.supervisor) supervisores.add(row.supervisor);
                       if (row.pesquisador) pesquisadores.add(row.pesquisador);
                   });
                   if (data.length < pageSize) hasMore = false;
