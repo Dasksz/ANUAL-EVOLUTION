@@ -8509,6 +8509,25 @@ $$;
 
 
 -- =========================================================================
+-- =========================================================================
+-- TABLE: config_equipes
+-- =========================================================================
+CREATE TABLE IF NOT EXISTS public.config_equipes (
+    codsupervisor text PRIMARY KEY,
+    equipe text NOT NULL
+);
+
+ALTER TABLE public.config_equipes ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.config_equipes TO anon, authenticated;
+
+-- Inserindo os mapeamentos padrão
+INSERT INTO public.config_equipes (codsupervisor, equipe) VALUES  
+    ('12', 'SHARK'),
+    ('18', 'ÁGUIA'),
+    ('1', 'ÁGUIA'),
+    ('21', 'ÁGUIA')
+ON CONFLICT (codsupervisor) DO UPDATE SET equipe = EXCLUDED.equipe;
+
 -- TABLE: api_ia
 -- =========================================================================
 CREATE TABLE IF NOT EXISTS public.api_ia (
