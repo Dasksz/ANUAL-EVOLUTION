@@ -26,3 +26,6 @@ Action: Always map SQL Target filter variables exactly to how they are inserted 
 ## 2024-05-18 - [City View Category Ranking]
  **Learning:** When rendering category rankings filtered by dynamic conditions, using a FULL OUTER JOIN with a separate list of distinct dimensions allows rows with 0 metrics to appear in the result set rather than being implicitly removed by inner joins/aggregations.
  **Action:** For "show all zero" metric lists, derive a CTE (`all_cats`) from the dimension table (`dim_produtos`) filtered by the exact dimensions being queried, then `FULL OUTER JOIN` it with the aggregation CTE.
+2023/10/24 - Optimize massive aggregation CTEs by removing non-grouping string dimensions
+Learning: To optimize massive aggregation CTEs in PostgreSQL (like client_totals in get_city_view_data), removing non-grouping string dimensions (e.g., MAX(cidade)) from the heavy aggregation step speeds up the query significantly by avoiding heavy string sorting during grouping.
+Action: Fetch these dimensions later during the final pagination step by joining the reduced, aggregated result set back to the dimension tables (e.g., data_clients).

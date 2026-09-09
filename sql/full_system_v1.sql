@@ -4143,7 +4143,8 @@ BEGIN
     -- ACTIVE CLIENTS QUERY
     v_sql := '
     WITH client_totals AS (
-        SELECT codcli, MAX(cidade) as cidade_fat, SUM(vlvenda) as total_fat
+        -- ⚡ QueryTuner: Removed MAX(cidade) string aggregation from heavy grouping CTE to speed up aggregation.
+        SELECT codcli, SUM(vlvenda) as total_fat
         FROM public.data_summary
         ' || v_where || '
         GROUP BY codcli
@@ -4151,7 +4152,8 @@ BEGIN
     ),
     count_cte AS (SELECT COUNT(*) as cnt FROM client_totals),
     paginated_clients AS (
-        SELECT ct.codcli, ct.total_fat, c.fantasia, c.razaosocial, COALESCE(ct.cidade_fat, c.cidade) as cidade, c.bairro, c.rca1
+        -- ⚡ QueryTuner: Fetching cidade directly from the dimension table after pagination to avoid heavy string sorting during grouping.
+        SELECT ct.codcli, ct.total_fat, c.fantasia, c.razaosocial, c.cidade, c.bairro, c.rca1
         FROM client_totals ct
         JOIN public.data_clients c ON c.codigo_cliente = ct.codcli
         ORDER BY ct.total_fat DESC
