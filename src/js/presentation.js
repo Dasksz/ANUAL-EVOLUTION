@@ -462,16 +462,8 @@ document.addEventListener("DOMContentLoaded", async () => {
               }
 
               let media = 0;
-              if (data && data.length > 0) {
-                  let totalGeral = 0;
-                  let validCount = 0;
-                  data.forEach(d => {
-                      if (d.pontuacao_geral !== null) {
-                          totalGeral += Number(d.pontuacao_geral);
-                          validCount++;
-                      }
-                  });
-                  media = validCount > 0 ? (totalGeral / validCount) : 0;
+              if (data && data.kpis) {
+                  media = data.kpis.avg_score || 0;
               }
               return { period, media };
           });
