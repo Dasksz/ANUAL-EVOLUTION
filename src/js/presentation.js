@@ -369,8 +369,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   }; // End of renderCategoriasDispute
 
 
-  });
 
-  // START
   loadData();
 });
