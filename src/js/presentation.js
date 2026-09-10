@@ -366,6 +366,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (metricLabel) {
         metricLabel.textContent = `Métrica: ${activeMetric.charAt(0).toUpperCase() + activeMetric.slice(1)}`;
     }
+  }; // End of renderCategoriasDispute
+
 
   });
 
