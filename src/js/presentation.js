@@ -8,7 +8,7 @@ if (typeof window !== 'undefined' && typeof window.Chart !== 'undefined') {
 // presentation.js
 
 document.addEventListener("DOMContentLoaded", async () => {
-  setupFilters();
+
   // Initialize Swiper
   const swiper = new Swiper(".mySwiper", {
     pagination: {
