@@ -1568,10 +1568,17 @@ if (typeof self !== "undefined") {
       const collectDimensions = (salesArray) => {
         salesArray.forEach((sale) => {
           if (sale.codsupervisor && sale.superv) {
-            if (String(sale.codsupervisor) === "8") {
-              dimSupervisors.set(sale.codsupervisor, "BALCAO");
+            const codSup = String(sale.codsupervisor).trim();
+            if (codSup === "8") {
+              dimSupervisors.set(codSup, "BALCAO");
             } else {
-              dimSupervisors.set(sale.codsupervisor, sale.superv);
+              const currentName = dimSupervisors.get(codSup);
+              const newName = String(sale.superv).trim();
+              const isInvalid = newName.toUpperCase().includes("INATIVO") || newName.toUpperCase().includes("DESCONHECIDO");
+
+              if (!currentName || !isInvalid) {
+                dimSupervisors.set(codSup, newName);
+              }
             }
           }
           if (sale.codusur && sale.nome)

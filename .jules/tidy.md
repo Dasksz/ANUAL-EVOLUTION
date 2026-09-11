@@ -19,3 +19,4 @@
 ## 2024-05-19 : (Fix Table Headers)
 **Learning:** When debugging table headers not matching data in a UI component, check both the HTML `thead` and JS `.innerHTML` definitions for column count and order mismatches.
 **Action:** Always ensure that when modifying the data payload in the Javascript to display more info (e.g. `sellerCode`), the HTML column definitions are updated alongside it.
+## 2026/09/11 : (Supervisor Dim Tidy) **Learning:** The UI extracted dimension data can be overridden by inactive sales if their supervisor tags are mutated. **Action:** Always enforce a validation check before upserting into in-memory dimension maps.
