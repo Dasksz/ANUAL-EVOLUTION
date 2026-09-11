@@ -38,6 +38,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   );
   const summaryModalContent = document.getElementById("summary-modal-content");
 
+  const rankingModal = document.getElementById("ranking-modal");
+  const rankingModalContent = document.getElementById("ranking-modal-content");
+
+
   // Modal open/close logic
   function openModal() {
     summaryModal.classList.remove("hidden");
@@ -70,6 +74,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (closeModalBtn) closeModalBtn.addEventListener("click", closeModal);
   if (summaryModalBackdrop)
     summaryModalBackdrop.addEventListener("click", closeModal);
+
+  function closeRankingModal() {
+    rankingBackdrop.classList.remove("opacity-100");
+    rankingBackdrop.classList.add("opacity-0");
+
+    rankingModalContent.classList.remove("scale-100", "opacity-100");
+    rankingModalContent.classList.add("scale-95", "opacity-0");
+
+    setTimeout(() => {
+      rankingModal.classList.add("hidden");
+      rankingModal.classList.remove("flex");
+    }, 300);
+  }
+
 
   const closeRankingBtn = document.getElementById("close-ranking-modal-btn");
   const rankingBackdrop = document.getElementById("ranking-modal-backdrop");
