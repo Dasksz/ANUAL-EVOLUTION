@@ -8854,9 +8854,13 @@ const setupInnovationsFilters = async () => {
         } catch(e) {}
 
         if (!refLastSalesDate) {
-            refLastSalesDate = await fetchLastSalesDate();
+            if (typeof fetchLastSalesDate === 'function') {
+                refLastSalesDate = await fetchLastSalesDate();
+            } else if (typeof window.fetchLastSalesDate === 'function') {
+                refLastSalesDate = await window.fetchLastSalesDate();
+            }
         }
-        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
+        const { currentYear, currentMonth } = typeof getDefaultFilterDates === 'function' ? getDefaultFilterDates(refLastSalesDate) : {currentYear: new Date().getFullYear(), currentMonth: new Date().getMonth() + 1};
 
     if (anoSelect && filterData.anos) {
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
@@ -8963,9 +8967,13 @@ async function loadLojaPerfeitaFilters(forceClear = false) {
         } catch(e) {}
 
         if (!refLastSalesDate) {
-            refLastSalesDate = await fetchLastSalesDate();
+            if (typeof fetchLastSalesDate === 'function') {
+                refLastSalesDate = await fetchLastSalesDate();
+            } else if (typeof window.fetchLastSalesDate === 'function') {
+                refLastSalesDate = await window.fetchLastSalesDate();
+            }
         }
-        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
+        const { currentYear, currentMonth } = typeof getDefaultFilterDates === 'function' ? getDefaultFilterDates(refLastSalesDate) : {currentYear: new Date().getFullYear(), currentMonth: new Date().getMonth() + 1};
 
     // Fetch available years from Loja Perfeita, or fallback to global years
     const { data: lpYears } = await supabase.from('data_nota_perfeita').select('ano').order('ano', {ascending: false});
@@ -9595,9 +9603,13 @@ window.clearAllFilters = async function(prefix) {
         } catch(e) {}
 
         if (!refLastSalesDate) {
-            refLastSalesDate = await fetchLastSalesDate();
+            if (typeof fetchLastSalesDate === 'function') {
+                refLastSalesDate = await fetchLastSalesDate();
+            } else if (typeof window.fetchLastSalesDate === 'function') {
+                refLastSalesDate = await window.fetchLastSalesDate();
+            }
         }
-        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
+        const { currentYear, currentMonth } = typeof getDefaultFilterDates === 'function' ? getDefaultFilterDates(refLastSalesDate) : {currentYear: new Date().getFullYear(), currentMonth: new Date().getMonth() + 1};
 
         if (anoSelect) {
             // Check if currentYear is in options, if not default to 'todos'
@@ -9721,9 +9733,13 @@ window.clearAllFilters = async function(prefix) {
         } catch(e) {}
 
         if (!refLastSalesDate) {
-            refLastSalesDate = await fetchLastSalesDate();
+            if (typeof fetchLastSalesDate === 'function') {
+                refLastSalesDate = await fetchLastSalesDate();
+            } else if (typeof window.fetchLastSalesDate === 'function') {
+                refLastSalesDate = await window.fetchLastSalesDate();
+            }
         }
-        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
+        const { currentYear, currentMonth } = typeof getDefaultFilterDates === 'function' ? getDefaultFilterDates(refLastSalesDate) : {currentYear: new Date().getFullYear(), currentMonth: new Date().getMonth() + 1};
 
         if (anoSelect) {
             let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
@@ -9857,9 +9873,13 @@ window.clearAllFilters = async function(prefix) {
         } catch(e) {}
 
         if (!refLastSalesDate) {
-            refLastSalesDate = await fetchLastSalesDate();
+            if (typeof fetchLastSalesDate === 'function') {
+                refLastSalesDate = await fetchLastSalesDate();
+            } else if (typeof window.fetchLastSalesDate === 'function') {
+                refLastSalesDate = await window.fetchLastSalesDate();
+            }
         }
-        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
+        const { currentYear, currentMonth } = typeof getDefaultFilterDates === 'function' ? getDefaultFilterDates(refLastSalesDate) : {currentYear: new Date().getFullYear(), currentMonth: new Date().getMonth() + 1};
         
         if (anoSelect) {
             let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
@@ -10013,9 +10033,13 @@ const setupEstrelasFilters = async () => {
         } catch(e) {}
 
         if (!refLastSalesDate) {
-            refLastSalesDate = await fetchLastSalesDate();
+            if (typeof fetchLastSalesDate === 'function') {
+                refLastSalesDate = await fetchLastSalesDate();
+            } else if (typeof window.fetchLastSalesDate === 'function') {
+                refLastSalesDate = await window.fetchLastSalesDate();
+            }
         }
-        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
+        const { currentYear, currentMonth } = typeof getDefaultFilterDates === 'function' ? getDefaultFilterDates(refLastSalesDate) : {currentYear: new Date().getFullYear(), currentMonth: new Date().getMonth() + 1};
 
     if (anoSelect && filterData.anos) {
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
@@ -12124,9 +12148,13 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
         } catch(e) {}
 
         if (!refLastSalesDate) {
-            refLastSalesDate = await fetchLastSalesDate();
+            if (typeof fetchLastSalesDate === 'function') {
+                refLastSalesDate = await fetchLastSalesDate();
+            } else if (typeof window.fetchLastSalesDate === 'function') {
+                refLastSalesDate = await window.fetchLastSalesDate();
+            }
         }
-        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
+        const { currentYear, currentMonth } = typeof getDefaultFilterDates === 'function' ? getDefaultFilterDates(refLastSalesDate) : {currentYear: new Date().getFullYear(), currentMonth: new Date().getMonth() + 1};
         const refMonth = parseInt(ano) === currentYear ? currentMonth : (parseInt(ano) < currentYear ? 12 : 0);
 
         const { data, error } = await supabase.rpc('get_metas_anuais_chart', {
