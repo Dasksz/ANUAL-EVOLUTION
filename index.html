@@ -1339,6 +1339,59 @@
                             </div>
                         </div>
 
+
+                        <!-- Growth Target KPIs -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6" id="goals-growth-kpis">
+                            <!-- Realizado Ano Anterior -->
+                            <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-lg relative overflow-hidden group">
+                                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <svg class="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                </div>
+                                <div class="relative z-10">
+                                    <h3 class="text-slate-400 text-sm font-medium mb-1">Realizado Ano Anterior</h3>
+                                    <div class="flex items-baseline gap-2">
+                                        <span class="text-2xl font-bold text-white" id="goals-kpi-ant">R$ 0,00</span>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-2">Total acumulado de Jan a Dez.</p>
+                                </div>
+                            </div>
+
+                            <!-- Realizado Ano Atual -->
+                            <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-lg relative overflow-hidden group">
+                                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <svg class="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                                </div>
+                                <div class="relative z-10">
+                                    <h3 class="text-slate-400 text-sm font-medium mb-1">Realizado Ano Atual</h3>
+                                    <div class="flex flex-col gap-1">
+                                        <div class="flex items-baseline gap-2">
+                                            <span class="text-2xl font-bold text-white" id="goals-kpi-atual">R$ 0,00</span>
+                                        </div>
+                                        <p class="text-xs font-medium text-teal-400" id="goals-kpi-meta-estimada" style="display: none;">Meta Estimada: R$ 0,00</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Estimativa de Crescimento -->
+                            <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-lg relative overflow-hidden ring-1 ring-blue-500/30">
+                                <div class="relative z-10">
+                                    <h3 class="text-blue-400 text-sm font-bold mb-2 flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                        Estimativa de Crescimento (%)
+                                    </h3>
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <input type="number" id="goals-growth-input" class="w-24 bg-slate-900 border border-slate-600 rounded-lg p-2 text-white font-bold text-lg text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none" placeholder="Ex: 15" step="0.1">
+                                        <button id="goals-growth-save-btn" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg font-medium transition-colors text-sm shadow-lg disabled:opacity-50">
+                                            Aplicar
+                                        </button>
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 leading-tight">
+                                        Informe o % esperado de crescimento sobre o ano anterior. As metas dos meses restantes serão ajustadas proporcionalmente.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Chart Section -->
                         <div class="bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700 mb-6">
                             <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
