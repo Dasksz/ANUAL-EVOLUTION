@@ -24,3 +24,7 @@
 ## 2024/09/14 : (Goals UI Components)
 **Learning:** Added dynamic goal calculations by introducing a growth estimation feature and expanding the goals bar chart logic to display both the estimated metrics for the year and previous year metrics.
 **Action:** Always maintain UI consistency by explicitly checking the active tab / metric, and toggling specific inputs based on the supported datasets to prevent user confusion.
+
+## 2024/09/14 : (Dynamic Month Closure)
+**Learning:** Hardcoded calendar month limits for evaluating financial metrics ("is the month closed?") break when users analyze historical/future projection years, or when databases are updated retrospectively.
+**Action:** Always derive the "current operating month" by querying `MAX(date)` from the primary transaction tables, rather than relying on `CURRENT_DATE`, to ensure projection algorithms respect the state of the database instead of the physical machine time.

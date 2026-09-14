@@ -1574,7 +1574,7 @@ if (typeof self !== "undefined") {
             } else {
               const currentName = dimSupervisors.get(codSup);
               const newName = String(sale.superv).trim();
-              const isInvalid = newName.toUpperCase().includes("INATIVO") || newName.toUpperCase().includes("DESCONHECIDO");
+              const isInvalid = newName.toUpperCase().includes("INATIVOS") || newName.toUpperCase().includes("DESCONHECIDO");
 
               if (!currentName || !isInvalid) {
                 dimSupervisors.set(codSup, newName);
