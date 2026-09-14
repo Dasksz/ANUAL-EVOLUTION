@@ -11460,6 +11460,57 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
         }
 
         // --- Event Listeners for Import ---
+
+    // Growth Input Listeners
+    const inputGrowth = document.getElementById('goals-growth-input');
+    const saveGrowthBtn = document.getElementById('goals-growth-save-btn');
+
+    if (inputGrowth && saveGrowthBtn) {
+        // Prevent duplicate listeners
+        if (!saveGrowthBtn.dataset.listenerAttached) {
+            saveGrowthBtn.dataset.listenerAttached = 'true';
+
+            inputGrowth.addEventListener('input', () => {
+                inputGrowth.dataset.dirty = 'true';
+                saveGrowthBtn.classList.remove('disabled:opacity-50');
+                saveGrowthBtn.disabled = false;
+            });
+
+            saveGrowthBtn.addEventListener('click', async () => {
+                const val = parseFloat(inputGrowth.value);
+                if (isNaN(val)) {
+                    alert('Por favor, insira um percentual válido.');
+                    return;
+                }
+
+                if (confirm(`Deseja alterar a estimativa de crescimento do ano para ${val}%?`)) {
+                    try {
+                        saveGrowthBtn.disabled = true;
+                        saveGrowthBtn.textContent = 'Salvando...';
+                        const ano = document.getElementById('goals-filter-ano').value;
+                        const { error } = await supabase.rpc('save_meta_crescimento', {
+                            p_ano: parseInt(ano),
+                            p_percentual: val
+                        });
+
+                        if (error) throw error;
+
+                        inputGrowth.dataset.dirty = '';
+                        const sup = document.getElementById('goals-filter-supervisor').value;
+                        const usu = document.getElementById('goals-filter-vendedor').value;
+                        await renderGoalsChart(ano, sup === 'Todos' ? null : sup, usu === 'Todos' ? null : usu);
+                    } catch (error) {
+                        console.error('Error saving growth:', error);
+                        alert('Erro ao salvar o percentual.');
+                    } finally {
+                        saveGrowthBtn.textContent = 'Aplicar';
+                        saveGrowthBtn.disabled = false;
+                    }
+                }
+            });
+        }
+    }
+
         const importBtn = document.getElementById('goals-sv-import-btn');
         const importModal = document.getElementById('import-goals-modal');
         const importCloseBtn = document.getElementById('import-goals-close-btn');
@@ -12478,7 +12529,58 @@ async function setupGoalsFilters() {
 
 // --- IMPORT MODAL LOGIC ---
 document.addEventListener('DOMContentLoaded', () => {
-    const importBtn = document.getElementById('goals-sv-import-btn');
+
+    // Growth Input Listeners
+    const inputGrowth = document.getElementById('goals-growth-input');
+    const saveGrowthBtn = document.getElementById('goals-growth-save-btn');
+
+    if (inputGrowth && saveGrowthBtn) {
+        // Prevent duplicate listeners
+        if (!saveGrowthBtn.dataset.listenerAttached) {
+            saveGrowthBtn.dataset.listenerAttached = 'true';
+
+            inputGrowth.addEventListener('input', () => {
+                inputGrowth.dataset.dirty = 'true';
+                saveGrowthBtn.classList.remove('disabled:opacity-50');
+                saveGrowthBtn.disabled = false;
+            });
+
+            saveGrowthBtn.addEventListener('click', async () => {
+                const val = parseFloat(inputGrowth.value);
+                if (isNaN(val)) {
+                    alert('Por favor, insira um percentual válido.');
+                    return;
+                }
+
+                if (confirm(`Deseja alterar a estimativa de crescimento do ano para ${val}%?`)) {
+                    try {
+                        saveGrowthBtn.disabled = true;
+                        saveGrowthBtn.textContent = 'Salvando...';
+                        const ano = document.getElementById('goals-filter-ano').value;
+                        const { error } = await supabase.rpc('save_meta_crescimento', {
+                            p_ano: parseInt(ano),
+                            p_percentual: val
+                        });
+
+                        if (error) throw error;
+
+                        inputGrowth.dataset.dirty = '';
+                        const sup = document.getElementById('goals-filter-supervisor').value;
+                        const usu = document.getElementById('goals-filter-vendedor').value;
+                        await renderGoalsChart(ano, sup === 'Todos' ? null : sup, usu === 'Todos' ? null : usu);
+                    } catch (error) {
+                        console.error('Error saving growth:', error);
+                        alert('Erro ao salvar o percentual.');
+                    } finally {
+                        saveGrowthBtn.textContent = 'Aplicar';
+                        saveGrowthBtn.disabled = false;
+                    }
+                }
+            });
+        }
+    }
+
+        const importBtn = document.getElementById('goals-sv-import-btn');
     const importModal = document.getElementById('import-goals-modal');
     if (!importModal) return;
 

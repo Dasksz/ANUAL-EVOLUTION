@@ -9091,7 +9091,6 @@ BEGIN
             COALESCE(SUM(real_fat_geral), 0) as fat_realizado,
             COALESCE(SUM(real_vol_geral), 0) as vol_realizado
         FROM agregado_realizado_atual
-        WHERE mes <= p_mes_atual
     ),
 
     pesos_restantes AS (
