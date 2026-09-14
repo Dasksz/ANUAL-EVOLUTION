@@ -12329,7 +12329,16 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
                     borderColor: 'rgb(148, 163, 184)',
                     borderWidth: 1,
                     borderRadius: 4,
-                    datalabels: { display: false }
+                    datalabels: {
+                        display: true,
+                        align: 'end',
+                        anchor: 'end',
+                        color: 'rgb(148, 163, 184)',
+                        font: { size: 10, weight: 'bold' },
+                        formatter: function(value) {
+                            return value > 0 ? formatCompact(value) : '';
+                        }
+                    }
                 },
                 {
                     label: 'Realizado Atual',
@@ -12342,7 +12351,7 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
                         display: true,
                         align: 'end',
                         anchor: 'end',
-                        color: '#94a3b8',
+                        color: 'rgb(59, 130, 246)',
                         font: { size: 10, weight: 'bold' },
                         formatter: function(value) {
                             return value > 0 ? formatCompact(value) : '';
@@ -12356,7 +12365,16 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
                     borderColor: 'rgb(94, 234, 212)',
                     borderWidth: 1,
                     borderRadius: 4,
-                    datalabels: { display: false }
+                    datalabels: {
+                        display: true,
+                        align: 'end',
+                        anchor: 'end',
+                        color: 'rgb(94, 234, 212)',
+                        font: { size: 10, weight: 'bold' },
+                        formatter: function(value) {
+                            return value > 0 ? formatCompact(value) : '';
+                        }
+                    }
                 }
             ];
         } else {
@@ -12368,7 +12386,16 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
                     borderColor: 'rgb(94, 234, 212)',
                     borderWidth: 1,
                     borderRadius: 4,
-                    datalabels: { display: false }
+                    datalabels: {
+                        display: true,
+                        align: 'end',
+                        anchor: 'end',
+                        color: 'rgb(94, 234, 212)',
+                        font: { size: 10, weight: 'bold' },
+                        formatter: function(value) {
+                            return value > 0 ? formatCompact(value) : '';
+                        }
+                    }
                 },
                 {
                     label: 'Realizado',
@@ -12377,7 +12404,16 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
                     borderColor: 'rgb(59, 130, 246)',
                     borderWidth: 1,
                     borderRadius: 4,
-                    datalabels: { display: false }
+                    datalabels: {
+                        display: true,
+                        align: 'end',
+                        anchor: 'end',
+                        color: 'rgb(59, 130, 246)',
+                        font: { size: 10, weight: 'bold' },
+                        formatter: function(value) {
+                            return value > 0 ? formatCompact(value) : '';
+                        }
+                    }
                 }
             ];
         }
@@ -12482,12 +12518,36 @@ async function setupGoalsFilters() {
     try {
         const { data: sups } = await supabase.from('dim_supervisores').select('*').order('nome');
         if(sups) {
-            supSelect.innerHTML = '<option value="">Todos</option>' + sups.map(s => `<option value="${s.codigo}">${s.nome}</option>`).join('');
+            // Group by name to avoid duplicates
+            const uniqueSupsMap = new Map();
+            sups.forEach(s => {
+                if (!uniqueSupsMap.has(s.nome)) {
+                    uniqueSupsMap.set(s.nome, s.codigo);
+                }
+            });
+            const uniqueSups = Array.from(uniqueSupsMap, ([nome, codigo]) => ({nome, codigo}));
+            supSelect.innerHTML = '<option value="">Todos</option>' + uniqueSups.map(s => `<option value="${s.codigo}">${s.nome}</option>`).join('');
         }
 
         const { data: vens } = await supabase.from('dim_vendedores').select('*').order('nome');
         if(vens) {
-            venSelect.innerHTML = '<option value="">Todos</option>' + vens.map(v => `<option value="${v.codigo}">${v.nome}</option>`).join('');
+            const vensToRender = [];
+            for (const v of vens) {
+                if (v.nome && v.nome.toUpperCase().includes('DESCONHECIDO')) {
+                    // Check if this unknown vendor has any sales data
+                    const { count, error: countError } = await supabase
+                        .from('data_summary')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('codusur', v.codigo);
+
+                    if (!countError && count && count > 0) {
+                        vensToRender.push(v);
+                    }
+                } else {
+                    vensToRender.push(v);
+                }
+            }
+            venSelect.innerHTML = '<option value="">Todos</option>' + vensToRender.map(v => `<option value="${v.codigo}">${v.nome}</option>`).join('');
         }
     } catch(e) {
         console.error("Erro populando dropdowns:", e);
@@ -12504,6 +12564,19 @@ async function setupGoalsFilters() {
     mesSelect.addEventListener('change', triggerRender);
     supSelect.addEventListener('change', triggerRender);
     venSelect.addEventListener('change', triggerRender);
+
+    const goalsClearFiltersBtn = document.getElementById('goals-clear-filters-btn');
+    if (goalsClearFiltersBtn) {
+        goalsClearFiltersBtn.addEventListener('click', () => {
+            const currentYear = new Date().getFullYear();
+            const currentMonth = new Date().getMonth() + 1;
+            anoSelect.value = currentYear;
+            mesSelect.value = currentMonth;
+            supSelect.value = "";
+            venSelect.value = "";
+            triggerRender();
+        });
+    }
 
     // Metric Buttons
     const metricBtns = document.querySelectorAll('.goals-metric-btn');
