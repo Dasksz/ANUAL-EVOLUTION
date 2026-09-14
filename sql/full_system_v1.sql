@@ -8986,7 +8986,7 @@ CREATE OR REPLACE FUNCTION public.get_metas_anuais_chart(
     p_ano INTEGER,
     p_codsupervisor TEXT DEFAULT NULL,
     p_codusur TEXT DEFAULT NULL,
-    p_mes_atual INTEGER DEFAULT 12
+    p_mes_atual INTEGER DEFAULT 12 -- kept for compatibility, but ignored
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -8995,11 +8995,40 @@ AS $$
 DECLARE
     v_result JSONB;
     v_percentual NUMERIC;
+    v_last_sale DATE;
+    v_last_year INTEGER;
+    v_last_month INTEGER;
+    v_mes_fechado INTEGER;
 BEGIN
     -- Obter o percentual de crescimento para o ano
     SELECT percentual INTO v_percentual
     FROM public.metas_crescimento
     WHERE ano = p_ano;
+
+    -- Descobrir a data da ultima venda para saber os meses fechados/abertos
+        SELECT MAX(dtped::date) INTO v_last_sale FROM (
+        SELECT MAX(dtped) as dtped FROM public.data_history
+        UNION ALL
+        SELECT MAX(dtped) as dtped FROM public.data_detailed
+    ) q;
+    
+    IF v_last_sale IS NULL THEN
+        v_last_year := EXTRACT(YEAR FROM CURRENT_DATE);
+        v_last_month := EXTRACT(MONTH FROM CURRENT_DATE);
+    ELSE
+        v_last_year := EXTRACT(YEAR FROM v_last_sale);
+        v_last_month := EXTRACT(MONTH FROM v_last_sale);
+    END IF;
+
+    IF p_ano < v_last_year THEN
+        v_mes_fechado := 12;
+    ELSIF p_ano > v_last_year THEN
+        v_mes_fechado := 0;
+    ELSE
+        -- No mesmo ano da ultima venda, os meses anteriores sao fechados
+        -- Se estamos em Setembro (9), o mes fechado é Agosto (8). Setembro ainda recebe rateio do gap.
+        v_mes_fechado := v_last_month - 1;
+    END IF;
 
     WITH meses AS (
         SELECT generate_series(1, 12) as mes
@@ -9086,17 +9115,34 @@ BEGIN
         CROSS JOIN totais_anterior t
     ),
     
-    realizado_atual_ate_agora AS (
+    -- O gap restante é calculado subtraindo o que já foi realizado (mesmo em meses abertos) da meta total do ano.
+    -- Então precisamos somar TODO o realizado atual até agora, ou seja, todos os meses disponíveis.
+    -- Isso permite que se Setembro ja vendeu 2.5M, isso ajuda a reduzir o gap dos meses restantes (Out, Nov, Dez).
+    -- Porém, a meta para os meses FECHADOS será igual ao realizado deles.
+    -- Para os meses ABERTOS, eles recebem sua porção do Gap.
+    -- Qual é o gap exato?
+    -- Total Esperado no Ano = Total Anterior * (1 + Crescimento)
+    -- O que já foi garantido = Soma do Realizado dos Meses Fechados + O que já entrou nos meses abertos?
+    -- Se distribuímos o gap para os meses abertos, o gap é:
+    -- Gap = Total Esperado - Soma Realizado (de TODOS os meses, inclusive o que já entrou nos abertos).
+    -- Porém, se fizermos isso, a meta para os meses abertos (como Setembro) seria APENAS a parte do Gap.
+    -- Mas Setembro já realizou, digamos, 2.5M. A coluna de meta de Setembro no gráfico não pode ser só o "restinho".
+    -- A meta total do mês de Setembro deve ser: O que Setembro já realizou + A parte dele no Gap.
+    -- Ou, mais precisamente, a meta projetada dos meses abertos (Soma Meta Meses Abertos) = Total Esperado - Soma Realizado Meses Fechados.
+    -- E aí rateamos esse valor proporcionalmente pelo peso (do ano passado) dos meses abertos.
+    
+    realizado_meses_fechados AS (
         SELECT 
-            COALESCE(SUM(real_fat_geral), 0) as fat_realizado,
-            COALESCE(SUM(real_vol_geral), 0) as vol_realizado
+            COALESCE(SUM(real_fat_geral), 0) as fat_realizado_fechado,
+            COALESCE(SUM(real_vol_geral), 0) as vol_realizado_fechado
         FROM agregado_realizado_atual
+        WHERE mes <= v_mes_fechado
     ),
     
-    pesos_restantes AS (
+    pesos_restantes_abertos AS (
         SELECT 
-            SUM(CASE WHEN mes > p_mes_atual THEN peso_fat ELSE 0 END) as soma_peso_fat_restante,
-            SUM(CASE WHEN mes > p_mes_atual THEN peso_vol ELSE 0 END) as soma_peso_vol_restante
+            SUM(CASE WHEN mes > v_mes_fechado THEN peso_fat ELSE 0 END) as soma_peso_fat_restante,
+            SUM(CASE WHEN mes > v_mes_fechado THEN peso_vol ELSE 0 END) as soma_peso_vol_restante
         FROM pesos_mes_anterior
     ),
 
@@ -9110,12 +9156,12 @@ BEGIN
             
             CASE 
                 WHEN v_percentual IS NULL THEN COALESCE(ms.meta_fat_geral, 0)
-                WHEN m.mes <= p_mes_atual THEN COALESCE(r.real_fat_geral, 0)
+                WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_fat_geral, 0) -- Mês Fechado = Realizado
                 ELSE 
-                    -- Gap rateado por peso normalizado dos meses restantes
+                    -- Mês Aberto = Rateio da Meta Restante
                     CASE 
                         WHEN pr.soma_peso_fat_restante > 0 THEN
-                            GREATEST(0, (t.total_fat * (1 + (v_percentual / 100.0)) - ra_atual.fat_realizado)) * (pm.peso_fat / pr.soma_peso_fat_restante)
+                            GREATEST(0, (t.total_fat * (1 + (v_percentual / 100.0)) - r_fechado.fat_realizado_fechado)) * (pm.peso_fat / pr.soma_peso_fat_restante)
                         ELSE 0 
                     END
             END as meta_fat_geral,
@@ -9126,11 +9172,11 @@ BEGIN
             
             CASE 
                 WHEN v_percentual IS NULL THEN COALESCE(ms.meta_vol_geral, 0)
-                WHEN m.mes <= p_mes_atual THEN COALESCE(r.real_vol_geral, 0)
+                WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_vol_geral, 0) -- Mês Fechado = Realizado
                 ELSE 
                     CASE 
                         WHEN pr.soma_peso_vol_restante > 0 THEN
-                            GREATEST(0, (t.total_vol * (1 + (v_percentual / 100.0)) - ra_atual.vol_realizado)) * (pm.peso_vol / pr.soma_peso_vol_restante)
+                            GREATEST(0, (t.total_vol * (1 + (v_percentual / 100.0)) - r_fechado.vol_realizado_fechado)) * (pm.peso_vol / pr.soma_peso_vol_restante)
                         ELSE 0 
                     END
             END as meta_vol_geral,
@@ -9151,8 +9197,8 @@ BEGIN
         LEFT JOIN metas_salvas ms ON ms.mes = m.mes
         LEFT JOIN pesos_mes_anterior pm ON pm.mes = m.mes
         CROSS JOIN totais_anterior t
-        CROSS JOIN pesos_restantes pr
-        CROSS JOIN realizado_atual_ate_agora ra_atual
+        CROSS JOIN pesos_restantes_abertos pr
+        CROSS JOIN realizado_meses_fechados r_fechado
         ORDER BY m.mes
     )
 
@@ -9161,8 +9207,8 @@ BEGIN
         'percentual_crescimento', v_percentual,
         'kpi_total_anterior_fat', (SELECT total_fat FROM totais_anterior),
         'kpi_total_anterior_vol', (SELECT total_vol FROM totais_anterior),
-        'kpi_total_atual_fat', (SELECT fat_realizado FROM realizado_atual_ate_agora),
-        'kpi_total_atual_vol', (SELECT vol_realizado FROM realizado_atual_ate_agora)
+        'kpi_total_atual_fat', (SELECT COALESCE(SUM(real_fat_geral), 0) FROM agregado_realizado_atual),
+        'kpi_total_atual_vol', (SELECT COALESCE(SUM(real_vol_geral), 0) FROM agregado_realizado_atual)
     ) INTO v_result
     FROM chart_data;
 
