@@ -9006,7 +9006,11 @@ BEGIN
     WHERE ano = p_ano;
 
     -- Descobrir a data da ultima venda para saber os meses fechados/abertos
-    SELECT MAX(dtped::date) INTO v_last_sale FROM public.data_summary_frequency;
+        SELECT MAX(dtped::date) INTO v_last_sale FROM (
+        SELECT MAX(dtped) as dtped FROM public.data_history
+        UNION ALL
+        SELECT MAX(dtped) as dtped FROM public.data_detailed
+    ) q;
 
     IF v_last_sale IS NULL THEN
         v_last_year := EXTRACT(YEAR FROM CURRENT_DATE);
