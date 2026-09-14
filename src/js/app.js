@@ -8847,7 +8847,16 @@ const setupInnovationsFilters = async () => {
     const mesSelect = document.getElementById('innovations-mes-filter');
     
     await fetchLastSalesDate();
-    const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+    let refLastSalesDate = null;
+        try {
+            if (typeof lastSalesDate !== 'undefined') refLastSalesDate = lastSalesDate;
+            else if (window.lastSalesDate) refLastSalesDate = window.lastSalesDate;
+        } catch(e) {}
+        
+        if (!refLastSalesDate) {
+            refLastSalesDate = await fetchLastSalesDate();
+        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
 
     if (anoSelect && filterData.anos) {
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
@@ -8947,7 +8956,16 @@ async function loadLojaPerfeitaFilters(forceClear = false) {
     const mesSelect = document.getElementById('lp-mes-filter');
 
     if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
-    const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+    let refLastSalesDate = null;
+        try {
+            if (typeof lastSalesDate !== 'undefined') refLastSalesDate = lastSalesDate;
+            else if (window.lastSalesDate) refLastSalesDate = window.lastSalesDate;
+        } catch(e) {}
+        
+        if (!refLastSalesDate) {
+            refLastSalesDate = await fetchLastSalesDate();
+        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
 
     // Fetch available years from Loja Perfeita, or fallback to global years
     const { data: lpYears } = await supabase.from('data_nota_perfeita').select('ano').order('ano', {ascending: false});
@@ -9570,7 +9588,16 @@ window.clearAllFilters = async function(prefix) {
         const mesSelect = document.getElementById('innovations-mes-filter');
 
         await fetchLastSalesDate();
-        const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+        let refLastSalesDate = null;
+        try {
+            if (typeof lastSalesDate !== 'undefined') refLastSalesDate = lastSalesDate;
+            else if (window.lastSalesDate) refLastSalesDate = window.lastSalesDate;
+        } catch(e) {}
+        
+        if (!refLastSalesDate) {
+            refLastSalesDate = await fetchLastSalesDate();
+        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
 
         if (anoSelect) {
             // Check if currentYear is in options, if not default to 'todos'
@@ -9687,7 +9714,16 @@ window.clearAllFilters = async function(prefix) {
         const mesSelect = document.getElementById('estrelas-mes-filter');
 
         if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
-        const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+        let refLastSalesDate = null;
+        try {
+            if (typeof lastSalesDate !== 'undefined') refLastSalesDate = lastSalesDate;
+            else if (window.lastSalesDate) refLastSalesDate = window.lastSalesDate;
+        } catch(e) {}
+        
+        if (!refLastSalesDate) {
+            refLastSalesDate = await fetchLastSalesDate();
+        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
 
         if (anoSelect) {
             let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
@@ -9814,7 +9850,16 @@ window.clearAllFilters = async function(prefix) {
         const mesSelect = document.getElementById('lp-mes-filter');
         
         if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
-        const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+        let refLastSalesDate = null;
+        try {
+            if (typeof lastSalesDate !== 'undefined') refLastSalesDate = lastSalesDate;
+            else if (window.lastSalesDate) refLastSalesDate = window.lastSalesDate;
+        } catch(e) {}
+        
+        if (!refLastSalesDate) {
+            refLastSalesDate = await fetchLastSalesDate();
+        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
         
         if (anoSelect) {
             let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
@@ -9961,7 +10006,16 @@ const setupEstrelasFilters = async () => {
 
     // We assume fetchLastSalesDate logic is available globally (it is in app.js)
     if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
-    const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+    let refLastSalesDate = null;
+        try {
+            if (typeof lastSalesDate !== 'undefined') refLastSalesDate = lastSalesDate;
+            else if (window.lastSalesDate) refLastSalesDate = window.lastSalesDate;
+        } catch(e) {}
+        
+        if (!refLastSalesDate) {
+            refLastSalesDate = await fetchLastSalesDate();
+        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
 
     if (anoSelect && filterData.anos) {
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
@@ -12063,7 +12117,16 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
     if(loading) loading.classList.remove('hidden');
 
     try {
-        const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+        let refLastSalesDate = null;
+        try {
+            if (typeof lastSalesDate !== 'undefined') refLastSalesDate = lastSalesDate;
+            else if (window.lastSalesDate) refLastSalesDate = window.lastSalesDate;
+        } catch(e) {}
+        
+        if (!refLastSalesDate) {
+            refLastSalesDate = await fetchLastSalesDate();
+        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
         const refMonth = parseInt(ano) === currentYear ? currentMonth : (parseInt(ano) < currentYear ? 12 : 0);
 
         const { data, error } = await supabase.rpc('get_metas_anuais_chart', {
@@ -12077,7 +12140,7 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
 
         let resData = data || {};
         let chartData = resData.chart_data || [];
-
+        
         // Ensure 12 months
         if (chartData.length === 0) {
             for(let i=1; i<=12; i++) chartData.push({mes: i});
@@ -12088,7 +12151,7 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
         const kpiAtual = document.getElementById('goals-kpi-atual');
         const kpiMeta = document.getElementById('goals-kpi-meta-estimada');
         const inputGrowth = document.getElementById('goals-growth-input');
-
+        
         // Retain input state if user is typing, otherwise update from DB
         if (inputGrowth && !inputGrowth.dataset.dirty) {
             inputGrowth.value = resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined ? resData.percentual_crescimento : '';
@@ -12097,7 +12160,7 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
         const activeMetric = document.querySelector('.goals-metric-btn.active').dataset.metric;
         let isFatVol = activeMetric === 'fat' || activeMetric === 'vol';
         const growthKpis = document.getElementById('goals-growth-kpis');
-
+        
         if (growthKpis) {
             growthKpis.style.display = isFatVol ? 'grid' : 'none';
         }
@@ -12129,7 +12192,7 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
         }
 
         const labels = chartData.map(d => getMonthName(null, d.mes));
-
+        
         let dataMeta = [];
         let dataReal = [];
         let dataRealAnt = [];
@@ -12166,7 +12229,7 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
         }
 
         const ctx = canvas.getContext('2d');
-
+        
         const formatCompact = (val) => {
             if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
             if (val >= 1000) return (val / 1000).toFixed(0) + 'k';
