@@ -12063,53 +12063,101 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
     if(loading) loading.classList.remove('hidden');
 
     try {
+        const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+        const refMonth = parseInt(ano) === currentYear ? currentMonth : (parseInt(ano) < currentYear ? 12 : 0);
+
         const { data, error } = await supabase.rpc('get_metas_anuais_chart', {
             p_ano: ano,
             p_codsupervisor: codsupervisor,
-            p_codusur: codusur
+            p_codusur: codusur,
+            p_mes_atual: refMonth
         });
 
         if (error) throw error;
 
-        let chartData = data || [];
+        let resData = data || {};
+        let chartData = resData.chart_data || [];
+
         // Ensure 12 months
         if (chartData.length === 0) {
             for(let i=1; i<=12; i++) chartData.push({mes: i});
         }
 
-        const labels = chartData.map(d => MONTHS_PT_SHORT ? MONTHS_PT_SHORT[d.mes] : d.mes);
+        // Fill KPIs
+        const kpiAnt = document.getElementById('goals-kpi-ant');
+        const kpiAtual = document.getElementById('goals-kpi-atual');
+        const kpiMeta = document.getElementById('goals-kpi-meta-estimada');
+        const inputGrowth = document.getElementById('goals-growth-input');
 
-        let dataReal = [];
+        // Retain input state if user is typing, otherwise update from DB
+        if (inputGrowth && !inputGrowth.dataset.dirty) {
+            inputGrowth.value = resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined ? resData.percentual_crescimento : '';
+        }
+
+        const activeMetric = document.querySelector('.goals-metric-btn.active').dataset.metric;
+        let isFatVol = activeMetric === 'fat' || activeMetric === 'vol';
+        const growthKpis = document.getElementById('goals-growth-kpis');
+
+        if (growthKpis) {
+            growthKpis.style.display = isFatVol ? 'grid' : 'none';
+        }
+
+        if (activeMetric === 'fat') {
+            if(kpiAnt) kpiAnt.textContent = formatCurrency(resData.kpi_total_anterior_fat || 0);
+            if(kpiAtual) kpiAtual.textContent = formatCurrency(resData.kpi_total_atual_fat || 0);
+            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
+                const estimada = (resData.kpi_total_anterior_fat || 0) * (1 + (resData.percentual_crescimento / 100));
+                kpiMeta.textContent = `Meta Estimada: ${formatCurrency(estimada)}`;
+                kpiMeta.style.display = 'block';
+            } else {
+                if(kpiMeta) kpiMeta.style.display = 'none';
+            }
+        } else if (activeMetric === 'vol') {
+            if(kpiAnt) kpiAnt.textContent = formatWeight(resData.kpi_total_anterior_vol || 0);
+            if(kpiAtual) kpiAtual.textContent = formatWeight(resData.kpi_total_atual_vol || 0);
+            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
+                const estimada = (resData.kpi_total_anterior_vol || 0) * (1 + (resData.percentual_crescimento / 100));
+                kpiMeta.textContent = `Meta Estimada: ${formatWeight(estimada)}`;
+                kpiMeta.style.display = 'block';
+            } else {
+                if(kpiMeta) kpiMeta.style.display = 'none';
+            }
+        } else {
+            if(kpiAnt) kpiAnt.textContent = '--';
+            if(kpiAtual) kpiAtual.textContent = '--';
+            if(kpiMeta) kpiMeta.style.display = 'none';
+        }
+
+        const labels = chartData.map(d => getMonthName(null, d.mes));
+
         let dataMeta = [];
-        let formatVal = (v) => v;
+        let dataReal = [];
+        let dataRealAnt = [];
+        let formatVal = null;
 
         chartData.forEach(d => {
-            switch(currentGoalsMetric) {
-                case 'fat':
-                    dataReal.push(d.real_fat_geral || 0);
-                    dataMeta.push(d.meta_fat_geral || 0);
-                    formatVal = formatCurrency;
-                    break;
-                case 'vol':
-                    dataReal.push(d.real_vol_geral || 0);
-                    dataMeta.push(d.meta_vol_geral || 0);
-                    formatVal = formatTons;
-                    break;
-                case 'pos':
-                    dataReal.push(d.real_pos_geral || 0);
-                    dataMeta.push(d.meta_pos_geral || 0);
-                    formatVal = formatInteger;
-                    break;
-                case 'salty':
-                    dataReal.push(d.real_pos_salty || 0);
-                    dataMeta.push(d.meta_pos_salty || 0);
-                    formatVal = formatInteger;
-                    break;
-                case 'foods':
-                    dataReal.push(d.real_pos_foods || 0);
-                    dataMeta.push(d.meta_pos_foods || 0);
-                    formatVal = formatInteger;
-                    break;
+            if (activeMetric === 'fat') {
+                dataRealAnt.push(d.real_fat_geral_ant || 0);
+                dataReal.push(d.real_fat_geral || 0);
+                dataMeta.push(d.meta_fat_geral || 0);
+                formatVal = formatCurrency;
+            } else if (activeMetric === 'vol') {
+                dataRealAnt.push(d.real_vol_geral_ant || 0);
+                dataReal.push(d.real_vol_geral || 0);
+                dataMeta.push(d.meta_vol_geral || 0);
+                formatVal = formatWeight;
+            } else if (activeMetric === 'pos') {
+                dataReal.push(d.real_pos_geral || 0);
+                dataMeta.push(d.meta_pos_geral || 0);
+                formatVal = val => Math.round(val).toString();
+            } else if (activeMetric === 'salty') {
+                dataReal.push(d.real_pos_salty || 0);
+                dataMeta.push(d.meta_pos_salty || 0);
+                formatVal = val => Math.round(val).toString();
+            } else if (activeMetric === 'foods') {
+                dataReal.push(d.real_pos_foods || 0);
+                dataMeta.push(d.meta_pos_foods || 0);
+                formatVal = val => Math.round(val).toString();
             }
         });
 
@@ -12118,29 +12166,84 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
         }
 
         const ctx = canvas.getContext('2d');
+
+        const formatCompact = (val) => {
+            if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+            if (val >= 1000) return (val / 1000).toFixed(0) + 'k';
+            return Math.round(val).toString();
+        };
+
+        let datasets = [];
+
+        if (isFatVol) {
+            datasets = [
+                {
+                    label: 'Ano Anterior',
+                    data: dataRealAnt,
+                    backgroundColor: 'rgba(148, 163, 184, 0.4)', // slate-400
+                    borderColor: 'rgb(148, 163, 184)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    datalabels: { display: false }
+                },
+                {
+                    label: 'Realizado Atual',
+                    data: dataReal,
+                    backgroundColor: 'rgba(59, 130, 246, 0.8)', // blue-500
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    datalabels: {
+                        display: true,
+                        align: 'end',
+                        anchor: 'end',
+                        color: '#94a3b8',
+                        font: { size: 10, weight: 'bold' },
+                        formatter: function(value) {
+                            return value > 0 ? formatCompact(value) : '';
+                        }
+                    }
+                },
+                {
+                    label: 'Meta Estimada',
+                    data: dataMeta,
+                    backgroundColor: 'rgba(94, 234, 212, 0.2)', // teal-300
+                    borderColor: 'rgb(94, 234, 212)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    datalabels: { display: false }
+                }
+            ];
+        } else {
+            datasets = [
+                {
+                    label: 'Meta',
+                    data: dataMeta,
+                    backgroundColor: 'rgba(94, 234, 212, 0.2)', // teal-300 with opacity
+                    borderColor: 'rgb(94, 234, 212)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    datalabels: { display: false }
+                },
+                {
+                    label: 'Realizado',
+                    data: dataReal,
+                    backgroundColor: 'rgba(59, 130, 246, 0.8)', // blue-500
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    datalabels: { display: false }
+                }
+            ];
+        }
+
         goalsChartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
-                datasets: [
-                    {
-                        label: 'Meta',
-                        data: dataMeta,
-                        backgroundColor: 'rgba(94, 234, 212, 0.2)', // teal-300 with opacity
-                        borderColor: 'rgb(94, 234, 212)',
-                        borderWidth: 1,
-                        borderRadius: 4
-                    },
-                    {
-                        label: 'Realizado',
-                        data: dataReal,
-                        backgroundColor: 'rgba(59, 130, 246, 0.8)', // blue-500
-                        borderColor: 'rgb(59, 130, 246)',
-                        borderWidth: 1,
-                        borderRadius: 4
-                    }
-                ]
+                datasets: datasets
             },
+            plugins: [ChartDataLabels],
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -12163,20 +12266,22 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
                         }
                     },
                     datalabels: {
-                        display: false // Hide by default to avoid clutter
+                        display: false // default false
                     }
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        grid: { color: '#334155' }, // slate-700
+                        grace: '15%',
+                        grid: {
+                            color: 'rgba(51, 65, 85, 0.5)' // slate-700
+                        },
                         ticks: {
                             color: '#94a3b8',
                             callback: function(value) {
-                                if(currentGoalsMetric === 'fat') {
-                                    return 'R$ ' + (value/1000).toFixed(0) + 'k';
-                                }
-                                return value;
+                                if (value >= 1000000) return 'R$ ' + (value/1000000).toFixed(1) + 'M';
+                                if (value >= 1000) return 'R$ ' + (value/1000).toFixed(0) + 'k';
+                                return 'R$ ' + value;
                             }
                         }
                     },
@@ -12188,8 +12293,8 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
             }
         });
 
-    } catch(err) {
-        console.error("Erro ao renderizar grafico de metas:", err);
+    } catch (error) {
+        console.error('Error fetching chart data:', error);
     } finally {
         if(loading) loading.classList.add('hidden');
     }

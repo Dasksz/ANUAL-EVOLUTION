@@ -4705,6 +4705,18 @@ END $$;
 -- Index for fast client lookup in Loja Perfeita
 create index if not exists idx_nota_perfeita_codcli on public.data_nota_perfeita (codigo_cliente);
 
+
+-- Tabela Metas Crescimento Estimado
+create table if not exists public.metas_crescimento (
+  id uuid default uuid_generate_v4 () primary key,
+  ano integer,
+  percentual numeric,
+  created_at timestamp with time zone default now(),
+  updated_at timestamp with time zone default now()
+);
+ALTER TABLE public.metas_crescimento ENABLE ROW LEVEL SECURITY;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_metas_crescimento_ano ON public.metas_crescimento (ano);
+
 -- Tabela de Relação Rota Involves
 create table if not exists public.relacao_rota_involves (
   id uuid default uuid_generate_v4 () primary key,
@@ -8953,10 +8965,28 @@ END;
 $$;
 
 -- Nova função para buscar dados agregados do ano para o gráfico da página de Metas
+
+-- Função para salvar percentual de crescimento
+CREATE OR REPLACE FUNCTION save_meta_crescimento(
+    p_ano INT,
+    p_percentual NUMERIC
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    INSERT INTO public.metas_crescimento (ano, percentual, updated_at)
+    VALUES (p_ano, p_percentual, now())
+    ON CONFLICT (ano)
+    DO UPDATE SET percentual = EXCLUDED.percentual, updated_at = now();
+END;
+$$;
 CREATE OR REPLACE FUNCTION public.get_metas_anuais_chart(
     p_ano INTEGER,
     p_codsupervisor TEXT DEFAULT NULL,
-    p_codusur TEXT DEFAULT NULL
+    p_codusur TEXT DEFAULT NULL,
+    p_mes_atual INTEGER DEFAULT 12
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -8964,7 +8994,13 @@ SECURITY DEFINER
 AS $$
 DECLARE
     v_result JSONB;
+    v_percentual NUMERIC;
 BEGIN
+    -- Obter o percentual de crescimento para o ano
+    SELECT percentual INTO v_percentual
+    FROM public.metas_crescimento
+    WHERE ano = p_ano;
+
     WITH meses AS (
         SELECT generate_series(1, 12) as mes
     ),
@@ -8972,46 +9008,25 @@ BEGIN
     metas_salvas AS (
         SELECT
             m.mes,
-            -- FATURAMENTO
             SUM(CASE WHEN m.metrica = 'FAT' AND m.categoria IN ('total_elma', 'total_foods') THEN m.valor_ajuste ELSE 0 END) as meta_fat_geral,
-
-            -- TONELADA
             SUM(CASE WHEN m.metrica = 'VOL' AND m.categoria IN ('tonelada_elma', 'tonelada_foods') THEN m.valor_ajuste ELSE 0 END) as meta_vol_geral,
-
-            -- POSITIVACAO
             SUM(CASE WHEN m.metrica = 'POS' AND m.categoria IN ('total_elma', 'total_foods') THEN m.valor_ajuste ELSE 0 END) as meta_pos_geral,
-
-            -- MIX SALTY
             SUM(CASE WHEN m.metrica = 'MIX' AND m.categoria IN ('mix_salty') THEN m.valor_ajuste ELSE 0 END) as meta_pos_salty,
-
-            -- MIX FOODS
             SUM(CASE WHEN m.metrica = 'MIX' AND m.categoria IN ('mix_foods') THEN m.valor_ajuste ELSE 0 END) as meta_pos_foods
-
         FROM public.metas_sv m
         WHERE m.ano = p_ano
           AND (p_codusur IS NULL OR p_codusur = '' OR m.vendedor_nome = p_codusur)
         GROUP BY m.mes
     ),
 
-    base_realizado AS (
+    base_realizado_atual AS (
         SELECT
-            mes,
-            codcli,
+            mes, codcli,
             SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda IN ('1', '9') THEN vlvenda ELSE 0 END) as vlvenda_total,
             SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as peso_total,
-
             MAX(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND vlvenda > 0 THEN 1 ELSE 0 END) as is_positivado,
-
-            MAX(has_cheetos) as has_cheetos,
-            MAX(has_doritos) as has_doritos,
-            MAX(has_fandangos) as has_fandangos,
-            MAX(has_ruffles) as has_ruffles,
-            MAX(has_torcida) as has_torcida,
-
-            MAX(has_toddynho) as has_toddynho,
-            MAX(has_toddy) as has_toddy,
-            MAX(has_quaker) as has_quaker,
-            MAX(has_kerococo) as has_kerococo
+            MAX(has_cheetos) as has_cheetos, MAX(has_doritos) as has_doritos, MAX(has_fandangos) as has_fandangos, MAX(has_ruffles) as has_ruffles, MAX(has_torcida) as has_torcida,
+            MAX(has_toddynho) as has_toddynho, MAX(has_toddy) as has_toddy, MAX(has_quaker) as has_quaker, MAX(has_kerococo) as has_kerococo
         FROM public.data_summary_frequency
         WHERE ano = p_ano
           AND (p_codusur IS NULL OR p_codusur = '' OR codusur = p_codusur)
@@ -9020,53 +9035,136 @@ BEGIN
         GROUP BY mes, codcli
     ),
 
-    agregado_realizado AS (
+    base_realizado_anterior AS (
+        SELECT
+            mes, codcli,
+            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda IN ('1', '9') THEN vlvenda ELSE 0 END) as vlvenda_total,
+            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as peso_total
+        FROM public.data_summary_frequency
+        WHERE ano = p_ano - 1
+          AND (p_codusur IS NULL OR p_codusur = '' OR codusur = p_codusur)
+          AND (p_codsupervisor IS NULL OR p_codsupervisor = '' OR codsupervisor = p_codsupervisor)
+          AND tipovenda NOT IN ('5', '11')
+        GROUP BY mes, codcli
+    ),
+
+    agregado_realizado_atual AS (
         SELECT
             mes,
             SUM(vlvenda_total) as real_fat_geral,
             SUM(peso_total) as real_vol_geral,
             COUNT(DISTINCT CASE WHEN is_positivado = 1 THEN codcli END) as real_pos_geral,
-
-            -- Mix Salty (Positivou nas 5 familias)
             COUNT(DISTINCT CASE WHEN COALESCE(has_cheetos,0)=1 AND COALESCE(has_doritos,0)=1 AND COALESCE(has_fandangos,0)=1 AND COALESCE(has_ruffles,0)=1 AND COALESCE(has_torcida,0)=1 THEN codcli END) as real_pos_salty,
-
-            -- Mix Foods (Positivou nas 4 familias)
             COUNT(DISTINCT CASE WHEN COALESCE(has_toddynho,0)=1 AND COALESCE(has_toddy,0)=1 AND COALESCE(has_quaker,0)=1 AND COALESCE(has_kerococo,0)=1 THEN codcli END) as real_pos_foods
-
-        FROM base_realizado
+        FROM base_realizado_atual
         GROUP BY mes
+    ),
+
+    agregado_realizado_anterior AS (
+        SELECT
+            mes,
+            SUM(vlvenda_total) as real_fat_geral,
+            SUM(peso_total) as real_vol_geral
+        FROM base_realizado_anterior
+        GROUP BY mes
+    ),
+
+    totais_anterior AS (
+        SELECT
+            COALESCE(SUM(real_fat_geral), 0) as total_fat,
+            COALESCE(SUM(real_vol_geral), 0) as total_vol
+        FROM agregado_realizado_anterior
+    ),
+
+    pesos_mes_anterior AS (
+        SELECT
+            m.mes,
+            CASE WHEN t.total_fat > 0 THEN COALESCE(a.real_fat_geral, 0) / t.total_fat ELSE 1.0/12.0 END as peso_fat,
+            CASE WHEN t.total_vol > 0 THEN COALESCE(a.real_vol_geral, 0) / t.total_vol ELSE 1.0/12.0 END as peso_vol
+        FROM meses m
+        LEFT JOIN agregado_realizado_anterior a ON a.mes = m.mes
+        CROSS JOIN totais_anterior t
+    ),
+
+    realizado_atual_ate_agora AS (
+        SELECT
+            COALESCE(SUM(real_fat_geral), 0) as fat_realizado,
+            COALESCE(SUM(real_vol_geral), 0) as vol_realizado
+        FROM agregado_realizado_atual
+        WHERE mes <= p_mes_atual
+    ),
+
+    pesos_restantes AS (
+        SELECT
+            SUM(CASE WHEN mes > p_mes_atual THEN peso_fat ELSE 0 END) as soma_peso_fat_restante,
+            SUM(CASE WHEN mes > p_mes_atual THEN peso_vol ELSE 0 END) as soma_peso_vol_restante
+        FROM pesos_mes_anterior
     ),
 
     chart_data AS (
         SELECT
             m.mes,
-            -- Faturamento
+
+            -- Faturamento (Fat)
+            COALESCE(ra.real_fat_geral, 0) as real_fat_geral_ant,
             COALESCE(r.real_fat_geral, 0) as real_fat_geral,
-            COALESCE(ms.meta_fat_geral, 0) as meta_fat_geral,
 
-            -- Tonelada
+            CASE
+                WHEN v_percentual IS NULL THEN COALESCE(ms.meta_fat_geral, 0)
+                WHEN m.mes <= p_mes_atual THEN COALESCE(r.real_fat_geral, 0)
+                ELSE
+                    -- Gap rateado por peso normalizado dos meses restantes
+                    CASE
+                        WHEN pr.soma_peso_fat_restante > 0 THEN
+                            GREATEST(0, (t.total_fat * (1 + (v_percentual / 100.0)) - ra_atual.fat_realizado)) * (pm.peso_fat / pr.soma_peso_fat_restante)
+                        ELSE 0
+                    END
+            END as meta_fat_geral,
+
+            -- Tonelada (Vol)
+            COALESCE(ra.real_vol_geral, 0) as real_vol_geral_ant,
             COALESCE(r.real_vol_geral, 0) as real_vol_geral,
-            COALESCE(ms.meta_vol_geral, 0) as meta_vol_geral,
 
-            -- Positivacao Geral
+            CASE
+                WHEN v_percentual IS NULL THEN COALESCE(ms.meta_vol_geral, 0)
+                WHEN m.mes <= p_mes_atual THEN COALESCE(r.real_vol_geral, 0)
+                ELSE
+                    CASE
+                        WHEN pr.soma_peso_vol_restante > 0 THEN
+                            GREATEST(0, (t.total_vol * (1 + (v_percentual / 100.0)) - ra_atual.vol_realizado)) * (pm.peso_vol / pr.soma_peso_vol_restante)
+                        ELSE 0
+                    END
+            END as meta_vol_geral,
+
+            -- Outras metricas (permanecem originais)
             COALESCE(r.real_pos_geral, 0) as real_pos_geral,
             COALESCE(ms.meta_pos_geral, 0) as meta_pos_geral,
 
-            -- Salty
             COALESCE(r.real_pos_salty, 0) as real_pos_salty,
             COALESCE(ms.meta_pos_salty, 0) as meta_pos_salty,
 
-            -- Foods
             COALESCE(r.real_pos_foods, 0) as real_pos_foods,
             COALESCE(ms.meta_pos_foods, 0) as meta_pos_foods
 
         FROM meses m
-        LEFT JOIN agregado_realizado r ON r.mes = m.mes
+        LEFT JOIN agregado_realizado_atual r ON r.mes = m.mes
+        LEFT JOIN agregado_realizado_anterior ra ON ra.mes = m.mes
         LEFT JOIN metas_salvas ms ON ms.mes = m.mes
+        LEFT JOIN pesos_mes_anterior pm ON pm.mes = m.mes
+        CROSS JOIN totais_anterior t
+        CROSS JOIN pesos_restantes pr
+        CROSS JOIN realizado_atual_ate_agora ra_atual
         ORDER BY m.mes
     )
 
-    SELECT COALESCE(jsonb_agg(row_to_json(chart_data)), '[]'::jsonb) INTO v_result
+    SELECT jsonb_build_object(
+        'chart_data', COALESCE(jsonb_agg(row_to_json(chart_data)), '[]'::jsonb),
+        'percentual_crescimento', v_percentual,
+        'kpi_total_anterior_fat', (SELECT total_fat FROM totais_anterior),
+        'kpi_total_anterior_vol', (SELECT total_vol FROM totais_anterior),
+        'kpi_total_atual_fat', (SELECT fat_realizado FROM realizado_atual_ate_agora),
+        'kpi_total_atual_vol', (SELECT vol_realizado FROM realizado_atual_ate_agora)
+    ) INTO v_result
     FROM chart_data;
 
     RETURN v_result;
