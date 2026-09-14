@@ -12219,7 +12219,10 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
             if(kpiMeta) kpiMeta.style.display = 'none';
         }
 
-        const labels = chartData.map(d => getMonthName(null, d.mes));
+
+        const monthNamesMap = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+        const labels = chartData.map(d => monthNamesMap[d.mes - 1]);
+
 
         let dataMeta = [];
         let dataReal = [];
