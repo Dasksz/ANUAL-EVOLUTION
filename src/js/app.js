@@ -8847,7 +8847,16 @@ const setupInnovationsFilters = async () => {
     const mesSelect = document.getElementById('innovations-mes-filter');
     
     await fetchLastSalesDate();
-    const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+    let refLastSalesDate = null;
+        try {
+            if (typeof lastSalesDate !== 'undefined') refLastSalesDate = lastSalesDate;
+            else if (window.lastSalesDate) refLastSalesDate = window.lastSalesDate;
+        } catch(e) {}
+
+        if (!refLastSalesDate) {
+            refLastSalesDate = await fetchLastSalesDate();
+        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
 
     if (anoSelect && filterData.anos) {
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
@@ -8947,7 +8956,16 @@ async function loadLojaPerfeitaFilters(forceClear = false) {
     const mesSelect = document.getElementById('lp-mes-filter');
 
     if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
-    const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+    let refLastSalesDate = null;
+        try {
+            if (typeof lastSalesDate !== 'undefined') refLastSalesDate = lastSalesDate;
+            else if (window.lastSalesDate) refLastSalesDate = window.lastSalesDate;
+        } catch(e) {}
+
+        if (!refLastSalesDate) {
+            refLastSalesDate = await fetchLastSalesDate();
+        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
 
     // Fetch available years from Loja Perfeita, or fallback to global years
     const { data: lpYears } = await supabase.from('data_nota_perfeita').select('ano').order('ano', {ascending: false});
@@ -9570,7 +9588,16 @@ window.clearAllFilters = async function(prefix) {
         const mesSelect = document.getElementById('innovations-mes-filter');
 
         await fetchLastSalesDate();
-        const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+        let refLastSalesDate = null;
+        try {
+            if (typeof lastSalesDate !== 'undefined') refLastSalesDate = lastSalesDate;
+            else if (window.lastSalesDate) refLastSalesDate = window.lastSalesDate;
+        } catch(e) {}
+
+        if (!refLastSalesDate) {
+            refLastSalesDate = await fetchLastSalesDate();
+        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
 
         if (anoSelect) {
             // Check if currentYear is in options, if not default to 'todos'
@@ -9687,7 +9714,16 @@ window.clearAllFilters = async function(prefix) {
         const mesSelect = document.getElementById('estrelas-mes-filter');
 
         if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
-        const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+        let refLastSalesDate = null;
+        try {
+            if (typeof lastSalesDate !== 'undefined') refLastSalesDate = lastSalesDate;
+            else if (window.lastSalesDate) refLastSalesDate = window.lastSalesDate;
+        } catch(e) {}
+
+        if (!refLastSalesDate) {
+            refLastSalesDate = await fetchLastSalesDate();
+        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
 
         if (anoSelect) {
             let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
@@ -9814,7 +9850,16 @@ window.clearAllFilters = async function(prefix) {
         const mesSelect = document.getElementById('lp-mes-filter');
         
         if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
-        const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+        let refLastSalesDate = null;
+        try {
+            if (typeof lastSalesDate !== 'undefined') refLastSalesDate = lastSalesDate;
+            else if (window.lastSalesDate) refLastSalesDate = window.lastSalesDate;
+        } catch(e) {}
+
+        if (!refLastSalesDate) {
+            refLastSalesDate = await fetchLastSalesDate();
+        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
         
         if (anoSelect) {
             let hasYear = Array.from(anoSelect.options).some(opt => opt.value === currentYear);
@@ -9961,7 +10006,16 @@ const setupEstrelasFilters = async () => {
 
     // We assume fetchLastSalesDate logic is available globally (it is in app.js)
     if(typeof fetchLastSalesDate === 'function') await fetchLastSalesDate();
-    const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+    let refLastSalesDate = null;
+        try {
+            if (typeof lastSalesDate !== 'undefined') refLastSalesDate = lastSalesDate;
+            else if (window.lastSalesDate) refLastSalesDate = window.lastSalesDate;
+        } catch(e) {}
+
+        if (!refLastSalesDate) {
+            refLastSalesDate = await fetchLastSalesDate();
+        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
 
     if (anoSelect && filterData.anos) {
         // ⚡ Bolt Optimization: Use single innerHTML assignment instead of verbose document.createElement in loop
@@ -12063,7 +12117,16 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
     if(loading) loading.classList.remove('hidden');
 
     try {
-        const { currentYear, currentMonth } = getDefaultFilterDates(lastSalesDate);
+        let refLastSalesDate = null;
+        try {
+            if (typeof lastSalesDate !== 'undefined') refLastSalesDate = lastSalesDate;
+            else if (window.lastSalesDate) refLastSalesDate = window.lastSalesDate;
+        } catch(e) {}
+
+        if (!refLastSalesDate) {
+            refLastSalesDate = await fetchLastSalesDate();
+        }
+        const { currentYear, currentMonth } = getDefaultFilterDates(refLastSalesDate);
         const refMonth = parseInt(ano) === currentYear ? currentMonth : (parseInt(ano) < currentYear ? 12 : 0);
 
         const { data, error } = await supabase.rpc('get_metas_anuais_chart', {
