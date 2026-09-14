@@ -9034,7 +9034,7 @@ BEGIN
           AND tipovenda NOT IN ('5', '11')
         GROUP BY mes, codcli
     ),
-
+    
     base_realizado_anterior AS (
         SELECT
             mes, codcli,
@@ -9059,7 +9059,7 @@ BEGIN
         FROM base_realizado_atual
         GROUP BY mes
     ),
-
+    
     agregado_realizado_anterior AS (
         SELECT
             mes,
@@ -9068,16 +9068,16 @@ BEGIN
         FROM base_realizado_anterior
         GROUP BY mes
     ),
-
+    
     totais_anterior AS (
-        SELECT
+        SELECT 
             COALESCE(SUM(real_fat_geral), 0) as total_fat,
             COALESCE(SUM(real_vol_geral), 0) as total_vol
         FROM agregado_realizado_anterior
     ),
-
+    
     pesos_mes_anterior AS (
-        SELECT
+        SELECT 
             m.mes,
             CASE WHEN t.total_fat > 0 THEN COALESCE(a.real_fat_geral, 0) / t.total_fat ELSE 1.0/12.0 END as peso_fat,
             CASE WHEN t.total_vol > 0 THEN COALESCE(a.real_vol_geral, 0) / t.total_vol ELSE 1.0/12.0 END as peso_vol
@@ -9085,17 +9085,16 @@ BEGIN
         LEFT JOIN agregado_realizado_anterior a ON a.mes = m.mes
         CROSS JOIN totais_anterior t
     ),
-
+    
     realizado_atual_ate_agora AS (
-        SELECT
+        SELECT 
             COALESCE(SUM(real_fat_geral), 0) as fat_realizado,
             COALESCE(SUM(real_vol_geral), 0) as vol_realizado
         FROM agregado_realizado_atual
-        WHERE mes <= p_mes_atual
     ),
-
+    
     pesos_restantes AS (
-        SELECT
+        SELECT 
             SUM(CASE WHEN mes > p_mes_atual THEN peso_fat ELSE 0 END) as soma_peso_fat_restante,
             SUM(CASE WHEN mes > p_mes_atual THEN peso_vol ELSE 0 END) as soma_peso_vol_restante
         FROM pesos_mes_anterior
@@ -9104,35 +9103,35 @@ BEGIN
     chart_data AS (
         SELECT
             m.mes,
-
+            
             -- Faturamento (Fat)
             COALESCE(ra.real_fat_geral, 0) as real_fat_geral_ant,
             COALESCE(r.real_fat_geral, 0) as real_fat_geral,
-
-            CASE
+            
+            CASE 
                 WHEN v_percentual IS NULL THEN COALESCE(ms.meta_fat_geral, 0)
                 WHEN m.mes <= p_mes_atual THEN COALESCE(r.real_fat_geral, 0)
-                ELSE
+                ELSE 
                     -- Gap rateado por peso normalizado dos meses restantes
-                    CASE
+                    CASE 
                         WHEN pr.soma_peso_fat_restante > 0 THEN
                             GREATEST(0, (t.total_fat * (1 + (v_percentual / 100.0)) - ra_atual.fat_realizado)) * (pm.peso_fat / pr.soma_peso_fat_restante)
-                        ELSE 0
+                        ELSE 0 
                     END
             END as meta_fat_geral,
 
             -- Tonelada (Vol)
             COALESCE(ra.real_vol_geral, 0) as real_vol_geral_ant,
             COALESCE(r.real_vol_geral, 0) as real_vol_geral,
-
-            CASE
+            
+            CASE 
                 WHEN v_percentual IS NULL THEN COALESCE(ms.meta_vol_geral, 0)
                 WHEN m.mes <= p_mes_atual THEN COALESCE(r.real_vol_geral, 0)
-                ELSE
-                    CASE
+                ELSE 
+                    CASE 
                         WHEN pr.soma_peso_vol_restante > 0 THEN
                             GREATEST(0, (t.total_vol * (1 + (v_percentual / 100.0)) - ra_atual.vol_realizado)) * (pm.peso_vol / pr.soma_peso_vol_restante)
-                        ELSE 0
+                        ELSE 0 
                     END
             END as meta_vol_geral,
 
