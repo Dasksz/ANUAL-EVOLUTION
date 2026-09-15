@@ -11367,7 +11367,9 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 // 1. Explicit Blocklist
                 if (upperName === 'BALCAO' || upperName === 'BALCÃO' || 
                     upperName.includes('TOTAL') || upperName.includes('SUPERVISOR') || upperName.includes('GERAL') ||
-                    upperName === 'VENDEDOR' || upperName === 'NOME' || upperName === 'CODIGO' || upperName === 'CÓDIGO') {
+                    upperName === 'VENDEDOR' || upperName === 'NOME' || upperName === 'CODIGO' || upperName === 'CÓDIGO' ||
+                    upperName.includes('GV') || upperName === 'GERAL PRIME' || upperName === 'TIAGO JOSÉ DE S' || upperName.includes('AMADO') ||
+                    upperName === '12' || upperName === '21' || upperName === '8' || (sellerCodeCandidate && ['12', '21', '8', 'GV', 'BALCAO'].includes(String(sellerCodeCandidate).toUpperCase()))) {
                     continue;
                 }
 
@@ -11853,11 +11855,13 @@ async function renderGoalsView() {
 
     const p_codsupervisor = supSelect && supSelect.value ? supSelect.value : null;
     const p_codusur = venSelect && venSelect.value ? venSelect.value : null;
+    const catSelect = document.getElementById('goals-filter-categoria');
+    const p_categoria = catSelect && catSelect.value ? catSelect.value : 'Todos';
 
     loading.classList.remove('hidden');
 
     // Update Chart
-    await renderGoalsChart(currentGoalsAno, p_codsupervisor, p_codusur);
+    await renderGoalsChart(currentGoalsAno, p_codsupervisor, p_codusur, p_categoria);
 
     tableHead.innerHTML = '';
     tableBody.innerHTML = '';
@@ -12184,7 +12188,7 @@ async function renderGoalsView() {
 }
 
 
-async function renderGoalsChart(ano, codsupervisor, codusur) {
+async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos') {
     const canvas = document.getElementById('goals-annual-chart');
     const loading = document.getElementById('goals-chart-loading');
     if(!canvas) return;
@@ -12212,7 +12216,8 @@ async function renderGoalsChart(ano, codsupervisor, codusur) {
             p_ano: ano,
             p_codsupervisor: codsupervisor,
             p_codusur: codusur,
-            p_mes_atual: refMonth
+            p_mes_atual: refMonth,
+            p_categoria: categoria
         });
 
         if (error) throw error;
@@ -12564,6 +12569,8 @@ async function setupGoalsFilters() {
     mesSelect.addEventListener('change', triggerRender);
     supSelect.addEventListener('change', triggerRender);
     venSelect.addEventListener('change', triggerRender);
+    const catSelect = document.getElementById('goals-filter-categoria');
+    if (catSelect) catSelect.addEventListener('change', triggerRender);
 
     const goalsClearFiltersBtn = document.getElementById('goals-clear-filters-btn');
     if (goalsClearFiltersBtn) {
@@ -12574,6 +12581,7 @@ async function setupGoalsFilters() {
             mesSelect.value = currentMonth;
             supSelect.value = "";
             venSelect.value = "";
+            if(catSelect) catSelect.value = "Todos";
             triggerRender();
         });
     }
@@ -12594,7 +12602,8 @@ async function setupGoalsFilters() {
             const a = document.getElementById('goals-filter-ano')?.value;
             const s = document.getElementById('goals-filter-supervisor')?.value;
             const v = document.getElementById('goals-filter-vendedor')?.value;
-            renderGoalsChart(parseInt(a,10)||currentYear, s||null, v||null);
+            const c = document.getElementById('goals-filter-categoria')?.value || 'Todos';
+            renderGoalsChart(parseInt(a,10)||currentYear, s||null, v||null, c);
         });
     });
 }
