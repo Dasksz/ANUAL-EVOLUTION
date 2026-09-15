@@ -12317,67 +12317,55 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
 
         chartData.forEach(d => {
             if (activeMetric === 'fat') {
-            if(kpiAnt) kpiAnt.textContent = formatCurrency(resData.kpi_total_anterior_fat || 0);
-            if(kpiAtual) kpiAtual.textContent = formatCurrency(resData.kpi_total_atual_fat || 0);
-            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
-                const estimada = (resData.kpi_total_anterior_fat || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${formatCurrency(estimada)}`;
-                kpiMeta.style.display = 'block';
-            } else {
-                if(kpiMeta) kpiMeta.style.display = 'none';
+                dataReal.push(d.kpi_realizado_atual_fat || 0);
+                dataMeta.push(d.kpi_meta_estimada_fat || 0);
+                dataRealAnt.push(d.kpi_realizado_anterior_fat || 0);
+                formatVal = formatCurrency;
+            } else if (activeMetric === 'vol') {
+                dataReal.push(d.kpi_realizado_atual_vol || 0);
+                dataMeta.push(d.kpi_meta_estimada_vol || 0);
+                dataRealAnt.push(d.kpi_realizado_anterior_vol || 0);
+                formatVal = formatWeight;
+            } else if (activeMetric === 'pos') {
+                dataReal.push(Math.round(d.kpi_realizado_atual_pos || 0));
+                dataMeta.push(Math.round(d.kpi_meta_estimada_pos || 0));
+                dataRealAnt.push(Math.round(d.kpi_realizado_anterior_pos || 0));
+                formatVal = function(v) { return formatInteger(v); };
+            } else if (activeMetric === 'salty') {
+                dataReal.push(Math.round(d.kpi_realizado_atual_salty || 0));
+                dataMeta.push(Math.round(d.kpi_meta_estimada_salty || 0));
+                dataRealAnt.push(Math.round(d.kpi_realizado_anterior_salty || 0));
+                formatVal = function(v) { return formatInteger(v); };
+            } else if (activeMetric === 'foods') {
+                dataReal.push(Math.round(d.kpi_realizado_atual_foods || 0));
+                dataMeta.push(Math.round(d.kpi_meta_estimada_foods || 0));
+                dataRealAnt.push(Math.round(d.kpi_realizado_anterior_foods || 0));
+                formatVal = function(v) { return formatInteger(v); };
             }
-        } else if (activeMetric === 'vol') {
-            if(kpiAnt) kpiAnt.textContent = formatWeight(resData.kpi_total_anterior_vol || 0);
-            if(kpiAtual) kpiAtual.textContent = formatWeight(resData.kpi_total_atual_vol || 0);
-            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
-                const estimada = (resData.kpi_total_anterior_vol || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${formatWeight(estimada)}`;
-                kpiMeta.style.display = 'block';
-            } else {
-                if(kpiMeta) kpiMeta.style.display = 'none';
-            }
-        } else if (activeMetric === 'pos') {
-            if(kpiAnt) kpiAnt.textContent = Math.round(resData.kpi_total_anterior_pos || 0).toString();
-            if(kpiAtual) kpiAtual.textContent = Math.round(resData.kpi_total_atual_pos || 0).toString();
-            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
-                const estimada = (resData.kpi_total_anterior_pos || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${Math.round(estimada)}`;
-                kpiMeta.style.display = 'block';
-            } else {
-                if(kpiMeta) kpiMeta.style.display = 'none';
-            }
-        } else if (activeMetric === 'salty') {
-            if(kpiAnt) kpiAnt.textContent = Math.round(resData.kpi_total_anterior_salty || 0).toString();
-            if(kpiAtual) kpiAtual.textContent = Math.round(resData.kpi_total_atual_salty || 0).toString();
-            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
-                const estimada = (resData.kpi_total_anterior_salty || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${Math.round(estimada)}`;
-                kpiMeta.style.display = 'block';
-            } else {
-                if(kpiMeta) kpiMeta.style.display = 'none';
-            }
-        } else if (activeMetric === 'foods') {
-            if(kpiAnt) kpiAnt.textContent = Math.round(resData.kpi_total_anterior_foods || 0).toString();
-            if(kpiAtual) kpiAtual.textContent = Math.round(resData.kpi_total_atual_foods || 0).toString();
-            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
-                const estimada = (resData.kpi_total_anterior_foods || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${Math.round(estimada)}`;
-                kpiMeta.style.display = 'block';
-            } else {
-                if(kpiMeta) kpiMeta.style.display = 'none';
-            }
-        } else {
-            if(kpiAnt) kpiAnt.textContent = '--';
-            if(kpiAtual) kpiAtual.textContent = '--';
-            if(kpiMeta) kpiMeta.style.display = 'none';
-        },
-                        formatter: function(value) {
-                            return value > 0 ? formatCompact(value) : '';
-                        }
+        });
+
+        const datasets = [
+            {
+                label: 'Meta Estimada',
+                data: dataMeta,
+                backgroundColor: 'rgba(203, 213, 225, 0.5)', // slate-300
+                borderColor: '#cbd5e1',
+                borderWidth: 1,
+                borderDash: [5, 5],
+                borderRadius: 4,
+                datalabels: {
+                    display: true,
+                    align: 'end',
+                    anchor: 'end',
+                    color: '#94a3b8',
+                    font: { size: 10, weight: 'bold' },
+                    formatter: function(value) {
+                        return value > 0 ? formatCompact(value) : '';
                     }
-                },
-                {
-                    label: 'Realizado',
+                }
+            },
+            {
+                label: 'Realizado',
                     data: dataReal,
                     backgroundColor: 'rgba(59, 130, 246, 0.8)', // blue-500
                     borderColor: 'rgb(59, 130, 246)',
@@ -12395,7 +12383,6 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
                     }
                 }
             ];
-        }
 
         goalsChartInstance = new Chart(ctx, {
             type: 'bar',
