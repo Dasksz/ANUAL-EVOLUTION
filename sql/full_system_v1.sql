@@ -9113,7 +9113,10 @@ BEGIN
             COALESCE(SUM(real_vol_geral), 0) as total_vol,
             (SELECT COUNT(DISTINCT CASE WHEN is_positivado = 1 THEN codcli END) FROM base_realizado_anterior) as total_pos_geral,
             (SELECT COUNT(DISTINCT CASE WHEN COALESCE(has_cheetos,0)=1 AND COALESCE(has_doritos,0)=1 AND COALESCE(has_fandangos,0)=1 AND COALESCE(has_ruffles,0)=1 AND COALESCE(has_torcida,0)=1 THEN codcli END) FROM base_realizado_anterior) as total_pos_salty,
-            (SELECT COUNT(DISTINCT CASE WHEN COALESCE(has_toddynho,0)=1 AND COALESCE(has_toddy,0)=1 AND COALESCE(has_quaker,0)=1 AND COALESCE(has_kerococo,0)=1 THEN codcli END) FROM base_realizado_anterior) as total_pos_foods
+            (SELECT COUNT(DISTINCT CASE WHEN COALESCE(has_toddynho,0)=1 AND COALESCE(has_toddy,0)=1 AND COALESCE(has_quaker,0)=1 AND COALESCE(has_kerococo,0)=1 THEN codcli END) FROM base_realizado_anterior) as total_pos_foods,
+            COALESCE(SUM(real_pos_geral), 0) as total_sum_pos_geral,
+            COALESCE(SUM(real_pos_salty), 0) as total_sum_pos_salty,
+            COALESCE(SUM(real_pos_foods), 0) as total_sum_pos_foods
         FROM agregado_realizado_anterior
     ),
     
@@ -9122,9 +9125,9 @@ BEGIN
             m.mes,
             CASE WHEN t.total_fat > 0 THEN COALESCE(a.real_fat_geral, 0) / t.total_fat ELSE 1.0/12.0 END as peso_fat,
             CASE WHEN t.total_vol > 0 THEN COALESCE(a.real_vol_geral, 0) / t.total_vol ELSE 1.0/12.0 END as peso_vol,
-            CASE WHEN t.total_pos_geral > 0 THEN COALESCE(a.real_pos_geral, 0)::NUMERIC / (SELECT SUM(real_pos_geral) FROM agregado_realizado_anterior NULLIF(SUM(real_pos_geral), 0)) ELSE 1.0/12.0 END as peso_pos,
-            CASE WHEN t.total_pos_salty > 0 THEN COALESCE(a.real_pos_salty, 0)::NUMERIC / (SELECT SUM(real_pos_salty) FROM agregado_realizado_anterior NULLIF(SUM(real_pos_salty), 0)) ELSE 1.0/12.0 END as peso_salty,
-            CASE WHEN t.total_pos_foods > 0 THEN COALESCE(a.real_pos_foods, 0)::NUMERIC / (SELECT SUM(real_pos_foods) FROM agregado_realizado_anterior NULLIF(SUM(real_pos_foods), 0)) ELSE 1.0/12.0 END as peso_foods
+            CASE WHEN t.total_sum_pos_geral > 0 THEN COALESCE(a.real_pos_geral, 0)::NUMERIC / t.total_sum_pos_geral ELSE 1.0/12.0 END as peso_pos,
+            CASE WHEN t.total_sum_pos_salty > 0 THEN COALESCE(a.real_pos_salty, 0)::NUMERIC / t.total_sum_pos_salty ELSE 1.0/12.0 END as peso_salty,
+            CASE WHEN t.total_sum_pos_foods > 0 THEN COALESCE(a.real_pos_foods, 0)::NUMERIC / t.total_sum_pos_foods ELSE 1.0/12.0 END as peso_foods
         FROM meses m
         LEFT JOIN agregado_realizado_anterior a ON a.mes = m.mes
         CROSS JOIN totais_anterior t
