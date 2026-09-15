@@ -9113,7 +9113,10 @@ BEGIN
             COALESCE(SUM(real_vol_geral), 0) as total_vol,
             (SELECT COUNT(DISTINCT CASE WHEN is_positivado = 1 THEN codcli END) FROM base_realizado_anterior) as total_pos_geral,
             (SELECT COUNT(DISTINCT CASE WHEN COALESCE(has_cheetos,0)=1 AND COALESCE(has_doritos,0)=1 AND COALESCE(has_fandangos,0)=1 AND COALESCE(has_ruffles,0)=1 AND COALESCE(has_torcida,0)=1 THEN codcli END) FROM base_realizado_anterior) as total_pos_salty,
-            (SELECT COUNT(DISTINCT CASE WHEN COALESCE(has_toddynho,0)=1 AND COALESCE(has_toddy,0)=1 AND COALESCE(has_quaker,0)=1 AND COALESCE(has_kerococo,0)=1 THEN codcli END) FROM base_realizado_anterior) as total_pos_foods
+            (SELECT COUNT(DISTINCT CASE WHEN COALESCE(has_toddynho,0)=1 AND COALESCE(has_toddy,0)=1 AND COALESCE(has_quaker,0)=1 AND COALESCE(has_kerococo,0)=1 THEN codcli END) FROM base_realizado_anterior) as total_pos_foods,
+            COALESCE(SUM(real_pos_geral), 0) as total_sum_pos_geral,
+            COALESCE(SUM(real_pos_salty), 0) as total_sum_pos_salty,
+            COALESCE(SUM(real_pos_foods), 0) as total_sum_pos_foods
         FROM agregado_realizado_anterior
     ),
     
@@ -9122,9 +9125,9 @@ BEGIN
             m.mes,
             CASE WHEN t.total_fat > 0 THEN COALESCE(a.real_fat_geral, 0) / t.total_fat ELSE 1.0/12.0 END as peso_fat,
             CASE WHEN t.total_vol > 0 THEN COALESCE(a.real_vol_geral, 0) / t.total_vol ELSE 1.0/12.0 END as peso_vol,
-            CASE WHEN t.total_pos_geral > 0 THEN COALESCE(a.real_pos_geral, 0)::NUMERIC / (SELECT SUM(real_pos_geral) FROM agregado_realizado_anterior NULLIF(SUM(real_pos_geral), 0)) ELSE 1.0/12.0 END as peso_pos,
-            CASE WHEN t.total_pos_salty > 0 THEN COALESCE(a.real_pos_salty, 0)::NUMERIC / (SELECT SUM(real_pos_salty) FROM agregado_realizado_anterior NULLIF(SUM(real_pos_salty), 0)) ELSE 1.0/12.0 END as peso_salty,
-            CASE WHEN t.total_pos_foods > 0 THEN COALESCE(a.real_pos_foods, 0)::NUMERIC / (SELECT SUM(real_pos_foods) FROM agregado_realizado_anterior NULLIF(SUM(real_pos_foods), 0)) ELSE 1.0/12.0 END as peso_foods
+            CASE WHEN t.total_sum_pos_geral > 0 THEN COALESCE(a.real_pos_geral, 0)::NUMERIC / t.total_sum_pos_geral ELSE 1.0/12.0 END as peso_pos,
+            CASE WHEN t.total_sum_pos_salty > 0 THEN COALESCE(a.real_pos_salty, 0)::NUMERIC / t.total_sum_pos_salty ELSE 1.0/12.0 END as peso_salty,
+            CASE WHEN t.total_sum_pos_foods > 0 THEN COALESCE(a.real_pos_foods, 0)::NUMERIC / t.total_sum_pos_foods ELSE 1.0/12.0 END as peso_foods
         FROM meses m
         LEFT JOIN agregado_realizado_anterior a ON a.mes = m.mes
         CROSS JOIN totais_anterior t
@@ -9134,7 +9137,7 @@ BEGIN
         SELECT 
             COALESCE(SUM(real_fat_geral), 0) as fat_realizado_fechado,
             COALESCE(SUM(real_vol_geral), 0) as vol_realizado_fechado,
-            -- Para POSitização, o realizado até agora é simplesmente a soma dos já fechados (como base para rateio),
+            -- Para POSitização, o realizado até agora é simplesmente a soma dos já fechados (como base para rateio), 
             -- embora o correto seja olhar os clientes distintos do ano.
             -- Para simplicidade matemática de rateio, somamos a quantidade mensal dos meses fechados:
             COALESCE(SUM(real_pos_geral), 0) as pos_geral_realizado_fechado,
@@ -9202,48 +9205,48 @@ BEGIN
             -- Positicação Geral
             COALESCE(ra.real_pos_geral, 0) as real_pos_geral_ant,
             COALESCE(r.real_pos_geral, 0) as real_pos_geral,
-            CASE
+            CASE 
                 WHEN ms.meta_pos_geral > 0 THEN ms.meta_pos_geral
                 WHEN v_percentual IS NULL THEN COALESCE(ms.meta_pos_geral, 0)
                 WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_pos_geral, 0)
-                ELSE
-                    CASE
+                ELSE 
+                    CASE 
                         WHEN pr.soma_peso_pos_restante > 0 THEN
                             -- GAP anual = Total Historico * (1+Perc) - Únicos Feitos no Ano
                             -- Porém, pro gráfico mensal ficar alinhado, precisamos distribuir algo mais palpável, como se a meta mensal fosse um alvo.
                             -- Abordagem A: Meta Mes = (Ano Ant Total * (1+perc) - Únicos Ano) * peso restante
                             GREATEST(0, (t.total_pos_geral * (1 + (v_percentual / 100.0)) - r_ano.ano_real_pos_geral)) * (pm.peso_pos / pr.soma_peso_pos_restante)
-                        ELSE 0
+                        ELSE 0 
                     END
             END as meta_pos_geral,
 
             -- Positivação Salty
             COALESCE(ra.real_pos_salty, 0) as real_pos_salty_ant,
             COALESCE(r.real_pos_salty, 0) as real_pos_salty,
-            CASE
+            CASE 
                 WHEN ms.meta_pos_salty > 0 THEN ms.meta_pos_salty
                 WHEN v_percentual IS NULL THEN COALESCE(ms.meta_pos_salty, 0)
                 WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_pos_salty, 0)
-                ELSE
-                    CASE
+                ELSE 
+                    CASE 
                         WHEN pr.soma_peso_salty_restante > 0 THEN
                             GREATEST(0, (t.total_pos_salty * (1 + (v_percentual / 100.0)) - r_ano.ano_real_pos_salty)) * (pm.peso_salty / pr.soma_peso_salty_restante)
-                        ELSE 0
+                        ELSE 0 
                     END
             END as meta_pos_salty,
 
             -- Positivação Foods
             COALESCE(ra.real_pos_foods, 0) as real_pos_foods_ant,
             COALESCE(r.real_pos_foods, 0) as real_pos_foods,
-            CASE
+            CASE 
                 WHEN ms.meta_pos_foods > 0 THEN ms.meta_pos_foods
                 WHEN v_percentual IS NULL THEN COALESCE(ms.meta_pos_foods, 0)
                 WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_pos_foods, 0)
-                ELSE
-                    CASE
+                ELSE 
+                    CASE 
                         WHEN pr.soma_peso_foods_restante > 0 THEN
                             GREATEST(0, (t.total_pos_foods * (1 + (v_percentual / 100.0)) - r_ano.ano_real_pos_foods)) * (pm.peso_foods / pr.soma_peso_foods_restante)
-                        ELSE 0
+                        ELSE 0 
                     END
             END as meta_pos_foods
 
