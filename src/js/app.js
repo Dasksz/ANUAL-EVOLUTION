@@ -12370,7 +12370,71 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
             if(kpiAnt) kpiAnt.textContent = '--';
             if(kpiAtual) kpiAtual.textContent = '--';
             if(kpiMeta) kpiMeta.style.display = 'none';
-        },
+        }
+
+        const monthNamesMap = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+        const labels = chartData.map(d => monthNamesMap[d.mes - 1]);
+
+        let dataMeta = [];
+        let dataReal = [];
+        let dataRealAnt = [];
+        let formatVal = null;
+
+        chartData.forEach(d => {
+            if (activeMetric === 'fat') {
+                dataRealAnt.push(d.real_fat_geral_ant || 0);
+                dataReal.push(d.real_fat_geral || 0);
+                dataMeta.push(d.meta_fat_geral || 0);
+                formatVal = formatCurrency;
+            } else if (activeMetric === 'vol') {
+                dataRealAnt.push(d.real_vol_geral_ant || 0);
+                dataReal.push(d.real_vol_geral || 0);
+                dataMeta.push(d.meta_vol_geral || 0);
+                formatVal = formatWeight;
+            } else if (activeMetric === 'pos') {
+                dataReal.push(d.real_pos_geral || 0);
+                dataMeta.push(d.meta_pos_geral || 0);
+                formatVal = val => Math.round(val).toString();
+            } else if (activeMetric === 'salty') {
+                dataReal.push(d.real_pos_salty || 0);
+                dataMeta.push(d.meta_pos_salty || 0);
+                formatVal = val => Math.round(val).toString();
+            } else if (activeMetric === 'foods') {
+                dataReal.push(d.real_pos_foods || 0);
+                dataMeta.push(d.meta_pos_foods || 0);
+                formatVal = val => Math.round(val).toString();
+            }
+        });
+
+        if (goalsChartInstance) {
+            goalsChartInstance.destroy();
+        }
+
+        const ctx = canvas.getContext('2d');
+
+        const formatCompact = (val) => {
+            if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+            if (val >= 1000) return (val / 1000).toFixed(0) + 'k';
+            return Math.round(val).toString();
+        };
+
+        let datasets = [];
+
+        if (isFatVol) {
+            datasets = [
+                {
+                    label: 'Ano Anterior',
+                    data: dataRealAnt,
+                    backgroundColor: 'rgba(148, 163, 184, 0.4)', // slate-400
+                    borderColor: 'rgb(148, 163, 184)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    datalabels: {
+                        display: true,
+                        align: 'end',
+                        anchor: 'end',
+                        color: 'rgb(148, 163, 184)',
+                        font: { size: 10, weight: 'bold' },
                         formatter: function(value) {
                             return value > 0 ? formatCompact(value) : '';
                         }
