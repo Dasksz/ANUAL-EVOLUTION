@@ -12242,7 +12242,7 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
         }
 
         const activeMetric = document.querySelector('.goals-metric-btn.active').dataset.metric;
-        let isFatVol = true; // activeMetric === 'fat' || activeMetric === 'vol'; // all metrics now support goals KPI bar
+        let isFatVol = activeMetric === 'fat' || activeMetric === 'vol';
         const growthKpis = document.getElementById('goals-growth-kpis');
         
         if (growthKpis) {
@@ -12269,41 +12269,6 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
             } else {
                 if(kpiMeta) kpiMeta.style.display = 'none';
             }
-        } else if (activeMetric === 'pos') {
-            if(kpiAnt) kpiAnt.textContent = Math.round(resData.kpi_total_anterior_pos || 0).toString();
-            if(kpiAtual) kpiAtual.textContent = Math.round(resData.kpi_total_atual_pos || 0).toString();
-            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
-                const estimada = (resData.kpi_total_anterior_pos || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${Math.round(estimada)}`;
-                kpiMeta.style.display = 'block';
-            } else {
-                if(kpiMeta) kpiMeta.style.display = 'none';
-            }
-        } else if (activeMetric === 'salty') {
-            if(kpiAnt) kpiAnt.textContent = Math.round(resData.kpi_total_anterior_salty || 0).toString();
-            if(kpiAtual) kpiAtual.textContent = Math.round(resData.kpi_total_atual_salty || 0).toString();
-            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
-                const estimada = (resData.kpi_total_anterior_salty || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${Math.round(estimada)}`;
-                kpiMeta.style.display = 'block';
-            } else {
-                if(kpiMeta) kpiMeta.style.display = 'none';
-            }
-        } else if (activeMetric === 'foods') {
-            if(kpiAnt) kpiAnt.textContent = Math.round(resData.kpi_total_anterior_foods || 0).toString();
-            if(kpiAtual) kpiAtual.textContent = Math.round(resData.kpi_total_atual_foods || 0).toString();
-            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
-                const estimada = (resData.kpi_total_anterior_foods || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${Math.round(estimada)}`;
-                kpiMeta.style.display = 'block';
-            } else {
-                if(kpiMeta) kpiMeta.style.display = 'none';
-            }
-        } else {
-            if(kpiAnt) kpiAnt.textContent = '--';
-            if(kpiAtual) kpiAtual.textContent = '--';
-            if(kpiMeta) kpiMeta.style.display = 'none';
-        }
         } else {
             if(kpiAnt) kpiAnt.textContent = '--';
             if(kpiAtual) kpiAtual.textContent = '--';
@@ -12322,60 +12287,116 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
 
         chartData.forEach(d => {
             if (activeMetric === 'fat') {
-            if(kpiAnt) kpiAnt.textContent = formatCurrency(resData.kpi_total_anterior_fat || 0);
-            if(kpiAtual) kpiAtual.textContent = formatCurrency(resData.kpi_total_atual_fat || 0);
-            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
-                const estimada = (resData.kpi_total_anterior_fat || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${formatCurrency(estimada)}`;
-                kpiMeta.style.display = 'block';
-            } else {
-                if(kpiMeta) kpiMeta.style.display = 'none';
+                dataRealAnt.push(d.real_fat_geral_ant || 0);
+                dataReal.push(d.real_fat_geral || 0);
+                dataMeta.push(d.meta_fat_geral || 0);
+                formatVal = formatCurrency;
+            } else if (activeMetric === 'vol') {
+                dataRealAnt.push(d.real_vol_geral_ant || 0);
+                dataReal.push(d.real_vol_geral || 0);
+                dataMeta.push(d.meta_vol_geral || 0);
+                formatVal = formatWeight;
+            } else if (activeMetric === 'pos') {
+                dataReal.push(d.real_pos_geral || 0);
+                dataMeta.push(d.meta_pos_geral || 0);
+                formatVal = val => Math.round(val).toString();
+            } else if (activeMetric === 'salty') {
+                dataReal.push(d.real_pos_salty || 0);
+                dataMeta.push(d.meta_pos_salty || 0);
+                formatVal = val => Math.round(val).toString();
+            } else if (activeMetric === 'foods') {
+                dataReal.push(d.real_pos_foods || 0);
+                dataMeta.push(d.meta_pos_foods || 0);
+                formatVal = val => Math.round(val).toString();
             }
-        } else if (activeMetric === 'vol') {
-            if(kpiAnt) kpiAnt.textContent = formatWeight(resData.kpi_total_anterior_vol || 0);
-            if(kpiAtual) kpiAtual.textContent = formatWeight(resData.kpi_total_atual_vol || 0);
-            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
-                const estimada = (resData.kpi_total_anterior_vol || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${formatWeight(estimada)}`;
-                kpiMeta.style.display = 'block';
-            } else {
-                if(kpiMeta) kpiMeta.style.display = 'none';
-            }
-        } else if (activeMetric === 'pos') {
-            if(kpiAnt) kpiAnt.textContent = Math.round(resData.kpi_total_anterior_pos || 0).toString();
-            if(kpiAtual) kpiAtual.textContent = Math.round(resData.kpi_total_atual_pos || 0).toString();
-            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
-                const estimada = (resData.kpi_total_anterior_pos || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${Math.round(estimada)}`;
-                kpiMeta.style.display = 'block';
-            } else {
-                if(kpiMeta) kpiMeta.style.display = 'none';
-            }
-        } else if (activeMetric === 'salty') {
-            if(kpiAnt) kpiAnt.textContent = Math.round(resData.kpi_total_anterior_salty || 0).toString();
-            if(kpiAtual) kpiAtual.textContent = Math.round(resData.kpi_total_atual_salty || 0).toString();
-            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
-                const estimada = (resData.kpi_total_anterior_salty || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${Math.round(estimada)}`;
-                kpiMeta.style.display = 'block';
-            } else {
-                if(kpiMeta) kpiMeta.style.display = 'none';
-            }
-        } else if (activeMetric === 'foods') {
-            if(kpiAnt) kpiAnt.textContent = Math.round(resData.kpi_total_anterior_foods || 0).toString();
-            if(kpiAtual) kpiAtual.textContent = Math.round(resData.kpi_total_atual_foods || 0).toString();
-            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
-                const estimada = (resData.kpi_total_anterior_foods || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${Math.round(estimada)}`;
-                kpiMeta.style.display = 'block';
-            } else {
-                if(kpiMeta) kpiMeta.style.display = 'none';
-            }
+        });
+
+        if (goalsChartInstance) {
+            goalsChartInstance.destroy();
+        }
+
+        const ctx = canvas.getContext('2d');
+        
+        const formatCompact = (val) => {
+            if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+            if (val >= 1000) return (val / 1000).toFixed(0) + 'k';
+            return Math.round(val).toString();
+        };
+
+        let datasets = [];
+
+        if (isFatVol) {
+            datasets = [
+                {
+                    label: 'Ano Anterior',
+                    data: dataRealAnt,
+                    backgroundColor: 'rgba(148, 163, 184, 0.4)', // slate-400
+                    borderColor: 'rgb(148, 163, 184)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    datalabels: {
+                        display: true,
+                        align: 'end',
+                        anchor: 'end',
+                        color: 'rgb(148, 163, 184)',
+                        font: { size: 10, weight: 'bold' },
+                        formatter: function(value) {
+                            return value > 0 ? formatCompact(value) : '';
+                        }
+                    }
+                },
+                {
+                    label: 'Realizado Atual',
+                    data: dataReal,
+                    backgroundColor: 'rgba(59, 130, 246, 0.8)', // blue-500
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    datalabels: {
+                        display: true,
+                        align: 'end',
+                        anchor: 'end',
+                        color: 'rgb(59, 130, 246)',
+                        font: { size: 10, weight: 'bold' },
+                        formatter: function(value) {
+                            return value > 0 ? formatCompact(value) : '';
+                        }
+                    }
+                },
+                {
+                    label: 'Meta Estimada',
+                    data: dataMeta,
+                    backgroundColor: 'rgba(94, 234, 212, 0.2)', // teal-300
+                    borderColor: 'rgb(94, 234, 212)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    datalabels: {
+                        display: true,
+                        align: 'end',
+                        anchor: 'end',
+                        color: 'rgb(94, 234, 212)',
+                        font: { size: 10, weight: 'bold' },
+                        formatter: function(value) {
+                            return value > 0 ? formatCompact(value) : '';
+                        }
+                    }
+                }
+            ];
         } else {
-            if(kpiAnt) kpiAnt.textContent = '--';
-            if(kpiAtual) kpiAtual.textContent = '--';
-            if(kpiMeta) kpiMeta.style.display = 'none';
-        },
+            datasets = [
+                {
+                    label: 'Meta',
+                    data: dataMeta,
+                    backgroundColor: 'rgba(94, 234, 212, 0.2)', // teal-300 with opacity
+                    borderColor: 'rgb(94, 234, 212)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    datalabels: {
+                        display: true,
+                        align: 'end',
+                        anchor: 'end',
+                        color: 'rgb(94, 234, 212)',
+                        font: { size: 10, weight: 'bold' },
                         formatter: function(value) {
                             return value > 0 ? formatCompact(value) : '';
                         }
