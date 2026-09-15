@@ -3598,21 +3598,21 @@ async function loadBoxesView() {
             let html = '';
             
             // Prev Button
-            html += `<button class="px-2 py-1 bg-slate-800 text-slate-300 rounded hover:bg-slate-700 disabled:opacity-50" ${boxesCurrentPage === 1 ? 'disabled' : ''} onclick="window.changeBoxesPage(${boxesCurrentPage - 1})">Anterior</button>`;
+            html += `<button class="px-2 py-1 bg-slate-800 text-slate-300 rounded hover:bg-white/10 disabled:opacity-50" ${boxesCurrentPage === 1 ? 'disabled' : ''} onclick="window.changeBoxesPage(${boxesCurrentPage - 1})">Anterior</button>`;
             
             // Pages
             for (let i = 1; i <= totalPages; i++) {
                 // Show a limited number of pages around current (e.g., current - 2 to current + 2)
                 if (i === 1 || i === totalPages || (i >= boxesCurrentPage - 2 && i <= boxesCurrentPage + 2)) {
                     const isCurrent = i === boxesCurrentPage;
-                    html += `<button class="px-2 py-1 rounded ${isCurrent ? 'bg-orange-500 text-white font-bold' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}" onclick="window.changeBoxesPage(${i})">${i}</button>`;
+                    html += `<button class="px-2 py-1 rounded ${isCurrent ? 'bg-orange-500 text-white font-bold' : 'bg-slate-800 text-slate-300 hover:bg-white/10'}" onclick="window.changeBoxesPage(${i})">${i}</button>`;
                 } else if (i === boxesCurrentPage - 3 || i === boxesCurrentPage + 3) {
                     html += `<span class="px-2 py-1 text-slate-500">...</span>`;
                 }
             }
 
             // Next Button
-            html += `<button class="px-2 py-1 bg-slate-800 text-slate-300 rounded hover:bg-slate-700 disabled:opacity-50" ${boxesCurrentPage === totalPages ? 'disabled' : ''} onclick="window.changeBoxesPage(${boxesCurrentPage + 1})">Próximo</button>`;
+            html += `<button class="px-2 py-1 bg-slate-800 text-slate-300 rounded hover:bg-white/10 disabled:opacity-50" ${boxesCurrentPage === totalPages ? 'disabled' : ''} onclick="window.changeBoxesPage(${boxesCurrentPage + 1})">Próximo</button>`;
             
             paginationContainer.innerHTML = html;
         }
@@ -4082,7 +4082,7 @@ async function loadBoxesView() {
                 const label = isObject ? item.name : item;
                 const isSelected = currentSelectedSet.has(value);
                 return `
-                    <div class="flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded filter-item-row" data-value="${escapeHtml(value)}">
+                    <div class="flex items-center p-2 hover:bg-white/10 cursor-pointer rounded filter-item-row" data-value="${escapeHtml(value)}">
                         <input type="checkbox" value="${escapeHtml(value)}" class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2" ${isSelected ? 'checked' : ''}>
                         <label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1 truncate" title="${escapeHtml(label)}">${escapeHtml(label)}</label>
                     </div>
@@ -4215,7 +4215,7 @@ async function loadBoxesView() {
                 const isSelected = selectElement.selectedIndex === index;
                 const labelClasses = isSelected ? 'text-orange-500 font-bold' : 'text-slate-200';
                 return `
-                    <div class="flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded custom-dropdown-item" data-value="${escapeHtml(opt.value)}" data-index="${index}">
+                    <div class="flex items-center p-2 hover:bg-white/10 cursor-pointer rounded custom-dropdown-item" data-value="${escapeHtml(opt.value)}" data-index="${index}">
                         <input type="checkbox" class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2 pointer-events-none" readonly ${isSelected ? 'checked' : ''}>
                         <label class="ml-2 text-sm cursor-pointer flex-1 truncate ${labelClasses}" title="${escapeHtml(opt.text)}">${escapeHtml(opt.text)}</label>
                     </div>
@@ -6007,7 +6007,7 @@ const body = document.getElementById('city-segmentation-table-body');
                 const val = String(item);
                 const isSelected = selectedSet.has(val);
                 return `
-                    <div class="flex items-center p-2 hover:bg-slate-700 cursor-pointer rounded filter-item-row" data-value="${escapeHtml(val)}">
+                    <div class="flex items-center p-2 hover:bg-white/10 cursor-pointer rounded filter-item-row" data-value="${escapeHtml(val)}">
                         <input type="checkbox" value="${escapeHtml(val)}" class="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-teal-500 focus:ring-2" ${isSelected ? 'checked' : ''}>
                         <label class="ml-2 text-sm text-slate-200 cursor-pointer flex-1">${escapeHtml(val)}</label>
                     </div>
@@ -6385,7 +6385,7 @@ const body = document.getElementById('city-segmentation-table-body');
             if (isHoliday) {
                 classes += ' bg-red-600 text-white font-bold hover:bg-red-700';
             } else {
-                classes += ' text-slate-300 hover:bg-slate-700';
+                classes += ' text-slate-300 hover:bg-white/10';
             }
 
             if (isToday) classes += ' ring-1 ring-inset ring-cyan-500';
@@ -8290,7 +8290,7 @@ Valor: ${formatValue(item.valor, indicator)}`;
                 const variation = calcVariation(vals.current, vals.history);
                 const colorClass = variation > 0 ? 'text-green-400' : 'text-red-400';
                 return `
-                    <tr class="hover:bg-slate-700">
+                    <tr class="hover:bg-white/10">
                         <td class="px-4 py-2">${escapeHtml(sup)}</td>
                         <td class="px-4 py-2 text-right">${escapeHtml(formatCurrency(vals.history))}</td>
                         <td class="px-4 py-2 text-right">${escapeHtml(formatCurrency(vals.current))}</td>
@@ -8658,7 +8658,7 @@ window.renderInnovationsTable = function(data) {
 
         // Category Row (Parent)
         html += `
-            <tr class="hover:bg-slate-700/30 transition-colors cursor-pointer bg-slate-800/30" onclick="toggleInnovationRow('${safeId}')">
+            <tr class="hover:bg-white/10/30 transition-colors cursor-pointer bg-slate-800/30" onclick="toggleInnovationRow('${safeId}')">
                 <td class="px-4 py-4 text-white font-bold whitespace-normal flex items-center gap-2">
                     <svg id="icon-innovations-${safeId}" class="w-4 h-4 text-orange-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                     ${escapeHtml(cat.name)}
@@ -8686,7 +8686,7 @@ window.renderInnovationsTable = function(data) {
             let pVarColor = pVarPercent >= 0 ? 'text-green-400' : 'text-red-400';
 
             html += `
-                <tr class="hover:bg-slate-700/30 transition-colors hidden innovations-child-${safeId}">
+                <tr class="hover:bg-white/10/30 transition-colors hidden innovations-child-${safeId}">
                     <td class="px-4 py-4 pl-10 text-slate-400 text-xs flex items-center gap-2">
                         <svg class="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </td>
@@ -9202,7 +9202,7 @@ function setupLpClientSearchAutocomplete() {
 
                 // ⚡ Bolt Optimization: Use innerHTML and map for faster DOM rendering, combined with event delegation
                 dropdown.innerHTML = data.map(item => `
-                    <div class="p-3 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/30 last:border-0 transition-colors lp-client-option"
+                    <div class="p-3 hover:bg-white/10/50 cursor-pointer border-b border-slate-700/30 last:border-0 transition-colors lp-client-option"
                          data-cod="${escapeHtml(item.codigo_cliente)}"
                          data-name="${escapeHtml(item.razaosocial || item.nomecliente || 'S/ NOME')}">
                         <div class="flex items-start justify-between pointer-events-none">
@@ -9526,7 +9526,7 @@ function renderLpTable(clients) {
     tbody.innerHTML = paginatedData.map(c => {
         const colorClass = c.score >= 80 ? 'text-green-400' : c.score >= 50 ? 'text-yellow-400' : 'text-red-400';
         return `
-            <tr class="hover:bg-slate-700/30 transition-colors">
+            <tr class="hover:bg-white/10/30 transition-colors">
                 <td class="px-6 py-4 text-slate-400 text-xs">${escapeHtml(c.codcli)}</td>
                 <td class="px-6 py-4 font-bold text-slate-200">${escapeHtml(c.client_name)}</td>
                 <td class="px-6 py-4">
@@ -11647,7 +11647,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 // Reset File Input
                 if (fileInput) fileInput.value = '';
                 if (dropZone) {
-                    dropZone.classList.remove('bg-slate-700/50', 'border-teal-500');
+                    dropZone.classList.remove('bg-white/10', 'border-teal-500');
                     dropZone.innerHTML = `
                         <svg class="w-12 h-12 text-slate-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
@@ -11682,13 +11682,13 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
 
                 ['dragenter', 'dragover'].forEach(eventName => {
                     dropZone.addEventListener(eventName, () => {
-                        dropZone.classList.add('bg-slate-700/50', 'border-teal-500');
+                        dropZone.classList.add('bg-white/10', 'border-teal-500');
                     });
                 });
 
                 ['dragleave', 'drop'].forEach(eventName => {
                     dropZone.addEventListener(eventName, () => {
-                        dropZone.classList.remove('bg-slate-700/50', 'border-teal-500');
+                        dropZone.classList.remove('bg-white/10', 'border-teal-500');
                     });
                 });
 
@@ -12583,11 +12583,11 @@ async function setupGoalsFilters() {
     metricBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
             metricBtns.forEach(b => {
-                b.classList.remove('active', 'bg-blue-600', 'text-white');
-                b.classList.add('bg-slate-700', 'text-slate-300');
+                b.classList.remove('active', 'bg-orange-600', 'text-white');
+                b.classList.add('bg-white/5', 'text-slate-400');
             });
-            e.target.classList.remove('bg-slate-700', 'text-slate-300');
-            e.target.classList.add('active', 'bg-blue-600', 'text-white');
+            e.target.classList.remove('bg-white/5', 'text-slate-400');
+            e.target.classList.add('active', 'bg-orange-600', 'text-white');
             currentGoalsMetric = e.target.dataset.metric;
 
             // Re-render chart without fetching table again if possible, but simplest is to just re-render
