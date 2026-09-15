@@ -12242,7 +12242,7 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
         }
 
         const activeMetric = document.querySelector('.goals-metric-btn.active').dataset.metric;
-        let isFatVol = activeMetric === 'fat' || activeMetric === 'vol';
+        let isFatVol = true; // activeMetric === 'fat' || activeMetric === 'vol'; // all metrics now support goals KPI bar
         const growthKpis = document.getElementById('goals-growth-kpis');
         
         if (growthKpis) {
