@@ -9064,7 +9064,6 @@ BEGIN
           AND (p_codusur IS NULL OR p_codusur = '' OR codusur = p_codusur)
           AND (p_codsupervisor IS NULL OR p_codsupervisor = '' OR codsupervisor = p_codsupervisor)
           AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR p_categoria = ANY(categorias_arr))
         GROUP BY mes, codcli
     ),
     
@@ -9081,7 +9080,6 @@ BEGIN
           AND (p_codusur IS NULL OR p_codusur = '' OR codusur = p_codusur)
           AND (p_codsupervisor IS NULL OR p_codsupervisor = '' OR codsupervisor = p_codsupervisor)
           AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR p_categoria = ANY(categorias_arr))
         GROUP BY mes, codcli
     ),
 
@@ -9272,11 +9270,7 @@ BEGIN
         'kpi_total_atual_fat', (SELECT COALESCE(SUM(real_fat_geral), 0) FROM agregado_realizado_atual),
         'kpi_total_atual_vol', (SELECT COALESCE(SUM(real_vol_geral), 0) FROM agregado_realizado_atual),
         'kpi_total_anterior_pos', (SELECT total_pos_geral FROM totais_anterior),
-        'kpi_total_atual_pos', (SELECT ano_real_pos_geral FROM realizado_anual_unicos),
-        'kpi_total_anterior_salty', (SELECT total_pos_salty FROM totais_anterior),
-        'kpi_total_atual_salty', (SELECT ano_real_pos_salty FROM realizado_anual_unicos),
-        'kpi_total_anterior_foods', (SELECT total_pos_foods FROM totais_anterior),
-        'kpi_total_atual_foods', (SELECT ano_real_pos_foods FROM realizado_anual_unicos)
+        'kpi_total_atual_pos', (SELECT ano_real_pos_geral FROM realizado_anual_unicos)
     ) INTO v_result
     FROM chart_data;
 
