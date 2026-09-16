@@ -1189,7 +1189,7 @@ if (typeof self !== "undefined") {
         let supervisor = String(row["SUPERV"] || "").trim();
 
         if (!cidade || !supervisor) return;
-        if (supervisor.toUpperCase() === "INATIVOS") return;
+        if (supervisor.toUpperCase().includes("INATIVOS") || supervisor.toUpperCase().includes("DESCONHECIDO")) return;
 
         if (supervisor.trim().toUpperCase() === "OSÉAS SANTOS OL")
           supervisor = "OSVALDO NUNES O";
@@ -1250,9 +1250,14 @@ if (typeof self !== "undefined") {
         if (supervisorUpper === "BALCAO" || supervisorUpper === "BALCÃO")
           supervisor = "BALCAO";
 
+        const isInvalidSupervisor = supervisorUpper.includes("INATIVOS") || supervisorUpper.includes("DESCONHECIDO");
+
         if (codSupervisor && supervisor) {
-          supervisorCodeMap.set(codSupervisor, supervisor);
-          supervisorNameMap.set(supervisor, codSupervisor);
+          const currentValidName = supervisorCodeMap.get(codSupervisor);
+          if (!currentValidName || !isInvalidSupervisor) {
+            supervisorCodeMap.set(codSupervisor, supervisor);
+            supervisorNameMap.set(supervisor, codSupervisor);
+          }
         }
 
         const existingEntry = rcaInfoMap.get(codusur);
@@ -1264,7 +1269,17 @@ if (typeof self !== "undefined") {
           });
         } else {
           if (nome) existingEntry.NOME = nome;
-          if (supervisor) existingEntry.SUPERV = supervisor;
+          // Protect supervisor overwrite in RCA Info Map
+          if (supervisor) {
+             const currentSuperv = existingEntry.SUPERV || "";
+             const isCurrentInvalid = currentSuperv.toUpperCase().includes("INATIVOS") || currentSuperv.toUpperCase().includes("DESCONHECIDO");
+
+             // Only overwrite if the current is invalid, or the new one is valid
+             // Since sales are sorted by date, latest valid record wins.
+             if (isCurrentInvalid || !isInvalidSupervisor) {
+                 existingEntry.SUPERV = supervisor;
+             }
+          }
           if (codSupervisor) existingEntry.CODSUPERVISOR = codSupervisor;
         }
 
@@ -1576,7 +1591,9 @@ if (typeof self !== "undefined") {
               const newName = String(sale.superv).trim();
               const isInvalid = newName.toUpperCase().includes("INATIVOS") || newName.toUpperCase().includes("DESCONHECIDO");
 
-              if (!currentName || !isInvalid) {
+              const isCurrentInvalid = currentName && (currentName.toUpperCase().includes("INATIVOS") || currentName.toUpperCase().includes("DESCONHECIDO"));
+
+              if (!currentName || isCurrentInvalid || !isInvalid) {
                 dimSupervisors.set(codSup, newName);
               }
             }
