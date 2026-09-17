@@ -1323,6 +1323,9 @@ if (typeof self !== "undefined") {
           "12143",
           "9757",
           "12285",
+          "480",
+          "12360",
+          "12151",
         ]);
         return salesData.map((sale) => {
           const originalCodCli = String(sale["CODCLI"] || "").trim();
