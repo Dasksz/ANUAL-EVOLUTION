@@ -12260,11 +12260,11 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
                 if(kpiMeta) kpiMeta.style.display = 'none';
             }
         } else if (activeMetric === 'vol') {
-            if(kpiAnt) kpiAnt.textContent = formatWeight(resData.kpi_total_anterior_vol || 0);
-            if(kpiAtual) kpiAtual.textContent = formatWeight(resData.kpi_total_atual_vol || 0);
+            if(kpiAnt) kpiAnt.textContent = formatTons(resData.kpi_total_anterior_vol || 0);
+            if(kpiAtual) kpiAtual.textContent = formatTons(resData.kpi_total_atual_vol || 0);
             if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
                 const estimada = (resData.kpi_total_anterior_vol || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${formatWeight(estimada)}`;
+                kpiMeta.textContent = `Meta Estimada: ${formatTons(estimada)}`;
                 kpiMeta.style.display = 'block';
             } else {
                 if(kpiMeta) kpiMeta.style.display = 'none';
@@ -12325,7 +12325,7 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
                 dataReal.push(d.kpi_realizado_atual_vol || 0);
                 dataMeta.push(d.kpi_meta_estimada_vol || 0);
                 dataRealAnt.push(d.kpi_realizado_anterior_vol || 0);
-                formatVal = formatWeight;
+                formatVal = formatTons;
             } else if (activeMetric === 'pos') {
                 dataReal.push(Math.round(d.kpi_realizado_atual_pos || 0));
                 dataMeta.push(Math.round(d.kpi_meta_estimada_pos || 0));
