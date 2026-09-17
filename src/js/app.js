@@ -12383,8 +12383,11 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
                     }
                 }
             ];
+        if (goalsChartInstance) {
+            goalsChartInstance.destroy();
+        }
 
-        goalsChartInstance = new Chart(ctx, {
+        goalsChartInstance = new Chart(canvas, {
             type: 'bar',
             data: {
                 labels: labels,
