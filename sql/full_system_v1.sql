@@ -8093,9 +8093,12 @@ BEGIN
             SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_ant,
-            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
-            SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) / 3.0 as ton_trim,
-            SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_atual,
+            SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) / 3.0 as ton_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_ant,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
             (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
             COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant,
@@ -8116,9 +8119,12 @@ BEGIN
             SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_ant,
-            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
-            SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) / 3.0 as ton_trim,
-            SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_atual,
+            SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) / 3.0 as ton_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_ant,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
             (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
             COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant,
@@ -8143,9 +8149,12 @@ BEGIN
             SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_ant,
-            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
-            SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) / 3.0 as ton_trim,
-            SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_atual,
+            SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) / 3.0 as ton_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_ant,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
             (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
             COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant,
@@ -8167,9 +8176,12 @@ BEGIN
             SUM(CASE WHEN ano = $1 AND mes = $2 THEN vlvenda ELSE 0 END) as fat_atual,
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_ant,
-            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_atual,
-            SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) / 3.0 as ton_trim,
-            SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as ton_ant,
+            SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_atual,
+            SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) / 3.0 as ton_trim,
+            SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_ant,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
             (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
             COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant,
@@ -8805,12 +8817,18 @@ BEGIN
         GROUP BY sma.codusur, dv.nome, ds.nome, ds.codigo
     )
     SELECT jsonb_build_object(
-        'quarterMonths', jsonb_build_array(
-            jsonb_build_object('key', v_m1_key, 'label', v_m1_label, 'ano', EXTRACT(YEAR FROM v_m1), 'mes', EXTRACT(MONTH FROM v_m1)),
-            jsonb_build_object('key', v_m2_key, 'label', v_m2_label, 'ano', EXTRACT(YEAR FROM v_m2), 'mes', EXTRACT(MONTH FROM v_m2)),
-            jsonb_build_object('key', v_m3_key, 'label', v_m3_label, 'ano', EXTRACT(YEAR FROM v_m3), 'mes', EXTRACT(MONTH FROM v_m3))
-        ),
-        'sellers', COALESCE(jsonb_agg(row_to_json(st)), '[]'::jsonb)
+        'chart_data', COALESCE(jsonb_agg(row_to_json(chart_data)), '[]'::jsonb),
+        'percentual_crescimento', v_percentual,
+        'kpi_total_anterior_fat', (SELECT total_fat FROM totais_anterior),
+        'kpi_total_anterior_vol', (SELECT total_vol FROM totais_anterior),
+        'kpi_total_atual_fat', (SELECT COALESCE(SUM(real_fat_geral), 0) FROM agregado_realizado_atual),
+        'kpi_total_atual_vol', (SELECT COALESCE(SUM(real_vol_geral), 0) FROM agregado_realizado_atual),
+        'kpi_total_anterior_pos', (SELECT total_pos_geral FROM totais_anterior),
+        'kpi_total_atual_pos', (SELECT ano_real_pos_geral FROM realizado_anual_unicos),
+        'kpi_total_anterior_salty', (SELECT total_pos_salty FROM totais_anterior),
+        'kpi_total_atual_salty', (SELECT ano_real_pos_salty FROM realizado_anual_unicos),
+        'kpi_total_anterior_foods', (SELECT total_pos_foods FROM totais_anterior),
+        'kpi_total_atual_foods', (SELECT ano_real_pos_foods FROM realizado_anual_unicos)
     ) INTO v_result
     FROM seller_totals st
     WHERE st.vendedor_nome IS NOT NULL AND st.vendedor_nome != 'BALCAO' AND st.vendedor_nome != 'INATIVOS';
@@ -9055,7 +9073,8 @@ BEGIN
         SELECT
             mes, codcli,
             SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda IN ('1', '9') THEN vlvenda ELSE 0 END) as vlvenda_total,
-            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as peso_total,
+            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as peso_total,
             MAX(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND vlvenda > 0 THEN 1 ELSE 0 END) as is_positivado,
             MAX(has_cheetos) as has_cheetos, MAX(has_doritos) as has_doritos, MAX(has_fandangos) as has_fandangos, MAX(has_ruffles) as has_ruffles, MAX(has_torcida) as has_torcida,
             MAX(has_toddynho) as has_toddynho, MAX(has_toddy) as has_toddy, MAX(has_quaker) as has_quaker, MAX(has_kerococo) as has_kerococo
@@ -9064,6 +9083,7 @@ BEGIN
           AND (p_codusur IS NULL OR p_codusur = '' OR codusur = p_codusur)
           AND (p_codsupervisor IS NULL OR p_codsupervisor = '' OR codsupervisor = p_codsupervisor)
           AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria))
         GROUP BY mes, codcli
     ),
     
@@ -9071,7 +9091,8 @@ BEGIN
         SELECT
             mes, codcli,
             SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda IN ('1', '9') THEN vlvenda ELSE 0 END) as vlvenda_total,
-            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda NOT IN ('5', '11') THEN peso ELSE 0 END) as peso_total,
+            SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as peso_total,
             MAX(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND vlvenda > 0 THEN 1 ELSE 0 END) as is_positivado,
             MAX(has_cheetos) as has_cheetos, MAX(has_doritos) as has_doritos, MAX(has_fandangos) as has_fandangos, MAX(has_ruffles) as has_ruffles, MAX(has_torcida) as has_torcida,
             MAX(has_toddynho) as has_toddynho, MAX(has_toddy) as has_toddy, MAX(has_quaker) as has_quaker, MAX(has_kerococo) as has_kerococo
@@ -9080,6 +9101,7 @@ BEGIN
           AND (p_codusur IS NULL OR p_codusur = '' OR codusur = p_codusur)
           AND (p_codsupervisor IS NULL OR p_codsupervisor = '' OR codsupervisor = p_codsupervisor)
           AND tipovenda NOT IN ('5', '11')
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria))
         GROUP BY mes, codcli
     ),
 
@@ -9167,16 +9189,16 @@ BEGIN
     ),
 
     chart_data AS (
-        SELECT
+                SELECT
             m.mes,
             
             -- Faturamento (Fat)
-            COALESCE(ra.real_fat_geral, 0) as real_fat_geral_ant,
-            COALESCE(r.real_fat_geral, 0) as real_fat_geral,
+            COALESCE(ra.real_fat_geral, 0) as kpi_realizado_anterior_fat,
+            COALESCE(r.real_fat_geral, 0) as kpi_realizado_atual_fat,
             
             CASE 
-                WHEN ms.meta_fat_geral > 0 THEN ms.meta_fat_geral -- Se importou a meta explícita do mês, prioriza ela
-                WHEN v_percentual IS NULL THEN COALESCE(ms.meta_fat_geral, 0)
+                WHEN (CASE WHEN p_categoria != 'Todos' THEN ms.meta_fat_cat ELSE ms.meta_fat_geral END) > 0 THEN (CASE WHEN p_categoria != 'Todos' THEN ms.meta_fat_cat ELSE ms.meta_fat_geral END)
+                WHEN v_percentual IS NULL THEN COALESCE((CASE WHEN p_categoria != 'Todos' THEN ms.meta_fat_cat ELSE ms.meta_fat_geral END), 0)
                 WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_fat_geral, 0)
                 ELSE 
                     CASE 
@@ -9184,15 +9206,15 @@ BEGIN
                             GREATEST(0, (t.total_fat * (1 + (v_percentual / 100.0)) - r_fechado.fat_realizado_fechado)) * (pm.peso_fat / pr.soma_peso_fat_restante)
                         ELSE 0 
                     END
-            END as meta_fat_geral,
+            END as kpi_meta_estimada_fat,
 
             -- Tonelada (Vol)
-            COALESCE(ra.real_vol_geral, 0) as real_vol_geral_ant,
-            COALESCE(r.real_vol_geral, 0) as real_vol_geral,
+            COALESCE(ra.real_vol_geral, 0) as kpi_realizado_anterior_vol,
+            COALESCE(r.real_vol_geral, 0) as kpi_realizado_atual_vol,
             
             CASE 
-                WHEN ms.meta_vol_geral > 0 THEN ms.meta_vol_geral
-                WHEN v_percentual IS NULL THEN COALESCE(ms.meta_vol_geral, 0)
+                WHEN (CASE WHEN p_categoria != 'Todos' THEN ms.meta_vol_cat ELSE ms.meta_vol_geral END) > 0 THEN (CASE WHEN p_categoria != 'Todos' THEN ms.meta_vol_cat ELSE ms.meta_vol_geral END)
+                WHEN v_percentual IS NULL THEN COALESCE((CASE WHEN p_categoria != 'Todos' THEN ms.meta_vol_cat ELSE ms.meta_vol_geral END), 0)
                 WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_vol_geral, 0)
                 ELSE 
                     CASE 
@@ -9200,29 +9222,26 @@ BEGIN
                             GREATEST(0, (t.total_vol * (1 + (v_percentual / 100.0)) - r_fechado.vol_realizado_fechado)) * (pm.peso_vol / pr.soma_peso_vol_restante)
                         ELSE 0 
                     END
-            END as meta_vol_geral,
+            END as kpi_meta_estimada_vol,
 
             -- Positicação Geral
-            COALESCE(ra.real_pos_geral, 0) as real_pos_geral_ant,
-            COALESCE(r.real_pos_geral, 0) as real_pos_geral,
+            COALESCE(ra.real_pos_geral, 0) as kpi_realizado_anterior_pos,
+            COALESCE(r.real_pos_geral, 0) as kpi_realizado_atual_pos,
             CASE 
-                WHEN ms.meta_pos_geral > 0 THEN ms.meta_pos_geral
-                WHEN v_percentual IS NULL THEN COALESCE(ms.meta_pos_geral, 0)
+                WHEN (CASE WHEN p_categoria != 'Todos' THEN ms.meta_pos_cat ELSE ms.meta_pos_geral END) > 0 THEN (CASE WHEN p_categoria != 'Todos' THEN ms.meta_pos_cat ELSE ms.meta_pos_geral END)
+                WHEN v_percentual IS NULL THEN COALESCE((CASE WHEN p_categoria != 'Todos' THEN ms.meta_pos_cat ELSE ms.meta_pos_geral END), 0)
                 WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_pos_geral, 0)
                 ELSE 
                     CASE 
                         WHEN pr.soma_peso_pos_restante > 0 THEN
-                            -- GAP anual = Total Historico * (1+Perc) - Únicos Feitos no Ano
-                            -- Porém, pro gráfico mensal ficar alinhado, precisamos distribuir algo mais palpável, como se a meta mensal fosse um alvo.
-                            -- Abordagem A: Meta Mes = (Ano Ant Total * (1+perc) - Únicos Ano) * peso restante
                             GREATEST(0, (t.total_pos_geral * (1 + (v_percentual / 100.0)) - r_ano.ano_real_pos_geral)) * (pm.peso_pos / pr.soma_peso_pos_restante)
                         ELSE 0 
                     END
-            END as meta_pos_geral,
+            END as kpi_meta_estimada_pos,
 
             -- Positivação Salty
-            COALESCE(ra.real_pos_salty, 0) as real_pos_salty_ant,
-            COALESCE(r.real_pos_salty, 0) as real_pos_salty,
+            COALESCE(ra.real_pos_salty, 0) as kpi_realizado_anterior_salty,
+            COALESCE(r.real_pos_salty, 0) as kpi_realizado_atual_salty,
             CASE 
                 WHEN ms.meta_pos_salty > 0 THEN ms.meta_pos_salty
                 WHEN v_percentual IS NULL THEN COALESCE(ms.meta_pos_salty, 0)
@@ -9233,11 +9252,11 @@ BEGIN
                             GREATEST(0, (t.total_pos_salty * (1 + (v_percentual / 100.0)) - r_ano.ano_real_pos_salty)) * (pm.peso_salty / pr.soma_peso_salty_restante)
                         ELSE 0 
                     END
-            END as meta_pos_salty,
+            END as kpi_meta_estimada_salty,
 
             -- Positivação Foods
-            COALESCE(ra.real_pos_foods, 0) as real_pos_foods_ant,
-            COALESCE(r.real_pos_foods, 0) as real_pos_foods,
+            COALESCE(ra.real_pos_foods, 0) as kpi_realizado_anterior_foods,
+            COALESCE(r.real_pos_foods, 0) as kpi_realizado_atual_foods,
             CASE 
                 WHEN ms.meta_pos_foods > 0 THEN ms.meta_pos_foods
                 WHEN v_percentual IS NULL THEN COALESCE(ms.meta_pos_foods, 0)
@@ -9248,7 +9267,7 @@ BEGIN
                             GREATEST(0, (t.total_pos_foods * (1 + (v_percentual / 100.0)) - r_ano.ano_real_pos_foods)) * (pm.peso_foods / pr.soma_peso_foods_restante)
                         ELSE 0 
                     END
-            END as meta_pos_foods
+            END as kpi_meta_estimada_foods
 
         FROM meses m
         LEFT JOIN agregado_realizado_atual r ON r.mes = m.mes
@@ -9270,7 +9289,11 @@ BEGIN
         'kpi_total_atual_fat', (SELECT COALESCE(SUM(real_fat_geral), 0) FROM agregado_realizado_atual),
         'kpi_total_atual_vol', (SELECT COALESCE(SUM(real_vol_geral), 0) FROM agregado_realizado_atual),
         'kpi_total_anterior_pos', (SELECT total_pos_geral FROM totais_anterior),
-        'kpi_total_atual_pos', (SELECT ano_real_pos_geral FROM realizado_anual_unicos)
+        'kpi_total_atual_pos', (SELECT ano_real_pos_geral FROM realizado_anual_unicos),
+        'kpi_total_anterior_salty', (SELECT total_pos_salty FROM totais_anterior),
+        'kpi_total_atual_salty', (SELECT ano_real_pos_salty FROM realizado_anual_unicos),
+        'kpi_total_anterior_foods', (SELECT total_pos_foods FROM totais_anterior),
+        'kpi_total_atual_foods', (SELECT ano_real_pos_foods FROM realizado_anual_unicos)
     ) INTO v_result
     FROM chart_data;
 

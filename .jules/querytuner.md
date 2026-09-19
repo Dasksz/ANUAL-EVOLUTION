@@ -26,3 +26,7 @@ Action: Always map SQL Target filter variables exactly to how they are inserted 
 ## 2024-05-18 - [City View Category Ranking]
  **Learning:** When rendering category rankings filtered by dynamic conditions, using a FULL OUTER JOIN with a separate list of distinct dimensions allows rows with 0 metrics to appear in the result set rather than being implicitly removed by inner joins/aggregations.
  **Action:** For "show all zero" metric lists, derive a CTE (`all_cats`) from the dimension table (`dim_produtos`) filtered by the exact dimensions being queried, then `FULL OUTER JOIN` it with the aggregation CTE.
+
+2024/09/19 - Meta Chart Mapping & Filtering Fix
+Learning: When frontend UI relies on specific object properties from SQL (like `kpi_realizado_atual_fat`), we must ensure the SQL JSON exports those exact aliases. Also, dynamic category filtering `categorias ? UPPER(p_categoria)` ensures base realized totals properly filter when user narrows scope.
+Action: Always verify the JSON aliasing matches `app.js` expectations and that `p_categoria` applies to BOTH `metas_salvas` and `base_realizado` tables in KPIs and charts.
