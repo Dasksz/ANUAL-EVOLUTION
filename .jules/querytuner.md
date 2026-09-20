@@ -30,3 +30,7 @@ Action: Always map SQL Target filter variables exactly to how they are inserted 
 2024/09/19 - Meta Chart Mapping & Filtering Fix
 Learning: When frontend UI relies on specific object properties from SQL (like `kpi_realizado_atual_fat`), we must ensure the SQL JSON exports those exact aliases. Also, dynamic category filtering `categorias ? UPPER(p_categoria)` ensures base realized totals properly filter when user narrows scope.
 Action: Always verify the JSON aliasing matches `app.js` expectations and that `p_categoria` applies to BOTH `metas_salvas` and `base_realizado` tables in KPIs and charts.
+
+2024/09/20 - Revert Accidental Regex Injection in Dynamic SQL
+Learning: Global regex string replaces inside monolithic SQL files can unintentionally corrupt `EXECUTE $dyn$` blocks in other unrelated functions (like `get_closing_presentation_data`) if they share identical boilerplate structures (e.g. `AND tipovenda NOT IN ('5', '11')`), leading to parameter-not-found errors when parsed dynamically.
+Action: Apply string replacements strictly inside the targeted CTE or function boundaries using explicit line or block regex limits instead of naive global replacements.

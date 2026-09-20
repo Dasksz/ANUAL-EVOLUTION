@@ -8094,11 +8094,11 @@ BEGIN
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_ant,
             SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_atual,
+           THEN peso ELSE 0 END) as ton_atual,
             SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) / 3.0 as ton_trim,
+           THEN peso ELSE 0 END) / 3.0 as ton_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_ant,
+           THEN peso ELSE 0 END) as ton_ant,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
             (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
             COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant,
@@ -8120,11 +8120,11 @@ BEGIN
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_ant,
             SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_atual,
+           THEN peso ELSE 0 END) as ton_atual,
             SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) / 3.0 as ton_trim,
+           THEN peso ELSE 0 END) / 3.0 as ton_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_ant,
+           THEN peso ELSE 0 END) as ton_ant,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
             (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
             COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant,
@@ -8150,11 +8150,11 @@ BEGIN
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_ant,
             SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_atual,
+           THEN peso ELSE 0 END) as ton_atual,
             SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) / 3.0 as ton_trim,
+           THEN peso ELSE 0 END) / 3.0 as ton_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_ant,
+           THEN peso ELSE 0 END) as ton_ant,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
             (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
             COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant,
@@ -8177,11 +8177,11 @@ BEGIN
             SUM(CASE WHEN (ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10) THEN vlvenda ELSE 0 END) / 3.0 as fat_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 THEN vlvenda ELSE 0 END) as fat_ant,
             SUM(CASE WHEN ano = $1 AND mes = $2 AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_atual,
+           THEN peso ELSE 0 END) as ton_atual,
             SUM(CASE WHEN ((ano = $5 AND mes = $6) OR (ano = $7 AND mes = $8) OR (ano = $9 AND mes = $10)) AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) / 3.0 as ton_trim,
+           THEN peso ELSE 0 END) / 3.0 as ton_trim,
             SUM(CASE WHEN ano = $3 AND mes = $4 AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as ton_ant,
+           THEN peso ELSE 0 END) as ton_ant,
             COUNT(DISTINCT CASE WHEN ano = $1 AND mes = $2 AND vlvenda >= 1 THEN codcli END) as pos_atual,
             (COUNT(DISTINCT CASE WHEN ano = $5 AND mes = $6 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $7 AND mes = $8 AND vlvenda >= 1 THEN codcli END) + COUNT(DISTINCT CASE WHEN ano = $9 AND mes = $10 AND vlvenda >= 1 THEN codcli END)) / 3.0 as pos_trim,
             COUNT(DISTINCT CASE WHEN ano = $3 AND mes = $4 AND vlvenda >= 1 THEN codcli END) as pos_ant,
@@ -9074,7 +9074,8 @@ BEGIN
             mes, codcli,
             SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda IN ('1', '9') THEN vlvenda ELSE 0 END) as vlvenda_total,
             SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as peso_total,
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria))
+           THEN peso ELSE 0 END) as peso_total,
             MAX(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND vlvenda > 0 THEN 1 ELSE 0 END) as is_positivado,
             MAX(has_cheetos) as has_cheetos, MAX(has_doritos) as has_doritos, MAX(has_fandangos) as has_fandangos, MAX(has_ruffles) as has_ruffles, MAX(has_torcida) as has_torcida,
             MAX(has_toddynho) as has_toddynho, MAX(has_toddy) as has_toddy, MAX(has_quaker) as has_quaker, MAX(has_kerococo) as has_kerococo
@@ -9084,6 +9085,7 @@ BEGIN
           AND (p_codsupervisor IS NULL OR p_codsupervisor = '' OR codsupervisor = p_codsupervisor)
           AND tipovenda NOT IN ('5', '11')
           AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria))
+
         GROUP BY mes, codcli
     ),
     
@@ -9092,7 +9094,8 @@ BEGIN
             mes, codcli,
             SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda IN ('1', '9') THEN vlvenda ELSE 0 END) as vlvenda_total,
             SUM(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND tipovenda NOT IN ('5', '11')
-          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria)) THEN peso ELSE 0 END) as peso_total,
+          AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria))
+           THEN peso ELSE 0 END) as peso_total,
             MAX(CASE WHEN LTRIM(codfor::text, '0') IN ('707', '708', '752', '1119') AND vlvenda > 0 THEN 1 ELSE 0 END) as is_positivado,
             MAX(has_cheetos) as has_cheetos, MAX(has_doritos) as has_doritos, MAX(has_fandangos) as has_fandangos, MAX(has_ruffles) as has_ruffles, MAX(has_torcida) as has_torcida,
             MAX(has_toddynho) as has_toddynho, MAX(has_toddy) as has_toddy, MAX(has_quaker) as has_quaker, MAX(has_kerococo) as has_kerococo
@@ -9102,6 +9105,7 @@ BEGIN
           AND (p_codsupervisor IS NULL OR p_codsupervisor = '' OR codsupervisor = p_codsupervisor)
           AND tipovenda NOT IN ('5', '11')
           AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria))
+
         GROUP BY mes, codcli
     ),
 
