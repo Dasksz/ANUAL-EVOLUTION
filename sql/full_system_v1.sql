@@ -17658,23 +17658,27 @@ BEGIN
         LEFT JOIN public.dim_supervisores ds ON sup.codsupervisor = ds.codigo
         GROUP BY sma.codusur, dv.nome, ds.nome, ds.codigo
     )
-    SELECT jsonb_build_object(
-        'chart_data', COALESCE(jsonb_agg(row_to_json(chart_data)), '[]'::jsonb),
-        'percentual_crescimento', v_percentual,
-        'kpi_total_anterior_fat', (SELECT total_fat FROM totais_anterior),
-        'kpi_total_anterior_vol', (SELECT total_vol FROM totais_anterior),
-        'kpi_total_atual_fat', (SELECT COALESCE(SUM(real_fat_geral), 0) FROM agregado_realizado_atual),
-        'kpi_total_atual_vol', (SELECT COALESCE(SUM(real_vol_geral), 0) FROM agregado_realizado_atual),
-        'kpi_total_anterior_pos', (SELECT total_pos_geral FROM totais_anterior),
-        'kpi_total_atual_pos', (SELECT ano_real_pos_geral FROM realizado_anual_unicos),
-        'kpi_total_anterior_salty', (SELECT total_pos_salty FROM totais_anterior),
-        'kpi_total_atual_salty', (SELECT ano_real_pos_salty FROM realizado_anual_unicos),
-        'kpi_total_anterior_foods', (SELECT total_pos_foods FROM totais_anterior),
-        'kpi_total_atual_foods', (SELECT ano_real_pos_foods FROM realizado_anual_unicos)
-    ) INTO v_result
-    FROM seller_totals st
-    WHERE st.vendedor_nome IS NOT NULL AND st.vendedor_nome != 'BALCAO' AND st.vendedor_nome != 'INATIVOS';
-
+    final_output AS (
+        SELECT jsonb_build_object(
+            'quarterMonths', jsonb_build_array(
+                jsonb_build_object('key', v_m1_key, 'label', v_m1_label),
+                jsonb_build_object('key', v_m2_key, 'label', v_m2_label),
+                jsonb_build_object('key', v_m3_key, 'label', v_m3_label)
+            ),
+            'sellers', COALESCE(jsonb_agg(row_to_json(st)), '[]'::jsonb)
+        ) as result
+        FROM seller_totals st
+        WHERE st.vendedor_nome IS NOT NULL AND st.vendedor_nome != 'BALCAO' AND st.vendedor_nome != 'INATIVOS'
+    )
+    SELECT COALESCE(result, jsonb_build_object(
+        'quarterMonths', jsonb_build_array(
+            jsonb_build_object('key', v_m1_key, 'label', v_m1_label),
+            jsonb_build_object('key', v_m2_key, 'label', v_m2_label),
+            jsonb_build_object('key', v_m3_key, 'label', v_m3_label)
+        ),
+        'sellers', '[]'::jsonb
+    )) INTO v_result
+    FROM final_output;
     RETURN v_result;
 END;
 $$;
