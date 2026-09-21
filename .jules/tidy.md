@@ -24,3 +24,9 @@
 ## 2024/09/14 : (Goals UI Components)
 **Learning:** Added dynamic goal calculations by introducing a growth estimation feature and expanding the goals bar chart logic to display both the estimated metrics for the year and previous year metrics.
 **Action:** Always maintain UI consistency by explicitly checking the active tab / metric, and toggling specific inputs based on the supported datasets to prevent user confusion.
+## 2026/09/21 : Add formatCompact helper function
+**Learning:** Adding missing formatter function  to  and importing in  resolves uncaught  during Chart.js datalabels rendering.
+**Action:** When Chart.js datalabels plugin uses a custom formatter function, ensure the function is exported from  and properly imported.
+## 2026/09/21 : Add formatCompact helper function
+**Learning:** Adding missing formatter function `formatCompact` to `utils.js` and importing in `app.js` resolves uncaught `ReferenceError` during Chart.js datalabels rendering.
+**Action:** When Chart.js datalabels plugin uses a custom formatter function, ensure the function is exported from `utils.js` and properly imported.
