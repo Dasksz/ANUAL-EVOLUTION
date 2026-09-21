@@ -12344,14 +12344,15 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
             }
         });
 
+        const prevYear = parseInt(ano) - 1;
+        const currentYearNum = parseInt(ano);
         const datasets = [
             {
-                label: 'Meta Estimada',
-                data: dataMeta,
-                backgroundColor: 'rgba(203, 213, 225, 0.5)', // slate-300
-                borderColor: '#cbd5e1',
+                label: `Ano ${prevYear}`,
+                data: dataRealAnt,
+                backgroundColor: 'rgba(148, 163, 184, 0.5)', // slate-400
+                borderColor: '#94a3b8',
                 borderWidth: 1,
-                borderDash: [5, 5],
                 borderRadius: 4,
                 datalabels: {
                     display: true,
@@ -12365,24 +12366,43 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
                 }
             },
             {
-                label: 'Realizado',
-                    data: dataReal,
-                    backgroundColor: 'rgba(59, 130, 246, 0.8)', // blue-500
-                    borderColor: 'rgb(59, 130, 246)',
-                    borderWidth: 1,
-                    borderRadius: 4,
-                    datalabels: {
-                        display: true,
-                        align: 'end',
-                        anchor: 'end',
-                        color: 'rgb(59, 130, 246)',
-                        font: { size: 10, weight: 'bold' },
-                        formatter: function(value) {
-                            return value > 0 ? formatCompact(value) : '';
-                        }
+                label: `Ano ${currentYearNum}`,
+                data: dataReal,
+                backgroundColor: 'rgba(59, 130, 246, 0.8)', // blue-500
+                borderColor: 'rgb(59, 130, 246)',
+                borderWidth: 1,
+                borderRadius: 4,
+                datalabels: {
+                    display: true,
+                    align: 'end',
+                    anchor: 'end',
+                    color: 'rgb(59, 130, 246)',
+                    font: { size: 10, weight: 'bold' },
+                    formatter: function(value) {
+                        return value > 0 ? formatCompact(value) : '';
                     }
                 }
-            ];
+            },
+            {
+                label: 'Meta Estimada',
+                data: dataMeta,
+                backgroundColor: 'rgba(234, 179, 8, 0.5)', // yellow-500
+                borderColor: '#eab308',
+                borderWidth: 1,
+                borderDash: [5, 5],
+                borderRadius: 4,
+                datalabels: {
+                    display: true,
+                    align: 'end',
+                    anchor: 'end',
+                    color: '#eab308',
+                    font: { size: 10, weight: 'bold' },
+                    formatter: function(value) {
+                        return value > 0 ? formatCompact(value) : '';
+                    }
+                }
+            }
+        ];
         if (goalsChartInstance) {
             goalsChartInstance.destroy();
         }
