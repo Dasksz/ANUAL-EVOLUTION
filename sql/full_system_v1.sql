@@ -8839,7 +8839,9 @@ BEGIN
 
     RETURN v_result;
 END;
-21781; FUNCTION IF EXISTS public.get_estrelas_kpis_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[]);
+$$;
+
+DROP FUNCTION IF EXISTS public.get_estrelas_kpis_data(text, text, text[], text[], text[], text[], text[], text[], text[], text[]);
 DROP FUNCTION IF EXISTS public.get_estrelas_kpis_data(text[], text[], text[], text[], text[], text, text, text[], text[], text[]);
 CREATE OR REPLACE FUNCTION get_estrelas_kpis_data(
     p_filial text[] default null,
