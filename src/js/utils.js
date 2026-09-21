@@ -47,6 +47,26 @@ export function escapeHtml(unsafe) {
 }
 
 const _numberFormatters = new Map();
+
+/**
+ * Formats numbers into a compact human-readable string (e.g. 150K, 1,2M) to improve readability in charts and concise UI labels.
+ * @param {number|string} value - The numeric value to format.
+ * @returns {string} Formatted compact string.
+ */
+export function formatCompact(value) {
+    if (value == null) return '';
+    const num = Number(value);
+    if (isNaN(num) || num === 0) return '';
+    const abs = Math.abs(num);
+    if (abs >= 1000000) {
+        return formatNumber(num / 1000000, 1) + 'M';
+    }
+    if (abs >= 1000) {
+        return formatNumber(num / 1000, 0) + 'K';
+    }
+    return formatNumber(num, 0);
+}
+
 export function formatNumber(num, decimals = 2) {
     if (num == null) return '--';
     const parsed = Number(num);
