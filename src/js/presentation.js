@@ -1472,3 +1472,300 @@ REGRAS IMPORTANTES:
   // START
   loadData();
 });
+
+
+  // --- Loja Perfeita Slide Logic ---
+  let lpSlideChartInstance = null;
+  let lpFilterOptionsLoaded = false;
+
+  window.initLojaPerfeitaSlide = async function(ano, mes) {
+    const currentAno = ano ? parseInt(ano, 10) : new Date().getFullYear();
+    const currentMes = mes ? parseInt(mes, 10) : new Date().getMonth() + 1;
+
+    const selectFilial = document.getElementById("lp-slide-filial");
+    const selectSupervisor = document.getElementById("lp-slide-supervisor");
+    const selectVendedor = document.getElementById("lp-slide-vendedor");
+    const selectRede = document.getElementById("lp-slide-rede");
+    const selectCidade = document.getElementById("lp-slide-cidade");
+    const selectPesquisador = document.getElementById("lp-slide-pesquisador");
+    const inputCliente = document.getElementById("lp-slide-cliente");
+    const btnReset = document.getElementById("lp-slide-reset-btn");
+
+    const loadingDiv = document.getElementById("lp-slide-loading");
+    const contentDiv = document.getElementById("lp-slide-content");
+
+    if (!selectFilial || !loadingDiv) return;
+
+    // 1. Populate filter dropdowns from pesquisas if not already loaded
+    if (!lpFilterOptionsLoaded) {
+      try {
+        const { data: pesquisasData, error: pesquisasErr } = await supabase
+          .from("pesquisas")
+          .select("filial, supervisor, vendedor, rede, cidade, pesquisador")
+          .limit(5000);
+
+        if (!pesquisasErr && pesquisasData && pesquisasData.length > 0) {
+          const fillSelect = (selectEl, fieldName, label) => {
+            const values = [...new Set(pesquisasData.map(d => d[fieldName]).filter(Boolean))].sort();
+            selectEl.innerHTML = `<option value="">${label}: Todas</option>` +
+              values.map(v => `<option value="${v}">${v}</option>`).join('');
+          };
+
+          fillSelect(selectFilial, "filial", "Filial");
+          fillSelect(selectSupervisor, "supervisor", "Supervisor");
+          fillSelect(selectVendedor, "vendedor", "Vendedor");
+          fillSelect(selectRede, "rede", "Rede");
+          fillSelect(selectCidade, "cidade", "Cidade");
+          fillSelect(selectPesquisador, "pesquisador", "Pesquisador");
+        }
+        lpFilterOptionsLoaded = true;
+      } catch (err) {
+        console.warn("Erro ao carregar opções de filtro do slide Loja Perfeita:", err);
+      }
+    }
+
+    // 2. Fetch and render data function
+    async function fetchAndRenderLpData() {
+      loadingDiv.classList.remove("hidden");
+      loadingDiv.classList.add("flex");
+      if (contentDiv) contentDiv.classList.add("opacity-50");
+
+      const getSelectValue = (el) => el && el.value ? [el.value] : null;
+
+      const rpcFilters = {
+        p_filial: getSelectValue(selectFilial),
+        p_supervisor: getSelectValue(selectSupervisor),
+        p_vendedor: getSelectValue(selectVendedor),
+        p_rede: getSelectValue(selectRede),
+        p_cidade: getSelectValue(selectCidade),
+        p_pesquisador: getSelectValue(selectPesquisador),
+        p_codcli: inputCliente && inputCliente.value.trim() ? inputCliente.value.trim() : null,
+        p_ano: currentAno,
+        p_mes: currentMes
+      };
+
+      try {
+        const { data, error } = await supabase.rpc("get_loja_perfeita_data", rpcFilters);
+
+        if (error) {
+          console.error("Erro ao buscar dados do slide Loja Perfeita:", error);
+          return;
+        }
+
+        if (data) {
+          renderLpKPIs(data.kpis);
+          renderLpChart(data.chart_data);
+          renderLpTable(data.clients);
+        }
+      } catch (err) {
+        console.error("Exceção ao buscar dados Loja Perfeita slide:", err);
+      } finally {
+        loadingDiv.classList.add("hidden");
+        loadingDiv.classList.remove("flex");
+        if (contentDiv) contentDiv.classList.remove("opacity-50");
+      }
+    }
+
+    // 3. KPI Render
+    function renderLpKPIs(kpis) {
+      const elNota = document.getElementById("lp-slide-kpi-nota");
+      const elAuditorias = document.getElementById("lp-slide-kpi-auditorias");
+      const elPerfeitas = document.getElementById("lp-slide-kpi-perfeitas");
+
+      if (elNota) elNota.textContent = kpis && kpis.avg_score != null ? kpis.avg_score.toFixed(1) : "0.0";
+      if (elAuditorias) elAuditorias.textContent = kpis && kpis.total_audits != null ? kpis.total_audits.toLocaleString("pt-BR") : "0";
+      if (elPerfeitas) elPerfeitas.textContent = kpis && kpis.perfect_stores != null ? kpis.perfect_stores.toFixed(1) + "%" : "0%";
+    }
+
+    // 4. Chart Render
+    function renderLpChart(chartData) {
+      const canvas = document.getElementById("lpSlideChart");
+      if (!canvas) return;
+
+      const ctx = canvas.getContext("2d");
+      if (lpSlideChartInstance) {
+        lpSlideChartInstance.destroy();
+      }
+
+      const monthsPT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+      let maxMonth = 0;
+      if (chartData && chartData.length > 0) {
+        chartData.forEach(d => { if (d.mes > maxMonth) maxMonth = d.mes; });
+      }
+      const displayMonths = maxMonth > 0 ? maxMonth : 12;
+      const labels = monthsPT.slice(0, displayMonths);
+
+      const scoreData = new Array(displayMonths).fill(null);
+      const auditsData = new Array(displayMonths).fill(null);
+
+      if (chartData && chartData.length > 0) {
+        chartData.forEach(row => {
+          const mIdx = row.mes - 1;
+          if (mIdx >= 0 && mIdx < displayMonths) {
+            scoreData[mIdx] = row.avg_score || 0;
+            auditsData[mIdx] = row.total_audits || 0;
+          }
+        });
+      }
+
+      lpSlideChartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "Nota Média",
+              data: scoreData,
+              borderColor: "#d946ef",
+              backgroundColor: "rgba(217, 70, 239, 0.15)",
+              fill: true,
+              tension: 0.3,
+              borderWidth: 3,
+              pointBackgroundColor: "#d946ef",
+              pointRadius: 4,
+              yAxisID: "y"
+            },
+            {
+              label: "Auditorias",
+              data: auditsData,
+              borderColor: "#a855f7",
+              backgroundColor: "#a855f7",
+              type: "bar",
+              borderRadius: 4,
+              barThickness: 16,
+              yAxisID: "y1"
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: "index",
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              labels: { color: "#cbd5e1", font: { size: 11 } }
+            },
+            tooltip: {
+              callbacks: {
+                label: (context) => {
+                  if (context.dataset.label === "Nota Média") {
+                    return `Nota Média: ${context.raw ? context.raw.toFixed(1) : 0}`;
+                  }
+                  return `Auditorias: ${context.raw || 0}`;
+                }
+              }
+            },
+            datalabels: { display: false }
+          },
+          scales: {
+            x: {
+              ticks: { color: "#94a3b8", font: { size: 10 } },
+              grid: { display: false }
+            },
+            y: {
+              type: "linear",
+              display: true,
+              position: "left",
+              min: 0,
+              max: 100,
+              ticks: { color: "#94a3b8", font: { size: 10 } },
+              grid: { color: "rgba(255, 255, 255, 0.05)" }
+            },
+            y1: {
+              type: "linear",
+              display: true,
+              position: "right",
+              grid: { drawOnChartArea: false },
+              ticks: { color: "#a855f7", font: { size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    // 5. Table Render
+    function renderLpTable(clients) {
+      const tbody = document.getElementById("lp-slide-tbody");
+      const countEl = document.getElementById("lp-slide-table-count");
+
+      if (!tbody) return;
+
+      if (!clients || clients.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="px-2 py-4 text-center text-slate-500">Nenhum registro encontrado.</td></tr>`;
+        if (countEl) countEl.textContent = "0 registros";
+        return;
+      }
+
+      if (countEl) countEl.textContent = `${clients.length} ${clients.length === 1 ? 'cliente' : 'clientes'}`;
+
+      tbody.innerHTML = clients.map(client => {
+        const avgScore = client.avg_score != null ? Number(client.avg_score) : 0;
+        const isPerfect = avgScore >= 80;
+
+        const scoreBadge = isPerfect
+          ? `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">${avgScore.toFixed(1)}</span>`
+          : `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40">${avgScore.toFixed(1)}</span>`;
+
+        const statusBadge = isPerfect
+          ? `<span class="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-300">Loja Perfeita</span>`
+          : `<span class="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-300">Abaixo da Meta</span>`;
+
+        return `
+          <tr class="hover:bg-white/5 transition-colors">
+            <td class="px-2 py-2 font-medium text-white">
+              <div class="truncate max-w-[160px]" title="${client.cliente || ''}">${client.cliente || 'N/A'}</div>
+              <div class="text-[10px] text-slate-500">${client.codcli || ''}</div>
+            </td>
+            <td class="px-2 py-2 text-slate-300 text-[11px]">${client.filial || '-'}</td>
+            <td class="px-2 py-2 text-slate-300 text-[11px]">${client.supervisor || '-'}</td>
+            <td class="px-2 py-2 text-slate-300 text-[11px]">${client.vendedor || '-'}</td>
+            <td class="px-2 py-2 text-slate-300 text-[11px]">${client.rede || '-'}</td>
+            <td class="px-2 py-2 text-slate-300 text-[11px]">${client.cidade || '-'}</td>
+            <td class="px-2 py-2 text-center">${scoreBadge}</td>
+            <td class="px-2 py-2 text-center">${statusBadge}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    // 6. Setup event handlers (only attach once if not already initialized)
+    if (!selectFilial.dataset.lpBound) {
+      selectFilial.dataset.lpBound = "true";
+
+      const handleFilterChange = () => fetchAndRenderLpData();
+
+      selectFilial.addEventListener("change", handleFilterChange);
+      selectSupervisor.addEventListener("change", handleFilterChange);
+      selectVendedor.addEventListener("change", handleFilterChange);
+      selectRede.addEventListener("change", handleFilterChange);
+      selectCidade.addEventListener("change", handleFilterChange);
+      selectPesquisador.addEventListener("change", handleFilterChange);
+
+      let clientDebounceTimer;
+      if (inputCliente) {
+        inputCliente.addEventListener("input", () => {
+          clearTimeout(clientDebounceTimer);
+          clientDebounceTimer = setTimeout(handleFilterChange, 400);
+        });
+      }
+
+      if (btnReset) {
+        btnReset.addEventListener("click", () => {
+          selectFilial.value = "";
+          selectSupervisor.value = "";
+          selectVendedor.value = "";
+          selectRede.value = "";
+          selectCidade.value = "";
+          selectPesquisador.value = "";
+          if (inputCliente) inputCliente.value = "";
+          fetchAndRenderLpData();
+        });
+      }
+    }
+
+    // Initial load
+    await fetchAndRenderLpData();
+  };
