@@ -11847,12 +11847,16 @@ async function renderGoalsView() {
     // Read from local filters
     const anoSelect = document.getElementById('goals-filter-ano');
     const mesSelect = document.getElementById('goals-filter-mes');
+    const filialSelect = document.getElementById('goals-filter-filial');
+    const fornSelect = document.getElementById('goals-filter-fornecedor');
     const supSelect = document.getElementById('goals-filter-supervisor');
     const venSelect = document.getElementById('goals-filter-vendedor');
 
     if (anoSelect && anoSelect.value) currentGoalsAno = parseInt(anoSelect.value, 10);
     if (mesSelect && mesSelect.value) currentGoalsMes = parseInt(mesSelect.value, 10);
 
+    const p_filial = filialSelect && filialSelect.value ? filialSelect.value : 'Todas';
+    const p_fornecedor = fornSelect && fornSelect.value ? fornSelect.value : 'Todos';
     const p_codsupervisor = supSelect && supSelect.value ? supSelect.value : null;
     const p_codusur = venSelect && venSelect.value ? venSelect.value : null;
     const catSelect = document.getElementById('goals-filter-categoria');
@@ -11861,7 +11865,7 @@ async function renderGoalsView() {
     loading.classList.remove('hidden');
 
     // Update Chart
-    await renderGoalsChart(currentGoalsAno, p_codsupervisor, p_codusur, p_categoria);
+    await renderGoalsChart(currentGoalsAno, p_codsupervisor, p_codusur, p_categoria, p_filial, p_fornecedor);
 
     tableHead.innerHTML = '';
     tableBody.innerHTML = '';
@@ -12188,7 +12192,7 @@ async function renderGoalsView() {
 }
 
 
-async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos') {
+async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos', filial = 'Todas', fornecedor = 'Todos') {
     const canvas = document.getElementById('goals-annual-chart');
     const loading = document.getElementById('goals-chart-loading');
     if(!canvas) return;
@@ -12217,7 +12221,9 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
             p_codsupervisor: codsupervisor,
             p_codusur: codusur,
             p_mes_atual: refMonth,
-            p_categoria: categoria
+            p_categoria: categoria,
+            p_filial: filial,
+            p_fornecedor: fornecedor
         });
 
         if (error) throw error;
@@ -12474,8 +12480,11 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
 async function setupGoalsFilters() {
     const anoSelect = document.getElementById('goals-filter-ano');
     const mesSelect = document.getElementById('goals-filter-mes');
+    const filialSelect = document.getElementById('goals-filter-filial');
+    const fornSelect = document.getElementById('goals-filter-fornecedor');
     const supSelect = document.getElementById('goals-filter-supervisor');
     const venSelect = document.getElementById('goals-filter-vendedor');
+    const catSelect = document.getElementById('goals-filter-categoria');
     const impAno = document.getElementById('import-goals-ano');
     const impMes = document.getElementById('import-goals-mes');
 
@@ -12503,44 +12512,99 @@ async function setupGoalsFilters() {
     mesSelect.value = currentMonth;
     if(impMes) impMes.value = currentMonth;
 
-    // Populate Sup / Ven using existing window.availableFiltersState if available, or fetch them
+    // Load Filiais and Fornecedores
     try {
-        const { data: sups } = await supabase.from('dim_supervisores').select('*').order('nome');
-        if(sups) {
-            // Group by name to avoid duplicates
-            const uniqueSupsMap = new Map();
-            sups.forEach(s => {
-                if (!uniqueSupsMap.has(s.nome)) {
-                    uniqueSupsMap.set(s.nome, s.codigo);
-                }
-            });
-            const uniqueSups = Array.from(uniqueSupsMap, ([nome, codigo]) => ({nome, codigo}));
-            supSelect.innerHTML = '<option value="">Todos</option>' + uniqueSups.map(s => `<option value="${s.codigo}">${s.nome}</option>`).join('');
+        if (filialSelect) {
+            const { data: filiaisData } = await supabase.from('config_city_branches').select('filial').not('filial', 'is', null);
+            const uniqueFiliais = Array.from(new Set((filiaisData || []).map(f => f.filial).filter(Boolean))).sort();
+            filialSelect.innerHTML = '<option value="Todas">Todas</option>' + uniqueFiliais.map(f => `<option value="${f}">${f}</option>`).join('');
         }
 
-        const { data: vens } = await supabase.from('dim_vendedores').select('*').order('nome');
-        if(vens) {
-            const vensToRender = [];
-            for (const v of vens) {
-                if (v.nome && v.nome.toUpperCase().includes('DESCONHECIDO')) {
-                    // Check if this unknown vendor has any sales data
-                    const { count, error: countError } = await supabase
-                        .from('data_summary')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('codusur', v.codigo);
-
-                    if (!countError && count && count > 0) {
-                        vensToRender.push(v);
-                    }
-                } else {
-                    vensToRender.push(v);
-                }
+        if (fornSelect) {
+            const { data: forns } = await supabase.from('dim_fornecedores').select('codigo, nome').order('nome');
+            if (forns && forns.length > 0) {
+                fornSelect.innerHTML = '<option value="Todos">Todos</option>' + forns.map(f => `<option value="${f.codigo}">${f.codigo} - ${f.nome}</option>`).join('');
+            } else {
+                fornSelect.innerHTML = '<option value="Todos">Todos</option><option value="707">707 - ELMA CHIPS</option><option value="708">708 - PEPSICO</option><option value="752">752 - SALTY</option><option value="1119">1119 - FOODS</option>';
             }
-            venSelect.innerHTML = '<option value="">Todos</option>' + vensToRender.map(v => `<option value="${v.codigo}">${v.nome}</option>`).join('');
         }
     } catch(e) {
-        console.error("Erro populando dropdowns:", e);
+        console.error("Erro populando filiais/fornecedores no painel de metas:", e);
     }
+
+    // Function to populate cascading Supervisor / Vendedor
+    const populateCascadingSupVen = async (resetSelections = false) => {
+        if (resetSelections) {
+            if (supSelect) supSelect.value = "";
+            if (venSelect) venSelect.value = "";
+        }
+
+        const selectedFilial = filialSelect && filialSelect.value !== 'Todas' ? [filialSelect.value] : null;
+        const selectedFornecedor = fornSelect && fornSelect.value !== 'Todos' ? [fornSelect.value] : null;
+
+        try {
+            // Query cache_filters or dim tables
+            let query = supabase.from('cache_filters').select('superv, nome');
+            if (selectedFilial) query = query.in('filial', selectedFilial);
+            if (selectedFornecedor) query = query.in('codfor', selectedFornecedor);
+
+            const { data: cached } = await query;
+
+            if (cached && cached.length > 0) {
+                const validSups = Array.from(new Set(cached.map(c => c.superv).filter(Boolean))).sort();
+                const validVens = Array.from(new Set(cached.map(c => c.nome).filter(Boolean))).sort();
+
+                // Fetch supervisor codes mapping
+                const { data: supsData } = await supabase.from('dim_supervisores').select('codigo, nome');
+                const supMap = new Map((supsData || []).map(s => [s.nome, s.codigo]));
+
+                if (supSelect) {
+                    const currentSup = supSelect.value;
+                    let supHtml = '<option value="">Todos</option>';
+                    validSups.forEach(sName => {
+                        const code = supMap.get(sName) || sName;
+                        supHtml += `<option value="${code}">${sName}</option>`;
+                    });
+                    supSelect.innerHTML = supHtml;
+                    if (!resetSelections && currentSup) supSelect.value = currentSup;
+                }
+
+                // Fetch vendor codes mapping
+                const { data: vensData } = await supabase.from('dim_vendedores').select('codigo, nome');
+                const venMap = new Map((vensData || []).map(v => [v.nome, v.codigo]));
+
+                if (venSelect) {
+                    const currentVen = venSelect.value;
+                    let venHtml = '<option value="">Todos</option>';
+                    validVens.forEach(vName => {
+                        const code = venMap.get(vName) || vName;
+                        venHtml += `<option value="${code}">${vName}</option>`;
+                    });
+                    venSelect.innerHTML = venHtml;
+                    if (!resetSelections && currentVen) venSelect.value = currentVen;
+                }
+            } else {
+                // Fallback to dim tables if cache empty
+                const { data: sups } = await supabase.from('dim_supervisores').select('*').order('nome');
+                if (sups && supSelect) {
+                    const uniqueSupsMap = new Map();
+                    sups.forEach(s => { if (!uniqueSupsMap.has(s.nome)) uniqueSupsMap.set(s.nome, s.codigo); });
+                    const uniqueSups = Array.from(uniqueSupsMap, ([nome, codigo]) => ({nome, codigo}));
+                    supSelect.innerHTML = '<option value="">Todos</option>' + uniqueSups.map(s => `<option value="${s.codigo}">${s.nome}</option>`).join('');
+                }
+
+                const { data: vens } = await supabase.from('dim_vendedores').select('*').order('nome');
+                if (vens && venSelect) {
+                    venSelect.innerHTML = '<option value="">Todos</option>' + vens.map(v => `<option value="${v.codigo}">${v.nome}</option>`).join('');
+                }
+            }
+        } catch (e) {
+            console.error("Erro populando supervisores/vendedores em cascata:", e);
+        }
+    };
+
+    // Initial populate of cascade
+    await populateCascadingSupVen(false);
 
     // Listeners
     const triggerRender = () => {
@@ -12549,23 +12613,31 @@ async function setupGoalsFilters() {
         }
     };
 
+    const handleCascadeChange = async () => {
+        await populateCascadingSupVen(true);
+        triggerRender();
+    };
+
+    if (filialSelect) filialSelect.addEventListener('change', handleCascadeChange);
+    if (fornSelect) fornSelect.addEventListener('change', handleCascadeChange);
+
     anoSelect.addEventListener('change', triggerRender);
     mesSelect.addEventListener('change', triggerRender);
     supSelect.addEventListener('change', triggerRender);
     venSelect.addEventListener('change', triggerRender);
-    const catSelect = document.getElementById('goals-filter-categoria');
     if (catSelect) catSelect.addEventListener('change', triggerRender);
 
     const goalsClearFiltersBtn = document.getElementById('goals-clear-filters-btn');
     if (goalsClearFiltersBtn) {
-        goalsClearFiltersBtn.addEventListener('click', () => {
+        goalsClearFiltersBtn.addEventListener('click', async () => {
             const currentYear = new Date().getFullYear();
             const currentMonth = new Date().getMonth() + 1;
             anoSelect.value = currentYear;
             mesSelect.value = currentMonth;
-            supSelect.value = "";
-            venSelect.value = "";
-            if(catSelect) catSelect.value = "Todos";
+            if (filialSelect) filialSelect.value = "Todas";
+            if (fornSelect) fornSelect.value = "Todos";
+            if (catSelect) catSelect.value = "Todos";
+            await populateCascadingSupVen(true);
             triggerRender();
         });
     }
@@ -12584,10 +12656,12 @@ async function setupGoalsFilters() {
 
             // Re-render chart without fetching table again if possible, but simplest is to just re-render
             const a = document.getElementById('goals-filter-ano')?.value;
+            const fil = document.getElementById('goals-filter-filial')?.value || 'Todas';
+            const forn = document.getElementById('goals-filter-fornecedor')?.value || 'Todos';
             const s = document.getElementById('goals-filter-supervisor')?.value;
             const v = document.getElementById('goals-filter-vendedor')?.value;
             const c = document.getElementById('goals-filter-categoria')?.value || 'Todos';
-            renderGoalsChart(parseInt(a,10)||currentYear, s||null, v||null, c);
+            renderGoalsChart(parseInt(a,10)||currentYear, s||null, v||null, c, fil, forn);
         });
     });
 }
