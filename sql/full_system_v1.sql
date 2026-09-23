@@ -17851,7 +17851,9 @@ CREATE OR REPLACE FUNCTION public.get_metas_anuais_chart(
     p_codsupervisor TEXT DEFAULT NULL,
     p_codusur TEXT DEFAULT NULL,
     p_mes_atual INTEGER DEFAULT 12, -- kept for compatibility, but ignored
-    p_categoria TEXT DEFAULT 'Todos'
+    p_categoria TEXT DEFAULT 'Todos',
+    p_filial TEXT DEFAULT 'Todas',
+    p_fornecedor TEXT DEFAULT 'Todos'
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -17900,9 +17902,18 @@ BEGIN
     metas_salvas AS (
         SELECT
             m.mes,
-            SUM(CASE WHEN m.metrica = 'FAT' AND m.categoria IN ('total_elma', 'total_foods') THEN m.valor_ajuste ELSE 0 END) as meta_fat_geral,
-            SUM(CASE WHEN m.metrica = 'VOL' AND m.categoria IN ('tonelada_elma', 'tonelada_foods') THEN m.valor_ajuste ELSE 0 END) as meta_vol_geral,
-            SUM(CASE WHEN m.metrica = 'POS' AND m.categoria IN ('total_elma', 'total_foods') THEN m.valor_ajuste ELSE 0 END) as meta_pos_geral,
+            SUM(CASE WHEN m.metrica = 'FAT' AND (
+                (p_fornecedor = 'Todos' AND m.categoria IN ('total_elma', 'total_foods')) OR
+                (p_fornecedor != 'Todos' AND (m.categoria = p_fornecedor OR (p_fornecedor IN ('1119_QUAKER', '1119_KEROCOCO', 'QUAKER', 'KEROCOCO') AND m.categoria = '1119_QUAKER_KEROCOCO') OR (p_fornecedor = '1119' AND (m.categoria = '1119' OR m.categoria LIKE '1119_%'))))
+            ) THEN m.valor_ajuste ELSE 0 END) as meta_fat_geral,
+            SUM(CASE WHEN m.metrica = 'VOL' AND (
+                (p_fornecedor = 'Todos' AND m.categoria IN ('tonelada_elma', 'tonelada_foods')) OR
+                (p_fornecedor != 'Todos' AND (m.categoria = p_fornecedor OR (p_fornecedor IN ('1119_QUAKER', '1119_KEROCOCO', 'QUAKER', 'KEROCOCO') AND m.categoria = '1119_QUAKER_KEROCOCO') OR (p_fornecedor = '1119' AND (m.categoria = '1119' OR m.categoria LIKE '1119_%'))))
+            ) THEN m.valor_ajuste ELSE 0 END) as meta_vol_geral,
+            SUM(CASE WHEN m.metrica = 'POS' AND (
+                (p_fornecedor = 'Todos' AND m.categoria IN ('total_elma', 'total_foods')) OR
+                (p_fornecedor != 'Todos' AND (m.categoria = p_fornecedor OR (p_fornecedor IN ('1119_QUAKER', '1119_KEROCOCO', 'QUAKER', 'KEROCOCO') AND m.categoria = '1119_QUAKER_KEROCOCO') OR (p_fornecedor = '1119' AND (m.categoria = '1119' OR m.categoria LIKE '1119_%'))))
+            ) THEN m.valor_ajuste ELSE 0 END) as meta_pos_geral,
             SUM(CASE WHEN m.metrica = 'MIX' AND m.categoria IN ('mix_salty') THEN m.valor_ajuste ELSE 0 END) as meta_pos_salty,
             SUM(CASE WHEN m.metrica = 'MIX' AND m.categoria IN ('mix_foods') THEN m.valor_ajuste ELSE 0 END) as meta_pos_foods,
             -- Extrair as importadas individuais pro caso de p_categoria ser especificado (ex: CHEETOS)
@@ -17929,6 +17940,8 @@ BEGIN
         WHERE ano = p_ano
           AND (p_codusur IS NULL OR p_codusur = '' OR codusur = p_codusur)
           AND (p_codsupervisor IS NULL OR p_codsupervisor = '' OR codsupervisor = p_codsupervisor)
+          AND (p_filial = 'Todas' OR filial = p_filial)
+          AND (p_fornecedor = 'Todos' OR codfor::text = p_fornecedor OR LTRIM(codfor::text, '0') = p_fornecedor)
           AND tipovenda NOT IN ('5', '11')
           AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria))
           
@@ -17949,6 +17962,8 @@ BEGIN
         WHERE ano = p_ano - 1
           AND (p_codusur IS NULL OR p_codusur = '' OR codusur = p_codusur)
           AND (p_codsupervisor IS NULL OR p_codsupervisor = '' OR codsupervisor = p_codsupervisor)
+          AND (p_filial = 'Todas' OR filial = p_filial)
+          AND (p_fornecedor = 'Todos' OR codfor::text = p_fornecedor OR LTRIM(codfor::text, '0') = p_fornecedor)
           AND tipovenda NOT IN ('5', '11')
           AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria))
           
