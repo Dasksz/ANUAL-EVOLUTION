@@ -5109,7 +5109,7 @@ BEGIN
                 dc.nomecliente as client_name,
                 final_researcher.researcher_name as researcher,
                 dc.cidade as city,
-                dc.ramo,
+                dc.ramo as rede,
                 dv.nome as vendedor,
                 ds.nome as supervisor,
                 cb.filial,
@@ -5162,6 +5162,7 @@ BEGIN
         chart_data AS (
             SELECT
                 mes,
+                ROUND(AVG(avg_score)::numeric, 1) as avg_score,
                 COUNT(codcli) as total_audits,
                 COUNT(CASE WHEN avg_score >= 80 THEN codcli END) as perfect_stores
             FROM chart_client_month_avgs
@@ -5172,6 +5173,7 @@ BEGIN
             SELECT json_agg(
                 json_build_object(
                     ''mes'', mes,
+                    ''avg_score'', avg_score,
                     ''total_audits'', total_audits,
                     ''perfect_stores'', perfect_stores
                 )
@@ -5183,6 +5185,10 @@ BEGIN
                 json_build_object(
                     ''codcli'', codcli,
                     ''client_name'', COALESCE(client_name, ''Cliente Desconhecido''),
+                    ''filial'', COALESCE(filial, ''--''),
+                    ''supervisor'', COALESCE(supervisor, ''--''),
+                    ''vendedor'', COALESCE(vendedor, ''--''),
+                    ''rede'', COALESCE(rede, ''--''),
                     ''researcher'', COALESCE(researcher, ''--''),
                     ''city'', COALESCE(city, ''--''),
                     ''score'', score
@@ -13951,7 +13957,7 @@ BEGIN
                 dc.nomecliente as client_name,
                 final_researcher.researcher_name as researcher,
                 dc.cidade as city,
-                dc.ramo,
+                dc.ramo as rede,
                 dv.nome as vendedor,
                 ds.nome as supervisor,
                 cb.filial,
@@ -14004,6 +14010,7 @@ BEGIN
         chart_data AS (
             SELECT
                 mes,
+                ROUND(AVG(avg_score)::numeric, 1) as avg_score,
                 COUNT(codcli) as total_audits,
                 COUNT(CASE WHEN avg_score >= 80 THEN codcli END) as perfect_stores
             FROM chart_client_month_avgs
@@ -14014,6 +14021,7 @@ BEGIN
             SELECT json_agg(
                 json_build_object(
                     ''mes'', mes,
+                    ''avg_score'', avg_score,
                     ''total_audits'', total_audits,
                     ''perfect_stores'', perfect_stores
                 )
@@ -14025,6 +14033,10 @@ BEGIN
                 json_build_object(
                     ''codcli'', codcli,
                     ''client_name'', COALESCE(client_name, ''Cliente Desconhecido''),
+                    ''filial'', COALESCE(filial, ''--''),
+                    ''supervisor'', COALESCE(supervisor, ''--''),
+                    ''vendedor'', COALESCE(vendedor, ''--''),
+                    ''rede'', COALESCE(rede, ''--''),
                     ''researcher'', COALESCE(researcher, ''--''),
                     ''city'', COALESCE(city, ''--''),
                     ''score'', score

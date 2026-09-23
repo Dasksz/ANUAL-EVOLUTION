@@ -1499,24 +1499,38 @@ REGRAS IMPORTANTES:
     // 1. Populate filter dropdowns from pesquisas if not already loaded
     if (!lpFilterOptionsLoaded) {
       try {
-        const { data: pesquisasData, error: pesquisasErr } = await supabase
-          .from("pesquisas")
-          .select("filial, supervisor, vendedor, rede, cidade, pesquisador")
-          .limit(5000);
+        const { data: filterData, error: filterErr } = await supabase.rpc("get_dashboard_filters", {
+          p_ano: currentAno.toString(),
+          p_mes: currentMes ? currentMes.toString() : null
+        });
 
-        if (!pesquisasErr && pesquisasData && pesquisasData.length > 0) {
-          const fillSelect = (selectEl, fieldName, label) => {
-            const values = [...new Set(pesquisasData.map(d => d[fieldName]).filter(Boolean))].sort();
-            selectEl.innerHTML = `<option value="">${label}: Todas</option>` +
-              values.map(v => `<option value="${v}">${v}</option>`).join('');
+        if (!filterErr && filterData) {
+          const extractNames = (arr) => {
+            if (!Array.isArray(arr)) return [];
+            return [...new Set(arr.map(item => {
+              if (typeof item === "object" && item !== null) {
+                return item.nome || item.cod || "";
+              }
+              return String(item || "");
+            }).filter(Boolean))].sort();
           };
 
-          fillSelect(selectFilial, "filial", "Filial");
-          fillSelect(selectSupervisor, "supervisor", "Supervisor");
-          fillSelect(selectVendedor, "vendedor", "Vendedor");
-          fillSelect(selectRede, "rede", "Rede");
-          fillSelect(selectCidade, "cidade", "Cidade");
-          fillSelect(selectPesquisador, "pesquisador", "Pesquisador");
+          const fillSelect = (selectEl, items, label) => {
+            if (!selectEl) return;
+            selectEl.innerHTML = `<option value="">${label}: Todas</option>` +
+              items.map(v => `<option value="${v}">${v}</option>`).join("");
+          };
+
+          fillSelect(selectFilial, extractNames(filterData.filiais), "Filial");
+          fillSelect(selectSupervisor, extractNames(filterData.supervisors), "Supervisor");
+          fillSelect(selectVendedor, extractNames(filterData.vendedores), "Vendedor");
+
+          let redesList = extractNames(filterData.redes);
+          if (!redesList.includes("C/ REDE")) redesList.unshift("C/ REDE", "S/ REDE");
+          fillSelect(selectRede, redesList, "Rede");
+
+          fillSelect(selectCidade, extractNames(filterData.cidades), "Cidade");
+          fillSelect(selectPesquisador, extractNames(filterData.pesquisadores), "Pesquisador");
         }
         lpFilterOptionsLoaded = true;
       } catch (err) {
@@ -1574,7 +1588,8 @@ REGRAS IMPORTANTES:
 
       if (elNota) elNota.textContent = kpis && kpis.avg_score != null ? kpis.avg_score.toFixed(1) : "0.0";
       if (elAuditorias) elAuditorias.textContent = kpis && kpis.total_audits != null ? kpis.total_audits.toLocaleString("pt-BR") : "0";
-      if (elPerfeitas) elPerfeitas.textContent = kpis && kpis.perfect_stores != null ? kpis.perfect_stores.toFixed(1) + "%" : "0%";
+      const pct = (kpis && kpis.total_audits > 0) ? ((Number(kpis.perfect_stores) || 0) / Number(kpis.total_audits)) * 100 : 0;
+      if (elPerfeitas) elPerfeitas.textContent = pct.toFixed(1) + "%";
     }
 
     // 4. Chart Render
@@ -1602,7 +1617,7 @@ REGRAS IMPORTANTES:
         chartData.forEach(row => {
           const mIdx = row.mes - 1;
           if (mIdx >= 0 && mIdx < displayMonths) {
-            scoreData[mIdx] = row.avg_score || 0;
+            scoreData[mIdx] = row.avg_score != null ? Number(row.avg_score) : 0;
             auditsData[mIdx] = row.total_audits || 0;
           }
         });
@@ -1702,7 +1717,14 @@ REGRAS IMPORTANTES:
       if (countEl) countEl.textContent = `${clients.length} ${clients.length === 1 ? 'cliente' : 'clientes'}`;
 
       tbody.innerHTML = clients.map(client => {
-        const avgScore = client.avg_score != null ? Number(client.avg_score) : 0;
+        const clientName = client.client_name || client.cliente || 'N/A';
+        const codcli = client.codcli || '';
+        const filial = client.filial || '-';
+        const supervisor = client.supervisor || '-';
+        const vendedor = client.vendedor || '-';
+        const rede = client.rede || '-';
+        const cidade = client.city || client.cidade || '-';
+        const avgScore = client.score != null ? Number(client.score) : (client.avg_score != null ? Number(client.avg_score) : 0);
         const isPerfect = avgScore >= 80;
 
         const scoreBadge = isPerfect
@@ -1716,14 +1738,14 @@ REGRAS IMPORTANTES:
         return `
           <tr class="hover:bg-white/5 transition-colors">
             <td class="px-2 py-2 font-medium text-white">
-              <div class="truncate max-w-[160px]" title="${client.cliente || ''}">${client.cliente || 'N/A'}</div>
-              <div class="text-[10px] text-slate-500">${client.codcli || ''}</div>
+              <div class="truncate max-w-[160px]" title="${clientName}">${clientName}</div>
+              <div class="text-[10px] text-slate-500">${codcli}</div>
             </td>
-            <td class="px-2 py-2 text-slate-300 text-[11px]">${client.filial || '-'}</td>
-            <td class="px-2 py-2 text-slate-300 text-[11px]">${client.supervisor || '-'}</td>
-            <td class="px-2 py-2 text-slate-300 text-[11px]">${client.vendedor || '-'}</td>
-            <td class="px-2 py-2 text-slate-300 text-[11px]">${client.rede || '-'}</td>
-            <td class="px-2 py-2 text-slate-300 text-[11px]">${client.cidade || '-'}</td>
+            <td class="px-2 py-2 text-slate-300 text-[11px]">${filial}</td>
+            <td class="px-2 py-2 text-slate-300 text-[11px]">${supervisor}</td>
+            <td class="px-2 py-2 text-slate-300 text-[11px]">${vendedor}</td>
+            <td class="px-2 py-2 text-slate-300 text-[11px]">${rede}</td>
+            <td class="px-2 py-2 text-slate-300 text-[11px]">${cidade}</td>
             <td class="px-2 py-2 text-center">${scoreBadge}</td>
             <td class="px-2 py-2 text-center">${statusBadge}</td>
           </tr>
