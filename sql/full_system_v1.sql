@@ -17941,7 +17941,7 @@ BEGIN
           AND (p_codusur IS NULL OR p_codusur = '' OR codusur = p_codusur)
           AND (p_codsupervisor IS NULL OR p_codsupervisor = '' OR codsupervisor = p_codsupervisor)
           AND (p_filial = 'Todas' OR filial = p_filial)
-          AND (p_fornecedor = 'Todos' OR codfor::text = p_fornecedor OR LTRIM(codfor::text, '0') = p_fornecedor)
+          AND (p_fornecedor = 'Todos' OR codfor::text = p_fornecedor OR LTRIM(codfor::text, '0') = p_fornecedor OR (p_fornecedor = '1119' AND codfor::text LIKE '1119_%'))
           AND tipovenda NOT IN ('5', '11')
           AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria))
           
@@ -17963,7 +17963,7 @@ BEGIN
           AND (p_codusur IS NULL OR p_codusur = '' OR codusur = p_codusur)
           AND (p_codsupervisor IS NULL OR p_codsupervisor = '' OR codsupervisor = p_codsupervisor)
           AND (p_filial = 'Todas' OR filial = p_filial)
-          AND (p_fornecedor = 'Todos' OR codfor::text = p_fornecedor OR LTRIM(codfor::text, '0') = p_fornecedor)
+          AND (p_fornecedor = 'Todos' OR codfor::text = p_fornecedor OR LTRIM(codfor::text, '0') = p_fornecedor OR (p_fornecedor = '1119' AND codfor::text LIKE '1119_%'))
           AND tipovenda NOT IN ('5', '11')
           AND (p_categoria = 'Todos' OR categorias ? UPPER(p_categoria))
           
