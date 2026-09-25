@@ -12157,6 +12157,7 @@ async function renderGoalsView() {
                 if (isNaN(valNum)) return;
                 
                 const codusur = target.dataset.seller;
+                const vendedorNome = globalRcaNameByCode.get(String(codusur)) || codusur;
                 const categoria = target.dataset.cat;
                 const metrica = target.dataset.metrica;
                 const ano = currentGoalsAno;
@@ -12167,7 +12168,7 @@ async function renderGoalsView() {
                     const { error } = await supabase.rpc('save_meta_sv', {
                         p_ano: ano,
                         p_mes: mes,
-                        p_vendedor_nome: codusur,
+                        p_vendedor_nome: vendedorNome,
                         p_categoria: categoria,
                         p_metrica: metrica,
                         p_valor_ajuste: valNum
@@ -12539,52 +12540,52 @@ async function setupGoalsFilters() {
             if (venSelect) venSelect.value = "";
         }
 
-        const selectedFilial = filialSelect && filialSelect.value !== 'Todas' ? [filialSelect.value] : null;
-        const selectedFornecedor = fornSelect && fornSelect.value !== 'Todos' ? [fornSelect.value] : null;
+        const selectedFilial = filialSelect && filialSelect.value !== 'Todas' ? [filialSelect.value] : [];
+        const selectedFornecedor = fornSelect && fornSelect.value !== 'Todos' ? [fornSelect.value] : [];
+        const selectedSupervisor = supSelect && supSelect.value ? [supSelect.value] : [];
 
         try {
-            // Query cache_filters or dim tables
-            let query = supabase.from('cache_filters').select('superv, nome');
-            if (selectedFilial) query = query.in('filial', selectedFilial);
-            if (selectedFornecedor) query = query.in('codfor', selectedFornecedor);
+            const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', {
+                p_filial: selectedFilial,
+                p_cidade: [],
+                p_supervisor: selectedSupervisor,
+                p_vendedor: [],
+                p_fornecedor: selectedFornecedor,
+                p_ano: null,
+                p_mes: null,
+                p_tipovenda: [],
+                p_rede: [],
+                p_categoria: []
+            });
 
-            const { data: cached } = await query;
-
-            if (cached && cached.length > 0) {
-                const validSups = Array.from(new Set(cached.map(c => c.superv).filter(Boolean))).sort();
-                const validVens = Array.from(new Set(cached.map(c => c.nome).filter(Boolean))).sort();
-
-                // Fetch supervisor codes mapping
-                const { data: supsData } = await supabase.from('dim_supervisores').select('codigo, nome');
-                const supMap = new Map((supsData || []).map(s => [s.nome, s.codigo]));
-
-                if (supSelect) {
+            if (!error && filterData) {
+                // Populate Supervisores dropdown if available
+                if (supSelect && filterData.supervisores) {
                     const currentSup = supSelect.value;
                     let supHtml = '<option value="">Todos</option>';
-                    validSups.forEach(sName => {
-                        const code = supMap.get(sName) || sName;
-                        supHtml += `<option value="${code}">${sName}</option>`;
+                    filterData.supervisores.forEach(s => {
+                        const code = s.id || s.nome;
+                        const label = s.label || s.nome;
+                        supHtml += `<option value="${code}">${label}</option>`;
                     });
                     supSelect.innerHTML = supHtml;
                     if (!resetSelections && currentSup) supSelect.value = currentSup;
                 }
 
-                // Fetch vendor codes mapping
-                const { data: vensData } = await supabase.from('dim_vendedores').select('codigo, nome');
-                const venMap = new Map((vensData || []).map(v => [v.nome, v.codigo]));
-
-                if (venSelect) {
+                // Populate Vendedores dropdown
+                if (venSelect && filterData.vendedores) {
                     const currentVen = venSelect.value;
                     let venHtml = '<option value="">Todos</option>';
-                    validVens.forEach(vName => {
-                        const code = venMap.get(vName) || vName;
-                        venHtml += `<option value="${code}">${vName}</option>`;
+                    filterData.vendedores.forEach(v => {
+                        const code = v.id || v.nome;
+                        const label = v.label || v.nome;
+                        venHtml += `<option value="${code}">${label}</option>`;
                     });
                     venSelect.innerHTML = venHtml;
                     if (!resetSelections && currentVen) venSelect.value = currentVen;
                 }
             } else {
-                // Fallback to dim tables if cache empty
+                // Fallback to dim tables if rpc fails
                 const { data: sups } = await supabase.from('dim_supervisores').select('*').order('nome');
                 if (sups && supSelect) {
                     const uniqueSupsMap = new Map();
@@ -12613,18 +12614,21 @@ async function setupGoalsFilters() {
         }
     };
 
-    const handleCascadeChange = async () => {
-        await populateCascadingSupVen(true);
+    const handleCascadeChange = async (resetSel = true) => {
+        await populateCascadingSupVen(resetSel);
         triggerRender();
     };
 
-    if (filialSelect) filialSelect.addEventListener('change', handleCascadeChange);
-    if (fornSelect) fornSelect.addEventListener('change', handleCascadeChange);
+    if (filialSelect) filialSelect.addEventListener('change', () => handleCascadeChange(true));
+    if (fornSelect) fornSelect.addEventListener('change', () => handleCascadeChange(true));
+    if (supSelect) supSelect.addEventListener('change', () => {
+        if (venSelect) venSelect.value = '';
+        handleCascadeChange(false);
+    });
 
     anoSelect.addEventListener('change', triggerRender);
     mesSelect.addEventListener('change', triggerRender);
-    supSelect.addEventListener('change', triggerRender);
-    venSelect.addEventListener('change', triggerRender);
+    if (venSelect) venSelect.addEventListener('change', triggerRender);
     if (catSelect) catSelect.addEventListener('change', triggerRender);
 
     const goalsClearFiltersBtn = document.getElementById('goals-clear-filters-btn');
@@ -12642,7 +12646,7 @@ async function setupGoalsFilters() {
         });
     }
 
-    // Metric Buttons
+        // Metric Buttons
     const metricBtns = document.querySelectorAll('.goals-metric-btn');
     metricBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
