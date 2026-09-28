@@ -5162,6 +5162,7 @@ BEGIN
         chart_data AS (
             SELECT
                 mes,
+                COALESCE(AVG(avg_score), 0) as avg_score,
                 COUNT(codcli) as total_audits,
                 COUNT(CASE WHEN avg_score >= 80 THEN codcli END) as perfect_stores
             FROM chart_client_month_avgs
@@ -5172,6 +5173,7 @@ BEGIN
             SELECT json_agg(
                 json_build_object(
                     ''mes'', mes,
+                    ''avg_score'', avg_score,
                     ''total_audits'', total_audits,
                     ''perfect_stores'', perfect_stores
                 )
@@ -5185,6 +5187,10 @@ BEGIN
                     ''client_name'', COALESCE(client_name, ''Cliente Desconhecido''),
                     ''researcher'', COALESCE(researcher, ''--''),
                     ''city'', COALESCE(city, ''--''),
+                    ''filial'', COALESCE(filial, ''--''),
+                    ''supervisor'', COALESCE(supervisor, ''--''),
+                    ''vendedor'', COALESCE(vendedor, ''--''),
+                    ''rede'', COALESCE(ramo, ''--''),
                     ''score'', score
                 ) ORDER BY score DESC
             ) as clients_array
@@ -14032,6 +14038,7 @@ BEGIN
         chart_data AS (
             SELECT
                 mes,
+                COALESCE(AVG(avg_score), 0) as avg_score,
                 COUNT(codcli) as total_audits,
                 COUNT(CASE WHEN avg_score >= 80 THEN codcli END) as perfect_stores
             FROM chart_client_month_avgs
@@ -14042,6 +14049,7 @@ BEGIN
             SELECT json_agg(
                 json_build_object(
                     ''mes'', mes,
+                    ''avg_score'', avg_score,
                     ''total_audits'', total_audits,
                     ''perfect_stores'', perfect_stores
                 )
@@ -14055,6 +14063,10 @@ BEGIN
                     ''client_name'', COALESCE(client_name, ''Cliente Desconhecido''),
                     ''researcher'', COALESCE(researcher, ''--''),
                     ''city'', COALESCE(city, ''--''),
+                    ''filial'', COALESCE(filial, ''--''),
+                    ''supervisor'', COALESCE(supervisor, ''--''),
+                    ''vendedor'', COALESCE(vendedor, ''--''),
+                    ''rede'', COALESCE(ramo, ''--''),
                     ''score'', score
                 ) ORDER BY score DESC
             ) as clients_array
