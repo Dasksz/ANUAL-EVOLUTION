@@ -8607,6 +8607,16 @@ AS $$
 DECLARE
     v_item JSONB;
 BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Acesso negado: usuário não autenticado.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE id = auth.uid() AND status = 'aprovado'
+    ) THEN
+        RAISE EXCEPTION 'Acesso negado: usuário não aprovado.';
+    END IF;
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_metas_json)
     LOOP
         INSERT INTO public.metas_sv (ano, mes, vendedor_nome, categoria, metrica, valor_ajuste, updated_at)
@@ -8653,7 +8663,7 @@ DECLARE
 
     v_result JSONB;
 BEGIN
-    WITH raw_sales AS (
+    WITH raw_sales_all AS (
         SELECT 
             d.codusur,
             to_char(d.dtped, 'YYYY-MM') AS month_key,
@@ -8668,6 +8678,24 @@ BEGIN
         LEFT JOIN public.dim_produtos dp ON d.produto = dp.codigo
         WHERE d.dtped >= v_start_date AND d.dtped < v_date
           AND d.tipovenda IN ('1', '9')
+        UNION ALL
+        SELECT 
+            d.codusur,
+            to_char(d.dtped, 'YYYY-MM') AS month_key,
+            d.codfor,
+            dp.categoria_produto,
+            dp.mix_marca,
+            d.vlvenda,
+            d.totpesoliq,
+            d.codcli,
+            d.tipovenda
+        FROM public.data_history d
+        LEFT JOIN public.dim_produtos dp ON d.produto = dp.codigo
+        WHERE d.dtped >= v_start_date AND d.dtped < v_date
+          AND d.tipovenda IN ('1', '9')
+    ),
+    raw_sales AS (
+        SELECT * FROM raw_sales_all
     ),
     client_month_mix AS (
         SELECT 
@@ -17449,6 +17477,16 @@ AS $$
 DECLARE
     v_item JSONB;
 BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Acesso negado: usuário não autenticado.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE id = auth.uid() AND status = 'aprovado'
+    ) THEN
+        RAISE EXCEPTION 'Acesso negado: usuário não aprovado.';
+    END IF;
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_metas_json)
     LOOP
         INSERT INTO public.metas_sv (ano, mes, vendedor_nome, categoria, metrica, valor_ajuste, updated_at)
@@ -17495,7 +17533,7 @@ DECLARE
 
     v_result JSONB;
 BEGIN
-    WITH raw_sales AS (
+    WITH raw_sales_all AS (
         SELECT 
             d.codusur,
             to_char(d.dtped, 'YYYY-MM') AS month_key,
@@ -17510,6 +17548,24 @@ BEGIN
         LEFT JOIN public.dim_produtos dp ON d.produto = dp.codigo
         WHERE d.dtped >= v_start_date AND d.dtped < v_date
           AND d.tipovenda IN ('1', '9')
+        UNION ALL
+        SELECT 
+            d.codusur,
+            to_char(d.dtped, 'YYYY-MM') AS month_key,
+            d.codfor,
+            dp.categoria_produto,
+            dp.mix_marca,
+            d.vlvenda,
+            d.totpesoliq,
+            d.codcli,
+            d.tipovenda
+        FROM public.data_history d
+        LEFT JOIN public.dim_produtos dp ON d.produto = dp.codigo
+        WHERE d.dtped >= v_start_date AND d.dtped < v_date
+          AND d.tipovenda IN ('1', '9')
+    ),
+    raw_sales AS (
+        SELECT * FROM raw_sales_all
     ),
     client_month_mix AS (
         SELECT 
@@ -17684,6 +17740,49 @@ END;
 $$;
 
 -- Function to get the saved metas for the current month
+
+-- Function to save a single meta record
+CREATE OR REPLACE FUNCTION public.save_meta_sv(
+    p_ano INTEGER,
+    p_mes INTEGER,
+    p_vendedor_nome TEXT,
+    p_categoria TEXT,
+    p_metrica TEXT,
+    p_valor_ajuste NUMERIC
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_vendedor_real_nome TEXT;
+BEGIN
+    -- Authorization check
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Acesso negado: usuário não autenticado.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE id = auth.uid() AND status = 'aprovado'
+    ) THEN
+        RAISE EXCEPTION 'Acesso negado: usuário não aprovado.';
+    END IF;
+
+    -- Resolve vendor name if code was passed
+    SELECT COALESCE((SELECT nome FROM public.dim_vendedores WHERE codigo = p_vendedor_nome LIMIT 1), p_vendedor_nome)
+    INTO v_vendedor_real_nome;
+
+    INSERT INTO public.metas_sv (ano, mes, vendedor_nome, categoria, metrica, valor_ajuste, updated_at)
+    VALUES (p_ano, p_mes, v_vendedor_real_nome, p_categoria, p_metrica, p_valor_ajuste, NOW())
+    ON CONFLICT (ano, mes, vendedor_nome, categoria, metrica)
+    DO UPDATE SET
+        valor_ajuste = EXCLUDED.valor_ajuste,
+        updated_at = NOW();
+END;
+$$;
+
+
 CREATE OR REPLACE FUNCTION public.get_metas_sv(
     p_ano INTEGER,
     p_mes INTEGER
@@ -17840,6 +17939,16 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Acesso negado: usuário não autenticado.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE id = auth.uid() AND status = 'aprovado'
+    ) THEN
+        RAISE EXCEPTION 'Acesso negado: usuário não aprovado.';
+    END IF;
     INSERT INTO public.metas_crescimento (ano, percentual, updated_at)
     VALUES (p_ano, p_percentual, now())
     ON CONFLICT (ano)
@@ -17922,7 +18031,14 @@ BEGIN
             SUM(CASE WHEN m.metrica = 'POS' AND UPPER(m.categoria) = UPPER(p_categoria) THEN m.valor_ajuste ELSE 0 END) as meta_pos_cat
         FROM public.metas_sv m
         WHERE m.ano = p_ano
-          AND (p_codusur IS NULL OR p_codusur = '' OR m.vendedor_nome = p_codusur)
+          AND (p_codusur IS NULL OR p_codusur = '' OR m.vendedor_nome = p_codusur OR m.vendedor_nome IN (SELECT nome FROM public.dim_vendedores WHERE codigo = p_codusur))
+          AND (p_codsupervisor IS NULL OR p_codsupervisor = '' OR m.vendedor_nome IN (
+              SELECT DISTINCT COALESCE(dv.nome, dsf.codusur)
+              FROM public.data_summary_frequency dsf
+              LEFT JOIN public.dim_vendedores dv ON dsf.codusur = dv.codigo
+              WHERE dsf.codsupervisor = p_codsupervisor
+                 OR dsf.codsupervisor IN (SELECT codigo FROM public.dim_supervisores WHERE nome = p_codsupervisor OR codigo = p_codsupervisor)
+          ))
         GROUP BY m.mes
     ),
 
