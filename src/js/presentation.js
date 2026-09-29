@@ -1018,6 +1018,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     });
 
+    const categoriasButtons = document.querySelectorAll('#categorias-metric-filters button');
+    categoriasButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const metric = btn.getAttribute('data-metric');
+
+        categoriasButtons.forEach(b => {
+          b.classList.remove('bg-[#fc0100]', 'text-white');
+          b.classList.add('bg-transparent', 'text-slate-300', 'hover:bg-white/10');
+        });
+
+        btn.classList.remove('bg-transparent', 'text-slate-300', 'hover:bg-white/10');
+        btn.classList.add('bg-[#fc0100]', 'text-white');
+
+        if (typeof window.renderCategoriasDispute === 'function' && window.currentPresentationData) {
+          window.renderCategoriasDispute(window.currentPresentationData, metric);
+        }
+      });
+    });
   }
 
   // Helpers
@@ -1470,6 +1488,7 @@ REGRAS IMPORTANTES:
   });
 
   // START
+  setupFilters();
   loadData();
 });
 
