@@ -1525,6 +1525,8 @@ function getActiveExportView() {
 
     // Helper to generate canonical cache keys (sorted arrays)
     function generateCacheKey(prefix, filters) {
+        // Ignore dashboard totals cached before monthly chunks were matched by month.
+        if (prefix === 'dashboard_data') prefix = 'dashboard_data_v2';
         const sortedFilters = {};
         Object.keys(filters).sort().forEach(k => {
             let val = filters[k];
@@ -4398,11 +4400,12 @@ async function loadBoxesView() {
         // Merge arrays: monthly_data_current
         if (newData.monthly_data_current) {
             accumulated.monthly_data_current = accumulated.monthly_data_current || [];
-            newData.monthly_data_current.forEach((monthData, idx) => {
-                if (!accumulated.monthly_data_current[idx]) {
-                    accumulated.monthly_data_current[idx] = { ...monthData };
+            newData.monthly_data_current.forEach((monthData) => {
+                // Branches omit months without sales, so array positions do not identify months.
+                const accM = accumulated.monthly_data_current.find(m => m.month_index === monthData.month_index);
+                if (!accM) {
+                    accumulated.monthly_data_current.push({ ...monthData });
                 } else {
-                    let accM = accumulated.monthly_data_current[idx];
                     accM.faturamento = (accM.faturamento || 0) + (monthData.faturamento || 0);
                     accM.peso = (accM.peso || 0) + (monthData.peso || 0);
                     accM.bonificacao = (accM.bonificacao || 0) + (monthData.bonificacao || 0);
@@ -4417,16 +4420,18 @@ async function loadBoxesView() {
                     accM.mix_pdv = Math.max((accM.mix_pdv || 0), (monthData.mix_pdv || 0));
                 }
             });
+            accumulated.monthly_data_current.sort((a, b) => a.month_index - b.month_index);
         }
 
         // Merge arrays: monthly_data_previous
         if (newData.monthly_data_previous) {
             accumulated.monthly_data_previous = accumulated.monthly_data_previous || [];
-            newData.monthly_data_previous.forEach((monthData, idx) => {
-                if (!accumulated.monthly_data_previous[idx]) {
-                    accumulated.monthly_data_previous[idx] = { ...monthData };
+            newData.monthly_data_previous.forEach((monthData) => {
+                // Branches omit months without sales, so array positions do not identify months.
+                const accM = accumulated.monthly_data_previous.find(m => m.month_index === monthData.month_index);
+                if (!accM) {
+                    accumulated.monthly_data_previous.push({ ...monthData });
                 } else {
-                    let accM = accumulated.monthly_data_previous[idx];
                     accM.faturamento = (accM.faturamento || 0) + (monthData.faturamento || 0);
                     accM.peso = (accM.peso || 0) + (monthData.peso || 0);
                     accM.bonificacao = (accM.bonificacao || 0) + (monthData.bonificacao || 0);
@@ -4438,6 +4443,7 @@ async function loadBoxesView() {
                     accM.mix_pdv = Math.max((accM.mix_pdv || 0), (monthData.mix_pdv || 0));
                 }
             });
+            accumulated.monthly_data_previous.sort((a, b) => a.month_index - b.month_index);
         }
 
         // Merge trend_data
