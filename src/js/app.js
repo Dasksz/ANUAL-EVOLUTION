@@ -1526,7 +1526,7 @@ function getActiveExportView() {
     // Helper to generate canonical cache keys (sorted arrays)
     function generateCacheKey(prefix, filters) {
         // Ignore dashboard totals cached before monthly chunks were matched by month.
-        const revisions = { dashboard_data: 3, dashboard_filters: 2, frequency_data: 2, mix_data: 2, boxes_dashboard_data: 2 };
+        const revisions = { dashboard_data: 3, dashboard_filters: 2, frequency_data: 3, mix_data: 2, boxes_dashboard_data: 2 };
         if (revisions[prefix]) prefix = `${prefix}_v${revisions[prefix]}`;
         const sortedFilters = {};
         Object.keys(filters).sort().forEach(k => {
@@ -10202,7 +10202,7 @@ function renderFrequencyTable(data, tableBody, tableFooter) {
         const skuPdv = dataNode.avg_sku_pdv || 0;
 
         // Frequencia
-        const freq = dataNode.avg_monthly_freq || 0;
+        const freq = dataNode.avg_monthly_freq || 0; // Orders per buying client-month.
 
         // % Posit
         let percPosit = 0;
@@ -10434,9 +10434,9 @@ function renderMixSaltyFoodsChart(data) {
     AppLog.log("Renderizando Mix Salty & Foods Chart com dados:", chartData);
 
     const monthInitials = MONTHS_PT_INITIALS;
-    const saltyData = new Array(12).fill(0);
-    const foodsData = new Array(12).fill(0);
-    const ambasData = new Array(12).fill(0);
+    const saltyData = new Array(12).fill(null);
+    const foodsData = new Array(12).fill(null);
+    const ambasData = new Array(12).fill(null);
 
     chartData.forEach(row => {
         const monthIndex = row.mes - 1;
