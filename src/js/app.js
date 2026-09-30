@@ -4481,8 +4481,10 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             } catch (e) { AppLog.warn('Cache error:', e); }
         }
 
-        // 2. Disable chunking: RPC get_main_dashboard_data directly handles p_filial = null / [] to aggregate all filiais.
-        const needsChunking = false;
+        // 2. Check if we need to chunk (p_filial is empty and we have available branches)
+        const needsChunking = (!filters.p_filial || filters.p_filial.length === 0) 
+            && availableFiltersState.filiais 
+            && availableFiltersState.filiais.length > 0;
 
         let finalData = null;
 
@@ -10314,8 +10316,9 @@ async function loadFrequencyTable(filters) {
     } catch (e) { AppLog.warn('Frequency/Mix cache error:', e); }
 
     try {
-        // Disable chunking: RPC get_frequency_table_data handles p_filial = null / [] directly.
-        const needsChunking = false;
+        const needsChunking = (!reqFilters.p_filial || reqFilters.p_filial.length === 0) 
+            && availableFiltersState.filiais 
+            && availableFiltersState.filiais.length > 0;
 
         if (needsChunking) {
             AppLog.log('Fetching Frequency & Mix in concurrent chunks...');
