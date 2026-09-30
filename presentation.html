@@ -34,6 +34,7 @@
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="src/css/presentation.css" />
+    <link rel="stylesheet" href="src/css/presentation-dispute.css?v=20260930-growth" />
     <link rel="stylesheet" href="src/css/styles.css" />
 
     <style>
@@ -540,8 +541,8 @@
         </div>
 
         <!-- Slide 3: Disputa de Categorias -->
-                        <div class="swiper-slide h-full overflow-hidden pb-10 flex flex-col">
-          <div class="flex flex-col gap-4 sticky top-0 -mx-8 px-8 pt-8 pb-2 bg-[#131217] z-20 shrink-0">
+                        <div id="categorias-dispute-slide" class="swiper-slide h-full pb-10">
+          <div class="flex flex-col gap-4 -mx-8 px-8 pt-8 pb-2 bg-[#131217] z-20 shrink-0">
             <!-- Visual Banner -->
             <div class="flex justify-between items-center bg-gradient-to-r from-blue-900/40 via-[#07050e] to-red-900/40 rounded-xl border border-white/5 w-full h-32 shadow-[0_0_30px_rgba(0,0,0,0.5)] relative overflow-hidden">
               
@@ -608,28 +609,15 @@
             </div>
           </div>
 
-          <div id="presentation-categorias-content" class="flex flex-row gap-6 w-full flex-grow min-h-0">
-            <!-- Left Column: KPIs and Share Ranking -->
-            <div class="flex flex-col w-1/2 gap-4 h-full">
-              <div class="flex items-center justify-between border-b border-fuchsia-500/30 pb-4 mb-2 shrink-0">
-                 <h3 class="text-sm font-bold text-white uppercase tracking-wider m-0">Disputa de Categorias</h3>
-              </div>
-              
-              <!-- Simple Share Ranking injected via JS - Scrollable list -->
-              <div id="categorias-share-ranking" class="flex flex-col gap-3 w-full overflow-y-auto custom-scrollbar pr-2 pb-4 flex-grow min-h-0"></div>
-            </div>
-            
-            <!-- Right Column: Growth vs Quarter -->
-            <div class="flex flex-col w-1/2 gap-4 h-full">
-              <div class="flex items-center justify-between border-b border-fuchsia-500/30 pb-4 mb-2 shrink-0">
-                 <h3 class="text-sm font-bold text-white uppercase tracking-wider m-0">Crescimento vs Trimestre</h3>
-                 <span class="text-xs text-slate-400 normal-case" id="growth-metric-label">Métrica: Geral</span>
-              </div>
-              <!-- Scrollable list -->
-              <div id="categorias-growth-ranking" class="flex flex-col gap-3 w-full overflow-y-auto custom-scrollbar pr-2 pb-4 flex-grow min-h-0"></div>
+          <p class="dispute-note">Top 3 por crescimento positivo vs média mensal dos 3 meses anteriores. Geral: média das variações de faturamento, tonelada e positivação. Sem base anterior: fora do ranking.</p>
+          <div id="presentation-categorias-content" class="dispute-comparison">
+            <div class="dispute-table-titles"><div>Disputa de Categorias<small>Participação no faturamento • Shark × Águia</small></div><div>Crescimento vs Trimestre<small id="growth-metric-label"></small></div></div>
+            <div class="dispute-scroll custom-scrollbar" tabindex="0" aria-label="Comparativo de categorias: role para ver mais categorias">
+              <div class="dispute-table-head"><div><span>Categoria</span><span style="color:#60a5fa">SHARK</span><span style="color:#f87171">ÁGUIA</span></div><div><span>Categoria</span><span style="color:#60a5fa">SHARK</span><span style="color:#f87171">ÁGUIA</span></div></div>
+              <div id="categorias-comparison-rows"></div>
             </div>
           </div>
-          
+
           <div id="categorias-kpis" class="hidden"></div>
         </div>
 
@@ -1057,7 +1045,7 @@
     <script type="module" src="src/js/config.js"></script>
     <script type="module" src="src/js/supabase.js"></script>
     <script type="module" src="src/js/utils.js"></script>
-    <script type="module" src="src/js/presentation.js?v=20260930-secure-ai"></script>
+    <script type="module" src="src/js/presentation.js?v=20260930-growth"></script>
   </body>
 </html>
 

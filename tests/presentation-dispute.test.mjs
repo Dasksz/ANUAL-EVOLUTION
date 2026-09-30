@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import { growth, ranking, categories, renderDispute } from '../src/js/presentation-dispute.mjs';
+const vendor = (vendedor, fat, ton, pos, base=100) => ({vendedor,equipe:'SHARK',faturamento:fat,tonelada:ton,posituacoes:pos,fat_trim:base,ton_trim:base,pos_trim:base});
+const rows=[vendor('Grande absoluto',10000,10000,10000,10000),vendor('Equilibrado',150,150,150),vendor('Faturamento',200,110,110),vendor('Volume',110,250,110),vendor('Positivação',110,110,300),vendor('Sem base',99999,99999,99999,0),vendor('Queda',50,50,50)];
+assert.equal(ranking(rows,'geral','SHARK')[0].vendedor,'Positivação');
+assert.equal(ranking(rows,'faturamento','SHARK')[0].vendedor,'Faturamento');
+assert.equal(ranking(rows,'tonelada','SHARK')[0].vendedor,'Volume');
+assert.equal(ranking(rows,'posituacao','SHARK')[0].vendedor,'Positivação');
+assert.equal(ranking([vendor('Equilibrado',150,150,150)],'geral','SHARK')[0].score,50);
+assert.equal(growth(10,0),null);assert.equal(growth(0,10),-100);
+assert.equal(ranking(rows,'geral','ÁGUIA').length,0);
+assert.deepEqual(categories([{categoria:'Zebra'},{categoria:'Água'},{categoria:'Banana'},{categoria:'Água'}]).map(r=>r.categoria),['Água','Banana','Zebra']);
+const els=new Map();const doc={getElementById:id=>{if(!els.has(id))els.set(id,{});return els.get(id);}};
+renderDispute({vendedores_categorias:rows,categorias_disputa:[{categoria:'<Teste>',equipe:'SHARK',fat_atual:10,fat_trim:0,ton_atual:10,ton_trim:0,pos_atual:1,pos_trim:0}]},'geral',doc);
+assert.ok(els.get('categorias-comparison-rows').innerHTML.includes('&lt;Teste&gt;'));
+assert.ok(els.get('categorias-comparison-rows').innerHTML.includes('Sem dados'));
+assert.ok(!els.get('categorias-sellers-shark').innerHTML.includes('R$'));
+console.log('PASS: growth ranking for all four metrics, zero baseline, alphabetical shared categories and safe rendering');

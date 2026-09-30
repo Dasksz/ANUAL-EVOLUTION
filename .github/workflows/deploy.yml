@@ -29,7 +29,7 @@ jobs:
         run: |
           node --check src/js/app.js
           node --check src/js/presentation.js
-          node --test tests/dashboard-loading.test.cjs tests/presentation-analysis.test.mjs tests/mix-chart.test.cjs
+          node --test tests/dashboard-loading.test.cjs tests/presentation-analysis.test.mjs tests/mix-chart.test.cjs tests/presentation-dispute.test.mjs
 
       - name: Create config.js from secrets
         run: |
