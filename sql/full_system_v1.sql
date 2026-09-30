@@ -2868,7 +2868,9 @@ BEGIN
     v_where_base := v_where_base || format(' AND ano IN (%L, %L) ', v_current_year, v_previous_year);
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND filial = ANY(%L::text[]) ', p_filial);
+        IF NOT EXISTS (SELECT 1 FROM unnest(p_filial) f WHERE LOWER(f) IN ('todas', 'ambas')) THEN
+            v_where_base := v_where_base || format(' AND filial = ANY(%L::text[]) ', p_filial);
+        END IF;
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
@@ -2926,7 +2928,7 @@ BEGIN
 
     -- FILIAL LOGIC FOR KPI
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        IF NOT ('ambas' = ANY(p_filial)) THEN
+        IF NOT EXISTS (SELECT 1 FROM unnest(p_filial) f WHERE LOWER(f) IN ('todas', 'ambas')) THEN
             SELECT array_agg(DISTINCT cidade) INTO v_filial_cities
             FROM public.config_city_branches
             WHERE filial = ANY(p_filial);
@@ -11744,7 +11746,9 @@ BEGIN
     v_where_base := v_where_base || format(' AND ano IN (%L, %L) ', v_current_year, v_previous_year);
 
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        v_where_base := v_where_base || format(' AND filial = ANY(%L::text[]) ', p_filial);
+        IF NOT EXISTS (SELECT 1 FROM unnest(p_filial) f WHERE LOWER(f) IN ('todas', 'ambas')) THEN
+            v_where_base := v_where_base || format(' AND filial = ANY(%L::text[]) ', p_filial);
+        END IF;
     END IF;
     IF p_cidade IS NOT NULL AND array_length(p_cidade, 1) > 0 THEN
         v_where_base := v_where_base || format(' AND cidade = ANY(%L::text[]) ', p_cidade);
@@ -11802,7 +11806,7 @@ BEGIN
 
     -- FILIAL LOGIC FOR KPI
     IF p_filial IS NOT NULL AND array_length(p_filial, 1) > 0 THEN
-        IF NOT ('ambas' = ANY(p_filial)) THEN
+        IF NOT EXISTS (SELECT 1 FROM unnest(p_filial) f WHERE LOWER(f) IN ('todas', 'ambas')) THEN
             SELECT array_agg(DISTINCT cidade) INTO v_filial_cities
             FROM public.config_city_branches
             WHERE filial = ANY(p_filial);
