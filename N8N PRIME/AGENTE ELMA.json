@@ -1172,9 +1172,9 @@
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
-    "availableInMCP": false
+    "availableInMCP": true
   },
-  "versionId": "36279f9d-782d-49b3-ae22-596eef5a8a1a",
+  "versionId": "58200365-c000-479e-8a02-e125ebb6e91b",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "794d69bc5dcc6fb73a707f64e2447ab911b7d0bd698a31ab742115dede7cc9cb"
