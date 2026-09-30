@@ -1,5 +1,4 @@
 #categorias-dispute-slide { overflow-y:auto; overflow-x:hidden; display:block; padding-bottom:3rem; }
-.dispute-note { color:#94a3b8; font-size:11px; text-align:center; margin:0 0 14px; }
 .dispute-vendor { display:flex; align-items:center; gap:10px; padding:8px; min-height:64px; border:1px solid #334155; border-radius:8px; }
 .dispute-shark { background:#17255455; border-color:#3b82f644; }
 .dispute-aguia { background:#450a0a55; border-color:#ef444444; }
@@ -14,7 +13,7 @@
 .dispute-empty { color:#94a3b8; font-size:12px; padding:8px; }
 .dispute-comparison { width:100%; }
 .dispute-table-titles { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:12px; font-size:13px; font-weight:700; text-transform:uppercase; }
-.dispute-table-titles > div { border-bottom:1px solid #c026d344; padding-bottom:12px; }
+.dispute-table-titles > div { text-align:center; border-bottom:1px solid #c026d344; padding-bottom:12px; }
 .dispute-table-titles small { display:block; color:#94a3b8; font-size:10px; font-weight:400; text-transform:none; margin-top:4px; }
 .dispute-scroll { max-height:424px; overflow:auto; scrollbar-gutter:stable; }
 .dispute-table-head,.dispute-comparison-row { display:grid; grid-template-columns:minmax(350px,1fr) minmax(470px,1fr); gap:24px; min-width:844px; }
