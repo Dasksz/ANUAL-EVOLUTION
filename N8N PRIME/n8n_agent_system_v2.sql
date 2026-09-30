@@ -481,6 +481,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.sp_clientes_sem_venda_rca(p_rca TEXT, p_cidade TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql STABLE
+SET search_path = public, pg_temp
 AS $$
 DECLARE
     v_sem_venda JSONB;
