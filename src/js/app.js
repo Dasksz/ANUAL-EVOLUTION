@@ -1526,7 +1526,8 @@ function getActiveExportView() {
     // Helper to generate canonical cache keys (sorted arrays)
     function generateCacheKey(prefix, filters) {
         // Ignore dashboard totals cached before monthly chunks were matched by month.
-        if (prefix === 'dashboard_data') prefix = 'dashboard_data_v2';
+        const revisions = { dashboard_data: 3, dashboard_filters: 2, frequency_data: 2, mix_data: 2, boxes_dashboard_data: 2 };
+        if (revisions[prefix]) prefix = `${prefix}_v${revisions[prefix]}`;
         const sortedFilters = {};
         Object.keys(filters).sort().forEach(k => {
             let val = filters[k];
@@ -3440,56 +3441,9 @@ async function loadBoxesView() {
         } catch (e) { AppLog.warn('Cache error:', e); }
 
         if (!data) {
-            // ⚡ Otimização: A query get_boxes_dashboard_data foi drasticamente otimizada no banco.
-            // O chunking estava causando contenção e timeout na API do Supabase ao disparar 20 requisições pesadas.
-            const needsChunking = false;
-
-        if (needsChunking) {
-            const chunkList = availableFiltersState.filiais;
-            const chunkKey = 'p_filial';
-            const chunkLabel = 'Filial';
-            
-            AppLog.log('Fetching Boxes View in Filial chunks concurrently...');
-            window.showDashboardLoading('boxes-view', `Carregando ${chunkList.length} Filiais simultaneamente...`);
-            
-            let accumulatedData = null;
-            
-            const chunkPromises = chunkList.map(chunkVal => {
-                const chunkFilters = { ...filters, [chunkKey]: [String(chunkVal)] };
-                return supabase.rpc('get_boxes_dashboard_data', chunkFilters);
-            });
-            
-            const results = await Promise.all(chunkPromises);
-            
-            for (let i = 0; i < results.length; i++) {
-                const { data: resData, error: resError } = results[i];
-                    
-                    if (resError) {
-                        AppLog.error('API Error in boxes chunk:', resError);
-                        if (resError.message.includes('function get_boxes_dashboard_data') && resError.message.includes('does not exist')) {
-                            window.hideDashboardLoading();
-                            window.showToast('error', "Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
-                            return;
-                        }
-                        continue;
-                    }
-                    if (resData) {
-                        accumulatedData = mergeBoxesDashboardData(accumulatedData, resData);
-                    }
-                }
-                data = accumulatedData;
-            } else {
-                const { data: rpcData, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
-                if (error) {
-                    AppLog.error(error);
-                    window.hideDashboardLoading();
-                    if (error.message.includes('function get_boxes_dashboard_data') && error.message.includes('does not exist')) {
-                        window.showToast('error', "Erro: A função 'get_boxes_dashboard_data' não foi encontrada. Aplique o script de migração 'sql/migration_boxes.sql'.");
-                    }
-                    return;
-                }
-                data = rpcData;
-            }
+            const { data: rpcData, error } = await supabase.rpc('get_boxes_dashboard_data', filters);
+            if (error) throw error;
+            data = rpcData;
             if (data) saveToCache(cacheKey, data);
         }
 
@@ -3497,8 +3451,10 @@ async function loadBoxesView() {
         if (data) renderBoxesDashboard(data);
     } catch (e) {
         AppLog.error('Error in loadBoxesView:', e);
+        window.showToast('error', 'Não foi possível carregar os dados de caixas. Tente novamente.');
     } finally {
         isBoxesViewLoading = false;
+        window.hideDashboardLoading();
     }
 }
 
@@ -3944,16 +3900,16 @@ async function loadBoxesView() {
 
     function getCurrentFilters() {
         return {
-            p_filial: selectedFiliais,
-            p_cidade: selectedCidades,
-            p_supervisor: selectedSupervisores,
-            p_vendedor: selectedVendedores,
-            p_fornecedor: selectedFornecedores,
+            p_filial: [...selectedFiliais],
+            p_cidade: [...selectedCidades],
+            p_supervisor: [...selectedSupervisores],
+            p_vendedor: [...selectedVendedores],
+            p_fornecedor: [...selectedFornecedores],
             p_ano: anoFilter.value,
             p_mes: mesFilter.value,
-            p_tipovenda: selectedTiposVenda,
-            p_rede: selectedRedes,
-            p_categoria: selectedCategorias
+            p_tipovenda: [...selectedTiposVenda],
+            p_rede: [...selectedRedes],
+            p_categoria: [...selectedCategorias]
         };
     }
 
@@ -3968,7 +3924,7 @@ async function loadBoxesView() {
                 const age = Date.now() - cachedEntry.timestamp;
                 if (age < CACHE_TTL) {
                     AppLog.log('Serving filters from cache (fresh)');
-                    applyFiltersData(cachedEntry.data);
+                    if (JSON.stringify(currentFilters) === JSON.stringify(getCurrentFilters())) applyFiltersData(cachedEntry.data);
                     return; 
                 }
             }
@@ -3984,7 +3940,7 @@ async function loadBoxesView() {
         }
 
         await saveToCache(cacheKey, data);
-        applyFiltersData(data);
+        if (JSON.stringify(currentFilters) === JSON.stringify(getCurrentFilters())) applyFiltersData(data);
     }
 
     /**
@@ -4361,6 +4317,8 @@ async function loadBoxesView() {
         }
     });
 
+    let mainDashboardRequest = 0;
+    let frequencyRequest = 0;
     let filterDebounceTimer;
     let lastMainDashboardFiltersStr = "";
     const handleFilterChange = async () => {
@@ -4368,6 +4326,8 @@ async function loadBoxesView() {
         const currentFiltersStr = JSON.stringify(filters);
         if (currentFiltersStr === lastMainDashboardFiltersStr) return; // No changes made
         lastMainDashboardFiltersStr = currentFiltersStr;
+        mainDashboardRequest++;
+        frequencyRequest++;
         
         clearTimeout(filterDebounceTimer);
         filterDebounceTimer = setTimeout(async () => {
@@ -4382,91 +4342,7 @@ async function loadBoxesView() {
 
     // Unified Fetch & Cache Logic
     
-    // Chunking / Merge Logic for Main Dashboard
-    function mergeMainDashboardData(accumulated, newData) {
-        if (!accumulated) return JSON.parse(JSON.stringify(newData)); // Deep copy first chunk
-
-        // Merge scalars (overwrite with latest, except KPI which we sum)
-        accumulated.current_year = newData.current_year;
-        accumulated.previous_year = newData.previous_year;
-        accumulated.target_month_index = newData.target_month_index;
-        accumulated.trend_allowed = accumulated.trend_allowed || newData.trend_allowed; // true if any allows
-        
-        // Sum KPIs
-        accumulated.kpi_clients_attended = (accumulated.kpi_clients_attended || 0) + (newData.kpi_clients_attended || 0);
-        // Base is distinct, we can't perfectly sum distinct count, but since it's filtered by branch it's close enough.
-        accumulated.kpi_clients_base = (accumulated.kpi_clients_base || 0) + (newData.kpi_clients_base || 0);
-
-        // Merge arrays: monthly_data_current
-        if (newData.monthly_data_current) {
-            accumulated.monthly_data_current = accumulated.monthly_data_current || [];
-            newData.monthly_data_current.forEach((monthData) => {
-                // Branches omit months without sales, so array positions do not identify months.
-                const accM = accumulated.monthly_data_current.find(m => m.month_index === monthData.month_index);
-                if (!accM) {
-                    accumulated.monthly_data_current.push({ ...monthData });
-                } else {
-                    accM.faturamento = (accM.faturamento || 0) + (monthData.faturamento || 0);
-                    accM.peso = (accM.peso || 0) + (monthData.peso || 0);
-                    accM.bonificacao = (accM.bonificacao || 0) + (monthData.bonificacao || 0);
-                    accM.devolucao = (accM.devolucao || 0) + (monthData.devolucao || 0);
-                    accM.positivacao = (accM.positivacao || 0) + (monthData.positivacao || 0); // We'll sum clients
-                    // Averages like mix_pdv and ticket_medio are mathematically incorrect to sum directly, 
-                    // but we can recalculate or approximate. For simplicity in chunking, we'll recalculate ticket_medio
-                    accM.ticket_medio = accM.positivacao > 0 ? accM.faturamento / accM.positivacao : 0;
-                    // Mix PDV is distinct products per client, we will approximate by taking max or average. Let's use max for now.
-                    accM.total_mix_sum = (accM.total_mix_sum || 0) + (monthData.total_mix_sum || 0);
-                    accM.mix_client_count = (accM.mix_client_count || 0) + (monthData.mix_client_count || 0);
-                    accM.mix_pdv = Math.max((accM.mix_pdv || 0), (monthData.mix_pdv || 0));
-                }
-            });
-            accumulated.monthly_data_current.sort((a, b) => a.month_index - b.month_index);
-        }
-
-        // Merge arrays: monthly_data_previous
-        if (newData.monthly_data_previous) {
-            accumulated.monthly_data_previous = accumulated.monthly_data_previous || [];
-            newData.monthly_data_previous.forEach((monthData) => {
-                // Branches omit months without sales, so array positions do not identify months.
-                const accM = accumulated.monthly_data_previous.find(m => m.month_index === monthData.month_index);
-                if (!accM) {
-                    accumulated.monthly_data_previous.push({ ...monthData });
-                } else {
-                    accM.faturamento = (accM.faturamento || 0) + (monthData.faturamento || 0);
-                    accM.peso = (accM.peso || 0) + (monthData.peso || 0);
-                    accM.bonificacao = (accM.bonificacao || 0) + (monthData.bonificacao || 0);
-                    accM.devolucao = (accM.devolucao || 0) + (monthData.devolucao || 0);
-                    accM.positivacao = (accM.positivacao || 0) + (monthData.positivacao || 0);
-                    accM.ticket_medio = accM.positivacao > 0 ? accM.faturamento / accM.positivacao : 0;
-                    accM.total_mix_sum = (accM.total_mix_sum || 0) + (monthData.total_mix_sum || 0);
-                    accM.mix_client_count = (accM.mix_client_count || 0) + (monthData.mix_client_count || 0);
-                    accM.mix_pdv = Math.max((accM.mix_pdv || 0), (monthData.mix_pdv || 0));
-                }
-            });
-            accumulated.monthly_data_previous.sort((a, b) => a.month_index - b.month_index);
-        }
-
-        // Merge trend_data
-        if (newData.trend_data) {
-            if (!accumulated.trend_data) {
-                accumulated.trend_data = { ...newData.trend_data };
-            } else {
-                let accT = accumulated.trend_data;
-                accT.faturamento = (accT.faturamento || 0) + (newData.trend_data.faturamento || 0);
-                accT.peso = (accT.peso || 0) + (newData.trend_data.peso || 0);
-                accT.bonificacao = (accT.bonificacao || 0) + (newData.trend_data.bonificacao || 0);
-                accT.devolucao = (accT.devolucao || 0) + (newData.trend_data.devolucao || 0);
-                accT.positivacao = (accT.positivacao || 0) + (newData.trend_data.positivacao || 0);
-                accT.ticket_medio = accT.positivacao > 0 ? accT.faturamento / accT.positivacao : 0;
-                accT.total_mix_sum = (accT.total_mix_sum || 0) + (newData.trend_data.total_mix_sum || 0);
-                accT.mix_client_count = (accT.mix_client_count || 0) + (newData.trend_data.mix_client_count || 0);
-                accT.mix_pdv = Math.max((accT.mix_pdv || 0), (newData.trend_data.mix_pdv || 0));
-            }
-        }
-
-        return accumulated;
-    }
-
+    // Aggregate all requested branches in the database, including distinct clients.
 async function fetchDashboardData(filters, isBackground = false, forceRefresh = false) {
         const cacheKey = generateCacheKey('dashboard_data', filters);
         const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Hours TTL
@@ -4487,50 +4363,10 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             } catch (e) { AppLog.warn('Cache error:', e); }
         }
 
-        // 2. Check if we need to chunk (p_filial is empty and we have available branches)
-        const needsChunking = (!filters.p_filial || filters.p_filial.length === 0) 
-            && availableFiltersState.filiais 
-            && availableFiltersState.filiais.length > 0;
-
-        let finalData = null;
-
-        if (needsChunking) {
-            if (!isBackground) AppLog.log('Fetching all branches in chunks...');
-            const branches = availableFiltersState.filiais;
-            let accumulatedData = null;
-            
-            for (let i = 0; i < branches.length; i++) {
-                const branch = branches[i];
-                if (!isBackground) {
-                    AppLog.log(`Fetching branch ${i + 1}/${branches.length}...`);
-                    window.showDashboardLoading('main-dashboard-view', `Carregando Filial ${i+1} de ${branches.length}...`);
-                }
-                
-                const chunkFilters = { ...filters, p_filial: [branch] };
-                const { data: resData, error: resError } = await supabase.rpc('get_main_dashboard_data', chunkFilters);
-                
-                if (resError) {
-                    AppLog.error('API Error in chunk:', resError);
-                    continue;
-                }
-                if (resData) {
-                    accumulatedData = mergeMainDashboardData(accumulatedData, resData);
-                    // Render progressively if not in background
-                    if (!isBackground) {
-                        renderDashboard(accumulatedData);
-                    }
-                }
-            }
-            finalData = accumulatedData;
-        } else {
-            // Normal Single Fetch
-            if (isBackground) AppLog.log(`[Background] Fetching data from API...`);
-            const { data, error } = await supabase.rpc('get_main_dashboard_data', filters);
-            if (error) {
-                AppLog.error('API Error:', error);
-                return { data: null, error };
-            }
-            finalData = data;
+        const { data: finalData, error } = await supabase.rpc('get_main_dashboard_data', filters);
+        if (error) {
+            AppLog.error('API Error:', error);
+            return { data: null, error };
         }
 
         // 3. Save to Cache
@@ -4544,7 +4380,9 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
     }
 
     async function loadMainDashboardData(forceRefresh = false) {
+        const requestId = ++mainDashboardRequest;
         const filters = getCurrentFilters();
+        const isCurrent = () => requestId === mainDashboardRequest;
         const cacheKey = generateCacheKey('dashboard_data', filters);
         
         // 1. Stale-While-Revalidate: Try Cache & Render Immediately
@@ -4552,6 +4390,7 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             try {
                 const cachedEntry = await getFromCache(cacheKey);
                 if (cachedEntry && cachedEntry.data) {
+                    if (!isCurrent()) return;
                     AppLog.log('SWR: Rendering cached data immediately...');
                     renderDashboard(cachedEntry.data);
                     loadFrequencyTable(filters);
@@ -4561,6 +4400,7 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
                     if (age < 24 * 60 * 60 * 1000) { // Fresh enough (24 hours)
                          AppLog.log('SWR: Cache is fresh (<24h), skipping background fetch.');
                          await fetchLastSalesDate();
+                         if (!isCurrent()) return;
                          window.hideDashboardLoading();
                          prefetchViews(filters);
                          return;
@@ -4586,6 +4426,7 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             fetchLastSalesDate()
         ]);
 
+        if (!isCurrent()) return;
         const { data, error } = dashboardResult;
         
         if (data && !error) {
@@ -4598,6 +4439,8 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             prefetchViews(filters);
         }
         
+        if (!isCurrent()) return;
+        if (error || !data) window.showToast('error', 'Não foi possível atualizar o dashboard. Tente novamente.');
         window.hideDashboardLoading();
     }
 
@@ -10181,89 +10024,9 @@ async function updateEstrelasView() {
 }
 
 
-function mergeFrequencyData(accumulated, newData) {
-    if (!accumulated) return JSON.parse(JSON.stringify(newData));
-    if (!newData) return accumulated;
-
-    // Merge tree_data
-    if (newData.tree_data) {
-        accumulated.tree_data = accumulated.tree_data || [];
-        newData.tree_data.forEach(newRow => {
-            let existingRow = accumulated.tree_data.find(r =>
-                r.grp_filial === newRow.grp_filial &&
-                r.grp_cidade === newRow.grp_cidade &&
-                r.grp_vendedor === newRow.grp_vendedor &&
-                r.filial === newRow.filial &&
-                r.cidade === newRow.cidade &&
-                r.vendedor === newRow.vendedor
-            );
-            if (existingRow) {
-                existingRow.faturamento = (existingRow.faturamento || 0) + (newRow.faturamento || 0);
-                existingRow.faturamento_prev = (existingRow.faturamento_prev || 0) + (newRow.faturamento_prev || 0);
-                existingRow.positivacao = (existingRow.positivacao || 0) + (newRow.positivacao || 0);
-                existingRow.positivacao_mensal = (existingRow.positivacao_mensal || 0) + (newRow.positivacao_mensal || 0);
-                existingRow.sum_skus = (existingRow.sum_skus || 0) + (newRow.sum_skus || 0);
-                existingRow.total_pedidos = (existingRow.total_pedidos || 0) + (newRow.total_pedidos || 0);
-                existingRow.tons = (existingRow.tons || 0) + (newRow.tons || 0);
-                existingRow.base_total = (existingRow.base_total || 0) + (newRow.base_total || 0);
-                // The backend now computes avg_sku_pdv and avg_monthly_freq using SUM / NULLIF(SUM)
-                // When we chunk, we must recalculate them based on the new sums
-                // But the backend doesn't provide sum_month_clientes, only positivacao_mensal which is close.
-                // Wait, sum_month_clientes is exactly month_clientes sum.
-                // However, the backend returns avg_monthly_freq. Since we don't have the denominator, we will just use a weighted average using positivacao_mensal.
-                // No, total_pedidos / positivacao_mensal is NOT avg_monthly_freq (it's similar).
-                // It's better to just leave avg_monthly_freq = 0 if chunked, or just add denominator to tree_data.
-                // Actually, let's just do weighted average using positivacao.
-                let totalPos = existingRow.positivacao_mensal > 0 ? existingRow.positivacao_mensal : existingRow.positivacao;
-                existingRow.avg_sku_pdv = totalPos > 0 ? existingRow.sum_skus / totalPos : 0;
-                existingRow.avg_monthly_freq = totalPos > 0 ? existingRow.total_pedidos / totalPos : 0;
-            } else {
-                accumulated.tree_data.push({ ...newRow });
-            }
-        });
-    }
-
-    // Merge chart_data
-    if (newData.chart_data) {
-        accumulated.chart_data = accumulated.chart_data || [];
-        newData.chart_data.forEach(newRow => {
-            let existingRow = accumulated.chart_data.find(r => r.ano === newRow.ano && r.mes === newRow.mes);
-            if (existingRow) {
-                existingRow.total_pedidos = (existingRow.total_pedidos || 0) + (newRow.total_pedidos || 0);
-                existingRow.total_clientes = (existingRow.total_clientes || 0) + (newRow.total_clientes || 0);
-            } else {
-                accumulated.chart_data.push({ ...newRow });
-            }
-        });
-    }
-
-    accumulated.global_base_total = (accumulated.global_base_total || 0) + (newData.global_base_total || 0);
-
-    return accumulated;
-}
-
-function mergeMixData(accumulated, newData) {
-    if (!accumulated) return JSON.parse(JSON.stringify(newData));
-    if (!newData) return accumulated;
-
-    if (newData.chart_data) {
-        accumulated.chart_data = accumulated.chart_data || [];
-        newData.chart_data.forEach(newRow => {
-            let existingRow = accumulated.chart_data.find(r => r.mes === newRow.mes);
-            if (existingRow) {
-                existingRow.total_salty = (existingRow.total_salty || 0) + (newRow.total_salty || 0);
-                existingRow.total_foods = (existingRow.total_foods || 0) + (newRow.total_foods || 0);
-                existingRow.total_ambas = (existingRow.total_ambas || 0) + (newRow.total_ambas || 0);
-            } else {
-                accumulated.chart_data.push({ ...newRow });
-            }
-        });
-    }
-
-    return accumulated;
-}
-
 async function loadFrequencyTable(filters) {
+    const requestId = ++frequencyRequest;
+    const isCurrent = () => requestId === frequencyRequest;
     const tableBody = document.getElementById('frequency-table-body');
     const tableFooter = document.getElementById('frequency-table-footer');
     if (!tableBody || !tableFooter) return;
@@ -10314,6 +10077,7 @@ async function loadFrequencyTable(filters) {
 
         if (freqCachedValid && mixCachedValid) {
             AppLog.log('Serving Frequency and Mix from Cache');
+            if (!isCurrent()) return;
             renderFrequencyTable(finalFreqData, tableBody, tableFooter);
             renderFrequencyChart(finalFreqData);
             renderMixSaltyFoodsChart(finalMixData);
@@ -10322,61 +10086,26 @@ async function loadFrequencyTable(filters) {
     } catch (e) { AppLog.warn('Frequency/Mix cache error:', e); }
 
     try {
-        const needsChunking = (!reqFilters.p_filial || reqFilters.p_filial.length === 0) 
-            && availableFiltersState.filiais 
-            && availableFiltersState.filiais.length > 0;
-
-        if (needsChunking) {
-            AppLog.log('Fetching Frequency & Mix in concurrent chunks...');
-            const branches = availableFiltersState.filiais;
-            
-            tableBody.innerHTML = renderTableEmptyState('8', 'Carregando dados das filiais simultaneamente...', false, 'py-4 text-xs');
-
-            // Group requests into a single massive concurrent Promise.all
-            // This prevents sequential bottleneck waiting for one branch before requesting the next.
-            const chunkPromises = branches.map(branch => {
-                const chunkFilters = { ...reqFilters, p_filial: [branch] };
-                return Promise.all([
-                    supabase.rpc("get_frequency_table_data", chunkFilters),
-                    supabase.rpc("get_mix_salty_foods_data", chunkFilters)
-                ]);
-            });
-
-            const results = await Promise.all(chunkPromises);
-
-            for (const [freqRes, mixRes] of results) {
-                if (freqRes.error) throw freqRes.error;
-                if (mixRes.error) throw mixRes.error;
-
-                if (freqRes.data) {
-                    finalFreqData = mergeFrequencyData(finalFreqData, freqRes.data);
-                }
-                if (mixRes.data) {
-                    finalMixData = mergeMixData(finalMixData, mixRes.data);
-                }
-            }
-        } else {
-            const [freqResponse, mixResponse] = await Promise.all([
-                supabase.rpc("get_frequency_table_data", reqFilters),
-                supabase.rpc("get_mix_salty_foods_data", reqFilters)
-            ]);
-
-            if (freqResponse.error) throw freqResponse.error;
-            if (mixResponse.error) throw mixResponse.error;
-
-            finalFreqData = freqResponse.data;
-            finalMixData = mixResponse.data;
-        }
+        const [freqResponse, mixResponse] = await Promise.all([
+            supabase.rpc("get_frequency_table_data", reqFilters),
+            supabase.rpc("get_mix_salty_foods_data", reqFilters)
+        ]);
+        if (freqResponse.error) throw freqResponse.error;
+        if (mixResponse.error) throw mixResponse.error;
+        finalFreqData = freqResponse.data;
+        finalMixData = mixResponse.data;
 
         if (finalFreqData) await saveToCache(freqCacheKey, finalFreqData);
         if (finalMixData) await saveToCache(mixCacheKey, finalMixData);
 
+        if (!isCurrent()) return;
         renderFrequencyTable(finalFreqData, tableBody, tableFooter);
         renderFrequencyChart(finalFreqData);
         renderMixSaltyFoodsChart(finalMixData);
 
     } catch (err) {
         AppLog.error("Erro ao carregar tabela de frequência ou mix:", err);
+        if (!isCurrent()) return;
         tableBody.innerHTML = renderTableEmptyState('8', 'Erro ao carregar dados.', true, 'py-4 text-xs');
     }
 }
@@ -12928,3 +12657,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, false);
     }
 });
+

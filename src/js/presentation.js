@@ -160,27 +160,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.getElementById("loader-subtext").textContent =
         "Conectando ao modelo LLM...";
 
-      const { data: apiKeys, error: apiError } = await supabase
-        .from("api_ia")
-        .select("api_key, model_name")
-        .limit(1)
-        .single();
-
-      if (apiError || !apiKeys?.api_key) {
-        console.warn("Chave de API não encontrada.");
-        aiAnalysisText =
-          "Análise automática não disponível. Chave de API não configurada.";
-        document.getElementById("ai-analysis-content").innerHTML =
-          `<p class="text-red-400 p-4 bg-red-900/20 rounded-lg">Análise indisponível. Verifique as configurações de IA.</p>`;
-      } else {
-        aiAnalysisText = await generateAiAnalysis(
-          apiKeys.api_key,
-          apiKeys.model_name || "deepseek-chat",
-          rpcData,
-        );
-        document.getElementById("ai-analysis-content").innerHTML =
-          `<div class="whitespace-pre-wrap">${aiAnalysisText}</div>`;
-      }
+      aiAnalysisText = await generateAiAnalysis(p_ano, p_mes);
+      const analysisContent = document.getElementById("ai-analysis-content");
+      analysisContent.classList.add("whitespace-pre-wrap");
+      analysisContent.textContent = aiAnalysisText;
 
       btnDownload.disabled = false;
       if (openModalBtn) openModalBtn.classList.remove("hidden");
@@ -1350,89 +1333,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --- AI LOGIC ---
-  async function generateAiAnalysis(apiKey, modelName, data) {
-    // Prepare comprehensive data context for the LLM
-    const global = data.global?.[0] || {};
-    const varFatAno = global.fat_ant
-      ? (((global.fat_atual - global.fat_ant) / global.fat_ant) * 100).toFixed(
-          1,
-        )
-      : 0;
-
-    const topFiliais = (data.filiais || [])
-      .slice(0, 3)
-      .map(
-        (f) =>
-          `${f.nome}: ${formatCurrency(f.fat_atual)} (Var: ${f.fat_ant ? (((f.fat_atual - f.fat_ant) / f.fat_ant) * 100).toFixed(1) : 0}%)`,
-      )
-      .join(", ");
-    const topSupervisores = (data.supervisores || [])
-      .slice(0, 3)
-      .map((s) => `${s.nome}: ${formatCurrency(s.fat_atual)}`)
-      .join(", ");
-    const topRedes = (data.redes || [])
-      .slice(0, 3)
-      .map((r) => `${r.nome}: ${formatCurrency(r.fat_atual)}`)
-      .join(", ");
-    const topVendedores = (data.top_vendedores || [])
-      .slice(0, 3)
-      .map((v) => `${v.nome}: ${formatCurrency(v.fat_atual)}`)
-      .join(", ");
-
-    let promptText = `Crie um roteiro falado (script de apresentação) para que eu possa apresentar os resultados comerciais de fechamento.
-Abaixo estão os dados completos do fechamento comercial:
-
-### Visão Geral:
-- Faturamento Atual: ${formatCurrency(global.fat_atual || 0)} (Variação vs Ano Anterior: ${varFatAno}%)
-- Volume Kg Atual: ${formatNumber(global.ton_atual || 0)} Kg (Variação vs Mês Anterior: ${global.ton_trim ? (((global.ton_atual - global.ton_trim) / global.ton_trim) * 100).toFixed(1) : 0}%)
-- Devoluções: ${formatCurrency(global.dev_atual || 0)} (Variação vs Ano Anterior: ${global.dev_ant ? (((global.dev_atual - global.dev_ant) / global.dev_ant) * 100).toFixed(1) : 0}%)
-- Bonificações: ${formatCurrency(global.bonificacao_atual || 0)} (Variação vs Ano Anterior: ${global.bonificacao_ant ? (((global.bonificacao_atual - global.bonificacao_ant) / global.bonificacao_ant) * 100).toFixed(1) : 0}%)
-- Perdas: ${formatCurrency(global.perdas_atual || 0)} (Variação vs Ano Anterior: ${global.perdas_ant ? (((global.perdas_atual - global.perdas_ant) / global.perdas_ant) * 100).toFixed(1) : 0}%)
-- Positivação (Clientes Ativos): ${formatNumber(global.pos_atual || 0)} (Variação vs Mês Anterior: ${global.pos_ant_trim ? (((global.pos_atual - global.pos_ant_trim) / global.pos_ant_trim) * 100).toFixed(1) : 0}%)
-
-### Destaques por Segmento (Top 3):
-- Top Filiais: ${topFiliais || "N/A"}
-- Top Supervisores: ${topSupervisores || "N/A"}
-- Top Atacados/Redes: ${topRedes || "N/A"}
-- Top Vendedores: ${topVendedores || "N/A"}
-
-Aja estritamente como um roteirista. Seu objetivo é apenas apresentar esses números de forma fluida, como se fosse o teleprompter de um apresentador. Dê alguns toques de fala em cima de cada ponto para conectar os assuntos.
-REGRAS IMPORTANTES:
-1. NÃO invente motivos, justificativas ou sugestões de negócios para os números.
-2. NÃO crie planos de ação ou "Recomendações Práticas".
-3. O foco é apenas narrar os números de forma executiva e clara.`;
-
-    try {
-      const response = await fetch(
-        "https://api.deepseek.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: modelName,
-            messages: [
-              {
-                role: "system",
-                content:
-                  "Você é um roteirista que cria discursos executivos focados apenas em apresentar os resultados numéricos, sem sugerir ações de negócios.",
-              },
-              { role: "user", content: promptText },
-            ],
-            temperature: 0.5,
-            max_tokens: 1500,
-          }),
-        },
-      );
-      if (!response.ok) throw new Error("Erro na API da IA");
-      const resData = await response.json();
-      return resData.choices[0].message.content;
-    } catch (e) {
-      console.error(e);
-      return "Erro ao comunicar com a inteligência artificial.";
+  async function generateAiAnalysis(ano, mes) {
+    const { data, error } = await supabase.functions.invoke('presentation-analysis', {
+      body: { ano, mes }
+    });
+    if (error || !data?.analysis) {
+      console.warn('Análise automática temporariamente indisponível.');
+      return 'Não foi possível gerar a análise automática. Verifique sua sessão e tente novamente.';
     }
+    return data.analysis;
   }
 
   // --- DOCX DOWNLOAD ---
@@ -1810,3 +1719,4 @@ REGRAS IMPORTANTES:
     // Initial load
     await fetchAndRenderLpData();
   };
+
