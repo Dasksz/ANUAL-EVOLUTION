@@ -20,6 +20,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate dashboard and AI regressions
+        run: |
+          node --check src/js/app.js
+          node --check src/js/presentation.js
+          node --test tests/dashboard-loading.test.cjs tests/presentation-analysis.test.mjs
+
       - name: Create config.js from secrets
         run: |
           cat <<EOF > src/js/config.js
@@ -38,3 +49,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
