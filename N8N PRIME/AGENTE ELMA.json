@@ -192,7 +192,7 @@
         "toolDescription": "Use obrigatoriamente no início do atendimento para identificar o usuário. Você DEVE pedir APENAS o CPF ou CNPJ do usuário para verificar a identidade. REGRA CRÍTICA: Limpe o documento antes de enviar para o banco de dados, utilizando apenas os números puros, sem pontuações ou símbolos.",
         "operation": "getAll",
         "tableId": "n8n_vw_validar_identidade",
-        "returnAll": true,
+        "returnAll": false,
         "matchType": "allFilters",
         "filters": {
           "conditions": [
@@ -202,7 +202,8 @@
               "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions1_Field_Value', `Documento fornecido pelo usuário (apenas números).`, 'string') }}"
             }
           ]
-        }
+        },
+        "limit": 1
       },
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
@@ -310,7 +311,7 @@
                 "conditions": [
                   {
                     "leftValue": "={{ $('AI Agent').item.json.output }}",
-                    "rightValue": "FINANCEIRO",
+                    "rightValue": "[TRANSFERIR_FINANCEIRO]",
                     "operator": {
                       "type": "string",
                       "operation": "contains"
@@ -332,7 +333,7 @@
                 "conditions": [
                   {
                     "leftValue": "={{ $('AI Agent').item.json.output }}",
-                    "rightValue": "LOGISTICA",
+                    "rightValue": "[TRANSFERIR_LOGISTICA]",
                     "operator": {
                       "type": "string",
                       "operation": "contains"
@@ -354,7 +355,7 @@
                 "conditions": [
                   {
                     "leftValue": "={{ $('AI Agent').item.json.output }}",
-                    "rightValue": "COMERCIAL",
+                    "rightValue": "[TRANSFERIR_COMERCIAL]",
                     "operator": {
                       "type": "string",
                       "operation": "contains"
@@ -376,7 +377,7 @@
                 "conditions": [
                   {
                     "leftValue": "={{ $('AI Agent').item.json.output }}",
-                    "rightValue": "RH",
+                    "rightValue": "[TRANSFERIR_RH]",
                     "operator": {
                       "type": "string",
                       "operation": "contains"
@@ -509,11 +510,12 @@
     {
       "parameters": {
         "descriptionType": "manual",
-        "toolDescription": "FERRAMENTA PRINCIPAL DA ELMA V2\n\nUse esta ferramenta para consultar TODOS os dados dos clientes e colaboradores, de forma consolidada.\n\nInstruções:\n1. Sempre passe a 'opcao' desejada pelo usuário (veja abaixo).\n2. Passe 'cpf', 'codigo_cliente', 'numero_pedido', 'codigo_produto', 'filial', 'cidade', 'data_inicio' e 'data_fim' APENAS se fornecidos explicitamente.\n3. O formato de datas DEVE SER OBRIGATORIAMENTE YYYY-MM-DD (ex: 2026-06-01).\n\nOpções disponíveis:\n1 = Cadastro de Cliente\n2 = Histórico de Pedidos (Obrigatório informar data_inicio e data_fim para filtrar o período)\n3 = Consultar Pedido Específico (pode passar múltiplos separados por vírgula)\n4 = Inovações\n6 = Sugestão de Pedido\n7 = Consultar Estoque (Obrigatório codigo_produto e filial)\n8 = Transferir Atendimento\n10 = Clientes sem venda (Obrigatório RCA e Cidade - passe o nome da cidade em 'cidade')",
+        "toolDescription": "FERRAMENTA PRINCIPAL DA ELMA V2\n\nUse esta ferramenta para consultar TODOS os dados dos clientes e colaboradores, de forma consolidada.\n\nInstruções:\n1. Sempre passe a 'opcao' desejada pelo usuário (veja abaixo).\n2. Passe 'cpf', 'codigo_cliente', 'numero_pedido', 'codigo_produto', 'filial', 'cidade', 'data_inicio' e 'data_fim' APENAS se fornecidos explicitamente.\n3. O formato de datas DEVE SER OBRIGATORIAMENTE YYYY-MM-DD (ex: 2026-06-01).\n\nOpções disponíveis:\n1 = Cadastro de Cliente\n2 = Histórico de Pedidos (Obrigatório informar data_inicio e data_fim; período máximo de 4 meses; se faltar algum dado, pergunte antes de consultar)\n3 = Consultar Pedido Específico (pode passar múltiplos separados por vírgula)\n4 = Inovações\n6 = Sugestão de Pedido\n7 = Consultar Estoque (Obrigatório codigo_produto e filial)\n8 = Transferir Atendimento\n10 = Clientes sem venda (Obrigatório RCA e cidade)\n\nA consulta retorna no máximo 100 registros por chamada. Se houver mais resultados, reduza o período ou refine os critérios.",
         "operation": "getAll",
         "tableId": "n8n_agent_view_v2",
         "filterType": "string",
-        "filterString": "={{ (() => {   const opt = $fromAI('opcao');   const filters = [];   if (opt === '2') {     const inicio = $fromAI('data_inicio');     const fim = $fromAI('data_fim');     const cod = $fromAI('codigo_cliente');     if (cod) filters.push(`codigo_cliente=eq.${cod}`);          let dateFilters = [];     if (inicio) dateFilters.push(`data_inicio.gte.${inicio}`);     if (fim) dateFilters.push(`data_inicio.lte.${fim}`);          let orStr = 'or=(opcao.eq.2_summary';     if (dateFilters.length > 0) {         orStr += `,and(opcao.eq.2_pedido,${dateFilters.join(',')})`;     } else {         orStr += ',opcao.eq.2_pedido';     }     orStr += ')';     filters.push(orStr);   } else if (opt) {     filters.push(`opcao=eq.${opt}`);   }   if (opt !== '2') {     if ($fromAI('codigo_cliente')) filters.push(`codigo_cliente=eq.${$fromAI('codigo_cliente')}`);   }   if ($fromAI('cpf')) filters.push(`cpf=eq.${$fromAI('cpf')}`);   if ($fromAI('setor_transferencia')) filters.push(`setor_transferencia=eq.${$fromAI('setor_transferencia')}`);   if ($fromAI('numero_pedido')) {     const num = String($fromAI('numero_pedido'));     if (num.includes(',')) filters.push(`numero_pedido=in.(${num.replace(/\\s+/g, '')})`);     else filters.push(`numero_pedido=eq.${num}`);   }   if ($fromAI('codigo_produto')) filters.push(`codigo_produto=eq.${$fromAI('codigo_produto')}`);   if ($fromAI('termo_busca')) filters.push(`termo_busca=eq.${$fromAI('termo_busca')}`);   if ($fromAI('filial')) filters.push(`filial=eq.${$fromAI('filial')}`);   if ($fromAI('cidade')) filters.push(`cidade=eq.${$fromAI('cidade')}`);   return filters.length > 0 ? filters.join('&') : 'opcao=is.null'; })() }}"
+        "filterString": "={{ (() => {\n  const opt = String($fromAI('opcao') ?? '').trim();\n  const allowed = ['1','2','3','4','6','7','8','10'];\n  const value = (name) => String($fromAI(name) ?? '').trim();\n  const valid = (s, re) => !s || re.test(s);\n  const isoDate = (s) => {\n    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return false;\n    const d = new Date(s + 'T00:00:00Z');\n    return !Number.isNaN(d.valueOf()) && d.toISOString().slice(0,10) === s;\n  };\n  if (!allowed.includes(opt)) return 'opcao=is.null';\n  const cpf = value('cpf');\n  const codigo = value('codigo_cliente');\n  const inicio = value('data_inicio');\n  const fim = value('data_fim');\n  const numero = value('numero_pedido').replace(/\\s+/g, '');\n  const produto = value('codigo_produto');\n  const setor = value('setor_transferencia');\n  const termo = value('termo_busca');\n  const filial = value('filial');\n  const cidade = value('cidade');\n  if ((cpf && !/^\\d{11}(?:\\d{3})?$/.test(cpf)) ||\n      !valid(codigo,/^[\\p{L}\\p{N}_-]{1,40}$/u) ||\n      !valid(numero,/^\\d{1,20}(?:,\\d{1,20}){0,19}$/) ||\n      !valid(produto,/^[\\p{L}\\p{N}_-]{1,40}$/u) ||\n      !valid(setor,/^(COMERCIAL|FINANCEIRO|LOGISTICA|RH)$/) ||\n      !valid(termo,/^[\\p{L}\\p{M}\\p{N} .'-]{1,80}$/u) ||\n      !valid(filial,/^\\d{1,4}$/) ||\n      !valid(cidade,/^[\\p{L}\\p{M} .'-]{2,80}$/u)) return 'opcao=is.null';\n  const filters = [];\n  if (opt === '2') {\n    if (!inicio || !fim || !isoDate(inicio) || !isoDate(fim)) return 'opcao=is.null';\n    const start = new Date(inicio + 'T00:00:00Z');\n    const end = new Date(fim + 'T00:00:00Z');\n    const max = new Date(start);\n    max.setUTCMonth(max.getUTCMonth() + 4);\n    if (end < start || end > max) return 'opcao=is.null';\n    if (codigo) filters.push('codigo_cliente=eq.' + codigo);\n    const dateFilters = ['data_inicio.gte.' + inicio,'data_inicio.lte.' + fim];\n    filters.push('or=(opcao.eq.2_summary,and(opcao.eq.2_pedido,' + dateFilters.join(',') + '))');\n  } else {\n    filters.push('opcao=eq.' + opt);\n  }\n  if (opt !== '2' && codigo) filters.push('codigo_cliente=eq.' + codigo);\n  if (cpf) filters.push('cpf=eq.' + cpf);\n  if (setor) filters.push('setor_transferencia=eq.' + setor);\n  if (numero) filters.push(numero.includes(',') ? 'numero_pedido=in.(' + numero + ')' : 'numero_pedido=eq.' + numero);\n  if (produto) filters.push('codigo_produto=eq.' + produto);\n  if (termo) filters.push('termo_busca=eq.' + termo);\n  if (filial) filters.push('filial=eq.' + filial);\n  if (cidade) filters.push('cidade=eq.' + cidade);\n  return filters.join('&') || 'opcao=is.null';\n})() }}",
+        "limit": 100
       },
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
@@ -690,12 +692,12 @@
     {
       "parameters": {
         "descriptionType": "manual",
-        "toolDescription": "Use esta ferramenta EXCLUSIVAMENTE para listar clientes sem vendas/inativos no mês atual, pertencentes a um vendedor (RCA) específico.\nRequer o envio do código do RCA no campo 'rca'.\nA ferramenta retorna a lista de clientes (Nome, Bairro, Cidade, Data da Ultima Compra).",
+        "toolDescription": "Use esta ferramenta somente após a validação do colaborador. Liste clientes sem venda do mês atual para o RCA e a cidade informados. RCA e cidade são obrigatórios; nunca consulte apenas por RCA. Informe até 150 clientes.",
         "operation": "getAll",
         "tableId": "n8n_agent_clientes_sem_venda_view",
         "limit": 150,
         "filterType": "string",
-        "filterString": "={{ $fromAI('rca') ? `codigo_rca=eq.${$fromAI('rca')}` : 'codigo_rca=is.null' }}"
+        "filterString": "={{ (() => { const rca = String($fromAI('rca') ?? '').trim(); const cidade = String($fromAI('cidade') ?? '').trim(); const rcaOk = /^\\d{1,8}$/.test(rca); const cidadeOk = /^[\\p{L}\\p{M} .'-]{2,80}$/u.test(cidade); if (!rcaOk || !cidadeOk) return 'codigo_rca=eq.__invalid__'; return 'codigo_rca=eq.' + rca + '&cidade=eq.' + cidade; })() }}"
       },
       "type": "n8n-nodes-base.supabaseTool",
       "typeVersion": 1,
