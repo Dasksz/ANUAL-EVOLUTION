@@ -4319,12 +4319,12 @@ async function loadBoxesView() {
         if (mesFilter.options.length <= 1) { 
             mesFilter.innerHTML = generateMonthOptionsHtml('Todos', '', false);
         }
-        window.setupMultiSelect(filialFilterBtn, filialFilterDropdown, filialFilterDropdown, data.filiais, selectedFiliais, () => {});
-        window.setupMultiSelect(cidadeFilterBtn, cidadeFilterDropdown, cidadeFilterList, data.cidades, selectedCidades, () => {}, false, cidadeFilterSearch);
-        window.setupMultiSelect(supervisorFilterBtn, supervisorFilterDropdown, supervisorFilterDropdown, data.supervisors, selectedSupervisores, () => {});
-        window.setupMultiSelect(vendedorFilterBtn, vendedorFilterDropdown, vendedorFilterList, data.vendedores, selectedVendedores, () => {}, false, vendedorFilterSearch);
-        window.setupMultiSelect(fornecedorFilterBtn, fornecedorFilterDropdown, fornecedorFilterList, data.fornecedores, selectedFornecedores, () => {}, true, fornecedorFilterSearch);
-        window.setupMultiSelect(tipovendaFilterBtn, tipovendaFilterDropdown, tipovendaFilterDropdown, data.tipos_venda, selectedTiposVenda, () => {});
+        window.setupMultiSelect(filialFilterBtn, filialFilterDropdown, filialFilterDropdown, data.filiais, selectedFiliais, handleFilterChange);
+        window.setupMultiSelect(cidadeFilterBtn, cidadeFilterDropdown, cidadeFilterList, data.cidades, selectedCidades, handleFilterChange, false, cidadeFilterSearch);
+        window.setupMultiSelect(supervisorFilterBtn, supervisorFilterDropdown, supervisorFilterDropdown, data.supervisors, selectedSupervisores, handleFilterChange);
+        window.setupMultiSelect(vendedorFilterBtn, vendedorFilterDropdown, vendedorFilterList, data.vendedores, selectedVendedores, handleFilterChange, false, vendedorFilterSearch);
+        window.setupMultiSelect(fornecedorFilterBtn, fornecedorFilterDropdown, fornecedorFilterList, data.fornecedores, selectedFornecedores, handleFilterChange, true, fornecedorFilterSearch);
+        window.setupMultiSelect(tipovendaFilterBtn, tipovendaFilterDropdown, tipovendaFilterDropdown, data.tipos_venda, selectedTiposVenda, handleFilterChange);
         // Enhance select filters to match multi-select appearance
         const selectsToEnhance = [
             document.getElementById('ano-filter'),
@@ -4343,11 +4343,11 @@ async function loadBoxesView() {
             if (el) enhanceSelectToCustomDropdown(el);
         });
 
-        window.setupMultiSelect(categoriaFilterBtn, categoriaFilterDropdown, categoriaFilterList, data.categorias, selectedCategorias, () => {}, false, categoriaFilterSearch);
+        window.setupMultiSelect(categoriaFilterBtn, categoriaFilterDropdown, categoriaFilterList, data.categorias, selectedCategorias, handleFilterChange, false, categoriaFilterSearch);
 
         // Rede Logic with "Com Rede" and "Sem Rede"
         const redes = ['C/ REDE', 'S/ REDE', ...(data.redes || [])];
-        window.setupMultiSelect(redeFilterBtn, redeFilterDropdown, redeFilterList, redes, selectedRedes, () => {}, false, redeFilterSearch);
+        window.setupMultiSelect(redeFilterBtn, redeFilterDropdown, redeFilterList, redes, selectedRedes, handleFilterChange, false, redeFilterSearch);
     }
 
     document.addEventListener('click', (e) => {
