@@ -98,7 +98,7 @@
             {
               "id": "clean_output_id",
               "name": "output_limpo",
-              "value": "={{ $('AI Agent').item.json.output.includes('[TRANSFERIR_') ? '⚠️ *Seu atendimento foi encaminhado para a nossa equipe de analistas.*\\n\\nPor favor, aguarde um instante. Um de nossos analistas entrará em contato por aqui mesmo em breve.\\n\\n_Caso seja uma situação urgente e não obtenha retorno em até 1 hora, ligue para +55 73 3223-6100._' : $('AI Agent').item.json.output.replace(/\\[TRANSFERIR_.*?\\]/g, '').trim() }}",
+              "value": "={{ (() => { const output = String($('AI Agent').item.json.output ?? '').trim(); if (!output) return 'Desculpe, tive uma instabilidade agora. Encaminhei seu atendimento para nossa equipe, que continuará por aqui.'; if (output.includes('[TRANSFERIR_')) return '⚠️ *Seu atendimento foi encaminhado para a nossa equipe de analistas.*\\n\\nPor favor, aguarde um instante. Um de nossos analistas entrará em contato por aqui mesmo em breve.\\n\\n_Caso seja uma situação urgente e não obtenha retorno em até 1 hora, ligue para +55 73 3223-6100._'; return output.replace(/\\[TRANSFERIR_.*?\\]/g, '').trim(); })() }}",
               "type": "string"
             }
           ]
@@ -131,9 +131,9 @@
       "id": "8188a922-e323-4ce5-bd96-bc5e961ed345",
       "name": "AI Agent",
       "retryOnFail": true,
-      "maxTries": 4,
+      "maxTries": 3,
       "alwaysOutputData": true,
-      "waitBetweenTries": 5000,
+      "waitBetweenTries": 1500,
       "onError": "continueRegularOutput"
     },
     {
@@ -361,9 +361,18 @@
                       "operation": "contains"
                     },
                     "id": "check_comercial"
+                  },
+                  {
+                    "id": "fallback_empty_ai_output",
+                    "leftValue": "={{ String($('AI Agent').item.json.output ?? '').trim() }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
                   }
                 ],
-                "combinator": "and"
+                "combinator": "or"
               }
             },
             {
@@ -421,9 +430,19 @@
                 "type": "string",
                 "operation": "contains"
               }
+            },
+            {
+              "id": "fallback_empty_ai_output",
+              "leftValue": "={{ !String($('AI Agent').item.json.output ?? '').trim() }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "name": "filter.operator.true"
+              }
             }
           ],
-          "combinator": "and"
+          "combinator": "or"
         },
         "looseTypeValidation": true,
         "options": {}
@@ -592,7 +611,7 @@
             },
             {
               "id": "fix_echo_loop",
-              "leftValue": "={{ !($json.message) || !$json.message.includes('NÃO RESPONDA ESSA MENSAGEM') }}",
+              "leftValue": "={{ Boolean($json.message && String($json.message).trim()) || String($json.message || '').trim().toLowerCase() === 'atendimento finalizado' }}",
               "rightValue": "true",
               "operator": {
                 "type": "boolean",
@@ -746,7 +765,7 @@
             {
               "id": "clean_resumo",
               "name": "resumo_limpo",
-              "value": "={{ $('AI Agent').item.json.output.replace(/\\[TRANSFERIR_.*?\\]/g, '').replace(/Vou transferir seu atendimento para .*?\\. Aguarde um momento\\.?/gi, '').replace(/Estou transferindo para .*?\\./gi, '').replace(/Resumo da solicita(c|ç)(a|ã)o:/gi, '').replace(/Resumo:/gi, '').trim() }}",
+              "value": "={{ (() => { const output = String($('AI Agent').item.json.output ?? '').trim(); if (!output) return 'Falha técnica após tentativas automáticas; equipe Comercial deve retomar o atendimento.'; return output.replace(/\\[TRANSFERIR_.*?\\]/g, '').replace(/Vou transferir seu atendimento para .*?\\. Aguarde um momento\\.?/gi, '').replace(/Estou transferindo para .*?\\./gi, '').replace(/Resumo da solicita(c|ç)(a|ã)o:/gi, '').replace(/Resumo:/gi, '').trim(); })() }}",
               "type": "string"
             }
           ]
