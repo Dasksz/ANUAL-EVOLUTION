@@ -12522,6 +12522,7 @@ document.addEventListener('DOMContentLoaded', () => {
             analysisContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
             
             importConfirmBtn.disabled = false;
+            importConfirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         } catch (e) {
             console.error("Erro ao analisar dados importados:", e);
             alert("Erro ao analisar dados: " + e.message);
@@ -12577,6 +12578,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             importConfirmBtn.innerHTML = originalText;
             importConfirmBtn.disabled = false;
+            importConfirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
     });
 
@@ -12665,3 +12667,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+
+utf-8
+0bcf2f2ca4f15c64ca0fca98b6b0f88156ae5d03
+https://github.com/Dasksz/ANUAL-EVOLUTION/blob/fix/import-save-button-enabled-style/src/js/app.js
+app.js
