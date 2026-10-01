@@ -12732,7 +12732,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-utf-8
-8cc70f6dcaa158eb2b93172bc9e81e2d2669630e
-https://github.com/Dasksz/ANUAL-EVOLUTION/blob/fix/goals-quaker-kerococo-group/src/js/app.js
-app.js
