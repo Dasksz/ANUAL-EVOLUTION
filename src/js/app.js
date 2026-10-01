@@ -11513,62 +11513,67 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 const sellerCode = globalRcaCodeByName ? globalRcaCodeByName.get(sellerName) : null;
                 if (!sellerCode) return 0;
 
-                // Check for Overrides FIRST
-                const targets = goalsSellerTargets.get(sellerName);
-                if (type === 'rev' && targets && targets[`${category}_FAT`] !== undefined) {
-                    return targets[`${category}_FAT`];
-                }
-                if (type === 'vol' && targets && targets[`${category}_VOL`] !== undefined) {
-                    return targets[`${category}_VOL`];
+                // No dashboard de Evolução, as metas atuais vêm de public.metas_sv
+                // e já estão carregadas em savedMetas pelo renderGoalsView().
+                const metricByType = {
+                    rev: 'FAT',
+                    vol: 'VOL',
+                    pos: 'POS',
+                    mix: 'MIX'
+                };
+                const metric = metricByType[type];
+                if (!metric) return 0;
+
+                const saved = (savedMetas || []).find(m => {
+                    const sameSeller =
+                        String(m.codusur || '') === String(sellerCode) ||
+                        String(m.vendedor_nome || '').trim().toUpperCase() === String(sellerName || '').trim().toUpperCase();
+                    return sameSeller && m.categoria === category && m.metrica === metric;
+                });
+
+                if (saved && saved.valor_ajuste !== null && saved.valor_ajuste !== undefined) {
+                    const parsed = Number(saved.valor_ajuste);
+                    return Number.isFinite(parsed) ? parsed : 0;
                 }
 
-                if (type === 'pos' || type === 'mix') {
-                    // FIX: Return Default Calculated Value if Manual Target is Missing
-                    if (targets && targets[category] !== undefined) {
-                        return targets[category];
-                    } else {
-                        // Calculate Default
-                        const defaults = calculateSellerDefaults(sellerName);
-                        if (category === 'total_elma') return defaults.elmaPos;
-                        if (category === 'total_foods') return defaults.foodsPos;
-                        if (category === 'mix_salty') return defaults.mixSalty;
-                        if (category === 'mix_foods') return defaults.mixFoods;
-                        // Fallback for leaf components? Currently Pos adjustments are manual.
-                        // If category is a leaf (e.g. 707), default adjustment is 0 (Natural Base is not stored here).
-                        // Note: parseGoalsSvStructure sends '707', '708' etc for Positivação.
-                        // We assume 0 for leaf adjustments if not set.
-                        return 0;
-                    }
+                // Se ainda não existe meta salva, usa como referência a base calculada da tela.
+                const seller = goalsData && Array.isArray(goalsData.sellers)
+                    ? goalsData.sellers.find(s => String(s.codusur) === String(sellerCode))
+                    : null;
+                if (!seller) return 0;
+
+                const categoryToPrefix = {
+                    'total_elma': 'elma',
+                    '707': '707',
+                    '708': '708',
+                    '752': '752',
+                    'total_foods': 'foods',
+                    '1119_TODDYNHO': 'toddynho',
+                    '1119_TODDY': 'toddy',
+                    '1119_QUAKER_KEROCOCO': 'quaker_kerococo',
+                    'tonelada_elma': 'elma',
+                    'tonelada_foods': 'foods',
+                    'mix_salty': 'salty',
+                    'mix_foods': 'foods'
+                };
+                const prefix = categoryToPrefix[category];
+
+                if (type === 'rev' && prefix) {
+                    return Number(seller[`total_fat_${prefix}`] || 0) / 3;
+                }
+                if (type === 'vol' && prefix) {
+                    return Number(seller[`total_vol_${prefix}`] || 0) / 3;
+                }
+                if (type === 'pos' && prefix) {
+                    return Math.round(Number(seller[`sum_pos_${prefix}`] || 0) / 3);
+                }
+                if (type === 'mix' && prefix) {
+                    return Math.round(Number(seller[`sum_mix_${prefix}`] || 0) / 3);
                 }
 
-                if (type === 'rev' || type === 'vol') {
-                    // Aggregate from globalClientGoals
-                    const clients = []; /* Client metrics lookup unavailable without local cache */
-                    const activeClients = clients.filter(c => {
-                        const cod = String(c['Código'] || c['codigo_cliente']);
-                        const rca1 = String(c.rca1 || '').trim();
-                        const isAmericanas = (c.razaoSocial || '').toUpperCase().includes('AMERICANAS');
-                        return true; // return (isAmericanas || rca1 !== '53' || clientsWithSalesThisMonth.has(cod));
-                    });
-
-                    let total = 0;
-                    const leafCategories = resolveGoalCategory(category);
-                    
-                    activeClients.forEach(client => {
-                        const codCli = String(client['Código'] || client['codigo_cliente']);
-                        const clientGoals = globalClientGoals.get(codCli);
-                        if (clientGoals) {
-                            leafCategories.forEach(leaf => {
-                                const goal = clientGoals.get(leaf);
-                                if (goal) {
-                                    if (type === 'rev') total += (goal.fat || 0);
-                                    else if (type === 'vol') total += (goal.vol || 0);
-                                }
-                            });
-                        }
-                    });
-                    return total;
-                }
+                // GERAL/pepsico_all não possui equivalente mensal direto na base comparativa;
+                // sem meta salva, a prévia deve mostrar 0 em vez de depender de estruturas
+                // inexistentes herdadas do DASHBOARD-PROMOTORES.
                 return 0;
             }
 
