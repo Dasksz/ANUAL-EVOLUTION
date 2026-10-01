@@ -1,5 +1,6 @@
+import { isVendorRankingEligible } from "./vendor-ranking.mjs?v=20261001-all-rankings";
 import { cascadeFilters } from "./loja-perfeita-filters.mjs?v=20261001-cascade";
-import { renderDispute } from "./presentation-dispute.mjs?v=20261001-eligible";
+import { renderDispute } from "./presentation-dispute.mjs?v=20261001-all-rankings";
 import supabase from "./supabase.js";
 
 // Improve Chart.js resolution
@@ -185,7 +186,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // --- RENDER LOGIC (Adapted from app.js) ---
     function renderSlides(data) {
-    globalVendedoresData = data.top_vendedores || [];
+    globalVendedoresData = (data.top_vendedores || []).filter(isVendorRankingEligible);
     renderGeral(data.global);
 
     const targetYear = data.meta?.curr?.ano || new Date().getFullYear();
@@ -940,6 +941,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   function setupVendedores(vendedoresData) {
     if (!vendedoresData) return;
+    vendedoresData = vendedoresData.filter(isVendorRankingEligible);
 
     // Preload profile images to prevent delay when filtering
     const profileImages = [
@@ -1532,6 +1534,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Initial load
     await fetchAndRenderLpData();
   };
+
 
 
 

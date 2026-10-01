@@ -1,3 +1,4 @@
+import { isVendorRankingEligible } from "./vendor-ranking.mjs?v=20261001-all-rankings";
 import supabase from './supabase.js?v=5';
 
 import {
@@ -137,7 +138,7 @@ window.openDetalhadoModal = function(type) {
             <th class="py-3 px-4 text-right rounded-tr-lg bg-indigo-500/10 text-indigo-200">${TABLE_ICONS.chart}Realizado Foods</th>
         `;
         
-        const sortedDataSellout = [...estrelasDetailedData].sort((a, b) => {
+        const sortedDataSellout = estrelasDetailedData.filter(isVendorRankingEligible).sort((a, b) => {
             const valA = (a.sellout_salty || 0) + (a.sellout_foods || 0);
             const valB = (b.sellout_salty || 0) + (b.sellout_foods || 0);
             return valB - valA;
@@ -181,7 +182,7 @@ window.openDetalhadoModal = function(type) {
         
         totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + ((curr.pos_salty || 0) + (curr.pos_foods || 0)), 0);
         
-        const sortedDataPos = [...estrelasDetailedData].sort((a, b) => {
+        const sortedDataPos = estrelasDetailedData.filter(isVendorRankingEligible).sort((a, b) => {
             const valA = (a.pos_salty || 0) + (a.pos_foods || 0);
             const valB = (b.pos_salty || 0) + (b.pos_foods || 0);
             return valB - valA;
@@ -211,7 +212,7 @@ window.openDetalhadoModal = function(type) {
         
         totalRealizado = estrelasDetailedData.reduce((acc, curr) => acc + (curr.acel_realizado || 0), 0);
         
-        const sortedDataAcel = [...estrelasDetailedData].sort((a, b) => {
+        const sortedDataAcel = estrelasDetailedData.filter(isVendorRankingEligible).sort((a, b) => {
             const valA = a.acel_realizado || 0;
             const valB = b.acel_realizado || 0;
             return valB - valA;
@@ -12657,4 +12658,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }, false);
     }
 });
+
 
