@@ -29,3 +29,22 @@
 .dispute-share-bar > span { box-sizing:border-box; overflow:hidden; white-space:nowrap; }
 .dispute-share-shark { background:#3b82f6; text-align:left; padding-left:4px; }.dispute-share-aguia { background:#ef4444; text-align:right; padding-right:4px; }
 .dispute-team-values { justify-content:space-around; gap:4px; padding:0 5px; }
+
+
+.dispute-share-track { min-width:0; padding-right:4px; }
+.dispute-share-labels { display:flex; justify-content:space-between; margin-bottom:5px; font-size:12px; font-weight:800; font-variant-numeric:tabular-nums; }
+.dispute-label-shark { color:#93c5fd; }.dispute-label-aguia { color:#fca5a5; }
+.dispute-share-bar { height:10px; border-radius:5px; }
+#loja-perfeita-slide { overflow-y:auto; padding-bottom:3rem; }
+#loja-perfeita-slide select { max-width:220px; }
+.lp-tables { display:grid; grid-template-columns:minmax(0,2fr) minmax(300px,1fr); gap:16px; min-height:260px; }
+.lp-tables > div { min-width:0; }
+.lp-tables > div:first-child > div:last-child { overflow:auto; }
+.lp-ranking-card { padding:12px; }
+.lp-ranking-card h4 { text-align:center; font-size:12px; font-weight:700; text-transform:uppercase; color:#cbd5e1; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid #ffffff1a; }
+.lp-ranking-scroll { max-height:280px; overflow:auto; }
+.lp-ranking-card table { width:100%; font-size:11px; border-collapse:collapse; }
+.lp-ranking-card th { position:sticky; top:0; background:#0f0e13; color:#94a3b8; text-align:left; }
+.lp-ranking-card td,.lp-ranking-card th { padding:8px 6px; border-bottom:1px solid #ffffff0d; }
+.lp-ranking-card td:last-child { color:#e879f9; font-weight:800; text-align:right; font-variant-numeric:tabular-nums; }
+@media (max-width:1000px) { .lp-tables { grid-template-columns:1fr; } }

@@ -34,7 +34,7 @@
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="src/css/presentation.css" />
-    <link rel="stylesheet" href="src/css/presentation-dispute.css?v=20260930-centered" />
+    <link rel="stylesheet" href="src/css/presentation-dispute.css?v=20261001-loja" />
     <link rel="stylesheet" href="src/css/styles.css" />
 
     <style>
@@ -620,7 +620,7 @@
         </div>
 
         <!-- Slide 4: Loja Perfeita -->
-        <div class="swiper-slide flex flex-col min-h-0">
+        <div id="loja-perfeita-slide" class="swiper-slide flex flex-col min-h-0">
           <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-fuchsia-500/30 pb-3 mb-4 gap-3 shrink-0">
             <div class="section-title mb-0 shrink-0">Loja Perfeita</div>
             <!-- Filter Bar -->
@@ -693,6 +693,7 @@
             </div>
 
             <!-- Table Row -->
+            <div class="lp-tables">
             <div class="presentation-card flex flex-col p-3 flex-1 min-h-0 overflow-hidden">
               <div class="flex justify-between items-center mb-2 shrink-0 border-b border-white/10 pb-2">
                 <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Detalhamento por Cliente</h4>
@@ -717,6 +718,8 @@
                   </tbody>
                 </table>
               </div>
+            </div>
+            <div class="presentation-card lp-ranking-card"><h4>Top 10 Pesquisadores</h4><div class="lp-ranking-scroll custom-scrollbar"><table><thead><tr><th>#</th><th>Pesquisador</th><th>Clientes</th><th>Nota média</th></tr></thead><tbody id="lp-slide-ranking-tbody"></tbody></table></div></div>
             </div>
           </div>
         </div>
@@ -1043,7 +1046,8 @@
     <script type="module" src="src/js/config.js"></script>
     <script type="module" src="src/js/supabase.js"></script>
     <script type="module" src="src/js/utils.js"></script>
-    <script type="module" src="src/js/presentation.js?v=20260930-growth"></script>
+    <script type="module" src="src/js/presentation.js?v=20261001-loja"></script>
   </body>
 </html>
+
 

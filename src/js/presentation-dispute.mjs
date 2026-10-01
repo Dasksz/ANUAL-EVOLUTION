@@ -52,10 +52,11 @@ export function renderDispute(data, metric, doc = document) {
     const s = total ? fatShark/total*100 : 0, a = total ? fatAguia/total*100 : 0;
     const teamCell = row => row ? metricValues(variations(row),metric) : '<span class="dispute-neutral">Sem dados</span>';
     return `<div class="dispute-comparison-row" data-category="${escape(categoria)}">
-      <div class="dispute-share-cell"><strong title="${escape(categoria)}">${escape(categoria)}</strong><div class="dispute-share-bar" title="Participação no faturamento: Shark ${s.toFixed(1)}%; Águia ${a.toFixed(1)}%">${total ? `<span style="width:${s}%" class="dispute-share-shark">${s>12?s.toFixed(1)+'%':''}</span><span style="width:${a}%" class="dispute-share-aguia">${a>12?a.toFixed(1)+'%':''}</span>` : '<span class="dispute-neutral">Sem faturamento</span>'}</div></div>
+      <div class="dispute-share-cell"><strong title="${escape(categoria)}">${escape(categoria)}</strong><div class="dispute-share-track"><div class="dispute-share-labels"><span class="dispute-label-shark">${s.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})}%</span><span class="dispute-label-aguia">${a.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})}%</span></div><div class="dispute-share-bar" aria-label="Shark ${s.toFixed(1)}%; Águia ${a.toFixed(1)}%">${total ? `<span style="width:${s}%" class="dispute-share-shark"></span><span style="width:${a}%" class="dispute-share-aguia"></span>` : '<span class="dispute-neutral">Sem faturamento</span>'}</div></div></div>
       <div class="dispute-growth-cell"><strong title="${escape(categoria)}">${escape(categoria)}</strong><div class="dispute-team-values">${teamCell(shark)}</div><div class="dispute-team-values">${teamCell(aguia)}</div></div>
     </div>`;
   }).join('');
   const label = doc.getElementById('growth-metric-label');
   if (label) label.textContent = 'Vs média mensal dos 3 meses anteriores';
 }
+
