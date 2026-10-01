@@ -1,5 +1,5 @@
 import { cascadeFilters } from "./loja-perfeita-filters.mjs?v=20261001-cascade";
-import { renderDispute } from "./presentation-dispute.mjs?v=20261001-loja";
+import { renderDispute } from "./presentation-dispute.mjs?v=20261001-eligible";
 import supabase from "./supabase.js";
 
 // Improve Chart.js resolution
