@@ -12264,22 +12264,42 @@ async function setupGoalsFilters() {
 
     if (!anoSelect || !mesSelect) return;
 
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1;
+    let refLastSalesDate = null;
+    try {
+        if (typeof lastSalesDate !== 'undefined') refLastSalesDate = lastSalesDate;
+        else if (window.lastSalesDate) refLastSalesDate = window.lastSalesDate;
+    } catch (e) {}
+
+    if (!refLastSalesDate) {
+        if (typeof fetchLastSalesDate === 'function') {
+            refLastSalesDate = await fetchLastSalesDate();
+        } else if (typeof window.fetchLastSalesDate === 'function') {
+            refLastSalesDate = await window.fetchLastSalesDate();
+        }
+    }
+
+    const defaultDates = typeof getDefaultFilterDates === 'function'
+        ? getDefaultFilterDates(refLastSalesDate)
+        : {
+            currentYear: String(new Date().getFullYear()),
+            currentMonth: String(new Date().getMonth() + 1).padStart(2, '0')
+        };
+    const currentYear = parseInt(defaultDates.currentYear, 10) || new Date().getFullYear();
+    const currentMonth = parseInt(defaultDates.currentMonth, 10) || (new Date().getMonth() + 1);
 
     // Mantém o painel de Metas usando exatamente a mesma origem/parâmetros
     // dos filtros do dashboard principal: get_dashboard_filters.
-    const buildGoalsFilterPayload = () => ({
+    const buildGoalsFilterPayload = (supplierOverride = null) => ({
         p_filial: filialSelect && filialSelect.value && filialSelect.value !== 'Todas'
             ? [filialSelect.value] : [],
         p_cidade: [],
         p_supervisor: supSelect && supSelect.value ? [supSelect.value] : [],
         p_vendedor: venSelect && venSelect.value ? [venSelect.value] : [],
-        p_fornecedor: fornSelect && fornSelect.value && fornSelect.value !== 'Todos'
-            ? (fornSelect.value === '1119_QUAKER_KEROCOCO'
-                ? ['1119_QUAKER', '1119_KEROCOCO']
-                : [fornSelect.value])
-            : [],
+        p_fornecedor: supplierOverride
+            ? [supplierOverride]
+            : (fornSelect && fornSelect.value && fornSelect.value !== 'Todos' && fornSelect.value !== '1119_QUAKER_KEROCOCO'
+                ? [fornSelect.value]
+                : []),
         p_ano: anoSelect.value ? anoSelect.value : null,
         p_mes: mesSelect.value ? mesSelect.value : null,
         p_tipovenda: [],
@@ -12287,6 +12307,57 @@ async function setupGoalsFilters() {
         p_categoria: catSelect && catSelect.value && catSelect.value !== 'Todos'
             ? [catSelect.value] : []
     });
+
+    const mergeGoalsFilterData = (parts) => {
+        const validParts = (parts || []).filter(Boolean);
+        if (validParts.length === 0) return null;
+
+        const mergePrimitive = (key) =>
+            Array.from(new Set(validParts.flatMap(p => Array.isArray(p[key]) ? p[key] : [])));
+
+        const supplierMap = new Map();
+        validParts.forEach(p => {
+            (p.fornecedores || []).forEach(item => {
+                const cod = String(item?.cod ?? item?.codigo ?? item ?? '');
+                if (!cod) return;
+                supplierMap.set(cod, item);
+            });
+        });
+
+        return {
+            anos: mergePrimitive('anos').sort((a, b) => Number(b) - Number(a)),
+            filiais: mergePrimitive('filiais'),
+            cidades: mergePrimitive('cidades'),
+            supervisors: mergePrimitive('supervisors'),
+            vendedores: mergePrimitive('vendedores'),
+            fornecedores: Array.from(supplierMap.values()),
+            tipos_venda: mergePrimitive('tipos_venda'),
+            redes: mergePrimitive('redes'),
+            categorias: mergePrimitive('categorias')
+        };
+    };
+
+    const fetchGoalsFilterData = async () => {
+        const groupedFoods = fornSelect?.value === '1119_QUAKER_KEROCOCO';
+
+        if (!groupedFoods) {
+            return await supabase.rpc('get_dashboard_filters', buildGoalsFilterPayload());
+        }
+
+        // get_dashboard_filters interpreta múltiplos fornecedores como combinação restritiva
+        // e pode devolver listas dependentes vazias. Para QUAKER/KEROCOCO, consultamos cada
+        // fornecedor separadamente e unimos os filtros disponíveis.
+        const [quakerRes, kerococoRes] = await Promise.all([
+            supabase.rpc('get_dashboard_filters', buildGoalsFilterPayload('1119_QUAKER')),
+            supabase.rpc('get_dashboard_filters', buildGoalsFilterPayload('1119_KEROCOCO'))
+        ]);
+
+        const error = quakerRes.error || kerococoRes.error;
+        return {
+            data: mergeGoalsFilterData([quakerRes.data, kerococoRes.data]),
+            error
+        };
+    };
 
     const preserveValue = (select, html, fallback = '') => {
         if (!select) return;
@@ -12375,8 +12446,7 @@ async function setupGoalsFilters() {
             if (venSelect) venSelect.value = '';
         }
 
-        const payload = buildGoalsFilterPayload();
-        const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', payload);
+        const { data: filterData, error } = await fetchGoalsFilterData();
 
         if (error) {
             console.error('Erro ao carregar filtros do painel de metas:', error);
