@@ -12252,7 +12252,10 @@ async function setupGoalsFilters() {
         p_supervisor: supSelect && supSelect.value ? [supSelect.value] : [],
         p_vendedor: venSelect && venSelect.value ? [venSelect.value] : [],
         p_fornecedor: fornSelect && fornSelect.value && fornSelect.value !== 'Todos'
-            ? [fornSelect.value] : [],
+            ? (fornSelect.value === '1119_QUAKER_KEROCOCO'
+                ? ['1119_QUAKER', '1119_KEROCOCO']
+                : [fornSelect.value])
+            : [],
         p_ano: anoSelect.value ? anoSelect.value : null,
         p_mes: mesSelect.value ? mesSelect.value : null,
         p_tipovenda: [],
@@ -12302,12 +12305,31 @@ async function setupGoalsFilters() {
 
     const renderSupplierOptions = (items) => {
         if (!fornSelect) return;
+
+        const normalized = (items || []).map(item => ({
+            cod: String(item?.cod ?? item?.codigo ?? item ?? ''),
+            name: String(item?.name ?? item?.nome ?? item?.cod ?? item?.codigo ?? item ?? '')
+        }));
+
+        const hasQuaker = normalized.some(item => item.cod === '1119_QUAKER');
+        const hasKerococo = normalized.some(item => item.cod === '1119_KEROCOCO');
+
+        const visibleItems = normalized.filter(item =>
+            item.cod !== '1119_QUAKER' && item.cod !== '1119_KEROCOCO'
+        );
+
+        if (hasQuaker || hasKerococo) {
+            visibleItems.push({
+                cod: '1119_QUAKER_KEROCOCO',
+                name: 'QUAKER / KEROCOCO'
+            });
+        }
+
         const html = '<option value="Todos">Todos</option>' +
-            (items || []).map(item => {
-                const cod = String(item?.cod ?? item?.codigo ?? item ?? '');
-                const name = String(item?.name ?? item?.nome ?? cod);
-                return `<option value="${escapeHtml(cod)}">${escapeHtml(cod)} - ${escapeHtml(name)}</option>`;
-            }).join('');
+            visibleItems.map(item =>
+                `<option value="${escapeHtml(item.cod)}">${escapeHtml(item.cod)} - ${escapeHtml(item.name)}</option>`
+            ).join('');
+
         preserveValue(fornSelect, html, 'Todos');
     };
 
@@ -12709,3 +12731,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+
+utf-8
+8cc70f6dcaa158eb2b93172bc9e81e2d2669630e
+https://github.com/Dasksz/ANUAL-EVOLUTION/blob/fix/goals-quaker-kerococo-group/src/js/app.js
+app.js
