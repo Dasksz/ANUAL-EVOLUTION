@@ -1,4 +1,4 @@
-import { renderDispute } from "./presentation-dispute.mjs?v=20260930-growth";
+import { renderDispute } from "./presentation-dispute.mjs?v=20261001-loja";
 import supabase from "./supabase.js";
 
 // Improve Chart.js resolution
@@ -1215,7 +1215,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // --- Loja Perfeita Slide Logic ---
   let lpSlideChartInstance = null;
-  let lpFilterOptionsLoaded = false;
+  let lpSlidePeriod = {};
+  let lpSlideRequest = 0;
+  let lpSlideReload = null;
+  const lpEscape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   window.initLojaPerfeitaSlide = async function(ano, mes) {
     const currentAno = ano ? parseInt(ano, 10) : new Date().getFullYear();
@@ -1235,50 +1238,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (!selectFilial || !loadingDiv) return;
 
-    // 1. Populate filter dropdowns from pesquisas if not already loaded
-    if (!lpFilterOptionsLoaded) {
-      try {
-        const { data: filterData, error: filterErr } = await supabase.rpc("get_dashboard_filters", {
-          p_ano: currentAno.toString(),
-          p_mes: currentMes ? currentMes.toString() : null
-        });
-
-        if (!filterErr && filterData) {
-          const extractNames = (arr) => {
-            if (!Array.isArray(arr)) return [];
-            return [...new Set(arr.map(item => {
-              if (typeof item === "object" && item !== null) {
-                return item.nome || item.cod || "";
-              }
-              return String(item || "");
-            }).filter(Boolean))].sort();
-          };
-
-          const fillSelect = (selectEl, items, label) => {
-            if (!selectEl) return;
-            selectEl.innerHTML = `<option value="">${label}: Todas</option>` +
-              items.map(v => `<option value="${v}">${v}</option>`).join("");
-          };
-
-          fillSelect(selectFilial, extractNames(filterData.filiais), "Filial");
-          fillSelect(selectSupervisor, extractNames(filterData.supervisors), "Supervisor");
-          fillSelect(selectVendedor, extractNames(filterData.vendedores), "Vendedor");
-
-          let redesList = extractNames(filterData.redes);
-          if (!redesList.includes("C/ REDE")) redesList.unshift("C/ REDE", "S/ REDE");
-          fillSelect(selectRede, redesList, "Rede");
-
-          fillSelect(selectCidade, extractNames(filterData.cidades), "Cidade");
-          fillSelect(selectPesquisador, extractNames(filterData.pesquisadores), "Pesquisador");
-        }
-        lpFilterOptionsLoaded = true;
-      } catch (err) {
-        console.warn("Erro ao carregar opções de filtro do slide Loja Perfeita:", err);
+    lpSlidePeriod = { ano: currentAno, mes: currentMes };
+    function populateLpFilters(options) {
+      for (const [el,key,label] of [[selectFilial,'filiais','Filial'],[selectSupervisor,'supervisores','Supervisor'],[selectVendedor,'vendedores','Vendedor'],[selectRede,'redes','Rede'],[selectCidade,'cidades','Cidade'],[selectPesquisador,'pesquisadores','Pesquisador']]) {
+        const selected = el.value;
+        const items = [...new Set((options?.[key] || []).filter(Boolean))].sort((a,b) => a.localeCompare(b,'pt-BR'));
+        if (key === 'redes') items.unshift('C/ REDE','S/ REDE');
+        el.innerHTML = `<option value="">${label}: Todas</option>` + items.map(v => `<option value="${lpEscape(v)}">${lpEscape(v)}</option>`).join('');
+        el.value = items.includes(selected) ? selected : '';
       }
     }
 
     // 2. Fetch and render data function
     async function fetchAndRenderLpData() {
+      const request = ++lpSlideRequest;
       loadingDiv.classList.remove("hidden");
       loadingDiv.classList.add("flex");
       if (contentDiv) contentDiv.classList.add("opacity-50");
@@ -1293,19 +1266,22 @@ document.addEventListener("DOMContentLoaded", async () => {
         p_cidade: getSelectValue(selectCidade),
         p_pesquisador: getSelectValue(selectPesquisador),
         p_codcli: inputCliente && inputCliente.value.trim() ? inputCliente.value.trim() : null,
-        p_ano: currentAno,
-        p_mes: currentMes
+        p_ano: lpSlidePeriod.ano,
+        p_mes: lpSlidePeriod.mes
       };
 
       try {
         const { data, error } = await supabase.rpc("get_loja_perfeita_data", rpcFilters);
 
+        if (request !== lpSlideRequest) return;
         if (error) {
           console.error("Erro ao buscar dados do slide Loja Perfeita:", error);
           return;
         }
 
         if (data) {
+          populateLpFilters(data.filter_options);
+          renderLpRanking(data.researcher_ranking);
           renderLpKPIs(data.kpis);
           renderLpChart(data.chart_data);
           renderLpTable(data.clients);
@@ -1313,12 +1289,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       } catch (err) {
         console.error("Exceção ao buscar dados Loja Perfeita slide:", err);
       } finally {
+        if (request !== lpSlideRequest) return;
         loadingDiv.classList.add("hidden");
         loadingDiv.classList.remove("flex");
         if (contentDiv) contentDiv.classList.remove("opacity-50");
       }
     }
 
+    function renderLpRanking(rows = []) {
+      const tbody = document.getElementById('lp-slide-ranking-tbody');
+      if (!tbody) return;
+      tbody.innerHTML = rows.length ? rows.map((r,i) => `<tr><td>${i+1}</td><td title="${lpEscape(r.researcher)}">${lpEscape(r.researcher)}</td><td>${Number(r.clients).toLocaleString('pt-BR')}</td><td>${Number(r.avg_score).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})}</td></tr>`).join('') : '<tr><td colspan="4">Nenhum pesquisador neste período.</td></tr>';
+    }
+    lpSlideReload = fetchAndRenderLpData;
     // 3. KPI Render
     function renderLpKPIs(kpis) {
       const elNota = document.getElementById("lp-slide-kpi-nota");
@@ -1496,7 +1479,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!selectFilial.dataset.lpBound) {
       selectFilial.dataset.lpBound = "true";
 
-      const handleFilterChange = () => fetchAndRenderLpData();
+      const handleFilterChange = () => lpSlideReload?.();
 
       selectFilial.addEventListener("change", handleFilterChange);
       selectSupervisor.addEventListener("change", handleFilterChange);
@@ -1522,7 +1505,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           selectCidade.value = "";
           selectPesquisador.value = "";
           if (inputCliente) inputCliente.value = "";
-          fetchAndRenderLpData();
+          lpSlideReload?.();
         });
       }
     }
@@ -1530,4 +1513,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Initial load
     await fetchAndRenderLpData();
   };
+
 
