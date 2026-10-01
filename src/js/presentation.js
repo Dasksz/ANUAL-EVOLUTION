@@ -1,3 +1,4 @@
+import { cascadeFilters } from "./loja-perfeita-filters.mjs?v=20261001-cascade";
 import { renderDispute } from "./presentation-dispute.mjs?v=20261001-loja";
 import supabase from "./supabase.js";
 
@@ -1218,6 +1219,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   let lpSlidePeriod = {};
   let lpSlideRequest = 0;
   let lpSlideReload = null;
+  let lpSlideCombinations = [];
+  let lpSlideOptionsPeriod = null;
+  let lpSlideCascade = null;
   const lpEscape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   window.initLojaPerfeitaSlide = async function(ano, mes) {
@@ -1239,15 +1243,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!selectFilial || !loadingDiv) return;
 
     lpSlidePeriod = { ano: currentAno, mes: currentMes };
-    function populateLpFilters(options) {
-      for (const [el,key,label] of [[selectFilial,'filiais','Filial'],[selectSupervisor,'supervisores','Supervisor'],[selectVendedor,'vendedores','Vendedor'],[selectRede,'redes','Rede'],[selectCidade,'cidades','Cidade'],[selectPesquisador,'pesquisadores','Pesquisador']]) {
-        const selected = el.value;
-        const items = [...new Set((options?.[key] || []).filter(Boolean))].sort((a,b) => a.localeCompare(b,'pt-BR'));
-        if (key === 'redes') items.unshift('C/ REDE','S/ REDE');
-        el.innerHTML = `<option value="">${label}: Todas</option>` + items.map(v => `<option value="${lpEscape(v)}">${lpEscape(v)}</option>`).join('');
-        el.value = items.includes(selected) ? selected : '';
+    const lpSelects = [[selectFilial,'filiais','Filial'],[selectSupervisor,'supervisores','Supervisor'],[selectVendedor,'vendedores','Vendedor'],[selectRede,'redes','Rede'],[selectCidade,'cidades','Cidade'],[selectPesquisador,'pesquisadores','Pesquisador']];
+    const periodKey = () => `${lpSlidePeriod.ano}-${lpSlidePeriod.mes}`;
+    function applyLpCascade(changed) {
+      const before = Object.fromEntries(lpSelects.map(([el,key]) => [key,el.value]));
+      const {selected,options} = cascadeFilters(lpSlideCombinations,before,changed);
+      for (const [el,key,label] of lpSelects) {
+        el.innerHTML = `<option value="">${label}: Todas</option>` + options[key].map(v => `<option value="${lpEscape(v)}">${lpEscape(v)}</option>`).join('');
+        el.value = selected[key] || '';
       }
+      return lpSelects.some(([el,key]) => el.value !== before[key]);
     }
+    function populateLpFilters(options) {
+      lpSlideCombinations = options?.combinations || [];
+      lpSlideOptionsPeriod = periodKey();
+      return applyLpCascade();
+    }
+    lpSlideCascade = applyLpCascade;
 
     // 2. Fetch and render data function
     async function fetchAndRenderLpData() {
@@ -1280,7 +1292,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         if (data) {
-          populateLpFilters(data.filter_options);
+          const selectionChanged = populateLpFilters(data.filter_options);
+          if (selectionChanged) { await fetchAndRenderLpData(); return; }
           renderLpRanking(data.researcher_ranking);
           renderLpKPIs(data.kpis);
           renderLpChart(data.chart_data);
@@ -1479,7 +1492,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!selectFilial.dataset.lpBound) {
       selectFilial.dataset.lpBound = "true";
 
-      const handleFilterChange = () => lpSlideReload?.();
+      const handleFilterChange = event => {
+        if (lpSlideOptionsPeriod === `${lpSlidePeriod.ano}-${lpSlidePeriod.mes}`) {
+          const key = lpSelects.find(([el]) => el === event?.target)?.[1];
+          lpSlideCascade?.(key);
+        }
+        return lpSlideReload?.();
+      };
 
       selectFilial.addEventListener("change", handleFilterChange);
       selectSupervisor.addEventListener("change", handleFilterChange);
@@ -1513,5 +1532,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Initial load
     await fetchAndRenderLpData();
   };
+
 
 
