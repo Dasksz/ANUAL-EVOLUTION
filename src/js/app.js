@@ -12442,25 +12442,74 @@ async function setupGoalsFilters() {
         preserveValue(catSelect, html, 'Todos');
     };
 
-    const loadGoalsFilters = async ({ resetDependent = false } = {}) => {
+    const loadGoalsFilters = async ({ resetDependent = false, refreshSupervisor = true, refreshVendor = true } = {}) => {
         if (resetDependent) {
             if (supSelect) supSelect.value = '';
             if (venSelect) venSelect.value = '';
         }
 
-        const { data: filterData, error } = await fetchGoalsFilterData();
+        const selectedYear = parseInt(anoSelect.value, 10) || currentYear;
+        const selectedMonth = parseInt(mesSelect.value, 10) || currentMonth;
+        const selectedFilial = filialSelect?.value || 'Todas';
+        const selectedSupplier = fornSelect?.value || 'Todos';
+        const selectedCategory = catSelect?.value || 'Todos';
+        const selectedSupervisor = supSelect?.value || null;
 
-        if (error) {
-            console.error('Erro ao carregar filtros do painel de metas:', error);
-            return;
+        // Supervisor/Vendedor são derivados da mesma base comparativa já usada pela tabela,
+        // com os mesmos parâmetros do painel de Metas. Isso evita depender da cascata do
+        // get_dashboard_filters, que pode retornar arrays vazios após filtrar fornecedor.
+        const supervisorPromise = refreshSupervisor
+            ? supabase.rpc('get_metas_base_comparativo_filtered', {
+                p_ano: selectedYear,
+                p_mes: selectedMonth,
+                p_filial: selectedFilial,
+                p_fornecedor: selectedSupplier,
+                p_codsupervisor: null,
+                p_codusur: null,
+                p_categoria: selectedCategory
+            })
+            : Promise.resolve({ data: null, error: null });
+
+        const vendorPromise = refreshVendor
+            ? supabase.rpc('get_metas_base_comparativo_filtered', {
+                p_ano: selectedYear,
+                p_mes: selectedMonth,
+                p_filial: selectedFilial,
+                p_fornecedor: selectedSupplier,
+                p_codsupervisor: selectedSupervisor,
+                p_codusur: null,
+                p_categoria: selectedCategory
+            })
+            : Promise.resolve({ data: null, error: null });
+
+        const [supervisorRes, vendorRes] = await Promise.all([supervisorPromise, vendorPromise]);
+
+        if (supervisorRes.error) {
+            console.error('Erro ao carregar supervisores do painel de metas:', supervisorRes.error);
         }
-        if (!filterData) return;
+        if (vendorRes.error) {
+            console.error('Erro ao carregar vendedores do painel de metas:', vendorRes.error);
+        }
 
-        // Em mudanças de filtro, atualizamos somente os filtros dependentes.
-        // Recriar Filial/Fornecedor/Categoria aqui fazia o select ativo perder estado
-        // e podia voltar visualmente para "Todos" antes do render.
-        renderSimpleOptions(supSelect, filterData.supervisors || [], '', 'Todos');
-        renderSimpleOptions(venSelect, filterData.vendedores || [], '', 'Todos');
+        if (refreshSupervisor && supervisorRes.data) {
+            const supervisors = Array.from(new Set(
+                (supervisorRes.data.sellers || [])
+                    .map(s => s.supervisor_nome)
+                    .filter(Boolean)
+            )).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+            renderSimpleOptions(supSelect, supervisors, '', 'Todos');
+        }
+
+        if (refreshVendor && vendorRes.data) {
+            const vendedores = Array.from(new Set(
+                (vendorRes.data.sellers || [])
+                    .map(s => s.vendedor_nome)
+                    .filter(Boolean)
+            )).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+            renderSimpleOptions(venSelect, vendedores, '', 'Todos');
+        }
     };
 
     renderMonths();
@@ -12499,36 +12548,50 @@ async function setupGoalsFilters() {
     if (impAno) impAno.value = anoSelect.value;
     if (impMes) impMes.value = mesSelect.value;
 
+    // Recarrega Supervisor/Vendedor pela base comparativa filtrável para garantir
+    // que as opções iniciais e posteriores usem exatamente a mesma origem.
+    await loadGoalsFilters({ resetDependent: false, refreshSupervisor: true, refreshVendor: true });
+
     const triggerRender = () => {
         const goalsView = document.getElementById('goals-view');
         if (goalsView && !goalsView.classList.contains('hidden')) renderGoalsView();
     };
 
-    const refreshAndRender = async (resetDependent = false) => {
-        await loadGoalsFilters({ resetDependent });
+    const refreshAndRender = async (options = {}) => {
+        await loadGoalsFilters(options);
         triggerRender();
     };
 
-    anoSelect.addEventListener('change', () => refreshAndRender(false));
-    mesSelect.addEventListener('change', () => refreshAndRender(false));
+    anoSelect.addEventListener('change', () =>
+        refreshAndRender({ resetDependent: true, refreshSupervisor: true, refreshVendor: true })
+    );
+    mesSelect.addEventListener('change', () =>
+        refreshAndRender({ resetDependent: true, refreshSupervisor: true, refreshVendor: true })
+    );
 
     if (filialSelect) {
-        filialSelect.addEventListener('change', () => refreshAndRender(true));
+        filialSelect.addEventListener('change', () =>
+            refreshAndRender({ resetDependent: true, refreshSupervisor: true, refreshVendor: true })
+        );
     }
     if (fornSelect) {
-        fornSelect.addEventListener('change', () => refreshAndRender(true));
+        fornSelect.addEventListener('change', () =>
+            refreshAndRender({ resetDependent: true, refreshSupervisor: true, refreshVendor: true })
+        );
     }
     if (supSelect) {
         supSelect.addEventListener('change', async () => {
             if (venSelect) venSelect.value = '';
-            await refreshAndRender(false);
+            await refreshAndRender({ resetDependent: false, refreshSupervisor: false, refreshVendor: true });
         });
     }
     if (venSelect) {
-        venSelect.addEventListener('change', () => refreshAndRender(false));
+        venSelect.addEventListener('change', () => triggerRender());
     }
     if (catSelect) {
-        catSelect.addEventListener('change', () => refreshAndRender(false));
+        catSelect.addEventListener('change', () =>
+            refreshAndRender({ resetDependent: true, refreshSupervisor: true, refreshVendor: true })
+        );
     }
 
     const goalsClearFiltersBtn = document.getElementById('goals-clear-filters-btn');
@@ -12542,7 +12605,7 @@ async function setupGoalsFilters() {
             if (venSelect) venSelect.value = '';
             if (catSelect) catSelect.value = 'Todos';
 
-            await loadGoalsFilters();
+            await loadGoalsFilters({ resetDependent: false, refreshSupervisor: true, refreshVendor: true });
             triggerRender();
         });
     }
