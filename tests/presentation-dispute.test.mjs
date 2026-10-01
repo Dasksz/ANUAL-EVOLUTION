@@ -16,3 +16,13 @@ assert.ok(els.get('categorias-comparison-rows').innerHTML.includes('&lt;Teste&gt
 assert.ok(els.get('categorias-comparison-rows').innerHTML.includes('Sem dados'));
 assert.ok(!els.get('categorias-sellers-shark').innerHTML.includes('R$'));
 console.log('PASS: growth ranking for all four metrics, zero baseline, alphabetical shared categories and safe rendering');
+
+for (const metric of ['geral','faturamento','tonelada','posituacao']) {
+  const excluded = {equipe:'SHARK',codusur:'0190',vendedor:'TIAGO JOSÉ DE SOUZA GOMES',faturamento:9999,fat_trim:100,tonelada:9999,ton_trim:100,posituacoes:9999,pos_trim:100};
+  const eligible = [1,2,3,4].map(i => ({...excluded,codusur:String(i),vendedor:'Vendedor '+i,faturamento:200-i,tonelada:200-i,posituacoes:200-i}));
+  const result = ranking([excluded,...eligible],metric,'SHARK');
+  assert.equal(result.length,3);
+  assert.deepEqual(result.map(r=>r.codusur),['1','2','3']);
+  assert.equal(ranking([{...excluded,codusur:null,vendedor:' tiago jose de souza gomes '}],metric,'SHARK').length,0);
+}
+console.log('PASS: RCA 190 excluded from all dispute rankings before Top 3 selection');

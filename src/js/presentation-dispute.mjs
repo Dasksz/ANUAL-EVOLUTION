@@ -11,8 +11,13 @@ export function variations(row, vendor = false) {
     posituacao: growth(vendor ? row.posituacoes : row.pos_atual, row.pos_trim),
   };
 }
+const eligibleForDisputeRanking = row => {
+  const code = String(row.codusur ?? '').replace(/^0+/, '');
+  const name = String(row.vendedor ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toUpperCase();
+  return code !== '190' && name !== 'TIAGO JOSE DE SOUZA GOMES';
+};
 export function ranking(rows, metric, team) {
-  return rows.filter(row => row.equipe === team).map(row => {
+  return rows.filter(row => row.equipe === team && eligibleForDisputeRanking(row)).map(row => {
     const values = variations(row, true);
     const all = Object.values(values);
     const score = metric === 'geral' ? (all.every(v => v !== null) ? all.reduce((a,b) => a+b,0) / 3 : null) : values[metric];
