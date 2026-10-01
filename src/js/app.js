@@ -11645,10 +11645,18 @@ async function renderGoalsView() {
 
         // Apply filters
         if (p_codsupervisor) {
-            sellersData = sellersData.filter(s => String(s.supervisor_codigo) === String(p_codsupervisor));
+            const selectedSup = String(p_codsupervisor).trim().toUpperCase();
+            sellersData = sellersData.filter(s =>
+                String(s.supervisor_codigo || '').trim().toUpperCase() === selectedSup ||
+                String(s.supervisor_nome || '').trim().toUpperCase() === selectedSup
+            );
         }
         if (p_codusur) {
-            sellersData = sellersData.filter(s => String(s.codusur) === String(p_codusur));
+            const selectedSeller = String(p_codusur).trim().toUpperCase();
+            sellersData = sellersData.filter(s =>
+                String(s.codusur || '').trim().toUpperCase() === selectedSeller ||
+                String(s.vendedor_nome || '').trim().toUpperCase() === selectedSeller
+            );
         }
 
         // Define Column Blocks (Metrics Config)
@@ -12230,164 +12238,200 @@ async function setupGoalsFilters() {
     const impAno = document.getElementById('import-goals-ano');
     const impMes = document.getElementById('import-goals-mes');
 
-    if(!anoSelect) return;
+    if (!anoSelect || !mesSelect) return;
 
-    // Populate Anos
     const currentYear = new Date().getFullYear();
-    const anos = [currentYear - 1, currentYear, currentYear + 1];
-    const anoHtml = anos.map(a => `<option value="${a}">${a}</option>`).join('');
-    anoSelect.innerHTML = anoHtml;
-    if(impAno) impAno.innerHTML = anoHtml;
-
-    anoSelect.value = currentYear;
-    if(impAno) impAno.value = currentYear;
-
-    // Populate Meses
-    let mesHtml = '';
-    for(let i=1; i<=12; i++) {
-        mesHtml += `<option value="${i}">${window.MONTHS_PT ? window.MONTHS_PT[i] : i}</option>`;
-    }
-    mesSelect.innerHTML = mesHtml;
-    if(impMes) impMes.innerHTML = mesHtml;
-
     const currentMonth = new Date().getMonth() + 1;
-    mesSelect.value = currentMonth;
-    if(impMes) impMes.value = currentMonth;
 
-    // Load Filiais and Fornecedores
-    try {
-        if (filialSelect) {
-            const { data: filiaisData } = await supabase.from('config_city_branches').select('filial').not('filial', 'is', null);
-            const uniqueFiliais = Array.from(new Set((filiaisData || []).map(f => f.filial).filter(Boolean))).sort();
-            filialSelect.innerHTML = '<option value="Todas">Todas</option>' + uniqueFiliais.map(f => `<option value="${f}">${f}</option>`).join('');
+    // Mantém o painel de Metas usando exatamente a mesma origem/parâmetros
+    // dos filtros do dashboard principal: get_dashboard_filters.
+    const buildGoalsFilterPayload = () => ({
+        p_filial: filialSelect && filialSelect.value && filialSelect.value !== 'Todas'
+            ? [filialSelect.value] : [],
+        p_cidade: [],
+        p_supervisor: supSelect && supSelect.value ? [supSelect.value] : [],
+        p_vendedor: venSelect && venSelect.value ? [venSelect.value] : [],
+        p_fornecedor: fornSelect && fornSelect.value && fornSelect.value !== 'Todos'
+            ? [fornSelect.value] : [],
+        p_ano: anoSelect.value ? anoSelect.value : null,
+        p_mes: mesSelect.value ? mesSelect.value : null,
+        p_tipovenda: [],
+        p_rede: [],
+        p_categoria: catSelect && catSelect.value && catSelect.value !== 'Todos'
+            ? [catSelect.value] : []
+    });
+
+    const preserveValue = (select, html, fallback = '') => {
+        if (!select) return;
+        const previous = select.value;
+        select.innerHTML = html;
+        const hasPrevious = Array.from(select.options).some(o => String(o.value) === String(previous));
+        if (hasPrevious) select.value = previous;
+        else if (fallback !== null && fallback !== undefined) select.value = String(fallback);
+    };
+
+    const renderYears = (years) => {
+        const normalized = Array.from(new Set((years || []).map(Number).filter(Number.isFinite)))
+            .sort((a, b) => b - a);
+        if (!normalized.includes(currentYear)) normalized.unshift(currentYear);
+
+        const html = normalized.map(y => `<option value="${y}">${y}</option>`).join('');
+        preserveValue(anoSelect, html, currentYear);
+        if (impAno) preserveValue(impAno, html, currentYear);
+    };
+
+    const renderMonths = () => {
+        let html = '';
+        for (let i = 1; i <= 12; i++) {
+            const label = window.MONTHS_PT ? window.MONTHS_PT[i] : i;
+            html += `<option value="${i}">${label}</option>`;
+        }
+        preserveValue(mesSelect, html, currentMonth);
+        if (impMes) preserveValue(impMes, html, currentMonth);
+    };
+
+    const renderSimpleOptions = (select, items, allValue, allLabel) => {
+        if (!select) return;
+        const html = `<option value="${allValue}">${allLabel}</option>` +
+            (items || []).map(item => {
+                const value = String(item ?? '');
+                return `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`;
+            }).join('');
+        preserveValue(select, html, allValue);
+    };
+
+    const renderSupplierOptions = (items) => {
+        if (!fornSelect) return;
+        const html = '<option value="Todos">Todos</option>' +
+            (items || []).map(item => {
+                const cod = String(item?.cod ?? item?.codigo ?? item ?? '');
+                const name = String(item?.name ?? item?.nome ?? cod);
+                return `<option value="${escapeHtml(cod)}">${escapeHtml(cod)} - ${escapeHtml(name)}</option>`;
+            }).join('');
+        preserveValue(fornSelect, html, 'Todos');
+    };
+
+    const renderCategoryOptions = (items) => {
+        if (!catSelect) return;
+        const html = '<option value="Todos">Todas</option>' +
+            (items || []).map(item => {
+                const value = String(item ?? '');
+                return `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`;
+            }).join('');
+        preserveValue(catSelect, html, 'Todos');
+    };
+
+    const loadGoalsFilters = async ({ resetDependent = false } = {}) => {
+        if (resetDependent) {
+            if (supSelect) supSelect.value = '';
+            if (venSelect) venSelect.value = '';
         }
 
-        if (fornSelect) {
-            const { data: forns } = await supabase.from('dim_fornecedores').select('codigo, nome').order('nome');
-            if (forns && forns.length > 0) {
-                fornSelect.innerHTML = '<option value="Todos">Todos</option>' + forns.map(f => `<option value="${f.codigo}">${f.codigo} - ${f.nome}</option>`).join('');
-            } else {
-                fornSelect.innerHTML = '<option value="Todos">Todos</option><option value="707">707 - ELMA CHIPS</option><option value="708">708 - PEPSICO</option><option value="752">752 - SALTY</option><option value="1119">1119 - FOODS</option>';
-            }
+        const payload = buildGoalsFilterPayload();
+        const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', payload);
+
+        if (error) {
+            console.error('Erro ao carregar filtros do painel de metas:', error);
+            return;
         }
-    } catch(e) {
-        console.error("Erro populando filiais/fornecedores no painel de metas:", e);
+        if (!filterData) return;
+
+        renderYears(filterData.anos || []);
+        renderSimpleOptions(filialSelect, filterData.filiais || [], 'Todas', 'Todas');
+
+        // A RPC do dashboard principal retorna "supervisors" (não "supervisores")
+        // e vendedores como nomes canônicos.
+        renderSimpleOptions(supSelect, filterData.supervisors || [], '', 'Todos');
+        renderSimpleOptions(venSelect, filterData.vendedores || [], '', 'Todos');
+        renderSupplierOptions(filterData.fornecedores || []);
+        renderCategoryOptions(filterData.categorias || []);
+    };
+
+    renderMonths();
+
+    // Primeira carga sem filtros, igual ao dashboard principal.
+    const { data: initialData, error: initialError } = await supabase.rpc('get_dashboard_filters', {
+        p_filial: [],
+        p_cidade: [],
+        p_supervisor: [],
+        p_vendedor: [],
+        p_fornecedor: [],
+        p_ano: null,
+        p_mes: null,
+        p_tipovenda: [],
+        p_rede: [],
+        p_categoria: []
+    });
+
+    if (initialError) {
+        console.error('Erro ao inicializar filtros do painel de metas:', initialError);
+    } else if (initialData) {
+        renderYears(initialData.anos || []);
+        renderSimpleOptions(filialSelect, initialData.filiais || [], 'Todas', 'Todas');
+        renderSimpleOptions(supSelect, initialData.supervisors || [], '', 'Todos');
+        renderSimpleOptions(venSelect, initialData.vendedores || [], '', 'Todos');
+        renderSupplierOptions(initialData.fornecedores || []);
+        renderCategoryOptions(initialData.categorias || []);
+    } else {
+        renderYears([currentYear - 1, currentYear, currentYear + 1]);
     }
 
-    // Function to populate cascading Supervisor / Vendedor
-    const populateCascadingSupVen = async (resetSelections = false) => {
-        if (resetSelections) {
-            if (supSelect) supSelect.value = "";
-            if (venSelect) venSelect.value = "";
-        }
+    anoSelect.value = Array.from(anoSelect.options).some(o => Number(o.value) === currentYear)
+        ? String(currentYear)
+        : anoSelect.value;
+    mesSelect.value = String(currentMonth);
+    if (impAno) impAno.value = anoSelect.value;
+    if (impMes) impMes.value = mesSelect.value;
 
-        const selectedFilial = filialSelect && filialSelect.value !== 'Todas' ? [filialSelect.value] : [];
-        const selectedFornecedor = fornSelect && fornSelect.value !== 'Todos' ? [fornSelect.value] : [];
-        const selectedSupervisor = supSelect && supSelect.value ? [supSelect.value] : [];
-
-        try {
-            const { data: filterData, error } = await supabase.rpc('get_dashboard_filters', {
-                p_filial: selectedFilial,
-                p_cidade: [],
-                p_supervisor: selectedSupervisor,
-                p_vendedor: [],
-                p_fornecedor: selectedFornecedor,
-                p_ano: null,
-                p_mes: null,
-                p_tipovenda: [],
-                p_rede: [],
-                p_categoria: []
-            });
-
-            if (!error && filterData) {
-                // Populate Supervisores dropdown if available
-                if (supSelect && filterData.supervisores) {
-                    const currentSup = supSelect.value;
-                    let supHtml = '<option value="">Todos</option>';
-                    filterData.supervisores.forEach(s => {
-                        const code = s.id || s.nome;
-                        const label = s.label || s.nome;
-                        supHtml += `<option value="${code}">${label}</option>`;
-                    });
-                    supSelect.innerHTML = supHtml;
-                    if (!resetSelections && currentSup) supSelect.value = currentSup;
-                }
-
-                // Populate Vendedores dropdown
-                if (venSelect && filterData.vendedores) {
-                    const currentVen = venSelect.value;
-                    let venHtml = '<option value="">Todos</option>';
-                    filterData.vendedores.forEach(v => {
-                        const code = v.id || v.nome;
-                        const label = v.label || v.nome;
-                        venHtml += `<option value="${code}">${label}</option>`;
-                    });
-                    venSelect.innerHTML = venHtml;
-                    if (!resetSelections && currentVen) venSelect.value = currentVen;
-                }
-            } else {
-                // Fallback to dim tables if rpc fails
-                const { data: sups } = await supabase.from('dim_supervisores').select('*').order('nome');
-                if (sups && supSelect) {
-                    const uniqueSupsMap = new Map();
-                    sups.forEach(s => { if (!uniqueSupsMap.has(s.nome)) uniqueSupsMap.set(s.nome, s.codigo); });
-                    const uniqueSups = Array.from(uniqueSupsMap, ([nome, codigo]) => ({nome, codigo}));
-                    supSelect.innerHTML = '<option value="">Todos</option>' + uniqueSups.map(s => `<option value="${s.codigo}">${s.nome}</option>`).join('');
-                }
-
-                const { data: vens } = await supabase.from('dim_vendedores').select('*').order('nome');
-                if (vens && venSelect) {
-                    venSelect.innerHTML = '<option value="">Todos</option>' + vens.map(v => `<option value="${v.codigo}">${v.nome}</option>`).join('');
-                }
-            }
-        } catch (e) {
-            console.error("Erro populando supervisores/vendedores em cascata:", e);
-        }
-    };
-
-    // Initial populate of cascade
-    await populateCascadingSupVen(false);
-
-    // Listeners
     const triggerRender = () => {
-        if(!document.getElementById('goals-view').classList.contains('hidden')) {
-            renderGoalsView();
-        }
+        const goalsView = document.getElementById('goals-view');
+        if (goalsView && !goalsView.classList.contains('hidden')) renderGoalsView();
     };
 
-    const handleCascadeChange = async (resetSel = true) => {
-        await populateCascadingSupVen(resetSel);
+    const refreshAndRender = async (resetDependent = false) => {
+        await loadGoalsFilters({ resetDependent });
         triggerRender();
     };
 
-    if (filialSelect) filialSelect.addEventListener('change', () => handleCascadeChange(true));
-    if (fornSelect) fornSelect.addEventListener('change', () => handleCascadeChange(true));
-    if (supSelect) supSelect.addEventListener('change', () => {
-        if (venSelect) venSelect.value = '';
-        handleCascadeChange(false);
-    });
+    anoSelect.addEventListener('change', () => refreshAndRender(false));
+    mesSelect.addEventListener('change', () => refreshAndRender(false));
 
-    anoSelect.addEventListener('change', triggerRender);
-    mesSelect.addEventListener('change', triggerRender);
-    if (venSelect) venSelect.addEventListener('change', triggerRender);
-    if (catSelect) catSelect.addEventListener('change', triggerRender);
+    if (filialSelect) {
+        filialSelect.addEventListener('change', () => refreshAndRender(true));
+    }
+    if (fornSelect) {
+        fornSelect.addEventListener('change', () => refreshAndRender(true));
+    }
+    if (supSelect) {
+        supSelect.addEventListener('change', async () => {
+            if (venSelect) venSelect.value = '';
+            await refreshAndRender(false);
+        });
+    }
+    if (venSelect) {
+        venSelect.addEventListener('change', () => refreshAndRender(false));
+    }
+    if (catSelect) {
+        catSelect.addEventListener('change', () => refreshAndRender(false));
+    }
 
     const goalsClearFiltersBtn = document.getElementById('goals-clear-filters-btn');
     if (goalsClearFiltersBtn) {
         goalsClearFiltersBtn.addEventListener('click', async () => {
-            const currentYear = new Date().getFullYear();
-            const currentMonth = new Date().getMonth() + 1;
-            anoSelect.value = currentYear;
-            mesSelect.value = currentMonth;
-            if (filialSelect) filialSelect.value = "Todas";
-            if (fornSelect) fornSelect.value = "Todos";
-            if (catSelect) catSelect.value = "Todos";
-            await populateCascadingSupVen(true);
+            anoSelect.value = String(currentYear);
+            mesSelect.value = String(currentMonth);
+            if (filialSelect) filialSelect.value = 'Todas';
+            if (fornSelect) fornSelect.value = 'Todos';
+            if (supSelect) supSelect.value = '';
+            if (venSelect) venSelect.value = '';
+            if (catSelect) catSelect.value = 'Todos';
+
+            await loadGoalsFilters();
             triggerRender();
         });
     }
 
-        // Metric Buttons
+    // Metric Buttons
     const metricBtns = document.querySelectorAll('.goals-metric-btn');
     metricBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -12395,22 +12439,20 @@ async function setupGoalsFilters() {
                 b.classList.remove('active', 'bg-orange-600', 'text-white');
                 b.classList.add('bg-white/5', 'text-slate-400');
             });
-            e.target.classList.remove('bg-white/5', 'text-slate-400');
-            e.target.classList.add('active', 'bg-orange-600', 'text-white');
-            currentGoalsMetric = e.target.dataset.metric;
+            e.currentTarget.classList.remove('bg-white/5', 'text-slate-400');
+            e.currentTarget.classList.add('active', 'bg-orange-600', 'text-white');
+            currentGoalsMetric = e.currentTarget.dataset.metric;
 
-            // Re-render chart without fetching table again if possible, but simplest is to just re-render
             const a = document.getElementById('goals-filter-ano')?.value;
             const fil = document.getElementById('goals-filter-filial')?.value || 'Todas';
             const forn = document.getElementById('goals-filter-fornecedor')?.value || 'Todos';
             const s = document.getElementById('goals-filter-supervisor')?.value;
             const v = document.getElementById('goals-filter-vendedor')?.value;
             const c = document.getElementById('goals-filter-categoria')?.value || 'Todos';
-            renderGoalsChart(parseInt(a,10)||currentYear, s||null, v||null, c, fil, forn);
+            renderGoalsChart(parseInt(a, 10) || currentYear, s || null, v || null, c, fil, forn);
         });
     });
 }
-
 
 // --- IMPORT MODAL LOGIC ---
 document.addEventListener('DOMContentLoaded', () => {
