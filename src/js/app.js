@@ -11614,7 +11614,15 @@ async function renderGoalsView() {
     try {
         // Fetch Base and Metas
         const [baseRes, metasRes] = await Promise.all([
-            supabase.rpc('get_metas_base_comparativo', { p_ano: currentGoalsAno, p_mes: currentGoalsMes }),
+            supabase.rpc('get_metas_base_comparativo_filtered', {
+                p_ano: currentGoalsAno,
+                p_mes: currentGoalsMes,
+                p_filial,
+                p_fornecedor,
+                p_codsupervisor,
+                p_codusur,
+                p_categoria
+            }),
             supabase.rpc('get_metas_sv', { p_ano: currentGoalsAno, p_mes: currentGoalsMes })
         ]);
 
@@ -11622,7 +11630,23 @@ async function renderGoalsView() {
         if (metasRes.error) throw metasRes.error;
 
         const baseData = baseRes.data;
-        savedMetas = metasRes.data || [];
+        const allSavedMetas = metasRes.data || [];
+        if (p_fornecedor && p_fornecedor !== 'Todos') {
+            const supplierMetaCategories = {
+                '707': ['707'],
+                '708': ['708'],
+                '752': ['752'],
+                '1119_TODDYNHO': ['1119_TODDYNHO'],
+                '1119_TODDY': ['1119_TODDY'],
+                '1119_QUAKER_KEROCOCO': ['1119_QUAKER_KEROCOCO'],
+                '1119_QUAKER': ['1119_QUAKER_KEROCOCO'],
+                '1119_KEROCOCO': ['1119_QUAKER_KEROCOCO']
+            };
+            const allowedCategories = new Set(supplierMetaCategories[p_fornecedor] || [p_fornecedor]);
+            savedMetas = allSavedMetas.filter(m => allowedCategories.has(String(m.categoria)));
+        } else {
+            savedMetas = allSavedMetas;
+        }
         goalsData = baseData;
         
         // Populate global maps for import processing
@@ -12360,15 +12384,11 @@ async function setupGoalsFilters() {
         }
         if (!filterData) return;
 
-        renderYears(filterData.anos || []);
-        renderSimpleOptions(filialSelect, filterData.filiais || [], 'Todas', 'Todas');
-
-        // A RPC do dashboard principal retorna "supervisors" (não "supervisores")
-        // e vendedores como nomes canônicos.
+        // Em mudanças de filtro, atualizamos somente os filtros dependentes.
+        // Recriar Filial/Fornecedor/Categoria aqui fazia o select ativo perder estado
+        // e podia voltar visualmente para "Todos" antes do render.
         renderSimpleOptions(supSelect, filterData.supervisors || [], '', 'Todos');
         renderSimpleOptions(venSelect, filterData.vendedores || [], '', 'Todos');
-        renderSupplierOptions(filterData.fornecedores || []);
-        renderCategoryOptions(filterData.categorias || []);
     };
 
     renderMonths();
