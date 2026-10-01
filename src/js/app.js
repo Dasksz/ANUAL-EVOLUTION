@@ -12667,8 +12667,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-
-utf-8
-0bcf2f2ca4f15c64ca0fca98b6b0f88156ae5d03
-https://github.com/Dasksz/ANUAL-EVOLUTION/blob/fix/import-save-button-enabled-style/src/js/app.js
-app.js
