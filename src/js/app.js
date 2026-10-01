@@ -12301,7 +12301,9 @@ async function setupGoalsFilters() {
                 ? [fornSelect.value]
                 : []),
         p_ano: anoSelect.value ? anoSelect.value : null,
-        p_mes: mesSelect.value ? mesSelect.value : null,
+        // get_dashboard_filters usa índice de mês zero-based e internamente soma +1.
+        // O painel de Metas trabalha com mês 1-12, então convertemos aqui.
+        p_mes: mesSelect.value ? String(Math.max(0, parseInt(mesSelect.value, 10) - 1)) : null,
         p_tipovenda: [],
         p_rede: [],
         p_categoria: catSelect && catSelect.value && catSelect.value !== 'Todos'
