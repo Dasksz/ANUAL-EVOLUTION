@@ -12321,14 +12321,16 @@ async function setupGoalsFilters() {
         if (hasQuaker || hasKerococo) {
             visibleItems.push({
                 cod: '1119_QUAKER_KEROCOCO',
-                name: 'QUAKER / KEROCOCO'
+                name: 'QUAKER / KEROCOCO',
+                labelOnly: true
             });
         }
 
         const html = '<option value="Todos">Todos</option>' +
-            visibleItems.map(item =>
-                `<option value="${escapeHtml(item.cod)}">${escapeHtml(item.cod)} - ${escapeHtml(item.name)}</option>`
-            ).join('');
+            visibleItems.map(item => {
+                const label = item.labelOnly ? item.name : `${item.cod} - ${item.name}`;
+                return `<option value="${escapeHtml(item.cod)}">${escapeHtml(label)}</option>`;
+            }).join('');
 
         preserveValue(fornSelect, html, 'Todos');
     };
