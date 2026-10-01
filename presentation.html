@@ -34,7 +34,7 @@
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="src/css/presentation.css" />
-    <link rel="stylesheet" href="src/css/presentation-dispute.css?v=20261001-loja" />
+    <link rel="stylesheet" href="src/css/presentation-dispute.css?v=20261001-chart" />
     <link rel="stylesheet" href="src/css/styles.css" />
 
     <style>
@@ -319,7 +319,7 @@
     <div class="swiper mySwiper flex-1">
       <div class="swiper-wrapper">
         <!-- Slide 1: Visão Geral -->
-        <div class="swiper-slide flex flex-col">
+        <div id="sales-summary-slide" class="swiper-slide flex flex-col">
           <div
             class="flex justify-between items-center border-b border-fuchsia-500/30 pb-2 mb-6"
           >
@@ -361,19 +361,19 @@
             </div>
 
             <!-- Bottom Area -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
+            <div class="summary-bottom-area grid grid-cols-1 lg:grid-cols-3 gap-6">
               <!-- Left 2 Cols: Chart -->
               <div class="lg:col-span-2 flex flex-col gap-6 h-full min-h-0">
                 <!-- Chart -->
                 <div
-                  class="flex-1 min-h-0 presentation-card relative flex flex-col"
+                  class="summary-chart-card flex-1 min-h-0 presentation-card relative flex flex-col"
                 >
                   <div
                     class="text-sm font-bold text-white bg-fuchsia-600 px-3 py-1 rounded w-max mb-4 shrink-0"
                   >
                     Evolução Mensal - Faturamento
                   </div>
-                  <div class="relative flex-1 w-full min-h-0">
+                  <div class="summary-chart-container relative flex-1 w-full min-h-0">
                     <canvas id="presentation-evolution-chart"></canvas>
                   </div>
                 </div>

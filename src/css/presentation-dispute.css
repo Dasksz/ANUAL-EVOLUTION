@@ -48,3 +48,14 @@
 .lp-ranking-card td,.lp-ranking-card th { padding:8px 6px; border-bottom:1px solid #ffffff0d; }
 .lp-ranking-card td:last-child { color:#e879f9; font-weight:800; text-align:right; font-variant-numeric:tabular-nums; }
 @media (max-width:1000px) { .lp-tables { grid-template-columns:1fr; } }
+
+/* Keep the summary canvas inside its card when KPI rows use the available height. */
+#sales-summary-slide .summary-bottom-area { flex:0 0 auto; height:clamp(360px,48vh,560px); min-height:360px; }
+#sales-summary-slide .summary-chart-card { min-height:0; height:100%; overflow:hidden; }
+#sales-summary-slide .summary-chart-container { min-height:0; min-width:0; overflow:hidden; }
+#sales-summary-slide .summary-chart-container > canvas { position:absolute; inset:0; width:100% !important; height:100% !important; }
+@media (max-width:1023px) {
+  #sales-summary-slide .summary-bottom-area { height:auto; min-height:0; }
+  #sales-summary-slide .summary-bottom-area > div:first-child { height:360px; }
+  #sales-summary-slide .summary-bottom-area > div:last-child { min-height:240px; }
+}
