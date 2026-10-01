@@ -59,3 +59,28 @@
   #sales-summary-slide .summary-bottom-area > div:first-child { height:360px; }
   #sales-summary-slide .summary-bottom-area > div:last-child { min-height:240px; }
 }
+
+/* Equal table viewports and row spacing in Loja Perfeita. */
+.lp-tables { min-height:360px; align-items:stretch; }
+.lp-tables > .presentation-card { height:360px; min-height:0; display:flex; flex-direction:column; padding:12px; overflow:hidden; }
+.lp-tables .lp-table-title { display:flex; align-items:center; height:32px; flex:0 0 32px; margin:0 0 8px; border-bottom:1px solid #ffffff1a; }
+.lp-tables .lp-table-title h4 { margin:0; padding:0; border:0; }
+.lp-tables .lp-table-scroll { flex:1 1 0; min-height:0; max-height:none; overflow:auto; scrollbar-gutter:stable; }
+.lp-tables table { table-layout:fixed; border-collapse:collapse; }
+.lp-tables thead tr { height:36px; }
+.lp-tables thead th { padding:8px 6px; white-space:nowrap; }
+.lp-tables tbody tr { height:52px; }
+.lp-tables tbody td { padding:8px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.lp-tables > div:first-child table { min-width:940px; }
+.lp-tables > div:first-child th:nth-child(1) { width:18%; }
+.lp-tables > div:first-child th:nth-child(2) { width:5%; }
+.lp-tables > div:first-child th:nth-child(3) { width:12%; }
+.lp-tables > div:first-child th:nth-child(4) { width:23%; }
+.lp-tables > div:first-child th:nth-child(5) { width:10%; }
+.lp-tables > div:first-child th:nth-child(6) { width:12%; }
+.lp-tables > div:first-child th:nth-child(7) { width:8%; }
+.lp-tables > div:first-child th:nth-child(8) { width:12%; }
+.lp-ranking-card th:nth-child(1) { width:8%; }
+.lp-ranking-card th:nth-child(2) { width:58%; }
+.lp-ranking-card th:nth-child(3) { width:14%; }
+.lp-ranking-card th:nth-child(4) { width:20%; }
