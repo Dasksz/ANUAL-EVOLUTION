@@ -49,7 +49,7 @@ for (const fileKey of ['salesPrevYearFile', 'salesCurrYearFile', 'salesCurrMonth
     const supervisors = Object.fromEntries(data.newSupervisors.map(s => [s.codigo, s.nome]));
     assert.equal(supervisors['18'], 'RÔMULO AMADO DA');
     assert.equal(supervisors['21'], 'RÔMULO AMADO DA');
-    assert.equal(supervisors['12'], 'OUTRO SUPERVISOR');
+    assert.equal(supervisors['12'], 'TIAGO JOSÉ DE S');
     assert.equal(supervisors['8'], 'BALCAO');
     const rows = Object.values(data.historyChunks || data.detailedChunks).flatMap(c => c.rows);
     assert.equal(rows.find(r => r.codcli === '1000').codsupervisor, '18');
@@ -68,4 +68,30 @@ test('valid client RCA replaces an INAT seller while retaining Rômulo identity'
   assert.equal(row.codsupervisor, '21');
   assert.ok(data.newSupervisors.every(s => s.nome === 'RÔMULO AMADO DA'));
   assert.ok(!data.newVendors.some(v => v.codigo.startsWith('INAT_')));
+});
+
+
+test('omitting client spreadsheet uses registered RCA and does not recreate INAT sellers', async () => {
+  const data = await runWorker({ existingClientsMap: [{codigo_cliente:'1000',rca1:'100',nomecliente:'CLIENTE A'}],
+    salesCurrMonthFile: csv('current.csv',[sale('12','100','1000',{DTPED:'2026-10-01',SUPERV:'INATIVOS'})]) });
+  const row = Object.values(data.detailedChunks).flatMap(c=>c.rows)[0];
+  assert.equal(row.codusur,'100');
+  assert.equal(row.codsupervisor,'12');
+  assert.equal(data.newSupervisors[0].nome,'TIAGO JOSÉ DE S');
+  assert.equal(data.clients,null,'existing clients must not be overwritten by a partial import');
+});
+test('placeholder supervisor cannot overwrite a valid latest name/code pair', async () => {
+  const data = await runWorker({clientsFile:clients,
+    salesPrevYearFile:csv('history.csv',[sale('10','100','1000',{SUPERV:'SUPERVISOR VALIDO'})]),
+    salesCurrMonthFile:csv('current.csv',[sale('99','100','1000',{SUPERV:'INATIVOS',DTPED:'2026-10-01'})])});
+  const row=Object.values(data.detailedChunks).flatMap(c=>c.rows)[0];
+  assert.equal(row.codsupervisor,'10');
+  assert.equal(data.newSupervisors.find(s=>s.codigo==='10').nome,'SUPERVISOR VALIDO');
+});
+test('vendor 190 rule assigns canonical Tiago name even without raw code 12', async () => {
+  const data = await runWorker({clientsFile:csv('clients.csv',[{'Código':'1000','RCA 1':'190',Cliente:'CLIENTE A'}]),
+    salesCurrMonthFile:csv('current.csv',[sale('77','190','1000')])});
+  const row=Object.values(data.detailedChunks).flatMap(c=>c.rows)[0];
+  assert.equal(row.codsupervisor,'12');
+  assert.equal(data.newSupervisors.find(s=>s.codigo==='12').nome,'TIAGO JOSÉ DE S');
 });
