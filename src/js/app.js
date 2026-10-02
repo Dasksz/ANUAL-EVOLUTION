@@ -11688,7 +11688,14 @@ async function renderGoalsView() {
         
         // Helper to get saved meta
         const getMeta = (sellerCode, cat, metrica, defaultBase) => {
-            const saved = savedMetas.find(m => String(m.codusur) === String(sellerCode) && m.categoria === cat && m.metrica === metrica);
+            const normalizeName = value => String(value || '').trim().toUpperCase();
+            const sellerName = normalizeName(globalRcaNameByCode.get(String(sellerCode)));
+            const saved = savedMetas.find(m => {
+                if (m.categoria !== cat || m.metrica !== metrica) return false;
+                const matchesCode = m.codusur != null && String(m.codusur) === String(sellerCode);
+                const matchesName = sellerName !== '' && normalizeName(m.vendedor_nome) === sellerName;
+                return matchesCode || matchesName;
+            });
             return saved ? parseFloat(saved.valor_ajuste) : parseFloat(defaultBase || 0);
         };
 
@@ -12073,7 +12080,7 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
             const legendItems = [
                 { label: `Ano ${prevYear}`, background: 'rgba(148, 163, 184, 0.5)', border: '#94a3b8' },
                 { label: `Ano ${currentYearNum}`, background: 'rgba(59, 130, 246, 0.8)', border: 'rgb(59, 130, 246)' },
-                { label: 'Meta Estimada Fixa', background: 'rgba(168, 85, 247, 0.55)', border: '#a855f7' },
+                { label: 'Meta Fixa', background: 'rgba(168, 85, 247, 0.55)', border: '#a855f7' },
                 { label: 'Meta Estimada', background: 'rgba(234, 179, 8, 0.5)', border: '#eab308' }
             ];
 
@@ -12129,7 +12136,7 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
                 }
             },
             {
-                label: 'Meta Estimada Fixa',
+                label: 'Meta Fixa',
                 data: dataMetaFixa,
                 backgroundColor: 'rgba(168, 85, 247, 0.55)', // purple-500
                 borderColor: '#a855f7',
