@@ -12516,9 +12516,21 @@ async function setupGoalsFilters() {
             anoSelect.value = String(currentYear);
             mesSelect.value = String(currentMonth);
             Object.values(multi).forEach(arr => arr.splice(0));
-            setupControl(controls.filial, optionSets.filiais, async () => {});
-            setupControl(controls.fornecedor, optionSets.fornecedores, async () => {});
-            setupControl(controls.categoria, optionSets.categorias, async () => {});
+            setupControl(controls.filial, optionSets.filiais, async () => {
+                multi.supervisores.splice(0); multi.vendedores.splice(0);
+                await refreshPeople();
+                triggerRender();
+            });
+            setupControl(controls.fornecedor, optionSets.fornecedores, async () => {
+                multi.supervisores.splice(0); multi.vendedores.splice(0);
+                await refreshPeople();
+                triggerRender();
+            });
+            setupControl(controls.categoria, optionSets.categorias, async () => {
+                multi.supervisores.splice(0); multi.vendedores.splice(0);
+                await refreshPeople();
+                triggerRender();
+            });
             await refreshPeople();
             Object.values(controls).forEach(setButtonDefault);
             triggerRender();
@@ -12799,3 +12811,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }, false);
     }
 });
+
+utf-8
+66db66c6d9dd5d541f01bf0074da047292fcdbc9
+https://github.com/Dasksz/ANUAL-EVOLUTION/blob/feat/goals-multiselect-filters/src/js/app.js
+app.js
