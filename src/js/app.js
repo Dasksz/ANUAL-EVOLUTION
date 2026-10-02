@@ -11973,7 +11973,7 @@ async function renderGoalsView() {
 }
 
 
-async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos', filial = 'Todas', fornecedor = 'Todos') {
+async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
     const canvas = document.getElementById('goals-annual-chart');
     const loading = document.getElementById('goals-chart-loading');
     if(!canvas) return;
@@ -11997,14 +11997,14 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
         const { currentYear, currentMonth } = typeof getDefaultFilterDates === 'function' ? getDefaultFilterDates(refLastSalesDate) : {currentYear: new Date().getFullYear(), currentMonth: new Date().getMonth() + 1};
         const refMonth = parseInt(ano) === currentYear ? currentMonth : (parseInt(ano) < currentYear ? 12 : 0);
 
-        const { data, error } = await supabase.rpc('get_metas_anuais_chart', {
+        const { data, error } = await supabase.rpc('get_metas_anuais_chart_multi', {
             p_ano: ano,
-            p_codsupervisor: codsupervisor,
-            p_codusur: codusur,
             p_mes_atual: refMonth,
-            p_categoria: categoria,
-            p_filial: filial,
-            p_fornecedor: fornecedor
+            p_filiais: filters.filiais || [],
+            p_fornecedores: filters.fornecedores || [],
+            p_supervisores: filters.supervisores || [],
+            p_vendedores: filters.vendedores || [],
+            p_categorias: filters.categorias || []
         });
 
         if (error) throw error;
