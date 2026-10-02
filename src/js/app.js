@@ -11045,11 +11045,12 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
 
                 if (!sellerName) continue; 
                 
-                // --- ENHANCED FILTER: Ignore Supervisors, Aggregates, and BALCAO ---
+                // Ignore subtotal rows; BALCAO code 53 is an individual seller.
                 const upperName = sellerName.normalize('NFD').replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
                 
                 // 1. Explicit Blocklist
-                if (upperName === 'BALCAO' || upperName === 'BALCÃO' || 
+                const isBalcaoSeller = upperName === 'BALCAO' && Number(sellerCodeCandidate) === 53;
+                if ((upperName === 'BALCAO' && !isBalcaoSeller) ||
                     upperName.includes('TOTAL') || upperName.includes('SUPERVISOR') || upperName.includes('GERAL') ||
                     upperName === 'VENDEDOR' || upperName === 'NOME' || upperName === 'CODIGO' || upperName === 'CÓDIGO' ||
                     upperName.includes('GV') || upperName === 'GERAL PRIME' || upperName === 'TIAGO JOSÉ DE S' || upperName.includes('AMADO') ||
@@ -11088,7 +11089,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 // 2. Dynamic Supervisor Check
                 // If the name is a known Supervisor (key in rcasBySupervisor), ignore it.
                 // Assuming supervisors are not also sellers in this context (or we only want leaf sellers).
-                if (globalSupervisors.has(finalSellerName) || globalSupervisors.has(finalSellerName.toUpperCase())) {
+                if (!isBalcaoSeller && (globalSupervisors.has(finalSellerName) || globalSupervisors.has(finalSellerName.toUpperCase()))) {
                     continue;
                 }
                 // ------------------------------------------------
@@ -11100,13 +11101,13 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 const getPriorityValue = (cat, metric) => {
                     // 1. Try AJUSTE
                     let idx = colMap[`${cat}_${metric}_AJUSTE`];
-                    if (idx !== undefined && row[idx]) {
+                    if (idx !== undefined && row[idx] !== undefined && row[idx] !== null && String(row[idx]).trim() !== '') {
                         const val = parseImportValue(row[idx]);
                         if (!isNaN(val)) return val;
                     }
                     // 2. Try META
                     idx = colMap[`${cat}_${metric}_META`];
-                    if (idx !== undefined && row[idx]) {
+                    if (idx !== undefined && row[idx] !== undefined && row[idx] !== null && String(row[idx]).trim() !== '') {
                         const val = parseImportValue(row[idx]);
                         if (!isNaN(val)) return val;
                     }
@@ -11576,6 +11577,7 @@ async function renderGoalsView() {
         const selectedSuppliers = filters.fornecedores || [];
         if (selectedSuppliers.length > 0) {
             const supplierMetaCategories = {
+                '1119': ['1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'],
                 '707': ['707'],
                 '708': ['708'],
                 '752': ['752'],
@@ -11613,7 +11615,7 @@ async function renderGoalsView() {
         let sellersData = baseData.sellers || [];
 
         // Define Column Blocks (Metrics Config)
-        const svColumns = [
+        const allSvColumns = [
             { id: 'total_elma', label: 'TOTAL ELMA', type: 'standard', isAgg: true, colorClass: 'text-teal-400' },
             { id: '707', label: 'EXTRUSADOS', type: 'standard', colorClass: 'text-slate-300' },
             { id: '708', label: 'NÃO EXTRUSADOS', type: 'standard', colorClass: 'text-slate-300' },
@@ -11629,6 +11631,24 @@ async function renderGoalsView() {
             { id: 'geral', label: 'GERAL', type: 'geral', isAgg: true, colorClass: 'text-white' },
             { id: 'pedev', label: 'AUDITORIA PEDEV', type: 'pedev', isAgg: true, colorClass: 'text-pink-400' }
         ];
+
+        // Keep only blocks belonging to the selected suppliers.
+        const elmaSuppliers = ['707', '708', '752'];
+        const foodsSuppliers = ['1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'];
+        const selectedColumnSuppliers = new Set(selectedSuppliers.map(code =>
+            ['1119_QUAKER', '1119_KEROCOCO'].includes(code) ? '1119_QUAKER_KEROCOCO' : code));
+        const hasElma = elmaSuppliers.some(code => selectedColumnSuppliers.has(code));
+        const hasFoods = foodsSuppliers.some(code => selectedColumnSuppliers.has(code)) || selectedColumnSuppliers.has('1119');
+        const svColumns = allSvColumns.filter(col => {
+            if (!selectedSuppliers.length) return true;
+            if (elmaSuppliers.includes(col.id)) return selectedColumnSuppliers.has(col.id);
+            if (foodsSuppliers.includes(col.id)) return selectedColumnSuppliers.has(col.id) || selectedColumnSuppliers.has('1119');
+            if (['total_elma', 'tonelada_elma'].includes(col.id)) return hasElma;
+            if (['total_foods', 'tonelada_foods'].includes(col.id)) return hasFoods;
+            if (col.id === 'mix_salty') return elmaSuppliers.every(code => selectedColumnSuppliers.has(code));
+            if (col.id === 'mix_foods') return selectedColumnSuppliers.has('1119') || foodsSuppliers.every(code => selectedColumnSuppliers.has(code));
+            return col.id === 'geral';
+        });
 
         const monthsCount = quarterMonths.length;
         let headerHTML = `<thead class="text-[10px] uppercase sticky top-0 z-20 bg-[#0f172a] text-slate-400"><tr><th rowspan="3" class="px-2 py-2 text-center w-16 border-r border-b border-slate-700">CÓD</th><th rowspan="3" class="px-3 py-2 text-left w-48 border-r border-b border-slate-700">VENDEDOR</th>`;
@@ -11747,11 +11767,19 @@ async function renderGoalsView() {
                 sData['tonelada_foods'] = mapCol('tonelada_foods', 'foods', true);
                 sData['mix_foods'] = mapCol('mix_foods', 'foods', false, true);
                 
+                // Imported revenue is stored by category, so totals must use those values.
+                sData['total_elma'].metaFat = elmaSuppliers
+                    .filter(code => !selectedSuppliers.length || selectedColumnSuppliers.has(code))
+                    .reduce((total, code) => total + sData[code].metaFat, 0);
+                sData['total_foods'].metaFat = foodsSuppliers
+                    .filter(code => !selectedSuppliers.length || selectedColumnSuppliers.has(code) || selectedColumnSuppliers.has('1119'))
+                    .reduce((total, code) => total + sData[code].metaFat, 0);
+
                 sData['geral'] = mapCol('geral', 'geral');
                 // Calculate Geral correctly by summing Elma and Foods metas
                 sData['geral'].metaFat = sData['total_elma'].metaFat + sData['total_foods'].metaFat;
                 sData['geral'].metaVol = sData['tonelada_elma'].metaVol + sData['tonelada_foods'].metaVol;
-                sData['geral'].metaPos = sData['geral'].metaPos || Math.round(sData['geral'].avgPos);
+                sData['geral'].metaPos = Math.round(getMeta(seller.codusur, 'pepsico_all', 'POS', sData['geral'].avgPos));
 
                 sData['pedev'] = { metaPos: Math.round(sData['total_elma'].metaPos * 0.9) };
 
@@ -12772,4 +12800,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }, false);
     }
 });
-
