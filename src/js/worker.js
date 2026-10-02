@@ -322,6 +322,15 @@ const readFile = (file) => {
   });
 };
 
+// Keep both historical supervisor codes under the same identity used by goals SQL.
+// Preserve the codes: the chart consolidates 18 + 21 without duplicating sales.
+function normalizeSupervisorIdentity(row) {
+  const code = String(row["CODSUPERVISOR"] || "").trim();
+  if (code === "18" || code === "21") {
+    row["SUPERV"] = "RÔMULO AMADO DA";
+  }
+}
+
 const processSalesData = (rawData, clientMap, productMasterMap) => {
   return rawData.map((rawRow) => {
     const clientInfo = clientMap.get(String(rawRow["CODCLI"]).trim()) || {};
@@ -869,6 +878,10 @@ if (typeof self !== "undefined") {
         salesCurrYearHistDataRaw,
         salesCurrMonthDataRaw,
       );
+
+      // Normalize before city, vendor and supervisor maps are built. These rows
+      // are shared with all three import arrays, including historical-only imports.
+      allSalesRaw.forEach(normalizeSupervisorIdentity);
 
       // --- IBGE Code Resolution ---
       self.postMessage({
