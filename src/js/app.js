@@ -12132,6 +12132,24 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
 
         const prevYear = parseInt(ano) - 1;
         const currentYearNum = parseInt(ano);
+
+        const fixedLegend = document.getElementById('goals-chart-legend');
+        if (fixedLegend) {
+            const legendItems = [
+                { label: `Ano ${prevYear}`, background: 'rgba(148, 163, 184, 0.5)', border: '#94a3b8' },
+                { label: `Ano ${currentYearNum}`, background: 'rgba(59, 130, 246, 0.8)', border: 'rgb(59, 130, 246)' },
+                { label: 'Meta Estimada Fixa', background: 'rgba(168, 85, 247, 0.55)', border: '#a855f7' },
+                { label: 'Meta Estimada', background: 'rgba(234, 179, 8, 0.5)', border: '#eab308' }
+            ];
+
+            fixedLegend.innerHTML = legendItems.map(item => `
+                <span class="inline-flex items-center gap-2 whitespace-nowrap">
+                    <span style="display:inline-block;width:32px;height:10px;border-radius:2px;background:${item.background};border:1px solid ${item.border};"></span>
+                    <span>${item.label}</span>
+                </span>
+            `).join('');
+        }
+
         const datasets = [
             {
                 label: `Ano ${prevYear}`,
@@ -12238,13 +12256,7 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        labels: {
-                            color: '#94a3b8',
-                            boxWidth: 32,
-                            boxHeight: 10,
-                            padding: 18,
-                            usePointStyle: false
-                        }
+                        display: false
                     },
                     tooltip: {
                         callbacks: {
