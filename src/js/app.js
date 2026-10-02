@@ -2901,93 +2901,55 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             }
 
             // CHUNKED CACHE REFRESH LOGIC
-            if ((data.historyChunks && Object.keys(data.historyChunks).length > 0) || 
-                (data.detailedChunks && Object.keys(data.detailedChunks).length > 0) || 
-                (data.clients && data.clients.length > 0) ||
-                (data.newProducts && data.newProducts.length > 0)) {
-                updateStatus('Iniciando processamento do resumo...', 80);
-            
-            // Rebuild all stored years: client/product changes also affect history.
-            // Discover them before clearing anything, including current-month-only imports.
-            const { data: years, error: yearErr } = await supabase.rpc('get_available_years');
-            if (yearErr) throw new Error(`Erro ao buscar anos: ${yearErr.message}`);
-            const yearsToProcess = [...new Set((years || []).map(y => Number(y.ano || y)))];
-            if (yearsToProcess.some(y => !Number.isInteger(y) || y < 1 || y > 9999)) {
-                throw new Error('Ano inválido no processamento do resumo.');
-            }
-
-            if (yearsToProcess.length > 0) {
-                // 3. Loop and Process Each Year and Month (Granular to avoid timeout)
-                for (let i = 0; i < yearsToProcess.length; i++) {
-                    const year = yearsToProcess[i];
-                    for (let m = 1; m <= 12; m++) {
-                        // Clear only the month about to be rebuilt. Other periods remain available.
-                        await retryOperation(async () => {
-                            const { error } = await supabase.rpc('clear_summary_month', { p_year: year, p_month: m });
-                            if (error) throw new Error(`Erro limpando ${m}/${year}: ${error.message}`);
-                        });
-
-                        // Calculate progress
-                        const yearStep = 15 / yearsToProcess.length;
-                        const monthStep = yearStep / 12;
-                        const progress = 80 + Math.round((i * yearStep) + (m * monthStep));
-
-                        // Calculate date boundaries
-                        let nextMonth = m + 1;
-                        let nextYear = year;
-                        if (nextMonth > 12) {
-                            nextMonth = 1;
-                            nextYear++;
-                        }
-
-                        // Get the last day of the current month safely
-                        const lastDayOfMonth = new Date(year, m, 0).getDate();
-                        
-                        // Dynamically build chunk days (every 2 days) up to the last day of the month
-                        const chunkDays = [];
-                        for (let d = 1; d <= lastDayOfMonth; d += 2) {
-                            chunkDays.push(d);
-                        }
-
-                        for (let j = 0; j < chunkDays.length; j++) {
-                            const startDay = chunkDays[j];
-                            let endDay, endMonth, endYear;
-
-                            if (j === chunkDays.length - 1) {
-                                // Last chunk goes to the 1st of the next month
-                                endDay = 1;
-                                endMonth = nextMonth;
-                                endYear = nextYear;
-                            } else {
-                                endDay = chunkDays[j + 1];
-                                endMonth = m;
-                                endYear = year;
-                            }
-
-                            const chunkStartDate = `${year}-${String(m).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
-                            const chunkEndDate = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
-
-                            updateStatus(`Processando ${m}/${year} (Parte ${j + 1}/${chunkDays.length})...`, progress + Math.round(monthStep * ((j + 1) / chunkDays.length) * 0.80));
-                            // This RPC appends rows. A timeout may happen after commit, so retrying
-                            // it could double totals. Stop; the next import clears the month first.
-                            const res = await supabase.rpc('refresh_summary_chunk', { p_start_date: chunkStartDate, p_end_date: chunkEndDate });
-                            if (res.error) throw new Error(`Erro processando ${m}/${year} (Parte ${j + 1}): ${res.error.message}`);
-                        }
-
-                        // Atualiza o cache de filtros apenas para o mês que acabou de ser processado para evitar timeout
-                        updateStatus(`Atualizando filtros ${m}/${year}...`, progress + Math.round(monthStep * 0.90));
-                        await retryOperation(async () => {
-                            const { error: filterErr } = await supabase.rpc('refresh_cache_filters', { p_ano: year, p_mes: m });
-                            if (filterErr) throw new Error(`Erro atualizando filtros ${m}/${year}: ${filterErr.message}`);
-                        }, 3, 2000);
+            // Sales affect only supplied months. Cadastros can change historical classifications.
+            const rebuildHistory = (data.clients && data.clients.length > 0) ||
+                (data.newProducts && data.newProducts.length > 0);
+            const periodKeys = new Set([
+                ...Object.keys(data.historyChunks || {}),
+                ...Object.keys(data.detailedChunks || {})
+            ]);
+            if (rebuildHistory) {
+                const { data: years, error: yearErr } = await supabase.rpc('get_available_years');
+                if (yearErr) throw new Error(`Erro ao buscar anos: ${yearErr.message}`);
+                for (const entry of years || []) {
+                    const year = Number(entry.ano || entry);
+                    if (!Number.isInteger(year) || year < 1 || year > 9998) {
+                        throw new Error('Ano inválido no processamento do resumo.');
+                    }
+                    for (let month = 1; month <= 12; month++) {
+                        periodKeys.add(`${year}-${String(month).padStart(2, '0')}`);
                     }
                 }
-
-                updateStatus('Finalizando...', 98);
             }
-            } else {
-                updateStatus('Processamento de resumo ignorado (nenhuma venda/cliente enviado).', 100);
+            const periods = [...periodKeys].sort();
+            // Validate every period before rebuilding any cache.
+            if (periods.some(key => !/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/.test(key))) {
+                throw new Error('Período inválido no processamento do resumo.');
             }
+            for (let i = 0; i < periods.length; i++) {
+                const [year, month] = periods[i].split('-').map(Number);
+                const progress = 80 + Math.round(15 * i / periods.length);
+                updateStatus(`Processando ${month}/${year} (${i + 1}/${periods.length})...`, progress);
+                // Replace a whole month in one transaction. Two-day product counts are
+                // not additive: the same client's product can occur in multiple blocks.
+                // Supplied months are rebuilt even when their upload hash is unchanged,
+                // so a repeat import also repairs an interrupted cache refresh.
+                await retryOperation(async () => {
+                    const { error } = await supabase.rpc('refresh_summary_month', {
+                        p_year: year, p_month: month
+                    });
+                    if (error) throw new Error(`Erro processando ${month}/${year}: ${error.message}`);
+                });
+                updateStatus(`Atualizando filtros ${month}/${year}...`, progress);
+                await retryOperation(async () => {
+                    const { error } = await supabase.rpc('refresh_cache_filters', {
+                        p_ano: year, p_mes: month
+                    });
+                    if (error) throw new Error(`Erro atualizando filtros ${month}/${year}: ${error.message}`);
+                }, 3, 2000);
+            }
+            updateStatus(periods.length ? 'Finalizando...' :
+                'Processamento de resumo ignorado (nenhuma venda/cadastro enviado).', 98);
 
 
         } catch (error) {

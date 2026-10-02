@@ -19,7 +19,7 @@ async function run(data, opts = {}) {
       calls.push([name, args]);
       if (name === 'get_available_years') return opts.discoveryError ? { error: {message:'discovery failed'} } : { data: opts.years || [2026,2025,2024] };
       if (name === 'clear_summary_month') { summaries.set(String(args.p_year), 'rebuilt'); return {}; }
-      if (name === 'refresh_summary_chunk' && opts.chunkError) return { error: {message:'timeout'} };
+      if (name === 'refresh_summary_month' && opts.monthError) return { error: {message:'timeout'} };
       return {};
     } }
   });
@@ -27,40 +27,45 @@ async function run(data, opts = {}) {
   try { await vm.runInContext('(async()=>{' + code + '})()', ctx); } catch (e) { error = e; }
   return { calls, summaries, error };
 }
-for (const data of [
-  { detailedChunks: {'2026-10': {rows:[]}} },
-  { clients: [{}] },
-  { newProducts: [{}] },
-]) {
-  test('partial import refresh retains all historical years: ' + Object.keys(data)[0], async () => {
-    const { calls, error } = await run(data);
+test('monthly sales refresh only the supplied month, without year discovery', async () => {
+  const { calls, error } = await run({ detailedChunks: {'2026-10': {rows:[]}} });
+  assert.equal(error, undefined);
+  assert.deepEqual(calls.map(c=>c[0]), ['refresh_summary_month','refresh_cache_filters']);
+  assert.equal(calls[0][1].p_year, 2026);
+  assert.equal(calls[0][1].p_month, 10);
+});
+test('overlapping history and monthly periods are rebuilt only once', async () => {
+  const { calls, error } = await run({ historyChunks: {'2026-09':{},'2026-10':{}}, detailedChunks: {'2026-10':{}} });
+  assert.equal(error, undefined);
+  const refreshes = calls.filter(c=>c[0]==='refresh_summary_month');
+  assert.deepEqual(refreshes.map(c=>c[1].p_month), [9,10]);
+});
+for (const key of ['clients','newProducts']) {
+  test('cadastro refresh preserves historical recalculation: '+key, async () => {
+    const { calls, error } = await run({ [key]: [{}] });
     assert.equal(error, undefined);
     assert.equal(calls[0][0], 'get_available_years');
-    const clears = calls.filter(c => c[0] === 'clear_summary_month');
-    assert.equal(clears.length, 36);
-    assert.deepEqual([...new Set(clears.map(c=>c[1].p_year))], [2026,2025,2024]);
-    for (const [, {p_year, p_month}] of clears) {
-      const clearIndex = calls.findIndex(c => c[0] === 'clear_summary_month' && c[1].p_year === p_year && c[1].p_month === p_month);
-      const next = calls[clearIndex+1];
-      assert.equal(next[0], 'refresh_summary_chunk', 'clear only the month immediately being rebuilt');
-      assert.equal(next[1].p_start_date, `${p_year}-${String(p_month).padStart(2,'0')}-01`);
-    }
-    assert.equal(calls.filter(c=>c[0] === 'refresh_cache_filters').length, 36);
+    const refreshes = calls.filter(c=>c[0]==='refresh_summary_month');
+    assert.equal(refreshes.length, 36);
+    assert.deepEqual([...new Set(refreshes.map(c=>c[1].p_year))], [2024,2025,2026]);
+    assert.equal(calls.filter(c=>c[0]==='refresh_cache_filters').length,36);
   });
 }
-test('failed year discovery leaves every existing summary untouched', async () => {
-  const {calls,summaries,error} = await run({detailedChunks:{'2026-10':{}}}, {discoveryError:true});
-  assert.match(error.message, /discovery failed/);
-  assert.equal(calls.length, 1);
-  assert.ok([...summaries.values()].every(v=>v==='preserved'));
+test('failed discovery does not touch summaries',async()=>{
+  const {calls,error}=await run({clients:[{}]},{discoveryError:true});
+  assert.match(error.message,/discovery failed/);
+  assert.equal(calls.length,1);
 });
-test('ambiguous append timeout is not retried and other periods are untouched', async () => {
-  const {calls,summaries,error} = await run({detailedChunks:{'2026-10':{}}}, {chunkError:true});
-  assert.match(error.message, /timeout/);
-  assert.equal(calls.filter(c=>c[0]==='refresh_summary_chunk').length, 1);
-  assert.equal(calls.filter(c=>c[0]==='clear_summary_month').length, 1);
-  assert.equal(summaries.get('2025'), 'preserved');
-  assert.equal(summaries.get('2024'), 'preserved');
+test('invalid sales period fails before any cache calls',async()=>{
+  const {calls,error}=await run({detailedChunks:{'2026-13':{}}});
+  assert.match(error.message,/Período inválido/);
+  assert.equal(calls.length,0);
+});
+test('atomic month refresh can retry without append duplication',async()=>{
+  const {calls,error}=await run({detailedChunks:{'2026-10':{}}},{monthError:true});
+  assert.match(error.message,/timeout/);
+  assert.equal(calls.filter(c=>c[0]==='refresh_summary_month').length,3);
+  assert.equal(calls.filter(c=>c[0]==='refresh_cache_filters').length,0);
 });
 test('non-sales imports do not rebuild summaries', async () => {
   const {calls,error} = await run({notaPerfeita:[{}]});
