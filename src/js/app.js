@@ -12811,8 +12811,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }, false);
     }
 });
-
-utf-8
-66db66c6d9dd5d541f01bf0074da047292fcdbc9
-https://github.com/Dasksz/ANUAL-EVOLUTION/blob/feat/goals-multiselect-filters/src/js/app.js
-app.js
