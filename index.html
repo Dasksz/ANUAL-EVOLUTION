@@ -1324,53 +1324,40 @@
                                     <label class="block text-xs text-slate-500 uppercase mb-1">Mês (Tabela)</label>
                                     <select id="goals-filter-mes" class="w-full bg-[#151419]/80 backdrop-blur-md border border-white/10 rounded-lg p-2 text-slate-400 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none"></select>
                                 </div>
-                                <div>
+                                <div class="relative">
                                     <label class="block text-xs text-slate-500 uppercase mb-1">Filial</label>
-                                    <select id="goals-filter-filial" class="w-full bg-[#151419]/80 backdrop-blur-md border border-white/10 rounded-lg p-2 text-slate-400 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none">
-                                        <option value="Todas">Todas</option>
-                                    </select>
+                                    <button id="goals-filter-filial-btn" type="button" class="w-full bg-[#151419]/80 backdrop-blur-md border border-white/10 rounded-lg p-2 text-slate-400 text-left flex justify-between items-center h-[42px] focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none">
+                                        <span class="truncate">Todas</span><span class="text-slate-500">⌄</span>
+                                    </button>
+                                    <div id="goals-filter-filial-dropdown" class="hidden absolute z-[999] w-max min-w-full max-w-[320px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                                 </div>
-                                <div>
+                                <div class="relative">
                                     <label class="block text-xs text-slate-500 uppercase mb-1">Fornecedor</label>
-                                    <select id="goals-filter-fornecedor" class="w-full bg-[#151419]/80 backdrop-blur-md border border-white/10 rounded-lg p-2 text-slate-400 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none">
-                                        <option value="Todos">Todos</option>
-                                    </select>
+                                    <button id="goals-filter-fornecedor-btn" type="button" class="w-full bg-[#151419]/80 backdrop-blur-md border border-white/10 rounded-lg p-2 text-slate-400 text-left flex justify-between items-center h-[42px] focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none">
+                                        <span class="truncate">Todos</span><span class="text-slate-500">⌄</span>
+                                    </button>
+                                    <div id="goals-filter-fornecedor-dropdown" class="hidden absolute z-[999] w-max min-w-full max-w-[360px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                                 </div>
-                                <div>
+                                <div class="relative">
                                     <label class="block text-xs text-slate-500 uppercase mb-1">Supervisor</label>
-                                    <select id="goals-filter-supervisor" class="w-full bg-[#151419]/80 backdrop-blur-md border border-white/10 rounded-lg p-2 text-slate-400 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none">
-                                        <option value="">Todos</option>
-                                    </select>
+                                    <button id="goals-filter-supervisor-btn" type="button" class="w-full bg-[#151419]/80 backdrop-blur-md border border-white/10 rounded-lg p-2 text-slate-400 text-left flex justify-between items-center h-[42px] focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none">
+                                        <span class="truncate">Todos</span><span class="text-slate-500">⌄</span>
+                                    </button>
+                                    <div id="goals-filter-supervisor-dropdown" class="hidden absolute z-[999] w-max min-w-full max-w-[360px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                                 </div>
-                                <div>
+                                <div class="relative">
                                     <label class="block text-xs text-slate-500 uppercase mb-1">Vendedor</label>
-                                    <select id="goals-filter-vendedor" class="w-full bg-[#151419]/80 backdrop-blur-md border border-white/10 rounded-lg p-2 text-slate-400 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none">
-                                        <option value="">Todos</option>
-                                    </select>
+                                    <button id="goals-filter-vendedor-btn" type="button" class="w-full bg-[#151419]/80 backdrop-blur-md border border-white/10 rounded-lg p-2 text-slate-400 text-left flex justify-between items-center h-[42px] focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none">
+                                        <span class="truncate">Todos</span><span class="text-slate-500">⌄</span>
+                                    </button>
+                                    <div id="goals-filter-vendedor-dropdown" class="hidden absolute z-[999] w-max min-w-full max-w-[420px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                                 </div>
-                                <div>
+                                <div class="relative">
                                     <label class="block text-xs text-slate-500 uppercase mb-1">Categoria</label>
-                                    <select id="goals-filter-categoria" class="w-full bg-[#151419]/80 backdrop-blur-md border border-white/10 rounded-lg p-2 text-slate-400 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none">
-                                        <option value="Todos">Todas</option>
-                                        <option value="BACONZITOS">BACONZITOS</option>
-                                        <option value="CEBOLITOS">CEBOLITOS</option>
-                                        <option value="CHEETOS">CHEETOS</option>
-                                        <option value="DORITOS">DORITOS</option>
-                                        <option value="FANDANGOS">FANDANGOS</option>
-                                        <option value="LAY'S">LAY'S</option>
-                                        <option value="PEPINO">PEPINO</option>
-                                        <option value="PINGO D'OURO">PINGO D'OURO</option>
-                                        <option value="RUFFLES">RUFFLES</option>
-                                        <option value="SENSACOES">SENSAÇÕES</option>
-                                        <option value="STIKESY">STIKESY</option>
-                                        <option value="TORCIDA">TORCIDA</option>
-                                        <option value="KEROCOCO">KERO COCO</option>
-                                        <option value="QUAKER">QUAKER</option>
-                                        <option value="TODDY">TODDY</option>
-                                        <option value="TODDYNHO">TODDYNHO</option>
-                                        <option value="GATORADE">GATORADE</option>
-                                        <option value="H2OH">H2OH!</option>
-                                    </select>
+                                    <button id="goals-filter-categoria-btn" type="button" class="w-full bg-[#151419]/80 backdrop-blur-md border border-white/10 rounded-lg p-2 text-slate-400 text-left flex justify-between items-center h-[42px] focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none">
+                                        <span class="truncate">Todas</span><span class="text-slate-500">⌄</span>
+                                    </button>
+                                    <div id="goals-filter-categoria-dropdown" class="hidden absolute z-[999] w-max min-w-full max-w-[360px] mt-2 bg-[#1a1920]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar p-2"></div>
                                 </div>
                                 <div class="flex items-end h-[62px]">
                                     <button id="goals-clear-filters-btn" aria-label="Limpar Filtros" class="w-[38px] h-[38px] bg-[#ff9800] hover:bg-orange-500 text-white rounded-lg flex items-center justify-center transition-colors shadow-lg shrink-0 focus-visible:ring-2 focus-visible:ring-orange-500 focus:outline-none" title="Limpar Filtros">
@@ -3327,3 +3314,8 @@
 </html>
 
 
+
+utf-8
+e061eda0e64c5823752f9c520ebff6dfb3746b80
+https://github.com/Dasksz/ANUAL-EVOLUTION/blob/feat/goals-multiselect-filters/index.html
+index.html
