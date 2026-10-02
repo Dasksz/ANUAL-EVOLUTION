@@ -11951,6 +11951,12 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
         }
 
         const activeMetric = document.querySelector('.goals-metric-btn.active').dataset.metric;
+        if (kpiMeta) {
+            kpiMeta.title = ['pos', 'salty', 'foods'].includes(activeMetric)
+                ? 'Meta anual de clientes únicos. As barras usam metas mensais; o mesmo cliente pode participar de vários meses.'
+                : 'Meta anual calculada sobre o realizado do ano anterior.';
+        }
+
         let isFatVol = true; // activeMetric === 'fat' || activeMetric === 'vol'; // all metrics now support goals KPI bar
         const growthKpis = document.getElementById('goals-growth-kpis');
         
@@ -11983,7 +11989,7 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
             if(kpiAtual) kpiAtual.textContent = Math.round(resData.kpi_total_atual_pos || 0).toString();
             if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
                 const estimada = (resData.kpi_total_anterior_pos || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${Math.round(estimada)}`;
+                kpiMeta.textContent = `Meta anual (clientes únicos): ${formatInteger(Math.round(estimada))}`;
                 kpiMeta.style.display = 'block';
             } else {
                 if(kpiMeta) kpiMeta.style.display = 'none';
@@ -11993,7 +11999,7 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
             if(kpiAtual) kpiAtual.textContent = Math.round(resData.kpi_total_atual_salty || 0).toString();
             if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
                 const estimada = (resData.kpi_total_anterior_salty || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${Math.round(estimada)}`;
+                kpiMeta.textContent = `Meta anual (clientes únicos): ${formatInteger(Math.round(estimada))}`;
                 kpiMeta.style.display = 'block';
             } else {
                 if(kpiMeta) kpiMeta.style.display = 'none';
@@ -12003,7 +12009,7 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
             if(kpiAtual) kpiAtual.textContent = Math.round(resData.kpi_total_atual_foods || 0).toString();
             if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
                 const estimada = (resData.kpi_total_anterior_foods || 0) * (1 + (resData.percentual_crescimento / 100));
-                kpiMeta.textContent = `Meta Estimada: ${Math.round(estimada)}`;
+                kpiMeta.textContent = `Meta anual (clientes únicos): ${formatInteger(Math.round(estimada))}`;
                 kpiMeta.style.display = 'block';
             } else {
                 if(kpiMeta) kpiMeta.style.display = 'none';
@@ -12215,9 +12221,9 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
                         ticks: {
                             color: '#94a3b8',
                             callback: function(value) {
-                                if (value >= 1000000) return 'R$ ' + (value/1000000).toFixed(1) + 'M';
-                                if (value >= 1000) return 'R$ ' + (value/1000).toFixed(0) + 'k';
-                                return 'R$ ' + value;
+                                if (activeMetric === 'fat') return formatCurrency(value);
+                                if (activeMetric === 'vol') return formatTons(value);
+                                return formatInteger(value);
                             }
                         }
                     },
