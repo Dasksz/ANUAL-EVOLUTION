@@ -12140,9 +12140,9 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
                 borderColor: '#94a3b8',
                 borderWidth: 1,
                 borderRadius: 4,
-                categoryPercentage: 0.68,
-                barPercentage: 0.82,
-                maxBarThickness: 22,
+                categoryPercentage: 0.78,
+                barPercentage: 0.90,
+                maxBarThickness: 28,
                 datalabels: {
                     display: true,
                     align: 'end',
@@ -12161,9 +12161,9 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
                 borderColor: 'rgb(59, 130, 246)',
                 borderWidth: 1,
                 borderRadius: 4,
-                categoryPercentage: 0.68,
-                barPercentage: 0.82,
-                maxBarThickness: 22,
+                categoryPercentage: 0.78,
+                barPercentage: 0.90,
+                maxBarThickness: 28,
                 datalabels: {
                     display: true,
                     align: 'end',
@@ -12182,9 +12182,9 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
                 borderColor: '#a855f7',
                 borderWidth: 1,
                 borderRadius: 4,
-                categoryPercentage: 0.68,
-                barPercentage: 0.82,
-                maxBarThickness: 22,
+                categoryPercentage: 0.78,
+                barPercentage: 0.90,
+                maxBarThickness: 28,
                 datalabels: {
                     display: function(context) {
                         const value = context.dataset.data[context.dataIndex];
@@ -12207,9 +12207,9 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
                 borderWidth: 1,
                 borderDash: [5, 5],
                 borderRadius: 4,
-                categoryPercentage: 0.68,
-                barPercentage: 0.82,
-                maxBarThickness: 22,
+                categoryPercentage: 0.78,
+                barPercentage: 0.90,
+                maxBarThickness: 28,
                 datalabels: {
                     display: true,
                     align: 'end',

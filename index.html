@@ -1448,12 +1448,14 @@
                                     <button class="goals-metric-btn bg-white/5 hover:bg-white/10 text-slate-400 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-metric="foods">Mix Foods</button>
                                 </div>
                             </div>
-                            <div class="h-96 w-full relative flex items-center justify-center">
-                                <div id="goals-chart-loading" class="absolute z-10 flex flex-col items-center justify-center bg-[#151419]/80 backdrop-blur-md/80 inset-0 hidden backdrop-blur-sm rounded-lg">
-                                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mb-2"></div>
-                                    <p class="text-slate-500 text-sm">Carregando gráfico...</p>
+                            <div class="w-full overflow-x-auto pb-2" style="scrollbar-width: thin;">
+                                <div class="h-96 relative flex items-center justify-center" style="min-width: 1400px;">
+                                    <div id="goals-chart-loading" class="absolute z-10 flex flex-col items-center justify-center bg-[#151419]/80 backdrop-blur-md/80 inset-0 hidden backdrop-blur-sm rounded-lg">
+                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mb-2"></div>
+                                        <p class="text-slate-500 text-sm">Carregando gráfico...</p>
+                                    </div>
+                                    <canvas id="goals-annual-chart" style="width: 100%; height: 100%;"></canvas>
                                 </div>
-                                <canvas id="goals-annual-chart" style="width: 100%; height: 100%;"></canvas>
                             </div>
                         </div>
 
