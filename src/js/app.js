@@ -12300,15 +12300,47 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
 async function setupGoalsFilters() {
     const anoSelect = document.getElementById('goals-filter-ano');
     const mesSelect = document.getElementById('goals-filter-mes');
-    const filialSelect = document.getElementById('goals-filter-filial');
-    const fornSelect = document.getElementById('goals-filter-fornecedor');
-    const supSelect = document.getElementById('goals-filter-supervisor');
-    const venSelect = document.getElementById('goals-filter-vendedor');
-    const catSelect = document.getElementById('goals-filter-categoria');
     const impAno = document.getElementById('import-goals-ano');
     const impMes = document.getElementById('import-goals-mes');
-
     if (!anoSelect || !mesSelect) return;
+
+    const multi = window.goalsMultiFilters || (window.goalsMultiFilters = {
+        filiais: [], fornecedores: [], supervisores: [], vendedores: [], categorias: []
+    });
+
+    const controls = {
+        filial: {
+            btn: document.getElementById('goals-filter-filial-btn'),
+            dropdown: document.getElementById('goals-filter-filial-dropdown'),
+            selected: multi.filiais,
+            allLabel: 'Todas'
+        },
+        fornecedor: {
+            btn: document.getElementById('goals-filter-fornecedor-btn'),
+            dropdown: document.getElementById('goals-filter-fornecedor-dropdown'),
+            selected: multi.fornecedores,
+            allLabel: 'Todos',
+            isObject: true
+        },
+        supervisor: {
+            btn: document.getElementById('goals-filter-supervisor-btn'),
+            dropdown: document.getElementById('goals-filter-supervisor-dropdown'),
+            selected: multi.supervisores,
+            allLabel: 'Todos'
+        },
+        vendedor: {
+            btn: document.getElementById('goals-filter-vendedor-btn'),
+            dropdown: document.getElementById('goals-filter-vendedor-dropdown'),
+            selected: multi.vendedores,
+            allLabel: 'Todos'
+        },
+        categoria: {
+            btn: document.getElementById('goals-filter-categoria-btn'),
+            dropdown: document.getElementById('goals-filter-categoria-dropdown'),
+            selected: multi.categorias,
+            allLabel: 'Todas'
+        }
+    };
 
     let refLastSalesDate = null;
     try {
@@ -12317,346 +12349,192 @@ async function setupGoalsFilters() {
     } catch (e) {}
 
     if (!refLastSalesDate) {
-        if (typeof fetchLastSalesDate === 'function') {
-            refLastSalesDate = await fetchLastSalesDate();
-        } else if (typeof window.fetchLastSalesDate === 'function') {
-            refLastSalesDate = await window.fetchLastSalesDate();
-        }
+        if (typeof fetchLastSalesDate === 'function') refLastSalesDate = await fetchLastSalesDate();
+        else if (typeof window.fetchLastSalesDate === 'function') refLastSalesDate = await window.fetchLastSalesDate();
     }
 
     const defaultDates = typeof getDefaultFilterDates === 'function'
         ? getDefaultFilterDates(refLastSalesDate)
-        : {
-            currentYear: String(new Date().getFullYear()),
-            currentMonth: String(new Date().getMonth() + 1).padStart(2, '0')
-        };
+        : { currentYear: String(new Date().getFullYear()), currentMonth: String(new Date().getMonth() + 1) };
+
     const currentYear = parseInt(defaultDates.currentYear, 10) || new Date().getFullYear();
     const currentMonth = parseInt(defaultDates.currentMonth, 10) || (new Date().getMonth() + 1);
 
-    // Mantém o painel de Metas usando exatamente a mesma origem/parâmetros
-    // dos filtros do dashboard principal: get_dashboard_filters.
-    const buildGoalsFilterPayload = (supplierOverride = null) => ({
-        p_filial: filialSelect && filialSelect.value && filialSelect.value !== 'Todas'
-            ? [filialSelect.value] : [],
-        p_cidade: [],
-        p_supervisor: supSelect && supSelect.value ? [supSelect.value] : [],
-        p_vendedor: venSelect && venSelect.value ? [venSelect.value] : [],
-        p_fornecedor: supplierOverride
-            ? [supplierOverride]
-            : (fornSelect && fornSelect.value && fornSelect.value !== 'Todos' && fornSelect.value !== '1119_QUAKER_KEROCOCO'
-                ? [fornSelect.value]
-                : []),
-        p_ano: anoSelect.value ? anoSelect.value : null,
-        // get_dashboard_filters usa índice de mês zero-based e internamente soma +1.
-        // O painel de Metas trabalha com mês 1-12, então convertemos aqui.
-        p_mes: mesSelect.value ? String(Math.max(0, parseInt(mesSelect.value, 10) - 1)) : null,
-        p_tipovenda: [],
-        p_rede: [],
-        p_categoria: catSelect && catSelect.value && catSelect.value !== 'Todos'
-            ? [catSelect.value] : []
-    });
-
-    const mergeGoalsFilterData = (parts) => {
-        const validParts = (parts || []).filter(Boolean);
-        if (validParts.length === 0) return null;
-
-        const mergePrimitive = (key) =>
-            Array.from(new Set(validParts.flatMap(p => Array.isArray(p[key]) ? p[key] : [])));
-
-        const supplierMap = new Map();
-        validParts.forEach(p => {
-            (p.fornecedores || []).forEach(item => {
-                const cod = String(item?.cod ?? item?.codigo ?? item ?? '');
-                if (!cod) return;
-                supplierMap.set(cod, item);
-            });
-        });
-
-        return {
-            anos: mergePrimitive('anos').sort((a, b) => Number(b) - Number(a)),
-            filiais: mergePrimitive('filiais'),
-            cidades: mergePrimitive('cidades'),
-            supervisors: mergePrimitive('supervisors'),
-            vendedores: mergePrimitive('vendedores'),
-            fornecedores: Array.from(supplierMap.values()),
-            tipos_venda: mergePrimitive('tipos_venda'),
-            redes: mergePrimitive('redes'),
-            categorias: mergePrimitive('categorias')
-        };
-    };
-
-    const fetchGoalsFilterData = async () => {
-        const groupedFoods = fornSelect?.value === '1119_QUAKER_KEROCOCO';
-
-        if (!groupedFoods) {
-            return await supabase.rpc('get_dashboard_filters', buildGoalsFilterPayload());
-        }
-
-        // get_dashboard_filters interpreta múltiplos fornecedores como combinação restritiva
-        // e pode devolver listas dependentes vazias. Para QUAKER/KEROCOCO, consultamos cada
-        // fornecedor separadamente e unimos os filtros disponíveis.
-        const [quakerRes, kerococoRes] = await Promise.all([
-            supabase.rpc('get_dashboard_filters', buildGoalsFilterPayload('1119_QUAKER')),
-            supabase.rpc('get_dashboard_filters', buildGoalsFilterPayload('1119_KEROCOCO'))
-        ]);
-
-        const error = quakerRes.error || kerococoRes.error;
-        return {
-            data: mergeGoalsFilterData([quakerRes.data, kerococoRes.data]),
-            error
-        };
-    };
-
-    const preserveValue = (select, html, fallback = '') => {
-        if (!select) return;
+    const preserveSelect = (select, html, fallback) => {
         const previous = select.value;
         select.innerHTML = html;
-        const hasPrevious = Array.from(select.options).some(o => String(o.value) === String(previous));
-        if (hasPrevious) select.value = previous;
-        else if (fallback !== null && fallback !== undefined) select.value = String(fallback);
+        if (Array.from(select.options).some(o => String(o.value) === String(previous))) select.value = previous;
+        else select.value = String(fallback);
     };
 
-    const renderYears = (years) => {
-        const normalized = Array.from(new Set((years || []).map(Number).filter(Number.isFinite)))
-            .sort((a, b) => b - a);
-        if (!normalized.includes(currentYear)) normalized.unshift(currentYear);
+    const { data: initialData, error: initialError } = await supabase.rpc('get_dashboard_filters', {
+        p_filial: [], p_cidade: [], p_supervisor: [], p_vendedor: [], p_fornecedor: [],
+        p_ano: null, p_mes: null, p_tipovenda: [], p_rede: [], p_categoria: []
+    });
 
-        const html = normalized.map(y => `<option value="${y}">${y}</option>`).join('');
-        preserveValue(anoSelect, html, currentYear);
-        if (impAno) preserveValue(impAno, html, currentYear);
-    };
+    if (initialError) console.error('Erro ao inicializar filtros de Metas:', initialError);
+    const filterData = initialData || {};
 
-    const renderMonths = () => {
-        let html = '';
-        for (let i = 1; i <= 12; i++) {
-            const label = window.MONTHS_PT ? window.MONTHS_PT[i] : i;
-            html += `<option value="${i}">${label}</option>`;
-        }
-        preserveValue(mesSelect, html, currentMonth);
-        if (impMes) preserveValue(impMes, html, currentMonth);
-    };
+    const years = Array.from(new Set([...(filterData.anos || []).map(Number), currentYear])).sort((a,b)=>b-a);
+    preserveSelect(anoSelect, years.map(y => `<option value="${y}">${y}</option>`).join(''), currentYear);
+    let monthsHtml = '';
+    for (let i=1;i<=12;i++) {
+        const label = window.MONTHS_PT ? window.MONTHS_PT[i] : i;
+        monthsHtml += `<option value="${i}">${label}</option>`;
+    }
+    preserveSelect(mesSelect, monthsHtml, currentMonth);
+    anoSelect.value = String(currentYear);
+    mesSelect.value = String(currentMonth);
+    if (impAno) { impAno.innerHTML = anoSelect.innerHTML; impAno.value = anoSelect.value; }
+    if (impMes) { impMes.innerHTML = mesSelect.innerHTML; impMes.value = mesSelect.value; }
 
-    const renderSimpleOptions = (select, items, allValue, allLabel) => {
-        if (!select) return;
-        const html = `<option value="${allValue}">${allLabel}</option>` +
-            (items || []).map(item => {
-                const value = String(item ?? '');
-                return `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`;
-            }).join('');
-        preserveValue(select, html, allValue);
-    };
-
-    const renderSupplierOptions = (items) => {
-        if (!fornSelect) return;
-
+    const normalizeSuppliers = (items) => {
         const normalized = (items || []).map(item => ({
             cod: String(item?.cod ?? item?.codigo ?? item ?? ''),
             name: String(item?.name ?? item?.nome ?? item?.cod ?? item?.codigo ?? item ?? '')
         }));
+        const hasQuaker = normalized.some(x => x.cod === '1119_QUAKER');
+        const hasKerococo = normalized.some(x => x.cod === '1119_KEROCOCO');
+        const visible = normalized
+            .filter(x => !['1119_QUAKER','1119_KEROCOCO'].includes(x.cod))
+            .map(x => ({ cod: x.cod, name: x.cod && x.name && x.name !== x.cod ? `${x.cod} - ${x.name}` : x.name }));
+        if (hasQuaker || hasKerococo) visible.push({ cod: '1119_QUAKER_KEROCOCO', name: 'QUAKER / KEROCOCO' });
+        return visible;
+    };
 
-        const hasQuaker = normalized.some(item => item.cod === '1119_QUAKER');
-        const hasKerococo = normalized.some(item => item.cod === '1119_KEROCOCO');
+    let optionSets = {
+        filiais: filterData.filiais || [],
+        fornecedores: normalizeSuppliers(filterData.fornecedores || []),
+        supervisores: [],
+        vendedores: [],
+        categorias: filterData.categorias || []
+    };
 
-        const visibleItems = normalized.filter(item =>
-            item.cod !== '1119_QUAKER' && item.cod !== '1119_KEROCOCO'
+    const setButtonDefault = (control) => {
+        if (!control?.btn) return;
+        const span = control.btn.querySelector('span');
+        if (span && control.selected.length === 0) span.textContent = control.allLabel;
+    };
+
+    const setupControl = (control, items, callback) => {
+        if (!control?.btn || !control?.dropdown) return;
+        window.setupMultiSelect(
+            control.btn,
+            control.dropdown,
+            control.dropdown,
+            [...items],
+            control.selected,
+            callback,
+            !!control.isObject,
+            null
         );
-
-        if (hasQuaker || hasKerococo) {
-            visibleItems.push({
-                cod: '1119_QUAKER_KEROCOCO',
-                name: 'QUAKER / KEROCOCO',
-                labelOnly: true
-            });
-        }
-
-        const html = '<option value="Todos">Todos</option>' +
-            visibleItems.map(item => {
-                const label = item.labelOnly ? item.name : `${item.cod} - ${item.name}`;
-                return `<option value="${escapeHtml(item.cod)}">${escapeHtml(label)}</option>`;
-            }).join('');
-
-        preserveValue(fornSelect, html, 'Todos');
+        setButtonDefault(control);
     };
 
-    const renderCategoryOptions = (items) => {
-        if (!catSelect) return;
-        const html = '<option value="Todos">Todas</option>' +
-            (items || []).map(item => {
-                const value = String(item ?? '');
-                return `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`;
-            }).join('');
-        preserveValue(catSelect, html, 'Todos');
-    };
-
-    const loadGoalsFilters = async ({ resetDependent = false, refreshSupervisor = true, refreshVendor = true } = {}) => {
-        if (resetDependent) {
-            if (supSelect) supSelect.value = '';
-            if (venSelect) venSelect.value = '';
-        }
-
-        const selectedYear = parseInt(anoSelect.value, 10) || currentYear;
-        const selectedMonth = parseInt(mesSelect.value, 10) || currentMonth;
-        const selectedFilial = filialSelect?.value || 'Todas';
-        const selectedSupplier = fornSelect?.value || 'Todos';
-        const selectedCategory = catSelect?.value || 'Todos';
-        const selectedSupervisor = supSelect?.value || null;
-
-        // Supervisor/Vendedor são derivados da mesma base comparativa já usada pela tabela,
-        // com os mesmos parâmetros do painel de Metas. Isso evita depender da cascata do
-        // get_dashboard_filters, que pode retornar arrays vazios após filtrar fornecedor.
-        const supervisorPromise = refreshSupervisor
-            ? supabase.rpc('get_metas_base_comparativo_filtered', {
-                p_ano: selectedYear,
-                p_mes: selectedMonth,
-                p_filial: selectedFilial,
-                p_fornecedor: selectedSupplier,
-                p_codsupervisor: null,
-                p_codusur: null,
-                p_categoria: selectedCategory
-            })
-            : Promise.resolve({ data: null, error: null });
-
-        const vendorPromise = refreshVendor
-            ? supabase.rpc('get_metas_base_comparativo_filtered', {
-                p_ano: selectedYear,
-                p_mes: selectedMonth,
-                p_filial: selectedFilial,
-                p_fornecedor: selectedSupplier,
-                p_codsupervisor: selectedSupervisor,
-                p_codusur: null,
-                p_categoria: selectedCategory
-            })
-            : Promise.resolve({ data: null, error: null });
-
-        const [supervisorRes, vendorRes] = await Promise.all([supervisorPromise, vendorPromise]);
-
-        if (supervisorRes.error) {
-            console.error('Erro ao carregar supervisores do painel de metas:', supervisorRes.error);
-        }
-        if (vendorRes.error) {
-            console.error('Erro ao carregar vendedores do painel de metas:', vendorRes.error);
-        }
-
-        if (refreshSupervisor && supervisorRes.data) {
-            const supervisors = Array.from(new Set(
-                (supervisorRes.data.sellers || [])
-                    .map(s => s.supervisor_nome)
-                    .filter(Boolean)
-            )).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-            renderSimpleOptions(supSelect, supervisors, '', 'Todos');
-        }
-
-        if (refreshVendor && vendorRes.data) {
-            const vendedores = Array.from(new Set(
-                (vendorRes.data.sellers || [])
-                    .map(s => s.vendedor_nome)
-                    .filter(Boolean)
-            )).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-            renderSimpleOptions(venSelect, vendedores, '', 'Todos');
-        }
-    };
-
-    renderMonths();
-
-    // Primeira carga sem filtros, igual ao dashboard principal.
-    const { data: initialData, error: initialError } = await supabase.rpc('get_dashboard_filters', {
-        p_filial: [],
-        p_cidade: [],
-        p_supervisor: [],
-        p_vendedor: [],
-        p_fornecedor: [],
-        p_ano: null,
-        p_mes: null,
-        p_tipovenda: [],
-        p_rede: [],
-        p_categoria: []
+    const currentBaseArgs = (includeSupervisors = true) => ({
+        p_ano: parseInt(anoSelect.value,10) || currentYear,
+        p_mes: parseInt(mesSelect.value,10) || currentMonth,
+        p_filiais: multi.filiais || [],
+        p_fornecedores: multi.fornecedores || [],
+        p_supervisores: includeSupervisors ? (multi.supervisores || []) : [],
+        p_vendedores: [],
+        p_categorias: multi.categorias || []
     });
 
-    if (initialError) {
-        console.error('Erro ao inicializar filtros do painel de metas:', initialError);
-    } else if (initialData) {
-        renderYears(initialData.anos || []);
-        renderSimpleOptions(filialSelect, initialData.filiais || [], 'Todas', 'Todas');
-        renderSimpleOptions(supSelect, initialData.supervisors || [], '', 'Todos');
-        renderSimpleOptions(venSelect, initialData.vendedores || [], '', 'Todos');
-        renderSupplierOptions(initialData.fornecedores || []);
-        renderCategoryOptions(initialData.categorias || []);
-    } else {
-        renderYears([currentYear - 1, currentYear, currentYear + 1]);
-    }
+    const intersectSelection = (selected, available) => {
+        const set = new Set((available || []).map(String));
+        for (let i=selected.length-1;i>=0;i--) {
+            if (!set.has(String(selected[i]))) selected.splice(i,1);
+        }
+    };
 
-    anoSelect.value = Array.from(anoSelect.options).some(o => Number(o.value) === currentYear)
-        ? String(currentYear)
-        : anoSelect.value;
-    mesSelect.value = String(currentMonth);
-    if (impAno) impAno.value = anoSelect.value;
-    if (impMes) impMes.value = mesSelect.value;
-
-    // Recarrega Supervisor/Vendedor pela base comparativa filtrável para garantir
-    // que as opções iniciais e posteriores usem exatamente a mesma origem.
-    await loadGoalsFilters({ resetDependent: false, refreshSupervisor: true, refreshVendor: true });
-
+    let refreshTimer = null;
     const triggerRender = () => {
-        const goalsView = document.getElementById('goals-view');
-        if (goalsView && !goalsView.classList.contains('hidden')) renderGoalsView();
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(() => {
+            const goalsView = document.getElementById('goals-view');
+            if (goalsView && !goalsView.classList.contains('hidden')) renderGoalsView();
+        }, 120);
     };
 
-    const refreshAndRender = async (options = {}) => {
-        await loadGoalsFilters(options);
+    const refreshPeople = async ({ refreshSupervisors = true, refreshVendors = true } = {}) => {
+        if (refreshSupervisors) {
+            const { data, error } = await supabase.rpc('get_metas_base_comparativo_multi', currentBaseArgs(false));
+            if (error) console.error('Erro ao carregar supervisores de Metas:', error);
+            else {
+                optionSets.supervisores = Array.from(new Set((data?.sellers || []).map(s => s.supervisor_nome).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+                intersectSelection(multi.supervisores, optionSets.supervisores);
+                setupControl(controls.supervisor, optionSets.supervisores, async () => {
+                    multi.vendedores.splice(0);
+                    await refreshPeople({ refreshSupervisors: false, refreshVendors: true });
+                    triggerRender();
+                });
+            }
+        }
+
+        if (refreshVendors) {
+            const { data, error } = await supabase.rpc('get_metas_base_comparativo_multi', currentBaseArgs(true));
+            if (error) console.error('Erro ao carregar vendedores de Metas:', error);
+            else {
+                optionSets.vendedores = Array.from(new Set((data?.sellers || []).map(s => s.vendedor_nome).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+                intersectSelection(multi.vendedores, optionSets.vendedores);
+                setupControl(controls.vendedor, optionSets.vendedores, () => triggerRender());
+            }
+        }
+    };
+
+    setupControl(controls.filial, optionSets.filiais, async () => {
+        multi.supervisores.splice(0); multi.vendedores.splice(0);
+        await refreshPeople();
         triggerRender();
-    };
+    });
+    setupControl(controls.fornecedor, optionSets.fornecedores, async () => {
+        multi.supervisores.splice(0); multi.vendedores.splice(0);
+        await refreshPeople();
+        triggerRender();
+    });
+    setupControl(controls.categoria, optionSets.categorias, async () => {
+        multi.supervisores.splice(0); multi.vendedores.splice(0);
+        await refreshPeople();
+        triggerRender();
+    });
 
-    anoSelect.addEventListener('change', () =>
-        refreshAndRender({ resetDependent: true, refreshSupervisor: true, refreshVendor: true })
-    );
-    mesSelect.addEventListener('change', () =>
-        refreshAndRender({ resetDependent: true, refreshSupervisor: true, refreshVendor: true })
-    );
+    await refreshPeople();
 
-    if (filialSelect) {
-        filialSelect.addEventListener('change', () =>
-            refreshAndRender({ resetDependent: true, refreshSupervisor: true, refreshVendor: true })
-        );
-    }
-    if (fornSelect) {
-        fornSelect.addEventListener('change', () =>
-            refreshAndRender({ resetDependent: true, refreshSupervisor: true, refreshVendor: true })
-        );
-    }
-    if (supSelect) {
-        supSelect.addEventListener('change', async () => {
-            if (venSelect) venSelect.value = '';
-            await refreshAndRender({ resetDependent: false, refreshSupervisor: false, refreshVendor: true });
-        });
-    }
-    if (venSelect) {
-        venSelect.addEventListener('change', () => triggerRender());
-    }
-    if (catSelect) {
-        catSelect.addEventListener('change', () =>
-            refreshAndRender({ resetDependent: true, refreshSupervisor: true, refreshVendor: true })
-        );
-    }
+    anoSelect.addEventListener('change', async () => {
+        multi.supervisores.splice(0); multi.vendedores.splice(0);
+        await refreshPeople();
+        triggerRender();
+    });
+    mesSelect.addEventListener('change', async () => {
+        multi.supervisores.splice(0); multi.vendedores.splice(0);
+        await refreshPeople();
+        triggerRender();
+    });
 
     const goalsClearFiltersBtn = document.getElementById('goals-clear-filters-btn');
     if (goalsClearFiltersBtn) {
         goalsClearFiltersBtn.addEventListener('click', async () => {
             anoSelect.value = String(currentYear);
             mesSelect.value = String(currentMonth);
-            if (filialSelect) filialSelect.value = 'Todas';
-            if (fornSelect) fornSelect.value = 'Todos';
-            if (supSelect) supSelect.value = '';
-            if (venSelect) venSelect.value = '';
-            if (catSelect) catSelect.value = 'Todos';
-
-            await loadGoalsFilters({ resetDependent: false, refreshSupervisor: true, refreshVendor: true });
+            Object.values(multi).forEach(arr => arr.splice(0));
+            setupControl(controls.filial, optionSets.filiais, async () => {});
+            setupControl(controls.fornecedor, optionSets.fornecedores, async () => {});
+            setupControl(controls.categoria, optionSets.categorias, async () => {});
+            await refreshPeople();
+            Object.values(controls).forEach(setButtonDefault);
             triggerRender();
         });
     }
 
-    // Metric Buttons
+    // Fecha os dropdowns de Metas ao clicar fora, mantendo o comportamento do dashboard principal.
+    document.addEventListener('click', (e) => {
+        Object.values(controls).forEach(control => {
+            if (!control?.dropdown || !control?.btn) return;
+            if (!control.dropdown.contains(e.target) && !control.btn.contains(e.target)) control.dropdown.classList.add('hidden');
+        });
+    });
+
     const metricBtns = document.querySelectorAll('.goals-metric-btn');
     metricBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -12667,14 +12545,7 @@ async function setupGoalsFilters() {
             e.currentTarget.classList.remove('bg-white/5', 'text-slate-400');
             e.currentTarget.classList.add('active', 'bg-orange-600', 'text-white');
             currentGoalsMetric = e.currentTarget.dataset.metric;
-
-            const a = document.getElementById('goals-filter-ano')?.value;
-            const fil = document.getElementById('goals-filter-filial')?.value || 'Todas';
-            const forn = document.getElementById('goals-filter-fornecedor')?.value || 'Todos';
-            const s = document.getElementById('goals-filter-supervisor')?.value;
-            const v = document.getElementById('goals-filter-vendedor')?.value;
-            const c = document.getElementById('goals-filter-categoria')?.value || 'Todos';
-            renderGoalsChart(parseInt(a, 10) || currentYear, s || null, v || null, c, fil, forn);
+            renderGoalsChart(parseInt(anoSelect.value,10) || currentYear, multi);
         });
     });
 }
