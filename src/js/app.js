@@ -12091,6 +12091,7 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
 
         
         let dataMeta = [];
+        let dataMetaFixa = [];
         let dataReal = [];
         let dataRealAnt = [];
         let formatVal = null;
@@ -12099,26 +12100,31 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
             if (activeMetric === 'fat') {
                 dataReal.push(d.kpi_realizado_atual_fat || 0);
                 dataMeta.push(d.kpi_meta_estimada_fat || 0);
+                dataMetaFixa.push(d.kpi_meta_fixa_fat ?? null);
                 dataRealAnt.push(d.kpi_realizado_anterior_fat || 0);
                 formatVal = formatCurrency;
             } else if (activeMetric === 'vol') {
                 dataReal.push(d.kpi_realizado_atual_vol || 0);
                 dataMeta.push(d.kpi_meta_estimada_vol || 0);
+                dataMetaFixa.push(d.kpi_meta_fixa_vol ?? null);
                 dataRealAnt.push(d.kpi_realizado_anterior_vol || 0);
                 formatVal = formatTons;
             } else if (activeMetric === 'pos') {
                 dataReal.push(Math.round(d.kpi_realizado_atual_pos || 0));
                 dataMeta.push(Math.round(d.kpi_meta_estimada_pos || 0));
+                dataMetaFixa.push(d.kpi_meta_fixa_pos == null ? null : Math.round(d.kpi_meta_fixa_pos));
                 dataRealAnt.push(Math.round(d.kpi_realizado_anterior_pos || 0));
                 formatVal = function(v) { return formatInteger(v); };
             } else if (activeMetric === 'salty') {
                 dataReal.push(Math.round(d.kpi_realizado_atual_salty || 0));
                 dataMeta.push(Math.round(d.kpi_meta_estimada_salty || 0));
+                dataMetaFixa.push(d.kpi_meta_fixa_salty == null ? null : Math.round(d.kpi_meta_fixa_salty));
                 dataRealAnt.push(Math.round(d.kpi_realizado_anterior_salty || 0));
                 formatVal = function(v) { return formatInteger(v); };
             } else if (activeMetric === 'foods') {
                 dataReal.push(Math.round(d.kpi_realizado_atual_foods || 0));
                 dataMeta.push(Math.round(d.kpi_meta_estimada_foods || 0));
+                dataMetaFixa.push(d.kpi_meta_fixa_foods == null ? null : Math.round(d.kpi_meta_fixa_foods));
                 dataRealAnt.push(Math.round(d.kpi_realizado_anterior_foods || 0));
                 formatVal = function(v) { return formatInteger(v); };
             }
@@ -12134,6 +12140,9 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
                 borderColor: '#94a3b8',
                 borderWidth: 1,
                 borderRadius: 4,
+                categoryPercentage: 0.68,
+                barPercentage: 0.82,
+                maxBarThickness: 22,
                 datalabels: {
                     display: true,
                     align: 'end',
@@ -12152,11 +12161,38 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
                 borderColor: 'rgb(59, 130, 246)',
                 borderWidth: 1,
                 borderRadius: 4,
+                categoryPercentage: 0.68,
+                barPercentage: 0.82,
+                maxBarThickness: 22,
                 datalabels: {
                     display: true,
                     align: 'end',
                     anchor: 'end',
                     color: 'rgb(59, 130, 246)',
+                    font: { size: 10, weight: 'bold' },
+                    formatter: function(value) {
+                        return value > 0 ? formatCompact(value) : '';
+                    }
+                }
+            },
+            {
+                label: 'Meta Estimada Fixa',
+                data: dataMetaFixa,
+                backgroundColor: 'rgba(168, 85, 247, 0.55)', // purple-500
+                borderColor: '#a855f7',
+                borderWidth: 1,
+                borderRadius: 4,
+                categoryPercentage: 0.68,
+                barPercentage: 0.82,
+                maxBarThickness: 22,
+                datalabels: {
+                    display: function(context) {
+                        const value = context.dataset.data[context.dataIndex];
+                        return value !== null && value !== undefined && value > 0;
+                    },
+                    align: 'end',
+                    anchor: 'end',
+                    color: '#c084fc',
                     font: { size: 10, weight: 'bold' },
                     formatter: function(value) {
                         return value > 0 ? formatCompact(value) : '';
@@ -12171,6 +12207,9 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
                 borderWidth: 1,
                 borderDash: [5, 5],
                 borderRadius: 4,
+                categoryPercentage: 0.68,
+                barPercentage: 0.82,
+                maxBarThickness: 22,
                 datalabels: {
                     display: true,
                     align: 'end',
@@ -12199,7 +12238,13 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        labels: { color: '#94a3b8' } // slate-400
+                        labels: {
+                            color: '#94a3b8',
+                            boxWidth: 32,
+                            boxHeight: 10,
+                            padding: 18,
+                            usePointStyle: false
+                        }
                     },
                     tooltip: {
                         callbacks: {
@@ -12237,7 +12282,13 @@ async function renderGoalsChart(ano, codsupervisor, codusur, categoria = 'Todos'
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { color: '#94a3b8' }
+                        offset: true,
+                        ticks: {
+                            color: '#94a3b8',
+                            padding: 8,
+                            maxRotation: 0,
+                            minRotation: 0
+                        }
                     }
                 }
             }
