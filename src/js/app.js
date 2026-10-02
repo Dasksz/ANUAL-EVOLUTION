@@ -2513,9 +2513,9 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         // Fetch current city map
         const cityBranchMap = await fetchCityBranchMap();
 
-        // Fetch existing clients if Nota Involves is uploaded without the Clients file
+        // Sales imports without a new client file must reuse the registered RCA assignments.
         let existingClientsMap = null;
-        if (!files.clientsFile && (files.notaInvolvesFile1 || files.notaInvolvesFile2)) {
+        if (!files.clientsFile && (files.salesPrevYearFile || files.salesCurrYearFile || files.salesCurrMonthFile || files.notaInvolvesFile1 || files.notaInvolvesFile2)) {
              statusText.textContent = 'Buscando clientes existentes...';
              progressBar.style.width = '10%';
              existingClientsMap = [];
@@ -2524,12 +2524,15 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
              const limit = 1000;
              while(hasMore) {
                  const { data, error } = await supabase.from('data_clients')
-                    .select('codigo_cliente, cnpj')
+                    .select('codigo_cliente,rca1,nomecliente,cidade,bairro,razaosocial,cnpj')
+                    .order('codigo_cliente')
                     .range(offset, offset + limit - 1);
                  
                  if (error) {
                      AppLog.error("Erro buscar clientes:", error);
-                     break;
+                     statusText.textContent = 'Erro ao buscar o cadastro de clientes. A importação foi interrompida.';
+                     generateBtn.disabled = false;
+                     return;
                  }
                  if (data && data.length > 0) {
                      existingClientsMap.push(...data);
@@ -2542,7 +2545,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
         statusText.textContent = 'Processando...';
         
-        const worker = new Worker('src/js/worker.js?v=20261002-romulo-identity');
+        const worker = new Worker('src/js/worker.js?v=20261002-import-regressions');
         // Pass files, city map, and conditionally fetched clients
         worker.postMessage({ ...files, cityBranchMap, existingClientsMap });
 
@@ -2621,7 +2624,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 
                 if (error) {
                     if (error.code === '42P01') {
-                        throw new Error(`Tabela '${table}' não encontrada. Por favor, execute o script SQL de atualização (full_system_v1.sql) no painel do Supabase antes de enviar os arquivos.`);
+                        throw new Error(`Tabela '${table}' não encontrada. Verifique as migrações pendentes do banco antes de importar os arquivos.`);
                     }
                     throw new Error(`Erro ${table}: ${error.message}`);
                 }
@@ -2632,7 +2635,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                  const { error } = await supabase.from(table).upsert(batch, { onConflict: 'codigo' });
                  if (error) {
                      if (error.message && (error.message.includes('Could not find the table') || error.message.includes('relation') || error.code === '42P01')) {
-                         window.showToast('error', "Erro de Configuração: As tabelas novas (dimensões) não foram encontradas. \n\nPor favor, execute o script 'sql/optimization_plan.sql' no Editor SQL do Supabase para criar as tabelas necessárias e tente novamente.");
+                         window.showToast('error', "Erro de Configuração: As tabelas novas (dimensões) não foram encontradas. \n\nVerifique as migrações pendentes do banco antes de importar os arquivos.");
                      }
                      throw new Error(`Erro upsert ${table}: ${error.message}`);
                  }
@@ -2900,47 +2903,30 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             // CHUNKED CACHE REFRESH LOGIC
             if ((data.historyChunks && Object.keys(data.historyChunks).length > 0) || 
                 (data.detailedChunks && Object.keys(data.detailedChunks).length > 0) || 
-                (data.clients && data.clients.length > 0)) {
+                (data.clients && data.clients.length > 0) ||
+                (data.newProducts && data.newProducts.length > 0)) {
                 updateStatus('Iniciando processamento do resumo...', 80);
             
-            // 1. Explicitly clear Summary Table
-            await clearTable('data_summary');
-            await clearTable('data_summary_frequency');
-
-            // 2. Get Years dynamically based on what was sent
-            let yearsToProcess = [];
-            // If history chunks exist, process all years found in the db to re-align
-            if (data.historyChunks && Object.keys(data.historyChunks).length > 0) {
-                const { data: years, error: yearErr } = await supabase.rpc('get_available_years');
-                if (yearErr) throw new Error(`Erro ao buscar anos: ${yearErr.message}`);
-                yearsToProcess = (years || []).map(y => y.ano || y);
-            } else {
-                // If only detailed chunks (current month) were sent, we only need to process the current year
-                const currentYear = new Date().getFullYear();
-                yearsToProcess = [currentYear];
+            // Rebuild all stored years: client/product changes also affect history.
+            // Discover them before clearing anything, including current-month-only imports.
+            const { data: years, error: yearErr } = await supabase.rpc('get_available_years');
+            if (yearErr) throw new Error(`Erro ao buscar anos: ${yearErr.message}`);
+            const yearsToProcess = [...new Set((years || []).map(y => Number(y.ano || y)))];
+            if (yearsToProcess.some(y => !Number.isInteger(y) || y < 1 || y > 9999)) {
+                throw new Error('Ano inválido no processamento do resumo.');
             }
 
-            if (yearsToProcess && yearsToProcess.length > 0) {
-                // 2.5 Batch clear all months concurrently to improve throughput
-                updateStatus('Limpando dados antigos...', 80);
-                const clearPromises = [];
-                for (let i = 0; i < yearsToProcess.length; i++) {
-                    const year = yearsToProcess[i];
-                    for (let m = 1; m <= 12; m++) {
-                        clearPromises.push(
-                            supabase.rpc('clear_summary_month', { p_year: year, p_month: m })
-                                .then(({ error }) => {
-                                    if (error) throw new Error(`Erro limpando ${m}/${year}: ${error.message}`);
-                                })
-                        );
-                    }
-                }
-                await Promise.all(clearPromises);
-
+            if (yearsToProcess.length > 0) {
                 // 3. Loop and Process Each Year and Month (Granular to avoid timeout)
                 for (let i = 0; i < yearsToProcess.length; i++) {
                     const year = yearsToProcess[i];
                     for (let m = 1; m <= 12; m++) {
+                        // Clear only the month about to be rebuilt. Other periods remain available.
+                        await retryOperation(async () => {
+                            const { error } = await supabase.rpc('clear_summary_month', { p_year: year, p_month: m });
+                            if (error) throw new Error(`Erro limpando ${m}/${year}: ${error.message}`);
+                        });
+
                         // Calculate progress
                         const yearStep = 15 / yearsToProcess.length;
                         const monthStep = yearStep / 12;
@@ -2982,10 +2968,10 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                             const chunkEndDate = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
 
                             updateStatus(`Processando ${m}/${year} (Parte ${j + 1}/${chunkDays.length})...`, progress + Math.round(monthStep * ((j + 1) / chunkDays.length) * 0.80));
-                            await retryOperation(async () => {
-                                const res = await supabase.rpc('refresh_summary_chunk', { p_start_date: chunkStartDate, p_end_date: chunkEndDate });
-                                if (res.error) throw new Error(`Erro processando ${m}/${year} (Parte ${j + 1}): ${res.error.message}`);
-                            }, 3, 2000);
+                            // This RPC appends rows. A timeout may happen after commit, so retrying
+                            // it could double totals. Stop; the next import clears the month first.
+                            const res = await supabase.rpc('refresh_summary_chunk', { p_start_date: chunkStartDate, p_end_date: chunkEndDate });
+                            if (res.error) throw new Error(`Erro processando ${m}/${year} (Parte ${j + 1}): ${res.error.message}`);
                         }
 
                         // Atualiza o cache de filtros apenas para o mês que acabou de ser processado para evitar timeout
@@ -12811,3 +12797,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, false);
     }
 });
+
