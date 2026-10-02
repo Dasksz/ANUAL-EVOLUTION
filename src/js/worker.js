@@ -328,11 +328,15 @@ function normalizeSupervisorIdentity(row) {
   const code = String(row["CODSUPERVISOR"] || "").trim();
   if (code === "18" || code === "21") {
     row["SUPERV"] = "RÔMULO AMADO DA";
+  } else if (code === "12") {
+    row["SUPERV"] = "TIAGO JOSÉ DE S";
   }
 }
 
 const processSalesData = (rawData, clientMap, productMasterMap) => {
   return rawData.map((rawRow) => {
+    // Also covers supervisor codes introduced by attribution rules (e.g. vendor 190).
+    normalizeSupervisorIdentity(rawRow);
     const clientInfo = clientMap.get(String(rawRow["CODCLI"]).trim()) || {};
     let vendorName = String(rawRow["NOME"] || "");
     let supervisorName = String(rawRow["SUPERV"] || "");
@@ -957,6 +961,19 @@ if (typeof self !== "undefined") {
       });
       const clientMap = new Map();
       const clientsToInsert = [];
+      // Do not classify registered clients as inactive just because their file was omitted.
+      for (const client of existingClientsMap || []) {
+        const codCli = String(client.codigo_cliente || "").trim();
+        if (!codCli) continue;
+        clientMap.set(codCli, {
+          nomeCliente: String(client.nomecliente || client.fantasia || "N/A"),
+          cidade: salesCityMap.get(codCli) || client.cidade || null,
+          bairro: client.bairro || "N/A",
+          rca1: String(client.rca1 || "").trim(),
+          cnpj: client.cnpj || null,
+          razaosocial: String(client.razaosocial || client.nomecliente || "N/A"),
+        });
+      }
 
       // ⚡ Bolt Optimization: Parallelize client hashing to avoid sequential await bottleneck.
       const processedClients = await Promise.all(
@@ -1293,7 +1310,12 @@ if (typeof self !== "undefined") {
                  existingEntry.SUPERV = supervisor;
              }
           }
-          if (codSupervisor) existingEntry.CODSUPERVISOR = codSupervisor;
+          // Keep supervisor name/code together when the latest row is a placeholder.
+          if (codSupervisor && (isInvalidSupervisor === false ||
+              !existingEntry.SUPERV || existingEntry.SUPERV === "N/A" ||
+              /INATIVOS|DESCONHECIDO/.test(existingEntry.SUPERV.toUpperCase()))) {
+            existingEntry.CODSUPERVISOR = codSupervisor;
+          }
         }
 
         // Build Client Last Vendor Map (sales sorted by date, so last one overwrites)
@@ -1896,3 +1918,4 @@ if (typeof module !== "undefined" && module.exports) {
     normalizeCityName,
   };
 }
+
