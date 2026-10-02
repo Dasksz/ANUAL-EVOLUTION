@@ -12356,7 +12356,7 @@ async function setupGoalsFilters() {
         const hasKerococo = normalized.some(x => x.cod === '1119_KEROCOCO');
         const visible = normalized
             .filter(x => !['1119_QUAKER','1119_KEROCOCO'].includes(x.cod))
-            .map(x => ({ cod: x.cod, name: x.cod && x.name && x.name !== x.cod ? `${x.cod} - ${x.name}` : x.name }));
+            .map(x => ({ cod: x.cod, name: x.name }));
         if (hasQuaker || hasKerococo) visible.push({ cod: '1119_QUAKER_KEROCOCO', name: 'QUAKER / KEROCOCO' });
         return visible;
     };
