@@ -12799,15 +12799,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }, false);
     }
 });
-
-
-
-
-utf-8
-82fbc09c1d13daf4d37f2adb24cbf9f33f0e212a
-https://github.com/Dasksz/ANUAL-EVOLUTION/blob/feat/goals-multiselect-filters/src/js/app.js
-app.js
-utf-8
-b147f2e61264564252b6ad0875663bf1bb6af7b6
-https://github.com/Dasksz/ANUAL-EVOLUTION/blob/feat/goals-multiselect-filters/src/js/app.js
-app.js
