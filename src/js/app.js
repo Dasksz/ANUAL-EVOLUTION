@@ -11592,28 +11592,17 @@ async function renderGoalsView() {
     const tableBody = document.getElementById('goals-table-body');
     const loading = document.getElementById('goals-loading');
     
-    // Read from local filters
     const anoSelect = document.getElementById('goals-filter-ano');
     const mesSelect = document.getElementById('goals-filter-mes');
-    const filialSelect = document.getElementById('goals-filter-filial');
-    const fornSelect = document.getElementById('goals-filter-fornecedor');
-    const supSelect = document.getElementById('goals-filter-supervisor');
-    const venSelect = document.getElementById('goals-filter-vendedor');
+    const filters = window.goalsMultiFilters || { filiais: [], fornecedores: [], supervisores: [], vendedores: [], categorias: [] };
 
     if (anoSelect && anoSelect.value) currentGoalsAno = parseInt(anoSelect.value, 10);
     if (mesSelect && mesSelect.value) currentGoalsMes = parseInt(mesSelect.value, 10);
 
-    const p_filial = filialSelect && filialSelect.value ? filialSelect.value : 'Todas';
-    const p_fornecedor = fornSelect && fornSelect.value ? fornSelect.value : 'Todos';
-    const p_codsupervisor = supSelect && supSelect.value ? supSelect.value : null;
-    const p_codusur = venSelect && venSelect.value ? venSelect.value : null;
-    const catSelect = document.getElementById('goals-filter-categoria');
-    const p_categoria = catSelect && catSelect.value ? catSelect.value : 'Todos';
-
     loading.classList.remove('hidden');
 
-    // Update Chart
-    await renderGoalsChart(currentGoalsAno, p_codsupervisor, p_codusur, p_categoria, p_filial, p_fornecedor);
+    // Update Chart using the same multi-selection semantics as the main dashboard.
+    await renderGoalsChart(currentGoalsAno, filters);
 
     tableHead.innerHTML = '';
     tableBody.innerHTML = '';
@@ -11621,14 +11610,14 @@ async function renderGoalsView() {
     try {
         // Fetch Base and Metas
         const [baseRes, metasRes] = await Promise.all([
-            supabase.rpc('get_metas_base_comparativo_filtered', {
+            supabase.rpc('get_metas_base_comparativo_multi', {
                 p_ano: currentGoalsAno,
                 p_mes: currentGoalsMes,
-                p_filial,
-                p_fornecedor,
-                p_codsupervisor,
-                p_codusur,
-                p_categoria
+                p_filiais: filters.filiais || [],
+                p_fornecedores: filters.fornecedores || [],
+                p_supervisores: filters.supervisores || [],
+                p_vendedores: filters.vendedores || [],
+                p_categorias: filters.categorias || []
             }),
             supabase.rpc('get_metas_sv', { p_ano: currentGoalsAno, p_mes: currentGoalsMes })
         ]);
@@ -11638,7 +11627,8 @@ async function renderGoalsView() {
 
         const baseData = baseRes.data;
         const allSavedMetas = metasRes.data || [];
-        if (p_fornecedor && p_fornecedor !== 'Todos') {
+        const selectedSuppliers = filters.fornecedores || [];
+        if (selectedSuppliers.length > 0) {
             const supplierMetaCategories = {
                 '707': ['707'],
                 '708': ['708'],
@@ -11649,7 +11639,9 @@ async function renderGoalsView() {
                 '1119_QUAKER': ['1119_QUAKER_KEROCOCO'],
                 '1119_KEROCOCO': ['1119_QUAKER_KEROCOCO']
             };
-            const allowedCategories = new Set(supplierMetaCategories[p_fornecedor] || [p_fornecedor]);
+            const allowedCategories = new Set(
+                selectedSuppliers.flatMap(code => supplierMetaCategories[code] || [code])
+            );
             savedMetas = allSavedMetas.filter(m => allowedCategories.has(String(m.categoria)));
         } else {
             savedMetas = allSavedMetas;
@@ -11673,22 +11665,6 @@ async function renderGoalsView() {
 
         const quarterMonths = baseData.quarterMonths || [];
         let sellersData = baseData.sellers || [];
-
-        // Apply filters
-        if (p_codsupervisor) {
-            const selectedSup = String(p_codsupervisor).trim().toUpperCase();
-            sellersData = sellersData.filter(s =>
-                String(s.supervisor_codigo || '').trim().toUpperCase() === selectedSup ||
-                String(s.supervisor_nome || '').trim().toUpperCase() === selectedSup
-            );
-        }
-        if (p_codusur) {
-            const selectedSeller = String(p_codusur).trim().toUpperCase();
-            sellersData = sellersData.filter(s =>
-                String(s.codusur || '').trim().toUpperCase() === selectedSeller ||
-                String(s.vendedor_nome || '').trim().toUpperCase() === selectedSeller
-            );
-        }
 
         // Define Column Blocks (Metrics Config)
         const svColumns = [
