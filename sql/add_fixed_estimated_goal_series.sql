@@ -285,9 +285,9 @@ BEGIN
             COALESCE(r.real_fat_geral, 0) as kpi_realizado_atual_fat,
             
             CASE 
+                WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_fat_geral, 0)
                 WHEN (CASE WHEN p_categoria != 'Todos' THEN ms.meta_fat_cat ELSE ms.meta_fat_geral END) > 0 THEN (CASE WHEN p_categoria != 'Todos' THEN ms.meta_fat_cat ELSE ms.meta_fat_geral END)
                 WHEN v_percentual IS NULL THEN COALESCE((CASE WHEN p_categoria != 'Todos' THEN ms.meta_fat_cat ELSE ms.meta_fat_geral END), 0)
-                WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_fat_geral, 0)
                 ELSE 
                     CASE 
                         WHEN pr.soma_peso_fat_restante > 0 THEN
@@ -311,9 +311,9 @@ BEGIN
             COALESCE(r.real_vol_geral, 0) as kpi_realizado_atual_vol,
             
             CASE 
+                WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_vol_geral, 0)
                 WHEN (CASE WHEN p_categoria != 'Todos' THEN ms.meta_vol_cat ELSE ms.meta_vol_geral END) > 0 THEN (CASE WHEN p_categoria != 'Todos' THEN ms.meta_vol_cat ELSE ms.meta_vol_geral END)
                 WHEN v_percentual IS NULL THEN COALESCE((CASE WHEN p_categoria != 'Todos' THEN ms.meta_vol_cat ELSE ms.meta_vol_geral END), 0)
-                WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_vol_geral, 0)
                 ELSE 
                     CASE 
                         WHEN pr.soma_peso_vol_restante > 0 THEN
@@ -334,9 +334,9 @@ BEGIN
             COALESCE(ra.real_pos_geral, 0) as kpi_realizado_anterior_pos,
             COALESCE(r.real_pos_geral, 0) as kpi_realizado_atual_pos,
             CASE 
+                WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_pos_geral, 0)
                 WHEN (CASE WHEN p_categoria != 'Todos' THEN ms.meta_pos_cat ELSE ms.meta_pos_geral END) > 0 THEN (CASE WHEN p_categoria != 'Todos' THEN ms.meta_pos_cat ELSE ms.meta_pos_geral END)
                 WHEN v_percentual IS NULL THEN COALESCE((CASE WHEN p_categoria != 'Todos' THEN ms.meta_pos_cat ELSE ms.meta_pos_geral END), 0)
-                WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_pos_geral, 0)
                 ELSE 
                     CASE 
                         WHEN pr.soma_peso_pos_restante > 0 THEN
@@ -357,9 +357,9 @@ BEGIN
             COALESCE(ra.real_pos_salty, 0) as kpi_realizado_anterior_salty,
             COALESCE(r.real_pos_salty, 0) as kpi_realizado_atual_salty,
             CASE 
+                WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_pos_salty, 0)
                 WHEN ms.meta_pos_salty > 0 THEN ms.meta_pos_salty
                 WHEN v_percentual IS NULL THEN COALESCE(ms.meta_pos_salty, 0)
-                WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_pos_salty, 0)
                 ELSE 
                     CASE 
                         WHEN pr.soma_peso_salty_restante > 0 THEN
@@ -379,9 +379,9 @@ BEGIN
             COALESCE(ra.real_pos_foods, 0) as kpi_realizado_anterior_foods,
             COALESCE(r.real_pos_foods, 0) as kpi_realizado_atual_foods,
             CASE 
+                WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_pos_foods, 0)
                 WHEN ms.meta_pos_foods > 0 THEN ms.meta_pos_foods
                 WHEN v_percentual IS NULL THEN COALESCE(ms.meta_pos_foods, 0)
-                WHEN m.mes <= v_mes_fechado THEN COALESCE(r.real_pos_foods, 0)
                 ELSE 
                     CASE 
                         WHEN pr.soma_peso_foods_restante > 0 THEN
