@@ -11579,6 +11579,13 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
 
 let goalsChartInstance = null;
 let currentGoalsMetric = 'fat'; // fat, vol, pos, salty, foods
+window.goalsMultiFilters = window.goalsMultiFilters || {
+    filiais: [],
+    fornecedores: [],
+    supervisores: [],
+    vendedores: [],
+    categorias: []
+};
 
 async function renderGoalsView() {
     const tableHead = document.getElementById('goals-table-head');
@@ -12952,3 +12959,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
+
+utf-8
+82fbc09c1d13daf4d37f2adb24cbf9f33f0e212a
+https://github.com/Dasksz/ANUAL-EVOLUTION/blob/feat/goals-multiselect-filters/src/js/app.js
+app.js
