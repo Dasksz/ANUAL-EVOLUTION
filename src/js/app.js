@@ -11234,9 +11234,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                         if (error) throw error;
                         
                         inputGrowth.dataset.dirty = '';
-                        const sup = document.getElementById('goals-filter-supervisor').value;
-                        const usu = document.getElementById('goals-filter-vendedor').value;
-                        await renderGoalsChart(ano, sup === 'Todos' ? null : sup, usu === 'Todos' ? null : usu);
+                        await renderGoalsChart(ano, window.goalsMultiFilters || {});
                     } catch (error) {
                         console.error('Error saving growth:', error);
                         alert('Erro ao salvar o percentual.');
@@ -12588,9 +12586,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (error) throw error;
                         
                         inputGrowth.dataset.dirty = '';
-                        const sup = document.getElementById('goals-filter-supervisor').value;
-                        const usu = document.getElementById('goals-filter-vendedor').value;
-                        await renderGoalsChart(ano, sup === 'Todos' ? null : sup, usu === 'Todos' ? null : usu);
+                        await renderGoalsChart(ano, window.goalsMultiFilters || {});
                     } catch (error) {
                         console.error('Error saving growth:', error);
                         alert('Erro ao salvar o percentual.');
@@ -12809,5 +12805,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 utf-8
 82fbc09c1d13daf4d37f2adb24cbf9f33f0e212a
+https://github.com/Dasksz/ANUAL-EVOLUTION/blob/feat/goals-multiselect-filters/src/js/app.js
+app.js
+utf-8
+b147f2e61264564252b6ad0875663bf1bb6af7b6
 https://github.com/Dasksz/ANUAL-EVOLUTION/blob/feat/goals-multiselect-filters/src/js/app.js
 app.js
