@@ -11118,7 +11118,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 const revCats = ['707', '708', '752', '1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'];
                 revCats.forEach(cat => {
                     const val = getPriorityValue(cat, 'FAT');
-                    if (!isNaN(val)) updates.push({ type: 'rev', seller: sellerName, category: cat, val: val });
+                    if (!isNaN(val)) updates.push({ type: 'rev', seller: finalSellerName, category: cat, val: val });
                 });
 
                 // 2. Volume
@@ -11126,21 +11126,21 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 const volCats = ['tonelada_elma', 'tonelada_foods'];
                 volCats.forEach(cat => {
                     const val = getPriorityValue(cat, 'VOL');
-                    if (!isNaN(val)) updates.push({ type: 'vol', seller: sellerName, category: cat, val: val });
+                    if (!isNaN(val)) updates.push({ type: 'vol', seller: finalSellerName, category: cat, val: val });
                 });
 
                 // 3. Positivation
                 const posCats = ['pepsico_all', 'total_elma', 'total_foods', '707', '708', '752', '1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'];
                 posCats.forEach(cat => {
                     const val = getPriorityValue(cat, 'POS');
-                    if (!isNaN(val)) updates.push({ type: 'pos', seller: sellerName, category: cat, val: Math.round(val) });
+                    if (!isNaN(val)) updates.push({ type: 'pos', seller: finalSellerName, category: cat, val: Math.round(val) });
                 });
 
                 // 4. Mix
                 const mixCats = ['mix_salty', 'mix_foods'];
                 mixCats.forEach(cat => {
                     const val = getPriorityValue(cat, 'MIX');
-                    if (!isNaN(val)) updates.push({ type: 'mix', seller: sellerName, category: cat, val: Math.round(val) });
+                    if (!isNaN(val)) updates.push({ type: 'mix', seller: finalSellerName, category: cat, val: Math.round(val) });
                 });
             }
             return updates;
