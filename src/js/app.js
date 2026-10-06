@@ -11181,6 +11181,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                         });
                         
                         if (error) throw error;
+                        clearGoalsQueryCache();
                         
                         inputGrowth.dataset.dirty = '';
                         await renderGoalsChart(ano, window.goalsMultiFilters || {});
@@ -11534,22 +11535,71 @@ window.goalsMultiFilters = window.goalsMultiFilters || {
     categorias: []
 };
 
-async function renderGoalsView() {
+const goalsQueryCache = new Map();
+let goalsViewRequest = 0;
+let goalsChartRequest = 0;
+
+function clearGoalsQueryCache() {
+    goalsQueryCache.clear();
+}
+
+// Deduplicate concurrent reads and reuse annual data when only the table month changes.
+function fetchGoalsQuery(name, args) {
+    const normalized = Object.fromEntries(Object.entries(args).sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => [key, Array.isArray(value) ? [...value].sort() : value]));
+    const key = JSON.stringify([name, normalized]);
+    const cached = goalsQueryCache.get(key);
+    if (cached && cached.expires > Date.now()) return cached.promise;
+    if (goalsQueryCache.size > 40) goalsQueryCache.clear();
+    const entry = { expires: Date.now() + 30000, promise: null };
+    entry.promise = Promise.resolve(supabase.rpc(name, args)).then(result => {
+        if (result.error && goalsQueryCache.get(key) === entry) goalsQueryCache.delete(key);
+        return result;
+    }, error => {
+        if (goalsQueryCache.get(key) === entry) goalsQueryCache.delete(key);
+        throw error;
+    });
+    goalsQueryCache.set(key, entry);
+    return entry.promise;
+}
+
+function setupGoalsDetailToggle() {
+    const button = document.getElementById('goals-details-toggle');
+    if (!button || button.dataset.listenerAttached) return;
+    button.dataset.listenerAttached = 'true';
+    button.addEventListener('click', () => {
+        const expanded = button.getAttribute('aria-expanded') !== 'true';
+        button.setAttribute('aria-expanded', String(expanded));
+        document.getElementById('goals-details-panel').classList.toggle('hidden', !expanded);
+        document.getElementById('goals-details-label').textContent = expanded
+            ? 'Ocultar tabela de metas detalhada' : 'Ver tabela de metas detalhada';
+        document.getElementById('goals-details-chevron').classList.toggle('rotate-180', expanded);
+        if (expanded) renderGoalsView({ tableOnly: true });
+        else ++goalsViewRequest;
+    });
+}
+
+async function renderGoalsView({ tableOnly = false, forceDetails = false } = {}) {
+    const requestId = ++goalsViewRequest;
+    setupGoalsDetailToggle();
     const tableHead = document.getElementById('goals-table-head');
     const tableBody = document.getElementById('goals-table-body');
     const loading = document.getElementById('goals-loading');
     
     const anoSelect = document.getElementById('goals-filter-ano');
     const mesSelect = document.getElementById('goals-filter-mes');
-    const filters = window.goalsMultiFilters || { filiais: [], fornecedores: [], supervisores: [], vendedores: [], categorias: [] };
+    const filters = JSON.parse(JSON.stringify(window.goalsMultiFilters || { filiais: [], fornecedores: [], supervisores: [], vendedores: [], categorias: [] }));
 
     if (anoSelect && anoSelect.value) currentGoalsAno = parseInt(anoSelect.value, 10);
     if (mesSelect && mesSelect.value) currentGoalsMes = parseInt(mesSelect.value, 10);
+    // The table and chart load independently; the annual chart does not depend on the table month.
+    if (!tableOnly) renderGoalsChart(currentGoalsAno, filters);
+    if (!forceDetails && document.getElementById('goals-details-toggle')?.getAttribute('aria-expanded') !== 'true') {
+        loading.classList.add('hidden');
+        return;
+    }
 
     loading.classList.remove('hidden');
-
-    // Update Chart using the same multi-selection semantics as the main dashboard.
-    await renderGoalsChart(currentGoalsAno, filters);
 
     tableHead.innerHTML = '';
     tableBody.innerHTML = '';
@@ -11557,7 +11607,7 @@ async function renderGoalsView() {
     try {
         // Fetch Base and Metas
         const [baseRes, metasRes] = await Promise.all([
-            supabase.rpc('get_metas_base_comparativo_multi', {
+            fetchGoalsQuery('get_metas_base_comparativo_multi', {
                 p_ano: currentGoalsAno,
                 p_mes: currentGoalsMes,
                 p_filiais: filters.filiais || [],
@@ -11566,8 +11616,9 @@ async function renderGoalsView() {
                 p_vendedores: filters.vendedores || [],
                 p_categorias: filters.categorias || []
             }),
-            supabase.rpc('get_metas_sv', { p_ano: currentGoalsAno, p_mes: currentGoalsMes })
+            fetchGoalsQuery('get_metas_sv', { p_ano: currentGoalsAno, p_mes: currentGoalsMes })
         ]);
+        if (requestId !== goalsViewRequest) return;
 
         if (baseRes.error) throw baseRes.error;
         if (metasRes.error) throw metasRes.error;
@@ -11911,6 +11962,7 @@ async function renderGoalsView() {
                         p_valor_ajuste: valNum
                     });
                     if (error) throw error;
+                    clearGoalsQueryCache();
                     
                     // Re-render to update totals
                     renderGoalsView();
@@ -11921,15 +11973,18 @@ async function renderGoalsView() {
             });
         });
 
+        if (requestId !== goalsViewRequest) return;
     } catch(err) {
         console.error("Error loading goals view:", err);
         tableBody.innerHTML = `<tr><td colspan="40" class="text-center py-10 text-red-400">Erro ao carregar os dados das metas.</td></tr>`;
     } finally {
-        loading.classList.add('hidden');
+        if (requestId === goalsViewRequest) loading.classList.add('hidden');
     }
 }
 
 
+    const requestId = ++goalsChartRequest;
+    filters = JSON.parse(JSON.stringify(filters));
 async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
     const canvas = document.getElementById('goals-annual-chart');
     const loading = document.getElementById('goals-chart-loading');
@@ -11954,7 +12009,7 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
         const { currentYear, currentMonth } = typeof getDefaultFilterDates === 'function' ? getDefaultFilterDates(refLastSalesDate) : {currentYear: new Date().getFullYear(), currentMonth: new Date().getMonth() + 1};
         const refMonth = parseInt(ano) === currentYear ? currentMonth : (parseInt(ano) < currentYear ? 12 : 0);
 
-        const { data, error } = await supabase.rpc('get_metas_anuais_chart_multi', {
+        const { data, error } = await fetchGoalsQuery('get_metas_anuais_chart_multi', {
             p_ano: ano,
             p_mes_atual: refMonth,
             p_filiais: filters.filiais || [],
@@ -11963,6 +12018,7 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
             p_vendedores: filters.vendedores || [],
             p_categorias: filters.categorias || []
         });
+        if (requestId !== goalsChartRequest) return;
 
         if (error) throw error;
 
@@ -12276,10 +12332,11 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
             }
         });
 
+        if (requestId !== goalsChartRequest) return;
     } catch (error) {
         console.error('Error fetching chart data:', error);
     } finally {
-        if(loading) loading.classList.add('hidden');
+        if(loading && requestId === goalsChartRequest) loading.classList.add('hidden');
     }
 }
 
@@ -12446,7 +12503,7 @@ async function setupGoalsFilters() {
 
     const refreshPeople = async ({ refreshSupervisors = true, refreshVendors = true } = {}) => {
         if (refreshSupervisors) {
-            const { data, error } = await supabase.rpc('get_metas_base_comparativo_multi', currentBaseArgs(false));
+            const { data, error } = await fetchGoalsQuery('get_metas_base_comparativo_multi', currentBaseArgs(false));
             if (error) console.error('Erro ao carregar supervisores de Metas:', error);
             else {
                 optionSets.supervisores = Array.from(new Set((data?.sellers || []).map(s => s.supervisor_nome).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'pt-BR'));
@@ -12460,7 +12517,7 @@ async function setupGoalsFilters() {
         }
 
         if (refreshVendors) {
-            const { data, error } = await supabase.rpc('get_metas_base_comparativo_multi', currentBaseArgs(true));
+            const { data, error } = await fetchGoalsQuery('get_metas_base_comparativo_multi', currentBaseArgs(true));
             if (error) console.error('Erro ao carregar vendedores de Metas:', error);
             else {
                 optionSets.vendedores = Array.from(new Set((data?.sellers || []).map(s => s.vendedor_nome).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'pt-BR'));
@@ -12585,6 +12642,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         
                         if (error) throw error;
+                        clearGoalsQueryCache();
                         
                         inputGrowth.dataset.dirty = '';
                         await renderGoalsChart(ano, window.goalsMultiFilters || {});
@@ -12632,13 +12690,15 @@ document.addEventListener('DOMContentLoaded', () => {
     importCancelBtn.addEventListener('click', closeModal);
 
     // Analyze Button Logic
-    importAnalyzeBtn.addEventListener('click', () => {
+    importAnalyzeBtn.addEventListener('click', async () => {
         try {
             const text = importTextarea.value;
             if (!text.trim()) {
                 alert("A área de texto está vazia. Cole os dados.");
                 return;
             }
+            // Imports need seller identity and saved adjustments even when the detail panel is closed.
+            await renderGoalsView({ tableOnly: true, forceDetails: true });
             
             // Reusing the parseGoalsSvStructure (from legacy code)
             const updates = parseGoalsSvStructure(text);
@@ -12694,6 +12754,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await supabase.rpc('upsert_metas', { p_metas_json: dbPayload });
             
             if (res.error) throw res.error;
+            clearGoalsQueryCache();
 
             alert("Metas atualizadas com sucesso!");
             closeModal();
