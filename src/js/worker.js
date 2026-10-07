@@ -1272,6 +1272,15 @@ if (typeof self !== "undefined") {
         status: "Criando mapa mestre de vendedores...",
         percentage: 40,
       });
+      // Cadastro supplies identity when the RCA has no sales in this upload.
+      const clientRcaNames = new Map();
+      (clientsDataRaw || []).forEach((client) => {
+        const code = String(client["RCA 1"] || "").trim();
+        const name = String(client["Nome RCA"] || "").trim();
+        if (code && name && !/^(DESCONHECIDO|N\/A)$/i.test(name)) {
+          clientRcaNames.set(code, name);
+        }
+      });
       const rcaInfoMap = new Map();
       const supervisorCodeMap = new Map(); // CODSUPERVISOR -> SUPERV NAME
       const supervisorNameMap = new Map(); // SUPERV NAME -> CODSUPERVISOR
@@ -1535,7 +1544,7 @@ if (typeof self !== "undefined") {
                 // Use original sale info if RCA1 is missing
               } else {
                 newSale["CODUSUR"] = rca1;
-                newSale["NOME"] = "Desconhecido";
+                newSale["NOME"] = clientRcaNames.get(rca1) || "Desconhecido";
                 newSale["SUPERV"] = "Desconhecido";
               }
             }
@@ -1633,7 +1642,7 @@ if (typeof self !== "undefined") {
       });
 
       const dimSupervisors = new Map();
-      const dimVendors = new Map();
+      const dimVendors = new Map(clientRcaNames);
       const dimProviders = new Map();
       // dimProducts initialized earlier
 
@@ -1902,7 +1911,7 @@ if (typeof self !== "undefined") {
             ? mapToObjArray(dimSupervisors)
             : null,
         newVendors:
-          salesPrevYearFile || salesCurrYearFile || salesCurrMonthFile
+          clientsFile || salesPrevYearFile || salesCurrYearFile || salesCurrMonthFile
             ? mapToObjArray(dimVendors)
             : null,
         newProviders:
