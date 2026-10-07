@@ -2543,11 +2543,28 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
              }
         }
 
+        let existingProductsMap = null;
+        if (files.productsFile || files.salesPrevYearFile || files.salesCurrYearFile || files.salesCurrMonthFile) {
+            statusText.textContent = 'Buscando embalagens cadastradas...';
+            existingProductsMap = [];
+            for (let offset = 0; ; offset += 1000) {
+                const { data, error } = await supabase.from('dim_produtos')
+                    .select('codigo,qtde_embalagem_master').order('codigo').range(offset, offset + 999);
+                if (error) {
+                    AppLog.error('Erro ao buscar embalagens:', error);
+                    statusText.textContent = 'Erro ao buscar o cadastro de produtos. A importação foi interrompida.';
+                    generateBtn.disabled = false;
+                    return;
+                }
+                existingProductsMap.push(...(data || []));
+                if (!data || data.length < 1000) break;
+            }
+        }
         statusText.textContent = 'Processando...';
         
-        const worker = new Worker('src/js/worker.js?v=20261007-rca-cadastro');
+        const worker = new Worker('src/js/worker.js?v=20261007-packaging-guard');
         // Pass files, city map, and conditionally fetched clients
-        worker.postMessage({ ...files, cityBranchMap, existingClientsMap });
+        worker.postMessage({ ...files, cityBranchMap, existingClientsMap, existingProductsMap });
 
         worker.onmessage = async (event) => {
             const { type, data, status, percentage, message } = event.data;
@@ -12887,3 +12904,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, false);
     }
 });
+

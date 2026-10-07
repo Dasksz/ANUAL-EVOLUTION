@@ -107,3 +107,33 @@ test('client lookup failure stops import before creating a worker',async()=>{
   assert.match(statusText.textContent,/interrompida/);
   assert.equal(generateBtn.disabled,false);
 });
+
+const productStart=source.indexOf('        let existingProductsMap = null;');
+const productEnd=source.indexOf("        statusText.textContent = 'Processando...';",productStart);
+assert.ok(productStart>=0 && productEnd>productStart);
+async function loadPackaging(fail=false) {
+  const offsets=[],statusText={},generateBtn={disabled:true};
+  const context=vm.createContext({files:{salesCurrMonthFile:{}},statusText,generateBtn,AppLog:{error(){}},
+    supabase:{from(table){assert.equal(table,'dim_produtos');return {
+      select(fields){assert.equal(fields,'codigo,qtde_embalagem_master');return this;},order(){return this;},
+      async range(offset){offsets.push(offset);return fail?{error:{message:'offline'}}:{data:offset===0?
+        Array.from({length:1000},(_,i)=>({codigo:String(i),qtde_embalagem_master:28})):
+        [{codigo:'last',qtde_embalagem_master:12}]};}
+    };}}
+  });
+  const result=await vm.runInContext('(async()=>{'+source.slice(productStart,productEnd)+';return existingProductsMap})()',context);
+  return {result,offsets,statusText,generateBtn};
+}
+test('packaging lookup fetches every page before processing sales',async()=>{
+  const {result,offsets}=await loadPackaging();
+  assert.equal(result.length,1001);
+  assert.equal(result.at(-1).qtde_embalagem_master,12);
+  assert.deepEqual(offsets,[0,1000]);
+});
+test('packaging lookup failure stops import before a guessed conversion',async()=>{
+  const {result,statusText,generateBtn}=await loadPackaging(true);
+  assert.equal(result,undefined);
+  assert.match(statusText.textContent,/interrompida/);
+  assert.equal(generateBtn.disabled,false);
+});
+

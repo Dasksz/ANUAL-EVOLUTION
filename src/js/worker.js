@@ -834,6 +834,7 @@ if (typeof self !== "undefined") {
       metaEstrelasMes,
       metaEstrelasAno,
       existingClientsMap,
+      existingProductsMap,
     } = event.data;
 
     try {
@@ -1163,6 +1164,12 @@ if (typeof self !== "undefined") {
       });
       const productMasterMap = new Map();
       const dimProducts = new Map();
+      for (const product of existingProductsMap || []) {
+        const master = Number(product.qtde_embalagem_master);
+        if (Number.isFinite(master) && master > 0) {
+          productMasterMap.set(String(product.codigo).trim(), master);
+        }
+      }
       const allowedSuppliers = new Set(["707", "708", "752", "1119"]);
 
       const activeProductCodes = new Set();
@@ -1196,8 +1203,13 @@ if (typeof self !== "undefined") {
         // Filter: Only process allowed suppliers (Pepsico)
         if (!allowedSuppliers.has(codFor)) return;
 
-        let qtdeMaster = parseInt(prod["Qtde embalagem master(Compra)"], 10);
-        if (isNaN(qtdeMaster) || qtdeMaster <= 0) qtdeMaster = 1;
+        const rawMaster = prod["Qtde embalagem master(Compra)"];
+        const qtdeMaster = parseBrazilianNumber(rawMaster);
+        if (rawMaster === undefined || rawMaster === null ||
+            !/^\d+(?:[.,]\d+)*$/.test(String(rawMaster).trim()) ||
+            !Number.isInteger(qtdeMaster) || qtdeMaster <= 0) {
+          throw new Error(`Produto ${productCode}: quantidade da embalagem master ausente ou inválida. Corrija a planilha de produtos antes de importar.`);
+        }
         productMasterMap.set(productCode, qtdeMaster);
 
         const desc = String(prod["Descrição"] || "").trim();
@@ -1603,10 +1615,13 @@ if (typeof self !== "undefined") {
         // If ESTOQUECX is missing or zero, fallback to ESTOQUEUNIT to try to capture stock
         if (!stockStr || stockStr === "0" || stockStr === 0) {
           if (row["ESTOQUEUNIT"] !== undefined && row["ESTOQUEUNIT"] !== null && row["ESTOQUEUNIT"] !== "") {
-            // Divide the unit stock by the qtde_embalagem_master (if available) to get boxes
-            const qtdeMaster = productMasterMap.get(productCode) || 1;
+            // Convert unit stock with the imported or already registered packaging.
+            const qtdeMaster = productMasterMap.get(productCode);
             const unitVal = parseBrazilianNumber(row["ESTOQUEUNIT"]);
-            stockStr = String(unitVal / qtdeMaster);
+            if (!qtdeMaster && unitVal !== 0) {
+              throw new Error(`Produto ${productCode}: não é possível converter estoque em unidades sem uma embalagem master válida. Importe o cadastro de produtos.`);
+            }
+            stockStr = unitVal === 0 ? 0 : unitVal / qtdeMaster;
           }
         }
         
@@ -1668,17 +1683,7 @@ if (typeof self !== "undefined") {
             dimVendors.set(sale.codusur, sale.nome);
           if (sale.codfor && sale.fornecedor)
             dimProviders.set(sale.codfor, sale.fornecedor);
-          if (sale.produto && !dimProducts.has(sale.produto)) {
-            // Strict Filter: Only add if supplier is allowed
-            if (allowedSuppliers.has(sale.codfor)) {
-              dimProducts.set(sale.produto, {
-                descricao: sale.descricao,
-                codfor: sale.codfor,
-                qtde_embalagem_master: 1,
-                dt_cadastro: null,
-              });
-            }
-          }
+          // Sales do not contain packaging metadata. Never fabricate a product with master=1.
         });
       };
 
@@ -1946,4 +1951,5 @@ if (typeof module !== "undefined" && module.exports) {
     normalizeCityName,
   };
 }
+
 
