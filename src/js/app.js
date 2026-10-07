@@ -12527,7 +12527,7 @@ async function setupGoalsFilters() {
 
     const refreshPeople = async ({ refreshSupervisors = true, refreshVendors = true } = {}) => {
         if (refreshSupervisors) {
-            const { data, error } = await fetchGoalsQuery('get_metas_base_comparativo_multi', currentBaseArgs(false));
+            const { data, error } = await fetchGoalsQuery('get_metas_people_multi', currentBaseArgs(false));
             if (error) console.error('Erro ao carregar supervisores de Metas:', error);
             else {
                 optionSets.supervisores = Array.from(new Set((data?.sellers || []).map(s => s.supervisor_nome).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'pt-BR'));
@@ -12541,7 +12541,7 @@ async function setupGoalsFilters() {
         }
 
         if (refreshVendors) {
-            const { data, error } = await fetchGoalsQuery('get_metas_base_comparativo_multi', currentBaseArgs(true));
+            const { data, error } = await fetchGoalsQuery('get_metas_people_multi', currentBaseArgs(true));
             if (error) console.error('Erro ao carregar vendedores de Metas:', error);
             else {
                 optionSets.vendedores = Array.from(new Set((data?.sellers || []).map(s => s.vendedor_nome).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'pt-BR'));
