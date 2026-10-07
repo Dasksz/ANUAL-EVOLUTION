@@ -2545,7 +2545,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
         statusText.textContent = 'Processando...';
         
-        const worker = new Worker('src/js/worker.js?v=20261007-ibge-timeout');
+        const worker = new Worker('src/js/worker.js?v=20261007-rca-cadastro');
         // Pass files, city map, and conditionally fetched clients
         worker.postMessage({ ...files, cityBranchMap, existingClientsMap });
 
