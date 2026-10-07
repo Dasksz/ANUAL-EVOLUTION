@@ -95,3 +95,17 @@ test('vendor 190 rule assigns canonical Tiago name even without raw code 12', as
   assert.equal(row.codsupervisor,'12');
   assert.equal(data.newSupervisors.find(s=>s.codigo==='12').nome,'TIAGO JOSÉ DE S');
 });
+
+test('cadastro Nome RCA resolves a seller absent from sales and persists vendors on client-only imports', async () => {
+  const cadastro = csv('clients.csv', [{ 'Código': '1000', 'RCA 1': '324', 'Nome RCA': 'ARIANA TEIXEIRA DOS SANTOS', Cliente: 'CLIENTE A' }]);
+  const data = await runWorker({ clientsFile: cadastro, salesCurrMonthFile: csv('sales.csv', [sale('18', '100', '1000')]) });
+  assert.equal(data.newVendors.find(v => v.codigo === '324').nome, 'ARIANA TEIXEIRA DOS SANTOS');
+  const row = Object.values(data.detailedChunks).flatMap(c => c.rows)[0];
+  assert.equal(row.codusur, '324');
+  const onlyClients = await runWorker({ clientsFile: cadastro });
+  assert.equal(onlyClients.newVendors.find(v => v.codigo === '324').nome, 'ARIANA TEIXEIRA DOS SANTOS');
+});
+test('sales identity takes priority over cadastro Nome RCA', async () => {
+  const data = await runWorker({ clientsFile: csv('clients.csv', [{ 'Código': '1000', 'RCA 1': '100', 'Nome RCA': 'NOME ANTIGO', Cliente: 'CLIENTE A' }]), salesCurrMonthFile: csv('sales.csv', [sale('18', '100', '1000')]) });
+  assert.equal(data.newVendors.find(v => v.codigo === '100').nome, 'VENDEDOR 100');
+});
