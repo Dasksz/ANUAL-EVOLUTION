@@ -10891,9 +10891,9 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 // Standard logic: Rows 0, 1, 2
                 const startRow = 0;
 
-                const header0 = rows[startRow].map(h => h ? h.trim().toUpperCase() : '');
-                const header1 = rows[startRow + 1].map(h => h ? h.trim().toUpperCase() : '');
-                const header2 = rows[startRow + 2].map(h => h ? h.trim().toUpperCase() : '');
+                const header0 = rows[startRow].map(h => h ? h.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase() : '');
+                const header1 = rows[startRow + 1].map(h => h ? h.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase() : '');
+                const header2 = rows[startRow + 2].map(h => h ? h.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase() : '');
 
                 console.log("[Parser] Header 0:", header0.join('|'));
                 console.log("[Parser] Header 1:", header1.join('|'));
@@ -10907,13 +10907,14 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                     if (header0[i]) currentCategory = header0[i];
                     if (header1[i]) currentMetric = header1[i];
                     let subMetric = header2[i]; // Meta, Ajuste, etc.
+                    if (currentCategory && currentCategory.includes('PEDEV') && currentMetric === 'META' && !subMetric) subMetric = 'META';
 
                     if (currentCategory && subMetric) {
                         if (subMetric === 'AJ.' || subMetric === 'AJ') subMetric = 'AJUSTE';
 
                         let catKey = currentCategory;
                         // Normalize Category Names to IDs (Fuzzy Matching)
-                        if (catKey.includes('NÃO EXTRUSADOS') || catKey.includes('NAO EXTRUSADOS')) catKey = '708';
+                        if (/^N.O EXTRUSADOS$/.test(catKey)) catKey = '708';
                         else if (catKey.includes('EXTRUSADOS')) catKey = '707';
                         else if (catKey.includes('TORCIDA')) catKey = '752';
                         else if (catKey.includes('TODDYNHO')) catKey = '1119_TODDYNHO';
@@ -10925,12 +10926,14 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                         else if (catKey === 'TOTAL FOODS') catKey = 'total_foods';
                         else if (catKey === 'MIX SALTY') catKey = 'mix_salty';
                         else if (catKey === 'MIX FOODS') catKey = 'mix_foods';
+                        else if (catKey.includes('PEDEV')) catKey = 'pedev';
                         else if (catKey === 'PEPSICO_ALL_POS' || catKey === 'PEPSICO_ALL' || catKey === 'GERAL') catKey = 'pepsico_all';
 
                         let metricKey = 'OTHER';
-                        if (currentMetric === 'FATURAMENTO' || currentMetric === 'MÉDIA TRIM.') metricKey = 'FAT';
+                        if (currentMetric === 'FATURAMENTO' || currentMetric === 'MEDIA TRIM.') metricKey = 'FAT';
                         else if (currentMetric === 'POSITIVAÇÃO' || currentMetric === 'POSITIVACAO' || currentMetric.includes('POSITIVA')) metricKey = 'POS';
                         else if (currentMetric === 'TONELADA' || currentMetric === 'META KG') metricKey = 'VOL';
+                        else if (catKey === 'pedev') metricKey = 'POS';
                         else if (currentMetric === 'META MIX' || currentMetric === 'MIX' || currentMetric === 'QTD') metricKey = 'MIX';
 
                         const key = `${catKey}_${metricKey}_${subMetric}`;
@@ -10982,13 +10985,13 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 addKeys('pepsico_all', [null, 'FAT_META', 'VOL_META', 'POS_META']);
 
                 // 14. PEDEV
-                colIdx += 1;
+                addKeys('pedev', ['POS_META']);
 
                 dataStartRow = 0; // Parse all rows
             }
 
             const updates = [];
-            const processedSellers = new Set();
+            const summedUpdates = new Map();
 
             const parseImportValue = (rawStr) => {
                 if (!rawStr) return NaN;
@@ -11054,7 +11057,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                     upperName.includes('TOTAL') || upperName.includes('SUPERVISOR') || upperName.includes('GERAL') ||
                     upperName === 'VENDEDOR' || upperName === 'NOME' || upperName === 'CODIGO' || upperName === 'CÓDIGO' ||
                     upperName.includes('GV') || upperName === 'GERAL PRIME' || upperName === 'TIAGO JOSÉ DE S' || upperName.includes('AMADO') ||
-                    upperName === '12' || upperName === '21' || upperName === '8' || (sellerCodeCandidate && ['12', '21', '8', 'GV', 'BALCAO'].includes(String(sellerCodeCandidate).toUpperCase()))) {
+                    upperName === '12' || upperName === '21' || upperName === '8' || (sellerCodeCandidate && ['12', '21', '8', 'GV', 'SV', 'SV2', 'BALCAO'].includes(String(sellerCodeCandidate).toUpperCase()))) {
                     continue;
                 }
 
@@ -11094,8 +11097,18 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 }
                 // ------------------------------------------------
 
-                if (processedSellers.has(finalSellerName)) continue;
-                processedSellers.add(finalSellerName);
+                // Multiple rows can be separate portfolios assigned to the same seller.
+                const addUpdate = (type, category, val) => {
+                    const code = globalRcaCodeByName.get(finalSellerName) || sellerCodeCandidate || finalSellerName;
+                    const key = JSON.stringify([String(code), category, type]);
+                    const previous = summedUpdates.get(key);
+                    if (previous) previous.val += val;
+                    else {
+                        const update = { type, seller: finalSellerName, codusur: String(code), category, val };
+                        summedUpdates.set(key, update);
+                        updates.push(update);
+                    }
+                };
 
                 // Helper to get value with priority: Adjust > Meta
                 const getPriorityValue = (cat, metric) => {
@@ -11111,38 +11124,42 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                         const val = parseImportValue(row[idx]);
                         if (!isNaN(val)) return val;
                     }
+                    // KG blocks label the unadjusted target as Volume, not Meta.
+                    idx = colMap[`${cat}_${metric}_VOLUME`];
+                    if (idx !== undefined) return parseImportValue(row[idx]);
                     return NaN;
                 };
 
                 // 1. Revenue
-                const revCats = ['707', '708', '752', '1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'];
+                const revCats = ['total_elma', 'total_foods', 'pepsico_all', '707', '708', '752', '1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'];
                 revCats.forEach(cat => {
                     const val = getPriorityValue(cat, 'FAT');
-                    if (!isNaN(val)) updates.push({ type: 'rev', seller: sellerName, category: cat, val: val });
+                    if (!isNaN(val)) addUpdate('rev', cat, val);
                 });
 
                 // 2. Volume
                 // Metas de Volume são importadas pelos Totais (KG ELMA / KG FOODS) e distribuídas automaticamente
-                const volCats = ['tonelada_elma', 'tonelada_foods'];
+                const volCats = ['tonelada_elma', 'tonelada_foods', 'pepsico_all'];
                 volCats.forEach(cat => {
                     const val = getPriorityValue(cat, 'VOL');
-                    if (!isNaN(val)) updates.push({ type: 'vol', seller: sellerName, category: cat, val: val });
+                    if (!isNaN(val)) addUpdate('vol', cat, val);
                 });
 
                 // 3. Positivation
-                const posCats = ['pepsico_all', 'total_elma', 'total_foods', '707', '708', '752', '1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'];
+                const posCats = ['pedev', 'pepsico_all', 'total_elma', 'total_foods', '707', '708', '752', '1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'];
                 posCats.forEach(cat => {
                     const val = getPriorityValue(cat, 'POS');
-                    if (!isNaN(val)) updates.push({ type: 'pos', seller: sellerName, category: cat, val: Math.round(val) });
+                    if (!isNaN(val)) addUpdate('pos', cat, Math.round(val));
                 });
 
                 // 4. Mix
                 const mixCats = ['mix_salty', 'mix_foods'];
                 mixCats.forEach(cat => {
                     const val = getPriorityValue(cat, 'MIX');
-                    if (!isNaN(val)) updates.push({ type: 'mix', seller: sellerName, category: cat, val: Math.round(val) });
+                    if (!isNaN(val)) addUpdate('mix', cat, Math.round(val));
                 });
             }
+            updates.forEach(update => { update.val = Math.round(update.val * 1000000) / 1000000; });
             return updates;
         }
 
@@ -11418,7 +11435,8 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                         const sheet = workbook.Sheets[sheetName];
                         
                         // Convert to TSV for the parser
-                        const tsv = XLSX.utils.sheet_to_csv(sheet, {FS: "\t"});
+                        const tsv = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' })
+                            .map(row => row.map(value => String(value).replace(/[\t\r\n]/g, ' ')).join('\t')).join('\n');
                         
                         // Update UI
                         importTextarea.value = tsv;
@@ -11765,7 +11783,7 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                 if (m.categoria !== cat || m.metrica !== metrica) return false;
                 const matchesCode = m.codusur != null && String(m.codusur) === String(sellerCode);
                 const matchesName = sellerName !== '' && normalizeName(m.vendedor_nome) === sellerName;
-                return matchesCode || matchesName;
+                return matchesCode || (!m.codusur && matchesName);
             });
             return saved ? parseFloat(saved.valor_ajuste) : parseFloat(defaultBase || 0);
         };
@@ -11830,9 +11848,15 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                 // Calculate Geral correctly by summing Elma and Foods metas
                 sData['geral'].metaFat = sData['total_elma'].metaFat + sData['total_foods'].metaFat;
                 sData['geral'].metaVol = sData['tonelada_elma'].metaVol + sData['tonelada_foods'].metaVol;
+                if (!selectedSuppliers.length) {
+                    sData['total_elma'].metaFat = getMeta(seller.codusur, 'total_elma', 'FAT', sData['total_elma'].metaFat);
+                    sData['total_foods'].metaFat = getMeta(seller.codusur, 'total_foods', 'FAT', sData['total_foods'].metaFat);
+                    sData['geral'].metaFat = getMeta(seller.codusur, 'pepsico_all', 'FAT', sData['total_elma'].metaFat + sData['total_foods'].metaFat);
+                    sData['geral'].metaVol = getMeta(seller.codusur, 'pepsico_all', 'VOL', sData['geral'].metaVol);
+                }
                 sData['geral'].metaPos = Math.round(getMeta(seller.codusur, 'pepsico_all', 'POS', sData['geral'].avgPos));
 
-                sData['pedev'] = { metaPos: Math.round(sData['total_elma'].metaPos * 0.9) };
+                sData['pedev'] = { metaPos: Math.round(getMeta(seller.codusur, 'pedev', 'POS', sData['total_elma'].metaPos * 0.9)) };
 
                 seller.calculatedData = sData;
 
@@ -11912,7 +11936,7 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                 } else if (col.type === 'tonnage') bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700">${formatCurrency(d.avgVol)} Kg</td><td class="px-1 py-1 text-right ${color} border-r border-slate-700">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 text-right text-yellow-500/70 border-r border-slate-700">${formatCurrency(d.metaVol)} Kg</td>`;
                 else if (col.type === 'mix') bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700">${d.avgMix.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}</td><td class="px-1 py-1 text-right ${color} border-r border-slate-700">${d.metaMix}</td><td class="px-1 py-1 text-right text-yellow-500/70 border-r border-slate-700">${d.metaMix}</td>`;
                 else if (col.type === 'geral') bodyHTML += `<td class="px-1 py-1 text-right text-slate-400 border-r border-slate-700">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right text-white border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 text-right text-white border-r border-slate-700">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 text-center text-white border-r border-slate-700">${d.metaPos}</td>`;
-                else if (col.type === 'pedev') bodyHTML += `<td class="px-1 py-1 text-center text-pink-400 border-r border-slate-700">${Math.round(sup.totals['total_elma']?.metaPos * 0.9)}</td>`;
+                else if (col.type === 'pedev') bodyHTML += `<td class="px-1 py-1 text-center text-pink-400 border-r border-slate-700">${sup.totals['pedev'].metaPos}</td>`;
             });
             bodyHTML += `</tr>`;
         });
@@ -11929,7 +11953,7 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
             } else if (col.type === 'tonnage') bodyHTML += `<td class="px-1 py-2 text-right text-slate-400 border-r border-slate-700">${formatCurrency(d.avgVol)}</td><td class="px-1 py-2 text-right text-orange-400 border-r border-slate-700">${formatCurrency(d.metaVol)}</td><td class="px-1 py-2 text-right text-orange-600/70 border-r border-slate-700">${formatCurrency(d.metaVol)}</td>`;
             else if (col.type === 'mix') bodyHTML += `<td class="px-1 py-2 text-right text-slate-400 border-r border-slate-700">${d.avgMix.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}</td><td class="px-1 py-2 text-right text-cyan-400 border-r border-slate-700">${d.metaMix}</td><td class="px-1 py-2 text-right text-cyan-600/70 border-r border-slate-700">${d.metaMix}</td>`;
             else if (col.type === 'geral') bodyHTML += `<td class="px-1 py-2 text-right text-slate-500 border-r border-slate-700">${formatCurrency(d.avgFat)}</td><td class="px-1 py-2 text-right text-white border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-2 text-right text-white border-r border-slate-700">${formatCurrency(d.metaVol)}</td><td class="px-1 py-2 text-center text-white border-r border-slate-700">${d.metaPos}</td>`;
-            else if (col.type === 'pedev') bodyHTML += `<td class="px-1 py-2 text-center text-pink-400 border-r border-slate-700">${Math.round(grandTotals['total_elma']?.metaPos * 0.9)}</td>`;
+            else if (col.type === 'pedev') bodyHTML += `<td class="px-1 py-2 text-center text-pink-400 border-r border-slate-700">${grandTotals['pedev'].metaPos}</td>`;
         });
         bodyHTML += `</tr>`;
         
@@ -12743,7 +12767,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return {
                     ano: parseInt(document.getElementById('import-goals-ano').value, 10) || currentGoalsAno,
                     mes: parseInt(document.getElementById('import-goals-mes').value, 10) || currentGoalsMes,
-                    codusur: globalRcaCodeByName.get(u.seller) || u.seller,
+                    codusur: u.codusur || globalRcaCodeByName.get(u.seller) || u.seller,
                     vendedor_nome: u.seller,
                     categoria: u.category,
                     metrica: metrica,
@@ -12791,7 +12815,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const sheet = workbook.Sheets[sheetName];
                 
                 // Convert to TSV for the parser
-                const tsv = XLSX.utils.sheet_to_csv(sheet, {FS: "\t"});
+                const tsv = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' })
+                            .map(row => row.map(value => String(value).replace(/[\t\r\n]/g, ' ')).join('\t')).join('\n');
                 
                 // Update UI
                 const importTextarea = document.getElementById('import-goals-textarea');
