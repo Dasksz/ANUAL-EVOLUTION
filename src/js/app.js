@@ -1527,7 +1527,7 @@ function getActiveExportView() {
     // Helper to generate canonical cache keys (sorted arrays)
     function generateCacheKey(prefix, filters) {
         // Ignore dashboard totals cached before monthly chunks were matched by month.
-        const revisions = { dashboard_data: 3, dashboard_filters: 2, frequency_data: 3, mix_data: 2, boxes_dashboard_data: 2 };
+        const revisions = { dashboard_data: 3, dashboard_filters: 2, frequency_data: 3, mix_data: 2, boxes_dashboard_data: 3 };
         if (revisions[prefix]) prefix = `${prefix}_v${revisions[prefix]}`;
         const sortedFilters = {};
         Object.keys(filters).sort().forEach(k => {
@@ -2543,11 +2543,28 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
              }
         }
 
+        let existingProductsMap = null;
+        if (files.productsFile || files.salesPrevYearFile || files.salesCurrYearFile || files.salesCurrMonthFile) {
+            statusText.textContent = 'Buscando embalagens cadastradas...';
+            existingProductsMap = [];
+            for (let offset = 0; ; offset += 1000) {
+                const { data, error } = await supabase.from('dim_produtos')
+                    .select('codigo,qtde_embalagem_master').order('codigo').range(offset, offset + 999);
+                if (error) {
+                    AppLog.error('Erro ao buscar embalagens:', error);
+                    statusText.textContent = 'Erro ao buscar o cadastro de produtos. A importação foi interrompida.';
+                    generateBtn.disabled = false;
+                    return;
+                }
+                existingProductsMap.push(...(data || []));
+                if (!data || data.length < 1000) break;
+            }
+        }
         statusText.textContent = 'Processando...';
         
-        const worker = new Worker('src/js/worker.js?v=20261007-rca-cadastro');
+        const worker = new Worker('src/js/worker.js?v=20261007-packaging-guard');
         // Pass files, city map, and conditionally fetched clients
-        worker.postMessage({ ...files, cityBranchMap, existingClientsMap });
+        worker.postMessage({ ...files, cityBranchMap, existingClientsMap, existingProductsMap });
 
         worker.onmessage = async (event) => {
             const { type, data, status, percentage, message } = event.data;
@@ -3354,6 +3371,7 @@ async function loadBoxesView() {
     isBoxesViewLoading = true;
     try {
         window.showDashboardLoading('boxes-view');
+        await checkDataVersion();
 
         if (typeof initBoxesFilters === 'function' && boxesAnoFilter && boxesAnoFilter.options.length <= 1) {
              await initBoxesFilters();
@@ -12886,3 +12904,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }, false);
     }
 });
+
