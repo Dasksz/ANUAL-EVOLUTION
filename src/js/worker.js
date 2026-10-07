@@ -201,21 +201,40 @@ function isIbgeCode(value) {
   return /^\d{6,7}$/.test(str);
 }
 
-async function fetchIbgeMapping() {
+async function fetchIbgeMapping(timeoutMs = 8000) {
+  const controller = new AbortController();
+  let timer;
   try {
-    const response = await fetch(
-      "https://servicodados.ibge.gov.br/api/v1/localidades/municipios",
-    );
-    if (!response.ok) throw new Error("Falha ao buscar dados do IBGE");
-    const data = await response.json();
-    const map = {};
-    data.forEach((city) => {
-      map[String(city.id)] = city.nome.toUpperCase();
+    // Bound both the request and body parsing: a stalled external service must
+    // never stop the import. Keep original municipality codes on failure.
+    const request = (async () => {
+      const response = await fetch(
+        "https://servicodados.ibge.gov.br/api/v1/localidades/municipios",
+        { signal: controller.signal },
+      );
+      if (!response.ok) throw new Error("Falha ao buscar dados do IBGE");
+      const data = await response.json();
+      if (!Array.isArray(data)) throw new Error("Resposta inválida do IBGE");
+      const map = {};
+      data.forEach((city) => {
+        if (city.id && typeof city.nome === "string") {
+          map[String(city.id)] = city.nome.toUpperCase();
+        }
+      });
+      return map;
+    })();
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error("Tempo de consulta ao IBGE esgotado"));
+        controller.abort();
+      }, timeoutMs);
     });
-    return map;
+    return await Promise.race([request, timeout]);
   } catch (e) {
-    console.warn("Erro API IBGE:", e);
+    console.warn("Erro API IBGE; mantendo códigos de municípios:", e);
     return {};
+  } finally {
+    clearTimeout(timer);
   }
 }
 
