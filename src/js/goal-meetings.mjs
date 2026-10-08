@@ -77,6 +77,13 @@ export let goalMeetings = [
   }
 ];
 
+// Temporary visual samples only; never written to Sheets or Supabase.
+const visualTestMeetings = ['👥', '🗓️', '🤝', '💬', '📋'].map((icon, index) => ({
+  date: ['2026-05-22', '2026-04-16', '2026-03-10', '2026-02-19', '2026-01-15'][index],
+  testLabel: icon + ' Teste ' + (index + 1),
+  participants: [{ name: 'Participante fictício ' + (index + 1), area: ['Comercial', 'Logística', 'Administrativo', 'Financeiro', 'Operações'][index] }]
+}));
+
 function node(tag, className, text) {
   const el = document.createElement(tag);
   if (className) el.className = className;
@@ -108,7 +115,7 @@ export function mountGoalMeetings(root = document) {
   root.head.append(style);
   const indicator = node('div','gm-indicator');
   indicator.id = 'goal-meetings-indicator';
-  indicator.append(node('span','gm-label','Monitoramento de metas · reuniões'));
+  indicator.append(node('span','gm-label','Monitoramento de metas · reuniões + 5 testes'));
   const dates = node('div','gm-dates');
   indicator.append(dates);
   header.insertBefore(indicator,header.lastElementChild);
@@ -136,15 +143,16 @@ export function mountGoalMeetings(root = document) {
   function renderDates() {
   close();
   dates.replaceChildren();
-  if (!goalMeetings.length) { const empty = node('span','gm-subtitle','Nenhuma reunião registrada'); empty.style.gridColumn = '1 / -1'; dates.append(empty); }
-  for (const meeting of goalMeetings) {
+  if (!goalMeetings.length && !visualTestMeetings.length) { const empty = node('span','gm-subtitle','Nenhuma reunião registrada'); empty.style.gridColumn = '1 / -1'; dates.append(empty); }
+  for (const meeting of [...goalMeetings, ...visualTestMeetings]) {
     const label = meeting.date.split('-').reverse().join('/');
-    const button = node('button','gm-date',label);
+    const button = node('button','gm-date',meeting.testLabel || label);
+    if (meeting.testLabel) button.title = 'Reunião fictícia para testar a visualização · ' + label;
     button.type = 'button';
     button.setAttribute('aria-expanded','false');
     button.setAttribute('aria-controls',panel.id);
     button.setAttribute('aria-haspopup','dialog');
-    button.setAttribute('aria-label','Ver participantes da reunião de '+label);
+    button.setAttribute('aria-label',meeting.testLabel ? meeting.testLabel + ': reunião fictícia de ' + label : 'Ver participantes da reunião de '+label);
     dates.append(button);
     button.addEventListener('click',() => {
       if (active === button) { close(); return; }
@@ -154,9 +162,9 @@ export function mountGoalMeetings(root = document) {
       panel.replaceChildren();
       const heading = node('div','gm-heading');
       const titles = node('div');
-      const title = node('h2','gm-title','Reunião de '+label);
+      const title = node('h2','gm-title',(meeting.testLabel ? meeting.testLabel + ' · ' : 'Reunião de ') + label);
       title.id = 'goal-meetings-title';
-      titles.append(title,node('p','gm-subtitle',meeting.participants.length+' participantes'));
+      titles.append(title,node('p','gm-subtitle',meeting.testLabel ? 'Demonstração · participantes fictícios' : meeting.participants.length+' participantes'));
       const dismiss = node('button','gm-close','×');
       dismiss.type = 'button';
       dismiss.setAttribute('aria-label','Fechar participantes');
