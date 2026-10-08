@@ -88,10 +88,10 @@ export function mountGoalMeetings(root = document) {
   if (!header || root.getElementById('goal-meetings-indicator')) return;
   const style = node('style');
   style.textContent = `
-    .gm-indicator{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;min-width:220px}
+    .gm-indicator{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0;max-height:106px;position:relative}
     .gm-label{font-size:11px;letter-spacing:.04em;color:#94a3b8;font-weight:600}
-    .gm-dates{display:flex;gap:8px;flex-wrap:wrap}
-    .gm-date{display:flex;align-items:center;gap:7px;border:1px solid #f9731645;background:#f9731610;color:#fdba74;border-radius:9px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer}
+    .gm-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:36px;gap:8px;width:min(100%,280px);max-height:80px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#f9731660 transparent;padding:2px 4px;box-sizing:border-box;flex-shrink:0}\n    .gm-dates::-webkit-scrollbar{width:5px}\n    .gm-dates::-webkit-scrollbar-thumb{background:#f9731660;border-radius:6px}
+    .gm-date{display:flex;align-items:center;justify-content:center;white-space:nowrap;min-width:0;gap:7px;border:1px solid #f9731645;background:#f9731610;color:#fdba74;border-radius:9px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer}
     .gm-date:hover,.gm-date[aria-expanded="true"]{border-color:#fb923c;background:#f9731626}
     .gm-date:focus-visible,.gm-close:focus-visible{outline:2px solid #fb923c;outline-offset:3px}
     .gm-popover{position:fixed;z-index:1200;width:360px;max-width:calc(100vw - 24px);background:#19181f;border:1px solid #f9731650;border-radius:14px;box-shadow:0 18px 60px #0009;color:#e2e8f0;padding:16px}
@@ -108,7 +108,7 @@ export function mountGoalMeetings(root = document) {
   root.head.append(style);
   const indicator = node('div','gm-indicator');
   indicator.id = 'goal-meetings-indicator';
-  indicator.append(node('span','gm-label','Monitoramento de metas · últimas reuniões'));
+  indicator.append(node('span','gm-label','Monitoramento de metas · reuniões'));
   const dates = node('div','gm-dates');
   indicator.append(dates);
   header.insertBefore(indicator,header.lastElementChild);
@@ -136,8 +136,8 @@ export function mountGoalMeetings(root = document) {
   function renderDates() {
   close();
   dates.replaceChildren();
-  if (!goalMeetings.length) dates.append(node('span','gm-subtitle','Nenhuma reunião registrada'));
-  for (const meeting of goalMeetings.slice(0, 3)) {
+  if (!goalMeetings.length) { const empty = node('span','gm-subtitle','Nenhuma reunião registrada'); empty.style.gridColumn = '1 / -1'; dates.append(empty); }
+  for (const meeting of goalMeetings) {
     const label = meeting.date.split('-').reverse().join('/');
     const button = node('button','gm-date',label);
     button.type = 'button';
