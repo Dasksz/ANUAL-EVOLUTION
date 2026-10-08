@@ -14,7 +14,7 @@ async function load() {
 }
 function render() {
   $('requests').replaceChildren();
-  for(const r of state.pendentes){const row=node('div',null,'row'),info=node('div');info.append(node('strong',`A${r.id} • ${r.nome}`),node('p',`${r.funcao||'Função pendente'} • CPF final ${r.cpf_final||'—'} • +${r.phone}`));const actions=node('div',null,'actions');if(r.cadastrado)actions.append(button('Aprovar','aprovar',r.id));else info.append(node('p',`Cadastro necessário: use CADASTRAR A${r.id} no WhatsApp administrativo.`));actions.append(button('Negar','negar',r.id));row.append(info,actions);$('requests').append(row);}
+  for(const r of state.pendentes){const row=node('div',null,'row'),info=node('div');info.append(node('strong',`A${r.id} • ${r.nome}`),node('p',`${r.funcao||'Função pendente'} • CPF final ${r.cpf_final||'—'} • +${r.phone}`));if(r.proposed_rca)info.append(node('p',`RCA informado: ${r.proposed_rca} • Código atual: ${displayCode(r.codigo)}`));const actions=node('div',null,'actions');if(r.cadastrado)actions.append(button('Aprovar','aprovar',r.id));else info.append(node('p',`Cadastro necessário: use CADASTRAR A${r.id} no WhatsApp administrativo.`));actions.append(button('Negar','negar',r.id));row.append(info,actions);$('requests').append(row);}
   if(!state.pendentes.length)$('requests').append(node('p','Nenhuma autorização pendente.'));
   employees();$('events').replaceChildren();
   $('rh-status').textContent=state.rh_sync?.last_success ? `Sincronização horária ativa. Última atualização: ${new Date(state.rh_sync.last_success).toLocaleString('pt-BR')}. ${state.rh_sync.source_count} colaboradores no RH.` : 'Aguardando a primeira sincronização.';
@@ -41,7 +41,7 @@ async function act(action,id,values={}) {
   if(!confirm(messages[action])){render();return;}
   busy=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);
   try{await rpc('elma_management_action',{p_action:action,p_id:id,p_values:values});$('feedback').textContent=labels[action]+'.';$('edit').close();await load();}
-  catch(e){$('feedback').textContent=e.message;}
+  catch(e){$('feedback').textContent=e.message;render();}
   finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}
 }
 $('search').oninput=employees;$('refresh').onclick=load;$('cancel').onclick=()=>$('edit').close();
