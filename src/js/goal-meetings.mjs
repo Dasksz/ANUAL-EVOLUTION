@@ -1,5 +1,6 @@
+import supabase from './supabase.js?v=5';
 // Source: supplied workbook, Revisional tab. One entry per meeting date.
-export const goalMeetings = [
+export let goalMeetings = [
   {
     "date": "2026-09-28",
     "participants": [
@@ -132,7 +133,11 @@ export function mountGoalMeetings(root = document) {
     const below = rect.bottom+10;
     panel.style.top = Math.max(12,below+height<=window.innerHeight-12 ? below : rect.top-height-10)+'px';
   }
-  for (const meeting of goalMeetings) {
+  function renderDates() {
+  close();
+  dates.replaceChildren();
+  if (!goalMeetings.length) dates.append(node('span','gm-subtitle','Nenhuma reunião registrada'));
+  for (const meeting of goalMeetings.slice(0, 3)) {
     const label = meeting.date.split('-').reverse().join('/');
     const button = node('button','gm-date',label);
     button.type = 'button';
@@ -169,6 +174,8 @@ export function mountGoalMeetings(root = document) {
       dismiss.focus();
     });
   }
+  }
+  renderDates();
   root.addEventListener('pointerdown',event => {
     if (!panel.hidden && !panel.contains(event.target) && !indicator.contains(event.target)) close();
   });
@@ -178,5 +185,36 @@ export function mountGoalMeetings(root = document) {
   // Changing dashboard views must not leave a floating panel behind.
   new MutationObserver(()=> { if (root.getElementById('goals-view').classList.contains('hidden')) close(); })
     .observe(root.getElementById('goals-view'),{attributes:true,attributeFilter:['class']});
+  return { update(meetings, syncedAt) {
+    if (JSON.stringify(goalMeetings) !== JSON.stringify(meetings)) { goalMeetings = meetings; renderDates(); }
+    indicator.title = 'Sincronizado com Google Sheets em ' + new Date(syncedAt).toLocaleString('pt-BR');
+  }, unavailable() { indicator.title = 'Não foi possível consultar a sincronização. Mostrando os últimos dados disponíveis.'; } };
 }
-if (typeof document !== 'undefined') mountGoalMeetings();
+if (typeof document !== 'undefined') {
+  const controller = mountGoalMeetings();
+  let loading = false;
+  async function refreshMeetings() {
+    if (!controller || loading || document.hidden) return;
+    loading = true;
+    try {
+      const { data, error } = await supabase.from('goal_meetings_sync')
+        .select('meetings,synced_at').eq('id', true).single();
+      if (error || !data || !Array.isArray(data.meetings)) throw error || new Error('Invalid meetings response');
+      const meetings = data.meetings.map(meeting => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(meeting.date) || !Array.isArray(meeting.participants)) throw new Error('Invalid meeting');
+        return { date: meeting.date, participants: meeting.participants.map(person => {
+          if (typeof person.name !== 'string' || typeof person.area !== 'string') throw new Error('Invalid participant');
+          return { name: person.name, area: person.area };
+        }) };
+      }).sort((a, b) => b.date.localeCompare(a.date));
+      controller.update(meetings, data.synced_at);
+    } catch (error) {
+      controller.unavailable();
+      console.warn('Não foi possível atualizar as reuniões de metas', error);
+    } finally { loading = false; }
+  }
+  refreshMeetings();
+  supabase.auth.onAuthStateChange(() => { setTimeout(refreshMeetings, 0); });
+  setInterval(refreshMeetings, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshMeetings(); });
+}
