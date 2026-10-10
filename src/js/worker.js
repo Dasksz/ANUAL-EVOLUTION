@@ -20,6 +20,25 @@ function normalizeCityName(name) {
   return val;
 }
 
+// Match explicit contact headers. "Número" is a street number, never a phone.
+function getClientContactField(row, aliases) {
+  const columns = new Map(Object.keys(row).map((key) => [
+    key.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase().replace(/[^A-Z0-9]/g, ""), key,
+  ]));
+  let present = false;
+  for (const alias of aliases) {
+    const key = columns.get(alias);
+    if (key === undefined) continue;
+    present = true;
+    const value = String(row[key] ?? "").trim();
+    if (value && !/^(?:N\/?A|N\/?D|NULL|UNDEFINED|-|0)$/i.test(value)) {
+      return { present, value };
+    }
+  }
+  return { present, value: null };
+}
+
 function parseExcelDate(serial) {
   let days = serial;
   if (days > 60) days -= 1;
@@ -1058,6 +1077,18 @@ if (typeof self !== "undefined") {
               .toUpperCase(),
           };
 
+          const phone = getClientContactField(client, [
+            "WHATSAPP", "TELEFONEWHATSAPP", "NUMEROWHATSAPP",
+            "CELULAR", "TELEFONECELULAR", "TELEFONECOMERCIAL",
+            "TELEFONE", "TEL", "PHONE",
+          ]);
+          const address = getClientContactField(client, [
+            "ENDERECOCOMERCIAL", "ENDERECO", "LOGRADOURO", "RUA",
+          ]);
+          // Source omissions remain absent; verified contact overrides live separately.
+          if (phone.present) clientData.telefone = phone.value;
+          if (address.present) clientData.endereco = address.value;
+
           clientData.row_hash = await generateHash(clientData);
 
           return {
@@ -1951,5 +1982,6 @@ if (typeof module !== "undefined" && module.exports) {
     normalizeCityName,
   };
 }
+
 
 
