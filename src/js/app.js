@@ -2562,7 +2562,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         }
         statusText.textContent = 'Processando...';
         
-        const worker = new Worker('src/js/worker.js?v=20261007-packaging-guard');
+        const worker = new Worker('src/js/worker.js?v=20261013-client-headers');
         // Pass files, city map, and conditionally fetched clients
         worker.postMessage({ ...files, cityBranchMap, existingClientsMap, existingProductsMap });
 
