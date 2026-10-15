@@ -11805,7 +11805,7 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
             const normalizeName = value => String(value || '').trim().toUpperCase();
             const sellerName = normalizeName(globalRcaNameByCode.get(String(sellerCode)));
             const saved = savedMetas.find(m => {
-                if (m.categoria !== cat || m.metrica !== metrica) return false;
+                if (m.categoria !== cat || m.metrica !== metrica || m.valor_ajuste == null) return false;
                 const matchesCode = m.codusur != null && String(m.codusur) === String(sellerCode);
                 const matchesName = sellerName !== '' && normalizeName(m.vendedor_nome) === sellerName;
                 return matchesCode || (!m.codusur && matchesName);
