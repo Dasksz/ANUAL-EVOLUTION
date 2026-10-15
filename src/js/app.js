@@ -11660,9 +11660,11 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
         if (metasRes.error) throw metasRes.error;
 
         const baseData = baseRes.data;
-        const allSavedMetas = metasRes.data || [];
+        const allSavedMetas = baseData.scope_version === 2 ? (baseData.metas || []) : (metasRes.data || []);
         const selectedSuppliers = filters.fornecedores || [];
-        if (selectedSuppliers.length > 0) {
+        if (baseData.scope_version === 2) {
+            savedMetas = allSavedMetas;
+        } else if (selectedSuppliers.length > 0) {
             const supplierMetaCategories = {
                 '1119': ['1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'],
                 '707': ['707'],
@@ -11699,6 +11701,7 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
         }
 
         const quarterMonths = baseData.quarterMonths || [];
+        if (baseData.scope_version === 2) tableHead.title = 'Metas importadas aplicadas uma única vez; recortes de filial, supervisor e categoria usam a participação no trimestre anterior. Sem ajuste importado, a base trimestral usa o crescimento cadastrado.';
         let sellersData = baseData.sellers || [];
 
         // Define Column Blocks (Metrics Config)
@@ -11793,6 +11796,10 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
         
         let bodyHTML = '';
         
+        // Imported targets already carry the exact filter scope from the server.
+        const scopedTargets = baseData.scope_version === 2;
+        const allocatedScope = scopedTargets && ['filiais','fornecedores','supervisores','categorias'].some(key => (filters[key] || []).length > 0);
+        const defaultGrowthFactor = scopedTargets ? (baseData.growth == null ? null : 1 + Number(baseData.growth) / 100) : 1.1;
         // Helper to get saved meta
         const getMeta = (sellerCode, cat, metrica, defaultBase) => {
             const normalizeName = value => String(value || '').trim().toUpperCase();
@@ -11803,7 +11810,14 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                 const matchesName = sellerName !== '' && normalizeName(m.vendedor_nome) === sellerName;
                 return matchesCode || (!m.codusur && matchesName);
             });
-            return saved ? parseFloat(saved.valor_ajuste) : parseFloat(defaultBase || 0);
+            if (saved) return Number.isFinite(Number(saved.valor_ajuste)) ? Number(saved.valor_ajuste) : 0;
+            if (scopedTargets) {
+                const derivedTotal = (metrica === 'FAT' && ['total_elma','total_foods','pepsico_all'].includes(cat))
+                    || (metrica === 'VOL' && cat === 'pepsico_all');
+                if (!derivedTotal && savedMetas.some(m => m.metrica === metrica && m.valor_ajuste != null)) return 0;
+                if (defaultGrowthFactor == null) return 0;
+            }
+            return parseFloat(defaultBase || 0);
         };
 
         const formatCurrency = (val) => val.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -11824,13 +11838,13 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                 // Helper to map DB fields to our column IDs
                 const mapCol = (colId, dbPrefix, isTonnage = false, isMix = false) => {
                     const avgFat = seller[`total_fat_${dbPrefix}`] / 3 || 0;
-                    const metaFat = getMeta(seller.codusur, colId, 'FAT', avgFat * 1.1); // Assuming 10% growth default or just avgFat? Let's use avgFat. Wait, old code used base * growth. Let's just use 1.0 for simplicity if no growth.
+                    const metaFat = getMeta(seller.codusur, colId, 'FAT', avgFat * (defaultGrowthFactor ?? 0));
                     
                     const avgPos = seller[`sum_pos_${dbPrefix}`] / 3 || 0;
                     const metaPos = getMeta(seller.codusur, colId, 'POS', avgPos);
                     
                     const avgVol = isTonnage ? (seller[`total_vol_${dbPrefix}`] / 3 || 0) : 0;
-                    const metaVol = isTonnage ? getMeta(seller.codusur, colId, 'VOL', avgVol * 1.1) : 0;
+                    const metaVol = isTonnage ? getMeta(seller.codusur, colId, 'VOL', avgVol * (defaultGrowthFactor ?? 0)) : 0;
                     
                     const avgMix = isMix ? (seller[`sum_mix_${dbPrefix}`] / 3 || 0) : 0;
                     const metaMix = isMix ? getMeta(seller.codusur, colId, 'MIX', avgMix) : 0;
@@ -11866,7 +11880,7 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                 // Calculate Geral correctly by summing Elma and Foods metas
                 sData['geral'].metaFat = sData['total_elma'].metaFat + sData['total_foods'].metaFat;
                 sData['geral'].metaVol = sData['tonelada_elma'].metaVol + sData['tonelada_foods'].metaVol;
-                if (!selectedSuppliers.length) {
+                if (!selectedSuppliers.length || scopedTargets) {
                     sData['total_elma'].metaFat = getMeta(seller.codusur, 'total_elma', 'FAT', sData['total_elma'].metaFat);
                     sData['total_foods'].metaFat = getMeta(seller.codusur, 'total_foods', 'FAT', sData['total_foods'].metaFat);
                     sData['geral'].metaFat = getMeta(seller.codusur, 'pepsico_all', 'FAT', sData['total_elma'].metaFat + sData['total_foods'].metaFat);
@@ -11906,19 +11920,19 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                         const isPosEditable = (col.id === 'total_elma' || col.id === 'total_foods');
 
                         const fatInputClass = isFatEditable ? 'text-yellow-300' : 'text-slate-400 font-bold opacity-70';
-                        const fatReadonlyAttr = isFatEditable ? '' : 'readonly disabled';
+                        const fatReadonlyAttr = isFatEditable && !allocatedScope ? '' : 'readonly disabled';
                         const fatCellBg = isFatEditable ? 'bg-[#1e293b]' : 'bg-[#151c36]';
 
                         const posInputClass = isPosEditable ? 'text-yellow-300' : 'text-slate-400 font-bold opacity-70';
-                        const posReadonlyAttr = isPosEditable ? '' : 'readonly disabled';
+                        const posReadonlyAttr = isPosEditable && !allocatedScope ? '' : 'readonly disabled';
                         const posCellBg = isPosEditable ? 'bg-[#1e293b]' : 'bg-[#151c36]';
 
                         quarterMonths.forEach(m => bodyHTML += `<td class="px-1 py-1 text-right text-slate-400 border-r border-slate-700/50 text-[10px] bg-blue-900/5">${formatCurrency(d.monthlyValues[m.key] || 0)}</td>`);
                         bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 bg-blue-900/10 font-medium">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right ${col.colorClass} border-r border-slate-700/50 text-xs font-mono">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 ${fatCellBg} border-r border-slate-700/50"><input type="text" value="${formatCurrency(d.metaFat)}" class="goals-sv-input bg-transparent text-right w-full outline-none ${fatInputClass} text-xs font-mono" ${fatReadonlyAttr} data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="FAT"></td><td class="px-1 py-1 text-center text-slate-300 border-r border-slate-700/50">${d.metaPos}</td><td class="px-1 py-1 ${posCellBg} border-r border-slate-700/50"><input type="text" value="${d.metaPos}" class="goals-sv-input bg-transparent text-center w-full outline-none ${posInputClass} text-xs font-mono" ${posReadonlyAttr} data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="POS"></td>`;
                     } else if (col.type === 'tonnage') {
-                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-mono text-xs">${formatCurrency(d.avgVol)} Kg</td><td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-bold font-mono text-xs">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 bg-[#1e293b] border-r border-slate-700/50"><input type="text" value="${formatCurrency(d.metaVol)}" class="goals-sv-input bg-transparent text-right w-full outline-none text-yellow-300 text-xs font-mono" data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="VOL"></td>`;
+                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-mono text-xs">${formatCurrency(d.avgVol)} Kg</td><td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-bold font-mono text-xs">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 bg-[#1e293b] border-r border-slate-700/50"><input type="text" value="${formatCurrency(d.metaVol)}" class="goals-sv-input bg-transparent text-right w-full outline-none text-yellow-300 text-xs font-mono" data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="VOL" ${allocatedScope ? 'readonly disabled title="Meta rateada. Remova os filtros de filial, fornecedor, supervisor e categoria para editar a meta integral."' : ''}></td>`;
                     } else if (col.type === 'mix') {
-                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50">${d.avgMix.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}</td><td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-bold">${d.metaMix}</td><td class="px-1 py-1 bg-[#1e293b] border-r border-slate-700/50"><input type="text" value="${d.metaMix}" class="goals-sv-input bg-transparent text-right w-full outline-none text-yellow-300 text-xs font-mono" data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="MIX"></td>`;
+                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50">${d.avgMix.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}</td><td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-bold">${d.metaMix}</td><td class="px-1 py-1 bg-[#1e293b] border-r border-slate-700/50"><input type="text" value="${d.metaMix}" class="goals-sv-input bg-transparent text-right w-full outline-none text-yellow-300 text-xs font-mono" data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="MIX" ${allocatedScope ? 'readonly disabled title="Meta rateada. Remova os filtros de filial, fornecedor, supervisor e categoria para editar a meta integral."' : ''}></td>`;
                     } else if (col.type === 'geral') {
                         bodyHTML += `<td class="px-1 py-1 text-right text-slate-400 border-r border-slate-700/50 font-mono text-xs">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right text-white font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 text-right text-white font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 text-center text-yellow-300 font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${d.metaPos}</td>`;
                     } else if (col.type === 'pedev') {
@@ -11981,6 +11995,7 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
         document.querySelectorAll('.goals-sv-input').forEach(input => {
             input.addEventListener('change', async (e) => {
                 const target = e.target;
+                if (allocatedScope || target.disabled || target.readOnly) return;
                 const valStr = target.value;
                 const valNum = parseFloat(valStr.replace(/\./g, '').replace(',', '.'));
                 
