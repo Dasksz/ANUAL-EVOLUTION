@@ -26,3 +26,7 @@ test('supplier allocations cannot overwrite integral imported targets',async()=>
  const r=await run({filters:{fornecedores:['707']},metas:[meta('707','FAT',40),meta('tonelada_elma','VOL',10)]});
  assert.match(r.html,/readonly disabled/);assert.match(r.html,/Meta rateada/);assert.equal(r.totals.geral.metaFat,40);
 });
+test('missing imported adjustment preserves derived category totals',async()=>{
+ const r=await run({metas:[meta('707','FAT',80),meta('pepsico_all','FAT',null)]});
+ assert.equal(r.totals.geral.metaFat,80);
+});
