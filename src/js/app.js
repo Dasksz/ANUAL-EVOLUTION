@@ -11574,21 +11574,28 @@ window.goalsMultiFilters = window.goalsMultiFilters || {
 const goalsQueryCache = new Map();
 let goalsViewRequest = 0;
 let goalsChartRequest = 0;
+let goalsViewAbortController = null;
+let goalsChartAbortController = null;
 
 function clearGoalsQueryCache() {
     goalsQueryCache.clear();
 }
 
 // Deduplicate concurrent reads and reuse annual data when only the table month changes.
-function fetchGoalsQuery(name, args) {
+function fetchGoalsQuery(name, args, { signal } = {}) {
     const normalized = Object.fromEntries(Object.entries(args).sort(([a], [b]) => a.localeCompare(b))
         .map(([key, value]) => [key, Array.isArray(value) ? [...value].sort() : value]));
     const key = JSON.stringify([name, normalized]);
     const cached = goalsQueryCache.get(key);
-    if (cached && cached.expires > Date.now()) return cached.promise;
+    if (cached && cached.expires > Date.now() && (!signal || cached.settled)) return cached.promise;
     if (goalsQueryCache.size > 40) goalsQueryCache.clear();
-    const entry = { expires: Date.now() + 30000, promise: null };
-    entry.promise = Promise.resolve(supabase.rpc(name, args)).then(result => {
+    // Each cancellable read owns its request. A newer selection can stop stale
+    // work, while a completed result remains reusable for repeated selections.
+    let request = supabase.rpc(name, args);
+    if (signal && typeof request.abortSignal === 'function') request = request.abortSignal(signal);
+    const entry = { expires: Date.now() + 30000, promise: null, settled: false };
+    entry.promise = Promise.resolve(request).then(result => {
+        entry.settled = true;
         if (result.error && goalsQueryCache.get(key) === entry) goalsQueryCache.delete(key);
         return result;
     }, error => {
@@ -11616,6 +11623,9 @@ function setupGoalsDetailToggle() {
 }
 
 async function renderGoalsView({ tableOnly = false, forceDetails = false } = {}) {
+    goalsViewAbortController?.abort();
+    const abortController = new AbortController();
+    goalsViewAbortController = abortController;
     const requestId = ++goalsViewRequest;
     setupGoalsDetailToggle();
     const tableHead = document.getElementById('goals-table-head');
@@ -11651,8 +11661,8 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                 p_supervisores: filters.supervisores || [],
                 p_vendedores: filters.vendedores || [],
                 p_categorias: filters.categorias || []
-            }),
-            fetchGoalsQuery('get_metas_sv', { p_ano: currentGoalsAno, p_mes: currentGoalsMes })
+            }, { signal: abortController.signal }),
+            fetchGoalsQuery('get_metas_sv', { p_ano: currentGoalsAno, p_mes: currentGoalsMes }, { signal: abortController.signal })
         ]);
 
         if (requestId !== goalsViewRequest) return;
@@ -12041,6 +12051,9 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
 
 
 async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
+    goalsChartAbortController?.abort();
+    const abortController = new AbortController();
+    goalsChartAbortController = abortController;
     const requestId = ++goalsChartRequest;
     filters = JSON.parse(JSON.stringify(filters));
     const canvas = document.getElementById('goals-annual-chart');
@@ -12063,6 +12076,7 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
                 refLastSalesDate = await window.fetchLastSalesDate();
             }
         }
+        if (requestId !== goalsChartRequest) return;
         const { currentYear, currentMonth } = typeof getDefaultFilterDates === 'function' ? getDefaultFilterDates(refLastSalesDate) : {currentYear: new Date().getFullYear(), currentMonth: new Date().getMonth() + 1};
         const refMonth = parseInt(ano) === currentYear ? currentMonth : (parseInt(ano) < currentYear ? 12 : 0);
 
@@ -12074,7 +12088,7 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
             p_supervisores: filters.supervisores || [],
             p_vendedores: filters.vendedores || [],
             p_categorias: filters.categorias || []
-        });
+        }, { signal: abortController.signal });
 
         if (requestId !== goalsChartRequest) return;
         if (error) throw error;
@@ -12506,8 +12520,8 @@ async function setupGoalsFilters() {
     let optionSets = {
         filiais: filterData.filiais || [],
         fornecedores: normalizeSuppliers(filterData.fornecedores || []),
-        supervisores: [],
-        vendedores: [],
+        supervisores: filterData.supervisors || [],
+        vendedores: filterData.vendedores || [],
         categorias: filterData.categorias || []
     };
 
@@ -12519,34 +12533,23 @@ async function setupGoalsFilters() {
 
     const setupControl = (control, items, callback) => {
         if (!control?.btn || !control?.dropdown) return;
+        const visibleItems = [...(items || [])];
+        const visibleValues = new Set(visibleItems.map(item => String(control.isObject ? item?.cod : item)));
+        control.selected.forEach(value => {
+            if (visibleValues.has(String(value))) return;
+            visibleItems.push(control.isObject ? { cod: String(value), name: String(value) } : String(value));
+        });
         window.setupMultiSelect(
             control.btn,
             control.dropdown,
             control.dropdown,
-            [...items],
+            visibleItems,
             control.selected,
             callback,
             !!control.isObject,
             null
         );
         setButtonDefault(control);
-    };
-
-    const currentBaseArgs = (includeSupervisors = true) => ({
-        p_ano: parseInt(anoSelect.value,10) || currentYear,
-        p_mes: parseInt(mesSelect.value,10) || currentMonth,
-        p_filiais: multi.filiais || [],
-        p_fornecedores: multi.fornecedores || [],
-        p_supervisores: includeSupervisors ? (multi.supervisores || []) : [],
-        p_vendedores: [],
-        p_categorias: multi.categorias || []
-    });
-
-    const intersectSelection = (selected, available) => {
-        const set = new Set((available || []).map(String));
-        for (let i=selected.length-1;i>=0;i--) {
-            if (!set.has(String(selected[i]))) selected.splice(i,1);
-        }
     };
 
     let refreshTimer = null;
@@ -12558,83 +12561,26 @@ async function setupGoalsFilters() {
         }, 120);
     };
 
-    const refreshPeople = async ({ refreshSupervisors = true, refreshVendors = true } = {}) => {
-        if (refreshSupervisors) {
-            const { data, error } = await fetchGoalsQuery('get_metas_people_multi', currentBaseArgs(false));
-            if (error) console.error('Erro ao carregar supervisores de Metas:', error);
-            else {
-                optionSets.supervisores = Array.from(new Set((data?.sellers || []).map(s => s.supervisor_nome).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'pt-BR'));
-                intersectSelection(multi.supervisores, optionSets.supervisores);
-                setupControl(controls.supervisor, optionSets.supervisores, async () => {
-                    multi.vendedores.splice(0);
-                    await refreshPeople({ refreshSupervisors: false, refreshVendors: true });
-                    triggerRender();
-                });
-            }
-        }
-
-        if (refreshVendors) {
-            const { data, error } = await fetchGoalsQuery('get_metas_people_multi', currentBaseArgs(true));
-            if (error) console.error('Erro ao carregar vendedores de Metas:', error);
-            else {
-                optionSets.vendedores = Array.from(new Set((data?.sellers || []).map(s => s.vendedor_nome).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'pt-BR'));
-                intersectSelection(multi.vendedores, optionSets.vendedores);
-                setupControl(controls.vendedor, optionSets.vendedores, () => triggerRender());
-            }
-        }
+    const optionSetByControl = {
+        filial: 'filiais', fornecedor: 'fornecedores', supervisor: 'supervisores',
+        vendedor: 'vendedores', categoria: 'categorias'
     };
-
-    setupControl(controls.filial, optionSets.filiais, async () => {
-        multi.supervisores.splice(0); multi.vendedores.splice(0);
-        await refreshPeople();
-        triggerRender();
-    });
-    setupControl(controls.fornecedor, optionSets.fornecedores, async () => {
-        multi.supervisores.splice(0); multi.vendedores.splice(0);
-        await refreshPeople();
-        triggerRender();
-    });
-    setupControl(controls.categoria, optionSets.categorias, async () => {
-        multi.supervisores.splice(0); multi.vendedores.splice(0);
-        await refreshPeople();
-        triggerRender();
+    Object.entries(controls).forEach(([key, control]) => {
+        setupControl(control, optionSets[optionSetByControl[key]] || [], () => triggerRender());
     });
 
-    await refreshPeople();
-
-    anoSelect.addEventListener('change', async () => {
-        multi.supervisores.splice(0); multi.vendedores.splice(0);
-        await refreshPeople();
-        triggerRender();
-    });
-    mesSelect.addEventListener('change', async () => {
-        multi.supervisores.splice(0); multi.vendedores.splice(0);
-        await refreshPeople();
-        triggerRender();
-    });
+    anoSelect.addEventListener('change', triggerRender);
+    mesSelect.addEventListener('change', triggerRender);
 
     const goalsClearFiltersBtn = document.getElementById('goals-clear-filters-btn');
     if (goalsClearFiltersBtn) {
-        goalsClearFiltersBtn.addEventListener('click', async () => {
+        goalsClearFiltersBtn.addEventListener('click', () => {
             anoSelect.value = String(currentYear);
             mesSelect.value = String(currentMonth);
             Object.values(multi).forEach(arr => arr.splice(0));
-            setupControl(controls.filial, optionSets.filiais, async () => {
-                multi.supervisores.splice(0); multi.vendedores.splice(0);
-                await refreshPeople();
-                triggerRender();
+            Object.entries(controls).forEach(([key, control]) => {
+                setupControl(control, optionSets[optionSetByControl[key]] || [], () => triggerRender());
             });
-            setupControl(controls.fornecedor, optionSets.fornecedores, async () => {
-                multi.supervisores.splice(0); multi.vendedores.splice(0);
-                await refreshPeople();
-                triggerRender();
-            });
-            setupControl(controls.categoria, optionSets.categorias, async () => {
-                multi.supervisores.splice(0); multi.vendedores.splice(0);
-                await refreshPeople();
-                triggerRender();
-            });
-            await refreshPeople();
             Object.values(controls).forEach(setButtonDefault);
             triggerRender();
         });
