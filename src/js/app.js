@@ -12553,6 +12553,7 @@ async function setupGoalsFilters() {
     };
 
     let refreshTimer = null;
+    let filtersDirty = false;
     const triggerRender = () => {
         clearTimeout(refreshTimer);
         refreshTimer = setTimeout(() => {
@@ -12560,17 +12561,31 @@ async function setupGoalsFilters() {
             if (goalsView && !goalsView.classList.contains('hidden')) renderGoalsView();
         }, 120);
     };
+    const hasOpenDropdown = () => Object.values(controls).some(control =>
+        control?.dropdown && !control.dropdown.classList.contains('hidden')
+    );
+    const flushPendingFilters = () => {
+        if (!filtersDirty) return false;
+        filtersDirty = false;
+        triggerRender();
+        return true;
+    };
+    const markFiltersDirty = () => { filtersDirty = true; };
 
     const optionSetByControl = {
         filial: 'filiais', fornecedor: 'fornecedores', supervisor: 'supervisores',
         vendedor: 'vendedores', categoria: 'categorias'
     };
     Object.entries(controls).forEach(([key, control]) => {
-        setupControl(control, optionSets[optionSetByControl[key]] || [], () => triggerRender());
+        setupControl(control, optionSets[optionSetByControl[key]] || [], markFiltersDirty);
     });
 
-    anoSelect.addEventListener('change', triggerRender);
-    mesSelect.addEventListener('change', triggerRender);
+    const handleDateFilterChange = () => {
+        markFiltersDirty();
+        if (!hasOpenDropdown()) flushPendingFilters();
+    };
+    anoSelect.addEventListener('change', handleDateFilterChange);
+    mesSelect.addEventListener('change', handleDateFilterChange);
 
     const goalsClearFiltersBtn = document.getElementById('goals-clear-filters-btn');
     if (goalsClearFiltersBtn) {
@@ -12579,19 +12594,23 @@ async function setupGoalsFilters() {
             mesSelect.value = String(currentMonth);
             Object.values(multi).forEach(arr => arr.splice(0));
             Object.entries(controls).forEach(([key, control]) => {
-                setupControl(control, optionSets[optionSetByControl[key]] || [], () => triggerRender());
+                setupControl(control, optionSets[optionSetByControl[key]] || [], markFiltersDirty);
             });
             Object.values(controls).forEach(setButtonDefault);
-            triggerRender();
+            markFiltersDirty();
         });
     }
 
-    // Fecha os dropdowns de Metas ao clicar fora, mantendo o comportamento do dashboard principal.
+    // Como no dashboard principal, mantém as seleções em rascunho enquanto a pessoa
+    // troca entre listas e consulta apenas ao sair dos controles de filtro.
     document.addEventListener('click', (e) => {
-        Object.values(controls).forEach(control => {
-            if (!control?.dropdown || !control?.btn) return;
-            if (!control.dropdown.contains(e.target) && !control.btn.contains(e.target)) control.dropdown.classList.add('hidden');
-        });
+        const dropdowns = Object.values(controls).map(control => control?.dropdown);
+        const buttons = Object.values(controls).map(control => control?.btn);
+        handleDropdownsClickaway(e, dropdowns, buttons);
+
+        const filterControls = [...dropdowns, ...buttons, anoSelect, mesSelect];
+        const clickedFilterControl = filterControls.some(control => control?.contains(e.target));
+        if (!clickedFilterControl) flushPendingFilters();
     });
 
     const metricBtns = document.querySelectorAll('.goals-metric-btn');
@@ -12604,7 +12623,7 @@ async function setupGoalsFilters() {
             e.currentTarget.classList.remove('bg-white/5', 'text-slate-400');
             e.currentTarget.classList.add('active', 'bg-orange-600', 'text-white');
             currentGoalsMetric = e.currentTarget.dataset.metric;
-            renderGoalsChart(parseInt(anoSelect.value,10) || currentYear, multi);
+            if (!filtersDirty) renderGoalsChart(parseInt(anoSelect.value,10) || currentYear, multi);
         });
     });
 }
