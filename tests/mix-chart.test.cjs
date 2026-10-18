@@ -12,7 +12,7 @@ const context = vm.createContext({
   AppLog: { log() {}, warn() {} },
   MONTHS_PT_INITIALS: ['J','F','M','A','M','J','J','A','S','O','N','D'],
   mixSaltyFoodsChartInstance: null,
-  Chart: function (_, config) { plotted = config; },
+  Chart: function (_, config) { plotted = config; this.destroy = () => {}; },
 });
 vm.runInContext(source.slice(start, end), context);
 context.renderMixSaltyFoodsChart({ chart_data: [
@@ -24,6 +24,12 @@ for (const series of plotted.data.datasets) {
   assert.equal(series.data[9], null, 'Future month must remain missing');
   assert.equal(series.data[11], null);
 }
-assert.equal(plotted.data.datasets.find(s => s.label === 'Foods').data[8], 0, 'Real zero must be retained');
-assert.equal(plotted.data.datasets.find(s => s.label === 'Salty')._sum, 5);
+assert.equal(plotted.data.datasets.find(s => s.label === 'Realizado Foods').data[8], 0, 'Real zero must be retained');
+assert.equal(plotted.data.datasets.find(s => s.label === 'Realizado Salty')._sum, 5);
 console.log('PASS: missing Mix months are gaps, reported zero and series ordering preserved');
+
+context.renderMixSaltyFoodsChart({chart_data:[{mes:10,total_salty:661,total_foods:23,total_ambas:22}],goal_series:{salty:Array(12).fill(1381),foods:Array(12).fill(299)}});
+const items=plotted.data.datasets.map(dataset=>({dataset}));
+items.sort(plotted.options.plugins.tooltip.itemSort);
+assert.deepEqual(Array.from(items, i=>i.dataset.label), ['Meta Salty','Realizado Salty','Meta Foods','Realizado Foods','Ambos']);
+console.log('PASS: Mix tooltip groups each target with its actual, with Ambos last');

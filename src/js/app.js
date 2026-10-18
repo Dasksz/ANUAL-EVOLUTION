@@ -10463,7 +10463,8 @@ function renderMixSaltyFoodsChart(data) {
 
     const datasets = [
         {
-            label: 'Salty',
+            label: 'Realizado Salty',
+            mixDisplayOrder: 1,
             data: saltyData,
             borderColor: '#F97316', // orange
             backgroundColor: 'rgba(249, 115, 22, 0.2)',
@@ -10475,7 +10476,8 @@ function renderMixSaltyFoodsChart(data) {
             _sum: saltySum
         },
         {
-            label: 'Foods',
+            label: 'Realizado Foods',
+            mixDisplayOrder: 3,
             data: foodsData,
             borderColor: '#3B82F6', // blue
             backgroundColor: 'rgba(59, 130, 246, 0.2)',
@@ -10487,7 +10489,8 @@ function renderMixSaltyFoodsChart(data) {
             _sum: foodsSum
         },
         {
-            label: 'Ambas',
+            label: 'Ambos',
+            mixDisplayOrder: 4,
             data: ambasData,
             borderColor: '#A855F7', // purple
             backgroundColor: 'rgba(168, 85, 247, 0.2)',
@@ -10503,7 +10506,7 @@ function renderMixSaltyFoodsChart(data) {
     for (const [key, label, color] of [['salty','Meta Salty','#F97316'],['foods','Meta Foods','#3B82F6']]) {
         if (data?.goal_series?.[key]) datasets.push({label, data:data.goal_series[key], borderColor:color,
             backgroundColor:color, borderWidth:2, borderDash:[5,4], fill:false, tension:0, pointRadius:2,
-            order:-1, _sum:0});
+            order:-1, _sum:0, mixDisplayOrder:key === 'salty' ? 0 : 2});
     }
     // Ordenar para desenhar primeiro os maiores volumes (atrás), depois os menores (na frente)
     datasets.sort((a, b) => b._sum - a._sum);
@@ -10526,6 +10529,7 @@ function renderMixSaltyFoodsChart(data) {
                     display: false
                 },
                 tooltip: {
+                    itemSort: (a, b) => a.dataset.mixDisplayOrder - b.dataset.mixDisplayOrder,
                     backgroundColor: 'rgba(15, 23, 42, 0.9)',
                     titleColor: '#fff',
                     bodyColor: '#cbd5e1',
