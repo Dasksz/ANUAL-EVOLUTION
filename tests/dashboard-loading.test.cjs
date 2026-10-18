@@ -47,7 +47,7 @@ async function run() {
     getCurrentFilters: () => ({p_filial:[]}), generateCacheKey: () => 'test',
     getFromCache: async () => null,
     fetchDashboardData: () => new Promise(resolve => pending.push(resolve)),
-    fetchLastSalesDate: async () => {}, loadFrequencyTable: async () => {}, prefetchViews: () => {},
+    fetchMainDashboardGoals: async () => undefined, fetchLastSalesDate: async () => {}, loadFrequencyTable: async () => {}, prefetchViews: () => {},
     renderDashboard: value => rendered.push(value),
     window: {showDashboardLoading() {}, hideDashboardLoading() {}, showToast() {}},
   });
@@ -55,7 +55,7 @@ async function run() {
   const first = race.loadMainDashboardData(true), second = race.loadMainDashboardData(true);
   pending[1]({data:{version:'new'}}); await second;
   pending[0]({data:{version:'old'}}); await first;
-  assert.deepEqual(rendered, [{version:'new'}]);
+  assert.equal(rendered.length, 1); assert.equal(rendered[0].version, 'new');
   console.log('PASS: consolidated RPC, complete cache, cache revisions, stale-response protection');
 }
 run().catch(error => { console.error(error); process.exitCode = 1; });

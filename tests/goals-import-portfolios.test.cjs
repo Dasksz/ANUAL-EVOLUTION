@@ -15,15 +15,29 @@ function fixture(){
  rows.push(['SV2','SUPERVISOR',...Array(49).fill(999999)]);
  return rows;
 }
-function parse(rows=fixture()){
+function parse(rows=fixture(), options){
  const names=new Map([['312','VENDEDOR A'],['324','VENDEDOR B']]);
  const ctx=vm.createContext({console:{log(){},warn(){}},globalRcaNameByCode:names,globalRcaCodeByName:new Map([...names].map(([c,n])=>[n,c])),globalSupervisors:new Set()});vm.runInContext(parser,ctx);
- return ctx.parseGoalsSvStructure(rows.map(r=>r.map(v=>v??'').join('\t')).join('\n'));
+ return ctx.parseGoalsSvStructure(rows.map(r=>r.map(v=>v??'').join('\t')).join('\n'), options);
 }
 test('separate portfolios are summed for every category and metric, excluding subtotals',()=>{
  const result=parse();assert.equal(result.length,48);
  const mapping=[['707','rev',7],['707','pos',9],['708','rev',11],['708','pos',13],['752','rev',15],['752','pos',17],['1119_TODDYNHO','rev',29],['1119_TODDYNHO','pos',31],['1119_TODDY','rev',33],['1119_TODDY','pos',35],['1119_QUAKER_KEROCOCO','rev',37],['1119_QUAKER_KEROCOCO','pos',39],['tonelada_elma','vol',20],['tonelada_foods','vol',42],['mix_salty','mix',23],['mix_foods','mix',45],['total_elma','pos',5],['total_foods','pos',27],['pepsico_all','pos',49],['total_elma','rev',3],['total_foods','rev',25],['pepsico_all','rev',47],['pepsico_all','vol',48],['pedev','pos',50]];
  for(const [cat,type,col] of mapping)for(const code of ['312','324']){const r=result.find(r=>r.codusur===code&&r.category===cat&&r.type===type);assert.ok(r,cat+' '+type);assert.equal(r.val,(col-1)*3);}
+});
+
+test('hierarchy mode retains authoritative totals, original codes and source columns',()=>{
+ const rows=fixture(); rows.push(['GV','GERAL PRIME',...Array(49).fill(123)]);
+ const result=parse(rows,{includeHierarchy:true});
+ assert.equal(result.length,96);
+ const seller=result.find(r=>r.codigo_entidade==='312'&&r.category==='pepsico_all'&&r.type==='rev');
+ assert.equal(seller.supervisor_codigo,'SV2');assert.equal(seller.origem.length,2);assert.equal(seller.origem[0].coluna,48);
+ const company=result.find(r=>r.nivel==='empresa'&&r.category==='pepsico_all'&&r.type==='rev');
+ assert.equal(company.val,123);assert.equal(company.codigo_entidade,'GV');
+ assert.ok(result.some(r=>r.nivel==='empresa'&&r.category==='pedev'));
+});
+test('malformed nonempty adjustment fails rather than silently reading Meta',()=>{
+ const rows=fixture();rows[3][7]='INVÁLIDO';assert.throws(()=>parse(rows),/valor inválido/);
 });
 test('blank adjustment falls back to Volume, explicit zero and raw precision are preserved',()=>{
  const rows=fixture();rows[3][20]='';rows[4][20]=0;rows[5][20]=1359.041;

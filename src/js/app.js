@@ -1,3 +1,4 @@
+import * as DashboardGoals from './dashboard-goals.mjs?v=20261018';
 import { isVendorRankingEligible } from "./vendor-ranking.mjs?v=20261001-all-rankings";
 import supabase from './supabase.js?v=5';
 
@@ -1460,11 +1461,7 @@ function getActiveExportView() {
             view = 'dashboard';
         }
 
-        renderView(view);
-
-        if (view === 'dashboard') {
-            initDashboard();
-        }
+        await renderView(view);
     }
 
     window.addEventListener('hashchange', () => {
@@ -2315,7 +2312,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     // --- Dashboard Internal Navigation ---
     if (chartToggleBtn) {
         chartToggleBtn.addEventListener('click', () => {
-            currentChartMode = currentChartMode === 'faturamento' ? 'peso' : 'faturamento';
+            currentChartMode = {faturamento:'peso', peso:'positivacao', positivacao:'faturamento'}[currentChartMode];
             if (lastDashboardData) {
                 renderDashboard(lastDashboardData);
             }
@@ -4346,11 +4343,24 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         return { data: null, error: new Error("Failed to fetch data") };
     }
 
+    async function fetchMainDashboardGoals(filters) {
+        try {
+            const normalized = {...filters, p_fornecedor: DashboardGoals.commercialGroups(filters.p_fornecedor || [])};
+            const {data, error} = await supabase.rpc('get_dashboard_metas', {p_filters: normalized});
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            AppLog.error('Erro ao carregar metas do dashboard:', error);
+            return {error: true, chart_data: []};
+        }
+    }
+
     async function loadMainDashboardData(forceRefresh = false) {
         const requestId = ++mainDashboardRequest;
         const filters = getCurrentFilters();
         const isCurrent = () => requestId === mainDashboardRequest;
         const cacheKey = generateCacheKey('dashboard_data', filters);
+        const goalsPromise = fetchMainDashboardGoals(filters);
         
         // 1. Stale-While-Revalidate: Try Cache & Render Immediately
         if (!forceRefresh) {
@@ -4359,9 +4369,11 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
                 if (cachedEntry && cachedEntry.data) {
                     if (!isCurrent()) return;
                     AppLog.log('SWR: Rendering cached data immediately...');
-                    renderDashboard(cachedEntry.data);
-                    loadFrequencyTable(filters);
-                    lastDashboardData = cachedEntry.data;
+                    const goals = await goalsPromise;
+                    if (!isCurrent()) return;
+                    lastDashboardData = {...cachedEntry.data, dashboard_goals: goals};
+                    renderDashboard(lastDashboardData);
+                    loadFrequencyTable(filters, goals);
 
                     const age = Date.now() - cachedEntry.timestamp;
                     if (age < 24 * 60 * 60 * 1000) { // Fresh enough (24 hours)
@@ -4388,9 +4400,9 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         }
 
         // 2. Network Fetch (Background or Foreground)
-        const [dashboardResult, _] = await Promise.all([
+        const [dashboardResult, _, goals] = await Promise.all([
             fetchDashboardData(filters, false, true), // Force network fetch logic reusing existing func but we handle flow here
-            fetchLastSalesDate()
+            fetchLastSalesDate(), goalsPromise
         ]);
 
         if (!isCurrent()) return;
@@ -4398,9 +4410,9 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         
         if (data && !error) {
             AppLog.log('SWR: Updated with fresh data.');
-            lastDashboardData = data;
-            renderDashboard(data);
-            await loadFrequencyTable(filters);
+            lastDashboardData = {...data, dashboard_goals: goals};
+            renderDashboard(lastDashboardData);
+            await loadFrequencyTable(filters, goals);
 
             // Prefetch Next
             prefetchViews(filters);
@@ -4879,7 +4891,7 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         // Data Mapping Helper based on Mode
         const getDataValue = (d) => {
             if (isBonifMode && currentChartMode === 'faturamento') return d.bonificacao;
-            return currentChartMode === 'faturamento' ? d.faturamento : d.peso;
+            return currentChartMode === 'faturamento' ? d.faturamento : Number(d.peso || 0) / 1000;
         };
         
         // Formatters
@@ -4944,7 +4956,32 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         const chartLabels = [...monthNames];
         if (data.trend_allowed) chartLabels.push('Tendência');
 
-        createChart('main-chart', 'bar', chartLabels, datasets, currentFormatter);
+        const goals = data.dashboard_goals;
+        const goalNotice = document.getElementById('main-goals-notice');
+        const posMode = currentChartMode === 'positivacao';
+        const singleSupplier = DashboardGoals.commercialGroups(getCurrentFilters().p_fornecedor || []).length <= 1;
+        const canShow = !isBonifMode && (!posMode || singleSupplier);
+        if (posMode) {
+            mainChartTitle.textContent = 'POSITIVAÇÃO MENSAL';
+            const series = year => Array.from({length:12}, (_,i) => {
+                if (mesFilter.value && Number(mesFilter.value) !== i + 1) return null;
+                const actual = Number(year) === Number(data.current_year) ? currentData : previousData;
+                return actual.find(r => Number(r.month_index) === i)?.positivacao ?? null;
+            });
+            datasets.splice(0, datasets.length,
+                {label:`Ano ${data.previous_year}`, data:canShow ? series(data.previous_year) : [], isPrevious:true},
+                {label:`Ano ${data.current_year}`, data:canShow ? series(data.current_year) : [], isCurrent:true});
+            realAccumulatedIndicator?.classList.add('hidden');
+        }
+        if (canShow) {
+            const targets = DashboardGoals.targetDatasets(goals, posMode ? 'POS' : currentChartMode === 'peso' ? 'VOL' : 'FAT', {month:mesFilter.value, divisor:currentChartMode === 'peso' ? 1000 : 1});
+            for (const target of targets) { while (target.data.length < chartLabels.length) target.data.push(null); datasets.push(target); }
+        }
+        if (goalNotice) goalNotice.textContent = goals?.error ? 'Não foi possível carregar as metas. Atualize a página para tentar novamente.'
+            : posMode && !singleSupplier ? 'Para positivação, selecione um grupo de fornecedor por vez ou limpe esse filtro para ver a meta geral.'
+            : isBonifMode ? 'Metas não se aplicam ao recorte de bonificação.'
+            : 'Tracejado amarelo: meta importada. Cinza: estimativa. Sem base de rateio ou meta disponível, a linha fica interrompida.';
+        createChart('main-chart', 'bar', posMode ? monthNames : chartLabels, datasets, posMode ? formatInteger : currentFormatter);
         updateTable(currentData, previousData, data.current_year, data.previous_year, data.trend_allowed ? data.trend_data : null);
     }
 
@@ -9991,7 +10028,7 @@ async function updateEstrelasView() {
 }
 
 
-async function loadFrequencyTable(filters) {
+async function loadFrequencyTable(filters, goals) {
     const requestId = ++frequencyRequest;
     const isCurrent = () => requestId === frequencyRequest;
     const tableBody = document.getElementById('frequency-table-body');
@@ -10047,7 +10084,10 @@ async function loadFrequencyTable(filters) {
             if (!isCurrent()) return;
             renderFrequencyTable(finalFreqData, tableBody, tableFooter);
             renderFrequencyChart(finalFreqData);
-            renderMixSaltyFoodsChart(finalMixData);
+            renderMixSaltyFoodsChart({...finalMixData, goal_series: {
+                salty: DashboardGoals.targetSeries(goals, 'MIX', 'mix_salty', {month:filters.p_mes}),
+                foods: DashboardGoals.targetSeries(goals, 'MIX', 'mix_foods', {month:filters.p_mes})
+            }});
             return;
         }
     } catch (e) { AppLog.warn('Frequency/Mix cache error:', e); }
@@ -10068,7 +10108,10 @@ async function loadFrequencyTable(filters) {
         if (!isCurrent()) return;
         renderFrequencyTable(finalFreqData, tableBody, tableFooter);
         renderFrequencyChart(finalFreqData);
-        renderMixSaltyFoodsChart(finalMixData);
+        renderMixSaltyFoodsChart({...finalMixData, goal_series: {
+                salty: DashboardGoals.targetSeries(goals, 'MIX', 'mix_salty', {month:filters.p_mes}),
+                foods: DashboardGoals.targetSeries(goals, 'MIX', 'mix_foods', {month:filters.p_mes})
+            }});
 
     } catch (err) {
         AppLog.error("Erro ao carregar tabela de frequência ou mix:", err);
@@ -10457,6 +10500,11 @@ function renderMixSaltyFoodsChart(data) {
         }
     ];
 
+    for (const [key, label, color] of [['salty','Meta Salty','#F97316'],['foods','Meta Foods','#3B82F6']]) {
+        if (data?.goal_series?.[key]) datasets.push({label, data:data.goal_series[key], borderColor:color,
+            backgroundColor:color, borderWidth:2, borderDash:[5,4], fill:false, tension:0, pointRadius:2,
+            order:-1, _sum:0});
+    }
     // Ordenar para desenhar primeiro os maiores volumes (atrás), depois os menores (na frente)
     datasets.sort((a, b) => b._sum - a._sum);
 
@@ -10874,6 +10922,8 @@ let currentGoalsAno = new Date().getFullYear();
 let currentGoalsMes = new Date().getMonth() + 1; // Current Month
 
         function parseGoalsSvStructure(text) {
+            const includeHierarchy = arguments[1]?.includeHierarchy === true;
+            const pendingChildren = new Set();
             console.log("[Parser] Iniciando parse...");
             const lines = text.replace(/[\r\n]+$/, '').split(/\r?\n/);
             if (lines.length === 0) return null;
@@ -10925,7 +10975,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                     if (header0[i]) currentCategory = header0[i];
                     if (header1[i]) currentMetric = header1[i];
                     let subMetric = header2[i]; // Meta, Ajuste, etc.
-                    if (currentCategory && currentCategory.includes('PEDEV') && currentMetric === 'META' && !subMetric) subMetric = 'META';
+                    if (currentCategory && /P[ED]*EV/.test(currentCategory) && currentMetric === 'META' && !subMetric) subMetric = 'META';
 
                     if (currentCategory && subMetric) {
                         if (subMetric === 'AJ.' || subMetric === 'AJ') subMetric = 'AJUSTE';
@@ -10944,7 +10994,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                         else if (catKey === 'TOTAL FOODS') catKey = 'total_foods';
                         else if (catKey === 'MIX SALTY') catKey = 'mix_salty';
                         else if (catKey === 'MIX FOODS') catKey = 'mix_foods';
-                        else if (catKey.includes('PEDEV')) catKey = 'pedev';
+                        else if (/P[ED]*EV/.test(catKey)) catKey = 'pedev';
                         else if (catKey === 'PEPSICO_ALL_POS' || catKey === 'PEPSICO_ALL' || catKey === 'GERAL') catKey = 'pepsico_all';
 
                         let metricKey = 'OTHER';
@@ -11069,14 +11119,16 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                 // Ignore subtotal rows; BALCAO code 53 is an individual seller.
                 const upperName = sellerName.normalize('NFD').replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
                 
-                // 1. Explicit Blocklist
-                const isBalcaoSeller = upperName === 'BALCAO' && Number(sellerCodeCandidate) === 53;
-                if ((upperName === 'BALCAO' && !isBalcaoSeller) ||
-                    upperName.includes('TOTAL') || upperName.includes('SUPERVISOR') || upperName.includes('GERAL') ||
-                    upperName === 'VENDEDOR' || upperName === 'NOME' || upperName === 'CODIGO' || upperName === 'CÓDIGO' ||
-                    upperName.includes('GV') || upperName === 'GERAL PRIME' || upperName === 'TIAGO JOSÉ DE S' || upperName.includes('AMADO') ||
-                    upperName === '12' || upperName === '21' || upperName === '8' || (sellerCodeCandidate && ['12', '21', '8', 'GV', 'SV', 'SV2', 'BALCAO'].includes(String(sellerCodeCandidate).toUpperCase()))) {
-                    continue;
+                const rawCode = String(sellerCodeCandidate || '').trim();
+                const isBalcaoSeller = upperName === 'BALCAO' && Number(rawCode) === 53;
+                const level = /^(GV|GERAL)$/i.test(rawCode) || upperName === 'GERAL PRIME' ? 'empresa'
+                    : ['12','21','8','SV','SV2','BALCAO'].includes(rawCode.toUpperCase()) || upperName.includes('SUPERVISOR') ? 'supervisor' : 'vendedor';
+                if (['VENDEDOR','NOME','CODIGO'].includes(upperName)) continue;
+                if (!includeHierarchy && level !== 'vendedor') continue;
+                if (includeHierarchy && !rawCode) throw new Error(`Linha ${i + 1}: código obrigatório.`);
+                if (includeHierarchy && level === 'supervisor') {
+                    for (const child of pendingChildren) child.supervisor_codigo = rawCode;
+                    pendingChildren.clear();
                 }
 
                 // --- RESOLUTION LOGIC: Normalize Seller Name to System Canonical Name ---
@@ -11105,46 +11157,58 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                     }
                 }
 
-                const finalSellerName = canonicalName || sellerName;
+                const finalSellerName = level === 'vendedor' ? (canonicalName || sellerName) : sellerName;
 
                 // 2. Dynamic Supervisor Check
                 // If the name is a known Supervisor (key in rcasBySupervisor), ignore it.
                 // Assuming supervisors are not also sellers in this context (or we only want leaf sellers).
-                if (!isBalcaoSeller && (globalSupervisors.has(finalSellerName) || globalSupervisors.has(finalSellerName.toUpperCase()))) {
+                if (!includeHierarchy && !isBalcaoSeller && (globalSupervisors.has(finalSellerName) || globalSupervisors.has(finalSellerName.toUpperCase()))) {
                     continue;
                 }
                 // ------------------------------------------------
 
                 // Multiple rows can be separate portfolios assigned to the same seller.
                 const addUpdate = (type, category, val) => {
-                    const code = globalRcaCodeByName.get(finalSellerName) || sellerCodeCandidate || finalSellerName;
-                    const key = JSON.stringify([String(code), category, type]);
+                    const code = sellerCodeCandidate || globalRcaCodeByName.get(finalSellerName) || finalSellerName;
+                    const key = JSON.stringify([level, String(code), category, type]);
                     const previous = summedUpdates.get(key);
-                    if (previous) previous.val += val;
+                    if (!Number.isFinite(val) || val < 0) throw new Error(`Linha ${i + 1}: meta inválida.`);
+                    const metric = {rev:'FAT',vol:'VOL',pos:'POS',mix:'MIX'}[type];
+                    const source = {linha:i + 1, coluna:(selectedColumns[`${category}_${metric}`] ?? -1) + 1, valor:val};
+                    if (previous) { previous.val += val; if (includeHierarchy) previous.origem.push(source); }
                     else {
                         const update = { type, seller: finalSellerName, codusur: String(code), category, val };
+                        if (includeHierarchy) {
+                            update.nivel = level;
+                            update.codigo_entidade = String(code);
+                            update.origem = [source];
+                            if (level === 'vendedor') pendingChildren.add(update);
+                        }
                         summedUpdates.set(key, update);
                         updates.push(update);
                     }
                 };
 
+                const selectedColumns = {};
                 // Helper to get value with priority: Adjust > Meta
                 const getPriorityValue = (cat, metric) => {
                     // 1. Try AJUSTE
                     let idx = colMap[`${cat}_${metric}_AJUSTE`];
                     if (idx !== undefined && row[idx] !== undefined && row[idx] !== null && String(row[idx]).trim() !== '') {
                         const val = parseImportValue(row[idx]);
-                        if (!isNaN(val)) return val;
+                        if (!isNaN(val)) { selectedColumns[`${cat}_${metric}`] = idx; return val; }
+                        throw new Error(`Linha ${i + 1}, coluna ${idx + 1}: valor inválido.`);
                     }
                     // 2. Try META
                     idx = colMap[`${cat}_${metric}_META`];
                     if (idx !== undefined && row[idx] !== undefined && row[idx] !== null && String(row[idx]).trim() !== '') {
                         const val = parseImportValue(row[idx]);
-                        if (!isNaN(val)) return val;
+                        if (!isNaN(val)) { selectedColumns[`${cat}_${metric}`] = idx; return val; }
+                        throw new Error(`Linha ${i + 1}, coluna ${idx + 1}: valor inválido.`);
                     }
                     // KG blocks label the unadjusted target as Volume, not Meta.
                     idx = colMap[`${cat}_${metric}_VOLUME`];
-                    if (idx !== undefined) return parseImportValue(row[idx]);
+                    if (idx !== undefined) { selectedColumns[`${cat}_${metric}`] = idx; return parseImportValue(row[idx]); }
                     return NaN;
                 };
 
@@ -11276,7 +11340,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
 
                 // ⚡ Bolt Optimization: Use map and join for faster DOM rendering and avoid appendChild in loop
                 analysisBody.innerHTML = pageItems.map(u => {
-                    const currentVal = getSellerCurrentGoal(u.seller, u.category, u.type);
+                    const currentVal = u.nivel && u.nivel !== 'vendedor' ? 0 : getSellerCurrentGoal(u.seller, u.category, u.type);
                     const newVal = u.val;
                     const diff = newVal - currentVal;
 
@@ -11288,15 +11352,15 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                     if (diff > 0.001) diffClass = "text-green-400 font-bold";
                     else if (diff < -0.001) diffClass = "text-red-400 font-bold";
 
-                    const sellerCode = globalRcaCodeByName ? (globalRcaCodeByName.get(u.seller) || '-') : '-';
+                    const sellerCode = u.codigo_entidade || u.codusur || '-';
 
                     let displayCategory = u.category;
                     if (u.type === 'pos') displayCategory += '_POS';
 
                     return `
                         <tr>
-                            <td class="px-4 py-2 text-xs text-slate-300">${sellerCode}</td>
-                            <td class="px-4 py-2 text-xs text-slate-400">${u.seller}</td>
+                            <td class="px-4 py-2 text-xs text-slate-300">${escapeHtml(String(sellerCode))}</td>
+                            <td class="px-4 py-2 text-xs text-slate-400">${escapeHtml(u.seller)} <span class="text-slate-500">(${u.nivel || 'vendedor'})</span></td>
                             <td class="px-4 py-2 text-xs text-blue-300">${displayCategory}</td>
                             <td class="px-4 py-2 text-xs text-slate-400 font-mono text-right">${currentValStr}</td>
                             <td class="px-4 py-2 text-xs text-white font-bold font-mono text-right">${newValStr}</td>
@@ -11390,98 +11454,6 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
             importCloseBtn.addEventListener('click', closeModal);
             importCancelBtn.addEventListener('click', closeModal);
 
-            // Drag & Drop Logic
-            if (dropZone) {
-                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                    dropZone.addEventListener(eventName, preventDefaults, false);
-                });
-
-                function preventDefaults(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-
-                ['dragenter', 'dragover'].forEach(eventName => {
-                    dropZone.addEventListener(eventName, () => {
-                        dropZone.classList.add('bg-white/10', 'border-teal-500');
-                    });
-                });
-
-                ['dragleave', 'drop'].forEach(eventName => {
-                    dropZone.addEventListener(eventName, () => {
-                        dropZone.classList.remove('bg-white/10', 'border-teal-500');
-                    });
-                });
-
-                dropZone.addEventListener('drop', (e) => {
-                    const dt = e.dataTransfer;
-                    const files = dt.files;
-                    handleFiles(files);
-                });
-            }
-
-            if (fileInput) {
-                fileInput.addEventListener('change', (e) => {
-                    handleFiles(e.target.files);
-                });
-            }
-
-            function handleFiles(files) {
-                if (files.length === 0) return;
-                const file = files[0];
-                
-                // Visual Feedback: Loading
-                if (dropZone) {
-                    dropZone.innerHTML = `
-                        <div class="flex flex-col items-center justify-center">
-                            <svg class="animate-spin h-10 w-10 text-teal-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <p class="text-slate-300 font-medium animate-pulse">Carregando ${file.name}...</p>
-                        </div>
-                    `;
-                }
-
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, {type: 'array'});
-                        
-                        const sheetName = workbook.SheetNames[0];
-                        const sheet = workbook.Sheets[sheetName];
-                        
-                        // Convert to TSV for the parser
-                        const tsv = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' })
-                            .map(row => row.map(value => String(value).replace(/[\t\r\n]/g, ' ')).join('\t')).join('\n');
-                        
-                        // Update UI
-                        importTextarea.value = tsv;
-                        if (dropZone) {
-                            dropZone.innerHTML = `
-                                <svg class="w-12 h-12 text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                <p class="text-green-400 font-bold mb-2">Sucesso!</p>
-                                <p class="text-slate-400 text-sm">${file.name} carregado.</p>
-                            `;
-                        }
-                        
-                        // Auto-analyze
-                        setTimeout(() => importAnalyzeBtn.click(), 500);
-
-                    } catch (err) {
-                        console.error(err);
-                        if (dropZone) {
-                            dropZone.innerHTML = `
-                                <svg class="w-12 h-12 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                <p class="text-red-400 font-bold mb-2">Erro!</p>
-                                <p class="text-slate-400 text-sm">Falha ao ler o arquivo.</p>
-                            `;
-                        }
-                    }
-                };
-                reader.readAsArrayBuffer(file);
-            }
         }
 
             function resolveGoalCategory(category) {
@@ -11652,7 +11624,7 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
 
     try {
         // Fetch Base and Metas
-        const [baseRes, metasRes] = await Promise.all([
+        const [baseRes, metasRes, hierarchyRes] = await Promise.all([
             fetchGoalsQuery('get_metas_base_comparativo_multi', {
                 p_ano: currentGoalsAno,
                 p_mes: currentGoalsMes,
@@ -11662,12 +11634,14 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                 p_vendedores: filters.vendedores || [],
                 p_categorias: filters.categorias || []
             }, { signal: abortController.signal }),
-            fetchGoalsQuery('get_metas_sv', { p_ano: currentGoalsAno, p_mes: currentGoalsMes }, { signal: abortController.signal })
+            fetchGoalsQuery('get_metas_sv', { p_ano: currentGoalsAno, p_mes: currentGoalsMes }, { signal: abortController.signal }),
+            fetchGoalsQuery('get_metas_planilha', {p_ano:currentGoalsAno,p_mes:currentGoalsMes}, {signal:abortController.signal})
         ]);
 
         if (requestId !== goalsViewRequest) return;
         if (baseRes.error) throw baseRes.error;
         if (metasRes.error) throw metasRes.error;
+        if (hierarchyRes.error) throw hierarchyRes.error;
 
         const baseData = baseRes.data;
         const allSavedMetas = baseData.scope_version === 2 ? (baseData.metas || []) : (metasRes.data || []);
@@ -11729,7 +11703,6 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
             { id: 'tonelada_foods', label: 'KG FOODS', type: 'tonnage', isAgg: true, colorClass: 'text-orange-400' },
             { id: 'mix_foods', label: 'MIX FOODS', type: 'mix', isAgg: true, colorClass: 'text-yellow-400' },
             { id: 'geral', label: 'GERAL', type: 'geral', isAgg: true, colorClass: 'text-white' },
-            { id: 'pedev', label: 'AUDITORIA PEDEV', type: 'pedev', isAgg: true, colorClass: 'text-pink-400' }
         ];
 
         // Keep only blocks belonging to the selected suppliers.
@@ -11898,7 +11871,7 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                 }
                 sData['geral'].metaPos = Math.round(getMeta(seller.codusur, 'pepsico_all', 'POS', sData['geral'].avgPos));
 
-                sData['pedev'] = { metaPos: Math.round(getMeta(seller.codusur, 'pedev', 'POS', sData['total_elma'].metaPos * 0.9)) };
+
 
                 seller.calculatedData = sData;
 
@@ -11952,6 +11925,9 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                 bodyHTML += `</tr>`;
             });
 
+            if (!(filters.filiais?.length || filters.fornecedores?.length || filters.vendedores?.length || filters.categorias?.length)) {
+                DashboardGoals.applyOfficialTotals(sup.totals, hierarchyRes.data, 'supervisor', sup.code);
+            }
             // Add Supervisor to Grand Totals
             svColumns.forEach(col => {
                 grandTotals[col.id].metaFat += sup.totals[col.id].metaFat;
@@ -11983,6 +11959,9 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
             bodyHTML += `</tr>`;
         });
 
+        if (!Object.values(filters).some(values => Array.isArray(values) && values.length)) {
+            DashboardGoals.applyOfficialTotals(grandTotals, hierarchyRes.data, 'empresa');
+        }
         // Grand Total
         bodyHTML += `<tr class="bg-[#0f172a] font-bold text-white border-t-2 border-slate-500 sticky bottom-0 z-20">
             <td class="px-2 py-3 text-center uppercase tracking-wider border-r border-slate-700 sticky left-0 z-10 bg-[#0f172a]">GV</td>
@@ -12020,13 +11999,8 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
 
                 try {
                     // Update in DB
-                    const { error } = await supabase.rpc('save_meta_sv', {
-                        p_ano: ano,
-                        p_mes: mes,
-                        p_vendedor_nome: vendedorNome,
-                        p_categoria: categoria,
-                        p_metrica: metrica,
-                        p_valor_ajuste: valNum
+                    const { error } = await supabase.rpc('upsert_metas', {
+                        p_metas_json: [{ano, mes, codusur, vendedor_nome:vendedorNome, categoria, metrica, valor_ajuste:valNum}]
                     });
                     if (error) throw error;
                     
@@ -12723,7 +12697,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Imports need seller identity and saved adjustments even when the detail panel is closed.
             await renderGoalsView({ tableOnly: true, forceDetails: true });
             // Reusing the parseGoalsSvStructure (from legacy code)
-            const updates = parseGoalsSvStructure(text);
+            const updates = parseGoalsSvStructure(text, { includeHierarchy: true });
 
             if (!updates || updates.length === 0) {
                 alert("Nenhum dado válido encontrado para atualização. Verifique o formato.");
@@ -12769,16 +12743,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     vendedor_nome: u.seller,
                     categoria: u.category,
                     metrica: metrica,
-                    valor_ajuste: u.val
+                    valor_ajuste: u.val,
+                    nivel: u.nivel, codigo_entidade: u.codigo_entidade,
+                    supervisor_codigo: u.supervisor_codigo || null, origem: u.origem
                 };
             });
 
-            const res = await supabase.rpc('upsert_metas', { p_metas_json: dbPayload });
+            const res = await supabase.rpc('import_metas_planilha', { p_metas_json: dbPayload });
             
             if (res.error) throw res.error;
 
             clearGoalsQueryCache();
-            alert("Metas atualizadas com sucesso!");
+            alert("Metas atualizadas com sucesso! Os gráficos usarão os novos valores ao abrir o dashboard.");
             closeModal();
 
             // Switch the main dashboard filters to the imported month/year to immediately show the new data
@@ -12829,7 +12805,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 // Auto-analyze
-                const importAnalyzeBtn = document.getElementById('import-analyze-btn');
+                const importAnalyzeBtn = document.getElementById('import-goals-analyze-btn');
                 if (importAnalyzeBtn) setTimeout(() => importAnalyzeBtn.click(), 500);
 
             } catch (err) {

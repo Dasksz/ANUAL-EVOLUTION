@@ -10,7 +10,7 @@ test('supplier selection hides unrelated columns and incomplete Mix blocks', () 
   assert.deepEqual(columns(['707']), ['total_elma', '707', 'tonelada_elma', 'geral']);
   assert.ok(columns(['707', '708', '752']).includes('mix_salty'));
   assert.ok(columns(['1119']).includes('mix_foods'));
-  assert.equal(columns([]).length, 14);
+  assert.equal(columns([]).length, 13);
 });
 test('revenue totals use imported category values, including reported zero', () => {
   const start = source.indexOf('                // Imported revenue is stored by category');
