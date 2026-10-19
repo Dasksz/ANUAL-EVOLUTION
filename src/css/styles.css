@@ -452,3 +452,19 @@ th {
 body.side-menu-open {
     overflow: hidden;
 }
+
+/* Equal side tracks keep the title centered independently of the accumulated value. */
+.main-chart-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.main-chart-header > #calendar-btn { justify-self: start; }
+.main-chart-actions { justify-self: end; }
+@media (max-width: 767px) {
+    .main-chart-header { grid-template-columns: auto minmax(0, 1fr); }
+    .main-chart-header > #main-chart-title { grid-column: 1 / -1; grid-row: 1; }
+    .main-chart-header > #calendar-btn, .main-chart-actions { grid-row: 2; }
+}
