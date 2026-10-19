@@ -2580,7 +2580,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                         if (cityErr) AppLog.warn('Erro ao inserir novas cidades:', cityErr);
                     }
 
-                    await enviarDadosParaSupabase(data);
+                    const uploadResult = await enviarDadosParaSupabase(data);
                     
                     // Re-check missing branches after upload
                     await checkMissingBranches();
@@ -2591,8 +2591,13 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                         uploaderModal.classList.add('hidden');
                         statusContainer.classList.add('hidden');
                         generateBtn.disabled = false;
-                        window.showToast('success', 'Dados atualizados com sucesso!', 'Sucesso');
-                        initDashboard();
+                        if (uploadResult?.refreshJobId) {
+                            window.showToast('success', 'Dados enviados. A atualização das metas começou em segundo plano.', 'Sucesso');
+                            acompanharAtualizacaoMetas(uploadResult.refreshJobId);
+                        } else {
+                            window.showToast('success', 'Dados atualizados com sucesso!', 'Sucesso');
+                            initDashboard();
+                        }
                     }, 1500);
                 } catch (e) {
                     statusText.innerHTML = `<span class="text-red-500">Erro: ${escapeHtml(e.message)}</span>`;
@@ -2610,6 +2615,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             statusText.textContent = msg;
             progressBar.style.width = `${percent}%`;
         };
+        let clientsChanged = false;
+        let refreshJobId = null;
 
         const retryOperation = async (operation, retries = 3, delay = 1000) => {
             for (let i = 0; i < retries; i++) {
@@ -2705,6 +2712,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             const localKeys = Object.keys(localChunks);
             const totalChunks = localKeys.length;
             let processedChunks = 0;
+            const changedKeys = [];
 
             AppLog.log(`[${tableName}] Total Chunks: ${totalChunks}`);
 
@@ -2767,6 +2775,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                         p_hash: localChunk.hash
                     });
                     if (commitErr) throw new Error(`Erro COMMIT chunk ${key}: ${commitErr.message}`);
+                    changedKeys.push(key);
 
                 } else {
                     AppLog.log(`[${tableName}] Chunk ${key} is up-to-date.`);
@@ -2774,6 +2783,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 processedChunks++;
             }
             updateStatus(`${tableName} sincronizada.`, progressEnd);
+            return changedKeys;
         };
 
         // Legacy Row-Hash Sync (Kept for Clients)
@@ -2838,6 +2848,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             } else {
                 updateStatus(`${tableName} já está atualizado.`, progressEnd);
             }
+            return { changed: toInsert.length > 0 || toDeleteHashes.length > 0, inserted: toInsert.length, deleted: toDeleteHashes.length };
         };
 
         try {
@@ -2870,11 +2881,19 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             }
 
             // Sales Tables (Use Chunk Sync)
-            if (data.historyChunks) await syncSalesChunks('data_history', data.historyChunks, 10, 40);
-            if (data.detailedChunks) await syncSalesChunks('data_detailed', data.detailedChunks, 40, 70);
+            const changedSalesPeriods = new Set();
+            if (data.historyChunks) {
+                for (const key of await syncSalesChunks('data_history', data.historyChunks, 10, 40)) changedSalesPeriods.add(key);
+            }
+            if (data.detailedChunks) {
+                for (const key of await syncSalesChunks('data_detailed', data.detailedChunks, 40, 70)) changedSalesPeriods.add(key);
+            }
             
             // Clients Table (Use Row Sync)
-            if (data.clients && data.clients.length > 0) await syncTable('data_clients', data.clients, 70, 75);
+            if (data.clients && data.clients.length > 0) {
+                const clientSync = await syncTable('data_clients', data.clients, 70, 75);
+                clientsChanged = clientSync.changed;
+            }
 
             // New Tables
             if (data.innovations && data.innovations.length > 0) {
@@ -2916,23 +2935,22 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
             // CHUNKED CACHE REFRESH LOGIC
             // Sales affect only supplied months. Cadastros can change historical classifications.
-            const rebuildHistory = (data.clients && data.clients.length > 0) ||
-                (data.newProducts && data.newProducts.length > 0);
-            const periodKeys = new Set([
-                ...Object.keys(data.historyChunks || {}),
-                ...Object.keys(data.detailedChunks || {})
-            ]);
+            const rebuildHistory = (typeof clientsChanged !== 'undefined' && clientsChanged) ||
+                (data.newProducts && data.newProducts.length > 0) ||
+                (data.newProviders && data.newProviders.length > 0) ||
+                (data.newVendors && data.newVendors.length > 0) ||
+                (data.newSupervisors && data.newSupervisors.length > 0);
+            const periodKeys = new Set(changedSalesPeriods);
             if (rebuildHistory) {
-                const { data: years, error: yearErr } = await supabase.rpc('get_available_years');
-                if (yearErr) throw new Error(`Erro ao buscar anos: ${yearErr.message}`);
-                for (const entry of years || []) {
-                    const year = Number(entry.ano || entry);
-                    if (!Number.isInteger(year) || year < 1 || year > 9998) {
-                        throw new Error('Ano inválido no processamento do resumo.');
+                const { data: existingPeriods, error: periodErr } = await supabase.rpc('elma_get_dashboard_refresh_periods');
+                if (periodErr) throw new Error(`Erro ao buscar períodos para atualização: ${periodErr.message}`);
+                for (const entry of existingPeriods || []) {
+                    const year = Number(entry.ano);
+                    const month = Number(entry.mes);
+                    if (!Number.isInteger(year) || year < 1 || year > 9998 || !Number.isInteger(month) || month < 1 || month > 12) {
+                        throw new Error('Período inválido no processamento do resumo.');
                     }
-                    for (let month = 1; month <= 12; month++) {
-                        periodKeys.add(`${year}-${String(month).padStart(2, '0')}`);
-                    }
+                    periodKeys.add(`${year}-${String(month).padStart(2, '0')}`);
                 }
             }
             const periods = [...periodKeys].sort();
@@ -2940,36 +2958,67 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             if (periods.some(key => !/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/.test(key))) {
                 throw new Error('Período inválido no processamento do resumo.');
             }
-            for (let i = 0; i < periods.length; i++) {
-                const [year, month] = periods[i].split('-').map(Number);
-                const progress = 80 + Math.round(15 * i / periods.length);
-                updateStatus(`Processando ${month}/${year} (${i + 1}/${periods.length})...`, progress);
-                // Replace a whole month in one transaction. Two-day product counts are
-                // not additive: the same client's product can occur in multiple blocks.
-                // Supplied months are rebuilt even when their upload hash is unchanged,
-                // so a repeat import also repairs an interrupted cache refresh.
-                await retryOperation(async () => {
-                    const { error } = await supabase.rpc('refresh_summary_month', {
-                        p_year: year, p_month: month
-                    });
-                    if (error) throw new Error(`Erro processando ${month}/${year}: ${error.message}`);
+            if (periods.length) {
+                const periodPayload = periods.map(key => {
+                    const [year, month] = key.split('-').map(Number);
+                    return { year, month };
                 });
-                updateStatus(`Atualizando filtros ${month}/${year}...`, progress);
-                await retryOperation(async () => {
-                    const { error } = await supabase.rpc('refresh_cache_filters', {
-                        p_ano: year, p_mes: month
-                    });
-                    if (error) throw new Error(`Erro atualizando filtros ${month}/${year}: ${error.message}`);
-                }, 3, 2000);
+                updateStatus(`Agendando atualização de ${periodPayload.length} período(s)...`, 96);
+                const { data: queued } = await retryOperation(async () => {
+                    const result = await supabase.rpc('elma_enqueue_dashboard_goal_refresh', { p_periods: periodPayload });
+                    if (result.error) throw new Error(`Erro ao agendar atualização das metas: ${result.error.message}`);
+                    return result;
+                });
+                refreshJobId = queued?.job_id || null;
+                if (!refreshJobId) throw new Error('O banco não confirmou o agendamento da atualização das metas.');
+                // The durable DB queue is the source of truth. Wake the Edge worker
+                // without awaiting it so the browser can finish the upload immediately.
+                supabase.functions.invoke('dashboard-goal-refresh', { body: { job_id: refreshJobId } })
+                    .then(({ error }) => { if (error) AppLog.warn('A fila foi gravada; o worker automático tentará novamente.', error); })
+                    .catch(error => AppLog.warn('A fila foi gravada; o worker automático tentará novamente.', error));
+                updateStatus('Envio concluído. Metas em atualização no servidor.', 100);
+            } else {
+                updateStatus('Nenhum resumo mensal precisa ser atualizado.', 100);
             }
-            updateStatus(periods.length ? 'Finalizando...' :
-                'Processamento de resumo ignorado (nenhuma venda/cadastro enviado).', 98);
+            return { refreshJobId };
 
 
         } catch (error) {
             AppLog.error(error);
             throw error;
         }
+    }
+
+    async function acompanharAtualizacaoMetas(jobId) {
+        let stopped = false;
+        const check = async () => {
+            if (stopped || !document.visibilityState || document.visibilityState === 'hidden') {
+                if (!stopped) setTimeout(check, 15000);
+                return;
+            }
+            try {
+                const { data, error } = await supabase.rpc('elma_dashboard_goal_refresh_status', { p_run_id: jobId });
+                if (error) throw error;
+                const job = Array.isArray(data) ? data.find(item => item.id === jobId) : null;
+                if (!job) { stopped = true; return; }
+                if (job.status === 'succeeded') {
+                    stopped = true;
+                    clearGoalsQueryCache();
+                    initDashboard();
+                    window.showToast('success', 'Metas e filtros atualizados.', 'Atualização concluída');
+                    return;
+                }
+                if (job.status === 'failed') {
+                    stopped = true;
+                    window.showToast('error', 'O processamento das metas falhou. Consulte o Administrador Master para ver o erro e tentar novamente.', 'Atualização pendente');
+                    return;
+                }
+            } catch (error) {
+                AppLog.warn('Não foi possível consultar o andamento da atualização das metas.', error);
+            }
+            if (!stopped) setTimeout(check, 5000);
+        };
+        setTimeout(check, 3000);
     }
 
     // --- Dashboard Data Logic ---
