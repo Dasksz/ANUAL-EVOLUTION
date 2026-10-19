@@ -30,6 +30,8 @@ BEGIN
  IF remaining IS DISTINCT FROM 75 OR received IS DISTINCT FROM 85 THEN RAISE EXCEPTION 'Partial transfer wrong: remaining %, recipient %',remaining,received; END IF;
  UPDATE data_clients SET rca1='__ATTR_NEW' WHERE codigo_cliente='__ATTR_CLIENT_B';
  SELECT sum(valor) INTO received FROM private.evolution_client_goal_ownership WHERE ano=2099 AND mes=10 AND owner_code='__ATTR_NEW' AND categoria='pepsico_all' AND metrica='FAT';
+ SELECT sum(valor) INTO p FROM private.evolution_client_goal_totals WHERE ano=2099 AND mes=10 AND owner_code='__ATTR_NEW' AND categoria='pepsico_all' AND metrica='FAT';
+ IF p IS DISTINCT FROM 160 THEN RAISE EXCEPTION 'Compact totals did not follow current ownership'; END IF;
  IF received IS DISTINCT FROM 160 THEN RAISE EXCEPTION 'Whole transfer must preserve 160: %',received; END IF;
  SELECT (t->>'valor')::numeric INTO remaining FROM jsonb_array_elements(private.evolution_dashboard_targets(2099,10,'{"p_vendedor":["__ATTR_ORIGINAL"]}')) t WHERE t->>'metrica'='FAT';
  IF remaining IS DISTINCT FROM 0 THEN RAISE EXCEPTION 'Previous seller should show explicit zero: %',remaining; END IF;

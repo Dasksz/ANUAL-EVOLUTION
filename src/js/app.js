@@ -4343,10 +4343,10 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         return { data: null, error: new Error("Failed to fetch data") };
     }
 
-    async function fetchMainDashboardGoals(filters) {
+    async function fetchMainDashboardGoals(filters, includeEstimates = false) {
         try {
-            const normalized = {...filters, p_fornecedor: DashboardGoals.commercialGroups(filters.p_fornecedor || [])};
-            const key = generateCacheKey('dashboard_goals_v2', normalized);
+            const normalized = {...filters, imported_only: !includeEstimates, p_fornecedor: DashboardGoals.commercialGroups(filters.p_fornecedor || [])};
+            const key = generateCacheKey('dashboard_goals_v3', normalized);
             const cached = await getFromCache(key);
             if (cached?.data && Date.now() - cached.timestamp < 5 * 60 * 1000) return cached.data;
             const {data, error} = await supabase.rpc('get_dashboard_metas', {p_filters: normalized});
@@ -4389,6 +4389,16 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             if (fresh?.data) data = fresh.data;
             render(data, goals);
             void loadFrequencyTable(filters, goals);
+            // Estimates must never delay imported targets. Skip abandoned filter selections.
+            if (!goals?.error && goals?.chart_data?.some(month => month.origem === 'sem_meta')) {
+                setTimeout(async () => {
+                    if (!isCurrent()) return;
+                    const complete = await fetchMainDashboardGoals(filters, true);
+                    if (!isCurrent() || complete?.error) return;
+                    render(data, complete);
+                    void loadFrequencyTable(filters, complete);
+                }, 800);
+            }
             void fetchLastSalesDate();
             prefetchViews(filters);
         } catch (error) {

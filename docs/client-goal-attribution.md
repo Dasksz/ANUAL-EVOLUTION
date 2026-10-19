@@ -33,3 +33,9 @@ O cache de vendas e metas é invalidado ao mudar a carteira ou a revisão da dis
 `node --test tests/*.cjs tests/*.mjs` cobre interface, rateio, filtro, leitura de ajustes e invalidação de cache. `sql/tests/client_goal_attribution_rollback.sql` testa transferências parciais/completas, recebedor ausente na planilha, retorno, pendências, sobreposição, contagens e conservação. `sql/tests/current_portfolio_return_rollback.sql` testa o retorno de um cliente real entre Ariana e Valnei em agosto, setembro e outubro, desfazendo todas as mudanças. `tests/dashboard-targets-rollback.sql` mantém a cobertura das metas oficiais.
 
 Os sete modelos históricos foram conferidos no navegador. As importações foram simuladas e revertidas, incluindo conservação de 100% de cada meta. Os arquivos históricos de janeiro a julho não foram importados definitivamente.
+
+## Filtered dashboard performance
+Apply `fast_filtered_goals.sql`, then `compact_client_goal_totals.sql` after the attribution migrations.
+`meta_client_totals` groups immutable quotas by original target and client. Rebuilding shares refreshes this private summary in the same transaction. Current client ownership is joined at read time; changing RCA requires no summary rebuild. The detailed purchase edges remain authoritative for branch, city, network, supplier and category scopes.
+The dashboard requests `imported_only: true` first, then fetches estimates separately after a short delay. Each response has a separate cache key and stale-filter responses are ignored. Default RPC callers still receive the full response.
+Verification: all compact values match detailed shares; all seller/category/metric totals match the original ownership view; rollback tests cover imports and live reassignment.

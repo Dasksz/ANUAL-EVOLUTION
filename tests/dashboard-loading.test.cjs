@@ -73,6 +73,17 @@ async function run() {
   assert.ok(hidden>0,'slow goals must not keep the sales dashboard blocked');
   resolveGoals({chart_data:[]});await progressive;
   assert.equal(rendered.length,2,'slow complementary charts must not block completion');
+  const timers=[];
+  race.setTimeout=fn=>timers.push(fn);
+  race.fetchMainDashboardGoals=async(filters,full)=>({chart_data:[{origem:full?'estimativa':'sem_meta'}]});
+  await race.loadMainDashboardData(true);
+  assert.equal(timers.length,1);
+  assert.equal(rendered.at(-1).dashboard_goals.chart_data[0].origem,'sem_meta');
+  await timers[0]();
+  assert.equal(rendered.at(-1).dashboard_goals.chart_data[0].origem,'estimativa');
+  await race.loadMainDashboardData(true);
+  const abandoned=timers.at(-1);await race.loadMainDashboardData(true);
+  const count=rendered.length;await abandoned();assert.equal(rendered.length,count,'old estimates cannot replace new filter');
   console.log('PASS: consolidated RPC, complete cache, cache revisions, stale-response protection');
 }
 run().catch(error => { console.error(error); process.exitCode = 1; });
