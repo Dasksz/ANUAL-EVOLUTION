@@ -1,6 +1,6 @@
 import supabase from './supabase.js?v=5';
 const $ = id => document.getElementById(id);
-let state, editing, recovery, busy = false, loadEpoch = 0;
+let state, editing, recovery, busy = false, loadEpoch = 0, goalRefreshTimer;
 const labels = {aprovar:'Autorização aprovada',negar:'Autorização negada',revogar:'WhatsApp revogado',administrador:'WhatsApp administrativo alterado',editar:'Cadastro atualizado',cadastrar:'Colaborador cadastrado',preservar_rh:'Proteção da sincronização atualizada',envio_diario:'Envio diário atualizado'};
 function node(tag, text, cls) {const el=document.createElement(tag); if(text!=null)el.textContent=text; if(cls)el.className=cls; return el;}
 function button(text, action, id, values) {const el=node('button',text);el.onclick=()=>act(action,id,values);return el;}
@@ -16,8 +16,54 @@ async function load() {
     const data=await rpc('elma_management_data');
     if(epoch!==loadEpoch)return;
     state=data;$('access').textContent='Administrador master';$('panel').classList.remove('hidden');render();
-    await loadRecovery(epoch);
+    await Promise.all([loadRecovery(epoch),loadGoalRefreshes(epoch)]);
   }catch(e){if(epoch===loadEpoch){state=null;recovery=null;$('panel').classList.add('hidden');$('access').textContent=e.message;renderRecovery();}}
+}
+const refreshStatus={queued:'Na fila',processing:'Em andamento',succeeded:'Concluída',failed:'Falhou'};
+function renderGoalRefreshes(runs) {
+  const host=$('goal-refresh-runs');host.replaceChildren();
+  if(!runs.length){host.append(node('p','Nenhuma atualização nos últimos três dias.'));return;}
+  for(const run of runs){
+    const card=node('article',null,'row');
+    const info=node('div');
+    const pct=run.task_count?Math.round((Number(run.completed_count||0)/Number(run.task_count))*100):100;
+    info.append(node('strong',`${new Date(run.created_at).toLocaleString('pt-BR')} • ${refreshStatus[run.status]||run.status}`));
+    info.append(node('p',`${safeCount(run.completed_count)} de ${safeCount(run.task_count)} etapas concluídas (${pct}%) • ${safeCount(run.failed_count)} com falha`));
+    if(run.error_summary)info.append(node('p',`Erro: ${run.error_summary}`,'danger'));
+    const tasks=Array.isArray(run.tasks)?run.tasks:[];
+    const summary=tasks.reduce((acc,t)=>{const key=`${String(t.month).padStart(2,'0')}/${t.year}`;if(!acc.has(key))acc.set(key,[]);acc.get(key).push(`${t.type==='summary'?'Resumo':'Meta'}: ${refreshStatus[t.status]||t.status}${t.error_message?` (${t.error_message})`:''}`);return acc;},new Map());
+    if(summary.size){const details=document.createElement('details'),caption=node('summary',`Detalhes por período (${tasks.length} etapas)`),list=document.createElement('ul');details.append(caption);for(const [period,items] of summary){list.append(node('li',`${period} — ${items.join(' • ')}`));}details.append(list);info.append(details);}
+    card.append(info);
+    if(run.status==='failed'){const retry=node('button','Tentar novamente','primary');retry.onclick=()=>retryGoalRefresh(run.id);card.append(retry);}
+    host.append(card);
+  }
+}
+async function loadGoalRefreshes(epoch=loadEpoch) {
+  clearTimeout(goalRefreshTimer);
+  try {
+    const runs=await rpc('elma_dashboard_goal_refresh_status',{p_run_id:null});
+    if(epoch!==loadEpoch)return;
+    renderGoalRefreshes(Array.isArray(runs)?runs:[]);
+    if((runs||[]).some(run=>['queued','processing'].includes(run.status)))goalRefreshTimer=setTimeout(()=>loadGoalRefreshes(epoch),5000);
+  } catch(e) {
+    if(epoch!==loadEpoch)return;
+    $('goal-refresh-runs').replaceChildren(node('p','Não foi possível consultar as atualizações das metas.'));
+    $('goal-refresh-feedback').textContent=e.message;
+  }
+}
+async function retryGoalRefresh(runId) {
+  if(busy)return;
+  setBusy(true);$('goal-refresh-feedback').textContent='Recolocando as etapas com falha na fila…';
+  try {
+    await rpc('elma_dashboard_goal_refresh_retry',{p_run_id:runId});
+    const {error}=await supabase.functions.invoke('dashboard-goal-refresh',{body:{job_id:runId}});
+    if(error)throw error;
+    $('goal-refresh-feedback').textContent='Atualização reiniciada. O andamento será atualizado automaticamente.';
+    await loadGoalRefreshes();
+  } catch(e) {
+    $('goal-refresh-feedback').textContent=`A fila foi atualizada; o processador automático tentará novamente. ${e.message}`;
+    await loadGoalRefreshes();
+  } finally {setBusy(false);}
 }
 function render() {
   $('requests').replaceChildren();
