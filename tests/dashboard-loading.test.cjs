@@ -44,6 +44,7 @@ async function run() {
   const pending = [], rendered = [];
   const race = vm.createContext({ AppLog: log, Date, Promise,
     mainDashboardRequest: 0, lastDashboardData: null,
+    checkDataVersion: async () => {},
     getCurrentFilters: () => ({p_filial:[]}), generateCacheKey: () => 'test',
     getFromCache: async () => null,
     fetchDashboardData: () => new Promise(resolve => pending.push(resolve)),
@@ -52,7 +53,10 @@ async function run() {
     window: {showDashboardLoading() {}, hideDashboardLoading() {}, showToast() {}},
   });
   vm.runInContext(section('    async function loadMainDashboardData(', '    // Prefetch Background Logic'), race);
-  const first = race.loadMainDashboardData(true), second = race.loadMainDashboardData(true);
+  const first = race.loadMainDashboardData(true);
+  await new Promise(setImmediate);
+  const second = race.loadMainDashboardData(true);
+  await new Promise(setImmediate);
   pending[1]({data:{version:'new'}}); await second;
   pending[0]({data:{version:'old'}}); await first;
   assert.equal(rendered.length, 1); assert.equal(rendered[0].version, 'new');

@@ -1,4 +1,4 @@
-import * as DashboardGoals from './dashboard-goals.mjs?v=20261018';
+import * as DashboardGoals from './dashboard-goals.mjs?v=20261018-client-goals';
 import { isVendorRankingEligible } from "./vendor-ranking.mjs?v=20261001-all-rankings";
 import supabase from './supabase.js?v=5';
 
@@ -2136,7 +2136,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 if (goalsView && navGoalsBtn) {
                     goalsView.classList.remove("hidden");
                     setActiveNavLink(navGoalsBtn);
-                    renderGoalsView();
+                    checkDataVersion().then(() => renderGoalsView());
                 }
                 break;
             case 'agenda':
@@ -3853,6 +3853,7 @@ async function loadBoxesView() {
                 // Clear IndexedDB
                 const db = await initDB();
                 await db.clear(STORE_NAME);
+                clearGoalsQueryCache();
                 
                 // Update Local Version
                 localStorage.setItem('dashboard_data_version', serverVersion);
@@ -4361,6 +4362,8 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         const isCurrent = () => requestId === mainDashboardRequest;
         const cacheKey = generateCacheKey('dashboard_data', filters);
         const goalsPromise = fetchMainDashboardGoals(filters);
+        await checkDataVersion();
+        if (!isCurrent()) return;
         
         // 1. Stale-While-Revalidate: Try Cache & Render Immediately
         if (!forceRefresh) {
@@ -4981,6 +4984,9 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             : posMode && !singleSupplier ? 'Para positivação, selecione um grupo de fornecedor por vez ou limpe esse filtro para ver a meta geral.'
             : isBonifMode ? 'Metas não se aplicam ao recorte de bonificação.'
             : 'Tracejado amarelo: meta importada. Cinza: estimativa. Sem base de rateio ou meta disponível, a linha fica interrompida.';
+        if (goalNotice && goals?.attribution) {
+            goalNotice.textContent += ' ' + DashboardGoals.attributionNotice(goals.attribution, mesFilter.value);
+        }
         createChart('main-chart', 'bar', posMode ? monthNames : chartLabels, datasets, posMode ? formatInteger : currentFormatter);
         updateTable(currentData, previousData, data.current_year, data.previous_year, data.trend_allowed ? data.trend_data : null);
     }
@@ -11785,7 +11791,16 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
         
         // Imported targets already carry the exact filter scope from the server.
         const scopedTargets = baseData.scope_version === 2;
-        const allocatedScope = scopedTargets && ['filiais','fornecedores','supervisores','categorias'].some(key => (filters[key] || []).length > 0);
+        const allocatedScope = !!baseData.attribution_version || (scopedTargets && ['filiais','fornecedores','supervisores','categorias'].some(key => (filters[key] || []).length > 0));
+        const attributionNotice = document.getElementById('goals-attribution-notice');
+        if (attributionNotice) attributionNotice.textContent = baseData.attribution_version
+            ? DashboardGoals.attributionNotice(baseData.attribution, currentGoalsMes) + ' Para corrigir os valores originais, importe novamente a planilha do mês.' : '';
+        const pendingDetails = document.getElementById('goals-attribution-pending');
+        const pendingList = document.getElementById('goals-attribution-pending-list');
+        const pendingClients = baseData.attribution?.clientes_pendentes || [];
+        if (pendingDetails) pendingDetails.classList.toggle('hidden', pendingClients.length === 0);
+        if (pendingList) pendingList.textContent = pendingClients.map(row =>
+            `Cliente ${row.codcli || 'não identificado'} — carteira original ${row.source_name}: ${row.reason}.`).join('\n');
         const defaultGrowthFactor = scopedTargets ? (baseData.growth == null ? null : 1 + Number(baseData.growth) / 100) : 1.1;
         // Helper to get saved meta
         const getMeta = (sellerCode, cat, metrica, defaultBase) => {
@@ -11917,9 +11932,9 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                         quarterMonths.forEach(m => bodyHTML += `<td class="px-1 py-1 text-right text-slate-400 border-r border-slate-700/50 text-[10px] bg-blue-900/5">${formatCurrency(d.monthlyValues[m.key] || 0)}</td>`);
                         bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 bg-blue-900/10 font-medium">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right ${col.colorClass} border-r border-slate-700/50 text-xs font-mono">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 ${fatCellBg} border-r border-slate-700/50"><input type="text" value="${formatCurrency(d.metaFat)}" class="goals-sv-input bg-transparent text-right w-full outline-none ${fatInputClass} text-xs font-mono" ${fatReadonlyAttr} data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="FAT"></td><td class="px-1 py-1 text-center text-slate-300 border-r border-slate-700/50">${d.metaPos}</td><td class="px-1 py-1 ${posCellBg} border-r border-slate-700/50"><input type="text" value="${d.metaPos}" class="goals-sv-input bg-transparent text-center w-full outline-none ${posInputClass} text-xs font-mono" ${posReadonlyAttr} data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="POS"></td>`;
                     } else if (col.type === 'tonnage') {
-                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-mono text-xs">${formatCurrency(d.avgVol)} Kg</td><td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-bold font-mono text-xs">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 bg-[#1e293b] border-r border-slate-700/50"><input type="text" value="${formatCurrency(d.metaVol)}" class="goals-sv-input bg-transparent text-right w-full outline-none text-yellow-300 text-xs font-mono" data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="VOL" ${allocatedScope ? 'readonly disabled title="Meta rateada. Remova os filtros de filial, fornecedor, supervisor e categoria para editar a meta integral."' : ''}></td>`;
+                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-mono text-xs">${formatCurrency(d.avgVol)} Kg</td><td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-bold font-mono text-xs">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 bg-[#1e293b] border-r border-slate-700/50"><input type="text" value="${formatCurrency(d.metaVol)}" class="goals-sv-input bg-transparent text-right w-full outline-none text-yellow-300 text-xs font-mono" data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="VOL" ${allocatedScope ? 'readonly disabled title="Meta atribuída à carteira atual. Para corrigir a origem, importe novamente a planilha do mês."' : ''}></td>`;
                     } else if (col.type === 'mix') {
-                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50">${d.avgMix.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}</td><td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-bold">${d.metaMix}</td><td class="px-1 py-1 bg-[#1e293b] border-r border-slate-700/50"><input type="text" value="${d.metaMix}" class="goals-sv-input bg-transparent text-right w-full outline-none text-yellow-300 text-xs font-mono" data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="MIX" ${allocatedScope ? 'readonly disabled title="Meta rateada. Remova os filtros de filial, fornecedor, supervisor e categoria para editar a meta integral."' : ''}></td>`;
+                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50">${d.avgMix.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}</td><td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-bold">${d.metaMix}</td><td class="px-1 py-1 bg-[#1e293b] border-r border-slate-700/50"><input type="text" value="${d.metaMix}" class="goals-sv-input bg-transparent text-right w-full outline-none text-yellow-300 text-xs font-mono" data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="MIX" ${allocatedScope ? 'readonly disabled title="Meta atribuída à carteira atual. Para corrigir a origem, importe novamente a planilha do mês."' : ''}></td>`;
                     } else if (col.type === 'geral') {
                         bodyHTML += `<td class="px-1 py-1 text-right text-slate-400 border-r border-slate-700/50 font-mono text-xs">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right text-white font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 text-right text-white font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 text-center text-yellow-300 font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${d.metaPos}</td>`;
                     } else if (col.type === 'pedev') {
@@ -12673,24 +12688,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const dropZone = document.getElementById('import-drop-zone');
     const fileInput = document.getElementById('import-goals-file');
     const importPaginationControls = document.getElementById('import-pagination-controls');
+    let importInputRevision = 0;
+    const invalidateImportPreview = () => {
+        importInputRevision++;
+        pendingImportUpdates = [];
+        importConfirmBtn.disabled = true;
+        analysisContainer.classList.add('hidden');
+        analysisBadges.textContent = '';
+        return importInputRevision;
+    };
+    importTextarea.addEventListener('input', invalidateImportPreview);
     
     // Setup event listeners for the modal visibility
     if (importBtn) {
         importBtn.addEventListener('click', () => {
             importModal.classList.remove('hidden');
             importTextarea.value = '';
-            analysisContainer.classList.add('hidden');
-            pendingImportUpdates = [];
-            importConfirmBtn.disabled = true;
+            invalidateImportPreview();
         });
     }
 
-    const closeModal = () => importModal.classList.add('hidden');
+    const closeModal = () => { invalidateImportPreview(); importModal.classList.add('hidden'); };
     importCloseBtn.addEventListener('click', closeModal);
     importCancelBtn.addEventListener('click', closeModal);
 
     // Analyze Button Logic
     importAnalyzeBtn.addEventListener('click', async () => {
+        const revision = invalidateImportPreview();
         try {
             const text = importTextarea.value;
             if (!text.trim()) {
@@ -12700,8 +12724,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Imports need seller identity and saved adjustments even when the detail panel is closed.
             await renderGoalsView({ tableOnly: true, forceDetails: true });
+            if (revision !== importInputRevision) return;
             // Reusing the parseGoalsSvStructure (from legacy code)
             const updates = parseGoalsSvStructure(text, { includeHierarchy: true });
+            const importProblems = DashboardGoals.validateImport(updates);
+            if (importProblems.length) throw new Error(importProblems.join(' '));
 
             if (!updates || updates.length === 0) {
                 alert("Nenhum dado válido encontrado para atualização. Verifique o formato.");
@@ -12713,6 +12740,13 @@ document.addEventListener('DOMContentLoaded', () => {
             renderImportTable();
             
             analysisBadges.innerHTML = `<span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold">${updates.length} Registros</span>`;
+            const discrepancies = DashboardGoals.importReconciliation(updates);
+            if (discrepancies.length) {
+                const warning = document.createElement('p');
+                warning.className = 'text-amber-300 text-xs whitespace-pre-line w-full mt-2';
+                warning.textContent = 'Confira os totais da planilha. A importação preservará o GV informado:\n' + discrepancies.join('\n');
+                analysisBadges.appendChild(warning);
+            }
             analysisContainer.classList.remove('hidden');
             analysisContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
             
@@ -12720,6 +12754,10 @@ document.addEventListener('DOMContentLoaded', () => {
             importConfirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         } catch (e) {
             console.error("Erro ao analisar dados importados:", e);
+            pendingImportUpdates = [];
+            importConfirmBtn.disabled = true;
+            importConfirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            analysisContainer.classList.add('hidden');
             alert("Erro ao analisar dados: " + e.message);
         }
     });
@@ -12728,6 +12766,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Save logic
     importConfirmBtn.addEventListener('click', async () => {
+        if (importConfirmBtn.disabled || pendingImportUpdates.length === 0) return;
         const originalText = importConfirmBtn.innerHTML;
         importConfirmBtn.innerHTML = "Salvando...";
         importConfirmBtn.disabled = true;
@@ -12775,7 +12814,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Erro ao salvar metas: " + e.message);
         } finally {
             importConfirmBtn.innerHTML = originalText;
-            importConfirmBtn.disabled = false;
+            importConfirmBtn.disabled = pendingImportUpdates.length === 0;
             importConfirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
     });
@@ -12783,8 +12822,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function processExcelFile(file) {
         if (!file) return;
+        const revision = invalidateImportPreview();
         const reader = new FileReader();
         reader.onload = (e) => {
+            if (revision !== importInputRevision) return;
             try {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
@@ -12810,7 +12851,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Auto-analyze
                 const importAnalyzeBtn = document.getElementById('import-goals-analyze-btn');
-                if (importAnalyzeBtn) setTimeout(() => importAnalyzeBtn.click(), 500);
+                if (importAnalyzeBtn) importAnalyzeBtn.click();
 
             } catch (err) {
                 console.error(err);

@@ -1453,6 +1453,11 @@
                             <svg id="goals-details-chevron" class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9 6 6 6-6"></path></svg>
                         </button>
                         <div id="goals-details-panel" class="hidden">
+                        <p id="goals-attribution-notice" role="status" class="text-xs text-slate-400 px-3 py-3"></p>
+                        <details id="goals-attribution-pending" class="hidden px-3 pb-3 text-xs text-amber-300">
+                            <summary class="cursor-pointer">Ver clientes com parcelas pendentes</summary>
+                            <p id="goals-attribution-pending-list" class="whitespace-pre-line max-h-52 overflow-y-auto mt-2"></p>
+                        </details>
                         <!-- Loading State -->
                         <div id="goals-loading" class="flex flex-col items-center justify-center py-20 hidden">
                             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
@@ -3232,7 +3237,7 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-80 sm:w-96 pointer-events-none"></div>
 
-    <script type="module" src="src/js/app.js?v=20261018-chart-layout"></script>
+    <script type="module" src="src/js/app.js?v=20261018-client-goals"></script>
     <script type="module" src="src/js/goal-meetings.mjs?v=20261008-5"></script>
     <script type="module" src="src/js/management-entry.mjs?v=20261008-1"></script>
 
