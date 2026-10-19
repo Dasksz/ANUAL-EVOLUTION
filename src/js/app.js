@@ -3827,11 +3827,10 @@ async function loadBoxesView() {
 
     async function initDashboard() {
         window.showDashboardLoading();
-        await checkDataVersion(); // Check for invalidation first
-
+        await checkDataVersion();
         const filters = getCurrentFilters();
         await loadFilters(filters);
-        await loadMainDashboardData();
+        await loadMainDashboardData(false, true);
         
         // Trigger background prefetch after main load
         setTimeout(() => {
@@ -4347,8 +4346,12 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
     async function fetchMainDashboardGoals(filters) {
         try {
             const normalized = {...filters, p_fornecedor: DashboardGoals.commercialGroups(filters.p_fornecedor || [])};
+            const key = generateCacheKey('dashboard_goals_v2', normalized);
+            const cached = await getFromCache(key);
+            if (cached?.data && Date.now() - cached.timestamp < 5 * 60 * 1000) return cached.data;
             const {data, error} = await supabase.rpc('get_dashboard_metas', {p_filters: normalized});
             if (error) throw error;
+            if (data) await saveToCache(key, data);
             return data;
         } catch (error) {
             AppLog.error('Erro ao carregar metas do dashboard:', error);
@@ -4356,74 +4359,44 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
         }
     }
 
-    async function loadMainDashboardData(forceRefresh = false) {
+    async function loadMainDashboardData(forceRefresh = false, versionChecked = false) {
         const requestId = ++mainDashboardRequest;
         const filters = getCurrentFilters();
         const isCurrent = () => requestId === mainDashboardRequest;
-        const cacheKey = generateCacheKey('dashboard_data', filters);
-        const goalsPromise = fetchMainDashboardGoals(filters);
-        await checkDataVersion();
-        if (!isCurrent()) return;
-        
-        // 1. Stale-While-Revalidate: Try Cache & Render Immediately
-        if (!forceRefresh) {
-            try {
-                const cachedEntry = await getFromCache(cacheKey);
-                if (cachedEntry && cachedEntry.data) {
-                    if (!isCurrent()) return;
-                    AppLog.log('SWR: Rendering cached data immediately...');
-                    const goals = await goalsPromise;
-                    if (!isCurrent()) return;
-                    lastDashboardData = {...cachedEntry.data, dashboard_goals: goals};
-                    renderDashboard(lastDashboardData);
-                    loadFrequencyTable(filters, goals);
-
-                    const age = Date.now() - cachedEntry.timestamp;
-                    if (age < 24 * 60 * 60 * 1000) { // Fresh enough (24 hours)
-                         AppLog.log('SWR: Cache is fresh (<24h), skipping background fetch.');
-                         await fetchLastSalesDate();
-                         if (!isCurrent()) return;
-                         window.hideDashboardLoading();
-                         prefetchViews(filters);
-                         return;
-                    } else {
-                        AppLog.log('SWR: Cache is stale, fetching update in background...');
-                        window.showDashboardLoading(); // Optional: show loading indicator non-intrusively
-                    }
-                } else {
-                    window.showDashboardLoading();
-                }
-
-            } catch (e) {
-                AppLog.warn('SWR Cache Error:', e);
-                window.showDashboardLoading();
+        window.showDashboardLoading();
+        try {
+            if (!versionChecked) await checkDataVersion();
+            if (!isCurrent()) return;
+            const goalsPromise = fetchMainDashboardGoals(filters);
+            const dashboardResult = await fetchDashboardData(filters, false, forceRefresh);
+            if (!isCurrent()) return;
+            if (dashboardResult.error || !dashboardResult.data) {
+                window.showToast('error', 'Não foi possível atualizar o dashboard. Tente novamente.');
+                return;
             }
-        } else {
-            window.showDashboardLoading();
-        }
-
-        // 2. Network Fetch (Background or Foreground)
-        const [dashboardResult, _, goals] = await Promise.all([
-            fetchDashboardData(filters, false, true), // Force network fetch logic reusing existing func but we handle flow here
-            fetchLastSalesDate(), goalsPromise
-        ]);
-
-        if (!isCurrent()) return;
-        const { data, error } = dashboardResult;
-        
-        if (data && !error) {
-            AppLog.log('SWR: Updated with fresh data.');
-            lastDashboardData = {...data, dashboard_goals: goals};
-            renderDashboard(lastDashboardData);
-            await loadFrequencyTable(filters, goals);
-
-            // Prefetch Next
+            const render = (data, goals) => {
+                lastDashboardData = {...data, dashboard_goals: goals};
+                renderDashboard(lastDashboardData);
+            };
+            let data = dashboardResult.data;
+            // Make sales usable while goals and complementary charts finish loading.
+            render(data, {loading: true, chart_data: []});
+            window.hideDashboardLoading();
+            const refreshed = dashboardResult.source === 'stale'
+                ? fetchDashboardData(filters, true, true) : Promise.resolve(null);
+            const [goals, fresh] = await Promise.all([goalsPromise, refreshed]);
+            if (!isCurrent()) return;
+            if (fresh?.data) data = fresh.data;
+            render(data, goals);
+            void loadFrequencyTable(filters, goals);
+            void fetchLastSalesDate();
             prefetchViews(filters);
+        } catch (error) {
+            AppLog.error('Erro ao abrir dashboard:', error);
+            if (isCurrent()) window.showToast('error', 'Não foi possível atualizar o dashboard. Tente novamente.');
+        } finally {
+            if (isCurrent()) window.hideDashboardLoading();
         }
-        
-        if (!isCurrent()) return;
-        if (error || !data) window.showToast('error', 'Não foi possível atualizar o dashboard. Tente novamente.');
-        window.hideDashboardLoading();
     }
 
     // Prefetch Background Logic
@@ -4980,12 +4953,12 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             const targets = DashboardGoals.targetDatasets(goals, posMode ? 'POS' : currentChartMode === 'peso' ? 'VOL' : 'FAT', {month:mesFilter.value, divisor:currentChartMode === 'peso' ? 1000 : 1});
             for (const target of targets) { while (target.data.length < chartLabels.length) target.data.push(null); datasets.push(target); }
         }
-        if (goalNotice) goalNotice.textContent = goals?.error ? 'Não foi possível carregar as metas. Atualize a página para tentar novamente.'
-            : posMode && !singleSupplier ? 'Para positivação, selecione um grupo de fornecedor por vez ou limpe esse filtro para ver a meta geral.'
-            : isBonifMode ? 'Metas não se aplicam ao recorte de bonificação.'
-            : 'Tracejado amarelo: meta importada. Cinza: estimativa. Sem base de rateio ou meta disponível, a linha fica interrompida.';
-        if (goalNotice && goals?.attribution) {
-            goalNotice.textContent += ' ' + DashboardGoals.attributionNotice(goals.attribution, mesFilter.value);
+        if (goalNotice) {
+            goalNotice.textContent = goals?.loading ? 'Carregando metas…'
+                : goals?.error ? 'Não foi possível carregar as metas. Atualize a página para tentar novamente.'
+                : posMode && !singleSupplier ? 'Selecione um grupo de fornecedor para ver a positivação.'
+                : isBonifMode ? 'Metas não se aplicam à bonificação.' : '';
+            goalNotice.classList.toggle('hidden', !goalNotice.textContent);
         }
         createChart('main-chart', 'bar', posMode ? monthNames : chartLabels, datasets, posMode ? formatInteger : currentFormatter);
         updateTable(currentData, previousData, data.current_year, data.previous_year, data.trend_allowed ? data.trend_data : null);
@@ -11350,17 +11323,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
 
                 // ⚡ Bolt Optimization: Use map and join for faster DOM rendering and avoid appendChild in loop
                 analysisBody.innerHTML = pageItems.map(u => {
-                    const currentVal = u.nivel && u.nivel !== 'vendedor' ? 0 : getSellerCurrentGoal(u.seller, u.category, u.type);
-                    const newVal = u.val;
-                    const diff = newVal - currentVal;
-
-                    const currentValStr = formatGoalValue(currentVal, u.type);
-                    const newValStr = formatGoalValue(newVal, u.type);
-                    const diffStr = formatGoalValue(diff, u.type);
-
-                    let diffClass = "text-slate-500";
-                    if (diff > 0.001) diffClass = "text-green-400 font-bold";
-                    else if (diff < -0.001) diffClass = "text-red-400 font-bold";
+                    const newValStr = formatGoalValue(u.val, u.type);
 
                     const sellerCode = u.codigo_entidade || u.codusur || '-';
 
@@ -11372,9 +11335,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
                             <td class="px-4 py-2 text-xs text-slate-300">${escapeHtml(String(sellerCode))}</td>
                             <td class="px-4 py-2 text-xs text-slate-400">${escapeHtml(u.seller)} <span class="text-slate-500">(${u.nivel || 'vendedor'})</span></td>
                             <td class="px-4 py-2 text-xs text-blue-300">${displayCategory}</td>
-                            <td class="px-4 py-2 text-xs text-slate-400 font-mono text-right">${currentValStr}</td>
                             <td class="px-4 py-2 text-xs text-white font-bold font-mono text-right">${newValStr}</td>
-                            <td class="px-4 py-2 text-xs ${diffClass} font-mono text-right">${diff > 0 ? '+' : ''}${diffStr}</td>
                             <td class="px-4 py-2 text-center text-xs"><span class="px-2 py-1 rounded-full bg-blue-900/50 text-blue-200 text-[10px]">Importar</span></td>
                         </tr>
                     `;
@@ -12722,8 +12683,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            // Imports need seller identity and saved adjustments even when the detail panel is closed.
-            await renderGoalsView({ tableOnly: true, forceDetails: true });
+            // The workbook contains entity codes and adjusted values: preview is entirely local.
             if (revision !== importInputRevision) return;
             // Reusing the parseGoalsSvStructure (from legacy code)
             const updates = parseGoalsSvStructure(text, { includeHierarchy: true });

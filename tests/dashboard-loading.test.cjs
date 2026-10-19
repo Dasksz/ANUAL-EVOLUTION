@@ -59,7 +59,20 @@ async function run() {
   await new Promise(setImmediate);
   pending[1]({data:{version:'new'}}); await second;
   pending[0]({data:{version:'old'}}); await first;
-  assert.equal(rendered.length, 1); assert.equal(rendered[0].version, 'new');
+  assert.equal(rendered.length, 2); assert.ok(rendered.every(r=>r.version === 'new'));
+  let resolveGoals, hidden=0;
+  rendered.length=0;
+  race.fetchDashboardData=async()=>({data:{version:'fast-sales'}});
+  race.fetchMainDashboardGoals=()=>new Promise(resolve=>{resolveGoals=resolve});
+  race.window.hideDashboardLoading=()=>{hidden++};
+  race.loadFrequencyTable=()=>new Promise(()=>{});
+  const progressive=race.loadMainDashboardData(true);
+  await new Promise(setImmediate);
+  assert.equal(rendered[0].version,'fast-sales');
+  assert.equal(rendered[0].dashboard_goals.loading,true);
+  assert.ok(hidden>0,'slow goals must not keep the sales dashboard blocked');
+  resolveGoals({chart_data:[]});await progressive;
+  assert.equal(rendered.length,2,'slow complementary charts must not block completion');
   console.log('PASS: consolidated RPC, complete cache, cache revisions, stale-response protection');
 }
 run().catch(error => { console.error(error); process.exitCode = 1; });

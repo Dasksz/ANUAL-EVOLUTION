@@ -17,3 +17,12 @@ test('changing file or pasted text invalidates old preview and ignores a slower 
  ctx.processExcelFile({name:'third.xlsx'});textarea.value='pasted replacement';events.input();
  readers[2].onload({target:{result:new Uint8Array([3]).buffer}});assert.equal(textarea.value,'pasted replacement');assert.equal(analyses,1);
 });
+
+test('spreadsheet preview does not wait for dashboard or database requests',()=>{
+ const start=source.lastIndexOf("importAnalyzeBtn.addEventListener('click'");
+ const handler=source.slice(start,source.indexOf('// Save logic',start));
+ assert.ok(start>0);
+ assert.doesNotMatch(handler,/renderGoalsView|supabase\.|await /);
+ assert.match(handler,/parseGoalsSvStructure/);
+ assert.match(handler,/validateImport/);
+});
