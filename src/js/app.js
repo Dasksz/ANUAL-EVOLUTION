@@ -1560,7 +1560,7 @@ function getActiveExportView() {
     async function checkSession() {
         showScreen('tela-loading');
 
-        supabase.auth.onAuthStateChange(async (event, session) => {
+        supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_OUT') {
                 isAppReady = false;
                 showScreen('login-view');
@@ -1571,7 +1571,7 @@ function getActiveExportView() {
                 if (isAppReady) return;
 
                 if (!checkProfileLock) {
-                    await checkProfileStatus(session.user);
+                    setTimeout(() => { void checkProfileStatus(session.user); }, 0);
                 }
             } else {
                 showScreen('login-view');
