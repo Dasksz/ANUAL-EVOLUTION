@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const createFetch = require('../'+(process.argv[2] || 'js')+'/request-resilience.js');
+const createFetch = require('../'+(process.argv[2] || 'src/js')+'/request-resilience.js');
 const host = 'https://example.supabase.co';
 const endpoint = host + '/rest/v1/rpc/get_main_dashboard_data';
 const read = {method:'POST',headers:{apikey:'public-key',Authorization:'Bearer old'},body:'{"p_ano":"2026"}'};
