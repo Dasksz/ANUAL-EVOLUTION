@@ -1,3 +1,4 @@
+import { startRefreshProgress } from './refresh-progress.mjs?v=20261022';
 import * as DashboardGoals from './dashboard-goals.mjs?v=20261018-client-goals';
 import { isVendorRankingEligible } from "./vendor-ranking.mjs?v=20261001-all-rankings";
 import supabase from './supabase.js?v=5';
@@ -1454,6 +1455,12 @@ function getActiveExportView() {
         }
 
         showScreen('app-layout');
+        startRefreshProgress(supabase, {
+            invalidateCache: async () => {
+                const db = await initDB();
+                await db.clear(STORE_NAME);
+            }
+        });
 
         // Provide a default if the view wasn't set or is invalid
         const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison', 'innovations', 'loja-perfeita', 'estrelas', 'agenda', 'goals'];
