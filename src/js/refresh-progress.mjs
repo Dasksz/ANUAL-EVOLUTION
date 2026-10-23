@@ -31,6 +31,7 @@ export function startRefreshProgress(client, { invalidateCache = async () => {} 
     root.prepend(banner);
     const get = name => banner.querySelector(`[data-${name}]`);
     let timer, checking = false, lastRun, preparedRevision, preparing;
+    const observedActiveRuns = new Set();
     let acknowledgedRevision;
     try { acknowledgedRevision = window.sessionStorage.getItem('dashboard_refresh_prepared'); } catch { /* storage may be disabled */ }
     const prepare = async run => {
@@ -62,8 +63,15 @@ export function startRefreshProgress(client, { invalidateCache = async () => {} 
             const { data, error } = await client.rpc('get_dashboard_refresh_progress');
             if (error) throw error;
             const model = refreshProgressModel(data);
-            banner.hidden = !model.visible || (model.done && data.revision === acknowledgedRevision);
-            if (banner.hidden) return;
+            const runId = typeof data?.revision === 'string' ? data.revision.split(':')[0] : '';
+            if (model.active && runId) observedActiveRuns.add(runId);
+            // A completed/failed historical run is not a loading event on this page.
+            // Only show its terminal notice if this page actually observed that run active.
+            banner.hidden = !model.visible || (!model.active && !observedActiveRuns.has(runId));
+            if (banner.hidden) {
+                if (model.done && data.revision !== acknowledgedRevision) await prepare(data);
+                return;
+            }
             lastRun = data;
             get('title').textContent = model.title;
             get('detail').textContent = model.detail;

@@ -1,4 +1,4 @@
-import { startRefreshProgress } from './refresh-progress.mjs?v=20261022';
+import { startRefreshProgress } from './refresh-progress.mjs?v=20261023-active-only';
 import * as DashboardGoals from './dashboard-goals.mjs?v=20261018-client-goals';
 import { isVendorRankingEligible } from "./vendor-ranking.mjs?v=20261001-all-rankings";
 import supabase from './supabase.js?v=5';

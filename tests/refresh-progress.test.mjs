@@ -39,3 +39,27 @@ test('monitor renders actual progress, preserves it on errors and reloads only o
     document.hidden=true;const before=calls;await monitor.check();assert.equal(calls,before);
     assert.equal(typeof timer,'function');
 });
+
+test('opening after completion stays silent; only a run observed active can show its completion', async () => {
+    let banner, clears=0;
+    const children=Object.fromEntries(['title','count','detail','track','fill','check','reload'].map(k=>[k,{style:{},hidden:false,setAttribute(){},addEventListener(){}}]));
+    const root={classList:{contains:()=>false},prepend(node){banner=node;}};
+    globalThis.document={hidden:false,getElementById:()=>root,addEventListener(){},createElement(){return{style:{},setAttribute(){},querySelector(sel){return children[sel.slice(6,-1)];}};}};
+    globalThis.window={sessionStorage:{getItem:()=>null,setItem(){}},location:{reload(){}}};
+    globalThis.setTimeout=()=>1;globalThis.clearTimeout=()=>{};
+    let run={status:'succeeded',total:44,completed:44,failed:0,revision:'yesterday:succeeded'};
+    const client={rpc:async()=>({data:run})};
+    const {startRefreshProgress}=await import('../src/js/refresh-progress.mjs?history-visibility');
+    const monitor=startRefreshProgress(client,{invalidateCache:async()=>{clears++;}});
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(banner.hidden,true);assert.equal(clears,1);
+    await monitor.check();assert.equal(banner.hidden,true);assert.equal(clears,1);
+    run=null;await monitor.check();assert.equal(banner.hidden,true);
+    run={status:'queued',total:44,completed:2,failed:0,revision:'new:queued'};
+    await monitor.check();assert.equal(banner.hidden,false);assert.equal(children.reload.hidden,true);
+    run={...run,status:'succeeded',completed:44,revision:'new:succeeded'};
+    await monitor.check();assert.equal(banner.hidden,false);assert.equal(children.reload.hidden,false);
+    // Another run completed without being observed: do not present its history as a current load.
+    run={...run,revision:'unseen:succeeded'};await monitor.check();assert.equal(banner.hidden,true);
+    run={...run,status:'failed',failed:1,revision:'unseen:failed'};await monitor.check();assert.equal(banner.hidden,true);
+});
