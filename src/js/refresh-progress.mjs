@@ -8,9 +8,9 @@ export function refreshProgressModel(run) {
     return {
         visible: true, done, active,
         percent: done ? 100 : Math.min(99, total ? Math.floor(completed / total * 100) : 0),
-        title: done ? 'Atualização concluída' : active ? 'Os painéis ainda estão sendo atualizados' : 'A atualização precisa de atenção',
+        title: done ? 'Atualização concluída' : active ? 'Atualizando painéis' : 'A atualização precisa de atenção',
         detail: done ? 'Atualize a página para visualizar os valores atualizados.' : active
-            ? 'Os valores podem estar incompletos. Basta aguardar. Quando a atualização terminar, atualize a página para visualizar os valores atualizados.'
+            ? 'Os valores podem estar incompletos. Basta aguardar. Ao concluir, atualize a página.'
             : 'Há etapas que não foram concluídas. Os valores podem estar incompletos; a administração precisa verificar a atualização.',
         count: `${completed} de ${total} etapas concluídas${failed ? ` · ${failed} com falha` : ''}`
     };
@@ -26,8 +26,8 @@ export function startRefreshProgress(client, { invalidateCache = async () => {} 
     banner.hidden = true;
     banner.setAttribute('role', 'status');
     banner.setAttribute('aria-live', 'polite');
-    banner.style.cssText = 'position:sticky;top:0;z-index:35;margin:12px 16px;padding:14px 16px;border:1px solid #b7791f;border-radius:12px;background:#292112;color:#fff3cd;box-shadow:0 4px 14px #0004;';
-    banner.innerHTML = '<div style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap"><strong data-title></strong><span data-count style="font-size:12px"></span></div><p data-detail style="margin:6px 0;font-size:13px;line-height:1.5"></p><div data-track role="progressbar" aria-label="Atualização dos painéis" aria-valuemin="0" aria-valuemax="100" style="height:8px;border-radius:8px;background:#ffffff25;overflow:hidden"><div data-fill style="height:100%;width:0;background:#fbbf24;transition:width .3s"></div></div><p data-check style="margin:6px 0 0;font-size:11px;opacity:.8"></p><button data-reload type="button" hidden style="margin-top:8px;padding:8px 14px;border:0;border-radius:8px;background:#e2fbe8;color:#14351e;font-weight:700;cursor:pointer">Atualizar página</button>';
+    banner.style.cssText = 'position:sticky;top:0;z-index:35;margin:8px 16px;padding:9px 12px;border:1px solid #ffffff14;border-radius:10px;background:#1b1a20;color:#cbd5e1;box-shadow:0 2px 8px #0002;font-size:12px;';
+    banner.innerHTML = '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap"><strong data-title style="font-size:12px;font-weight:600;color:#f1f5f9"></strong><span data-count style="font-size:11px;color:#94a3b8"></span></div><p data-detail style="margin:4px 0 6px;font-size:11px;line-height:1.4;color:#94a3b8"></p><div data-track role="progressbar" aria-label="Atualização dos painéis" aria-valuemin="0" aria-valuemax="100" style="height:4px;border-radius:4px;background:#ffffff0d;overflow:hidden"><div data-fill style="height:100%;width:0;background:#f97316;transition:width .3s"></div></div><p data-check style="margin:4px 0 0;font-size:10px;color:#64748b"></p><button data-reload type="button" hidden style="margin-top:6px;padding:5px 10px;border:1px solid #f9731638;border-radius:6px;background:#f9731614;color:#fdba74;font-size:11px;font-weight:600;cursor:pointer">Atualizar página</button>';
     root.prepend(banner);
     const get = name => banner.querySelector(`[data-${name}]`);
     let timer, checking = false, lastRun, preparedRevision, preparing;
@@ -78,7 +78,7 @@ export function startRefreshProgress(client, { invalidateCache = async () => {} 
             get('count').textContent = `${model.percent}% · ${model.count}`;
             get('track').setAttribute('aria-valuenow', String(model.percent));
             get('fill').style.width = `${model.percent}%`;
-            get('fill').style.background = model.done ? '#4ade80' : '#fbbf24';
+            get('fill').style.background = model.done ? '#34d399' : '#f97316';
             get('reload').hidden = !model.done;
             get('check').textContent = 'Progresso verificado às ' + new Date().toLocaleTimeString('pt-BR') + '. Atualização automática a cada 30 segundos.';
             if (model.done) await prepare(data);
