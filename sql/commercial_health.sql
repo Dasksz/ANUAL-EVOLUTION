@@ -42,6 +42,8 @@ BEGIN
   IF cells->9->'v' IS NOT NULL AND cells->9->'v'<>'null'::jsonb AND jsonb_typeof(cells->9->'v')<>'number' THEN RAISE EXCEPTION 'Variação inválida'; END IF;
   IF (cells->11->>'v')::numeric NOT BETWEEN 0 AND 4 OR (cells->11->>'v')::numeric<>trunc((cells->11->>'v')::numeric) THEN RAISE EXCEPTION 'Meses positivos inválidos'; END IF;
   status:=upper(btrim(cells->12->>'v'));
+  -- Legacy source wording has the same classification semantics.
+  IF status='SAUDÁVEL' THEN status:='SEM ALERTA'; END IF;
   IF status NOT IN ('CRÍTICO','ANALISAR','SEM ALERTA') OR status IS NULL THEN RAISE EXCEPTION 'Classificação não reconhecida'; END IF;
   item:=jsonb_build_object('code',code,'name',cells->1->>'v','history',jsonb_build_array(cells->2->'v',cells->3->'v',cells->4->'v',cells->5->'v'),
    'average',cells->6->'v','median',cells->7->'v','previous',cells->8->'v','variation',cells->9->'v','current',cells->10->'v',
