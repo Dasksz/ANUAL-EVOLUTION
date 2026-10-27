@@ -393,6 +393,7 @@ let estrelasSelectedCategorias = [];
     const topNavbar = document.getElementById('top-navbar');
     const navDashboardBtn = document.getElementById('nav-dashboard');
     const navCityAnalysisBtn = document.getElementById('nav-city-analysis');
+    const navCommercialHealthBtn = document.getElementById('nav-commercial-health-btn');
     const navBoxesBtn = document.getElementById('nav-boxes-btn');
     const navBranchBtn = document.getElementById('nav-branch-btn');
     const navUploaderBtn = document.getElementById('nav-uploader');
@@ -819,6 +820,7 @@ function getActiveExportView() {
     const uploaderModal = document.getElementById('uploader-modal');
     const innovationsMonthView = document.getElementById('innovations-month-view');
     const lojaPerfeitaView = document.getElementById('loja-perfeita-view');
+    const commercialHealthView = document.getElementById('commercial-health-view');
     const estrelasView = document.getElementById('estrelas-view');
     const agendaView = document.getElementById('agenda-view');
     const jbpView = document.getElementById('jbp-view');
@@ -1215,6 +1217,7 @@ function getActiveExportView() {
         if (innovationsMonthView && !innovationsMonthView.classList.contains('hidden')) return 'innovations';
         if (lojaPerfeitaView && !lojaPerfeitaView.classList.contains('hidden')) return 'loja-perfeita';
         if (estrelasView && !estrelasView.classList.contains('hidden')) return 'estrelas';
+        if (commercialHealthView && !commercialHealthView.classList.contains('hidden')) return 'commercial-health';
         return 'dashboard';
     }
 
@@ -1463,7 +1466,7 @@ function getActiveExportView() {
         });
 
         // Provide a default if the view wasn't set or is invalid
-        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison', 'innovations', 'loja-perfeita', 'estrelas', 'agenda', 'goals'];
+        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison', 'innovations', 'loja-perfeita', 'estrelas', 'agenda', 'goals', 'commercial-health'];
         if (!view || !validViews.includes(view)) {
             view = 'dashboard';
         }
@@ -2068,6 +2071,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         comparisonView.classList.add('hidden');
         if (innovationsMonthView) innovationsMonthView.classList.add('hidden');
         if (lojaPerfeitaView) lojaPerfeitaView.classList.add('hidden');
+        if (commercialHealthView) commercialHealthView.classList.add('hidden');
         if (estrelasView) estrelasView.classList.add('hidden');
         if (agendaView) agendaView.classList.add('hidden');
         if (jbpView) jbpView.classList.add('hidden');
@@ -2099,6 +2103,12 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 setActiveNavLink(navDashboardBtn);
                 if (!isMainDashboardInitialized) {
                     initDashboard();
+                }
+                break;
+            case 'commercial-health':
+                if (commercialHealthView && navCommercialHealthBtn) {
+                    commercialHealthView.classList.remove('hidden');
+                    setActiveNavLink(navCommercialHealthBtn);
                 }
                 break;
             case 'city':
@@ -2192,6 +2202,13 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         if (navigateWithCtrl(e, 'dashboard')) return;
         renderView('dashboard');
     });
+
+    if (navCommercialHealthBtn) {
+        navCommercialHealthBtn.addEventListener('click', (e) => {
+            if (navigateWithCtrl(e, 'commercial-health')) return;
+            renderView('commercial-health');
+        });
+    }
 
     navCityAnalysisBtn.addEventListener('click', (e) => {
 
