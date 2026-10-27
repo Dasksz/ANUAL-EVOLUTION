@@ -1,3 +1,4 @@
+import { createCommercialHealthPanel } from './commercial-health.mjs?v=20261027-1';
 import { startRefreshProgress } from './refresh-progress.mjs?v=20261023-compact';
 import * as DashboardGoals from './dashboard-goals.mjs?v=20261018-client-goals';
 import { isVendorRankingEligible } from "./vendor-ranking.mjs?v=20261001-all-rankings";
@@ -821,6 +822,7 @@ function getActiveExportView() {
     const innovationsMonthView = document.getElementById('innovations-month-view');
     const lojaPerfeitaView = document.getElementById('loja-perfeita-view');
     const commercialHealthView = document.getElementById('commercial-health-view');
+    const commercialHealthPanel = createCommercialHealthPanel({ root: document.getElementById('commercial-health-content'), client: supabase });
     const estrelasView = document.getElementById('estrelas-view');
     const agendaView = document.getElementById('agenda-view');
     const jbpView = document.getElementById('jbp-view');
@@ -2062,6 +2064,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     }
 
     const resetViews = () => {
+        commercialHealthPanel.deactivate();
         dashboardContainer.classList.remove('hidden');
         uploaderModal.classList.add('hidden');
         mainDashboardView.classList.add('hidden');
@@ -2109,6 +2112,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 if (commercialHealthView && navCommercialHealthBtn) {
                     commercialHealthView.classList.remove('hidden');
                     setActiveNavLink(navCommercialHealthBtn);
+                    commercialHealthPanel.activate();
                 }
                 break;
             case 'city':
