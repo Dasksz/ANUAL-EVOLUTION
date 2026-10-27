@@ -36,3 +36,18 @@ test('PDF exports every filtered page in visible order and omits other classific
  h.panel.activate();await tick();h.buttons[0].click();h.els.get('next').click();h.els.get('pdf').click();
  assert.equal(captured.body.length,35);assert.ok(!captured.body.some(r=>r[0].includes('Cliente 99')));assert.match(saved,/2026-10/);assert.equal(captured.body[0][0],'1 / Cliente 1');
 });
+
+test('seller and supervisor filters remain independent and combine without clearing selections',async t=>{
+ const h=harness(t);h.panel.activate();await tick();
+ h.root.fire('change',{target:{dataset:{chKind:'sellers',chCode:'20'},checked:true}});
+ h.root.fire('change',{target:{dataset:{chKind:'supervisors',chCode:'1'},checked:true}});
+ assert.match(h.els.get('count').textContent,/0 de 3/);
+ assert.match(h.els.get('sellers').innerHTML,/data-ch-code="20" checked/);
+ assert.match(h.els.get('sellers').innerHTML,/Vendedor 10/);
+ assert.match(h.els.get('supervisors').innerHTML,/Supervisor 2/);
+ h.root.fire('change',{target:{dataset:{chKind:'supervisors',chCode:'1'},checked:false}});
+ assert.match(h.els.get('count').textContent,/1 de 3/);
+ assert.match(h.els.get('rows').innerHTML,/Cliente 3/);
+ assert.ok(!h.root.innerHTML.includes('<option value="seller">'));
+ assert.ok(!h.root.innerHTML.includes('<option value="supervisor">'));
+});
