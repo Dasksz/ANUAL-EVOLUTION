@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateSnapshot,filterRows,sortRows,summarize,csvText,exportRows,createCommercialHealthPanel} from '../src/js/commercial-health.mjs';
+import {syncCountdown,validateSnapshot,filterRows,sortRows,summarize,csvText,exportRows,createCommercialHealthPanel} from '../src/js/commercial-health.mjs';
 const periods=['2026-05','2026-06','2026-07','2026-08','2026-09','2026-10'];
 const row=(code,status='SEM ALERTA',seller='10',supervisor='1')=>({code:String(code),name:'Cliente '+code,history:[100,200,100,0],average:100,median:100,previous:250,variation:1.5,current:0,positiveMonths:3,excess:150,status,sellerCode:seller,seller:'Vendedor '+seller,supervisorCode:supervisor,supervisor:'Supervisor '+supervisor});
 const filters=()=>({supervisors:new Set(),sellers:new Set(),search:'',status:'all'});
@@ -23,7 +23,7 @@ function harness(t,responses=[data()]) {
  return {root,els,panel,buttons,responses,win,logout:()=>userEvent('SIGNED_OUT')};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-test('panel renders live totals and rows, card filters, clear and supplier-free controls',async t=>{const h=harness(t);h.panel.activate();await tick();assert.match(h.els.get('count').textContent,/3 de 3/);assert.equal(h.els.get('count-0').textContent,'1');assert.match(h.els.get('rows').innerHTML,/Cliente 1/);h.buttons[0].click();assert.match(h.els.get('count').textContent,/1 de 3/);assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 2'));h.els.get('clear').click();assert.match(h.els.get('count').textContent,/3 de 3/);assert.ok(h.root.innerHTML.includes('12 horas'));assert.ok(!h.root.innerHTML.includes('Fornecedor'));});
+test('panel renders live totals and rows, card filters, clear and supplier-free controls',async t=>{const h=harness(t);h.panel.activate();await tick();assert.match(h.els.get('count').textContent,/3 de 3/);assert.equal(h.els.get('count-0').textContent,'1');assert.match(h.els.get('rows').innerHTML,/Cliente 1/);h.buttons[0].click();assert.match(h.els.get('count').textContent,/1 de 3/);assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 2'));h.els.get('clear').click();assert.match(h.els.get('count').textContent,/3 de 3/);assert.ok(h.root.innerHTML.includes('Sincronização automática em'));assert.match(h.els.get('countdown').textContent,/^\d{2}:\d{2}:\d{2}$/);assert.ok(!h.root.innerHTML.includes('Fornecedor'));});
 test('pagination changes pages without another request; CSV exports include every filtered page',async t=>{const d=data();d.rows=Array.from({length:60},(_,i)=>row(i+1,'CRÍTICO'));const h=harness(t,[d]);h.panel.activate();await tick();assert.match(h.els.get('page').textContent,/1 de 3/);const initial=h.els.get('rows').innerHTML;h.els.get('next').click();assert.match(h.els.get('page').textContent,/2 de 3/);assert.notEqual(h.els.get('rows').innerHTML,initial);assert.equal(exportRows(d.rows,periods).length,61);});
 test('refresh preserves user filters and shows last good snapshot if the new read fails',async t=>{const h=harness(t,[data(),{error:Error('offline')}]);h.panel.activate();await tick();h.buttons[1].click();await h.els.get('refresh').fire('click');await tick();assert.equal(h.els.get('status').value,'ANALISAR');assert.match(h.els.get('rows').innerHTML,/Cliente 2/);assert.equal(h.els.get('error').hidden,false);assert.equal(h.els.get('csv').disabled,false);});
 test('late response from a deactivated page cannot overwrite a newer response',async t=>{let finish;const old=new Promise(resolve=>finish=resolve),newData=data();newData.rows=[row(9,'CRÍTICO')];const h=harness(t,[old,newData]);h.panel.activate();h.panel.deactivate();h.panel.activate();await tick();finish({data:data()});await tick();assert.match(h.els.get('rows').innerHTML,/Cliente 9/);assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 1'));});
@@ -50,4 +50,11 @@ test('seller and supervisor filters remain independent and combine without clear
  assert.match(h.els.get('rows').innerHTML,/Cliente 3/);
  assert.ok(!h.root.innerHTML.includes('<option value="seller">'));
  assert.ok(!h.root.innerHTML.includes('<option value="supervisor">'));
+});
+
+test('countdown follows fixed cron boundaries, including Bahia dates, instead of last manual sync',()=>{
+ assert.equal(syncCountdown(Date.parse('2026-10-27T20:59:59-03:00')),'00:00:01');
+ assert.equal(syncCountdown(Date.parse('2026-10-27T21:00:00-03:00')),'12:00:00');
+ assert.equal(syncCountdown(Date.parse('2026-10-28T08:30:00-03:00')),'00:30:00');
+ assert.equal(syncCountdown(Date.parse('2026-10-28T09:00:00-03:00')),'12:00:00');
 });
