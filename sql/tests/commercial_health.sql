@@ -16,3 +16,32 @@ BEGIN
  IF has_function_privilege('anon','public.get_commercial_health_v1()','EXECUTE') OR has_function_privilege('authenticated','private.sync_commercial_health_from_sheet()','EXECUTE') OR has_table_privilege('authenticated','public.commercial_health_sync','UPDATE') THEN RAISE EXCEPTION 'Unexpected write or anonymous permissions';END IF;
 END;$$;
 ROLLBACK;
+
+-- Exercise the real authenticated RLS path within a deadline below PostgREST's 8s.
+-- This integration check requires a valid synced snapshot and approved test profiles.
+BEGIN;
+SELECT set_config('request.jwt.claims',jsonb_build_object('sub',(SELECT id FROM public.profiles WHERE status='aprovado' AND role='user' LIMIT 1),'role','authenticated')::text,true);
+SET LOCAL ROLE authenticated;
+SET LOCAL statement_timeout='1s';
+DO $$
+DECLARE p jsonb;
+BEGIN
+ p:=public.get_commercial_health_v1();
+ IF jsonb_array_length(p->'rows')<1 OR p->>'syncedAt' IS NULL THEN RAISE EXCEPTION 'Missing snapshot'; END IF;
+ IF EXISTS(SELECT 1 FROM jsonb_array_elements(p->'rows') r WHERE NOT (r ?& ARRAY['sellerCode','seller','supervisorCode','supervisor'])) THEN RAISE EXCEPTION 'Assignments were not precomputed'; END IF;
+ IF has_function_privilege('authenticated','private.commercial_health_enrich(jsonb)','EXECUTE') THEN RAISE EXCEPTION 'Private enrichment exposed'; END IF;
+END;$$;
+ROLLBACK;
+BEGIN;
+SELECT set_config('request.jwt.claims',jsonb_build_object('sub',(SELECT id FROM public.profiles WHERE status='aprovado' AND role='adm' LIMIT 1),'role','authenticated')::text,true);
+SET LOCAL ROLE authenticated;
+SET LOCAL statement_timeout='1s';
+DO $$
+DECLARE p jsonb;
+BEGIN
+ p:=public.get_commercial_health_v1();
+ IF jsonb_array_length(p->'rows')<1 OR p->>'syncedAt' IS NULL THEN RAISE EXCEPTION 'Missing snapshot'; END IF;
+ IF EXISTS(SELECT 1 FROM jsonb_array_elements(p->'rows') r WHERE NOT (r ?& ARRAY['sellerCode','seller','supervisorCode','supervisor'])) THEN RAISE EXCEPTION 'Assignments were not precomputed'; END IF;
+ IF has_function_privilege('authenticated','private.commercial_health_enrich(jsonb)','EXECUTE') THEN RAISE EXCEPTION 'Private enrichment exposed'; END IF;
+END;$$;
+ROLLBACK;
