@@ -3888,10 +3888,7 @@ async function loadBoxesView() {
         await loadFilters(filters);
         await loadMainDashboardData(false, true);
         
-        // Trigger background prefetch after main load
-        setTimeout(() => {
-            queueCommonFilters();
-        }, 3000);
+        // Fetch filter combinations on demand; speculative reads compete with the visible panels.
         isMainDashboardInitialized = true;
     }
 
@@ -4339,6 +4336,8 @@ async function loadBoxesView() {
 
     let mainDashboardRequest = 0;
     let frequencyRequest = 0;
+    const frequencyReads = new Map();
+    let frequencyPanelKey = null;
     let filterDebounceTimer;
     let lastMainDashboardFiltersStr = "";
     const handleFilterChange = async () => {
@@ -4438,6 +4437,7 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
             // Make sales usable while goals and complementary charts finish loading.
             render(data, {loading: true, chart_data: []});
             window.hideDashboardLoading();
+            const frequencyPromise = loadFrequencyTable(filters, {loading: true, chart_data: []});
             const refreshed = dashboardResult.source === 'stale'
                 ? fetchDashboardData(filters, true, true) : Promise.resolve(null);
             const [goals, fresh] = await Promise.all([goalsPromise, refreshed]);
@@ -4456,7 +4456,9 @@ async function fetchDashboardData(filters, isBackground = false, forceRefresh = 
                 }, 800);
             }
             void fetchLastSalesDate();
-            prefetchViews(filters);
+            void frequencyPromise.then(() => {
+                if (isCurrent()) prefetchViews(filters);
+            });
         } catch (error) {
             AppLog.error('Erro ao abrir dashboard:', error);
             if (isCurrent()) window.showToast('error', 'Não foi possível atualizar o dashboard. Tente novamente.');
@@ -10073,14 +10075,37 @@ async function updateEstrelasView() {
 }
 
 
+// Cache and share reads independently: goal updates must not repeat an in-flight RPC.
+function readFrequencyPanel(rpc, cacheKey, filters) {
+    if (frequencyReads.has(cacheKey)) return frequencyReads.get(cacheKey);
+    const pending = (async () => {
+        try {
+            const cached = await getFromCache(cacheKey);
+            if (cached?.data && cached.timestamp && Date.now() - cached.timestamp < 86400000) {
+                return cached.data;
+            }
+        } catch (error) { AppLog.warn('Frequency/Mix cache error:', error); }
+        const {data, error} = await supabase.rpc(rpc, filters);
+        if (error) throw error;
+        if (!data) throw new Error('Resposta vazia: ' + rpc);
+        try { await saveToCache(cacheKey, data); }
+        catch (error) { AppLog.warn('Frequency/Mix cache write error:', error); }
+        return data;
+    })();
+    frequencyReads.set(cacheKey, pending);
+    const cleanup = () => {
+        if (frequencyReads.get(cacheKey) === pending) frequencyReads.delete(cacheKey);
+    };
+    pending.then(cleanup, cleanup);
+    return pending;
+}
+
 async function loadFrequencyTable(filters, goals) {
     const requestId = ++frequencyRequest;
     const isCurrent = () => requestId === frequencyRequest;
     const tableBody = document.getElementById('frequency-table-body');
     const tableFooter = document.getElementById('frequency-table-footer');
     if (!tableBody || !tableFooter) return;
-
-    tableBody.innerHTML = renderTableEmptyState('8', 'Carregando Frequência...', false, 'py-4 text-xs');
 
     const reqFilters = {
         p_filial: (filters.p_filial && filters.p_filial.length) ? filters.p_filial : null,
@@ -10098,71 +10123,42 @@ async function loadFrequencyTable(filters, goals) {
 
     const freqCacheKey = generateCacheKey('frequency_data', reqFilters);
     const mixCacheKey = generateCacheKey('mix_data', reqFilters);
-    const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 Hours TTL
-
-    let finalFreqData = null;
-    let finalMixData = null;
-
-    try {
-        const cachedFreq = await getFromCache(freqCacheKey);
-        const cachedMix = await getFromCache(mixCacheKey);
-        
-        let freqCachedValid = false;
-        let mixCachedValid = false;
-
-        if (cachedFreq && cachedFreq.timestamp && cachedFreq.data) {
-            if (Date.now() - cachedFreq.timestamp < CACHE_TTL) {
-                finalFreqData = cachedFreq.data;
-                freqCachedValid = true;
-            }
+    if (frequencyPanelKey !== freqCacheKey) {
+        frequencyPanelKey = freqCacheKey;
+        tableBody.innerHTML = renderTableEmptyState('8', 'Carregando Frequência...', false, 'py-4 text-xs');
+        tableFooter.innerHTML = '';
+        for (const id of ['frequencyChartContainer', 'mixSaltyFoodsChartContainer']) {
+            const container = document.getElementById(id);
+            if (container) container.innerHTML = '<p class="text-xs text-slate-400">Carregando...</p>';
         }
-        
-        if (cachedMix && cachedMix.timestamp && cachedMix.data) {
-            if (Date.now() - cachedMix.timestamp < CACHE_TTL) {
-                finalMixData = cachedMix.data;
-                mixCachedValid = true;
-            }
-        }
-
-        if (freqCachedValid && mixCachedValid) {
-            AppLog.log('Serving Frequency and Mix from Cache');
-            if (!isCurrent()) return;
-            renderFrequencyTable(finalFreqData, tableBody, tableFooter);
-            renderFrequencyChart(finalFreqData);
-            renderMixSaltyFoodsChart({...finalMixData, goal_series: {
-                salty: DashboardGoals.targetSeries(goals, 'MIX', 'mix_salty', {month:filters.p_mes}),
-                foods: DashboardGoals.targetSeries(goals, 'MIX', 'mix_foods', {month:filters.p_mes})
-            }});
-            return;
-        }
-    } catch (e) { AppLog.warn('Frequency/Mix cache error:', e); }
-
-    try {
-        const [freqResponse, mixResponse] = await Promise.all([
-            supabase.rpc("get_frequency_table_data", reqFilters),
-            supabase.rpc("get_mix_salty_foods_data", reqFilters)
-        ]);
-        if (freqResponse.error) throw freqResponse.error;
-        if (mixResponse.error) throw mixResponse.error;
-        finalFreqData = freqResponse.data;
-        finalMixData = mixResponse.data;
-
-        if (finalFreqData) await saveToCache(freqCacheKey, finalFreqData);
-        if (finalMixData) await saveToCache(mixCacheKey, finalMixData);
-
-        if (!isCurrent()) return;
-        renderFrequencyTable(finalFreqData, tableBody, tableFooter);
-        renderFrequencyChart(finalFreqData);
-        renderMixSaltyFoodsChart({...finalMixData, goal_series: {
-                salty: DashboardGoals.targetSeries(goals, 'MIX', 'mix_salty', {month:filters.p_mes}),
-                foods: DashboardGoals.targetSeries(goals, 'MIX', 'mix_foods', {month:filters.p_mes})
-            }});
-
-    } catch (err) {
-        AppLog.error("Erro ao carregar tabela de frequência ou mix:", err);
-        if (!isCurrent()) return;
-        tableBody.innerHTML = renderTableEmptyState('8', 'Erro ao carregar dados.', true, 'py-4 text-xs');
     }
+
+    const frequency = readFrequencyPanel('get_frequency_table_data', freqCacheKey, reqFilters)
+        .then(data => {
+            if (!isCurrent()) return;
+            renderFrequencyTable(data, tableBody, tableFooter);
+            renderFrequencyChart(data);
+        }).catch(error => {
+            AppLog.error('Erro ao carregar frequência:', error);
+            if (!isCurrent()) return;
+            tableBody.innerHTML = renderTableEmptyState('8', 'Erro ao carregar dados.', true, 'py-4 text-xs');
+            const container = document.getElementById('frequencyChartContainer');
+            if (container) container.innerHTML = '<p class="text-xs text-red-400">Erro ao carregar frequência.</p>';
+        });
+    const mix = readFrequencyPanel('get_mix_salty_foods_data', mixCacheKey, reqFilters)
+        .then(data => {
+            if (!isCurrent()) return;
+            renderMixSaltyFoodsChart({...data, goal_series: {
+                salty: DashboardGoals.targetSeries(goals, 'MIX', 'mix_salty', {month: filters.p_mes}),
+                foods: DashboardGoals.targetSeries(goals, 'MIX', 'mix_foods', {month: filters.p_mes})
+            }});
+        }).catch(error => {
+            AppLog.error('Erro ao carregar mix:', error);
+            if (!isCurrent()) return;
+            const container = document.getElementById('mixSaltyFoodsChartContainer');
+            if (container) container.innerHTML = '<p class="text-xs text-red-400">Erro ao carregar mix.</p>';
+        });
+    await Promise.all([frequency, mix]);
 }
 
 function renderFrequencyTable(data, tableBody, tableFooter) {
