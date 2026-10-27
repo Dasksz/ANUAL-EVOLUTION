@@ -93,7 +93,11 @@ BEGIN
   WHERE coalesce(codusur,'')<>'' AND coalesce(codsupervisor,'')<>''
   ORDER BY codusur,ano DESC,mes DESC,codsupervisor
  ), client_rows AS (
-  SELECT r,coalesce(nullif(c.rca1,''),r->>'sourceSellerCode','') rca1,c.codsupervisor,coalesce(nullif(c.nomecliente,''),r->>'name') name
+  -- Current portfolio transfer: former seller 267 belongs to Rodrigo (321), Romulo (21).
+  SELECT r,
+   CASE WHEN coalesce(nullif(c.rca1,''),r->>'sourceSellerCode','')='267' THEN '321' ELSE coalesce(nullif(c.rca1,''),r->>'sourceSellerCode','') END rca1,
+   CASE WHEN coalesce(nullif(c.rca1,''),r->>'sourceSellerCode','')='267' THEN '21' ELSE c.codsupervisor END codsupervisor,
+   coalesce(nullif(c.nomecliente,''),r->>'name') name
   FROM jsonb_array_elements(p->'rows') r
   LEFT JOIN clients c ON c.codigo_cliente=r->>'code'
  )
