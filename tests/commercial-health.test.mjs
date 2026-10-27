@@ -20,7 +20,7 @@ function harness(t,responses=[data()]) {
  let userEvent;const client={rpc(){const next=responses.shift();return{abortSignal:()=>next instanceof Promise?next:Promise.resolve(next?.error?next:{data:next})};},auth:{onAuthStateChange(fn){userEvent=fn;}}};
  const doc={activeElement:null,visibilityState:'visible',addEventListener(){},createElement(){return new El();}},win={URL:{createObjectURL:()=> 'blob:test',revokeObjectURL(){}}};
  const panel=createCommercialHealthPanel({root,client,document:doc,window:win});t.after(()=>panel.deactivate());
- return {root,els,panel,buttons,responses,logout:()=>userEvent('SIGNED_OUT')};
+ return {root,els,panel,buttons,responses,win,logout:()=>userEvent('SIGNED_OUT')};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 test('panel renders live totals and rows, card filters, clear and supplier-free controls',async t=>{const h=harness(t);h.panel.activate();await tick();assert.match(h.els.get('count').textContent,/3 de 3/);assert.equal(h.els.get('count-0').textContent,'1');assert.match(h.els.get('rows').innerHTML,/Cliente 1/);h.buttons[0].click();assert.match(h.els.get('count').textContent,/1 de 3/);assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 2'));h.els.get('clear').click();assert.match(h.els.get('count').textContent,/3 de 3/);assert.ok(h.root.innerHTML.includes('12 horas'));assert.ok(!h.root.innerHTML.includes('Fornecedor'));});
@@ -28,3 +28,11 @@ test('pagination changes pages without another request; CSV exports include ever
 test('refresh preserves user filters and shows last good snapshot if the new read fails',async t=>{const h=harness(t,[data(),{error:Error('offline')}]);h.panel.activate();await tick();h.buttons[1].click();await h.els.get('refresh').fire('click');await tick();assert.equal(h.els.get('status').value,'ANALISAR');assert.match(h.els.get('rows').innerHTML,/Cliente 2/);assert.equal(h.els.get('error').hidden,false);assert.equal(h.els.get('csv').disabled,false);});
 test('late response from a deactivated page cannot overwrite a newer response',async t=>{let finish;const old=new Promise(resolve=>finish=resolve),newData=data();newData.rows=[row(9,'CRÍTICO')];const h=harness(t,[old,newData]);h.panel.activate();h.panel.deactivate();h.panel.activate();await tick();finish({data:data()});await tick();assert.match(h.els.get('rows').innerHTML,/Cliente 9/);assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 1'));});
 test('detail history escapes names and logout clears loaded customer data',async t=>{const d=data();d.rows[0].name='<img src=x onerror=alert(1)>';const h=harness(t,[d]);h.panel.activate();await tick();assert.ok(!h.els.get('rows').innerHTML.includes('<img src=x'));h.root.fire('click',{target:{closest:()=>({dataset:{client:'1'}})}});assert.equal(h.els.get('dialog').open,true);assert.ok(h.els.get('detail-content').innerHTML.includes('<svg'));assert.ok(h.els.get('detail-content').innerHTML.includes('&lt;img'));h.logout();assert.equal(h.els.get('rows').innerHTML,'');assert.equal(h.els.get('dialog').open,false);});
+
+test('PDF exports every filtered page in visible order and omits other classifications',async t=>{
+ const d=data();d.rows=[...Array.from({length:35},(_,i)=>row(i+1,'CRÍTICO')),row(99,'SEM ALERTA')];
+ const h=harness(t,[d]);let captured,saved;
+ h.win.jspdf={jsPDF:class{setFontSize(){}text(){}autoTable(config){captured=config;}save(name){saved=name;}}};
+ h.panel.activate();await tick();h.buttons[0].click();h.els.get('next').click();h.els.get('pdf').click();
+ assert.equal(captured.body.length,35);assert.ok(!captured.body.some(r=>r[0].includes('Cliente 99')));assert.match(saved,/2026-10/);assert.equal(captured.body[0][0],'1 / Cliente 1');
+});
