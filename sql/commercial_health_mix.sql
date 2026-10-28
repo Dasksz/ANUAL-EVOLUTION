@@ -32,7 +32,7 @@ CREATE OR REPLACE FUNCTION private.commercial_health_mix_classify(r jsonb)
 RETURNS jsonb LANGUAGE sql IMMUTABLE SECURITY INVOKER SET search_path=pg_catalog AS $$
  WITH rule AS (
   SELECT coalesce(r->>'sourceStatus',r->>'status') source_status,
-   coalesce(coalesce(r->>'sourceStatus',r->>'status')='CRÍTICO' AND (r->>'mixHistorical')::numeric>0 AND (r->>'mixPrevious')::numeric>=(r->>'mixHistorical')::numeric*2.5,false) expanded
+   coalesce(coalesce(r->>'sourceStatus',r->>'status')='CRÍTICO' AND (r->>'mixHistorical')::numeric>0 AND (r->>'mixPrevious')::numeric>=(r->>'mixHistorical')::numeric*1.9,false) expanded
  )
  SELECT r||jsonb_build_object('sourceStatus',source_status,'status',CASE WHEN expanded THEN 'ANALISAR' ELSE source_status END,'mixReclassified',expanded) FROM rule;
 $$;

@@ -110,6 +110,6 @@ test('mix-reclassified clients affect cards, filtering, critical maximum, detail
  h.buttons[0].click();assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 1'));h.els.get('clear').click();
  h.root.fire('click',{target:{closest:sel=>sel==='[data-client]'?{dataset:{client:'1'}}:null}});
  assert.match(h.els.get('detail-content').innerHTML,/reclassificado para Analisar por expansão de mix/);
- assert.match(h.els.get('detail-content').innerHTML,/2,50 vezes/);
+ assert.match(h.els.get('detail-content').innerHTML,/2,50 vezes/);assert.match(h.els.get('detail-content').innerHTML,/pelo menos 1,9 vez/);
  assert.equal(exportRows([d.rows[0]],periods)[1].at(-1),'ANALISAR');
 });
