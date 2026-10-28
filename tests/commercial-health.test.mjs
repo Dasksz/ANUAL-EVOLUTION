@@ -113,3 +113,9 @@ test('mix-reclassified clients affect cards, filtering, critical maximum, detail
  assert.match(h.els.get('detail-content').innerHTML,/2,50 vezes/);assert.match(h.els.get('detail-content').innerHTML,/pelo menos 1,9 vez/);
  assert.equal(exportRows([d.rows[0]],periods)[1].at(-1),'ANALISAR');
 });
+
+test('critical client details also explain the 1.9x mix reclassification requirement',async t=>{
+ const h=harness(t);h.panel.activate();await tick();
+ h.root.fire('click',{target:{closest:sel=>sel==='[data-client]'?{dataset:{client:'1'}}:null}});
+ assert.match(h.els.get('detail-content').innerHTML,/precisa atingir pelo menos 1,9 vez a média mix histórica/);
+});

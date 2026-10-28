@@ -1,4 +1,4 @@
-import { createCommercialHealthPanel } from './commercial-health.mjs?v=20261027-1';
+import { createCommercialHealthPanel } from './commercial-health.mjs?v=20261028-mix-1p9';
 import { startRefreshProgress } from './refresh-progress.mjs?v=20261023-compact';
 import * as DashboardGoals from './dashboard-goals.mjs?v=20261018-client-goals';
 import { isVendorRankingEligible } from "./vendor-ranking.mjs?v=20261001-all-rankings";
