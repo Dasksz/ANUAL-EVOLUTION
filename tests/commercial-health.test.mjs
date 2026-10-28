@@ -52,9 +52,11 @@ test('seller and supervisor filters remain independent and combine without clear
  assert.ok(!h.root.innerHTML.includes('<option value="supervisor">'));
 });
 
-test('countdown follows fixed cron boundaries, including Bahia dates, instead of last manual sync',()=>{
- assert.equal(syncCountdown(Date.parse('2026-10-27T20:59:59-03:00')),'00:00:01');
- assert.equal(syncCountdown(Date.parse('2026-10-27T21:00:00-03:00')),'12:00:00');
- assert.equal(syncCountdown(Date.parse('2026-10-28T08:30:00-03:00')),'00:30:00');
- assert.equal(syncCountdown(Date.parse('2026-10-28T09:00:00-03:00')),'12:00:00');
+test('countdown follows 05:30 and 17:30 Bahia schedule across midnight and browser timezones',()=>{
+ assert.equal(syncCountdown(Date.parse('2026-10-28T05:29:59-03:00')),'00:00:01');
+ assert.equal(syncCountdown(Date.parse('2026-10-28T05:30:00-03:00')),'12:00:00');
+ assert.equal(syncCountdown(Date.parse('2026-10-28T17:00:00-03:00')),'00:30:00');
+ assert.equal(syncCountdown(Date.parse('2026-10-28T17:30:00-03:00')),'12:00:00');
+ assert.equal(syncCountdown(Date.parse('2026-10-28T23:30:00-03:00')),'06:00:00');
+ assert.equal(syncCountdown(Date.parse('2026-10-29T08:29:59Z')),'00:00:01');
 });
