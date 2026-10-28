@@ -60,3 +60,18 @@ test('countdown follows 05:30 and 17:30 Bahia schedule across midnight and brows
  assert.equal(syncCountdown(Date.parse('2026-10-28T23:30:00-03:00')),'06:00:00');
  assert.equal(syncCountdown(Date.parse('2026-10-29T08:29:59Z')),'00:00:01');
 });
+
+test('critical excess KPI shows maximum within the filtered portfolio and ignores larger noncritical values',async t=>{
+ const d=data();d.rows=[row(1,'CRÍTICO'),row(2,'CRÍTICO','20','2'),row(3,'ANALISAR'),row(4,'SEM ALERTA')];
+ d.rows[0].excess=200;d.rows[1].excess=700;d.rows[2].excess=9000;d.rows[3].excess=12000;
+ assert.equal(summarize(d.rows).maxCriticalExcess,700);
+ assert.equal(summarize([]).maxCriticalExcess,null);
+ const h=harness(t,[d]);h.panel.activate();await tick();
+ assert.match(h.els.get('excess').textContent,/700,00/);
+ h.root.fire('change',{target:{dataset:{chKind:'sellers',chCode:'10'},checked:true}});
+ assert.match(h.els.get('excess').textContent,/200,00/);
+ h.els.get('search').value='Cliente 3';h.els.get('search').fire('input');
+ await new Promise(resolve=>setTimeout(resolve,180));
+ assert.equal(h.els.get('excess').textContent,'—');
+ assert.ok(h.root.innerHTML.includes('Maior excedente crítico'));
+});
