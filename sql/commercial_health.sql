@@ -166,4 +166,4 @@ REVOKE ALL ON FUNCTION public.get_commercial_health_v1() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.get_commercial_health_v1() TO authenticated;
 COMMIT;
 -- Activate only after initial sync and API checks succeed:
--- SELECT cron.schedule('sync-commercial-health','0 */12 * * *','select private.sync_commercial_health_from_sheet();');
+-- SELECT cron.schedule('sync-commercial-health','30 8,20 * * *','select private.sync_commercial_health_from_sheet();');
