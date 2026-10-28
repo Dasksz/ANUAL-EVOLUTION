@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {syncCountdown,validateSnapshot,filterRows,sortRows,summarize,csvText,exportRows,createCommercialHealthPanel} from '../src/js/commercial-health.mjs';
+import {mixDetailHtml,syncCountdown,validateSnapshot,filterRows,sortRows,summarize,csvText,exportRows,createCommercialHealthPanel} from '../src/js/commercial-health.mjs';
 const periods=['2026-05','2026-06','2026-07','2026-08','2026-09','2026-10'];
 const row=(code,status='SEM ALERTA',seller='10',supervisor='1')=>({code:String(code),name:'Cliente '+code,history:[100,200,100,0],average:100,median:100,previous:250,variation:1.5,current:0,positiveMonths:3,excess:150,status,sellerCode:seller,seller:'Vendedor '+seller,supervisorCode:supervisor,supervisor:'Supervisor '+supervisor});
 const filters=()=>({supervisors:new Set(),sellers:new Set(),search:'',status:'all'});
@@ -74,4 +74,31 @@ test('critical excess KPI shows maximum within the filtered portfolio and ignore
  await new Promise(resolve=>setTimeout(resolve,180));
  assert.equal(h.els.get('excess').textContent,'—');
  assert.ok(h.root.innerHTML.includes('Maior excedente crítico'));
+});
+
+const mixFixture=()=>({periods:periods.slice(0,5),monthlyCounts:[2,1,0,0,2],historicalAverage:0.75,previousAverage:2,skus:[{code:'1',name:'<Produto A>',months:[true,true,false,false,true]},{code:'2',name:'Produto B',months:[true,false,false,false,true]}]});
+test('mix details explain monthly averaging and list only SKUs in the selected period safely',()=>{
+ const d=mixFixture();d.skus.push({code:'3',name:'Só setembro',months:[false,false,false,false,true]});d.monthlyCounts[4]=3;
+ const h=mixDetailHtml(d,'history'),p=mixDetailHtml(d,'previous');
+ assert.match(h,/0,75/);assert.match(h,/2 \+ 1 \+ 0 \+ 0/);assert.ok(!h.includes('Só setembro'));assert.ok(!h.includes('<Produto A>'));assert.ok(h.includes('&lt;Produto A&gt;'));
+ assert.ok(p.includes('Só setembro'));assert.match(p,/3 SKUs distintos/);
+ assert.throws(()=>mixDetailHtml({...d,monthlyCounts:[1]}));
+});
+test('mix columns export their numeric values and detail buttons request matching client/version',async t=>{
+ const d=data();d.mixVersion='11111111-1111-1111-1111-111111111111';d.rows[0].mixHistorical=.75;d.rows[0].mixPrevious=2;
+ const h=harness(t,[d,mixFixture()]);h.panel.activate();await tick();
+ assert.match(h.els.get('rows').innerHTML,/0,75/);assert.ok(h.root.innerHTML.includes('Média mix histórica'));
+ const out=exportRows([d.rows[0]],periods);assert.equal(out[1][out[0].indexOf('Média mix histórica')],.75);
+ h.root.fire('click',{target:{closest:sel=>sel==='[data-client]'?{dataset:{client:'1'}}:null}});
+ h.root.fire('click',{target:{closest:sel=>sel==='[data-ch-mix]'?{dataset:{chMix:'history'}}:null}});await tick();
+ assert.match(h.els.get('mix-content').innerHTML,/0,75/);assert.match(h.els.get('mix-content').innerHTML,/Produto B/);
+ h.root.fire('click',{target:{closest:sel=>sel==='[data-ch-mix]'?{dataset:{chMix:'previous'}}:null}});await tick();
+ assert.match(h.els.get('mix-content').innerHTML,/2 SKUs distintos/);
+});
+test('late SKU detail cannot overwrite a different selected client',async t=>{
+ let resolve;const pending=new Promise(r=>resolve=r);const h=harness(t,[data(),pending]);h.panel.activate();await tick();
+ h.root.fire('click',{target:{closest:sel=>sel==='[data-client]'?{dataset:{client:'1'}}:null}});
+ h.root.fire('click',{target:{closest:sel=>sel==='[data-ch-mix]'?{dataset:{chMix:'history'}}:null}});
+ h.root.fire('click',{target:{closest:sel=>sel==='[data-client]'?{dataset:{client:'2'}}:null}});
+ resolve({data:mixFixture()});await tick();assert.equal(h.els.get('detail-title').textContent,'Cliente 2');assert.ok(!h.els.get('mix-content').innerHTML.includes('Produto B'));
 });

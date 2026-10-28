@@ -139,6 +139,7 @@ BEGIN
    period_months:=period_months||jsonb_build_array(to_char(period_date,'YYYY-MM'));
   END LOOP;
   p:=private.commercial_health_enrich(p||jsonb_build_object('periods',period_months,'asOf',asof));
+  IF to_regprocedure('private.commercial_health_mix_refresh(jsonb)') IS NOT NULL THEN p:=private.commercial_health_mix_refresh(p); END IF;
   INSERT INTO public.commercial_health_sync(id,payload,synced_at,attempted_at,last_error) VALUES(true,p,clock_timestamp(),clock_timestamp(),null)
   ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,synced_at=excluded.synced_at,attempted_at=excluded.attempted_at,last_error=null;
   PERFORM extensions.http_set_curlopt('CURLOPT_TIMEOUT_MS',coalesce(old_timeout,'5000'));
@@ -160,7 +161,7 @@ BEGIN
  SELECT * INTO snapshot FROM public.commercial_health_sync WHERE id=true;
  IF snapshot.payload IS NULL THEN RETURN jsonb_build_object('schema_version',1,'rows','[]'::jsonb,'syncedAt',null,'syncError',true); END IF;
  RETURN jsonb_build_object('schema_version',1,'rows',coalesce(snapshot.payload->'rows','[]'::jsonb),'periods',snapshot.payload->'periods','asOf',snapshot.payload->'asOf',
-  'syncedAt',snapshot.synced_at,'syncError',snapshot.last_error IS NOT NULL,'duplicatesMerged',snapshot.payload->'duplicatesMerged');
+  'mixVersion',snapshot.payload->'mixVersion','syncedAt',snapshot.synced_at,'syncError',snapshot.last_error IS NOT NULL,'duplicatesMerged',snapshot.payload->'duplicatesMerged');
 END;$$;
 REVOKE ALL ON FUNCTION public.get_commercial_health_v1() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.get_commercial_health_v1() TO authenticated;
