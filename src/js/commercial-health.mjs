@@ -7,10 +7,10 @@ const money = value => PT.format(Number(value)||0);
 const percent = value => value == null ? '—' : new Intl.NumberFormat('pt-BR',{style:'percent',minimumFractionDigits:1,maximumFractionDigits:1}).format(value);
 const label = period => new Date(`${period}-02T12:00:00Z`).toLocaleDateString('pt-BR',{month:'short',year:'numeric',timeZone:'UTC'}).replace('.','');
 const tone = status => status === 'CRÍTICO' ? 'critical' : status === 'ANALISAR' ? 'review' : 'clear';
-// Cron runs at 00:00 and 12:00 UTC; manual reads/syncs do not move this schedule.
+// Cron runs at 08:30 and 20:30 UTC (05:30 and 17:30 America/Bahia).
 export function syncCountdown(now=Date.now()) {
-  const cadence=12*60*60*1000;
-  const seconds=Math.ceil(((Math.floor(now/cadence)+1)*cadence-now)/1000);
+  const cadence=12*60*60*1000,offset=(8*60+30)*60*1000;
+  const seconds=Math.ceil(((Math.floor((now-offset)/cadence)+1)*cadence+offset-now)/1000);
   return [Math.floor(seconds/3600),Math.floor(seconds/60)%60,seconds%60].map(n=>String(n).padStart(2,'0')).join(':');
 }
 export function validateSnapshot(data) {
