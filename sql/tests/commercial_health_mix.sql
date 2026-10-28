@@ -11,6 +11,21 @@ BEGIN
  IF EXISTS(SELECT 1 FROM public.commercial_health_mix_cache c CROSS JOIN public.commercial_health_sync s WHERE s.id=true AND c.version::text<>s.payload->>'mixVersion') THEN RAISE EXCEPTION 'Mix versions differ'; END IF;
  IF (SELECT count(*) FROM public.commercial_health_mix_cache)<>(SELECT jsonb_array_length(payload->'rows') FROM public.commercial_health_sync WHERE id=true) THEN RAISE EXCEPTION 'Client coverage mismatch'; END IF;
 END;$$;
+DO $$
+DECLARE r jsonb; result jsonb;
+BEGIN
+ r:='{"status":"CRÍTICO","mixHistorical":20,"mixPrevious":50}'::jsonb;
+ result:=private.commercial_health_mix_classify(r);
+ IF result->>'status'<>'ANALISAR' OR result->>'sourceStatus'<>'CRÍTICO' OR result->>'mixReclassified'<>'true' THEN RAISE EXCEPTION 'Exact 2.5x threshold failed'; END IF;
+ IF private.commercial_health_mix_classify(result) IS DISTINCT FROM result THEN RAISE EXCEPTION 'Classification is not idempotent'; END IF;
+ result:=private.commercial_health_mix_classify(jsonb_set(result,'{mixPrevious}','49'));
+ IF result->>'status'<>'CRÍTICO' OR result->>'mixReclassified'<>'false' THEN RAISE EXCEPTION 'Original classification cannot be restored'; END IF;
+ IF private.commercial_health_mix_classify(r||'{"mixPrevious":49.99}')->>'status'<>'CRÍTICO' THEN RAISE EXCEPTION 'Below-threshold downgrade'; END IF;
+ IF private.commercial_health_mix_classify(r||'{"mixHistorical":0}')->>'status'<>'CRÍTICO' THEN RAISE EXCEPTION 'Zero baseline downgrade'; END IF;
+ IF private.commercial_health_mix_classify(r||'{"mixHistorical":null}')->>'status'<>'CRÍTICO' THEN RAISE EXCEPTION 'Missing baseline downgrade'; END IF;
+ IF private.commercial_health_mix_classify(r||'{"status":"SEM ALERTA"}')->>'status'<>'SEM ALERTA' THEN RAISE EXCEPTION 'Noncritical status changed'; END IF;
+ IF has_function_privilege('authenticated','private.commercial_health_mix_classify(jsonb)','EXECUTE') THEN RAISE EXCEPTION 'Private classifier exposed'; END IF;
+END;$$;
 SELECT set_config('request.jwt.claims',jsonb_build_object('sub',(SELECT id FROM public.profiles WHERE status='aprovado' AND role='user' LIMIT 1),'role','authenticated')::text,true);
 SET LOCAL ROLE authenticated;
 SET LOCAL statement_timeout='1s';

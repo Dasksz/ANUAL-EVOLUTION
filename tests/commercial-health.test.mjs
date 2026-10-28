@@ -102,3 +102,14 @@ test('late SKU detail cannot overwrite a different selected client',async t=>{
  h.root.fire('click',{target:{closest:sel=>sel==='[data-client]'?{dataset:{client:'2'}}:null}});
  resolve({data:mixFixture()});await tick();assert.equal(h.els.get('detail-title').textContent,'Cliente 2');assert.ok(!h.els.get('mix-content').innerHTML.includes('Produto B'));
 });
+
+test('mix-reclassified clients affect cards, filtering, critical maximum, details and exports consistently',async t=>{
+ const d=data();Object.assign(d.rows[0],{status:'ANALISAR',sourceStatus:'CRÍTICO',mixReclassified:true,mixHistorical:20,mixPrevious:50,excess:9999});d.rows[1].status='CRÍTICO';
+ const h=harness(t,[d]);h.panel.activate();await tick();
+ assert.equal(h.els.get('count-0').textContent,'1');assert.equal(h.els.get('count-1').textContent,'1');assert.match(h.els.get('excess').textContent,/150,00/);
+ h.buttons[0].click();assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 1'));h.els.get('clear').click();
+ h.root.fire('click',{target:{closest:sel=>sel==='[data-client]'?{dataset:{client:'1'}}:null}});
+ assert.match(h.els.get('detail-content').innerHTML,/reclassificado para Analisar por expansão de mix/);
+ assert.match(h.els.get('detail-content').innerHTML,/2,50 vezes/);
+ assert.equal(exportRows([d.rows[0]],periods)[1].at(-1),'ANALISAR');
+});

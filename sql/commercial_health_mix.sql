@@ -27,6 +27,17 @@ BEGIN
 END;$$;
 REVOKE ALL ON FUNCTION private.commercial_health_mix_document(jsonb,jsonb,jsonb) FROM PUBLIC,anon,authenticated;
 
+-- Preserve the Sheets classification so later mix updates can reverse an override.
+CREATE OR REPLACE FUNCTION private.commercial_health_mix_classify(r jsonb)
+RETURNS jsonb LANGUAGE sql IMMUTABLE SECURITY INVOKER SET search_path=pg_catalog AS $$
+ WITH rule AS (
+  SELECT coalesce(r->>'sourceStatus',r->>'status') source_status,
+   coalesce(coalesce(r->>'sourceStatus',r->>'status')='CRÍTICO' AND (r->>'mixHistorical')::numeric>0 AND (r->>'mixPrevious')::numeric>=(r->>'mixHistorical')::numeric*2.5,false) expanded
+ )
+ SELECT r||jsonb_build_object('sourceStatus',source_status,'status',CASE WHEN expanded THEN 'ANALISAR' ELSE source_status END,'mixReclassified',expanded) FROM rule;
+$$;
+REVOKE ALL ON FUNCTION private.commercial_health_mix_classify(jsonb) FROM PUBLIC,anon,authenticated;
+
 CREATE OR REPLACE FUNCTION private.commercial_health_mix_refresh(p jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog AS $$
 DECLARE periods jsonb; first_day timestamptz; last_day timestamptz; generation uuid:=gen_random_uuid(); result_rows jsonb;
@@ -53,7 +64,7 @@ BEGIN
  INSERT INTO public.commercial_health_mix_cache(client_code,version,payload,updated_at)
  SELECT r->>'code',generation,private.commercial_health_mix_document(periods,c.available,coalesce(f.skus,'[]'::jsonb)),clock_timestamp()
  FROM jsonb_array_elements(p->'rows') r CROSS JOIN coverage c LEFT JOIN products f ON f.codcli=r->>'code';
- SELECT jsonb_agg(r||jsonb_build_object('mixHistorical',c.payload->'historicalAverage','mixPrevious',c.payload->'previousAverage') ORDER BY r->>'code') INTO result_rows
+ SELECT jsonb_agg(private.commercial_health_mix_classify(r||jsonb_build_object('mixHistorical',c.payload->'historicalAverage','mixPrevious',c.payload->'previousAverage')) ORDER BY r->>'code') INTO result_rows
  FROM jsonb_array_elements(p->'rows') r JOIN public.commercial_health_mix_cache c ON c.client_code=r->>'code' AND c.version=generation;
  RETURN jsonb_set(p,'{rows}',result_rows)||jsonb_build_object('mixVersion',generation);
 END;$$;
