@@ -1,3 +1,4 @@
+import { createPlanningPanel } from './planning.mjs?v=20261029-planning-v1';
 import { createCommercialHealthPanel } from './commercial-health.mjs?v=20261029-fit-headers';
 import { startRefreshProgress } from './refresh-progress.mjs?v=20261023-compact';
 import * as DashboardGoals from './dashboard-goals.mjs?v=20261018-client-goals';
@@ -394,6 +395,7 @@ let estrelasSelectedCategorias = [];
     const topNavbar = document.getElementById('top-navbar');
     const navDashboardBtn = document.getElementById('nav-dashboard');
     const navCityAnalysisBtn = document.getElementById('nav-city-analysis');
+    const navPlanningBtn = document.getElementById('nav-planning-btn');
     const navCommercialHealthBtn = document.getElementById('nav-commercial-health-btn');
     const navBoxesBtn = document.getElementById('nav-boxes-btn');
     const navBranchBtn = document.getElementById('nav-branch-btn');
@@ -821,6 +823,8 @@ function getActiveExportView() {
     const uploaderModal = document.getElementById('uploader-modal');
     const innovationsMonthView = document.getElementById('innovations-month-view');
     const lojaPerfeitaView = document.getElementById('loja-perfeita-view');
+    const planningView = document.getElementById('planning-view');
+    const planningPanel = createPlanningPanel({root: document.getElementById('planning-content'), client: supabase});
     const commercialHealthView = document.getElementById('commercial-health-view');
     const commercialHealthPanel = createCommercialHealthPanel({ root: document.getElementById('commercial-health-content'), client: supabase });
     const estrelasView = document.getElementById('estrelas-view');
@@ -1219,6 +1223,7 @@ function getActiveExportView() {
         if (innovationsMonthView && !innovationsMonthView.classList.contains('hidden')) return 'innovations';
         if (lojaPerfeitaView && !lojaPerfeitaView.classList.contains('hidden')) return 'loja-perfeita';
         if (estrelasView && !estrelasView.classList.contains('hidden')) return 'estrelas';
+        if (planningView && !planningView.classList.contains('hidden')) return 'planning';
         if (commercialHealthView && !commercialHealthView.classList.contains('hidden')) return 'commercial-health';
         return 'dashboard';
     }
@@ -1468,7 +1473,7 @@ function getActiveExportView() {
         });
 
         // Provide a default if the view wasn't set or is invalid
-        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison', 'innovations', 'loja-perfeita', 'estrelas', 'agenda', 'goals', 'commercial-health'];
+        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison', 'innovations', 'loja-perfeita', 'estrelas', 'agenda', 'goals', 'commercial-health', 'planning'];
         if (!view || !validViews.includes(view)) {
             view = 'dashboard';
         }
@@ -2065,6 +2070,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
     const resetViews = () => {
         commercialHealthPanel.deactivate();
+        planningPanel.deactivate();
+        if (planningView) planningView.classList.add('hidden');
         dashboardContainer.classList.remove('hidden');
         uploaderModal.classList.add('hidden');
         mainDashboardView.classList.add('hidden');
@@ -2106,6 +2113,13 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                 setActiveNavLink(navDashboardBtn);
                 if (!isMainDashboardInitialized) {
                     initDashboard();
+                }
+                break;
+            case 'planning':
+                if (planningView && navPlanningBtn) {
+                    planningView.classList.remove('hidden');
+                    setActiveNavLink(navPlanningBtn);
+                    planningPanel.activate();
                 }
                 break;
             case 'commercial-health':
@@ -2205,6 +2219,11 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
         if (navigateWithCtrl(e, 'dashboard')) return;
         renderView('dashboard');
+    });
+
+    if (navPlanningBtn) navPlanningBtn.addEventListener('click', (e) => {
+        if (navigateWithCtrl(e, 'planning')) return;
+        renderView('planning');
     });
 
     if (navCommercialHealthBtn) {
