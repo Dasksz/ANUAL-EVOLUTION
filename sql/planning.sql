@@ -78,6 +78,8 @@ BEGIN
   IF upper(btrim(cells->8->>'v'))<>'ATIVO' THEN CONTINUE; END IF;
   IF coalesce(cells->0->>'v','')!~'^[0-9]+([.]0+)?$' OR coalesce(cells->3->>'v','')!~'^[0-9]+([.]0+)?$'
    OR coalesce(btrim(cells->1->>'v'),'')='' THEN RAISE EXCEPTION 'Cliente ativo inválido no Farol'; END IF;
+  -- Counter sales have no field portfolio or visit plan.
+  IF (cells->3->>'v')::numeric=53 THEN CONTINUE; END IF;
   INSERT INTO pl_portfolio VALUES(((cells->0->>'v')::numeric)::bigint::text,coalesce(nullif(cells->2->>'v',''),cells->1->>'v'),
    CASE WHEN (cells->3->>'v')::numeric=267 THEN '321' ELSE ((cells->3->>'v')::numeric)::bigint::text END,cells->4->>'v',cells->5->>'v',cells->6->>'v',cells->7->>'v');
  END LOOP;
