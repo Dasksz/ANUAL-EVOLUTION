@@ -119,3 +119,12 @@ test('critical client details also explain the 1.9x mix reclassification require
  h.root.fire('click',{target:{closest:sel=>sel==='[data-client]'?{dataset:{client:'1'}}:null}});
  assert.match(h.els.get('detail-content').innerHTML,/precisa atingir pelo menos 1,9 vez a média mix histórica/);
 });
+
+test('responsive client table preserves all ten labeled fields with widths totaling 100 percent',async t=>{
+ const h=harness(t);h.panel.activate();await tick();
+ const widths=[...h.root.innerHTML.matchAll(/<col style="width:(\d+)%">/g)].map(m=>Number(m[1]));
+ assert.equal(widths.length,10);assert.equal(widths.reduce((a,b)=>a+b,0),100);
+ assert.equal((h.els.get('rows').innerHTML.match(/data-label=/g)||[]).length,30);
+ for(const label of ['Cliente','Vendedor','Mediana histórica','Média mix histórica','Variação','Excedente','Classificação'])assert.ok(h.els.get('rows').innerHTML.includes('data-label="'+label+'"'));
+ assert.ok(h.root.innerHTML.includes('ch-client-table-wrap'));assert.ok(h.root.innerHTML.includes('grid-template-columns:repeat(2,minmax(0,1fr))'));
+});
