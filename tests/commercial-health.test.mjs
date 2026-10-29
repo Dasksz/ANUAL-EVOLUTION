@@ -87,7 +87,7 @@ test('mix details explain monthly averaging and list only SKUs in the selected p
 test('mix columns export their numeric values and detail buttons request matching client/version',async t=>{
  const d=data();d.mixVersion='11111111-1111-1111-1111-111111111111';d.rows[0].mixHistorical=.75;d.rows[0].mixPrevious=2;
  const h=harness(t,[d,mixFixture()]);h.panel.activate();await tick();
- assert.match(h.els.get('rows').innerHTML,/0,75/);assert.ok(h.root.innerHTML.includes('Média mix histórica'));
+ assert.match(h.els.get('rows').innerHTML,/0,75/);assert.ok(h.root.innerHTML.includes('Mix hist.'));
  const out=exportRows([d.rows[0]],periods);assert.equal(out[1][out[0].indexOf('Média mix histórica')],.75);
  h.root.fire('click',{target:{closest:sel=>sel==='[data-client]'?{dataset:{client:'1'}}:null}});
  h.root.fire('click',{target:{closest:sel=>sel==='[data-ch-mix]'?{dataset:{chMix:'history'}}:null}});await tick();
@@ -127,4 +127,10 @@ test('responsive client table preserves all ten labeled fields with widths total
  assert.equal((h.els.get('rows').innerHTML.match(/data-label=/g)||[]).length,30);
  for(const label of ['Cliente','Vendedor','Mediana histórica','Média mix histórica','Variação','Excedente','Classificação'])assert.ok(h.els.get('rows').innerHTML.includes('data-label="'+label+'"'));
  assert.ok(h.root.innerHTML.includes('ch-client-table-wrap'));assert.ok(h.root.innerHTML.includes('grid-template-columns:repeat(2,minmax(0,1fr))'));
+});
+
+test('client headers use single-line abbreviations with full meaning in tooltips',async t=>{
+ const h=harness(t);h.panel.activate();await tick();
+ assert.ok(h.root.innerHTML.includes('Mediana hist.'));assert.ok(h.root.innerHTML.includes('Mix hist.'));assert.ok(!h.root.innerHTML.includes('ch-th-line'));
+ assert.equal(h.els.get('mix-previous-header').textContent,'Mix set/26');assert.equal(h.els.get('previous-header').textContent,'set/2026');assert.match(h.els.get('mix-previous-header').title,/Média mix/);
 });
