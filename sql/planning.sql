@@ -214,7 +214,7 @@ BEGIN
  WITH filtered AS MATERIALIZED(
  SELECT summary r FROM public.planning_clients WHERE version=snapshot.version
  AND (p_supervisor IS NULL OR supervisor_code=p_supervisor) AND(p_seller IS NULL OR seller_code=p_seller)
- AND(p_visit_date IS NULL OR summary->'visitDates' ? p_visit_date)
+ AND(p_visit_date IS NULL OR (p_visit_date='__unrouted__' AND jsonb_array_length(summary->'visitDates')=0) OR summary->'visitDates' ? p_visit_date)
  AND(coalesce(p_search,'')='' OR position(lower(p_search) in lower(summary->>'code'||' '||(summary->>'name')||' '||(summary->>'city')))>0)
  ), page AS(SELECT r FROM filtered ORDER BY (r->>'missing')::integer DESC,r->>'name',r->>'code' OFFSET greatest(p_offset,0) LIMIT least(greatest(p_limit,1),100))
  SELECT jsonb_build_object('rows',coalesce((SELECT jsonb_agg(r) FROM page),'[]'),'total',count(*),
