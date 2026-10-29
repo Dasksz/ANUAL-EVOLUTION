@@ -94,9 +94,9 @@ BEGIN
   cells:=cell_row->'c';parts:=regexp_match(cells->0->>'v','^Date\(([0-9]+),([0-9]+),([0-9]+)\)$');
   IF parts IS NULL THEN RAISE EXCEPTION 'Calendário inválido'; END IF;
   dt:=make_date(parts[1]::integer,parts[2]::integer+1,parts[3]::integer);
-  IF dt>=m AND dt<m+interval '1 month' THEN INSERT INTO pl_calendar VALUES(dt,cells->1->>'v',cells->2->>'v'); END IF;
+  IF dt>=m-1 AND dt<m+interval '1 month' THEN INSERT INTO pl_calendar VALUES(dt,cells->1->>'v',cells->2->>'v'); END IF;
  END LOOP;
- IF (SELECT count(*) FROM pl_calendar)<>extract(day FROM m+interval '1 month'-interval '1 day') THEN RAISE EXCEPTION 'Calendário do mês incompleto'; END IF;
+ IF (SELECT count(*) FROM pl_calendar WHERE day_date>=m)<>extract(day FROM m+interval '1 month'-interval '1 day') THEN RAISE EXCEPTION 'Calendário do mês incompleto'; END IF;
  CREATE TEMP TABLE pl_people ON COMMIT DROP AS
  WITH p AS(SELECT DISTINCT ON(code) * FROM pl_portfolio ORDER BY code,name),
  d AS(SELECT DISTINCT ON(codigo_cliente) * FROM public.data_clients ORDER BY codigo_cliente,created_at DESC,id),
