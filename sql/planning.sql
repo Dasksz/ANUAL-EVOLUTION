@@ -179,15 +179,16 @@ BEGIN
  )ss
  CROSS JOIN LATERAL(
  SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.buyers DESC,x.code),'[]') skus FROM(
- SELECT pe.produto code,pr.descricao name,CASE WHEN pr.codfor IN('707','708','752') THEN 'SALTY' ELSE 'FOODS' END family,
+ SELECT DISTINCT ON(coalesce(nullif(pr.mix_marca,''),pr.categoria_produto)) pe.produto code,pr.descricao name,CASE WHEN pr.codfor IN('707','708','752') THEN 'SALTY' ELSE 'FOODS' END family,
  pe.buyers,pe.peers,round(pe.buyers::numeric/nullif(pe.peers,0)*100,1) penetration
  FROM pl_peer pe JOIN public.dim_produtos pr ON pr.codigo=pe.produto
  WHERE complete AND pe.segment=p.segment AND pe.buyers>=3 AND pe.peers>=5
  AND NOT EXISTS(SELECT 1 FROM pl_skus s WHERE s.codcli=p.code AND s.produto=pe.produto)
  AND EXISTS(SELECT 1 FROM pl_skus s WHERE s.produto=pe.produto AND s.current)
- ORDER BY pe.buyers DESC,pe.produto LIMIT 8)x
+ ORDER BY coalesce(nullif(pr.mix_marca,''),pr.categoria_produto),pe.buyers DESC,pe.produto)x
  )ns;
  GET DIAGNOSTICS n=ROW_COUNT;
+ IF to_regprocedure('private.planning_order_enrich()') IS NOT NULL THEN PERFORM private.planning_order_enrich(); END IF;
  INSERT INTO public.planning_snapshot(id,version,meta,synced_at,attempted_at,last_error)
  VALUES(true,generation,jsonb_build_object('month',to_char(m,'YYYY-MM'),'historyStart',to_char(m-interval '3 months','YYYY-MM'),
  'historyEnd',to_char(m-interval '1 month','YYYY-MM'),'historyComplete',complete,'salesThrough',cutoff,'clients',n,
@@ -218,7 +219,7 @@ BEGIN
  AND(coalesce(p_search,'')='' OR position(lower(p_search) in lower(summary->>'code'||' '||(summary->>'name')||' '||(summary->>'city')))>0)
  ), page AS(SELECT r FROM filtered ORDER BY (r->>'missing')::integer DESC,r->>'name',r->>'code' OFFSET greatest(p_offset,0) LIMIT least(greatest(p_limit,1),100))
  SELECT jsonb_build_object('rows',coalesce((SELECT jsonb_agg(r) FROM page),'[]'),'total',count(*),
- 'kpis',jsonb_build_object('noSale',count(*) FILTER(WHERE (r->>'currentMix')::integer=0),'missing',coalesce(sum((r->>'missing')::integer),0),
+ 'kpis',jsonb_build_object('mixIdealCount',count(*) FILTER(WHERE coalesce((r->'mixIdeal'->>'achieved')::boolean,false)),'noSale',count(*) FILTER(WHERE (r->>'currentMix')::integer=0),'missing',coalesce(sum((r->>'missing')::integer),0),
  'currentValue',coalesce(sum((r->>'currentValue')::numeric),0))) INTO result FROM filtered;
  RETURN result||snapshot.meta||jsonb_build_object('version',snapshot.version,'syncedAt',snapshot.synced_at,'syncError',snapshot.last_error IS NOT NULL,
  'supervisors',(SELECT coalesce(jsonb_agg(x ORDER BY x->>'name'),'[]') FROM(SELECT DISTINCT jsonb_build_object('code',supervisor_code,'name',summary->>'supervisor')x FROM public.planning_clients WHERE version=snapshot.version)t),
