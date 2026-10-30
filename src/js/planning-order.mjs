@@ -42,7 +42,7 @@ export function buildSuggestedOrder(d){
  for(const s of known){if(result.rows.length>=budget)break;if(fits(s))add(s,'habitual','profundidade');}
  for(const s of novel){if(result.rows.length>=budget)break;if(fits(s))add(s,'segmento','profundidade');}
  result.unfilled=Math.max(0,budget-result.rows.length);
- result.rows.sort((a,b)=>(a.kind===b.kind?0:a.kind==='habitual'?-1:1)||(a.kind==='habitual'?knownRank(a,b):newRank(a,b)));
+ result.rows.sort((a,b)=>(a.purpose==='ideal'&&a.kind==='habitual'?0:1)-(b.purpose==='ideal'&&b.kind==='habitual'?0:1)||(a.kind===b.kind?0:a.kind==='habitual'?-1:1)||(a.kind==='habitual'?knownRank(a,b):newRank(a,b)));
  const projected=new Set([...ideal.present,...result.rows.map(s=>s.idealCategory)]);
  result.uncoveredCategories=IDEAL_CATEGORIES.filter(c=>!projected.has(c));
  result.projectedMix=finite(d.currentMix)+result.rows.length;
@@ -52,4 +52,8 @@ export function orderReason(s){
  const objective=s.purpose==='ideal'?`Completar ${s.idealCategory} no mix ideal`:'Recompor a profundidade habitual do mix';
  const evidence=s.kind==='habitual'?`comprado em ${s.months} de 3 meses`:`teste de segmento: ${s.buyers} de ${s.peers} clientes`;
  return `${objective}; ${evidence}.`;
+}
+
+export function orderStages(order){
+ return {complete:order.rows.filter(s=>s.purpose==='ideal'&&s.kind==='habitual'),complement:order.rows.filter(s=>s.purpose!=='ideal'||s.kind!=='habitual')};
 }
