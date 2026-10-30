@@ -1,3 +1,4 @@
+import { createDevelopmentGate } from './development-gate.mjs?v=20261030-1';
 import { createPlanningPanel } from './planning.mjs?v=20261030-action-order';
 import { createCommercialHealthPanel } from './commercial-health.mjs?v=20261029-fit-headers';
 import { startRefreshProgress } from './refresh-progress.mjs?v=20261023-compact';
@@ -824,9 +825,11 @@ function getActiveExportView() {
     const innovationsMonthView = document.getElementById('innovations-month-view');
     const lojaPerfeitaView = document.getElementById('loja-perfeita-view');
     const planningView = document.getElementById('planning-view');
-    const planningPanel = createPlanningPanel({root: document.getElementById('planning-content'), client: supabase});
+    const planningRoot = document.getElementById('planning-content');
+    const planningPanel = createDevelopmentGate({root: planningRoot, panel: createPlanningPanel({root: planningRoot, client: supabase})});
     const commercialHealthView = document.getElementById('commercial-health-view');
-    const commercialHealthPanel = createCommercialHealthPanel({ root: document.getElementById('commercial-health-content'), client: supabase });
+    const healthRoot = document.getElementById('commercial-health-content');
+    const commercialHealthPanel = createDevelopmentGate({root: healthRoot, panel: createCommercialHealthPanel({root: healthRoot, client: supabase})});
     const estrelasView = document.getElementById('estrelas-view');
     const agendaView = document.getElementById('agenda-view');
     const jbpView = document.getElementById('jbp-view');
@@ -1579,6 +1582,8 @@ function getActiveExportView() {
 
         supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_OUT') {
+                planningPanel.deactivate();
+                commercialHealthPanel.deactivate();
                 isAppReady = false;
                 showScreen('login-view');
                 return;
