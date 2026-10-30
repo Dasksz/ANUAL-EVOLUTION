@@ -14,13 +14,13 @@ END;$$;
 DO $$
 DECLARE r jsonb; result jsonb;
 BEGIN
- r:='{"status":"CRÍTICO","mixHistorical":20,"mixPrevious":38}'::jsonb;
+ r:='{"status":"CRÍTICO","mixHistorical":20,"mixPrevious":30}'::jsonb;
  result:=private.commercial_health_mix_classify(r);
- IF result->>'status'<>'ANALISAR' OR result->>'sourceStatus'<>'CRÍTICO' OR result->>'mixReclassified'<>'true' THEN RAISE EXCEPTION 'Exact 1.9x threshold failed'; END IF;
+ IF result->>'status'<>'ANALISAR' OR result->>'sourceStatus'<>'CRÍTICO' OR result->>'mixReclassified'<>'true' THEN RAISE EXCEPTION 'Exact 1.5x threshold failed'; END IF;
  IF private.commercial_health_mix_classify(result) IS DISTINCT FROM result THEN RAISE EXCEPTION 'Classification is not idempotent'; END IF;
- result:=private.commercial_health_mix_classify(jsonb_set(result,'{mixPrevious}','37'));
+ result:=private.commercial_health_mix_classify(jsonb_set(result,'{mixPrevious}','29'));
  IF result->>'status'<>'CRÍTICO' OR result->>'mixReclassified'<>'false' THEN RAISE EXCEPTION 'Original classification cannot be restored'; END IF;
- IF private.commercial_health_mix_classify(r||'{"mixPrevious":37.99}')->>'status'<>'CRÍTICO' THEN RAISE EXCEPTION 'Below-threshold downgrade'; END IF;
+ IF private.commercial_health_mix_classify(r||'{"mixPrevious":29.99}')->>'status'<>'CRÍTICO' THEN RAISE EXCEPTION 'Below-threshold downgrade'; END IF;
  IF private.commercial_health_mix_classify(r||'{"mixHistorical":29.5,"mixPrevious":57}')->>'status'<>'ANALISAR' THEN RAISE EXCEPTION 'Reported client was not reclassified'; END IF;
  IF private.commercial_health_mix_classify(r||'{"mixHistorical":0}')->>'status'<>'CRÍTICO' THEN RAISE EXCEPTION 'Zero baseline downgrade'; END IF;
  IF private.commercial_health_mix_classify(r||'{"mixHistorical":null}')->>'status'<>'CRÍTICO' THEN RAISE EXCEPTION 'Missing baseline downgrade'; END IF;

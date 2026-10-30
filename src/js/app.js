@@ -1,6 +1,6 @@
 import { createDevelopmentGate } from './development-gate.mjs?v=20261030-1';
 import { createPlanningPanel } from './planning.mjs?v=20261030-two-stages';
-import { createCommercialHealthPanel } from './commercial-health.mjs?v=20261029-fit-headers';
+import { createCommercialHealthPanel } from './commercial-health.mjs?v=20261030-mix15';
 import { startRefreshProgress } from './refresh-progress.mjs?v=20261023-compact';
 import * as DashboardGoals from './dashboard-goals.mjs?v=20261018-client-goals';
 import { isVendorRankingEligible } from "./vendor-ranking.mjs?v=20261001-all-rankings";
