@@ -1,5 +1,5 @@
 import { createDevelopmentGate } from './development-gate.mjs?v=20261030-1';
-import { createPlanningPanel } from './planning.mjs?v=20261030-action-order';
+import { createPlanningPanel } from './planning.mjs?v=20261030-daily-7am';
 import { createCommercialHealthPanel } from './commercial-health.mjs?v=20261029-fit-headers';
 import { startRefreshProgress } from './refresh-progress.mjs?v=20261023-compact';
 import * as DashboardGoals from './dashboard-goals.mjs?v=20261018-client-goals';

@@ -111,7 +111,7 @@ export function createPlanningPanel({root,client,document:doc=globalThis.documen
   $('yesterday').textContent=relativeDay==='ontem'?'Voltar para hoje':'Ver clientes de ontem';
   $('yesterday').setAttribute('aria-pressed',String(relativeDay==='ontem'));
   $('day').textContent=isUnrouted?'Clientes sem roteirização':`Carteira de ${relativeDay} · ${new Date(d.planningDate+'T12:00:00Z').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',timeZone:'UTC'})}`;
-  $('updated').textContent=`Carteira do Farol: ${stamp(d.rosterSyncedAt||d.syncedAt)} · Sincronização da carteira a cada hora`;
+  $('updated').textContent=`Carteira do Farol: ${stamp(d.rosterSyncedAt||d.syncedAt)} · Sincronização da carteira diariamente às 7h (horário da Bahia)`;
   $('sales-status').textContent=d.salesPending?'Novas vendas recebidas. Recalculando os clientes; a tela será atualizada automaticamente.':`Vendas recalculadas em ${stamp(d.salesUpdatedAt||d.syncedAt)} · Atualização após cada carga do dashboard`;
   $('period').textContent=`${period(d.month)} · Histórico: ${period(d.historyStart)} a ${period(d.historyEnd)} · Vendas até ${d.salesThrough?date(d.salesThrough):'carga indisponível'}. ${d.historyComplete?'':'Histórico incompleto; médias suspensas.'}`;
   $('kpis').innerHTML=[[isUnrouted?'Clientes sem rota':'Clientes de '+relativeDay,num(d.total)],['Sem compra no mês',d.salesThrough?num(d.kpis.noSale):'Sem carga'],['Mix ideal alcançado',d.salesThrough?num(d.kpis.mixIdealCount??0):'Sem carga'],['Venda da carteira',d.salesThrough?money(d.kpis.currentValue):'Sem carga']].map(([k,v])=>`<div class="pl-kpi"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('');

@@ -244,4 +244,5 @@ GRANT EXECUTE ON FUNCTION public.get_planning_client_v1(text,uuid) TO authentica
 COMMIT;
 
 -- Runs entirely in Supabase; page refreshes only read the prepared snapshot.
-SELECT cron.schedule('sync-planning-farol','10 * * * *','select private.planning_sync();');
+-- Cron runs in GMT: 10:00 UTC = 07:00 America/Bahia.
+SELECT cron.schedule('sync-planning-farol','0 10 * * *','select private.planning_sync();');
