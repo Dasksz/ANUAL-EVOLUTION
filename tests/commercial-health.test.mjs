@@ -120,6 +120,16 @@ test('critical client details also explain the 1.5x mix reclassification require
  assert.match(h.els.get('detail-content').innerHTML,/precisa atingir pelo menos 1,5 vez a média mix histórica/);
 });
 
+test('every classification displays the current 1.5x rule separately from the actual client ratio',async t=>{
+ for(const status of ['CRÍTICO','ANALISAR','SEM ALERTA']){
+  const d=data();d.rows[0].status=status;const h=harness(t,[d]);h.panel.activate();await tick();
+  h.root.fire('click',{target:{closest:sel=>sel==='[data-client]'?{dataset:{client:'1'}}:null}});
+  const html=h.els.get('detail-content').innerHTML;
+  assert.match(html,/data-health-rule="mix-1.5"/);assert.match(html,/pelo menos 1,5 vez a média mix histórica \(50% maior\)/);
+  assert.match(html,/A proporção observada no cliente não altera esse limite/);
+ }
+});
+
 test('responsive client table preserves all ten labeled fields with widths totaling 100 percent',async t=>{
  const h=harness(t);h.panel.activate();await tick();
  const widths=[...h.root.innerHTML.matchAll(/<col style="width:(\d+)%">/g)].map(m=>Number(m[1]));
