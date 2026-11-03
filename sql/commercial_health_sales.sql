@@ -20,11 +20,11 @@ CREATE TRIGGER commercial_health_portfolio_changed AFTER INSERT OR UPDATE OR DEL
 CREATE OR REPLACE VIEW private.commercial_health_sales_source_v1 WITH(security_invoker=true) AS
  WITH current_months AS MATERIALIZED(SELECT DISTINCT date_trunc('month',dtped AT TIME ZONE 'UTC')::date m FROM public.data_detailed)
  SELECT (d.dtped AT TIME ZONE 'UTC')::date sale_date,date_trunc('month',d.dtped AT TIME ZONE 'UTC')::date month_date,
- d.codcli,d.codusur,d.codsupervisor,d.codfor,d.tipovenda,d.vlvenda,d.qtvenda,d.produto
+ d.codcli,d.codusur,d.codsupervisor,d.codfor,d.tipovenda,d.vlvenda,d.qtvenda,d.produto,d.dtped AS source_timestamp
  FROM public.data_detailed d WHERE d.tipovenda NOT IN('5','11') AND ltrim(d.codfor,'0') IN('707','708','752','1119') AND d.codcli~'^[0-9]+$' AND d.codcli::numeric>0
  UNION ALL
  SELECT (h.dtped AT TIME ZONE 'UTC')::date,date_trunc('month',h.dtped AT TIME ZONE 'UTC')::date,
- h.codcli,h.codusur,h.codsupervisor,h.codfor,h.tipovenda,h.vlvenda,h.qtvenda,h.produto
+ h.codcli,h.codusur,h.codsupervisor,h.codfor,h.tipovenda,h.vlvenda,h.qtvenda,h.produto,h.dtped
  FROM public.data_history h WHERE h.tipovenda NOT IN('5','11') AND ltrim(h.codfor,'0') IN('707','708','752','1119') AND h.codcli~'^[0-9]+$' AND h.codcli::numeric>0
  AND NOT EXISTS(SELECT 1 FROM current_months c WHERE h.dtped>=c.m::timestamp AT TIME ZONE 'UTC' AND h.dtped<(c.m+interval '1 month')::timestamp AT TIME ZONE 'UTC');
 REVOKE ALL ON private.commercial_health_sales_source_v1 FROM PUBLIC,anon,authenticated;
@@ -48,8 +48,17 @@ BEGIN
  IF p_month IS NOT NULL AND p_month~'^[0-9]{4}-(0[1-9]|1[0-2])$' THEN
  PERFORM private.commercial_health_require_ready_v1(((p_month||'-01')::date-interval '5 months')::date,(p_month||'-01')::date,false);END IF;
  SELECT revision,changed_at INTO source_revision,source_updated FROM public.commercial_health_source_state WHERE id=true;
- WITH months AS MATERIALIZED(SELECT DISTINCT month_date m FROM private.commercial_health_sales_source_v1),eligible AS(
- SELECT m FROM months a WHERE (SELECT count(*) FROM months b WHERE b.m BETWEEN (a.m-interval '5 months')::date AND a.m)=6)
+ -- Probe indexed date ranges instead of projecting every historical row.
+ WITH bounds AS(SELECT date_trunc('month',least((SELECT min(dtped) FROM public.data_detailed),(SELECT min(dtped) FROM public.data_history)) AT TIME ZONE 'UTC') first_month,
+ date_trunc('month',greatest((SELECT max(dtped) FROM public.data_detailed),(SELECT max(dtped) FROM public.data_history)) AT TIME ZONE 'UTC') last_month),
+ candidates AS(SELECT g::date m FROM bounds CROSS JOIN LATERAL generate_series(first_month,last_month,interval '1 month')g),
+ months AS MATERIALIZED(SELECT m FROM candidates c WHERE
+ EXISTS(SELECT 1 FROM public.data_detailed d WHERE d.dtped>=c.m::timestamp AT TIME ZONE 'UTC' AND d.dtped<(c.m+interval '1 month')::timestamp AT TIME ZONE 'UTC'
+ AND d.tipovenda NOT IN('5','11') AND ltrim(d.codfor,'0') IN('707','708','752','1119') AND d.codcli~'^[0-9]+$' AND d.codcli::numeric>0)
+ OR(NOT EXISTS(SELECT 1 FROM public.data_detailed d WHERE d.dtped>=c.m::timestamp AT TIME ZONE 'UTC' AND d.dtped<(c.m+interval '1 month')::timestamp AT TIME ZONE 'UTC')
+ AND EXISTS(SELECT 1 FROM public.data_history h WHERE h.dtped>=c.m::timestamp AT TIME ZONE 'UTC' AND h.dtped<(c.m+interval '1 month')::timestamp AT TIME ZONE 'UTC'
+ AND h.tipovenda NOT IN('5','11') AND ltrim(h.codfor,'0') IN('707','708','752','1119') AND h.codcli~'^[0-9]+$' AND h.codcli::numeric>0))),
+ eligible AS(SELECT m FROM months a WHERE (SELECT count(*) FROM months b WHERE b.m BETWEEN (a.m-interval '5 months')::date AND a.m)=6)
  SELECT coalesce(jsonb_agg(to_char(m,'YYYY-MM') ORDER BY m DESC),'[]'),max(m) INTO available,target FROM eligible;
  IF p_month IS NULL THEN PERFORM private.commercial_health_require_ready_v1((target-interval '5 months')::date,target,true);END IF;
  IF p_month IS NOT NULL THEN
@@ -58,7 +67,7 @@ BEGIN
  END IF;
  IF target IS NULL THEN RAISE EXCEPTION 'Aguardando vendas e cinco meses anteriores de histórico';END IF;
  SELECT jsonb_agg(to_char(target-(5-i)*interval '1 month','YYYY-MM') ORDER BY i) INTO periods FROM generate_series(0,5)i;
- WITH raw AS MATERIALIZED(SELECT * FROM private.commercial_health_sales_source_v1 WHERE month_date BETWEEN (target-interval '5 months')::date AND target),
+ WITH raw AS MATERIALIZED(SELECT * FROM private.commercial_health_sales_source_v1 WHERE source_timestamp>=(target-interval '5 months')::timestamp AT TIME ZONE 'UTC' AND source_timestamp<(target+interval '1 month')::timestamp AT TIME ZONE 'UTC'),
  monthly AS MATERIALIZED(SELECT codcli,month_date,sum(vlvenda) amount,count(DISTINCT produto) FILTER(WHERE tipovenda IN('1','9') AND vlvenda>0 AND qtvenda>0 AND nullif(btrim(produto),'') IS NOT NULL) mix FROM raw GROUP BY 1,2),
  latest AS(SELECT DISTINCT ON(codcli) codcli,codusur,codsupervisor FROM raw ORDER BY codcli,sale_date DESC,codusur,codsupervisor),
  matrix AS(SELECT l.codcli,l.codusur,l.codsupervisor,array_agg(coalesce(a.amount,0) ORDER BY i) values_array,array_agg(coalesce(a.mix,0) ORDER BY i) mix_array
@@ -99,10 +108,10 @@ BEGIN
  IF p_version IS NOT NULL AND p_version<>version THEN RAISE EXCEPTION 'Vendas ou carteira atualizadas. Atualize o painel e tente novamente.';END IF;
  target:=(p_month||'-01')::date;
  PERFORM private.commercial_health_require_ready_v1((target-interval '5 months')::date,target,false);
- IF NOT EXISTS(SELECT 1 FROM private.commercial_health_sales_source_v1 WHERE month_date=target) THEN RAISE EXCEPTION 'Competência sem vendas';END IF;
+ IF NOT EXISTS(SELECT 1 FROM private.commercial_health_sales_source_v1 WHERE source_timestamp>=target::timestamp AT TIME ZONE 'UTC' AND source_timestamp<(target+interval '1 month')::timestamp AT TIME ZONE 'UTC') THEN RAISE EXCEPTION 'Competência sem vendas';END IF;
  SELECT jsonb_agg(to_char(target-(5-i)*interval '1 month','YYYY-MM') ORDER BY i) INTO periods FROM generate_series(0,4)i;
  WITH presence AS(SELECT produto,jsonb_build_array(bool_or(month_date=(target-interval '5 months')::date),bool_or(month_date=(target-interval '4 months')::date),bool_or(month_date=(target-interval '3 months')::date),bool_or(month_date=(target-interval '2 months')::date),bool_or(month_date=(target-interval '1 month')::date)) months
- FROM private.commercial_health_sales_source_v1 WHERE codcli=p_client_code AND month_date BETWEEN (target-interval '5 months')::date AND (target-interval '1 month')::date
+ FROM private.commercial_health_sales_source_v1 WHERE codcli=p_client_code AND source_timestamp>=(target-interval '5 months')::timestamp AT TIME ZONE 'UTC' AND source_timestamp<target::timestamp AT TIME ZONE 'UTC'
  AND tipovenda IN('1','9') AND vlvenda>0 AND qtvenda>0 AND nullif(btrim(produto),'') IS NOT NULL GROUP BY produto)
  SELECT coalesce(jsonb_agg(jsonb_build_object('code',p.produto,'name',coalesce(nullif(d.descricao,''),p.produto),'months',p.months) ORDER BY p.produto),'[]') INTO skus FROM presence p LEFT JOIN public.dim_produtos d ON d.codigo=p.produto;
  SELECT jsonb_agg(n ORDER BY i) INTO monthly FROM(SELECT i,(SELECT count(*) FROM jsonb_array_elements(skus)s WHERE s->'months'->i='true')n FROM generate_series(0,4)i)t;
