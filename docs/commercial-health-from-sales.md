@@ -1,0 +1,19 @@
+# Saúde Comercial: vendas e histórico recalculável
+
+Aplicar `sql/commercial_health_sales.sql` após as migrações anteriores de Saúde Comercial. O painel usa `get_commercial_health_month_v1` e `get_commercial_health_mix_month_v1`. Não há leitura do Sheets, cache de fechamento imutável ou cron de sincronização externo.
+
+A competência mais recente depende de vendas carregadas, nunca da data do calendário. Uma competência só fica disponível com seis meses consecutivos de base: quatro meses históricos, o mês comparativo e o mês acompanhado. Exemplo de novembro/2026: junho a setembro como histórico, outubro como comparativo e novembro como acompanhamento. As consultas dos meses anteriores usam as vendas corrigidas e a carteira atual.
+
+Fonte: `data_detailed` e `data_history`. Quando um mês está nas duas tabelas, a base atual tem precedência para o mês inteiro; as bases não são somadas. Fornecedores 707, 708, 752 e 1119. Valores líquidos excluem tipos 5 e 11; mix conta SKUs distintos com venda positiva dos tipos 1 e 9. Meses sem compra de um cliente entram com zero, desde que haja base global para o mês.
+
+Regras preservadas da planilha: média e mediana de quatro meses; pelo menos dois meses com valor >= R$0,01; mediana positiva; ausência de compra >= R$0,01 na competência; compra comparativa >= 130% da mediana. É Crítico quando a compra comparativa também alcança 130% do maior mês histórico, senão Analisar. Um Crítico passa a Analisar se o mix comparativo alcançar 1,5 vez a média mix histórica, com média de mix positiva. Excedente = máximo entre zero e compra comparativa menos mediana. Valores negativos são mantidos como movimentos líquidos; não representam positivação.
+
+Carteira e nomes vêm do cadastro e das dimensões atuais, com fallback para o vendedor/supervisor mais recente nas vendas. A transferência 267 -> 321 / supervisor 21 é preservada. Clientes vendidos ausentes do cadastro aparecem identificados pelo código, sem herdar dados antigos da planilha.
+
+Uma revisão muda atomicamente após qualquer alteração em vendas atuais, histórico ou cadastro. O detalhamento de SKUs exige a mesma revisão usada pela tabela e recebe a competência explicitamente. O frontend limpa o cache de detalhes ao trocar competência/revisão e não permite exportar números de outra competência durante uma troca.
+
+Os leitores privados validam usuário autenticado/aprovado antes de agregar as bases; endpoints públicos são SECURITY INVOKER. Acesso anônimo, escrita no estado de revisão e leitura direta da view privada permanecem revogados. O antigo payload do Sheets é preservado apenas como referência de migração; os endpoints legados passam a consultar o banco. O antigo cron é removido e a função legada de sincronização não faz mais chamadas externas.
+
+Validação: `node --test tests/*.test.mjs tests/*.test.cjs` e `sql/tests/commercial_health_sales.sql`. O teste SQL verifica limites exatos de classificação/mix, detalhes, correções de vendas, transferências, precedência de mês duplicado, virada de ano, ausência de novembro antes da carga, ativação após a primeira venda de novembro e permissões. Toda escrita de fixtures é revertida.
+
+Durante uma carga, a leitura aguarda apenas o estado `loading` dos meses envolvidos. O estado `raw_complete` já permite consultar o painel, mesmo com os resumos pendentes. As exportações ficam desabilitadas enquanto uma atualização indicar envio incompleto.

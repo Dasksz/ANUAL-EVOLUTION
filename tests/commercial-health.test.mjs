@@ -4,7 +4,7 @@ import {mixDetailHtml,syncCountdown,validateSnapshot,filterRows,sortRows,summari
 const periods=['2026-05','2026-06','2026-07','2026-08','2026-09','2026-10'];
 const row=(code,status='SEM ALERTA',seller='10',supervisor='1')=>({code:String(code),name:'Cliente '+code,history:[100,200,100,0],average:100,median:100,previous:250,variation:1.5,current:0,positiveMonths:3,excess:150,status,sellerCode:seller,seller:'Vendedor '+seller,supervisorCode:supervisor,supervisor:'Supervisor '+supervisor});
 const filters=()=>({supervisors:new Set(),sellers:new Set(),search:'',status:'all'});
-const data=()=>({schema_version:1,rows:[row(1,'CRÍTICO'),row(2,'ANALISAR'),row(3,'SEM ALERTA','20','2')],periods:[...periods],asOf:'2026-10-27',syncedAt:'2026-10-27T20:00:00Z',syncError:false});
+const data=()=>({schema_version:1,rows:[row(1,'CRÍTICO'),row(2,'ANALISAR'),row(3,'SEM ALERTA','20','2')],periods:[...periods],asOf:'2026-10-27',syncedAt:'2026-10-27T20:00:00Z',syncError:false,source:'database',competence:'2026-10',availableMonths:['2026-10','2026-09']});
 test('snapshot validation rejects duplicated IDs, invalid money, statuses and periods',()=>{assert.equal(validateSnapshot(data()).rows.length,3);for(const mutate of [d=>d.rows.push(d.rows[0]),d=>d.rows[0].previous=NaN,d=>d.rows[0].status='SAUDÁVEL',d=>d.periods[0]='2026-13']){const d=data();mutate(d);assert.throws(()=>validateSnapshot(d));}});
 test('filters combine multiple supervisors and sellers, status and accent-insensitive search',()=>{const d=data();d.rows[0].name='João Comércio';const f=filters();f.supervisors.add('1');f.sellers.add('10');assert.equal(filterRows(d.rows,f).length,2);f.status='CRÍTICO';f.search='joao comercio';assert.deepEqual(filterRows(d.rows,f).map(r=>r.code),['1']);assert.equal(filterRows(d.rows,f,false).length,1);f.search='';f.status='all';f.supervisors.add('2');f.sellers.add('20');assert.equal(filterRows(d.rows,f).length,3);});
 test('priority uses classification then excess and counts excess only in attention',()=>{const d=data();d.rows[1].excess=999;d.rows[2].excess=10000;assert.deepEqual(sortRows(d.rows).map(r=>r.code),['1','2','3']);assert.deepEqual(sortRows(d.rows,'excess').map(r=>r.code),['3','2','1']);assert.equal(summarize(d.rows).excess,1149);assert.equal(summarize(d.rows)['SEM ALERTA'],1);});
@@ -17,13 +17,41 @@ function harness(t,responses=[data()]) {
  const els=new Map(),root=new El(),buttons=['CRÍTICO','ANALISAR','SEM ALERTA'].map(status=>{const e=new El();e.dataset.status=status;return e;});
  root.querySelector=selector=>{if(selector.startsWith('[data-status='))return buttons.find(b=>selector.includes(b.dataset.status));const name=selector.match(/data-ch="([^"]+)/)[1];if(!els.has(name))els.set(name,new El(name==='status'?'all':''));return els.get(name);};
  root.querySelectorAll=selector=>selector==='[data-status]'?buttons:selector==='.ch-dropdown'?[new El(),new El()]:[];
- let userEvent;const client={rpc(){const next=responses.shift();return{abortSignal:()=>next instanceof Promise?next:Promise.resolve(next?.error?next:{data:next})};},auth:{onAuthStateChange(fn){userEvent=fn;}}};
+ let userEvent;const calls=[];const client={rpc(name,args){calls.push({name,args});const next=responses.shift();return{abortSignal:()=>next instanceof Promise?next:Promise.resolve(next?.error?next:{data:next})};},auth:{onAuthStateChange(fn){userEvent=fn;}}};
  const doc={activeElement:null,visibilityState:'visible',addEventListener(){},createElement(){return new El();}},win={URL:{createObjectURL:()=> 'blob:test',revokeObjectURL(){}}};
  const panel=createCommercialHealthPanel({root,client,document:doc,window:win});t.after(()=>panel.deactivate());
- return {root,els,panel,buttons,responses,win,logout:()=>userEvent('SIGNED_OUT')};
+ return {root,els,panel,buttons,responses,win,calls,logout:()=>userEvent('SIGNED_OUT')};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-test('panel renders live totals and rows, card filters, clear and supplier-free controls',async t=>{const h=harness(t);h.panel.activate();await tick();assert.match(h.els.get('count').textContent,/3 de 3/);assert.equal(h.els.get('count-0').textContent,'1');assert.match(h.els.get('rows').innerHTML,/Cliente 1/);h.buttons[0].click();assert.match(h.els.get('count').textContent,/1 de 3/);assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 2'));h.els.get('clear').click();assert.match(h.els.get('count').textContent,/3 de 3/);assert.ok(h.root.innerHTML.includes('Sincronização automática em'));assert.match(h.els.get('countdown').textContent,/^\d{2}:\d{2}:\d{2}$/);assert.ok(!h.root.innerHTML.includes('Fornecedor'));});
+test('competence selection reads the database RPC and changes all periods and exports',async t=>{
+ const oct=data(),nov={...data(),competence:'2026-11',availableMonths:['2026-11','2026-10'],periods:['2026-06','2026-07','2026-08','2026-09','2026-10','2026-11']};
+ const h=harness(t,[oct,nov]);let filename;h.win.jspdf={jsPDF:class{setFontSize(){}text(){}autoTable(){}save(n){filename=n;}}};
+ h.panel.activate();await tick();assert.equal(h.calls[0].name,'get_commercial_health_month_v1');assert.equal(h.calls[0].args.p_month,null);
+ assert.match(h.els.get('month').innerHTML,/2026-09/);h.els.get('month').value='2026-11';h.els.get('month').fire('change');
+ assert.equal(h.els.get('csv').disabled,true);await tick();assert.equal(h.calls[1].args.p_month,'2026-11');
+ assert.match(h.els.get('period').textContent,/nov/);h.els.get('pdf').click();assert.equal(filename,'Saude_Comercial_2026-11.pdf');
+});
+test('changing competence cannot reuse another month SKU cache or accept a late month response',async t=>{
+ let finish;const pending=new Promise(resolve=>finish=resolve);const h=harness(t,[pending,data()]);h.panel.activate();
+ h.els.get('month').value='2026-10';h.els.get('month').fire('change');await tick();finish({data:{...data(),rows:[row(99)]}});await tick();
+ assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 99'));
+ h.responses.push(mixFixture());h.root.fire('click',{target:{closest:sel=>sel==='[data-client]'?{dataset:{client:'1'}}:null}});
+ h.root.fire('click',{target:{closest:sel=>sel==='[data-ch-mix]'?{dataset:{chMix:'previous'}}:null}});await tick();
+ assert.equal(h.calls.at(-1).name,'get_commercial_health_mix_month_v1');assert.equal(h.calls.at(-1).args.p_month,'2026-10');
+});
+test('failed competence reads cannot export the previous month and latest mode follows new uploads',async t=>{
+ const h=harness(t,[data(),{error:Error('offline')},{...data(),competence:'2026-11',availableMonths:['2026-11','2026-10'],periods:['2026-06','2026-07','2026-08','2026-09','2026-10','2026-11']}]);
+ h.panel.activate();await tick();h.els.get('month').value='2026-09';h.els.get('month').fire('change');await tick();
+ assert.equal(h.els.get('pdf').disabled,true);assert.equal(h.els.get('csv').disabled,true);assert.match(h.els.get('rows').innerHTML,/Dados indisponíveis/);
+ h.els.get('month').value='latest';h.els.get('month').fire('change');await tick();assert.equal(h.calls.at(-1).args.p_month,null);assert.match(h.els.get('period').textContent,/nov/);
+});
+test('an incomplete raw upload preserves the last valid read, explains the wait and blocks exports',async t=>{
+ const h=harness(t,[data(),{error:Object.assign(Error('Loading'),{code:'55000'})}]);h.panel.activate();await tick();
+ h.els.get('refresh').click();await tick();assert.match(h.els.get('error').textContent,/vendas ainda estão sendo enviadas/);
+ assert.match(h.els.get('error').textContent,/resumos não precisam estar prontos/);assert.equal(h.els.get('pdf').disabled,true);assert.equal(h.els.get('csv').disabled,true);
+ assert.match(h.els.get('rows').innerHTML,/Cliente 1/);
+});
+test('panel renders live totals and rows, card filters, clear and supplier-free controls',async t=>{const h=harness(t);h.panel.activate();await tick();assert.match(h.els.get('count').textContent,/3 de 3/);assert.equal(h.els.get('count-0').textContent,'1');assert.match(h.els.get('rows').innerHTML,/Cliente 1/);h.buttons[0].click();assert.match(h.els.get('count').textContent,/1 de 3/);assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 2'));h.els.get('clear').click();assert.match(h.els.get('count').textContent,/3 de 3/);assert.ok(h.root.innerHTML.includes('Cálculo automático pelas vendas'));assert.ok(h.root.innerHTML.includes('data-ch="month"'));assert.ok(!h.root.innerHTML.includes('Fornecedor'));});
 test('pagination changes pages without another request; CSV exports include every filtered page',async t=>{const d=data();d.rows=Array.from({length:60},(_,i)=>row(i+1,'CRÍTICO'));const h=harness(t,[d]);h.panel.activate();await tick();assert.match(h.els.get('page').textContent,/1 de 3/);const initial=h.els.get('rows').innerHTML;h.els.get('next').click();assert.match(h.els.get('page').textContent,/2 de 3/);assert.notEqual(h.els.get('rows').innerHTML,initial);assert.equal(exportRows(d.rows,periods).length,61);});
 test('refresh preserves user filters and shows last good snapshot if the new read fails',async t=>{const h=harness(t,[data(),{error:Error('offline')}]);h.panel.activate();await tick();h.buttons[1].click();await h.els.get('refresh').fire('click');await tick();assert.equal(h.els.get('status').value,'ANALISAR');assert.match(h.els.get('rows').innerHTML,/Cliente 2/);assert.equal(h.els.get('error').hidden,false);assert.equal(h.els.get('csv').disabled,false);});
 test('late response from a deactivated page cannot overwrite a newer response',async t=>{let finish;const old=new Promise(resolve=>finish=resolve),newData=data();newData.rows=[row(9,'CRÍTICO')];const h=harness(t,[old,newData]);h.panel.activate();h.panel.deactivate();h.panel.activate();await tick();finish({data:data()});await tick();assert.match(h.els.get('rows').innerHTML,/Cliente 9/);assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 1'));});
