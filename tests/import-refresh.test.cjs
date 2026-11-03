@@ -16,6 +16,7 @@ async function run(data, opts = {}) {
   ];
   const ctx = vm.createContext({ data, Date, Number, Set, Object,
     clientsChanged: opts.clientsChanged ?? false,
+    dimensionsChanged: opts.dimensionsChanged ?? false,
     changedSalesPeriods,
     refreshJobId: null,
     updateStatus() {},
@@ -51,7 +52,7 @@ test('overlapping history and monthly periods are enqueued only once', async () 
 });
 for (const key of ['clients','newProducts']) {
   test('cadastro refresh enqueues all existing periods: '+key, async () => {
-    const { calls, error } = await run({ [key]: [{}] },{clientsChanged:key==='clients'});
+    const { calls, error } = await run({ [key]: [{}] },{clientsChanged:key==='clients',dimensionsChanged:key==='newProducts'});
     assert.equal(error, undefined);
     assert.equal(calls[0][0], 'elma_get_dashboard_refresh_periods');
     const queue = calls.find(c=>c[0]==='elma_enqueue_dashboard_goal_refresh');
@@ -144,3 +145,20 @@ test('packaging lookup failure stops import before a guessed conversion',async()
   assert.equal(generateBtn.disabled,false);
 });
 
+
+test('unchanged dimensions included by a sales file do not rebuild history',async()=>{
+  const {calls,error}=await run({detailedChunks:{'2026-11':{}},newVendors:[{codigo:'1',nome:'A'}],newSupervisors:[{codigo:'2',nome:'B'}],newProviders:[{codigo:'707',nome:'C'}]},{dimensionsChanged:false});
+  assert.equal(error,undefined);
+  assert.deepEqual(calls.map(c=>c[0]),['elma_enqueue_dashboard_goal_refresh']);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0][1].p_periods)),[{year:2026,month:11}]);
+});
+test('a real dimension change still rebuilds every historical period',async()=>{
+  const {calls,error}=await run({newVendors:[{codigo:'1',nome:'Novo nome'}]},{dimensionsChanged:true});
+  assert.equal(error,undefined);
+  assert.equal(calls[0][0],'elma_get_dashboard_refresh_periods');
+  assert.equal(calls.find(c=>c[0]==='elma_enqueue_dashboard_goal_refresh')[1].p_periods.length,36);
+});
+test('reuploading identical sales and dimensions enqueues nothing',async()=>{
+  const {calls,error}=await run({detailedChunks:{'2026-11':{}},newVendors:[{codigo:'1',nome:'A'}]},{changedSalesPeriods:[],dimensionsChanged:false});
+  assert.equal(error,undefined);assert.equal(calls.length,0);
+});

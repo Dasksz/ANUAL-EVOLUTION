@@ -1,3 +1,4 @@
+import { changedDimensionRows, clientSummaryNeedsRefresh } from './dimension-sync.mjs?v=20261103-1';
 import { createDevelopmentGate } from './development-gate.mjs?v=20261030-1';
 import { createPlanningPanel } from './planning.mjs?v=20261030-two-stages';
 import { createCommercialHealthPanel } from './commercial-health.mjs?v=20261103-health-clear-button';
@@ -2668,6 +2669,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             progressBar.style.width = `${percent}%`;
         };
         let clientsChanged = false;
+        let dimensionsChanged = false;
         let refreshJobId = null;
 
         const retryOperation = async (operation, retries = 3, delay = 1000) => {
@@ -2904,25 +2906,36 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         };
 
         try {
+            // Compare all supplied dimensions before any writes. Sales files also
+            // carry these lists, so their presence alone does not invalidate history.
+            const dimensionChanges = await Promise.all([
+                changedDimensionRows(supabase, 'dim_supervisores', data.newSupervisors),
+                changedDimensionRows(supabase, 'dim_produtos', data.newProducts),
+                changedDimensionRows(supabase, 'dim_vendedores', data.newVendors),
+                changedDimensionRows(supabase, 'dim_fornecedores', data.newProviders)
+            ]);
+            const clientSummaryChanged = await clientSummaryNeedsRefresh(supabase, data.clients);
+            const [changedSupervisors, changedProducts, changedVendors, changedProviders] = dimensionChanges;
+            dimensionsChanged = dimensionChanges.some(rows => rows.length > 0);
             // 0. Update Dimensions First
-            if (data.newSupervisors && data.newSupervisors.length > 0) {
+            if (changedSupervisors && changedSupervisors.length > 0) {
                  updateStatus('Atualizando Supervisores...', 1);
-                 await performDimensionUpsert('dim_supervisores', data.newSupervisors);
+                 await performDimensionUpsert('dim_supervisores', changedSupervisors);
             }
-            if (data.newProducts && data.newProducts.length > 0) {
+            if (changedProducts && changedProducts.length > 0) {
                  updateStatus('Atualizando Produtos...', 1);
-                 await performDimensionUpsert('dim_produtos', data.newProducts);
+                 await performDimensionUpsert('dim_produtos', changedProducts);
             }
-            if (data.newVendors && data.newVendors.length > 0) {
+            if (changedVendors && changedVendors.length > 0) {
                  updateStatus('Atualizando Vendedores...', 2);
                  await retryOperation(async () => {
-                     const { error } = await supabase.rpc('upsert_dim_vendedores', { p_vendors: data.newVendors });
+                     const { error } = await supabase.rpc('upsert_dim_vendedores', { p_vendors: changedVendors });
                      if (error) throw new Error('Erro ao atualizar dim_vendedores: ' + error.message);
                  });
             }
-            if (data.newProviders && data.newProviders.length > 0) {
+            if (changedProviders && changedProviders.length > 0) {
                  updateStatus('Atualizando Fornecedores...', 3);
-                 await performDimensionUpsert('dim_fornecedores', data.newProviders);
+                 await performDimensionUpsert('dim_fornecedores', changedProviders);
             }
             if (data.productStock !== null && data.productStock !== undefined) {
                  updateStatus('Atualizando Estoque de Produtos...', 4);
@@ -2944,7 +2957,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             // Clients Table (Use Row Sync)
             if (data.clients && data.clients.length > 0) {
                 const clientSync = await syncTable('data_clients', data.clients, 70, 75);
-                clientsChanged = clientSync.changed;
+                clientsChanged = clientSync.changed && clientSummaryChanged;
             }
 
             // New Tables
@@ -2987,11 +3000,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
 
             // CHUNKED CACHE REFRESH LOGIC
             // Sales affect only supplied months. Cadastros can change historical classifications.
-            const rebuildHistory = (typeof clientsChanged !== 'undefined' && clientsChanged) ||
-                (data.newProducts && data.newProducts.length > 0) ||
-                (data.newProviders && data.newProviders.length > 0) ||
-                (data.newVendors && data.newVendors.length > 0) ||
-                (data.newSupervisors && data.newSupervisors.length > 0);
+            const rebuildHistory = clientsChanged || dimensionsChanged;
             const periodKeys = new Set(changedSalesPeriods);
             if (rebuildHistory) {
                 const { data: existingPeriods, error: periodErr } = await supabase.rpc('elma_get_dashboard_refresh_periods');

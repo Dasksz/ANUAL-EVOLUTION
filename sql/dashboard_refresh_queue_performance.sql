@@ -19,11 +19,27 @@ BEGIN
         PERFORM private.dashboard_goal_refresh_sync_run(v_run);
     END LOOP;
 
+    -- Goal shares use the prior three summaries. Repair any goal completed
+    -- before its run finished rebuilding summaries, then preserve this dependency.
+    FOR v_run IN
+        UPDATE private.dashboard_goal_refresh_tasks g
+           SET status='queued',attempts=0,started_at=NULL,completed_at=NULL,
+               lease_token=NULL,lease_until=NULL,error_message=NULL,updated_at=clock_timestamp()
+         WHERE g.task_type='goal_attribution' AND g.status='succeeded'
+           AND EXISTS(SELECT 1 FROM private.dashboard_goal_refresh_tasks s
+                      WHERE s.run_id=g.run_id AND s.task_type='summary' AND s.completed_at>g.completed_at)
+           AND NOT EXISTS(SELECT 1 FROM private.dashboard_goal_refresh_tasks s
+                          WHERE s.run_id=g.run_id AND s.task_type='summary' AND s.status IN('queued','processing'))
+         RETURNING g.run_id
+    LOOP
+        PERFORM private.dashboard_goal_refresh_sync_run(v_run);
+    END LOOP;
+
     SELECT t.* INTO v_task FROM private.dashboard_goal_refresh_tasks t
      JOIN private.dashboard_goal_refresh_runs r ON r.id=t.run_id
      WHERE t.status='queued'
-     ORDER BY r.created_at,r.id,t.ano DESC,t.mes DESC,
-              CASE t.task_type WHEN 'summary' THEN 0 ELSE 1 END,t.created_at,t.id
+     ORDER BY r.created_at,r.id,CASE t.task_type WHEN 'summary' THEN 0 ELSE 1 END,
+              t.ano DESC,t.mes DESC,t.created_at,t.id
      FOR UPDATE OF t SKIP LOCKED LIMIT 1;
     IF NOT FOUND THEN RETURN; END IF;
     v_token:=gen_random_uuid();
