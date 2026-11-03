@@ -26,6 +26,10 @@ BEGIN
            SET status='queued',attempts=0,started_at=NULL,completed_at=NULL,
                lease_token=NULL,lease_until=NULL,error_message=NULL,updated_at=clock_timestamp()
          WHERE g.task_type='goal_attribution' AND g.status='succeeded'
+           AND EXISTS(SELECT 1 FROM private.dashboard_goal_refresh_runs r
+                      WHERE r.id=g.run_id AND r.status IN('queued','processing'))
+           AND NOT EXISTS(SELECT 1 FROM private.dashboard_goal_refresh_tasks f
+                          WHERE f.run_id=g.run_id AND f.status='failed')
            AND EXISTS(SELECT 1 FROM private.dashboard_goal_refresh_tasks s
                       WHERE s.run_id=g.run_id AND s.task_type='summary' AND s.completed_at>g.completed_at)
            AND NOT EXISTS(SELECT 1 FROM private.dashboard_goal_refresh_tasks s
