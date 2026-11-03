@@ -27,7 +27,7 @@ test('competence selection reads the database RPC and changes all periods and ex
  const oct=data(),nov={...data(),competence:'2026-11',availableMonths:['2026-11','2026-10'],periods:['2026-06','2026-07','2026-08','2026-09','2026-10','2026-11']};
  const h=harness(t,[oct,nov]);let filename;h.win.jspdf={jsPDF:class{setFontSize(){}text(){}autoTable(){}save(n){filename=n;}}};
  h.panel.activate();await tick();assert.equal(h.calls[0].name,'get_commercial_health_month_v1');assert.equal(h.calls[0].args.p_month,null);
- assert.match(h.els.get('month').innerHTML,/2026-09/);h.els.get('month').value='2026-11';h.els.get('month').fire('change');
+ assert.equal(h.els.get('month').value,'2026-10');assert.ok(!h.els.get('month').innerHTML.includes('Mês mais recente'));assert.match(h.els.get('month').innerHTML,/2026-09/);h.els.get('month').value='2026-11';h.els.get('month').fire('change');
  assert.equal(h.els.get('csv').disabled,true);await tick();assert.equal(h.calls[1].args.p_month,'2026-11');
  assert.match(h.els.get('period').textContent,/nov/);h.els.get('pdf').click();assert.equal(filename,'Saude_Comercial_2026-11.pdf');
 });
@@ -39,11 +39,11 @@ test('changing competence cannot reuse another month SKU cache or accept a late 
  h.root.fire('click',{target:{closest:sel=>sel==='[data-ch-mix]'?{dataset:{chMix:'previous'}}:null}});await tick();
  assert.equal(h.calls.at(-1).name,'get_commercial_health_mix_month_v1');assert.equal(h.calls.at(-1).args.p_month,'2026-10');
 });
-test('failed competence reads cannot export the previous month and latest mode follows new uploads',async t=>{
+test('failed month reads cannot export the previous month and selecting another month recovers',async t=>{
  const h=harness(t,[data(),{error:Error('offline')},{...data(),competence:'2026-11',availableMonths:['2026-11','2026-10'],periods:['2026-06','2026-07','2026-08','2026-09','2026-10','2026-11']}]);
  h.panel.activate();await tick();h.els.get('month').value='2026-09';h.els.get('month').fire('change');await tick();
  assert.equal(h.els.get('pdf').disabled,true);assert.equal(h.els.get('csv').disabled,true);assert.match(h.els.get('rows').innerHTML,/Dados indisponíveis/);
- h.els.get('month').value='latest';h.els.get('month').fire('change');await tick();assert.equal(h.calls.at(-1).args.p_month,null);assert.match(h.els.get('period').textContent,/nov/);
+ h.els.get('month').value='2026-11';h.els.get('month').fire('change');await tick();assert.equal(h.calls.at(-1).args.p_month,'2026-11');assert.match(h.els.get('period').textContent,/nov/);
 });
 test('an incomplete raw upload preserves the last valid read, explains the wait and blocks exports',async t=>{
  const h=harness(t,[data(),{error:Object.assign(Error('Loading'),{code:'55000'})}]);h.panel.activate();await tick();
