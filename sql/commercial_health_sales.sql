@@ -91,7 +91,9 @@ BEGIN
  'sellerCode',seller_code,'seller',coalesce(nullif(v.nome,''),nullif(seller_code,''),'Não informado'),
  'supervisorCode',supervisor_code,'supervisor',coalesce(nullif(s.nome,''),nullif(supervisor_code,''),'Não informado')) ORDER BY x.codcli),
  (SELECT max(sale_date) FROM raw WHERE month_date=target)
- INTO result_rows,asof FROM classified x LEFT JOIN public.dim_vendedores v ON v.codigo=x.seller_code LEFT JOIN public.dim_supervisores s ON s.codigo=x.supervisor_code;
+ INTO result_rows,asof FROM classified x LEFT JOIN public.dim_vendedores v ON v.codigo=x.seller_code LEFT JOIN public.dim_supervisores s ON s.codigo=x.supervisor_code
+ WHERE upper(ltrim(btrim(x.seller_code),'0')) NOT IN('53','BALCAO','BALCAO_SP','AMERICANAS')
+ AND upper(btrim(coalesce(v.nome,''))) !~ '^(AMERICANAS|BALC[ÃA]O)([[:space:]_/.-]|$)';
  RETURN jsonb_build_object('schema_version',1,'source','database','competence',to_char(target,'YYYY-MM'),'availableMonths',available,'historyComplete',true,
  'periods',periods,'rows',coalesce(result_rows,'[]'),'asOf',asof,'syncedAt',source_updated,'calculatedAt',statement_timestamp(),'mixVersion',source_revision,'syncError',false,'duplicatesMerged',0);
 END;$$;
