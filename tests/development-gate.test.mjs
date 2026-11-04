@@ -35,7 +35,7 @@ test('unlocking one panel does not authorize the other',()=>{
 });
 test('navigation and direct URL routes both use wrapped panels and logout locks them',()=>{
  const app=readFileSync(new URL('../src/js/app.js',import.meta.url),'utf8');
- assert.match(app,/const planningPanel = createDevelopmentGate\(/);assert.match(app,/const commercialHealthPanel = createDevelopmentGate\(/);
+ assert.match(app,/const planningPanel = createPlanningPanel\(/);assert.match(app,/const commercialHealthPanel = createCommercialHealthPanel\(/);
  assert.match(app,/case 'planning':[\s\S]*?planningPanel\.activate\(\)/);assert.match(app,/case 'commercial-health':[\s\S]*?commercialHealthPanel\.activate\(\)/);
  assert.match(app,/if \(event === 'SIGNED_OUT'\) \{\s*planningPanel\.deactivate\(\);\s*commercialHealthPanel\.deactivate\(\)/);
 });

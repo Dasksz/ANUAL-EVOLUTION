@@ -1,5 +1,4 @@
 import { changedDimensionRows, clientSummaryNeedsRefresh } from './dimension-sync.mjs?v=20261103-1';
-import { createDevelopmentGate } from './development-gate.mjs?v=20261030-1';
 import { createPlanningPanel } from './planning.mjs?v=20261030-two-stages';
 import { createCommercialHealthPanel } from './commercial-health.mjs?v=20261103-health-clear-button';
 import { startRefreshProgress } from './refresh-progress.mjs?v=20261023-compact';
@@ -827,10 +826,10 @@ function getActiveExportView() {
     const lojaPerfeitaView = document.getElementById('loja-perfeita-view');
     const planningView = document.getElementById('planning-view');
     const planningRoot = document.getElementById('planning-content');
-    const planningPanel = createDevelopmentGate({root: planningRoot, panel: createPlanningPanel({root: planningRoot, client: supabase})});
+    const planningPanel = createPlanningPanel({root: planningRoot, client: supabase});
     const commercialHealthView = document.getElementById('commercial-health-view');
     const healthRoot = document.getElementById('commercial-health-content');
-    const commercialHealthPanel = createDevelopmentGate({root: healthRoot, panel: createCommercialHealthPanel({root: healthRoot, client: supabase})});
+    const commercialHealthPanel = createCommercialHealthPanel({root: healthRoot, client: supabase});
     const estrelasView = document.getElementById('estrelas-view');
     const agendaView = document.getElementById('agenda-view');
     const jbpView = document.getElementById('jbp-view');
