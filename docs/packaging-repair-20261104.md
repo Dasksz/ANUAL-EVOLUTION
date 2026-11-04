@@ -1,0 +1,9 @@
+# Correção de embalagens de caixas — 04/11/2026
+
+Foram corrigidos 188 produtos do Evolução com embalagem igual a 1, usando referências positivas e concordantes do cadastro de produtos do Promotores. Cada correspondência exige código, fornecedor e descrição iguais (normalizando apenas espaços, maiúsculas e acentos). Os cadastros de origem do Promotores não foram alterados. Produtos sem correspondência confiável permanecem para conferência.
+
+Aplicar primeiro `sql/optimize_packaging_delta_join.sql`. A rotina conserva a comparação exata entre campos nulos e vazios, acrescentando chaves de igualdade que permitem ao PostgreSQL usar hash join. Em seguida, executar a correção única `sql/repairs/restore_verified_packaging_20261104.sql`. O script verifica os valores anteriores e aborta qualquer aplicação parcial ou alteração de faturamento, peso ou quantidade de linhas dos resumos.
+
+Doritos Spicy Nacho 32 g (6300): 58 unidades por caixa. Outubro retorna 86,5862068966 caixas de movimentação, compostas de 84,5862068966 caixas de vendas e 2 caixas bonificadas. A cobertura de estoque passou de 1 para 37 dias com os mesmos parâmetros do painel. O SKU de 120 g (6299) usa 17 unidades por caixa e retorna 37,4117647059 caixas de movimentação.
+
+Validação: 188 cadastros conferidos após a gravação; nenhum outro campo de produto alterado. As vendas brutas mantêm 905.968 linhas, 17.480.967 unidades e R$ 71.005.409,678 na soma original. Em outubro, a soma independente de unidades/embalagem coincide com os resumos: 25.312,64893398462 caixas. Faturamento e peso de cada mês foram preservados por uma guarda na transação. Nenhuma fila de atualização completa foi criada. As versões do cache de cobertura e dos painéis que usam caixas foram incrementadas para descartar respostas anteriores. Os 160 testes Node passaram.

@@ -1544,7 +1544,7 @@ function getActiveExportView() {
     // Helper to generate canonical cache keys (sorted arrays)
     function generateCacheKey(prefix, filters) {
         // Ignore dashboard totals cached before monthly chunks were matched by month.
-        const revisions = { dashboard_data: 3, dashboard_filters: 2, frequency_data: 3, mix_data: 2, boxes_dashboard_data: 3 };
+        const revisions = { dashboard_data: 4, dashboard_filters: 2, frequency_data: 3, mix_data: 2, boxes_dashboard_data: 4, branch_data: 1, city_view_data: 1, comparison_view_data: 1 };
         if (revisions[prefix]) prefix = `${prefix}_v${revisions[prefix]}`;
         const sortedFilters = {};
         Object.keys(filters).sort().forEach(k => {
