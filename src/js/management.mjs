@@ -1,6 +1,7 @@
+import { mountSpecialPortfolios } from './special-portfolios.mjs?v=20261105';
 import supabase from './supabase.js?v=5';
 const $ = id => document.getElementById(id);
-let state, editing, recovery, busy = false, loadEpoch = 0, goalRefreshTimer;
+let state, editing, recovery, busy = false, loadEpoch = 0, goalRefreshTimer, specialMounted=false;
 const labels = {aprovar:'Autorização aprovada',negar:'Autorização negada',revogar:'WhatsApp revogado',administrador:'WhatsApp administrativo alterado',editar:'Cadastro atualizado',cadastrar:'Colaborador cadastrado',preservar_rh:'Proteção da sincronização atualizada',envio_diario:'Envio diário atualizado'};
 function node(tag, text, cls) {const el=document.createElement(tag); if(text!=null)el.textContent=text; if(cls)el.className=cls; return el;}
 function button(text, action, id, values) {const el=node('button',text);el.onclick=()=>act(action,id,values);return el;}
@@ -16,6 +17,7 @@ async function load() {
     const data=await rpc('elma_management_data');
     if(epoch!==loadEpoch)return;
     state=data;$('access').textContent='Administrador master';$('panel').classList.remove('hidden');render();
+    if(!specialMounted){specialMounted=true;await mountSpecialPortfolios($('panel'));}
     await Promise.all([loadRecovery(epoch),loadGoalRefreshes(epoch)]);
   }catch(e){if(epoch===loadEpoch){state=null;recovery=null;$('panel').classList.add('hidden');$('access').textContent=e.message;renderRecovery();}}
 }
