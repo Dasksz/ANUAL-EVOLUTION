@@ -1590,9 +1590,9 @@ function getActiveExportView() {
                 return;
             }
             if (event === 'SIGNED_OUT') {
-                isRecoveringPassword = false;
                 planningPanel.deactivate();
                 commercialHealthPanel.deactivate();
+                isRecoveringPassword = false;
                 isAppReady = false;
                 showScreen('login-view');
                 return;
