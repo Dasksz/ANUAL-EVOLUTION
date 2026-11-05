@@ -37,8 +37,8 @@ async function run() {
   const failure = await ctx.fetchDashboardData({ p_filial: [] }, false, true);
   assert.equal(failure.data, null);
   assert.equal(saved.length, 3, 'failed response must not be cached');
-  assert.match(ctx.generateCacheKey('dashboard_data', {}), /^dashboard_data_v5_/);
-  assert.match(ctx.generateCacheKey('dashboard_filters', {}), /^dashboard_filters_v3_/);
+  assert.match(ctx.generateCacheKey('dashboard_data', {}), /^dashboard_data_v6_/);
+  assert.match(ctx.generateCacheKey('dashboard_filters', {}), /^dashboard_filters_v4_/);
   assert.equal(ctx.generateCacheKey('dashboard_data', {p_filial:['08','05']}), ctx.generateCacheKey('dashboard_data', {p_filial:['05','08']}));
 
   const pending = [], rendered = [];

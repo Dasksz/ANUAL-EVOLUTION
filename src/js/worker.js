@@ -1509,7 +1509,7 @@ if (typeof self !== "undefined") {
           const clientData = clientMap.get(originalCodCli);
           const rca1 = clientData ? String(clientData.rca1 || "").trim() : null;
           const isRca53 = rca1 === "53";
-          const isInactive = !clientData || isRca53;
+          const isInactive = !clientData || !rca1 || isRca53 || rca1.startsWith('INAT_');
 
           // Check for Special Cases
 
@@ -1611,6 +1611,9 @@ if (typeof self !== "undefined") {
               supervisorNameMap.get(targetSupervisor);
             if (targetSupervisorCode) {
               newSale["CODSUPERVISOR"] = targetSupervisorCode;
+            } else {
+              newSale["CODSUPERVISOR"] = "SEM_SUPERVISOR";
+              newSale["SUPERV"] = "SEM SUPERVISOR ATUAL";
             }
           } else {
             // 4. Active Logic: Supervisor by Vendor's Latest Status
@@ -1638,6 +1641,9 @@ if (typeof self !== "undefined") {
                   vendorInfo.CODSUPERVISOR !== "N/A"
                 ) {
                   newSale["CODSUPERVISOR"] = vendorInfo.CODSUPERVISOR;
+                } else {
+                  newSale["CODSUPERVISOR"] = "SEM_SUPERVISOR";
+                  newSale["SUPERV"] = "SEM SUPERVISOR ATUAL";
                 }
               }
             } else {
@@ -1647,7 +1653,8 @@ if (typeof self !== "undefined") {
               } else {
                 newSale["CODUSUR"] = rca1;
                 newSale["NOME"] = clientRcaNames.get(rca1) || "Desconhecido";
-                newSale["SUPERV"] = "Desconhecido";
+                newSale["SUPERV"] = "SEM SUPERVISOR ATUAL";
+                newSale["CODSUPERVISOR"] = "SEM_SUPERVISOR";
               }
             }
           }

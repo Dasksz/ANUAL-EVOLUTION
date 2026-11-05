@@ -38,6 +38,29 @@ const clients = csv('clients.csv', [
   { 'Código': '6421', 'RCA 1': '100', Cliente: 'BALCAO' },
 ]);
 
+test('complete historical import resolves current client owner and latest dated supervisor',async()=>{
+ const data=await runWorker({clientsFile:clients,
+  salesPrevYearFile:csv('2024.csv',[sale('8','199','1000',{DTPED:'2024-02-01'})]),
+  salesCurrYearFile:csv('2025-2026.csv',[sale('12','100','1000',{DTPED:'2025-02-01'}),sale('12','100','1000',{DTPED:'2026-02-01'})]),
+  salesCurrMonthFile:csv('month.csv',[sale('21','100','1000',{DTPED:'2026-11-01'})])});
+ const rows=[...Object.values(data.historyChunks||{}),...Object.values(data.detailedChunks||{})].flatMap(c=>c.rows);
+ assert.equal(rows.length,4);
+ assert.ok(rows.every(r=>r.codusur==='100' && r.codsupervisor==='21'));
+ assert.equal(rows.reduce((n,r)=>n+r.vlvenda,0),400);
+});
+test('inactive client without current supervision never inherits old Balcao supervisor',async()=>{
+ const data=await runWorker({clientsFile:clients,salesPrevYearFile:csv('old.csv',[sale('8','999','9999')])});
+ const rows=Object.values(data.historyChunks||{}).flatMap(c=>c.rows);
+ assert.equal(rows.length,1);assert.match(rows[0].codusur,/^INAT_/);
+ assert.equal(rows[0].codsupervisor,'SEM_SUPERVISOR');
+});
+test('new current seller without evidence does not inherit historical supervisor',async()=>{
+ const data=await runWorker({clientsFile:csv('clients.csv',[{'Código':'1000','RCA 1':'998',Cliente:'ATUAL'}]),
+  salesPrevYearFile:csv('old.csv',[sale('8','100','1000')])});
+ const rows=Object.values(data.historyChunks||{}).flatMap(c=>c.rows);
+ assert.equal(rows[0].codusur,'998');assert.equal(rows[0].codsupervisor,'SEM_SUPERVISOR');
+});
+
 for (const fileKey of ['salesPrevYearFile', 'salesCurrYearFile', 'salesCurrMonthFile']) {
   test('Rômulo identity survives ' + fileKey + ' import with historical codes intact', async () => {
     const data = await runWorker({ clientsFile: clients, [fileKey]: csv('sales.csv', [

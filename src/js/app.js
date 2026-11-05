@@ -1545,7 +1545,7 @@ function getActiveExportView() {
     // Helper to generate canonical cache keys (sorted arrays)
     function generateCacheKey(prefix, filters) {
         // Ignore dashboard totals cached before monthly chunks were matched by month.
-        const revisions = { dashboard_data: 5, dashboard_filters: 3, frequency_data: 4, mix_data: 3, boxes_dashboard_data: 5, branch_data: 1, city_view_data: 1, comparison_view_data: 1 };
+        const revisions = { dashboard_data: 6, dashboard_filters: 4, frequency_data: 5, mix_data: 4, boxes_dashboard_data: 6, branch_data: 2, city_view_data: 2, comparison_view_data: 2 };
         if (revisions[prefix]) prefix = `${prefix}_v${revisions[prefix]}`;
         const sortedFilters = {};
         Object.keys(filters).sort().forEach(k => {
@@ -2652,7 +2652,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
         }
         statusText.textContent = 'Processando...';
         
-        const worker = new Worker('src/js/worker.js?v=20261013-client-headers');
+        const worker = new Worker('src/js/worker.js?v=20261105-current-supervisor');
         // Pass files, city map, and conditionally fetched clients
         worker.postMessage({ ...files, cityBranchMap, existingClientsMap, existingProductsMap });
 
