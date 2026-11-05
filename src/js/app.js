@@ -337,6 +337,7 @@ let estrelasSelectedCategorias = [];
     const loginFormSignin = document.getElementById('view-login');
     const loginFormSignup = document.getElementById('view-signup');
     const loginFormForgot = document.getElementById('view-forgot');
+    const loginFormReset = document.getElementById('view-reset');
 
     // Navigation links within Auth
     const linkSignup = document.getElementById('link-signup');
@@ -369,7 +370,7 @@ let estrelasSelectedCategorias = [];
 
     // View Switching Logic
     const switchAuthView = (viewToShow) => {
-        [loginFormSignin, loginFormSignup, loginFormForgot].forEach(el => {
+        [loginFormSignin, loginFormSignup, loginFormForgot, loginFormReset].forEach(el => {
             if (el) {
                 el.classList.add('hidden');
                 el.classList.remove('opacity-100', 'scale-100');
@@ -1560,6 +1561,7 @@ function getActiveExportView() {
 
     let checkProfileLock = false;
     let isAppReady = false;
+    let isRecoveringPassword = false;
 
     // --- Visibility & Reconnection Logic ---
     document.addEventListener('visibilitychange', async () => {
@@ -1581,7 +1583,14 @@ function getActiveExportView() {
         showScreen('tela-loading');
 
         supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'PASSWORD_RECOVERY') {
+                isRecoveringPassword = true;
+                showScreen('login-view');
+                switchAuthView(loginFormReset);
+                return;
+            }
             if (event === 'SIGNED_OUT') {
+                isRecoveringPassword = false;
                 planningPanel.deactivate();
                 commercialHealthPanel.deactivate();
                 isAppReady = false;
@@ -1589,6 +1598,7 @@ function getActiveExportView() {
                 return;
             }
 
+            if (isRecoveringPassword) return;
             if (session) {
                 if (isAppReady) return;
 
@@ -1607,6 +1617,7 @@ function getActiveExportView() {
     }
 
     async function checkProfileStatus(user) {
+        if (isRecoveringPassword) return;
         if (isAppReady) return;
 
         const cacheKey = `user_auth_cache_${user.id}`;
@@ -1827,25 +1838,14 @@ function getActiveExportView() {
     if (formForgot) {
         formForgot.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('forgot-email').value;
+            const email = document.getElementById('forgot-email').value.trim();
 
             const btn = formForgot.querySelector('button[type=\"submit\"]');
             const btnText = btn.querySelector('.btn-text');
             const oldText = btnText ? setElementLoading(btnText, btn, 'Enviando...', 'text-white') : setElementLoading(btn, btn, 'Enviando...', 'text-white');
 
             try {
-                const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('status')
-                    .eq('email', email)
-                    .maybeSingle();
-
-                if (profileError || !profile || profile.status !== 'aprovado') {
-                    window.showToast('error', 'E-mail não encontrado ou cadastro pendente de aprovação.');
-                    btnText ? restoreElementState(btnText, btn, oldText) : restoreElementState(btn, btn, oldText);
-                    return;
-                }
-
+                // Supabase handles account lookup while signed out without exposing profiles.
                 const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
                     redirectTo: window.location.origin + window.location.pathname,
                 });
@@ -1853,13 +1853,54 @@ function getActiveExportView() {
                 if (error) {
                     window.showToast('error', 'Erro ao enviar e-mail: ' + error.message);
                 } else {
-                    window.showToast('success', 'Verifique seu e-mail para o link de redefinição de senha.');
+                    window.showToast('success', 'Se este e-mail estiver cadastrado, você receberá um link para redefinir sua senha.');
                     switchAuthView(loginFormSignin);
                 }
             } catch (err) {
                 window.showToast('error', 'Ocorreu um erro ao processar sua solicitação.');
             } finally {
                 btnText ? restoreElementState(btnText, btn, oldText) : restoreElementState(btn, btn, oldText);
+            }
+        });
+    }
+
+    // Password updates require the session established by the recovery email link.
+    const formReset = document.getElementById('resetForm');
+    if (formReset) {
+        formReset.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const password = document.getElementById('reset-password').value;
+            const confirmation = document.getElementById('reset-password-confirm').value;
+            if (password !== confirmation) {
+                window.showToast('error', 'As senhas não coincidem.');
+                return;
+            }
+            if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+                window.showToast('error', 'A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, uma minúscula e um caractere especial.');
+                return;
+            }
+            const btn = formReset.querySelector('button[type="submit"]');
+            const oldText = setElementLoading(btn, btn, 'Salvando...', 'text-white');
+            try {
+                const { error } = await supabase.auth.updateUser({ password });
+                if (error) {
+                    window.showToast('error', 'Não foi possível alterar a senha: ' + error.message);
+                    return;
+                }
+                formReset.reset();
+                isRecoveringPassword = false;
+                isAppReady = false;
+                window.showToast('success', 'Senha atualizada com sucesso!');
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    await checkProfileStatus(session.user);
+                } else {
+                    showScreen('login-view');
+                }
+            } catch (err) {
+                window.showToast('error', 'Ocorreu um erro ao atualizar a senha. Tente novamente.');
+            } finally {
+                restoreElementState(btn, btn, oldText);
             }
         });
     }
