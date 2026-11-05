@@ -1,4 +1,5 @@
 import supabase from './supabase.js?v=5';
+import { samePortfolioConfig } from './portfolio-config.mjs';
 
 export async function mountSpecialPortfolios(panel) {
  const nav=document.createElement('nav');
@@ -33,9 +34,11 @@ export async function mountSpecialPortfolios(panel) {
   if(total()!==10000){status.textContent='Os percentuais devem somar exatamente 100%.';return;}
   const clients=[...rows.children].map(row=>({code:row.querySelector('[data-code]').value.trim(),percent:Number(row.querySelector('[data-percent]').value)}));
   if(new Set(clients.map(c=>c.code)).size!==clients.length){status.textContent='Cada cliente deve aparecer uma única vez.';return;}
+  const startYm=Number(month.value.replace('-',''));
+  if(samePortfolioConfig(data,startYm,clients)){status.textContent='Nenhuma alteração para salvar.';return;}
   saving=true;for(const el of section.querySelectorAll('button,input,select'))el.disabled=true;
   status.textContent='Salvando e atualizando metas, vendas e filtros…';
-  try{data=await call({p_start_ym:Number(month.value.replace('-','')),p_clients:clients});render();status.textContent='Configuração salva. Metas, vendas e filtros atualizados. Atualize o dashboard aberto para consultar os resultados.';}
+  try{data=await call({p_start_ym:startYm,p_clients:clients});render();status.textContent='Configuração salva. Metas, vendas e filtros atualizados. Atualize o dashboard aberto para consultar os resultados.';}
   catch(e){status.textContent=`Não foi possível salvar: ${e.message}`;}
   finally{saving=false;for(const el of section.querySelectorAll('button,input,select'))el.disabled=false;}
  };

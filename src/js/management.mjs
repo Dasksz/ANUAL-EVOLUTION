@@ -1,4 +1,4 @@
-import { mountSpecialPortfolios } from './special-portfolios.mjs?v=20261105';
+import { mountSpecialPortfolios } from './special-portfolios.mjs?v=20261105-noop';
 import supabase from './supabase.js?v=5';
 const $ = id => document.getElementById(id);
 let state, editing, recovery, busy = false, loadEpoch = 0, goalRefreshTimer, specialMounted=false;
