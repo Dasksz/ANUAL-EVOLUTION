@@ -26,7 +26,7 @@ const tick=()=>new Promise(resolve=>setImmediate(resolve));
 test('competence selection reads the database RPC and changes all periods and exports',async t=>{
  const oct=data(),nov={...data(),competence:'2026-11',availableMonths:['2026-11','2026-10'],periods:['2026-06','2026-07','2026-08','2026-09','2026-10','2026-11']};
  const h=harness(t,[oct,nov]);let filename;h.win.jspdf={jsPDF:class{setFontSize(){}text(){}autoTable(){}save(n){filename=n;}}};
- h.panel.activate();await tick();assert.equal(h.calls[0].name,'get_commercial_health_month_v1');assert.equal(h.calls[0].args.p_month,null);
+ h.panel.activate();await tick();assert.equal(h.calls[0].name,'get_commercial_health_month_v2');assert.equal(h.calls[0].args.p_month,null);
  assert.equal(h.els.get('month').value,'2026-10');assert.ok(!h.els.get('month').innerHTML.includes('Mês mais recente'));assert.match(h.els.get('month').innerHTML,/2026-09/);h.els.get('month').value='2026-11';h.els.get('month').fire('change');
  assert.equal(h.els.get('csv').disabled,true);await tick();assert.equal(h.calls[1].args.p_month,'2026-11');
  assert.match(h.els.get('period').textContent,/nov/);h.els.get('pdf').click();assert.equal(filename,'Saude_Comercial_2026-11.pdf');
@@ -37,7 +37,7 @@ test('changing competence cannot reuse another month SKU cache or accept a late 
  assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 99'));
  h.responses.push(mixFixture());h.root.fire('click',{target:{closest:sel=>sel==='[data-client]'?{dataset:{client:'1'}}:null}});
  h.root.fire('click',{target:{closest:sel=>sel==='[data-ch-mix]'?{dataset:{chMix:'previous'}}:null}});await tick();
- assert.equal(h.calls.at(-1).name,'get_commercial_health_mix_month_v1');assert.equal(h.calls.at(-1).args.p_month,'2026-10');
+ assert.equal(h.calls.at(-1).name,'get_commercial_health_mix_month_v2');assert.equal(h.calls.at(-1).args.p_month,'2026-10');
 });
 test('failed month reads cannot export the previous month and selecting another month recovers',async t=>{
  const h=harness(t,[data(),{error:Error('offline')},{...data(),competence:'2026-11',availableMonths:['2026-11','2026-10'],periods:['2026-06','2026-07','2026-08','2026-09','2026-10','2026-11']}]);
@@ -51,7 +51,7 @@ test('an incomplete raw upload preserves the last valid read, explains the wait 
  assert.match(h.els.get('error').textContent,/resumos não precisam estar prontos/);assert.equal(h.els.get('pdf').disabled,true);assert.equal(h.els.get('csv').disabled,true);
  assert.match(h.els.get('rows').innerHTML,/Cliente 1/);
 });
-test('panel renders live totals and rows, card filters, clear and supplier-free controls',async t=>{const h=harness(t);h.panel.activate();await tick();assert.match(h.els.get('count').textContent,/3 de 3/);assert.equal(h.els.get('count-0').textContent,'1');assert.match(h.els.get('rows').innerHTML,/Cliente 1/);h.buttons[0].click();assert.match(h.els.get('count').textContent,/1 de 3/);assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 2'));h.els.get('clear').click();assert.match(h.els.get('count').textContent,/3 de 3/);assert.ok(h.root.innerHTML.includes('Cálculo automático pelas vendas'));assert.ok(h.root.innerHTML.includes('data-ch="month"'));assert.ok(!h.root.innerHTML.includes('Fornecedor'));});
+test('panel renders live totals and rows, card filters, clear and supplier controls',async t=>{const h=harness(t);h.panel.activate();await tick();assert.match(h.els.get('count').textContent,/3 de 3/);assert.equal(h.els.get('count-0').textContent,'1');assert.match(h.els.get('rows').innerHTML,/Cliente 1/);h.buttons[0].click();assert.match(h.els.get('count').textContent,/1 de 3/);assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 2'));h.els.get('clear').click();assert.match(h.els.get('count').textContent,/3 de 3/);assert.ok(h.root.innerHTML.includes('Cálculo automático pelas vendas'));assert.ok(h.root.innerHTML.includes('data-ch="month"'));assert.ok(h.root.innerHTML.includes('data-ch="supplier"'));});
 test('pagination changes pages without another request; CSV exports include every filtered page',async t=>{const d=data();d.rows=Array.from({length:60},(_,i)=>row(i+1,'CRÍTICO'));const h=harness(t,[d]);h.panel.activate();await tick();assert.match(h.els.get('page').textContent,/1 de 3/);const initial=h.els.get('rows').innerHTML;h.els.get('next').click();assert.match(h.els.get('page').textContent,/2 de 3/);assert.notEqual(h.els.get('rows').innerHTML,initial);assert.equal(exportRows(d.rows,periods).length,61);});
 test('refresh preserves user filters and shows last good snapshot if the new read fails',async t=>{const h=harness(t,[data(),{error:Error('offline')}]);h.panel.activate();await tick();h.buttons[1].click();await h.els.get('refresh').fire('click');await tick();assert.equal(h.els.get('status').value,'ANALISAR');assert.match(h.els.get('rows').innerHTML,/Cliente 2/);assert.equal(h.els.get('error').hidden,false);assert.equal(h.els.get('csv').disabled,false);});
 test('late response from a deactivated page cannot overwrite a newer response',async t=>{let finish;const old=new Promise(resolve=>finish=resolve),newData=data();newData.rows=[row(9,'CRÍTICO')];const h=harness(t,[old,newData]);h.panel.activate();h.panel.deactivate();h.panel.activate();await tick();finish({data:data()});await tick();assert.match(h.els.get('rows').innerHTML,/Cliente 9/);assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 1'));});
@@ -139,7 +139,7 @@ test('mix-reclassified clients affect cards, filtering, critical maximum, detail
  h.root.fire('click',{target:{closest:sel=>sel==='[data-client]'?{dataset:{client:'1'}}:null}});
  assert.match(h.els.get('detail-content').innerHTML,/reclassificado para Analisar por expansão de mix/);
  assert.match(h.els.get('detail-content').innerHTML,/2,50 vezes/);assert.match(h.els.get('detail-content').innerHTML,/pelo menos 1,5 vez/);
- assert.equal(exportRows([d.rows[0]],periods)[1].at(-1),'ANALISAR');
+ assert.equal(exportRows([d.rows[0]],periods)[1].at(-2),'ANALISAR');
 });
 
 test('critical client details also explain the 1.5x mix reclassification requirement',async t=>{
@@ -171,4 +171,40 @@ test('client headers use single-line abbreviations with full meaning in tooltips
  const h=harness(t);h.panel.activate();await tick();
  assert.ok(h.root.innerHTML.includes('Mediana hist.'));assert.ok(h.root.innerHTML.includes('Mix hist.'));assert.ok(!h.root.innerHTML.includes('ch-th-line'));
  assert.equal(h.els.get('mix-previous-header').textContent,'Mix set/26');assert.equal(h.els.get('previous-header').textContent,'set/2026');assert.match(h.els.get('mix-previous-header').title,/Média mix/);
+});
+
+
+test('supplier changes reload all metrics, scope SKU requests and label filtered exports',async t=>{
+ const salty={...data(),supplier:'salty',rows:[{...row(1,'CRÍTICO'),mixHistorical:1,mixPrevious:1}]};
+ const foods={...data(),supplier:'foods',rows:[{...row(1,'ANALISAR'),mixHistorical:1,mixPrevious:10}]};
+ const h=harness(t,[data(),salty,foods,mixFixture(),data()]);let table,filename,heading;
+ h.win.jspdf={jsPDF:class{setFontSize(){}text(text,x,y){if(y===16)heading=text;}autoTable(config){table=config;}save(n){filename=n;}}};
+ h.panel.activate();await tick();
+ h.els.get('supplier').value='salty';h.els.get('supplier').fire('change');
+ assert.equal(h.els.get('pdf').disabled,true);assert.equal(h.els.get('csv').disabled,true);
+ await tick();assert.equal(h.calls.at(-1).args.p_supplier,'salty');assert.equal(h.els.get('count-0').textContent,'1');
+ h.els.get('supplier').value='foods';h.els.get('supplier').fire('change');await tick();
+ assert.equal(h.calls.at(-1).args.p_supplier,'foods');assert.equal(h.els.get('count-0').textContent,'0');assert.equal(h.els.get('count-1').textContent,'1');
+ h.els.get('pdf').click();assert.equal(table.body[0].at(-1),'ANALISAR');assert.match(heading,/Foods/);assert.match(filename,/_foods.pdf$/);
+ assert.equal(exportRows(foods.rows,periods,'foods')[1].at(-1),'Foods');assert.match(csvText(foods.rows,periods,'foods'),/"Foods"/);
+ h.root.fire('click',{target:{closest:sel=>sel==='[data-client]'?{dataset:{client:'1'}}:null}});
+ h.root.fire('click',{target:{closest:sel=>sel==='[data-ch-mix]'?{dataset:{chMix:'previous'}}:null}});await tick();
+ assert.equal(h.calls.at(-1).args.p_supplier,'foods');
+ h.els.get('clear').click();await tick();assert.equal(h.calls.at(-1).args.p_supplier,'all');assert.equal(h.els.get('supplier').value,'all');
+});
+test('late supplier responses cannot restore another selection or enable its exports',async t=>{
+ let finish;const pending=new Promise(resolve=>finish=resolve);
+ const h=harness(t,[data(),pending,{...data(),supplier:'foods',rows:[row(8,'ANALISAR')]}]);
+ h.panel.activate();await tick();h.els.get('supplier').value='salty';h.els.get('supplier').fire('change');
+ h.els.get('supplier').value='foods';h.els.get('supplier').fire('change');await tick();
+ finish({data:{...data(),supplier:'salty',rows:[row(9,'CRÍTICO')]}});await tick();
+ assert.match(h.els.get('rows').innerHTML,/Cliente 8/);assert.ok(!h.els.get('rows').innerHTML.includes('Cliente 9'));
+});
+
+
+test('a valid supplier with no matching sales shows zero clients instead of stale data',async t=>{
+ const h=harness(t,[data(),{...data(),supplier:'foods',rows:[]}]);h.panel.activate();await tick();
+ h.els.get('supplier').value='foods';h.els.get('supplier').fire('change');await tick();
+ assert.equal(h.els.get('count-0').textContent,'0');assert.match(h.els.get('rows').innerHTML,/Nenhum cliente encontrado/);
+ assert.equal(h.els.get('error').hidden,true);assert.equal(h.els.get('csv').disabled,true);assert.equal(h.els.get('pdf').disabled,true);
 });
