@@ -12,7 +12,7 @@ BEGIN
  WHERE (s->>'buyers')::integer<3 OR (s->>'peers')::integer<5 OR (s->>'buyers')::integer>(s->>'peers')::integer
  OR EXISTS(SELECT 1 FROM jsonb_array_elements(c.detail->'skus')k WHERE k->>'code'=s->>'code')) THEN RAISE EXCEPTION 'Unsubstantiated or previously purchased suggestion'; END IF;
  WITH sales AS (
- SELECT codcli,produto,codfor,vlvenda,qtvenda,date_trunc('month',dtped AT TIME ZONE 'UTC') mon FROM public.data_history
+ SELECT codcli,produto,codfor,vlvenda,qtvenda,date_trunc('month',dtped AT TIME ZONE 'UTC') mon FROM private.commercial_health_sales_source_v1
  WHERE dtped>=date_trunc('month',now() AT TIME ZONE 'America/Bahia') AT TIME ZONE 'UTC'-interval '3 months'
  AND dtped<date_trunc('month',now() AT TIME ZONE 'America/Bahia') AT TIME ZONE 'UTC'
  AND codfor IN('707','708','752','1119') AND tipovenda IN('1','9')

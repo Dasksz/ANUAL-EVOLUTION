@@ -60,3 +60,12 @@ test('visit plan and PDF require four Foods brands and explain both remaining ga
  exportPlanPdf(d,PDF);assert.ok(texts.some(s=>s.includes('FOODS 2/4')));assert.ok(texts.some(s=>s.includes('As quatro marcas são obrigatórias')));
  assert.equal(tables[1].body.length,2);assert.ok(tables[1].body.some(r=>r.join(' ').includes('QUAKER')));assert.ok(tables[1].body.some(r=>r.join(' ').includes('KEROCOCO')));
 });
+
+test('SMART VOA without current sales keeps historical metrics and produces a bounded visit order',()=>{
+ const d=detail();Object.assign(d,{code:'9639',name:'SMART VOA',historyComplete:true,currentValue:0,currentMix:0,currentSalty:0,currentFoods:0,averageValue:19600.226666666666,averageMix:90.33333333333333,averageSalty:80,averageFoods:10.333333333333334,mixIdeal:{present:[]},suggestions:[]});
+ const salty=['CHEETOS','DORITOS','FANDANGOS','RUFFLES','TORCIDA'],foods=['QUAKER','TODDY','TODDYNHO','KEROCOCO'];
+ d.skus=Array.from({length:120},(_,i)=>({...sku(String(i),2,false),idealCategory:i<100?salty[i%5]:foods[i%4],family:i<100?'SALTY':'FOODS',averageQuantity:3}));
+ const sections=planSections(d);assert.equal(sections.order.blockedReason,null);assert.equal(sections.order.targetMix,91);assert.equal(sections.order.rows.length,91);assert.equal(sections.order.projectedMix,91);assert.equal(sections.order.ideal.achieved,false);
+ assert.match(planActions(d).join(' '),/Retomar a compra/);assert.ok(!planActions(d).join(' ').includes('Histórico incompleto'));
+ const html=detailHtml(d);assert.match(html,/19\.600,23/);assert.match(html,/90,3/);assert.match(html,/pl-stage-one/);assert.match(html,/pl-stage-two/);
+});

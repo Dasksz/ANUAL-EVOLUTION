@@ -108,16 +108,28 @@ BEGIN
  FROM p LEFT JOIN d ON d.codigo_cliente=p.code LEFT JOIN public.dim_vendedores v ON v.codigo=p.seller
  LEFT JOIN old ON old.r->>'code'=p.code;
  CREATE UNIQUE INDEX ON pl_people(code);
- -- Each month has one authoritative source. No union of overlapping history/current months.
+ -- Prefer the current upload for every month it contains, including historical months.
+ -- Fall back to data_history only for months absent from the current upload.
  CREATE TEMP TABLE pl_sales ON COMMIT DROP AS
+ WITH current_months AS MATERIALIZED(
+  SELECT DISTINCT date_trunc('month',dtped AT TIME ZONE 'UTC')::date month_start
+  FROM public.data_detailed
+  WHERE dtped>=(m-interval '3 months') AT TIME ZONE 'UTC'
+    AND dtped<(today+1)::timestamp AT TIME ZONE 'UTC'
+ ), source_rows AS(
+  SELECT codcli,produto,codfor,dtped,tipovenda,vlvenda,qtvenda FROM public.data_detailed
+  WHERE dtped>=(m-interval '3 months') AT TIME ZONE 'UTC'
+    AND dtped<(today+1)::timestamp AT TIME ZONE 'UTC'
+  UNION ALL
+  SELECT h.codcli,h.produto,h.codfor,h.dtped,h.tipovenda,h.vlvenda,h.qtvenda FROM public.data_history h
+  WHERE h.dtped>=(m-interval '3 months') AT TIME ZONE 'UTC'
+    AND h.dtped<m::timestamp AT TIME ZONE 'UTC'
+    AND NOT EXISTS(SELECT 1 FROM current_months cm
+      WHERE h.dtped>=cm.month_start::timestamp AT TIME ZONE 'UTC'
+        AND h.dtped<(cm.month_start+interval '1 month')::timestamp AT TIME ZONE 'UTC')
+ )
  SELECT s.*,CASE WHEN codfor IN('707','708','752') THEN 'SALTY' ELSE 'FOODS' END family
- FROM (
- SELECT codcli,produto,codfor,dtped,tipovenda,vlvenda,qtvenda FROM public.data_history
- WHERE dtped>=(m-interval '3 months') AT TIME ZONE 'UTC' AND dtped<m::timestamp AT TIME ZONE 'UTC'
- UNION ALL
- SELECT codcli,produto,codfor,dtped,tipovenda,vlvenda,qtvenda FROM public.data_detailed
- WHERE dtped>=m::timestamp AT TIME ZONE 'UTC' AND dtped<(today+1)::timestamp AT TIME ZONE 'UTC'
- )s WHERE codfor IN('707','708','752','1119') AND tipovenda IN('1','9');
+ FROM source_rows s WHERE codfor IN('707','708','752','1119') AND tipovenda IN('1','9');
  SELECT max(dtped AT TIME ZONE 'UTC')::date INTO cutoff FROM pl_sales WHERE dtped>=m::timestamp AT TIME ZONE 'UTC';
  SELECT count(DISTINCT date_trunc('month',dtped AT TIME ZONE 'UTC'))=3 INTO complete FROM pl_sales WHERE dtped<m::timestamp AT TIME ZONE 'UTC';
  CREATE INDEX ON pl_sales(codcli,produto);
