@@ -1,11 +1,11 @@
 export const IDEAL_SALTY=['CHEETOS','DORITOS','FANDANGOS','RUFFLES','TORCIDA'];
-export const IDEAL_FOODS=['TODDY','TODDYNHO'];
+export const IDEAL_FOODS=['QUAKER','TODDY','TODDYNHO','KEROCOCO'];
 export const IDEAL_CATEGORIES=[...IDEAL_SALTY,...IDEAL_FOODS];
 export function idealState(d){
  const actual=d.mixIdeal?(Array.isArray(d.mixIdeal.present)?d.mixIdeal.present:[]):(d.skus||[]).filter(s=>s.current).map(s=>s.idealCategory);
  const present=IDEAL_CATEGORIES.filter(c=>actual.includes(c));
  const saltyCount=IDEAL_SALTY.filter(c=>present.includes(c)).length,foodsCount=IDEAL_FOODS.filter(c=>present.includes(c)).length;
- return {present,missing:IDEAL_CATEGORIES.filter(c=>!present.includes(c)),saltyCount,foodsCount,salty:saltyCount===5,foods:foodsCount===2,achieved:saltyCount===5&&foodsCount===2};
+ return {present,missing:IDEAL_CATEGORIES.filter(c=>!present.includes(c)),saltyCount,foodsCount,salty:saltyCount===IDEAL_SALTY.length,foods:foodsCount===IDEAL_FOODS.length,achieved:saltyCount===IDEAL_SALTY.length&&foodsCount===IDEAL_FOODS.length};
 }
 const finite=(n,fallback=0)=>Number.isFinite(n)?n:fallback;
 const share=s=>Number.isFinite(s.sharePositivity)&&s.sharePositivity>=0?s.sharePositivity:Infinity;
