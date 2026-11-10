@@ -84,3 +84,17 @@ test('seven missing categories include five habitual items and two segment tests
  assert.ok(texts.some(s=>s.includes('priorizar 7 itens')));assert.match(detailHtml(d),/7 itens · Prioridade da visita/);
  d.suggestions=[];assert.match(planActions(d).join(' '),/cobrir 5 das 7 categorias/);assert.match(planActions(d).join(' '),/Sem indicação segura para completar: TODDYNHO, KEROCOCO/);
 });
+
+
+test('tomorrow preserves filters and KPI status, resets pagination and carries its date into detail and PDF',async t=>{
+ const next={...snapshot(),planningDate:'2026-10-30',planningDay:'tomorrow'};
+ const h=harness(t,[snapshot(),snapshot(),snapshot(),snapshot(),next,{...detail(),planningDate:'2026-10-30'},snapshot()]);
+ h.panel.activate();await tick();h.els.get('supervisor').value='12';h.els.get('supervisor').fire('change');await tick();
+ h.els.get('kpis').fire('click',{target:{closest:()=>({dataset:{kpi:'no-sale'}})}});await tick();
+ h.els.get('next').fire('click');await tick();h.els.get('tomorrow').fire('click');await tick();
+ assert.equal(h.calls[4].args.p_day,'tomorrow');assert.equal(h.calls[4].args.p_offset,0);assert.equal(h.calls[4].args.p_supervisor,'12');assert.equal(h.calls[4].args.p_status,'no-sale');
+ assert.match(h.els.get('day').textContent,/Carteira de amanhã/);assert.match(h.els.get('kpis').innerHTML,/Clientes de amanhã/);assert.equal(h.els.get('tomorrow')['aria-pressed'],'true');assert.equal(h.els.get('tomorrow').textContent,'Voltar para hoje');
+ h.els.get('cards').fire('click',{target:{closest:()=>({dataset:{client:'27'}})}});await tick();assert.match(h.els.get('detail-body').innerHTML,/PLANO DE VISITA · 30\/10\/2026/);
+ h.els.get('tomorrow').fire('click');await tick();assert.equal(h.calls[6].args.p_day,'today');assert.equal(h.els.get('detail').hidden,true);
+ h.auth();assert.equal(h.els.get('tomorrow')['aria-pressed'],'false');
+});
