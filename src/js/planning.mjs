@@ -1,4 +1,4 @@
-import {buildPortfolioPdfs,portfolioZip} from './planning-portfolio.mjs?v=20261110-team-pdf';
+import {buildPortfolioPdfs,portfolioZip} from './planning-portfolio.mjs?v=20261110-salty-ideal-pdf';
 import {buildSuggestedOrder,idealState,IDEAL_SALTY,IDEAL_FOODS,orderReason,orderStages} from './planning-order.mjs?v=20261110-ideal-stage-coverage';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=v=>v===null?'—':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v);

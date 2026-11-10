@@ -1,3 +1,4 @@
+import {IDEAL_SALTY} from './planning-order.mjs?v=20261110-ideal-stage-coverage';
 const clean=v=>String(v??'').replace(/[\x00-\x1f]/g,' ').trim();
 const filename=v=>clean(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'_').slice(0,90);
 const day=v=>new Date(v+'T12:00:00Z').toLocaleDateString('pt-BR',{timeZone:'UTC'});
@@ -30,13 +31,13 @@ export function buildPortfolioPdfs(data,PDF){
   pdf.autoTable({...base,startY:y,head:[['Código','Cliente','Cidade','Compra no mês']],body:group.clients.map(c=>[clean(c.code),clean(c.name),clean(c.city),c.currentMix===0?'SEM COMPRA':'Positivado']),columnStyles:{0:{cellWidth:19},2:{cellWidth:53},3:{cellWidth:35}},didParseCell:h=>{if(h.section==='body'&&group.clients[h.row.index].currentMix===0){h.cell.styles.fillColor=[254,235,234];h.cell.styles.textColor=[155,35,35];}}});y=pdf.lastAutoTable.finalY+10;
   paragraph('Categorias: check verde = compra no mês; X vermelho = sem compra na categoria. Clientes sem compra no mês destacados em vermelho.',9);
   for(const family of ['SALTY','FOODS']){
-   const categories=[...new Set(data.categoryCatalog.filter(c=>c.family===family).map(c=>clean(c.category)))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+   const categories=family==='SALTY'?[...IDEAL_SALTY]:[...new Set(data.categoryCatalog.filter(c=>c.family===family).map(c=>clean(c.category)))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR'));
    if(!categories.length){title('CATEGORIAS '+family);paragraph('Sem categorias cadastradas para esta família.');continue;}
    for(let start=0;start<categories.length;start+=8){
     const chunk=categories.slice(start,start+8);title('CATEGORIAS '+family+(categories.length>8?` - ${Math.floor(start/8)+1}/${Math.ceil(categories.length/8)}`:''));
     pdf.autoTable({...base,startY:y,head:[['Cliente',...chunk]],body:group.clients.map(c=>[clean(c.code)+' - '+clean(c.name),...chunk.map(()=> '')]),styles:{...base.styles,fontSize:7.5,halign:'center'},columnStyles:{0:{cellWidth:73,halign:'left'}},
      didParseCell:h=>{if(h.section==='body'&&h.column.index===0&&group.clients[h.row.index].currentMix===0){h.cell.styles.fillColor=[254,235,234];h.cell.styles.textColor=[155,35,35];}},
-     didDrawCell:h=>{if(h.section!=='body'||h.column.index===0)return;const c=group.clients[h.row.index],category=chunk[h.column.index-1],ok=c.categoryPresence.some(p=>p.family===family&&p.category===category),x=h.cell.x+h.cell.width/2,z=h.cell.y+h.cell.height/2;pdf.setLineWidth(.5);pdf.setDrawColor(...(ok?[22,130,82]:[190,55,55]));if(ok){pdf.line(x-1.7,z,x-.4,z+1.3);pdf.line(x-.4,z+1.3,x+2,z-1.5);}else{pdf.line(x-1.3,z-1.3,x+1.3,z+1.3);pdf.line(x-1.3,z+1.3,x+1.3,z-1.3);}}});y=pdf.lastAutoTable.finalY+10;
+     didDrawCell:h=>{if(h.section!=='body'||h.column.index===0)return;const c=group.clients[h.row.index],category=chunk[h.column.index-1],ok=family==='SALTY'&&Array.isArray(c.mixIdeal?.present)?c.mixIdeal.present.includes(category):c.categoryPresence.some(p=>p.family===family&&p.category===category),x=h.cell.x+h.cell.width/2,z=h.cell.y+h.cell.height/2;pdf.setLineWidth(.5);pdf.setDrawColor(...(ok?[22,130,82]:[190,55,55]));if(ok){pdf.line(x-1.7,z,x-.4,z+1.3);pdf.line(x-.4,z+1.3,x+2,z-1.5);}else{pdf.line(x-1.3,z-1.3,x+1.3,z+1.3);pdf.line(x-1.3,z+1.3,x+1.3,z-1.3);}}});y=pdf.lastAutoTable.finalY+10;
    }
   }
   const pages=pdf.getNumberOfPages();for(let i=1;i<=pages;i++){pdf.setPage(i);pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.setTextColor(110,105,115);pdf.text('PRIME | '+clean(group.name)+' | '+day(data.planningDate),margin,height-7);pdf.text(`${i} / ${pages}`,width-margin,height-7,{align:'right'});}

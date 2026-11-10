@@ -12,7 +12,12 @@ test('rejects incomplete, stale, blocked-day or pending export rather than creat
  for(const change of [{planningDay:'yesterday'},{planningDay:'unrouted'},{salesPending:true},{rosterPending:true},{salesThrough:null},{total:99}])assert.throws(()=>portfolioGroups({...data(),...change}));
  const d=data();d.rows.push(d.rows[0]);d.total++;assert.throws(()=>portfolioGroups(d));assert.throws(()=>buildPortfolioPdfs({...data(),rows:[],total:0},PDF),/Nenhum cliente/);
 });
-test('large category catalogs split into legible bands without dropping any category',()=>{
- const d=data();d.categoryCatalog=Array.from({length:26},(_,i)=>({family:'SALTY',category:'CAT '+i}));const f=buildPortfolioPdfs(d,PDF)[0];const headers=f.pdf.tables.slice(1).flatMap(x=>x.head[0].slice(1));assert.equal(headers.length,26);assert.equal(new Set(headers).size,26);assert.ok(f.pdf.tables.slice(1).every(t=>t.head[0].length<=9));
+test('Salty exports one table with only five ideal brands, using the same classification as the panel',()=>{
+ const d=data();d.categoryCatalog.push(...Array.from({length:26},(_,i)=>({family:'SALTY',category:'CAT '+i})));
+ d.rows[0].mixIdeal={present:['CHEETOS','DORITOS']};d.rows[0].categoryPresence=[{family:'SALTY',category:'CHEETOS CRUNCHY'}];
+ const f=buildPortfolioPdfs(d,PDF).find(f=>f.sellerCode==='321');
+ assert.deepEqual(f.pdf.tables[1].head[0],['Cliente','CHEETOS','DORITOS','FANDANGOS','RUFFLES','TORCIDA']);
+ assert.equal(f.pdf.texts.filter(t=>t.startsWith('CATEGORIAS SALTY')).length,1);assert.equal(f.pdf.tables.length,3);
+ assert.equal(f.pdf.lines.slice(0,4).every(x=>x[0][1]===130),true);
 });
 test('ZIP keeps an independently named PDF entry for every seller',async()=>{const files=buildPortfolioPdfs(data(),PDF),b=new Uint8Array(await portfolioZip(files).arrayBuffer());assert.equal(new DataView(b.buffer).getUint32(0,true),0x04034b50);const text=new TextDecoder().decode(b);for(const f of files)assert.ok(text.includes(f.name));assert.equal(new DataView(b.buffer).getUint16(b.length-12,true),2);});
