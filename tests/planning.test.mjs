@@ -116,7 +116,7 @@ test('multiple sellers use union RPC and preserve day, supervisor and KPI scope'
 
 
 test('portfolio download requests all filtered clients and names the single seller PDF',async t=>{
- const snap=snapshot();const row={...clientRow(),categoryPresence:[]};const payload={...snap,planningDay:'today',rows:[row],total:1,categoryCatalog:[]};
+ const snap=snapshot();const row={...clientRow(),revenueGoal:null,overdue:false,categoryPresence:[]};const payload={...snap,planningDay:'today',rows:[row],total:1,categoryCatalog:[]};
  const h=harness(t,[snap,payload]);const saved=[];class PDF{constructor(){this.lastAutoTable={finalY:50};}setFont(){}setFillColor(){}rect(){}setTextColor(){}setFontSize(){}splitTextToSize(s){return [s];}text(){}addPage(){}autoTable(){}getNumberOfPages(){return 1;}setPage(){}save(n){saved.push(n);}}
  h.win.jspdf={jsPDF:PDF};h.panel.activate();await tick();h.els.get('portfolio-pdf').fire('click');await tick();assert.equal(h.calls[1].name,'get_planning_portfolio_v1');assert.equal(h.calls[1].args.p_export,true);assert.equal(h.calls[1].args.p_offset,undefined);assert.deepEqual(h.calls[1].args.p_sellers,[]);assert.match(saved[0],/282_Matheus_2026-10-29.pdf/);
 });

@@ -1,13 +1,14 @@
 import {IDEAL_SALTY,idealState} from './planning-order.mjs?v=20261110-ideal-stage-coverage';
 const clean=v=>String(v??'').replace(/[\x00-\x1f]/g,' ').trim();
 const filename=v=>clean(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'_').slice(0,90);
+const money=v=>v===null||v===undefined?'—':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v);
 const day=v=>new Date(v+'T12:00:00Z').toLocaleDateString('pt-BR',{timeZone:'UTC'});
 export function portfolioGroups(data){
  if(!data||!['today','tomorrow'].includes(data.planningDay)||data.salesPending||data.rosterPending||!data.salesThrough)throw Error('Aguarde uma carteira válida de hoje ou amanhã para exportar.');
  if(!Array.isArray(data.rows)||data.rows.length!==data.total||!Array.isArray(data.categoryCatalog))throw Error('A exportação não recebeu a carteira completa. Atualize e tente novamente.');
  const groups=new Map(),seen=new Set();
  for(const row of data.rows){
-  if(!row.code||!row.sellerCode||!Number.isFinite(row.currentMix)||!Array.isArray(row.categoryPresence)||seen.has(row.code))throw Error('Cliente inválido ou duplicado na exportação.');
+  if(!row.code||!row.sellerCode||!Number.isFinite(row.currentMix)||!Array.isArray(row.categoryPresence)||!Number.isFinite(row.currentValue)||(row.averageValue!==null&&!Number.isFinite(row.averageValue))||(row.revenueGoal!==null&&!Number.isFinite(row.revenueGoal))||typeof row.overdue!=='boolean'||seen.has(row.code))throw Error('Cliente inválido ou duplicado na exportação.');
   seen.add(row.code);if(!groups.has(row.sellerCode))groups.set(row.sellerCode,{code:row.sellerCode,name:row.seller,supervisor:row.supervisor,clients:[]});groups.get(row.sellerCode).clients.push(row);
  }
  return [...groups.values()].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(g=>({...g,clients:g.clients.sort((a,b)=>Number(a.currentMix>0)-Number(b.currentMix>0)||(a.city||'').localeCompare(b.city||'','pt-BR')||a.name.localeCompare(b.name,'pt-BR'))}));
@@ -25,16 +26,18 @@ export function buildPortfolioPdfs(data,PDF){
   paragraph(`${group.clients.length} clientes na rota | ${group.clients.filter(c=>c.currentMix===0).length} sem compra no mês | Vendas até ${day(data.salesThrough)}`);
   if(data.status&&data.status!=='all')paragraph('Recorte: '+({'no-sale':'Sem compra no mês',ideal:'Mix ideal alcançado',purchased:'Com compra no mês'})[data.status]);
   if(data.search)paragraph('Busca aplicada: '+data.search);
+  paragraph('Faturamento e meta do mês: '+data.month+' | Média trim.: média mensal de faturamento dos 3 meses históricos. Inadimplente: título vencido com saldo a receber na data da consulta.',8);
+  if(data.goalsAvailable===false)paragraph('Meta: — indica ausência de meta individual cadastrada para este mês.',8);
   const base={margin:{left:margin,right:margin,top:18,bottom:16},styles:{font:'helvetica',fontSize:8,cellPadding:2.4,overflow:'linebreak'},headStyles:{fillColor:[38,34,44],textColor:255},rowPageBreak:'avoid',didDrawPage:banner};
   function title(text){if(y>height-44){pdf.addPage();banner();y=21;}paragraph(text,12,true);}
   for(const purchased of [false,true]){
    const clients=group.clients.filter(c=>(c.currentMix>0)===purchased);
    title(`${purchased?'CLIENTES POSITIVADOS NO MÊS':'CLIENTES SEM COMPRA NO MÊS'} (${clients.length})`);
    if(!clients.length){paragraph(purchased?'Nenhum cliente positivado neste recorte.':'Todos os clientes deste recorte já compraram no mês.',9);continue;}
-   pdf.autoTable({...base,startY:y,head:[purchased?['Código','Cliente','Cidade','Mix ideal']:['Código','Cliente','Cidade']],body:clients.map(c=>{
-    const cells=[clean(c.code),clean(c.name),clean(c.city)];
+   pdf.autoTable({...base,startY:y,head:[purchased?['Código','Cliente','Cidade','Média trim.','Meta','Realizado','Inadimplente','Mix ideal']:['Código','Cliente','Cidade','Média trim.','Meta','Realizado','Inadimplente']],body:clients.map(c=>{
+    const cells=[clean(c.code),clean(c.name),clean(c.city),money(c.averageValue),money(c.revenueGoal),money(c.currentValue),c.overdue?'Sim':'Não'];
     if(purchased){const mix=idealState(c);cells.push(`Salty ${mix.saltyCount}/5 - Foods ${mix.foodsCount}/4`);}return cells;
-   }),columnStyles:{0:{cellWidth:19},2:{cellWidth:48},...(purchased?{3:{cellWidth:64}}:{})},didParseCell:h=>{if(h.section==='body'&&!purchased){h.cell.styles.fillColor=[254,235,234];h.cell.styles.textColor=[155,35,35];}}});y=pdf.lastAutoTable.finalY+10;
+   }),columnStyles:{0:{cellWidth:16},2:{cellWidth:30},3:{cellWidth:27,halign:'right'},4:{cellWidth:27,halign:'right'},5:{cellWidth:27,halign:'right'},6:{cellWidth:24,halign:'center'},...(purchased?{7:{cellWidth:47}}:{})},didParseCell:h=>{if(h.section==='body'&&!purchased){h.cell.styles.fillColor=[254,235,234];h.cell.styles.textColor=[155,35,35];}}});y=pdf.lastAutoTable.finalY+10;
   }
   paragraph('Categorias: check verde = compra no mês; X vermelho = sem compra na categoria. Clientes sem compra no mês destacados em vermelho.',9);
   for(const family of ['SALTY','FOODS']){

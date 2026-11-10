@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION public.get_planning_portfolio_v1(
  p_search text DEFAULT '',p_offset integer DEFAULT 0,p_limit integer DEFAULT 24,
  p_status text DEFAULT 'all',p_export boolean DEFAULT false)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=pg_catalog AS $$
-DECLARE base jsonb;result jsonb;
+DECLARE base jsonb;result jsonb;codes text[];finances jsonb;
 BEGIN
  IF p_export AND p_day NOT IN('today','tomorrow') THEN RAISE EXCEPTION 'Exporte somente a carteira de hoje ou amanhã' USING ERRCODE='22023'; END IF;
  IF p_status IS NULL OR p_status NOT IN('all','no-sale','ideal','purchased') THEN RAISE EXCEPTION 'Classificação inválida' USING ERRCODE='22023'; END IF;
@@ -39,6 +39,13 @@ BEGIN
    FROM public.dim_produtos WHERE codfor IN('707','708','752','1119') AND nullif(btrim(categoria_produto),'') IS NOT NULL
    UNION SELECT k->>'family',k->>'category' FROM public.planning_clients c CROSS JOIN LATERAL jsonb_array_elements(c.detail->'skus')k
    WHERE c.version=(base->>'version')::uuid AND k->>'family' IN('SALTY','FOODS') AND nullif(k->>'category','') IS NOT NULL)x));
+ END IF;
+ IF p_export AND jsonb_array_length(result->'rows')>0 THEN
+  SELECT array_agg(r->>'code') INTO codes FROM jsonb_array_elements(result->'rows')r;
+  finances:=private.planning_financial_fetch_v1(base->>'month',codes);
+  result:=result||jsonb_build_object('rows',(SELECT jsonb_agg(r||(finances->'clients'->(r->>'code')) ORDER BY ord)
+   FROM jsonb_array_elements(result->'rows') WITH ORDINALITY AS x(r,ord)),
+   'financialReadAt',finances->'readAt','goalsAvailable',finances->'goalsAvailable');
  END IF;
  RETURN base||result;
 END;$$;
