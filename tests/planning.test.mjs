@@ -21,7 +21,7 @@ test('page and PDF present the same two stages without duplicating selected item
 });
 
 class El{constructor(){this.value='';this.innerHTML='';this.textContent='';this.hidden=false;this.disabled=false;this.events={};}addEventListener(k,fn){(this.events[k]??=[]).push(fn);}fire(k,e={}){for(const fn of this.events[k]??[])fn({target:this,...e});}focus(){}setAttribute(k,v){this[k]=v;}}
-function harness(t,responses=[snapshot()]){const els=new Map(),root=new El(),calls=[],intervals=new Map();let auth,clock=0;root.querySelector=selector=>{const k=selector.match(/data-pl="([^"]+)/)[1];if(!els.has(k))els.set(k,new El());return els.get(k);};const win={setInterval(fn){intervals.set(++clock,fn);return clock;},clearInterval(id){intervals.delete(id);},setTimeout(fn){fn();return 1;},clearTimeout(){}};const client={rpc(name,args){calls.push({name,args});const next=responses.shift();return {abortSignal:()=>next instanceof Promise?next:Promise.resolve(next?.error?next:{data:next})};},auth:{onAuthStateChange(fn){auth=fn;}}};const panel=createPlanningPanel({root,client,window:win,document:{visibilityState:'visible'}});root.querySelector('[data-pl="detail"]').hidden=true;t.after(()=>panel.deactivate());return {panel,calls,els,intervals,auth:()=>auth('SIGNED_OUT')};}
+function harness(t,responses=[snapshot()]){const els=new Map(),root=new El(),calls=[],intervals=new Map();let auth,clock=0;root.querySelector=selector=>{const k=selector.match(/data-pl="([^"]+)/)[1];if(!els.has(k))els.set(k,new El());return els.get(k);};const win={setInterval(fn){intervals.set(++clock,fn);return clock;},clearInterval(id){intervals.delete(id);},setTimeout(fn){fn();return 1;},clearTimeout(){}};const client={rpc(name,args){calls.push({name,args});const next=responses.shift();return {abortSignal:()=>next instanceof Promise?next:Promise.resolve(next?.error?next:{data:next})};},auth:{onAuthStateChange(fn){auth=fn;}}};const panel=createPlanningPanel({root,client,window:win,document:{visibilityState:'visible'}});root.querySelector('[data-pl="detail"]').hidden=true;t.after(()=>panel.deactivate());return {panel,calls,els,intervals,win,auth:()=>auth('SIGNED_OUT')};}
 const tick=()=>new Promise(r=>setImmediate(r));
 test('KPI filters reset pagination, preserve team/search and keep scope counts visible',async t=>{
  const filtered={...snapshot(),scopeTotal:50,total:1,status:'no-sale'};
@@ -97,4 +97,29 @@ test('tomorrow preserves filters and KPI status, resets pagination and carries i
  h.els.get('cards').fire('click',{target:{closest:()=>({dataset:{client:'27'}})}});await tick();assert.match(h.els.get('detail-body').innerHTML,/PLANO DE VISITA · 30\/10\/2026/);
  h.els.get('tomorrow').fire('click');await tick();assert.equal(h.calls[6].args.p_day,'today');assert.equal(h.els.get('detail').hidden,true);
  h.auth();assert.equal(h.els.get('tomorrow')['aria-pressed'],'false');
+});
+
+test('portfolio button exists below day controls and is unavailable for yesterday, unrouted and pending sales',async t=>{
+ const h=harness(t,[snapshot(),{...snapshot(),planningDay:'yesterday'},{...snapshot(),planningDay:'unrouted'},{...snapshot(),planningDay:'tomorrow',salesPending:true}]);h.panel.activate();await tick();assert.equal(h.els.get('portfolio-pdf').disabled,false);
+ h.els.get('yesterday').fire('click');await tick();assert.equal(h.els.get('portfolio-pdf').hidden,true);
+ h.els.get('unrouted').fire('click');await tick();assert.equal(h.els.get('portfolio-pdf').hidden,true);
+ h.els.get('tomorrow').fire('click');await tick();assert.equal(h.els.get('portfolio-pdf').hidden,false);assert.equal(h.els.get('portfolio-pdf').disabled,true);
+});
+test('multiple sellers use union RPC and preserve day, supervisor and KPI scope',async t=>{
+ const h=harness(t,Array.from({length:7},snapshot));h.panel.activate();await tick();
+ h.els.get('supervisor').value='12';h.els.get('supervisor').fire('change');await tick();
+ for(const sellerCode of ['282','321']){h.els.get('seller').fire('change',{target:{dataset:{sellerCode},checked:true}});await tick();}
+ assert.equal(h.calls.at(-1).name,'get_planning_portfolio_v1');assert.deepEqual(h.calls.at(-1).args.p_sellers,['282','321']);assert.equal(h.calls.at(-1).args.p_supervisor,'12');
+ h.els.get('tomorrow').fire('click');await tick();assert.equal(h.calls.at(-1).args.p_day,'tomorrow');assert.deepEqual(h.calls.at(-1).args.p_sellers,['282','321']);
+ h.els.get('clear').fire('click');await tick();assert.equal(h.calls.at(-1).args.p_seller,null);
+});
+
+
+test('portfolio download requests all filtered clients and names the single seller PDF',async t=>{
+ const snap=snapshot();const row={...clientRow(),categoryPresence:[]};const payload={...snap,planningDay:'today',rows:[row],total:1,categoryCatalog:[]};
+ const h=harness(t,[snap,payload]);const saved=[];class PDF{constructor(){this.lastAutoTable={finalY:50};}setFont(){}setFillColor(){}rect(){}setTextColor(){}setFontSize(){}splitTextToSize(s){return [s];}text(){}addPage(){}autoTable(){}getNumberOfPages(){return 1;}setPage(){}save(n){saved.push(n);}}
+ h.win.jspdf={jsPDF:PDF};h.panel.activate();await tick();h.els.get('portfolio-pdf').fire('click');await tick();assert.equal(h.calls[1].name,'get_planning_portfolio_v1');assert.equal(h.calls[1].args.p_export,true);assert.equal(h.calls[1].args.p_offset,undefined);assert.deepEqual(h.calls[1].args.p_sellers,[]);assert.match(saved[0],/282_Matheus_2026-10-29.pdf/);
+});
+test('changing filters during export cannot download a stale portfolio',async t=>{
+ let done;const pending=new Promise(r=>done=r);const h=harness(t,[snapshot(),pending,snapshot()]);let saved=0;h.win.jspdf={jsPDF:class{constructor(){saved++;}}};h.panel.activate();await tick();h.els.get('portfolio-pdf').fire('click');h.els.get('search').value='Outro';h.els.get('search').fire('input');await tick();done({data:{...snapshot(),planningDay:'today',rows:[],total:0,categoryCatalog:[]}});await tick();assert.equal(saved,0);assert.match(h.els.get('error').textContent,/filtros mudaram/);
 });
