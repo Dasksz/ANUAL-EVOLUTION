@@ -69,3 +69,18 @@ test('SMART VOA without current sales keeps historical metrics and produces a bo
  assert.match(planActions(d).join(' '),/Retomar a compra/);assert.ok(!planActions(d).join(' ').includes('Histórico incompleto'));
  const html=detailHtml(d);assert.match(html,/19\.600,23/);assert.match(html,/90,3/);assert.match(html,/pl-stage-one/);assert.match(html,/pl-stage-two/);
 });
+
+
+test('seven missing categories include five habitual items and two segment tests in stage one and PDF',()=>{
+ const d=detail();d.mixIdeal={present:['DORITOS','FANDANGOS']};d.currentMix=4;d.averageMix=42.7;d.averageSalty=null;d.averageFoods=null;
+ const known=['CHEETOS','RUFFLES','TORCIDA','QUAKER','TODDY'];
+ d.skus=known.map((c,i)=>({...sku('known'+i),idealCategory:c,family:i<3?'SALTY':'FOODS'}));
+ d.skus.push(...Array.from({length:40},(_,i)=>({...sku('depth'+i),idealCategory:'OUTROS'})));
+ d.suggestions=['TODDYNHO','KEROCOCO'].map(c=>({code:c,name:c,idealCategory:c,family:'FOODS',buyers:4,peers:10,penetration:40}));
+ const order=planSections(d).order;assert.equal(order.ideal.missing.length,7);assert.deepEqual(order.uncoveredCategories,[]);
+ const actions=planActions(d).join(' ');assert.match(actions,/faltam 7 categorias/);assert.match(actions,/priorizar 7 itens para cobrir 7 das 7 categorias pendentes: 5 já trabalhados pelo cliente e 2 testes/);
+ const tables=[],texts=[];class PDF{constructor(){this.lastAutoTable={finalY:50};}setFillColor(){}rect(){}setTextColor(){}setFontSize(){}splitTextToSize(s){return [s];}text(s){texts.push(s);}addPage(){}autoTable(o){tables.push(o);}getNumberOfPages(){return 1;}setPage(){}save(){}}
+ exportPlanPdf(d,PDF);assert.equal(tables[1].body.length,7);for(const c of ['TODDYNHO','KEROCOCO'])assert.ok(tables[1].body.some(r=>r[0].includes(c)));
+ assert.ok(texts.some(s=>s.includes('priorizar 7 itens')));assert.match(detailHtml(d),/7 itens · Prioridade da visita/);
+ d.suggestions=[];assert.match(planActions(d).join(' '),/cobrir 5 das 7 categorias/);assert.match(planActions(d).join(' '),/Sem indicação segura para completar: TODDYNHO, KEROCOCO/);
+});

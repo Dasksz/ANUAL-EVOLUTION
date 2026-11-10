@@ -35,8 +35,8 @@ test('stage one prioritizes habitual ideal coverage ahead of lower Share depth a
  d.skus=[sku('torcida','TORCIDA',90),sku('toddy','TODDY',70),sku('depth','SENSACOES',1),sku('repeat','TODDY',80)];
  d.suggestions=[{...sku('novel','TODDYNHO',2),buyers:4,peers:10,penetration:40}];
  const p=buildSuggestedOrder(d),s=orderStages(p);
- assert.deepEqual(s.complete.map(x=>x.code),['toddy','torcida']);
- assert.deepEqual(s.complement.map(x=>x.code),['depth','repeat','novel']);
+ assert.deepEqual(s.complete.map(x=>x.code),['toddy','torcida','novel']);
+ assert.deepEqual(s.complement.map(x=>x.code),['depth','repeat']);
  assert.deepEqual(p.rows.map(x=>x.code),[...s.complete,...s.complement].map(x=>x.code));
  assert.equal(new Set(p.rows.map(x=>x.code)).size,p.rows.length);assert.equal(p.projectedMix,7);
 });
@@ -44,5 +44,5 @@ test('achieved clients have no stage one and no-history categories never masquer
  const d=data();d.mixIdeal.present=[...IDEAL_CATEGORIES];d.skus=[sku('depth','SENSACOES')];
  let s=orderStages(buildSuggestedOrder(d));assert.equal(s.complete.length,0);assert.equal(s.complement.length,1);
  d.mixIdeal.present=[];d.skus=[];d.suggestions=[{...sku('new','TODDY'),months:0,buyers:4,peers:10}];
- s=orderStages(buildSuggestedOrder(d));assert.equal(s.complete.length,0);assert.equal(s.complement[0].purpose,'ideal');
+ s=orderStages(buildSuggestedOrder(d));assert.equal(s.complete.length,1);assert.equal(s.complete[0].purpose,'ideal');assert.equal(s.complete[0].kind,'segmento');assert.equal(s.complement.length,0);
 });
