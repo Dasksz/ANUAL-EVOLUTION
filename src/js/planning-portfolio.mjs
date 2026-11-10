@@ -1,4 +1,4 @@
-import {IDEAL_SALTY} from './planning-order.mjs?v=20261110-ideal-stage-coverage';
+import {IDEAL_SALTY,idealState} from './planning-order.mjs?v=20261110-ideal-stage-coverage';
 const clean=v=>String(v??'').replace(/[\x00-\x1f]/g,' ').trim();
 const filename=v=>clean(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'_').slice(0,90);
 const day=v=>new Date(v+'T12:00:00Z').toLocaleDateString('pt-BR',{timeZone:'UTC'});
@@ -10,7 +10,7 @@ export function portfolioGroups(data){
   if(!row.code||!row.sellerCode||!Number.isFinite(row.currentMix)||!Array.isArray(row.categoryPresence)||seen.has(row.code))throw Error('Cliente inválido ou duplicado na exportação.');
   seen.add(row.code);if(!groups.has(row.sellerCode))groups.set(row.sellerCode,{code:row.sellerCode,name:row.seller,supervisor:row.supervisor,clients:[]});groups.get(row.sellerCode).clients.push(row);
  }
- return [...groups.values()].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(g=>({...g,clients:g.clients.sort((a,b)=>(a.city||'').localeCompare(b.city||'','pt-BR')||a.name.localeCompare(b.name,'pt-BR'))}));
+ return [...groups.values()].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(g=>({...g,clients:g.clients.sort((a,b)=>Number(a.currentMix>0)-Number(b.currentMix>0)||(a.city||'').localeCompare(b.city||'','pt-BR')||a.name.localeCompare(b.name,'pt-BR'))}));
 }
 export function buildPortfolioPdfs(data,PDF){
  if(!PDF)throw Error('PDF indisponível. Atualize a página e tente novamente.');
@@ -27,8 +27,15 @@ export function buildPortfolioPdfs(data,PDF){
   if(data.search)paragraph('Busca aplicada: '+data.search);
   const base={margin:{left:margin,right:margin,top:18,bottom:16},styles:{font:'helvetica',fontSize:8,cellPadding:2.4,overflow:'linebreak'},headStyles:{fillColor:[38,34,44],textColor:255},rowPageBreak:'avoid',didDrawPage:banner};
   function title(text){if(y>height-44){pdf.addPage();banner();y=21;}paragraph(text,12,true);}
-  title('CLIENTES DA ROTA');
-  pdf.autoTable({...base,startY:y,head:[['Código','Cliente','Cidade','Compra no mês']],body:group.clients.map(c=>[clean(c.code),clean(c.name),clean(c.city),c.currentMix===0?'SEM COMPRA':'Positivado']),columnStyles:{0:{cellWidth:19},2:{cellWidth:53},3:{cellWidth:35}},didParseCell:h=>{if(h.section==='body'&&group.clients[h.row.index].currentMix===0){h.cell.styles.fillColor=[254,235,234];h.cell.styles.textColor=[155,35,35];}}});y=pdf.lastAutoTable.finalY+10;
+  for(const purchased of [false,true]){
+   const clients=group.clients.filter(c=>(c.currentMix>0)===purchased);
+   title(`${purchased?'CLIENTES POSITIVADOS NO MÊS':'CLIENTES SEM COMPRA NO MÊS'} (${clients.length})`);
+   if(!clients.length){paragraph(purchased?'Nenhum cliente positivado neste recorte.':'Todos os clientes deste recorte já compraram no mês.',9);continue;}
+   pdf.autoTable({...base,startY:y,head:[purchased?['Código','Cliente','Cidade','Mix ideal']:['Código','Cliente','Cidade']],body:clients.map(c=>{
+    const cells=[clean(c.code),clean(c.name),clean(c.city)];
+    if(purchased){const mix=idealState(c);cells.push(`Salty ${mix.saltyCount}/5 - Foods ${mix.foodsCount}/4`);}return cells;
+   }),columnStyles:{0:{cellWidth:19},2:{cellWidth:48},...(purchased?{3:{cellWidth:64}}:{})},didParseCell:h=>{if(h.section==='body'&&!purchased){h.cell.styles.fillColor=[254,235,234];h.cell.styles.textColor=[155,35,35];}}});y=pdf.lastAutoTable.finalY+10;
+  }
   paragraph('Categorias: check verde = compra no mês; X vermelho = sem compra na categoria. Clientes sem compra no mês destacados em vermelho.',9);
   for(const family of ['SALTY','FOODS']){
    const categories=family==='SALTY'?[...IDEAL_SALTY]:[...new Set(data.categoryCatalog.filter(c=>c.family===family).map(c=>clean(c.category)))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR'));
