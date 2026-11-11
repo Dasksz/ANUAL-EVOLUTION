@@ -1458,7 +1458,8 @@
                                     <button class="goals-metric-btn bg-white/5 hover:bg-white/10 text-slate-400 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-metric="foods">Mix Foods</button>
                                 </div>
                             </div>
-                            <div id="goals-chart-legend" class="w-full flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pb-3 text-xs text-slate-400"></div>
+                            <p id="goals-chart-scope-notice" role="status" class="empty:hidden text-xs text-amber-300 px-3 py-2"></p>
+                        <div id="goals-chart-legend" class="w-full flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pb-3 text-xs text-slate-400"></div>
                             <div class="w-full overflow-x-auto pb-2" style="scrollbar-width: thin;">
                                 <div class="h-96 relative flex items-center justify-center" style="min-width: 1400px;">
                                     <div id="goals-chart-loading" class="absolute z-10 flex flex-col items-center justify-center bg-[#151419]/80 backdrop-blur-md/80 inset-0 hidden backdrop-blur-sm rounded-lg">
@@ -1475,6 +1476,7 @@
                             <svg id="goals-details-chevron" class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9 6 6 6-6"></path></svg>
                         </button>
                         <div id="goals-details-panel" class="hidden">
+                        <p id="goals-table-scope-notice" role="status" class="empty:hidden text-xs text-amber-300 px-3 py-2"></p>
                         <p id="goals-attribution-notice" role="status" class="text-xs text-slate-400 px-3 py-3"></p>
                         <details id="goals-attribution-pending" class="hidden px-3 pb-3 text-xs text-amber-300">
                             <summary class="cursor-pointer">Ver clientes com parcelas pendentes</summary>
@@ -3269,7 +3271,7 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-80 sm:w-96 pointer-events-none"></div>
 
-    <script type="module" src="src/js/app.js?v=20261110-financial-pdf"></script>
+    <script type="module" src="src/js/app.js?v=20261111-goals-audit"></script>
     <script type="module" src="src/js/goal-meetings.mjs?v=20261008-5"></script>
     <script type="module" src="src/js/management-entry.mjs?v=20261008-1"></script>
 

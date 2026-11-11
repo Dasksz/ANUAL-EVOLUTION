@@ -41,3 +41,15 @@ test('import reconciliation compares leaf revenue and kg, excludes supervisors a
  assert.equal(rows[2].val,90,'reported company target must never be silently rewritten');
  rows[2].val=100.01;assert.deepEqual(importReconciliation(rows),[]);
 });
+
+test('equivalent filter sets normalize without mutating controls or combining distinct POS groups', async () => {
+    const {normalizeGoalsFilters,scopedPosCategory} = await import('../src/js/dashboard-goals.mjs');
+    const input = {filiais:['08','05','05'],fornecedores:['1119_KEROCOCO','1119_QUAKER']};
+    const f = normalizeGoalsFilters(input,['05','08']);
+    assert.deepEqual(f.filiais,[]);
+    assert.deepEqual(input.filiais,['08','05','05']);
+    assert.equal(scopedPosCategory(f.fornecedores),'1119_QUAKER_KEROCOCO');
+    assert.equal(scopedPosCategory(normalizeGoalsFilters({fornecedores:['1119','1119_TODDY']}).fornecedores),'total_foods');
+    assert.equal(scopedPosCategory(normalizeGoalsFilters({fornecedores:['707','708']}).fornecedores),null);
+    assert.equal(scopedPosCategory(normalizeGoalsFilters({fornecedores:['707','708','752','1119']}).fornecedores),'geral');
+});

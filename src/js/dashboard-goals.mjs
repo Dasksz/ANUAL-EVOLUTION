@@ -70,3 +70,51 @@ export function importReconciliation(rows) {
     }
     return warnings;
 }
+
+// Normalize equivalent selections before requests and before deciding which totals to show.
+const elmaGoalGroups = ['707', '708', '752'];
+const foodsGoalGroups = ['1119_TODDYNHO', '1119_TODDY', '1119_QUAKER_KEROCOCO'];
+
+export function normalizeGoalsFilters(filters = {}, allBranches = []) {
+    const keys = ['filiais', 'fornecedores', 'supervisores', 'vendedores', 'categorias'];
+    const scope = Object.fromEntries(keys.map(key => [key, [...new Set((filters[key] || [])
+        .map(v => String(v).trim().toUpperCase()).filter(v => v && !['TODOS','TODAS','AMBAS'].includes(v)))].sort()]));
+    scope.fornecedores = commercialGroups(scope.fornecedores);
+    if (scope.fornecedores.includes('1119')) scope.fornecedores = scope.fornecedores.filter(v => !foodsGoalGroups.includes(v));
+    if (elmaGoalGroups.every(v => scope.fornecedores.includes(v)) &&
+        (scope.fornecedores.includes('1119') || foodsGoalGroups.every(v => scope.fornecedores.includes(v)))) {
+        scope.fornecedores = [];
+    }
+    if (allBranches.length && allBranches.every(branch => scope.filiais.includes(String(branch).trim().toUpperCase()))) scope.filiais = [];
+    return scope;
+}
+
+export function scopedPosCategory(suppliers) {
+    if (suppliers.length === 0) return 'geral';
+    if (suppliers.length !== 1) return null;
+    return suppliers[0] === '1119' ? 'total_foods' : suppliers[0];
+}
+
+export function applyScopedSupplierTotals(totals, rows, suppliers) {
+    const selected = new Set(suppliers.flatMap(s => s === '1119' ? foodsGoalGroups : [s]));
+    if (!selected.size) return;
+    const posCategory = scopedPosCategory(suppliers);
+    const matching = (metric, category) => rows.filter(row => row.metrica === metric && row.categoria === category &&
+        row.valor != null && Number.isFinite(Number(row.valor)));
+    for (const category of selected) {
+        const values = matching('FAT', category);
+        if (values.length && totals[category]) totals[category].metaFat = values.reduce((sum, row) => sum + Number(row.valor), 0);
+    }
+    for (const [total, leaves] of [['total_elma', elmaGoalGroups], ['total_foods', foodsGoalGroups]]) {
+        if (totals[total]) totals[total].metaFat = leaves.reduce((sum, leaf) => sum + (selected.has(leaf) ? totals[leaf]?.metaFat || 0 : 0), 0);
+    }
+    if (totals.geral) totals.geral.metaFat = (totals.total_elma?.metaFat || 0) + (totals.total_foods?.metaFat || 0);
+    if (posCategory && totals[posCategory]) {
+        const values = matching('POS', posCategory);
+        const pos = values.length ? values.reduce((sum, row) => sum + Number(row.valor), 0) : totals[posCategory].metaPos;
+        totals[posCategory].metaPos = pos;
+        if (totals.geral) totals.geral.metaPos = pos;
+        const total = elmaGoalGroups.includes(posCategory) ? totals.total_elma : totals.total_foods;
+        if (total) total.metaPos = pos;
+    }
+}

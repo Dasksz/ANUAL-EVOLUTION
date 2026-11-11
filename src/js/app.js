@@ -2,7 +2,7 @@ import { changedDimensionRows, clientSummaryNeedsRefresh } from './dimension-syn
 import { createPlanningPanel } from './planning.mjs?v=20261110-financial-pdf';
 import { createCommercialHealthPanel } from './commercial-health.mjs?v=20261106-health-suppliers';
 import { startRefreshProgress } from './refresh-progress.mjs?v=20261023-compact';
-import * as DashboardGoals from './dashboard-goals.mjs?v=20261018-client-goals';
+import * as DashboardGoals from './dashboard-goals.mjs?v=20261111-audit';
 import { isVendorRankingEligible } from "./vendor-ranking.mjs?v=20261001-all-rankings";
 import supabase from './supabase.js?v=5';
 
@@ -11661,6 +11661,7 @@ let currentGoalsMes = new Date().getMonth() + 1; // Current Month
             }
 
 let goalsChartInstance = null;
+let goalsBranchOptions = [];
 let currentGoalsMetric = 'fat'; // fat, vol, pos, salty, foods
 window.goalsMultiFilters = window.goalsMultiFilters || {
     filiais: [],
@@ -11733,7 +11734,7 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
     
     const anoSelect = document.getElementById('goals-filter-ano');
     const mesSelect = document.getElementById('goals-filter-mes');
-    const filters = JSON.parse(JSON.stringify(window.goalsMultiFilters || { filiais: [], fornecedores: [], supervisores: [], vendedores: [], categorias: [] }));
+    let filters = DashboardGoals.normalizeGoalsFilters(window.goalsMultiFilters, typeof goalsBranchOptions === 'undefined' ? [] : goalsBranchOptions);
 
     if (anoSelect && anoSelect.value) currentGoalsAno = parseInt(anoSelect.value, 10);
     if (mesSelect && mesSelect.value) currentGoalsMes = parseInt(mesSelect.value, 10);
@@ -11771,8 +11772,14 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
         if (hierarchyRes.error) throw hierarchyRes.error;
 
         const baseData = baseRes.data;
+        filters = DashboardGoals.normalizeGoalsFilters(baseData.effective_filters || filters);
         const allSavedMetas = baseData.scope_version === 2 ? (baseData.metas || []) : (metasRes.data || []);
         const selectedSuppliers = filters.fornecedores || [];
+        const posSupported = DashboardGoals.scopedPosCategory(selectedSuppliers) !== null;
+        const displayGoalPos = value => posSupported ? value : '—';
+        const scopeNotice = document.getElementById('goals-table-scope-notice');
+        if (scopeNotice) scopeNotice.textContent = posSupported ? '' :
+            'Meta de positivação indisponível para esta combinação. Selecione um grupo de fornecedor ou Todos.';
         if (baseData.scope_version === 2) {
             savedMetas = allSavedMetas;
         } else if (selectedSuppliers.length > 0) {
@@ -11803,7 +11810,7 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
 
         if (goalsData && goalsData.sellers) {
             goalsData.sellers.forEach(s => {
-                if (s.codusur && s.vendedor_nome) {
+                if (s.codusur && s.vendedor_nome && !String(s.codusur).startsWith('INAT')) {
                     globalRcaNameByCode.set(String(s.codusur), s.vendedor_nome);
                     globalRcaCodeByName.set(s.vendedor_nome, String(s.codusur));
                 }
@@ -11953,6 +11960,7 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
             sup.sellers.forEach(seller => {
                 // Pre-calculate Seller Metrics
                 const sData = {};
+                const historicalOnly = String(seller.codusur).startsWith('INAT');
                 
                 // Helper to map DB fields to our column IDs
                 const mapCol = (colId, dbPrefix, isTonnage = false, isMix = false) => {
@@ -11960,7 +11968,7 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                     const metaFat = getMeta(seller.codusur, colId, 'FAT', avgFat * (defaultGrowthFactor ?? 0));
                     
                     const avgPos = seller[`sum_pos_${dbPrefix}`] / 3 || 0;
-                    const metaPos = getMeta(seller.codusur, colId, 'POS', avgPos);
+                    const metaPos = getMeta(seller.codusur, colId, 'POS', historicalOnly ? 0 : avgPos);
                     
                     const avgVol = isTonnage ? (seller[`total_vol_${dbPrefix}`] / 3 || 0) : 0;
                     const metaVol = isTonnage ? getMeta(seller.codusur, colId, 'VOL', avgVol * (defaultGrowthFactor ?? 0)) : 0;
@@ -11999,13 +12007,14 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                 // Calculate Geral correctly by summing Elma and Foods metas
                 sData['geral'].metaFat = sData['total_elma'].metaFat + sData['total_foods'].metaFat;
                 sData['geral'].metaVol = sData['tonelada_elma'].metaVol + sData['tonelada_foods'].metaVol;
-                if (!selectedSuppliers.length || scopedTargets) {
+                if (!selectedSuppliers.length) {
                     sData['total_elma'].metaFat = getMeta(seller.codusur, 'total_elma', 'FAT', sData['total_elma'].metaFat);
                     sData['total_foods'].metaFat = getMeta(seller.codusur, 'total_foods', 'FAT', sData['total_foods'].metaFat);
                     sData['geral'].metaFat = getMeta(seller.codusur, 'pepsico_all', 'FAT', sData['total_elma'].metaFat + sData['total_foods'].metaFat);
                     sData['geral'].metaVol = getMeta(seller.codusur, 'pepsico_all', 'VOL', sData['geral'].metaVol);
                 }
-                sData['geral'].metaPos = Math.round(getMeta(seller.codusur, 'pepsico_all', 'POS', sData['geral'].avgPos));
+                sData['geral'].metaPos = Math.round(getMeta(seller.codusur, 'pepsico_all', 'POS', historicalOnly ? 0 : sData['geral'].avgPos));
+                DashboardGoals.applyScopedSupplierTotals(sData, [], selectedSuppliers);
 
 
 
@@ -12039,30 +12048,33 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                         const isPosEditable = (col.id === 'total_elma' || col.id === 'total_foods');
 
                         const fatInputClass = isFatEditable ? 'text-yellow-300' : 'text-slate-400 font-bold opacity-70';
-                        const fatReadonlyAttr = isFatEditable && !allocatedScope ? '' : 'readonly disabled';
+                        const fatReadonlyAttr = isFatEditable && !historicalOnly && !allocatedScope ? '' : 'readonly disabled';
                         const fatCellBg = isFatEditable ? 'bg-[#1e293b]' : 'bg-[#151c36]';
 
                         const posInputClass = isPosEditable ? 'text-yellow-300' : 'text-slate-400 font-bold opacity-70';
-                        const posReadonlyAttr = isPosEditable && !allocatedScope ? '' : 'readonly disabled';
+                        const posReadonlyAttr = isPosEditable && posSupported && !historicalOnly && !allocatedScope ? '' : 'readonly disabled';
                         const posCellBg = isPosEditable ? 'bg-[#1e293b]' : 'bg-[#151c36]';
 
                         quarterMonths.forEach(m => bodyHTML += `<td class="px-1 py-1 text-right text-slate-400 border-r border-slate-700/50 text-[10px] bg-blue-900/5">${formatCurrency(d.monthlyValues[m.key] || 0)}</td>`);
-                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 bg-blue-900/10 font-medium">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right ${col.colorClass} border-r border-slate-700/50 text-xs font-mono">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 ${fatCellBg} border-r border-slate-700/50"><input type="text" value="${formatCurrency(d.metaFat)}" class="goals-sv-input bg-transparent text-right w-full outline-none ${fatInputClass} text-xs font-mono" ${fatReadonlyAttr} data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="FAT"></td><td class="px-1 py-1 text-center text-slate-300 border-r border-slate-700/50">${d.metaPos}</td><td class="px-1 py-1 ${posCellBg} border-r border-slate-700/50"><input type="text" value="${d.metaPos}" class="goals-sv-input bg-transparent text-center w-full outline-none ${posInputClass} text-xs font-mono" ${posReadonlyAttr} data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="POS"></td>`;
+                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 bg-blue-900/10 font-medium">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right ${col.colorClass} border-r border-slate-700/50 text-xs font-mono">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 ${fatCellBg} border-r border-slate-700/50"><input type="text" value="${formatCurrency(d.metaFat)}" class="goals-sv-input bg-transparent text-right w-full outline-none ${fatInputClass} text-xs font-mono" ${fatReadonlyAttr} data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="FAT"></td><td class="px-1 py-1 text-center text-slate-300 border-r border-slate-700/50">${displayGoalPos(d.metaPos)}</td><td class="px-1 py-1 ${posCellBg} border-r border-slate-700/50"><input type="text" value="${displayGoalPos(d.metaPos)}" class="goals-sv-input bg-transparent text-center w-full outline-none ${posInputClass} text-xs font-mono" ${posReadonlyAttr} data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="POS"></td>`;
                     } else if (col.type === 'tonnage') {
-                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-mono text-xs">${formatCurrency(d.avgVol)} Kg</td><td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-bold font-mono text-xs">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 bg-[#1e293b] border-r border-slate-700/50"><input type="text" value="${formatCurrency(d.metaVol)}" class="goals-sv-input bg-transparent text-right w-full outline-none text-yellow-300 text-xs font-mono" data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="VOL" ${allocatedScope ? 'readonly disabled title="Meta atribuída à carteira atual. Para corrigir a origem, importe novamente a planilha do mês."' : ''}></td>`;
+                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-mono text-xs">${formatCurrency(d.avgVol)} Kg</td><td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-bold font-mono text-xs">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 bg-[#1e293b] border-r border-slate-700/50"><input type="text" value="${formatCurrency(d.metaVol)}" class="goals-sv-input bg-transparent text-right w-full outline-none text-yellow-300 text-xs font-mono" data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="VOL" ${allocatedScope || historicalOnly ? 'readonly disabled title="Meta atribuída à carteira atual. Para corrigir a origem, importe novamente a planilha do mês."' : ''}></td>`;
                     } else if (col.type === 'mix') {
-                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50">${d.avgMix.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}</td><td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-bold">${d.metaMix}</td><td class="px-1 py-1 bg-[#1e293b] border-r border-slate-700/50"><input type="text" value="${d.metaMix}" class="goals-sv-input bg-transparent text-right w-full outline-none text-yellow-300 text-xs font-mono" data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="MIX" ${allocatedScope ? 'readonly disabled title="Meta atribuída à carteira atual. Para corrigir a origem, importe novamente a planilha do mês."' : ''}></td>`;
+                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50">${d.avgMix.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}</td><td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700/50 font-bold">${d.metaMix}</td><td class="px-1 py-1 bg-[#1e293b] border-r border-slate-700/50"><input type="text" value="${d.metaMix}" class="goals-sv-input bg-transparent text-right w-full outline-none text-yellow-300 text-xs font-mono" data-seller="${seller.codusur}" data-cat="${col.id}" data-metrica="MIX" ${allocatedScope || historicalOnly ? 'readonly disabled title="Meta atribuída à carteira atual. Para corrigir a origem, importe novamente a planilha do mês."' : ''}></td>`;
                     } else if (col.type === 'geral') {
-                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-400 border-r border-slate-700/50 font-mono text-xs">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right text-white font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 text-right text-white font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 text-center text-yellow-300 font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${d.metaPos}</td>`;
+                        bodyHTML += `<td class="px-1 py-1 text-right text-slate-400 border-r border-slate-700/50 font-mono text-xs">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right text-white font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 text-right text-white font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 text-center text-yellow-300 font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${displayGoalPos(d.metaPos)}</td>`;
                     } else if (col.type === 'pedev') {
-                        bodyHTML += `<td class="px-1 py-1 text-center text-pink-400 font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${d.metaPos}</td>`;
+                        bodyHTML += `<td class="px-1 py-1 text-center text-pink-400 font-bold border-r border-slate-700/50 font-mono text-xs goals-sv-text">${displayGoalPos(d.metaPos)}</td>`;
                     }
                 });
                 bodyHTML += `</tr>`;
             });
 
-            if (!(filters.filiais?.length || filters.fornecedores?.length || filters.vendedores?.length || filters.categorias?.length)) {
-                DashboardGoals.applyOfficialTotals(sup.totals, hierarchyRes.data, 'supervisor', sup.code);
+            if (!(filters.filiais?.length || filters.vendedores?.length || filters.categorias?.length)) {
+                if (!selectedSuppliers.length) DashboardGoals.applyOfficialTotals(sup.totals, hierarchyRes.data, 'supervisor', sup.code);
+                else DashboardGoals.applyScopedSupplierTotals(sup.totals,
+                    (Array.isArray(hierarchyRes.data) ? hierarchyRes.data : []).filter(r => r.nivel === 'supervisor' && String(r.codigo_entidade) === String(sup.code)),
+                    selectedSuppliers);
             }
             // Add Supervisor to Grand Totals
             svColumns.forEach(col => {
@@ -12086,10 +12098,10 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
                 const d = sup.totals[col.id]; const color = col.id.includes('total') || col.type === 'tonnage' || col.type === 'mix' ? 'text-white' : 'text-slate-300';
                 if (col.type === 'standard') {
                     quarterMonths.forEach(m => bodyHTML += `<td class="px-1 py-1 text-right text-slate-400 border-r border-slate-700 text-[10px] bg-blue-900/5">${formatCurrency(d.monthlyValues[m.key])}</td>`);
-                    bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700 bg-blue-900/10 font-medium">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right ${color} border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 text-right text-yellow-500/70 border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 text-center ${color} border-r border-slate-700">${d.metaPos}</td><td class="px-1 py-1 text-center text-yellow-500/70 border-r border-slate-700">${d.metaPos}</td>`;
+                    bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700 bg-blue-900/10 font-medium">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right ${color} border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 text-right text-yellow-500/70 border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 text-center ${color} border-r border-slate-700">${displayGoalPos(d.metaPos)}</td><td class="px-1 py-1 text-center text-yellow-500/70 border-r border-slate-700">${displayGoalPos(d.metaPos)}</td>`;
                 } else if (col.type === 'tonnage') bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700">${formatCurrency(d.avgVol)} Kg</td><td class="px-1 py-1 text-right ${color} border-r border-slate-700">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 text-right text-yellow-500/70 border-r border-slate-700">${formatCurrency(d.metaVol)} Kg</td>`;
                 else if (col.type === 'mix') bodyHTML += `<td class="px-1 py-1 text-right text-slate-300 border-r border-slate-700">${d.avgMix.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}</td><td class="px-1 py-1 text-right ${color} border-r border-slate-700">${d.metaMix}</td><td class="px-1 py-1 text-right text-yellow-500/70 border-r border-slate-700">${d.metaMix}</td>`;
-                else if (col.type === 'geral') bodyHTML += `<td class="px-1 py-1 text-right text-slate-400 border-r border-slate-700">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right text-white border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 text-right text-white border-r border-slate-700">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 text-center text-white border-r border-slate-700">${d.metaPos}</td>`;
+                else if (col.type === 'geral') bodyHTML += `<td class="px-1 py-1 text-right text-slate-400 border-r border-slate-700">${formatCurrency(d.avgFat)}</td><td class="px-1 py-1 text-right text-white border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-1 text-right text-white border-r border-slate-700">${formatCurrency(d.metaVol)} Kg</td><td class="px-1 py-1 text-center text-white border-r border-slate-700">${displayGoalPos(d.metaPos)}</td>`;
                 else if (col.type === 'pedev') bodyHTML += `<td class="px-1 py-1 text-center text-pink-400 border-r border-slate-700">${sup.totals['pedev'].metaPos}</td>`;
             });
             bodyHTML += `</tr>`;
@@ -12098,6 +12110,8 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
         if (!Object.values(filters).some(values => Array.isArray(values) && values.length)) {
             DashboardGoals.applyOfficialTotals(grandTotals, hierarchyRes.data, 'empresa');
         }
+        // The imported chart and scoped GV read the same official rows at the same level.
+        DashboardGoals.applyScopedSupplierTotals(grandTotals, baseData.scoped_official || [], selectedSuppliers);
         // Grand Total
         bodyHTML += `<tr class="bg-[#0f172a] font-bold text-white border-t-2 border-slate-500 sticky bottom-0 z-20">
             <td class="px-2 py-3 text-center uppercase tracking-wider border-r border-slate-700 sticky left-0 z-10 bg-[#0f172a]">GV</td>
@@ -12106,10 +12120,10 @@ async function renderGoalsView({ tableOnly = false, forceDetails = false } = {})
             const d = grandTotals[col.id];
             if (col.type === 'standard') {
                 quarterMonths.forEach(m => bodyHTML += `<td class="px-1 py-2 text-right text-slate-400 border-r border-slate-700 text-[10px] bg-blue-900/5">${formatCurrency(d.monthlyValues[m.key])}</td>`);
-                bodyHTML += `<td class="px-1 py-2 text-right text-teal-400 border-r border-slate-700 bg-blue-900/10">${formatCurrency(d.avgFat)}</td><td class="px-1 py-2 text-right text-teal-400 border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-2 text-right text-teal-600/70 border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-2 text-center text-purple-400 border-r border-slate-700">${d.metaPos}</td><td class="px-1 py-2 text-center text-purple-600/70 border-r border-slate-700">${d.metaPos}</td>`;
+                bodyHTML += `<td class="px-1 py-2 text-right text-teal-400 border-r border-slate-700 bg-blue-900/10">${formatCurrency(d.avgFat)}</td><td class="px-1 py-2 text-right text-teal-400 border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-2 text-right text-teal-600/70 border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-2 text-center text-purple-400 border-r border-slate-700">${displayGoalPos(d.metaPos)}</td><td class="px-1 py-2 text-center text-purple-600/70 border-r border-slate-700">${displayGoalPos(d.metaPos)}</td>`;
             } else if (col.type === 'tonnage') bodyHTML += `<td class="px-1 py-2 text-right text-slate-400 border-r border-slate-700">${formatCurrency(d.avgVol)}</td><td class="px-1 py-2 text-right text-orange-400 border-r border-slate-700">${formatCurrency(d.metaVol)}</td><td class="px-1 py-2 text-right text-orange-600/70 border-r border-slate-700">${formatCurrency(d.metaVol)}</td>`;
             else if (col.type === 'mix') bodyHTML += `<td class="px-1 py-2 text-right text-slate-400 border-r border-slate-700">${d.avgMix.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}</td><td class="px-1 py-2 text-right text-cyan-400 border-r border-slate-700">${d.metaMix}</td><td class="px-1 py-2 text-right text-cyan-600/70 border-r border-slate-700">${d.metaMix}</td>`;
-            else if (col.type === 'geral') bodyHTML += `<td class="px-1 py-2 text-right text-slate-500 border-r border-slate-700">${formatCurrency(d.avgFat)}</td><td class="px-1 py-2 text-right text-white border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-2 text-right text-white border-r border-slate-700">${formatCurrency(d.metaVol)}</td><td class="px-1 py-2 text-center text-white border-r border-slate-700">${d.metaPos}</td>`;
+            else if (col.type === 'geral') bodyHTML += `<td class="px-1 py-2 text-right text-slate-500 border-r border-slate-700">${formatCurrency(d.avgFat)}</td><td class="px-1 py-2 text-right text-white border-r border-slate-700">${formatCurrency(d.metaFat)}</td><td class="px-1 py-2 text-right text-white border-r border-slate-700">${formatCurrency(d.metaVol)}</td><td class="px-1 py-2 text-center text-white border-r border-slate-700">${displayGoalPos(d.metaPos)}</td>`;
             else if (col.type === 'pedev') bodyHTML += `<td class="px-1 py-2 text-center text-pink-400 border-r border-slate-700">${grandTotals['pedev'].metaPos}</td>`;
         });
         bodyHTML += `</tr>`;
@@ -12165,7 +12179,7 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
     const abortController = new AbortController();
     goalsChartAbortController = abortController;
     const requestId = ++goalsChartRequest;
-    filters = JSON.parse(JSON.stringify(filters));
+    filters = DashboardGoals.normalizeGoalsFilters(filters, goalsBranchOptions);
     const canvas = document.getElementById('goals-annual-chart');
     const loading = document.getElementById('goals-chart-loading');
     if(!canvas) return;
@@ -12223,6 +12237,11 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
         }
 
         const activeMetric = document.querySelector('.goals-metric-btn.active').dataset.metric;
+        const hidePosTargets = activeMetric === 'pos' && (resData.pos_target_supported === false ||
+            DashboardGoals.scopedPosCategory(filters.fornecedores) === null);
+        const scopeNotice = document.getElementById('goals-chart-scope-notice');
+        if (scopeNotice) scopeNotice.textContent = hidePosTargets ?
+            'Meta de positivação indisponível para esta combinação. Selecione um grupo de fornecedor ou Todos.' : '';
         if (kpiMeta) {
             kpiMeta.title = ['pos', 'salty', 'foods'].includes(activeMetric)
                 ? 'Meta anual de clientes únicos. As barras usam metas mensais; o mesmo cliente pode participar de vários meses.'
@@ -12259,7 +12278,7 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
         } else if (activeMetric === 'pos') {
             if(kpiAnt) kpiAnt.textContent = Math.round(resData.kpi_total_anterior_pos || 0).toString();
             if(kpiAtual) kpiAtual.textContent = Math.round(resData.kpi_total_atual_pos || 0).toString();
-            if (resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
+            if (!hidePosTargets && resData.percentual_crescimento !== null && resData.percentual_crescimento !== undefined && kpiMeta) {
                 const estimada = (resData.kpi_total_anterior_pos || 0) * (1 + (resData.percentual_crescimento / 100));
                 kpiMeta.textContent = `Meta anual (clientes únicos): ${formatInteger(Math.round(estimada))}`;
                 kpiMeta.style.display = 'block';
@@ -12318,8 +12337,8 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
                 formatVal = formatTons;
             } else if (activeMetric === 'pos') {
                 dataReal.push(Math.round(d.kpi_realizado_atual_pos || 0));
-                dataMeta.push(Math.round(d.kpi_meta_estimada_pos || 0));
-                dataMetaFixa.push(d.kpi_meta_fixa_pos == null ? null : Math.round(d.kpi_meta_fixa_pos));
+                dataMeta.push(hidePosTargets || d.kpi_meta_estimada_pos == null ? null : Math.round(d.kpi_meta_estimada_pos));
+                dataMetaFixa.push(hidePosTargets || d.kpi_meta_fixa_pos == null ? null : Math.round(d.kpi_meta_fixa_pos));
                 dataRealAnt.push(Math.round(d.kpi_realizado_anterior_pos || 0));
                 formatVal = function(v) { return formatInteger(v); };
             } else if (activeMetric === 'salty') {
@@ -12349,7 +12368,7 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
                 { label: 'Meta Estimada', background: 'rgba(234, 179, 8, 0.5)', border: '#eab308' }
             ];
 
-            fixedLegend.innerHTML = legendItems.map(item => `
+            fixedLegend.innerHTML = legendItems.filter(item => !hidePosTargets || !item.label.startsWith('Meta')).map(item => `
                 <span class="inline-flex items-center gap-2 whitespace-nowrap">
                     <span style="display:inline-block;width:32px;height:10px;border-radius:2px;background:${item.background};border:1px solid ${item.border};"></span>
                     <span>${item.label}</span>
@@ -12455,7 +12474,7 @@ async function renderGoalsChart(ano, filters = window.goalsMultiFilters || {}) {
             type: 'bar',
             data: {
                 labels: labels,
-                datasets: datasets
+                datasets: hidePosTargets ? datasets.filter(dataset => !dataset.label.startsWith('Meta')) : datasets
             },
             plugins: [ChartDataLabels],
             options: {
@@ -12627,8 +12646,9 @@ async function setupGoalsFilters() {
         return visible;
     };
 
+    goalsBranchOptions = filterData.filiais || [];
     let optionSets = {
-        filiais: filterData.filiais || [],
+        filiais: goalsBranchOptions,
         fornecedores: normalizeSuppliers(filterData.fornecedores || []),
         supervisores: filterData.supervisors || [],
         vendedores: filterData.vendedores || [],

@@ -34,3 +34,11 @@ O dashboard distingue meta importada e estimativa. A estimativa mantém a regra 
 Ordem: `official_spreadsheet_targets.sql`, `dashboard_official_targets.sql`, `unify_official_goal_readers.sql`. Os arquivos registram o estado final das migrações aplicadas no projeto Evolution. Os leitores públicos exigem usuário aprovado; as tabelas internas não são expostas à API.
 
 A reimportação definitiva de outubro fica a cargo do usuário.
+
+## Conciliação da aba Metas
+
+Os totais de faturamento por fornecedor da tabela usam as categorias comerciais selecionadas. No GV, gráfico e tabela usam as mesmas metas importadas para o nível e o recorte escolhidos. Sem recorte de fornecedor, os totais independentes de empresa e supervisor continuam tendo prioridade. Selecionar todas as filiais equivale a deixar o filtro sem seleção.
+
+A positivação do realizado e da base trimestral exige saldo líquido de pelo menos R$ 1 por cliente/mês no recorte. Um cliente não é repetido entre vendedores no mesmo recorte. O histórico de inativos permanece na base, sem virar opção de vendedor ativo ou gerar meta de positivação para uma carteira inativa. Quando são selecionados dois ou mais grupos comerciais, o realizado continua disponível e as metas de positivação não são exibidas. Quaker e Kerococo formam um único grupo.
+
+A migração `sql/fix_goals_audit_20261111.sql` altera somente leitores da aba Metas; não altera vendas, metas importadas nem parcelas de carteira.
