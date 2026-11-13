@@ -202,13 +202,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     prevValTrim,
     prevValAno,
     isCurrency,
-    isPercentage = false,
+    { isPercentage = false, lowerIsBetter = false } = {},
   ) {
     let valFmt = isCurrency
       ? formatCurrency(value)
       : isPercentage
         ? formatPercent(value)
         : formatNumber(value);
+
+    const increaseColor = lowerIsBetter ? "text-red-400" : "text-emerald-400";
+    const decreaseColor = lowerIsBetter ? "text-emerald-400" : "text-red-400";
 
     let varColorTrim = "text-slate-400";
     let varIconTrim = "";
@@ -222,18 +225,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       const variacao = ((value - prevValTrim) / Math.abs(prevValTrim)) * 100;
       const variacaoFmt = formatPercent(variacao);
       if (variacao > 0) {
-        varColorTrim = "text-emerald-400";
+        varColorTrim = increaseColor;
         varIconTrim = "↑";
         varTextTrim = `+${variacaoFmt}`;
       } else if (variacao < 0) {
-        varColorTrim = "text-red-400";
+        varColorTrim = decreaseColor;
         varIconTrim = "↓";
         varTextTrim = `${variacaoFmt}`;
       } else {
         varTextTrim = "0%";
       }
     } else if (prevValTrim === 0 && value > 0) {
-      varColorTrim = "text-emerald-400";
+      varColorTrim = increaseColor;
       varIconTrim = "↑";
       varTextTrim = "+100%";
     }
@@ -246,18 +249,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       const variacao = ((value - prevValAno) / Math.abs(prevValAno)) * 100;
       const variacaoFmt = formatPercent(variacao);
       if (variacao > 0) {
-        varColorAno = "text-emerald-400";
+        varColorAno = increaseColor;
         varIconAno = "↑";
         varTextAno = `+${variacaoFmt}`;
       } else if (variacao < 0) {
-        varColorAno = "text-red-400";
+        varColorAno = decreaseColor;
         varIconAno = "↓";
         varTextAno = `${variacaoFmt}`;
       } else {
         varTextAno = "0%";
       }
     } else if (prevValAno === 0 && value > 0) {
-      varColorAno = "text-emerald-400";
+      varColorAno = increaseColor;
       varIconAno = "↑";
       varTextAno = "+100%";
     }
@@ -306,9 +309,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         `;
 
     containerMiddle.innerHTML = `
-            ${buildCard("Devoluções", d.dev_atual, d.dev_trim, d.dev_ant, true)}
-            ${buildCard("Bonificações", d.bonificacao_atual, d.bonificacao_trim, d.bonificacao_ant, true)}
-            ${buildCard("Perdas", d.perdas_atual, d.perdas_trim, d.perdas_ant, true)}
+            ${buildCard("Devoluções", d.dev_atual, d.dev_trim, d.dev_ant, true, { lowerIsBetter: true })}
+            ${buildCard("Bonificações", d.bonificacao_atual, d.bonificacao_trim, d.bonificacao_ant, true, { lowerIsBetter: true })}
+            ${buildCard("Perdas", d.perdas_atual, d.perdas_trim, d.perdas_ant, true, { lowerIsBetter: true })}
         `;
   }
 
