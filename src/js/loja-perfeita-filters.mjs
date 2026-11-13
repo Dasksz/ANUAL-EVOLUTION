@@ -1,10 +1,10 @@
-export const filterKeys = ['filiais','supervisores','vendedores','redes','cidades','pesquisadores'];
+export const filterKeys = ['filiais','supervisores','coordenadores','vendedores','redes','cidades','pesquisadores'];
 const noNetwork = value => value == null || ['', '--', 'N/A', 'N/D'].includes(String(value).trim());
 function matches(row,key,value) {
   if (!value) return true;
   if (key === 'redes' && value === 'C/ REDE') return !noNetwork(row[key]);
   if (key === 'redes' && value === 'S/ REDE') return noNetwork(row[key]);
-  return row[key] === value;
+  return Array.isArray(row[key]) ? row[key].includes(value) : row[key] === value;
 }
 function compatible(row, selected, excluded) {
   return filterKeys.every(key => key === excluded || matches(row,key,selected[key]));
@@ -23,7 +23,7 @@ export function cascadeFilters(rows, selections, changed) {
   const options = {};
   for (const key of filterKeys) {
     const available = rows.filter(row => compatible(row,selected,key));
-    const values = [...new Set(available.map(row => row[key]).filter(v => v != null && String(v).trim() && (key !== 'redes' || !noNetwork(v))))].sort((a,b) => a.localeCompare(b,'pt-BR'));
+    const values = [...new Set(available.flatMap(row => row[key] ?? []).filter(v => v != null && String(v).trim() && (key !== 'redes' || !noNetwork(v))))].sort((a,b) => a.localeCompare(b,'pt-BR'));
     if (key === 'redes') {
       if (available.some(row => !noNetwork(row.redes))) values.unshift('C/ REDE');
       if (available.some(row => noNetwork(row.redes))) values.unshift('S/ REDE');

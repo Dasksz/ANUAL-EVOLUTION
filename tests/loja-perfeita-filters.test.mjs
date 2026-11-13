@@ -23,3 +23,15 @@ test('network groups participate in cascading and reset restores all options',()
  assert.deepEqual(cascadeFilters(rows,{}).options.vendedores,['A','B','C']);
  assert.deepEqual(cascadeFilters(rows,{redes:'C/ REDE'}).options.vendedores,['B','C']);
 });
+
+test('coordinator is independent of supervisor and shared portfolios remain selectable', () => {
+ const portfolios = [
+  {supervisores:'ROMULO',coordenadores:['LEONIR','ANA'],vendedores:'A'},
+  {supervisores:'TIAGO',coordenadores:['LEONIR'],vendedores:'B'},
+  {supervisores:'ROMULO',coordenadores:[],vendedores:'C'}
+ ];
+ assert.deepEqual(cascadeFilters(portfolios,{coordenadores:'LEONIR'}).options.supervisores,['ROMULO','TIAGO']);
+ assert.deepEqual(cascadeFilters(portfolios,{supervisores:'ROMULO'}).options.vendedores,['A','C']);
+ assert.deepEqual(cascadeFilters(portfolios,{supervisores:'ROMULO',coordenadores:'LEONIR'}).options.vendedores,['A']);
+ assert.deepEqual(cascadeFilters(portfolios,{}).options.coordenadores,['ANA','LEONIR']);
+});

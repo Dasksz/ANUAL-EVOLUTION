@@ -1,5 +1,5 @@
 import { isVendorRankingEligible } from "./vendor-ranking.mjs?v=20261001-all-rankings";
-import { cascadeFilters } from "./loja-perfeita-filters.mjs?v=20261001-cascade";
+import { cascadeFilters } from "./loja-perfeita-filters.mjs?v=20261113-coordinator";
 import { renderDispute } from "./presentation-dispute.mjs?v=20261001-all-rankings";
 import supabase from "./supabase.js";
 
@@ -1235,6 +1235,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const selectFilial = document.getElementById("lp-slide-filial");
     const selectSupervisor = document.getElementById("lp-slide-supervisor");
+    const selectCoordenador = document.getElementById("lp-slide-coordenador");
     const selectVendedor = document.getElementById("lp-slide-vendedor");
     const selectRede = document.getElementById("lp-slide-rede");
     const selectCidade = document.getElementById("lp-slide-cidade");
@@ -1248,13 +1249,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!selectFilial || !loadingDiv) return;
 
     lpSlidePeriod = { ano: currentAno, mes: currentMes };
-    const lpSelects = [[selectFilial,'filiais','Filial'],[selectSupervisor,'supervisores','Supervisor'],[selectVendedor,'vendedores','Vendedor'],[selectRede,'redes','Rede'],[selectCidade,'cidades','Cidade'],[selectPesquisador,'pesquisadores','Pesquisador']];
+    const lpSelects = [[selectFilial,'filiais','Filial'],[selectSupervisor,'supervisores','Supervisor'],[selectCoordenador,'coordenadores','Coordenador'],[selectVendedor,'vendedores','Vendedor'],[selectRede,'redes','Rede'],[selectCidade,'cidades','Cidade'],[selectPesquisador,'pesquisadores','Pesquisador']];
     const periodKey = () => `${lpSlidePeriod.ano}-${lpSlidePeriod.mes}`;
     function applyLpCascade(changed) {
       const before = Object.fromEntries(lpSelects.map(([el,key]) => [key,el.value]));
       const {selected,options} = cascadeFilters(lpSlideCombinations,before,changed);
       for (const [el,key,label] of lpSelects) {
-        el.innerHTML = `<option value="">${label}: Todas</option>` + options[key].map(v => `<option value="${lpEscape(v)}">${lpEscape(v)}</option>`).join('');
+        el.innerHTML = `<option value="">${label}: ${['filiais','cidades'].includes(key) ? 'Todas' : 'Todos'}</option>` + options[key].map(v => `<option value="${lpEscape(v)}">${lpEscape(v)}</option>`).join('');
         el.value = selected[key] || '';
       }
       return lpSelects.some(([el,key]) => el.value !== before[key]);
@@ -1278,6 +1279,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const rpcFilters = {
         p_filial: getSelectValue(selectFilial),
         p_supervisor: getSelectValue(selectSupervisor),
+        p_coordenador: getSelectValue(selectCoordenador),
         p_vendedor: getSelectValue(selectVendedor),
         p_rede: getSelectValue(selectRede),
         p_cidade: getSelectValue(selectCidade),
@@ -1288,7 +1290,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       };
 
       try {
-        const { data, error } = await supabase.rpc("get_loja_perfeita_data", rpcFilters);
+        const { data, error } = await supabase.rpc("get_loja_perfeita_closing_data", rpcFilters);
 
         if (request !== lpSlideRequest) return;
         if (error) {
@@ -1507,6 +1509,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       selectFilial.addEventListener("change", handleFilterChange);
       selectSupervisor.addEventListener("change", handleFilterChange);
+      selectCoordenador.addEventListener("change", handleFilterChange);
       selectVendedor.addEventListener("change", handleFilterChange);
       selectRede.addEventListener("change", handleFilterChange);
       selectCidade.addEventListener("change", handleFilterChange);
@@ -1524,6 +1527,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         btnReset.addEventListener("click", () => {
           selectFilial.value = "";
           selectSupervisor.value = "";
+          selectCoordenador.value = "";
           selectVendedor.value = "";
           selectRede.value = "";
           selectCidade.value = "";
