@@ -12683,39 +12683,25 @@ async function setupGoalsFilters() {
     };
 
     let refreshTimer = null;
-    let filtersDirty = false;
     const triggerRender = () => {
         clearTimeout(refreshTimer);
         refreshTimer = setTimeout(() => {
+            refreshTimer = null;
             const goalsView = document.getElementById('goals-view');
             if (goalsView && !goalsView.classList.contains('hidden')) renderGoalsView();
         }, 120);
     };
-    const hasOpenDropdown = () => Object.values(controls).some(control =>
-        control?.dropdown && !control.dropdown.classList.contains('hidden')
-    );
-    const flushPendingFilters = () => {
-        if (!filtersDirty) return false;
-        filtersDirty = false;
-        triggerRender();
-        return true;
-    };
-    const markFiltersDirty = () => { filtersDirty = true; };
 
     const optionSetByControl = {
         filial: 'filiais', fornecedor: 'fornecedores', supervisor: 'supervisores',
         vendedor: 'vendedores', categoria: 'categorias'
     };
     Object.entries(controls).forEach(([key, control]) => {
-        setupControl(control, optionSets[optionSetByControl[key]] || [], markFiltersDirty);
+        setupControl(control, optionSets[optionSetByControl[key]] || [], triggerRender);
     });
 
-    const handleDateFilterChange = () => {
-        markFiltersDirty();
-        if (!hasOpenDropdown()) flushPendingFilters();
-    };
-    anoSelect.addEventListener('change', handleDateFilterChange);
-    mesSelect.addEventListener('change', handleDateFilterChange);
+    anoSelect.addEventListener('change', triggerRender);
+    mesSelect.addEventListener('change', triggerRender);
 
     const goalsClearFiltersBtn = document.getElementById('goals-clear-filters-btn');
     if (goalsClearFiltersBtn) {
@@ -12724,23 +12710,17 @@ async function setupGoalsFilters() {
             mesSelect.value = String(currentMonth);
             Object.values(multi).forEach(arr => arr.splice(0));
             Object.entries(controls).forEach(([key, control]) => {
-                setupControl(control, optionSets[optionSetByControl[key]] || [], markFiltersDirty);
+                setupControl(control, optionSets[optionSetByControl[key]] || [], triggerRender);
             });
             Object.values(controls).forEach(setButtonDefault);
-            markFiltersDirty();
+            triggerRender();
         });
     }
 
-    // Como no dashboard principal, mantém as seleções em rascunho enquanto a pessoa
-    // troca entre listas e consulta apenas ao sair dos controles de filtro.
     document.addEventListener('click', (e) => {
         const dropdowns = Object.values(controls).map(control => control?.dropdown);
         const buttons = Object.values(controls).map(control => control?.btn);
         handleDropdownsClickaway(e, dropdowns, buttons);
-
-        const filterControls = [...dropdowns, ...buttons, anoSelect, mesSelect];
-        const clickedFilterControl = filterControls.some(control => control?.contains(e.target));
-        if (!clickedFilterControl) flushPendingFilters();
     });
 
     const metricBtns = document.querySelectorAll('.goals-metric-btn');
@@ -12753,7 +12733,7 @@ async function setupGoalsFilters() {
             e.currentTarget.classList.remove('bg-white/5', 'text-slate-400');
             e.currentTarget.classList.add('active', 'bg-orange-600', 'text-white');
             currentGoalsMetric = e.currentTarget.dataset.metric;
-            if (!filtersDirty) renderGoalsChart(parseInt(anoSelect.value,10) || currentYear, multi);
+            if (refreshTimer === null) renderGoalsChart(parseInt(anoSelect.value,10) || currentYear, multi);
         });
     });
 }
