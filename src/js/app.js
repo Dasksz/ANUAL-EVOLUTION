@@ -10084,7 +10084,19 @@ async function renderEstrelasView() {
     updateEstrelasView();
 }
 
+let estrelasMalhaAtiva = false;
+let estrelasMalhaExibida = false;
+let estrelasRequest = 0;
+document.getElementById('estrelas-malha-toggle')?.addEventListener('click', () => {
+    estrelasMalhaAtiva = !estrelasMalhaAtiva;
+    updateEstrelasView();
+});
+
 async function updateEstrelasView() {
+    const request = ++estrelasRequest;
+    const malha = estrelasMalhaAtiva;
+    const toggle = document.getElementById('estrelas-malha-toggle');
+    const scope = document.getElementById('estrelas-malha-scope');
     AppLog.log("Estrelas view updating...");
     
     // Show overlay handled by showDashboardLoading
@@ -10104,9 +10116,15 @@ async function updateEstrelasView() {
             p_categoria: (estrelasSelectedCategorias && estrelasSelectedCategorias.length) ? estrelasSelectedCategorias : null
         };
 
-        const { data, error } = await supabase.rpc('get_estrelas_kpis_data', filters);
+        const { data, error } = await supabase.rpc(malha ? 'get_estrelas_malha_kpis_data' : 'get_estrelas_kpis_data', filters);
+
+        if (request !== estrelasRequest) return;
 
         if (error) throw error;
+
+        estrelasMalhaExibida = malha;
+        toggle?.setAttribute('aria-pressed', String(malha));
+        if (scope) scope.hidden = !malha;
 
         // --- Dynamic Metas ---
         const metaSelloutSalty = data.sellout_salty_meta || 0;
@@ -10161,10 +10179,13 @@ async function updateEstrelasView() {
         updateEl('acel-batatas-pct', `${formatPercentage(pctAcel, 0)}`);
 
     } catch (err) {
+        if (request !== estrelasRequest) return;
+        estrelasMalhaAtiva = estrelasMalhaExibida;
+        window.showToast?.('error', 'Não foi possível atualizar o painel de Estrelas.');
         AppLog.error("Erro ao carregar dados de KPIs Estrelas:", err);
         // Optionally show a toast error
     } finally {
-        window.hideDashboardLoading();
+        if (request === estrelasRequest) window.hideDashboardLoading();
     }
 }
 
