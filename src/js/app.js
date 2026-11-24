@@ -10084,6 +10084,15 @@ async function renderEstrelasView() {
     updateEstrelasView();
 }
 
+function formatEstrelasGap(meta, realizado) {
+    if (!(meta > 0)) return { label: 'Gap: sem meta', color: 'text-slate-400' };
+    const saldo = (Number(realizado) || 0) - meta;
+    const quantidade = Math.abs(saldo).toLocaleString('pt-BR');
+    return saldo < 0
+        ? { label: `Gap: faltam ${quantidade} PDVs`, color: 'text-amber-300' }
+        : { label: saldo > 0 ? `Gap: ${quantidade} PDVs acima da meta` : 'Gap: meta atingida', color: 'text-emerald-400' };
+}
+
 let estrelasMalhaAtiva = false;
 let estrelasMalhaExibida = false;
 let estrelasRequest = 0;
@@ -10160,6 +10169,19 @@ async function updateEstrelasView() {
         updateEl('acel-meta-val', metaAcel);
         updateEl('aceleradores-realizado-val', data.aceleradores_realizado);
         updateEl('aceleradores-parcial-val', data.aceleradores_parcial);
+
+        for (const [id, meta, realizado] of [
+            ['pos-gap-val', metaPos, data.positivacao_salty],
+            ['acel-gap-val', metaAcel, data.aceleradores_realizado]
+        ]) {
+            const el = document.getElementById(id);
+            if (!el) continue;
+            const { label, color } = formatEstrelasGap(meta, realizado);
+            el.textContent = label;
+            el.classList.remove('text-slate-400', 'text-amber-300', 'text-emerald-400');
+            el.classList.add(color);
+        }
+
         updateEl('pontos-possiveis-acel', data.base_clientes);
 
         // Progress Bars
