@@ -10084,13 +10084,17 @@ async function renderEstrelasView() {
     updateEstrelasView();
 }
 
-function formatEstrelasGap(meta, realizado) {
-    if (!(meta > 0)) return { label: 'Gap: sem meta', color: 'text-slate-400' };
-    const saldo = (Number(realizado) || 0) - meta;
-    const quantidade = Math.abs(saldo).toLocaleString('pt-BR');
+function formatEstrelasGap(meta, realizado, unit = 'PDVs', title = 'Gap') {
+    if (!(meta > 0)) return { label: title + ': sem meta', color: 'text-slate-400' };
+    const decimals = unit === 't' ? 2 : 0;
+    const factor = 10 ** decimals;
+    const saldo = Math.round(((Number(realizado) || 0) - meta) * factor) / factor;
+    const quantidade = Math.abs(saldo).toLocaleString('pt-BR', {
+        minimumFractionDigits: decimals, maximumFractionDigits: decimals
+    });
     return saldo < 0
-        ? { label: `Gap: faltam ${quantidade} PDVs`, color: 'text-amber-300' }
-        : { label: saldo > 0 ? `Gap: ${quantidade} PDVs acima da meta` : 'Gap: meta atingida', color: 'text-emerald-400' };
+        ? { label: `${title}: faltam ${quantidade} ${unit}`, color: 'text-amber-300' }
+        : { label: saldo > 0 ? `${title}: ${quantidade} ${unit} acima da meta` : title + ': meta atingida', color: 'text-emerald-400' };
 }
 
 let estrelasMalhaAtiva = false;
@@ -10170,13 +10174,16 @@ async function updateEstrelasView() {
         updateEl('aceleradores-realizado-val', data.aceleradores_realizado);
         updateEl('aceleradores-parcial-val', data.aceleradores_parcial);
 
-        for (const [id, meta, realizado] of [
-            ['pos-gap-val', metaPos, data.positivacao_salty],
+        for (const [id, meta, realizado, unit, title] of [
+            ['sellout-gap-realizado', metaSellout, data.sellout_salty + data.sellout_foods, 't', 'Gap Geral'],
+            ['sellout-gap-salty', metaSelloutSalty, data.sellout_salty, 't', 'Gap Salty'],
+            ['sellout-gap-foods', metaSelloutFoods, data.sellout_foods, 't', 'Gap Foods'],
+            ['pos-gap-val', metaPos, data.positivacao_salty, 'PDVs', 'Gap Salty'],
             ['acel-gap-val', metaAcel, data.aceleradores_realizado]
         ]) {
             const el = document.getElementById(id);
             if (!el) continue;
-            const { label, color } = formatEstrelasGap(meta, realizado);
+            const { label, color } = formatEstrelasGap(meta, realizado, unit, title);
             el.textContent = label;
             el.classList.remove('text-slate-400', 'text-amber-300', 'text-emerald-400');
             el.classList.add(color);
