@@ -2763,7 +2763,15 @@
             <h1 class="text-3xl font-bold text-white mb-1">Estrelas</h1>
             <p class="text-slate-500">Indicadores Pepsico</p>
         </div>
+        <button type="button" id="estrelas-malha-toggle" aria-pressed="false" aria-describedby="estrelas-malha-scope"
+                class="rounded-lg px-4 py-2 text-xs font-bold border border-orange-500 text-orange-300 bg-orange-500/10 hover:bg-orange-500/20 aria-pressed:bg-orange-600 aria-pressed:text-white">
+            ANÁLISE SOBRE A MALHA
+        </button>
     </header>
+
+    <p id="estrelas-malha-scope" class="mb-4 text-sm text-orange-200" role="status" hidden>
+        Malha Prime ativa. Metas proporcionais aos clientes da carteira no recorte.
+    </p>
 
     <!-- Filters Section -->
     <div class="bg-[#151419]/80 backdrop-blur-md border border-white/10 p-4 rounded-xl mb-6 shadow-lg relative z-[100]">
@@ -3271,7 +3279,7 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-80 sm:w-96 pointer-events-none"></div>
 
-    <script type="module" src="src/js/app.js?v=20261123-goals-seller"></script>
+    <script type="module" src="src/js/app.js?v=20261124-estrelas-malha"></script>
     <script type="module" src="src/js/goal-meetings.mjs?v=20261008-5"></script>
     <script type="module" src="src/js/management-entry.mjs?v=20261008-1"></script>
 
