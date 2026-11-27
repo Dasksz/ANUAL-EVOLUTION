@@ -140,12 +140,15 @@ export function createExpensePanel({root, client}) {
         return {card, canvas, viewport};
     }
 
-    function bar(title, data, period, previous) {
-        const {canvas, viewport} = chartCard(title, Math.max(180, 58 + data.length * 34), 'bar');
+    function bar(title, data, period, previous, vertical = false) {
+        const {canvas, viewport} = chartCard(title, vertical ? 240 : Math.max(180, 58 + data.length * 34), 'bar');
         if (!data.length || !window.Chart) {
             viewport.replaceWith(field('p', 'text-slate-400 text-sm', data.length ? 'Gráfico indisponível.' : 'Sem gastos no recorte.'));
             return;
         }
+        if (vertical) canvas.parentElement.style.minWidth = (52 + data.length * 72) + 'px';
+        const categoryAxis = {grid: {display: false}, ticks: {color: chartColors.text, font: {size: 10}, autoSkip: false}};
+        const valueAxis = {beginAtZero: true, grid: {color: chartColors.grid}, ticks: {color: chartColors.text, font: {size: 10}, maxTicksLimit: 9, callback: axisCurrency}};
         charts.push(new window.Chart(canvas, {
             type: 'bar',
             data: {
@@ -156,14 +159,11 @@ export function createExpensePanel({root, client}) {
                 ],
             },
             options: {
-                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                indexAxis: vertical ? 'x' : 'y', responsive: true, maintainAspectRatio: false,
                 color: chartColors.text,
                 font: {family: 'Inter, sans-serif'},
-                plugins: {legend: {labels: {color: chartColors.text, usePointStyle: true}}, datalabels: {display: false}, tooltip: {callbacks: {label: item => item.dataset.label + ': ' + currency(item.parsed.x)}}},
-                scales: {
-                    x: {beginAtZero: true, grid: {color: chartColors.grid}, ticks: {color: chartColors.text, font: {size: 10}, maxTicksLimit: 9, callback: axisCurrency}},
-                    y: {grid: {display: false}, ticks: {color: chartColors.text, font: {size: 10}, autoSkip: false}},
-                },
+                plugins: {legend: {labels: {color: chartColors.text, usePointStyle: true}}, datalabels: {display: false}, tooltip: {callbacks: {label: item => item.dataset.label + ': ' + currency(vertical ? item.parsed.y : item.parsed.x)}}},
+                scales: vertical ? {x: categoryAxis, y: valueAxis} : {x: valueAxis, y: categoryAxis},
             },
         }));
     }
@@ -299,7 +299,7 @@ export function createExpensePanel({root, client}) {
         expenseCandles();
         bar('Gastos por pessoa', people, period, previous);
         bar('Gastos por categoria', categories, period, previous);
-        bar('Gastos por cidade', cities, period, previous);
+        bar('Gastos por cidade', cities, period, previous, true);
         bar('Gastos por estabelecimento', expenseGroups(current, prior, 'merchant', 'Sem estabelecimento'), period, previous);
         pie(period, current);
         tableRows(current);
