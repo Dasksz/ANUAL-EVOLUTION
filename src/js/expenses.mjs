@@ -12,7 +12,6 @@ const expenseIcons = {
     "person": "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2m12-14a4 4 0 1 1-8 0 4 4 0 0 1 8 0z",
     "team": "M3 20v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2m5 0v-2a4 4 0 0 0-3-4m-4-7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zm3-4a4 4 0 0 1 0 8",
     "pin": "M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0zm-5 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
-    "store": "M4 10v10h16V10M3 10l2-5h14l2 5H3zm6 10v-6h6v6",
     "tag": "M3 4h8l10 10-7 7L3 10V4zm4 4h.01",
     "wallet": "M4 7h16v13H4zM4 7V4h13v3m3 5h-5v4h5",
     "bar": "M4 4v16h16M8 8h9M8 12h12M8 16h6",
@@ -224,7 +223,6 @@ export function createExpensePanel({root, client}) {
             ['person', 'Pessoa com maior gasto', leading(people)],
             ['team', 'Setor com maior gasto', leading(expenseGroups(current.map(row => ({...row, sector: normalized(row.role).includes('merchandising') ? 'Merchandising' : 'Comercial'})), [], 'sector', 'Sem setor'))],
             ['pin', 'Cidade com maior gasto', leading(cities, 'Sem cidade')],
-            ['store', 'Estabelecimento com maior gasto', leading(expenseGroups(current, prior, 'merchant', 'Sem estabelecimento'), 'Sem estabelecimento')],
             ['tag', 'Categoria com maior gasto', leading(categories, 'Sem categoria')],
         ];
         summary.replaceChildren();
