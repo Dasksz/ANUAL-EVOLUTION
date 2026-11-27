@@ -191,7 +191,7 @@ export function createExpensePanel({root, client}) {
             ['Gasto no mês', currency(total(current)), comparison + ' vs. ' + monthLabel(previous)],
             ['Gasto no mês anterior', currency(total(prior)), monthLabel(previous)],
             ['Pessoa com maior gasto', leading(people)],
-            ['Setor / função com maior gasto', leading(expenseGroups(current, prior, 'role', 'Sem função'))],
+            ['Setor com maior gasto', leading(expenseGroups(current.map(row => ({...row, sector: normalized(row.role).includes('merchandising') ? 'Merchandising' : 'Comercial'})), [], 'sector', 'Sem setor'))],
             ['Cidade com maior gasto', leading(cities, 'Sem cidade')],
             ['Estabelecimento com maior gasto', leading(expenseGroups(current, prior, 'merchant', 'Sem estabelecimento'), 'Sem estabelecimento')],
             ['Categoria com maior gasto', leading(categories, 'Sem categoria')],
