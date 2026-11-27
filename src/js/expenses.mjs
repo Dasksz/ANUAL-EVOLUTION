@@ -133,8 +133,7 @@ export function createExpensePanel({root, client}) {
     }
 
     function bar(title, data, period, previous) {
-        const {card, canvas, viewport} = chartCard(title, Math.max(180, 58 + data.length * 34), 'bar');
-        card.classList.add('lg:col-span-2');
+        const {canvas, viewport} = chartCard(title, Math.max(180, 58 + data.length * 34), 'bar');
         if (!data.length || !window.Chart) {
             viewport.replaceWith(field('p', 'text-slate-400 text-sm', data.length ? 'Gráfico indisponível.' : 'Sem gastos no recorte.'));
             return;
