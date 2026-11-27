@@ -119,7 +119,7 @@ export function createExpensePanel({root, client}) {
         const heading = field('h3', 'flex items-center gap-2 font-bold text-white mb-4');
         heading.append(panelIcon(icon), document.createTextNode(title));
         card.append(heading);
-        const viewport = field('div', 'overflow-auto max-h-[36rem]');
+        const viewport = field('div', 'overflow-auto max-h-[26rem]');
         const area = field('div', 'relative');
         area.style.height = height + 'px';
         const canvas = document.createElement('canvas');
@@ -133,7 +133,7 @@ export function createExpensePanel({root, client}) {
     }
 
     function bar(title, data, period, previous) {
-        const {card, canvas, viewport} = chartCard(title, Math.max(210, 58 + data.length * 42), 'bar');
+        const {card, canvas, viewport} = chartCard(title, Math.max(180, 58 + data.length * 34), 'bar');
         card.classList.add('lg:col-span-2');
         if (!data.length || !window.Chart) {
             viewport.replaceWith(field('p', 'text-slate-400 text-sm', data.length ? 'Gráfico indisponível.' : 'Sem gastos no recorte.'));
@@ -162,7 +162,7 @@ export function createExpensePanel({root, client}) {
     }
 
     function pie(period, rows) {
-        const {canvas, viewport} = chartCard('iFood × Extra · ' + monthLabel(period), 245, 'pie');
+        const {canvas, viewport} = chartCard('iFood × Extra · ' + monthLabel(period), 210, 'pie');
         const totals = ['ifood', 'extra'].map(type => total(rows.filter(row => normalized(row.type) === type)));
         if (!totals.some(value => value > 0) || !window.Chart) {
             viewport.replaceWith(field('p', 'text-slate-400 text-sm', window.Chart ? 'Sem gastos iFood ou Extra no recorte.' : 'Gráfico indisponível.'));
@@ -182,7 +182,7 @@ export function createExpensePanel({root, client}) {
 
     function expenseCandles() {
         const periods = ['2026-09', '2026-10', '2026-11'];
-        const {card, canvas, viewport} = chartCard('Evolução dos gastos · set–nov 2026', 245, 'bar');
+        const {card, canvas, viewport} = chartCard('Evolução dos gastos · set–nov 2026', 210, 'bar');
         const totals = periods.map(period => {
             const rows = selectedRows(period);
             return rows.length ? total(rows) : null;
