@@ -1,6 +1,7 @@
 import { changedDimensionRows, clientSummaryNeedsRefresh } from './dimension-sync.mjs?v=20261103-1';
 import { createPlanningPanel } from './planning.mjs?v=20261110-financial-pdf';
 import { createCommercialHealthPanel } from './commercial-health.mjs?v=20261106-health-suppliers';
+import { createExpensePanel } from './expenses.mjs?v=1';
 import { startRefreshProgress } from './refresh-progress.mjs?v=20261023-compact';
 import * as DashboardGoals from './dashboard-goals.mjs?v=20261111-audit';
 import { isVendorRankingEligible } from "./vendor-ranking.mjs?v=20261001-all-rankings";
@@ -828,6 +829,9 @@ function getActiveExportView() {
     const planningView = document.getElementById('planning-view');
     const planningRoot = document.getElementById('planning-content');
     const planningPanel = createPlanningPanel({root: planningRoot, client: supabase});
+    const expensesView = document.getElementById('expenses-view');
+    const navExpensesBtn = document.getElementById('nav-expenses-btn');
+    const expensesPanel = createExpensePanel({root: expensesView, client: supabase});
     const commercialHealthView = document.getElementById('commercial-health-view');
     const healthRoot = document.getElementById('commercial-health-content');
     const commercialHealthPanel = createCommercialHealthPanel({root: healthRoot, client: supabase});
@@ -1228,6 +1232,7 @@ function getActiveExportView() {
         if (lojaPerfeitaView && !lojaPerfeitaView.classList.contains('hidden')) return 'loja-perfeita';
         if (estrelasView && !estrelasView.classList.contains('hidden')) return 'estrelas';
         if (planningView && !planningView.classList.contains('hidden')) return 'planning';
+        if (!expensesView.classList.contains('hidden')) return 'expenses';
         if (commercialHealthView && !commercialHealthView.classList.contains('hidden')) return 'commercial-health';
         return 'dashboard';
     }
@@ -1477,7 +1482,7 @@ function getActiveExportView() {
         });
 
         // Provide a default if the view wasn't set or is invalid
-        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison', 'innovations', 'loja-perfeita', 'estrelas', 'agenda', 'goals', 'commercial-health', 'planning'];
+        const validViews = ['dashboard', 'city', 'boxes', 'branch', 'comparison', 'innovations', 'loja-perfeita', 'estrelas', 'agenda', 'goals', 'commercial-health', 'planning', 'expenses'];
         if (!view || !validViews.includes(view)) {
             view = 'dashboard';
         }
@@ -1590,6 +1595,8 @@ function getActiveExportView() {
                 return;
             }
             if (event === 'SIGNED_OUT') {
+                expensesPanel.deactivate();
+                navExpensesBtn.classList.add('hidden');
                 planningPanel.deactivate();
                 commercialHealthPanel.deactivate();
                 isRecoveringPassword = false;
@@ -1628,6 +1635,7 @@ function getActiveExportView() {
                 const { status, role, name } = JSON.parse(cachedAuth);
                 if (status === 'aprovado') {
                     window.userRole = role;
+                    navExpensesBtn.classList.toggle('hidden', role !== 'adm');
                     updateProfileMenu(name, role);
                     isAppReady = true;
                     handleInitialRouting();
@@ -1661,7 +1669,8 @@ function getActiveExportView() {
             }
 
             const status = profile?.status || 'pendente';
-            if (profile?.role) window.userRole = profile.role;
+            window.userRole = profile?.role;
+                navExpensesBtn.classList.toggle('hidden', window.userRole !== 'adm');
             updateProfileMenu(profile?.name, profile?.role);
 
             if (status === 'aprovado') {
@@ -2115,6 +2124,8 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     }
 
     const resetViews = () => {
+        expensesPanel.deactivate();
+        expensesView.classList.add('hidden');
         commercialHealthPanel.deactivate();
         planningPanel.deactivate();
         if (planningView) planningView.classList.add('hidden');
@@ -2136,6 +2147,7 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
     };
 
     async function renderView(view, options = {}) {
+        if (view === 'expenses' && window.userRole !== 'adm') view = 'dashboard';
         // Push to history if not navigating back
         if (!options.skipHistory && currentActiveView && currentActiveView !== view) {
             viewHistory.push(currentActiveView);
@@ -2167,6 +2179,11 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
                     setActiveNavLink(navPlanningBtn);
                     planningPanel.activate();
                 }
+                break;
+            case 'expenses':
+                expensesView.classList.remove('hidden');
+                setActiveNavLink(navExpensesBtn);
+                void expensesPanel.activate();
                 break;
             case 'commercial-health':
                 if (commercialHealthView && navCommercialHealthBtn) {
@@ -2316,6 +2333,11 @@ let jbpTrendInfo = { allowed: false, factor: 1, month_index: 11 };
             renderView('innovations');
         });
     }
+
+    navExpensesBtn.addEventListener('click', (event) => {
+        if (navigateWithCtrl(event, 'expenses')) return;
+        void renderView('expenses');
+    });
 
     if (navEstrelasBtn) {
         navEstrelasBtn.addEventListener('click', (e) => {
