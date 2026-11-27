@@ -160,7 +160,7 @@ export function createExpensePanel({root, client}) {
                 font: {family: 'Inter, sans-serif'},
                 plugins: {legend: {labels: {color: chartColors.text, usePointStyle: true}}, datalabels: {display: false}, tooltip: {callbacks: {label: item => item.dataset.label + ': ' + currency(item.parsed.x)}}},
                 scales: {
-                    x: {beginAtZero: true, grid: {color: chartColors.grid}, ticks: {color: chartColors.text, font: {size: 10}, maxTicksLimit: 6, callback: axisCurrency}},
+                    x: {beginAtZero: true, grid: {color: chartColors.grid}, ticks: {color: chartColors.text, font: {size: 10}, maxTicksLimit: 9, callback: axisCurrency}},
                     y: {grid: {display: false}, ticks: {color: chartColors.text, font: {size: 10}, autoSkip: false}},
                 },
             },
@@ -233,7 +233,7 @@ export function createExpensePanel({root, client}) {
                 },
                 scales: {
                     x: {grid: {display: false}, ticks: {color: chartColors.text}},
-                    y: {beginAtZero: true, grid: {color: chartColors.grid}, ticks: {color: chartColors.text, font: {size: 10}, maxTicksLimit: 6, callback: axisCurrency}},
+                    y: {beginAtZero: true, grid: {color: chartColors.grid}, ticks: {color: chartColors.text, font: {size: 10}, maxTicksLimit: 9, callback: axisCurrency}},
                 },
             },
         }));
