@@ -37,5 +37,6 @@ test('navigation and direct URL routes both use wrapped panels and logout locks 
  const app=readFileSync(new URL('../src/js/app.js',import.meta.url),'utf8');
  assert.match(app,/const planningPanel = createPlanningPanel\(/);assert.match(app,/const commercialHealthPanel = createCommercialHealthPanel\(/);
  assert.match(app,/case 'planning':[\s\S]*?planningPanel\.activate\(\)/);assert.match(app,/case 'commercial-health':[\s\S]*?commercialHealthPanel\.activate\(\)/);
- assert.match(app,/if \(event === 'SIGNED_OUT'\) \{\s*planningPanel\.deactivate\(\);\s*commercialHealthPanel\.deactivate\(\)/);
+ const signedOut=app.match(/if \(event === 'SIGNED_OUT'\) \{([\s\S]*?)\n\s*\}/)?.[1] || '';
+ assert.match(signedOut,/planningPanel\.deactivate\(\)/);assert.match(signedOut,/commercialHealthPanel\.deactivate\(\)/);
 });

@@ -12755,13 +12755,23 @@ async function setupGoalsFilters() {
     };
 
     let refreshTimer = null;
-    const triggerRender = () => {
+    let refreshPending = false;
+    const hasOpenDropdown = () => Object.values(controls).some(control =>
+        control?.dropdown && !control.dropdown.classList.contains('hidden')
+    );
+    const scheduleRender = () => {
         clearTimeout(refreshTimer);
         refreshTimer = setTimeout(() => {
             refreshTimer = null;
+            if (hasOpenDropdown() || !refreshPending) return;
+            refreshPending = false;
             const goalsView = document.getElementById('goals-view');
             if (goalsView && !goalsView.classList.contains('hidden')) renderGoalsView();
         }, 120);
+    };
+    const triggerRender = () => {
+        refreshPending = true;
+        if (!hasOpenDropdown()) scheduleRender();
     };
 
     const optionSetByControl = {
@@ -12792,7 +12802,8 @@ async function setupGoalsFilters() {
     document.addEventListener('click', (e) => {
         const dropdowns = Object.values(controls).map(control => control?.dropdown);
         const buttons = Object.values(controls).map(control => control?.btn);
-        handleDropdownsClickaway(e, dropdowns, buttons);
+        const anyClosed = handleDropdownsClickaway(e, dropdowns, buttons);
+        if (anyClosed && !hasOpenDropdown() && refreshPending) scheduleRender();
     });
 
     const metricBtns = document.querySelectorAll('.goals-metric-btn');

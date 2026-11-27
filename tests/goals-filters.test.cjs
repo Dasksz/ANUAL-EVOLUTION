@@ -22,6 +22,7 @@ function environment(){
   const ids=['goals-filter-ano','goals-filter-mes','goals-filter-filial-btn','goals-filter-filial-dropdown','goals-filter-fornecedor-btn','goals-filter-fornecedor-dropdown','goals-filter-supervisor-btn','goals-filter-supervisor-dropdown','goals-filter-vendedor-btn','goals-filter-vendedor-dropdown','goals-filter-categoria-btn','goals-filter-categoria-dropdown','import-goals-ano','import-goals-mes','goals-view','goals-clear-filters-btn'];
   const nodes=new Map(ids.map(id=>[id,node(id)]));
   const callbacks=new Map();
+  const timers=new Map();let nextTimer=1;
   const filters={filiais:[],fornecedores:[],supervisores:[],vendedores:[],categorias:[]};
   const dropdowns=ids.filter(id=>id.endsWith('-dropdown')).map(id=>nodes.get(id));
   let renderCalls=0;
@@ -39,7 +40,7 @@ function environment(){
     document:{getElementById:id=>nodes.get(id),querySelectorAll:()=>[],addEventListener(type,callback){if(type==='click')documentClick=callback}},
     supabase:{rpc:async()=>({data:{anos:[2026],filiais:['05','08'],fornecedores:[{cod:'708',name:'Ñ EXTRUSADOS'}],supervisors:['RÔMULO AMADO DA','TIAGO JOSÉ DE S'],vendedores:['282','21'],categorias:['DORITOS']}})},
     getDefaultFilterDates:()=>({currentYear:'2026',currentMonth:'10'}),
-    setTimeout:callback=>{callback();return 1},clearTimeout(){},console:{error(){}},
+    setTimeout:callback=>{const id=nextTimer++;timers.set(id,callback);return id},clearTimeout:id=>timers.delete(id),console:{error(){}},
     renderGoalsView(){renderCalls++},renderGoalsChart(){},currentGoalsMetric:'fat',
     handleDropdownsClickaway(event,menus,buttons){
       let anyClosed=false;
@@ -53,7 +54,7 @@ function environment(){
     }
   });
   vm.runInContext(setup,ctx);
-  return {ctx,nodes,callbacks,filters,documentClick:target=>documentClick({target}),renderCalls:()=>renderCalls};
+  return {ctx,nodes,callbacks,filters,documentClick:target=>documentClick({target}),renderCalls:()=>renderCalls,flushTimers(){const pending=[...timers.values()];timers.clear();pending.forEach(callback=>callback())}};
 }
 
 test('goals filters retain existing selections when another filter changes',async()=>{
@@ -104,6 +105,7 @@ test('selecting filters and switching lists waits for an outside click, then ren
   assert.equal(e.renderCalls(),0,'selecting an item must remain pending while a list is open');
 
   e.documentClick({id:'empty-dashboard-area'});
+  e.flushTimers();
   assert.equal(supplierDropdown.classList.contains('hidden'),true);
   assert.equal(e.renderCalls(),1,'all pending filters must be applied together');
 });
@@ -115,6 +117,7 @@ test('year and month changes apply with closed lists and join pending filters wh
 
   yearSelect.value='2025';
   yearSelect.events.change[0]();
+  e.flushTimers();
   assert.equal(e.renderCalls(),1,'date changes apply when no multiselect is open');
 
   const supervisorButton=e.nodes.get('goals-filter-supervisor-btn');
@@ -128,5 +131,6 @@ test('year and month changes apply with closed lists and join pending filters wh
   assert.equal(e.renderCalls(),1,'clicking another filter control closes the list without an early query');
   yearSelect.value='2026';
   yearSelect.events.change[0]();
+  e.flushTimers();
   assert.equal(e.renderCalls(),2,'the changed date and pending list selection are applied together');
 });
