@@ -2,6 +2,13 @@ const money = new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'
 const monthFormat = new Intl.DateTimeFormat('pt-BR', {month: 'long', year: 'numeric', timeZone: 'UTC'});
 const dateFormat = new Intl.DateTimeFormat('pt-BR', {timeZone: 'UTC'});
 const currency = cents => money.format(cents / 100);
+const axisNumber = new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 2});
+const axisCurrency = cents => {
+    const reais = cents / 100;
+    if (Math.abs(reais) >= 1_000_000) return axisNumber.format(reais / 1_000_000) + 'M';
+    if (Math.abs(reais) >= 1_000) return axisNumber.format(reais / 1_000) + 'K';
+    return axisNumber.format(reais);
+};
 const normalized = value => value.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('pt-BR').trim();
 const dateOf = value => new Date(value + 'T00:00:00Z');
 const monthLabel = value => monthFormat.format(dateOf(value + '-01'));
@@ -153,8 +160,8 @@ export function createExpensePanel({root, client}) {
                 font: {family: 'Inter, sans-serif'},
                 plugins: {legend: {labels: {color: chartColors.text, usePointStyle: true}}, datalabels: {display: false}, tooltip: {callbacks: {label: item => item.dataset.label + ': ' + currency(item.parsed.x)}}},
                 scales: {
-                    x: {beginAtZero: true, grid: {color: chartColors.grid}, ticks: {color: chartColors.text, callback: currency}},
-                    y: {grid: {display: false}, ticks: {color: chartColors.text, autoSkip: false}},
+                    x: {beginAtZero: true, grid: {color: chartColors.grid}, ticks: {color: chartColors.text, font: {size: 10}, maxTicksLimit: 6, callback: axisCurrency}},
+                    y: {grid: {display: false}, ticks: {color: chartColors.text, font: {size: 10}, autoSkip: false}},
                 },
             },
         }));
@@ -226,7 +233,7 @@ export function createExpensePanel({root, client}) {
                 },
                 scales: {
                     x: {grid: {display: false}, ticks: {color: chartColors.text}},
-                    y: {beginAtZero: true, grid: {color: chartColors.grid}, ticks: {color: chartColors.text, callback: currency}},
+                    y: {beginAtZero: true, grid: {color: chartColors.grid}, ticks: {color: chartColors.text, font: {size: 10}, maxTicksLimit: 6, callback: axisCurrency}},
                 },
             },
         }));
