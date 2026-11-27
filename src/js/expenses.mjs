@@ -307,7 +307,7 @@ export function createExpensePanel({root, client}) {
         download.disabled = !current.length;
     }
 
-    function downloadClosing() {
+    async function downloadClosing() {
         const rows = selectedRows(month.value).sort((a, b) => a.date.localeCompare(b.date) || a.person.localeCompare(b.person, 'pt-BR'));
         if (!rows.length) return;
         const {jsPDF} = window.jspdf;
@@ -344,18 +344,64 @@ export function createExpensePanel({root, client}) {
         doc.setFontSize(15);
         doc.text('Lista de lançamentos', 14, 18);
         doc.setFontSize(9);
-        doc.text('Comprovantes indisponíveis na carga atual do painel.', 14, 25);
+        doc.text('Os comprovantes seguem a numeração dos lançamentos.', 14, 25);
         doc.autoTable({
             ...tableStyle,
             startY: 30,
-            head: [['Data', 'Nome', 'Categoria', 'Estabelecimento / descrição', 'Cidade', 'Valor']],
-            body: rows.map(row => [
-                formatDate(row), row.person, row.category || '—',
+            head: [['Nº', 'Data', 'Nome', 'Categoria', 'Estabelecimento / descrição', 'Cidade', 'Valor']],
+            body: rows.map((row, index) => [
+                index + 1, formatDate(row), row.person, row.category || '—',
                 [row.merchant, row.description].filter(Boolean).join(' · ') || '—',
                 row.city || '—', currency(row.amount) + (row.reimbursed ? ' (reembolsado)' : ''),
             ]),
         });
-        doc.save('Fechamento_de_Gastos_' + month.value + '.pdf');
+        const filename = 'Fechamento_de_Gastos_' + month.value + '.pdf';
+        const {PDFDocument, StandardFonts} = window.PDFLib;
+        const result = await PDFDocument.load(doc.output('arraybuffer'));
+        const font = await result.embedFont(StandardFonts.Helvetica);
+        const missing = [];
+        for (const [index, row] of rows.entries()) {
+            if (!row.receiptPath) { missing.push(index + 1); continue; }
+            try {
+                const {data, error} = await client.storage.from('evolution-expense-receipts').download(row.receiptPath);
+                if (error || !data) throw error || new Error('Comprovante indisponível');
+                const bytes = await data.arrayBuffer();
+                if (row.receiptPath.endsWith('.pdf')) {
+                    const receipt = await PDFDocument.load(bytes);
+                    const pages = await result.copyPages(receipt, receipt.getPageIndices());
+                    const cover = result.addPage();
+                    cover.drawText('Comprovante do lançamento ' + (index + 1), {x: 42, y: 790, size: 14, font});
+                    pages.forEach(page => result.addPage(page));
+                } else {
+                    const image = row.receiptPath.endsWith('.png') ? await result.embedPng(bytes) : await result.embedJpg(bytes);
+                    const page = result.addPage();
+                    const {width, height} = page.getSize();
+                    const scale = Math.min((width - 84) / image.width, (height - 118) / image.height, 1);
+                    page.drawText('Comprovante do lançamento ' + (index + 1), {x: 42, y: height - 42, size: 14, font});
+                    page.drawImage(image, {x: 42, y: height - 72 - image.height * scale, width: image.width * scale, height: image.height * scale});
+                }
+            } catch (error) {
+                console.warn('Não foi possível incorporar o comprovante do lançamento', index + 1, error);
+                missing.push(index + 1);
+            }
+        }
+        if (missing.length) {
+            let page = result.addPage();
+            let y = 790;
+            page.drawText('Lançamentos sem comprovante incorporado', {x: 42, y, size: 14, font});
+            y -= 25;
+            for (let index = 0; index < missing.length; index += 18) {
+                if (y < 45) { page = result.addPage(); y = 790; }
+                page.drawText(missing.slice(index, index + 18).join(', '), {x: 42, y, size: 10, font});
+                y -= 18;
+            }
+        }
+        const url = URL.createObjectURL(new Blob([await result.save()], {type: 'application/pdf'}));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 30_000);
     }
 
     function updatePeriod() {
@@ -417,7 +463,17 @@ export function createExpensePanel({root, client}) {
     }
 
     month.addEventListener('change', updatePeriod);
-    download.addEventListener('click', downloadClosing);
+    download.addEventListener('click', async () => {
+        download.disabled = true;
+        try {
+            await downloadClosing();
+        } catch (error) {
+            console.error('Erro ao exportar fechamento', error);
+            window.alert('Não foi possível gerar o fechamento. Tente novamente.');
+        } finally {
+            download.disabled = !selectedRows(month.value).length;
+        }
+    });
     refresh.addEventListener('click', activate);
     more.addEventListener('click', () => {
         limit += 100;
