@@ -296,12 +296,12 @@ export function createExpensePanel({root, client}) {
             summary.append(card);
         }
         clearCharts();
-        pie(period, current);
         expenseCandles();
         bar('Gastos por pessoa', people, period, previous);
-        bar('Gastos por cidade', cities, period, previous);
         bar('Gastos por categoria', categories, period, previous);
+        bar('Gastos por cidade', cities, period, previous);
         bar('Gastos por estabelecimento', expenseGroups(current, prior, 'merchant', 'Sem estabelecimento'), period, previous);
+        pie(period, current);
         tableRows(current);
     }
 
