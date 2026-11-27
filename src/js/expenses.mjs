@@ -63,6 +63,7 @@ function field(tag, className, content) {
 export function createExpensePanel({root, client}) {
     const month = root.querySelector('[data-expense-month]');
     const status = root.querySelector('[data-expense-status]');
+    const download = root.querySelector('[data-expense-download]');
     const refresh = root.querySelector('[data-expense-refresh]');
     const filters = root.querySelector('[data-expense-filters]');
     const results = root.querySelector('[data-expense-results]');
@@ -303,6 +304,58 @@ export function createExpensePanel({root, client}) {
         bar('Gastos por estabelecimento', expenseGroups(current, prior, 'merchant', 'Sem estabelecimento'), period, previous);
         pie(period, current);
         tableRows(current);
+        download.disabled = !current.length;
+    }
+
+    function downloadClosing() {
+        const rows = selectedRows(month.value).sort((a, b) => a.date.localeCompare(b.date) || a.person.localeCompare(b.person, 'pt-BR'));
+        if (!rows.length) return;
+        const {jsPDF} = window.jspdf;
+        const doc = new jsPDF();
+        const categories = ['alimentacao', 'combustivel', 'transporte', 'material'];
+        const accumulated = total(rows);
+        const formatDate = row => dateFormat.format(dateOf(row.date));
+        const tableStyle = {
+            styles: {fontSize: 8, cellPadding: 2.5},
+            headStyles: {fillColor: [194, 65, 12]},
+        };
+
+        doc.setFontSize(17);
+        doc.text('Fechamento de gastos', 14, 18);
+        doc.setFontSize(10);
+        doc.text(monthLabel(month.value) + ' · ' + rows.length + ' lançamentos no recorte', 14, 25);
+        doc.autoTable({
+            ...tableStyle,
+            startY: 30,
+            head: [['Data', 'Nome', 'Alimentação', 'Combustível', 'Transporte', 'Material', 'Outros', 'Total']],
+            body: rows.map(row => {
+                const category = normalized(row.category);
+                const index = categories.indexOf(category);
+                const bucket = index === -1 ? categories.length : index;
+                return [formatDate(row), row.person, ...Array.from({length: 5}, (_, column) =>
+                    column === bucket ? currency(row.amount) : '—'), currency(row.amount)];
+            }),
+            foot: [[{content: 'Total acumulado', colSpan: 7}, currency(accumulated)]],
+            showFoot: 'lastPage',
+            footStyles: {fillColor: [51, 65, 85]},
+        });
+
+        doc.addPage();
+        doc.setFontSize(15);
+        doc.text('Lista de lançamentos', 14, 18);
+        doc.setFontSize(9);
+        doc.text('Comprovantes indisponíveis na carga atual do painel.', 14, 25);
+        doc.autoTable({
+            ...tableStyle,
+            startY: 30,
+            head: [['Data', 'Nome', 'Categoria', 'Estabelecimento / descrição', 'Cidade', 'Valor']],
+            body: rows.map(row => [
+                formatDate(row), row.person, row.category || '—',
+                [row.merchant, row.description].filter(Boolean).join(' · ') || '—',
+                row.city || '—', currency(row.amount) + (row.reimbursed ? ' (reembolsado)' : ''),
+            ]),
+        });
+        doc.save('Fechamento_de_Gastos_' + month.value + '.pdf');
     }
 
     function updatePeriod() {
@@ -353,6 +406,7 @@ export function createExpensePanel({root, client}) {
 
     function deactivate() {
         request++;
+        download.disabled = true;
         clearCharts();
         entries = [];
         syncedAt = '';
@@ -363,6 +417,7 @@ export function createExpensePanel({root, client}) {
     }
 
     month.addEventListener('change', updatePeriod);
+    download.addEventListener('click', downloadClosing);
     refresh.addEventListener('click', activate);
     more.addEventListener('click', () => {
         limit += 100;
