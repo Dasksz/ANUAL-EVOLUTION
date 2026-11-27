@@ -187,12 +187,8 @@ export function createExpensePanel({root, client}) {
             const rows = selectedRows(period);
             return rows.length ? total(rows) : null;
         });
-        const ranges = totals.map((value, index) => {
-            if (value === null) return null;
-            return [totals[index - 1] ?? value, value];
-        });
         const caption = field('p', 'mt-3 text-xs text-slate-400',
-            'Cada vela liga o total do mês anterior ao do mês atual. Setembro é a referência inicial.');
+            'A altura de cada vela mostra o total gasto no mês.');
         card.append(caption);
         if (totals.every(value => value === null) || !window.Chart) {
             viewport.replaceWith(field('p', 'text-slate-400 text-sm',
@@ -205,9 +201,9 @@ export function createExpensePanel({root, client}) {
             data: {
                 labels: ['Setembro', 'Outubro', 'Novembro'],
                 datasets: [{
-                    data: ranges,
-                    backgroundColor: ranges.map(range => !range || range[0] === range[1]
-                        ? chartColors.comparison : range[1] > range[0] ? chartColors.orange : chartColors.extra),
+                    data: totals,
+                    base: 0,
+                    backgroundColor: chartColors.orange,
                     barThickness: 24,
                     minBarLength: 3,
                 }],
@@ -220,9 +216,10 @@ export function createExpensePanel({root, client}) {
                     legend: {display: false},
                     datalabels: {display: false},
                     tooltip: {callbacks: {label: item => {
-                        const [before, after] = item.raw;
+                        const after = item.raw;
+                        const before = totals[item.dataIndex - 1];
                         const lines = ['Total do mês: ' + currency(after)];
-                        if (totals[item.dataIndex - 1] != null) {
+                        if (before != null) {
                             lines.push('Mês anterior: ' + currency(before), 'Variação: ' + currency(after - before));
                         }
                         return lines;
@@ -230,7 +227,7 @@ export function createExpensePanel({root, client}) {
                 },
                 scales: {
                     x: {grid: {display: false}, ticks: {color: chartColors.text}},
-                    y: {grid: {color: chartColors.grid}, ticks: {color: chartColors.text, callback: currency}},
+                    y: {beginAtZero: true, grid: {color: chartColors.grid}, ticks: {color: chartColors.text, callback: currency}},
                 },
             },
         }));
