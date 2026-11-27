@@ -70,7 +70,7 @@ export function createExpensePanel({root, client}) {
     const chartsRoot = root.querySelector('[data-expense-charts]');
     const table = root.querySelector('tbody');
     const more = root.querySelector('[data-expense-more]');
-    const selections = {supervisor: new Set(), coordenador: new Set(), city: new Set()};
+    const selections = {supervisor: new Set(), coordenador: new Set(), city: new Set(), category: new Set()};
     let entries = [];
     let charts = [];
     let syncedAt = '';
@@ -117,7 +117,8 @@ export function createExpensePanel({root, client}) {
             const group = normalized(row.role).startsWith('supervisor') ? 'supervisor' : 'coordenador';
             return row.date.startsWith(period) &&
                 (!hasPersonFilter || selections[group].has(normalized(row.person))) &&
-                (!selections.city.size || selections.city.has(normalized(row.city || 'Sem cidade')));
+                (!selections.city.size || selections.city.has(normalized(row.city || 'Sem cidade'))) &&
+                (!selections.category.size || selections.category.has(normalized(row.category || 'Sem categoria')));
         });
     }
 
@@ -310,6 +311,7 @@ export function createExpensePanel({root, client}) {
         renderOptions('supervisor', visible.filter(row => normalized(row.role).startsWith('supervisor')).map(row => row.person), 'Supervisores');
         renderOptions('coordenador', visible.filter(row => normalized(row.role).startsWith('coordenador')).map(row => row.person), 'Coordenadores');
         renderOptions('city', visible.map(row => row.city || 'Sem cidade'), 'Cidades');
+        renderOptions('category', visible.map(row => row.category || 'Sem categoria'), 'Categorias');
         limit = 100;
         render();
     }
