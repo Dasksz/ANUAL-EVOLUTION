@@ -180,6 +180,62 @@ export function createExpensePanel({root, client}) {
         }));
     }
 
+    function expenseCandles() {
+        const periods = ['2026-09', '2026-10', '2026-11'];
+        const {card, canvas, viewport} = chartCard('Evolução dos gastos · set–nov 2026', 245, 'bar');
+        const totals = periods.map(period => {
+            const rows = selectedRows(period);
+            return rows.length ? total(rows) : null;
+        });
+        const ranges = totals.map((value, index) => {
+            if (value === null) return null;
+            return [totals[index - 1] ?? value, value];
+        });
+        const caption = field('p', 'mt-3 text-xs text-slate-400',
+            'Cada vela liga o total do mês anterior ao do mês atual. Setembro é a referência inicial.');
+        card.append(caption);
+        if (totals.every(value => value === null) || !window.Chart) {
+            viewport.replaceWith(field('p', 'text-slate-400 text-sm',
+                window.Chart ? 'Sem gastos no recorte.' : 'Gráfico indisponível.'));
+            return;
+        }
+
+        charts.push(new window.Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: ['Setembro', 'Outubro', 'Novembro'],
+                datasets: [{
+                    data: ranges,
+                    backgroundColor: ranges.map(range => !range || range[0] === range[1]
+                        ? chartColors.comparison : range[1] > range[0] ? chartColors.orange : chartColors.extra),
+                    barThickness: 24,
+                    minBarLength: 3,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                font: {family: 'Inter, sans-serif'},
+                plugins: {
+                    legend: {display: false},
+                    datalabels: {display: false},
+                    tooltip: {callbacks: {label: item => {
+                        const [before, after] = item.raw;
+                        const lines = ['Total do mês: ' + currency(after)];
+                        if (totals[item.dataIndex - 1] != null) {
+                            lines.push('Mês anterior: ' + currency(before), 'Variação: ' + currency(after - before));
+                        }
+                        return lines;
+                    }}},
+                },
+                scales: {
+                    x: {grid: {display: false}, ticks: {color: chartColors.text}},
+                    y: {grid: {color: chartColors.grid}, ticks: {color: chartColors.text, callback: currency}},
+                },
+            },
+        }));
+    }
+
     function tableRows(current) {
         table.replaceChildren();
         const rows = [...current].sort((a, b) => b.date.localeCompare(a.date));
@@ -237,7 +293,7 @@ export function createExpensePanel({root, client}) {
         }
         clearCharts();
         pie(period, current);
-        pie(previous, prior);
+        expenseCandles();
         bar('Gastos por pessoa', people, period, previous);
         bar('Gastos por cidade', cities, period, previous);
         bar('Gastos por categoria', categories, period, previous);
