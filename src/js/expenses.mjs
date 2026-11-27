@@ -7,6 +7,27 @@ const dateOf = value => new Date(value + 'T00:00:00Z');
 const monthLabel = value => monthFormat.format(dateOf(value + '-01'));
 const total = rows => rows.reduce((sum, row) => sum + row.amount, 0);
 
+const expenseIcons = {
+    "calendar": "M5 6h14v14H5zM8 3v6m8-6v6M5 11h14",
+    "person": "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2m12-14a4 4 0 1 1-8 0 4 4 0 0 1 8 0z",
+    "team": "M3 20v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2m5 0v-2a4 4 0 0 0-3-4m-4-7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zm3-4a4 4 0 0 1 0 8",
+    "pin": "M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0zm-5 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
+    "store": "M4 10v10h16V10M3 10l2-5h14l2 5H3zm6 10v-6h6v6",
+    "tag": "M3 4h8l10 10-7 7L3 10V4zm4 4h.01",
+    "wallet": "M4 7h16v13H4zM4 7V4h13v3m3 5h-5v4h5",
+    "bar": "M4 4v16h16M8 8h9M8 12h12M8 16h6",
+    "pie": "M12 3v9h9M10 4a8 8 0 1 0 10 10"
+};
+const surface = 'bg-[#151419]/80 border border-white/10 rounded-xl shadow-lg';
+const chartColors = {orange: '#f97316', comparison: '#64748b', extra: '#38bdf8', text: '#cbd5e1', grid: 'rgba(148, 163, 184, 0.18)'};
+
+function panelIcon(name) {
+    const badge = field('span', 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-400');
+    badge.setAttribute('aria-hidden', 'true');
+    badge.innerHTML = '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="' + expenseIcons[name] + '"/></svg>';
+    return badge;
+}
+
 export function previousExpenseMonth(month) {
     const date = dateOf(month + '-01');
     date.setUTCMonth(date.getUTCMonth() - 1);
@@ -61,14 +82,15 @@ export function createExpensePanel({root, client}) {
         const selected = selections[key];
         const unique = new Map(options.map(option => [normalized(option), option]));
         for (const value of selected) if (!unique.has(value)) selected.delete(value);
-        const heading = host.querySelector('summary');
+        const heading = host.querySelector('[data-expense-filter-label]');
         heading.textContent = label + (selected.size ? ' (' + selected.size + ')' : '');
         const list = host.querySelector('div');
         list.replaceChildren();
         for (const [id, display] of [...unique].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))) {
-            const item = field('label', 'flex items-center gap-2 p-1 cursor-pointer');
+            const item = field('label', 'flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-white/10');
             const input = document.createElement('input');
             input.type = 'checkbox';
+            input.className = 'accent-orange-500';
             input.checked = selected.has(id);
             input.addEventListener('change', () => {
                 if (input.checked) selected.add(id);
@@ -93,9 +115,11 @@ export function createExpensePanel({root, client}) {
         });
     }
 
-    function chartCard(title, height) {
-        const card = field('article', 'bg-white rounded-xl border border-slate-200 p-4 min-w-0');
-        card.append(field('h3', 'font-semibold text-slate-900 mb-3', title));
+    function chartCard(title, height, icon) {
+        const card = field('article', surface + ' p-4 sm:p-5 min-w-0');
+        const heading = field('h3', 'flex items-center gap-2 font-bold text-white mb-4');
+        heading.append(panelIcon(icon), document.createTextNode(title));
+        card.append(heading);
         const viewport = field('div', 'overflow-auto max-h-[36rem]');
         const area = field('div', 'relative');
         area.style.height = height + 'px';
@@ -110,10 +134,10 @@ export function createExpensePanel({root, client}) {
     }
 
     function bar(title, data, period, previous) {
-        const {card, canvas, viewport} = chartCard(title, Math.max(210, 58 + data.length * 42));
+        const {card, canvas, viewport} = chartCard(title, Math.max(210, 58 + data.length * 42), 'bar');
         card.classList.add('lg:col-span-2');
         if (!data.length || !window.Chart) {
-            viewport.replaceWith(field('p', 'text-slate-500 text-sm', data.length ? 'Gráfico indisponível.' : 'Sem gastos no recorte.'));
+            viewport.replaceWith(field('p', 'text-slate-400 text-sm', data.length ? 'Gráfico indisponível.' : 'Sem gastos no recorte.'));
             return;
         }
         charts.push(new window.Chart(canvas, {
@@ -121,31 +145,38 @@ export function createExpensePanel({root, client}) {
             data: {
                 labels: data.map(row => row.label),
                 datasets: [
-                    {label: monthLabel(period), data: data.map(row => row.current), backgroundColor: '#c2410c', borderRadius: 3},
-                    {label: monthLabel(previous), data: data.map(row => row.previous), backgroundColor: '#64748b', borderRadius: 3},
+                    {label: monthLabel(period), data: data.map(row => row.current), backgroundColor: chartColors.orange, borderRadius: 3},
+                    {label: monthLabel(previous), data: data.map(row => row.previous), backgroundColor: chartColors.comparison, borderRadius: 3},
                 ],
             },
             options: {
                 indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                plugins: {datalabels: {display: false}, tooltip: {callbacks: {label: item => item.dataset.label + ': ' + currency(item.parsed.x)}}},
-                scales: {x: {beginAtZero: true, ticks: {callback: currency}}, y: {ticks: {autoSkip: false}}},
+                color: chartColors.text,
+                font: {family: 'Inter, sans-serif'},
+                plugins: {legend: {labels: {color: chartColors.text, usePointStyle: true}}, datalabels: {display: false}, tooltip: {callbacks: {label: item => item.dataset.label + ': ' + currency(item.parsed.x)}}},
+                scales: {
+                    x: {beginAtZero: true, grid: {color: chartColors.grid}, ticks: {color: chartColors.text, callback: currency}},
+                    y: {grid: {display: false}, ticks: {color: chartColors.text, autoSkip: false}},
+                },
             },
         }));
     }
 
     function pie(period, rows) {
-        const {canvas, viewport} = chartCard('iFood × Extra · ' + monthLabel(period), 245);
+        const {canvas, viewport} = chartCard('iFood × Extra · ' + monthLabel(period), 245, 'pie');
         const totals = ['ifood', 'extra'].map(type => total(rows.filter(row => normalized(row.type) === type)));
         if (!totals.some(value => value > 0) || !window.Chart) {
-            viewport.replaceWith(field('p', 'text-slate-500 text-sm', window.Chart ? 'Sem gastos iFood ou Extra no recorte.' : 'Gráfico indisponível.'));
+            viewport.replaceWith(field('p', 'text-slate-400 text-sm', window.Chart ? 'Sem gastos iFood ou Extra no recorte.' : 'Gráfico indisponível.'));
             return;
         }
         charts.push(new window.Chart(canvas, {
             type: 'pie',
-            data: {labels: ['iFood', 'Extra'], datasets: [{data: totals, backgroundColor: ['#c2410c', '#2563eb']}]},
+            data: {labels: ['iFood', 'Extra'], datasets: [{data: totals, backgroundColor: [chartColors.orange, chartColors.extra], borderColor: '#151419', borderWidth: 2}]},
             options: {
                 responsive: true, maintainAspectRatio: false,
-                plugins: {datalabels: {display: false}, tooltip: {callbacks: {label: item => item.label + ': ' + currency(item.raw)}}},
+                color: chartColors.text,
+                font: {family: 'Inter, sans-serif'},
+                plugins: {legend: {labels: {color: chartColors.text, usePointStyle: true}}, datalabels: {display: false}, tooltip: {callbacks: {label: item => item.label + ': ' + currency(item.raw)}}},
             },
         }));
     }
@@ -154,10 +185,10 @@ export function createExpensePanel({root, client}) {
         table.replaceChildren();
         const rows = [...current].sort((a, b) => b.date.localeCompare(a.date));
         for (const item of rows.slice(0, limit)) {
-            const row = field('tr', item.reimbursed ? 'border-t border-slate-200 bg-slate-50 text-slate-500' : 'border-t border-slate-200');
+            const row = field('tr', item.reimbursed ? 'border-t border-white/10 text-slate-400 bg-white/[0.02]' : 'border-t border-white/10 hover:bg-white/5');
             const values = [dateFormat.format(dateOf(item.date)), item.person, item.category, item.description, item.city];
             for (const value of values) row.append(field('td', 'px-3 py-2', value || '—'));
-            const amount = field('td', 'px-3 py-2 whitespace-nowrap text-right');
+            const amount = field('td', 'px-3 py-2 whitespace-nowrap text-right tabular-nums');
             if (item.reimbursed) amount.append(field('strong', 'font-bold', 'REEMBOLSADO'));
             else amount.textContent = currency(item.amount);
             row.append(amount);
@@ -165,7 +196,7 @@ export function createExpensePanel({root, client}) {
         }
         if (!rows.length) {
             const row = document.createElement('tr');
-            const cell = field('td', 'py-6 text-center text-slate-500', 'Nenhum lançamento para os filtros selecionados.');
+            const cell = field('td', 'py-6 text-center text-slate-400', 'Nenhum lançamento para os filtros selecionados.');
             cell.colSpan = 6;
             row.append(cell);
             table.append(row);
@@ -188,19 +219,22 @@ export function createExpensePanel({root, client}) {
         };
         const comparison = total(prior) ? new Intl.NumberFormat('pt-BR', {style: 'percent', maximumFractionDigits: 1, signDisplay: 'exceptZero'}).format(total(current) / total(prior) - 1) : '—';
         const cards = [
-            ['Gasto no mês', currency(total(current)), comparison + ' vs. ' + monthLabel(previous)],
-            ['Gasto no mês anterior', currency(total(prior)), monthLabel(previous)],
-            ['Pessoa com maior gasto', leading(people)],
-            ['Setor com maior gasto', leading(expenseGroups(current.map(row => ({...row, sector: normalized(row.role).includes('merchandising') ? 'Merchandising' : 'Comercial'})), [], 'sector', 'Sem setor'))],
-            ['Cidade com maior gasto', leading(cities, 'Sem cidade')],
-            ['Estabelecimento com maior gasto', leading(expenseGroups(current, prior, 'merchant', 'Sem estabelecimento'), 'Sem estabelecimento')],
-            ['Categoria com maior gasto', leading(categories, 'Sem categoria')],
+            ['wallet', 'Gasto no mês', currency(total(current)), comparison + ' vs. ' + monthLabel(previous)],
+            ['calendar', 'Gasto no mês anterior', currency(total(prior)), monthLabel(previous)],
+            ['person', 'Pessoa com maior gasto', leading(people)],
+            ['team', 'Setor com maior gasto', leading(expenseGroups(current.map(row => ({...row, sector: normalized(row.role).includes('merchandising') ? 'Merchandising' : 'Comercial'})), [], 'sector', 'Sem setor'))],
+            ['pin', 'Cidade com maior gasto', leading(cities, 'Sem cidade')],
+            ['store', 'Estabelecimento com maior gasto', leading(expenseGroups(current, prior, 'merchant', 'Sem estabelecimento'), 'Sem estabelecimento')],
+            ['tag', 'Categoria com maior gasto', leading(categories, 'Sem categoria')],
         ];
         summary.replaceChildren();
-        for (const [label, value, detail] of cards) {
-            const card = field('div', 'bg-white border border-slate-200 rounded-xl p-4');
-            card.append(field('p', 'text-xs font-semibold text-slate-600', label), field('p', 'mt-1 font-bold text-slate-900', value));
-            if (detail) card.append(field('p', 'text-xs mt-1 text-slate-600', detail));
+        for (const [icon, label, value, detail] of cards) {
+            const card = field('div', surface + ' min-w-0 p-4');
+            const heading = field('div', 'flex items-center gap-2');
+            heading.append(panelIcon(icon), field('p', 'text-[11px] uppercase tracking-wider font-bold text-slate-300', label));
+            const totalStyle = icon === 'wallet' ? ' text-orange-400 text-2xl' : ' text-white text-lg';
+            card.append(heading, field('p', 'mt-3 break-words font-bold tabular-nums' + totalStyle, value));
+            if (detail) card.append(field('p', 'text-xs mt-1 text-slate-400', detail));
             summary.append(card);
         }
         clearCharts();
