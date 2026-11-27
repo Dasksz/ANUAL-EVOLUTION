@@ -1,7 +1,7 @@
 import { mountSpecialPortfolios } from './special-portfolios.mjs?v=20261105-noop';
 import supabase from './supabase.js?v=5';
 const $ = id => document.getElementById(id);
-let state, editing, recovery, busy = false, loadEpoch = 0, goalRefreshTimer, specialMounted=false;
+let state, editing, recovery, recoveryMetrics, recoveryMetricsEpoch=0, busy = false, loadEpoch = 0, goalRefreshTimer, specialMounted=false;
 const labels = {aprovar:'Autorização aprovada',negar:'Autorização negada',revogar:'WhatsApp revogado',administrador:'WhatsApp administrativo alterado',editar:'Cadastro atualizado',cadastrar:'Colaborador cadastrado',preservar_rh:'Proteção da sincronização atualizada',envio_diario:'Envio diário atualizado'};
 function node(tag, text, cls) {const el=document.createElement(tag); if(text!=null)el.textContent=text; if(cls)el.className=cls; return el;}
 function button(text, action, id, values) {const el=node('button',text);el.onclick=()=>act(action,id,values);return el;}
@@ -9,6 +9,7 @@ async function rpc(name,args) {const {data,error}=await supabase.rpc(name,args);
 async function load() {
   const epoch = ++loadEpoch;
   recovery = null;
+  recoveryMetrics = null;
   renderRecovery();
   try {
     const access=await rpc('elma_management_access');
@@ -121,10 +122,8 @@ function setBusy(value) {
 function recoveryControls() {
   const ready=!!recovery && recovery.available!==false;
   $('recovery-switch').disabled=busy || !ready || recovery.can_manage!==true;
-  for(const id of ['recovery-kind','recovery-team','recovery-reason','recovery-verification','recovery-export'])$(id).disabled=busy || !ready || recovery.can_export===false;
+  for(const id of ['recovery-kind','recovery-team','recovery-reason','recovery-verification','recovery-export','recovery-export-pdf'])$(id).disabled=busy || !ready || recovery.can_export===false;
   $('recovery-scope').disabled=busy || !ready || recovery.can_export===false || $('recovery-kind').value==='all';
-  const kind=$('recovery-kind').value,scope=$('recovery-scope').value;
-  $('recovery-export').textContent=kind==='seller' && scope!=='*' ? `Gerar roteiro — ${$('recovery-scope').selectedOptions[0]?.textContent || 'vendedor'}` : kind==='seller' ? 'Gerar relatório por vendedor' : 'Gerar relatório de campo';
 }
 async function recoveryRpc(action, payload = {}) {
   let query=supabase.rpc('elma_recovery_management',{p_action:action,p_payload:payload});
@@ -134,14 +133,24 @@ async function recoveryRpc(action, payload = {}) {
   if(!data || data.error)throw new Error(data?.message || data?.error || 'Não foi possível consultar a recuperação de clientes.');
   return data;
 }
+async function recoveryStatsRpc(payload) {
+  let query=supabase.rpc('elma_recovery_filtered_stats',{p_payload:payload});
+  if(typeof query.abortSignal==='function' && typeof AbortSignal!=='undefined' && typeof AbortSignal.timeout==='function')query=query.abortSignal(AbortSignal.timeout(30000));
+  const {data,error}=await query;
+  if(error)throw new Error(error.message);
+  if(!data || data.error)throw new Error(data?.message || data?.error || 'Não foi possível atualizar os indicadores filtrados.');
+  return data;
+}
 async function loadRecovery(epoch = loadEpoch) {
   try {
     const data=await recoveryRpc('status');
     if(epoch!==loadEpoch)return;
     recovery=data;
+    recoveryMetrics=null;
     $('recovery-feedback').textContent='';
     renderRecovery();
     populateRecoveryFilters();
+    await loadRecoveryMetrics(epoch);
   } catch(e) {
     if(epoch!==loadEpoch)return;
     recovery=null;
@@ -158,9 +167,9 @@ function renderRecovery() {
   $('recovery-state').classList.toggle('enabled',enabled);
   $('recovery-status').textContent=recovery ? enabled ? `Ligado: novos contatos liberados.${recovery.next_start?` Próximo envio: ${localDate(recovery.next_start,true)}.`:''}` : 'Desligado: nenhum novo contato será iniciado. As conversas abertas continuam sendo recebidas.' : 'Consultando a configuração…';
   if(recovery && recovery.can_manage!==true)$('recovery-status').textContent+=' Somente o administrador master pode alterar este controle.';
-  $('recovery-today').textContent=safeCount(recovery?.today_count);
-  $('recovery-active').textContent=safeCount(recovery?.stats?.active_conversations);
-  $('recovery-field').textContent=safeCount(recovery?.stats?.pending_verifications);
+  $('recovery-today').textContent=safeCount(recoveryMetrics?.today_count);
+  $('recovery-active').textContent=safeCount(recoveryMetrics?.active_conversations);
+  $('recovery-field').textContent=safeCount(recoveryMetrics?.pending_verifications);
   recoveryControls();
 }
 function filterValue(item) {return String(typeof item==='string'?item:item.code ?? item.id ?? item.name ?? '');}
@@ -204,6 +213,21 @@ async function toggleRecovery(enabled) {
 function recoveryExportPayload() {
   const kind=$('recovery-kind').value;
   return {kind,scope:kind==='all'?'*':$('recovery-scope').value,team:$('recovery-team').value || null,status:$('recovery-reason').value,verification:$('recovery-verification').value};
+}
+async function loadRecoveryMetrics(epoch=loadEpoch) {
+  const request=++recoveryMetricsEpoch;
+  recoveryMetrics=null;
+  renderRecovery();
+  try {
+    const data=await recoveryStatsRpc(recoveryExportPayload());
+    if(epoch!==loadEpoch || request!==recoveryMetricsEpoch)return;
+    recoveryMetrics=data;
+  } catch(e) {
+    if(epoch!==loadEpoch || request!==recoveryMetricsEpoch)return;
+    recoveryMetrics=null;
+    $('recovery-export-status').textContent=`Não foi possível atualizar os indicadores filtrados: ${e.message}`;
+  }
+  if(epoch===loadEpoch && request===recoveryMetricsEpoch)renderRecovery();
 }
 function workbookText(value) {
   const text=String(value ?? '');
@@ -261,11 +285,10 @@ function recoveryWorkbook(rows, payload, library, generatedAt) {
   const guide=library.utils.aoa_to_sheet(info);guide['!cols']=[{wch:32},{wch:105}];library.utils.book_append_sheet(workbook,guide,'Orientações');
   return workbook;
 }
-async function exportRecovery(e) {
-  e.preventDefault();
+async function exportRecoveryExcel() {
   if(busy || !recovery || recovery.can_export===false)return;
   const epoch=loadEpoch,payload=recoveryExportPayload();
-  setBusy(true);$('recovery-export-status').textContent='Preparando a planilha…';
+  setBusy(true);$('recovery-export-status').textContent='Preparando o arquivo Excel…';
   try {
     const data=await recoveryRpc('export',payload);
     if(epoch!==loadEpoch)return;
@@ -278,17 +301,129 @@ async function exportRecovery(e) {
     const owner=payload.kind==='seller' && payload.scope!=='*' ? $('recovery-scope').selectedOptions[0]?.textContent || 'vendedor' : payload.team ? $('recovery-team').selectedOptions[0]?.textContent || 'equipe' : 'todos-responsaveis';
     const slug=String(owner).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60) || 'equipe';
     window.XLSX.writeFile(book,`relatorio-campo-${slug}-${stamp}.xlsx`,{bookType:'xlsx'});
-    $('recovery-export-status').textContent=`Relatório gerado com ${safeCount(data.rows.length)} ${data.rows.length===1?'cliente':'clientes'}, com resumo e abas por vendedor identificado.`;
-  }catch(err){if(epoch===loadEpoch)$('recovery-export-status').textContent=`Não foi possível gerar a planilha: ${err.message}`;}
+    $('recovery-export-status').textContent=`Excel gerado com ${safeCount(data.rows.length)} ${data.rows.length===1?'cliente':'clientes'}, com resumo e abas por vendedor identificado.`;
+  }catch(err){if(epoch===loadEpoch)$('recovery-export-status').textContent=`Não foi possível gerar o Excel: ${err.message}`;}
   finally{setBusy(false);}
+}
+function recoverySellerGroups(rows) {
+  const groups=new Map();
+  for(const row of rows) {
+    const code=String(row.vendedor_codigo||'Sem RCA');
+    const name=String(row.vendedor||'Vendedor não identificado');
+    const group=groups.get(code)||{code,name,rows:[]};
+    group.rows.push(row);groups.set(code,group);
+  }
+  return Array.from(groups.values()).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+}
+function recoverySlug(value) {
+  return String(value||'relatorio').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,70)||'relatorio';
+}
+function recoveryPdf(group, payload, generatedAt, Pdf) {
+  const doc=new Pdf({orientation:'portrait',unit:'mm',format:'a4'});
+  const pageWidth=doc.internal.pageSize.getWidth(),pageHeight=doc.internal.pageSize.getHeight(),left=14,right=14;
+  const generated=localDate(generatedAt||new Date().toISOString(),true);
+  const team=$('recovery-team').selectedOptions[0]?.textContent||'Todas as equipes';
+  const reason=recoveryReasons[payload.status]||'Todos os motivos';
+  const verification=recoveryVerification[payload.verification]||'Todas as situações';
+  let y=17;
+  const header=()=>{
+    doc.setFillColor(23,60,118);doc.rect(0,0,pageWidth,33,'F');
+    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(15);doc.text('ROTEIRO DE VISITAS — RECUPERAÇÃO',left,14);
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`Vendedor: ${group.name}  •  RCA: ${group.code}`,left,22);
+    doc.text(`Gerado em ${generated}`,left,28);
+    doc.setTextColor(35,35,35);y=42;
+  };
+  const ensure=(height)=>{if(y+height>pageHeight-15){doc.addPage();header();}};
+  const wrapped=(label,value)=>{
+    const labelWidth=39,valueWidth=pageWidth-left-right-labelWidth;
+    const content=String(value??'—').trim()||'—';
+    const lines=doc.splitTextToSize(content,valueWidth);
+    ensure(Math.max(6,lines.length*4.1+2));
+    doc.setFont('helvetica','bold');doc.text(`${label}:`,left,y);
+    doc.setFont('helvetica','normal');doc.text(lines,left+labelWidth,y);
+    y+=Math.max(4.1,lines.length*4.1)+1.5;
+  };
+  const field=(label)=>wrapped(label,'____________________________________________________________');
+  header();
+  doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text(`Equipe: ${team}`,left,y);y+=5;
+  doc.text(`Filtros: ${reason} • ${verification}`,left,y);y+=7;
+  doc.text(`Clientes neste roteiro: ${group.rows.length}`,left,y);y+=8;
+  const sorted=[...group.rows].sort((a,b)=>String(a.cidade||'').localeCompare(String(b.cidade||''),'pt-BR')||String(a.nome_fantasia||'').localeCompare(String(b.nome_fantasia||''),'pt-BR'));
+  for(const row of sorted) {
+    ensure(42);
+    doc.setDrawColor(215,220,228);doc.line(left,y,pageWidth-right,y);y+=5;
+    doc.setTextColor(23,60,118);doc.setFont('helvetica','bold');doc.setFontSize(12);
+    const title=doc.splitTextToSize(String(row.nome_fantasia||'Cliente sem nome'),pageWidth-left-right);
+    doc.text(title,left,y);y+=title.length*5+2;
+    doc.setTextColor(35,35,35);doc.setFontSize(9);
+    wrapped('Código cliente',row.codigo_cliente);
+    wrapped('CNPJ',row.cnpj);
+    wrapped('Localização',[row.cidade,row.bairro].filter(Boolean).join(' — '));
+    wrapped('Endereço',row.endereco);
+    wrapped('Telefone cadastrado',row.telefone_cadastrado);
+    wrapped('Telefone original / testado',[row.telefone_origem,row.telefone_testado].filter(Boolean).join(' / '));
+    wrapped('Motivo',recoveryReasons[row.motivo]||row.motivo);
+    wrapped('Situação',recoveryVerification[row.situacao_verificacao]||row.situacao_verificacao);
+    wrapped('Última compra',localDate(row.ultima_compra));
+    wrapped('Observação',row.observacao);
+    field('Data da visita');field('Responsável encontrado');field('Resultado da visita');field('Telefone atualizado em campo');field('Retomar contato?  Sim (  )  Não (  )');field('Próxima ação');field('Observações');
+    y+=3;
+  }
+  const pages=doc.getNumberOfPages();
+  for(let page=1;page<=pages;page++) {
+    doc.setPage(page);doc.setDrawColor(215,220,228);doc.line(left,pageHeight-11,pageWidth-right,pageHeight-11);
+    doc.setTextColor(105,105,105);doc.setFont('helvetica','normal');doc.setFontSize(8);
+    doc.text('Prime Distribuição • Controle de visita',left,pageHeight-6);
+    doc.text(`Página ${page} de ${pages}`,pageWidth-right,pageHeight-6,{align:'right'});
+  }
+  doc.setProperties({title:`Roteiro ${group.name} RCA ${group.code}`,subject:'Relatório de campo por vendedor',creator:'Painel de gestão Prime'});
+  return doc;
+}
+async function exportRecoveryPdf() {
+  if(busy || !recovery || recovery.can_export===false)return;
+  const epoch=loadEpoch,payload=recoveryExportPayload();
+  setBusy(true);$('recovery-export-status').textContent='Preparando os PDFs por vendedor…';
+  try {
+    const data=await recoveryRpc('export',payload);
+    if(epoch!==loadEpoch)return;
+    if(!Array.isArray(data.rows))throw new Error('A lista retornada não pôde ser conferida.');
+    if(!data.rows.length){$('recovery-export-status').textContent='Nenhum cliente encontrado para esses filtros. Nenhum arquivo foi gerado.';return;}
+    if(data.truncated===true)throw new Error('A lista excedeu o limite. Selecione uma equipe ou vendedor para gerar os arquivos completos.');
+    const Pdf=window.jspdf?.jsPDF;
+    if(!Pdf)throw new Error('O gerador de PDF não carregou. Atualize a página e tente novamente.');
+    const groups=recoverySellerGroups(data.rows);
+    if(!groups.length)throw new Error('Não foi possível agrupar os clientes por vendedor.');
+    const stamp=new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
+    const makeName=g=>`roteiro-${recoverySlug(g.name)}-rca-${recoverySlug(g.code)}-${stamp}.pdf`;
+    if(groups.length===1 && payload.kind==='seller' && payload.scope!=='*') {
+      recoveryPdf(groups[0],payload,data.generated_at,Pdf).save(makeName(groups[0]));
+      $('recovery-export-status').textContent=`PDF gerado para ${groups[0].name} — RCA ${groups[0].code}, com ${safeCount(groups[0].rows.length)} clientes.`;
+      return;
+    }
+    if(!window.JSZip)throw new Error('O gerador do arquivo ZIP não carregou. Atualize a página e tente novamente.');
+    const zip=new window.JSZip();
+    for(const group of groups)zip.file(makeName(group),recoveryPdf(group,payload,data.generated_at,Pdf).output('blob'));
+    const archive=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});
+    const url=URL.createObjectURL(archive),link=document.createElement('a');
+    link.href=url;link.download=`roteiros-por-vendedor-${stamp}.zip`;document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    $('recovery-export-status').textContent=`ZIP gerado com ${groups.length} PDFs, um para cada vendedor identificado, abrangendo ${safeCount(data.rows.length)} clientes.`;
+  } catch(err) {
+    if(epoch===loadEpoch)$('recovery-export-status').textContent=`Não foi possível gerar os PDFs: ${err.message}`;
+  } finally {setBusy(false);}
 }
 $('search').oninput=employees;$('refresh').onclick=load;$('cancel').onclick=()=>$('edit').close();
 $('edit-form').onsubmit=e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.currentTarget));values.preservar_rh=e.currentTarget.elements.preservar_rh.checked;act(editing?'editar':'cadastrar',editing||0,values);};
 $('new-employee').onclick=()=>{editing=null;$('edit-form').reset();$('edit-form').elements.cpf.closest('label').classList.remove('hidden');$('edit-form').elements.cpf.required=true;$('edit-form').elements.perfil_acesso.value='Colaborador';$('edit-title').textContent='Cadastrar colaborador';$('edit').showModal();};
 $('daily-switch').onchange=e=>act('envio_diario',0,{enabled:e.target.checked});
 $('recovery-switch').onchange=e=>toggleRecovery(e.target.checked);
-$('recovery-kind').onchange=()=>{$('recovery-team').value='';$('recovery-scope').value='*';populateRecoveryFilters();$('recovery-export-status').textContent='';};
-$('recovery-team').onchange=()=>{$('recovery-scope').value='*';populateRecoveryFilters();$('recovery-export-status').textContent='';};
-$('recovery-export-form').onsubmit=exportRecovery;
+$('recovery-kind').onchange=()=>{$('recovery-team').value='';$('recovery-scope').value='*';populateRecoveryFilters();$('recovery-export-status').textContent='';loadRecoveryMetrics();};
+$('recovery-team').onchange=()=>{$('recovery-scope').value='*';populateRecoveryFilters();$('recovery-export-status').textContent='';loadRecoveryMetrics();};
+$('recovery-scope').onchange=()=>{ $('recovery-export-status').textContent='';loadRecoveryMetrics();};
+$('recovery-reason').onchange=()=>{ $('recovery-export-status').textContent='';loadRecoveryMetrics();};
+$('recovery-verification').onchange=()=>{ $('recovery-export-status').textContent='';loadRecoveryMetrics();};
+$('recovery-export').onclick=exportRecoveryExcel;
+$('recovery-export-pdf').onclick=exportRecoveryPdf;
 supabase.auth.onAuthStateChange(()=>{loadEpoch++;state=null;recovery=null;$('panel').classList.add('hidden');renderRecovery();setTimeout(load,0);});load();
 
