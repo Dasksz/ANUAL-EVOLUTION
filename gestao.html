@@ -20,20 +20,20 @@
   <p id="recovery-reception" class="notice">Desligar suspende somente os novos contatos. A Elma continua recebendo as respostas das conversas abertas. Após o encerramento, o cliente volta ao atendimento normal.</p>
   <p id="recovery-schedule" class="recovery-muted">Até 15 novos contatos por dia, a partir das 9h30, com intervalo de 5 minutos. Horário de Brasília.</p>
   <div class="grid"><div class="card recovery-stat"><span>Novos contatos hoje</span><strong id="recovery-today">—</strong></div><div class="card recovery-stat"><span>Conversas em andamento</span><strong id="recovery-active">—</strong></div><div class="card recovery-stat"><span>Verificações em campo pendentes</span><strong id="recovery-field">—</strong></div></div>
-  <h3>Exportar clientes para verificação em campo</h3>
-  <p>Gere a lista para um vendedor, promotor ou equipe. Cada cliente aparece uma única vez no arquivo.</p>
+  <h3>Relatório de campo por responsável identificado</h3>
+  <p>Gere um roteiro para a equipe visitar clientes com pendência de verificação. A identificação do vendedor vem do RCA atual do cadastro; selecione um vendedor para gerar um arquivo individual ou deixe “Todos” para receber um consolidado com uma aba por vendedor.</p>
   <form id="recovery-export-form">
     <div class="grid recovery-controls">
       <label>Carteira<select id="recovery-kind" disabled><option value="all">Todas as carteiras</option><option value="seller">Vendedores</option><option value="promoter">Promotores</option></select></label>
       <label>Equipe<select id="recovery-team" disabled><option value="">Todas as equipes</option></select></label>
-      <label>Responsável<select id="recovery-scope" disabled><option value="*">Todos os responsáveis</option></select></label>
+      <label>Vendedor identificado (RCA)<select id="recovery-scope" disabled><option value="*">Todos os vendedores</option></select></label>
       <label>Motivo da verificação<select id="recovery-reason" disabled><option value="all">Todos os motivos</option><option value="wrong_number">Número incorreto</option><option value="no_response">Sem resposta após 48 horas</option><option value="whatsapp_unavailable">WhatsApp indisponível</option><option value="ambiguous">Validação ambígua</option><option value="shared_phone">Telefone compartilhado</option></select></label>
       <label>Situação<select id="recovery-verification" disabled><option value="pending">Pendentes</option><option value="resolved">Já conferidas</option><option value="all">Todas as situações</option></select></label>
     </div>
-    <div class="actions"><button id="recovery-export" type="submit" class="primary" disabled>Gerar planilha Excel</button></div>
+    <div class="actions"><button id="recovery-export" type="submit" class="primary" disabled>Gerar relatório de campo</button></div>
   </form>
   <p id="recovery-export-status" role="status" aria-live="polite"></p>
-  <p class="recovery-muted">O vendedor ou promotor registra o contato confirmado ou corrigido no WhatsApp, em “Atualizar WhatsApp de um cliente”. Você acompanha pelo painel; não precisa preencher o resultado das visitas. Sem resposta após 48 horas não significa número inválido.</p>
+  <p class="recovery-muted">O relatório inclui identificação do cliente, vendedor e RCA, motivo da visita e situação da conferência. A aba de cada vendedor tem campos para registrar data, responsável encontrado, resultado e próxima ação. A planilha serve como controle da visita; para atualizar o telefone oficial, o vendedor deve usar “Atualizar WhatsApp de um cliente” no atendimento Elma. Sem resposta após 48 horas não significa número inválido.</p>
   <p id="recovery-feedback" role="status" aria-live="polite"></p>
 </section>
 <section><h2>Alterações recentes no painel</h2><div id="events"></div></section></div>

@@ -123,6 +123,8 @@ function recoveryControls() {
   $('recovery-switch').disabled=busy || !ready || recovery.can_manage!==true;
   for(const id of ['recovery-kind','recovery-team','recovery-reason','recovery-verification','recovery-export'])$(id).disabled=busy || !ready || recovery.can_export===false;
   $('recovery-scope').disabled=busy || !ready || recovery.can_export===false || $('recovery-kind').value==='all';
+  const kind=$('recovery-kind').value,scope=$('recovery-scope').value;
+  $('recovery-export').textContent=kind==='seller' && scope!=='*' ? `Gerar roteiro — ${$('recovery-scope').selectedOptions[0]?.textContent || 'vendedor'}` : kind==='seller' ? 'Gerar relatório por vendedor' : 'Gerar relatório de campo';
 }
 async function recoveryRpc(action, payload = {}) {
   let query=supabase.rpc('elma_recovery_management',{p_action:action,p_payload:payload});
@@ -181,7 +183,7 @@ function populateRecoveryFilters() {
   replaceOptions('recovery-team','Todas as equipes','',teams,team);
   const list=kind==='seller'?recovery?.filters?.sellers || []:kind==='promoter'?recovery?.filters?.promoters || []:[];
   const selectedTeam=$('recovery-team').value;
-  const owners=list.filter(item=>!selectedTeam || String(item.team ?? '')===selectedTeam).map(item=>({code:item.code,name:`${item.name || item.code} — ${item.code}`}));
+  const owners=list.filter(item=>!selectedTeam || String(item.team ?? '')===selectedTeam).map(item=>({code:item.code,name:`${item.name || item.code} — RCA ${item.code}`}));
   replaceOptions('recovery-scope',kind==='promoter'?'Todos os promotores':kind==='seller'?'Todos os vendedores':'Todos os responsáveis','*',owners,scope);
   recoveryControls();
 }
@@ -203,24 +205,60 @@ function recoveryExportPayload() {
   const kind=$('recovery-kind').value;
   return {kind,scope:kind==='all'?'*':$('recovery-scope').value,team:$('recovery-team').value || null,status:$('recovery-reason').value,verification:$('recovery-verification').value};
 }
-function recoveryWorkbook(rows, payload, library) {
-  const columns=[['Código do cliente','codigo_cliente'],['Nome fantasia','nome_fantasia'],['CNPJ','cnpj'],['Cidade','cidade'],['Bairro','bairro'],['Endereço','endereco'],['Telefone cadastrado','telefone_cadastrado'],['Telefone original da base','telefone_origem'],['Telefone confirmado em campo','telefone_confirmado'],['Telefone testado','telefone_testado'],['Vendedor','vendedor'],['Promotor','promotor'],['Última compra','ultima_compra'],['Tentativa de contato','tentativa_em'],['Motivo da verificação','motivo'],['Situação da verificação','situacao_verificacao'],['Verificado por','verificado_por'],['Verificado em','verificado_em']];
-  const matrix=[columns.map(c=>c[0]),...rows.map(row=>columns.map(([,key])=>{
+function workbookText(value) {
+  const text=String(value ?? '');
+  return /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
+}
+function recoveryWorkbook(rows, payload, library, generatedAt) {
+  const columns=[['Código do cliente','codigo_cliente'],['Nome fantasia','nome_fantasia'],['CNPJ','cnpj'],['Cidade','cidade'],['Bairro','bairro'],['Endereço','endereco'],['Telefone cadastrado','telefone_cadastrado'],['Telefone original da base','telefone_origem'],['Telefone confirmado em campo','telefone_confirmado'],['Telefone testado','telefone_testado'],['Vendedor identificado','vendedor'],['Código RCA','vendedor_codigo'],['Promotor','promotor'],['Última compra','ultima_compra'],['Tentativa de contato','tentativa_em'],['Motivo da verificação','motivo'],['Situação da verificação','situacao_verificacao'],['Observação da análise','observacao'],['Verificado por','verificado_por'],['Verificado em','verificado_em'],['Data da visita',''],['Responsável encontrado',''],['Resultado da visita',''],['Telefone atualizado em campo',''],['Retomar contato?',''],['Próxima ação',''],['Observações de campo','']];
+  const renderRows=source=>source.map(row=>columns.map(([,key])=>{
+    if(!key)return '';
     const value=row[key];
     if(key==='ultima_compra')return localDate(value);
     if(key==='tentativa_em' || key==='verificado_em')return localDate(value,true);
-    if(key==='motivo')return recoveryReasons[value] || String(value ?? '');
-    if(key==='situacao_verificacao')return recoveryVerification[value] || String(value ?? '');
-    return String(value ?? '');
-  }))];
-  const sheet=library.utils.aoa_to_sheet(matrix);
-  sheet['!cols']=columns.map(([,key])=>({wch:['nome_fantasia','endereco','vendedor','promotor'].includes(key)?34:['motivo','situacao_verificacao'].includes(key)?28:20}));
-  sheet['!autofilter']={ref:sheet['!ref']};
-  const workbook=library.utils.book_new();library.utils.book_append_sheet(workbook,sheet,'Verificação em campo');
-  const owner=$('recovery-scope').selectedOptions[0]?.textContent || 'Todos os responsáveis';
-  const team=$('recovery-team').selectedOptions[0]?.textContent || 'Todas as equipes';
-  const info=[['Verificação de contatos — Prime Distribuição'],['Gerado em',localDate(new Date().toISOString(),true)],['Carteira',payload.kind==='seller'?'Vendedores':payload.kind==='promoter'?'Promotores':'Todas as carteiras'],['Responsável',owner],['Equipe',team],['Motivo',recoveryReasons[payload.status] || 'Todos os motivos'],['Situação',recoveryVerification[payload.verification] || 'Todas as situações'],['Clientes no arquivo',String(rows.length)],[],['Como atualizar','O vendedor ou promotor usa “Atualizar WhatsApp de um cliente” no atendimento Elma.'],['Sem resposta','48 horas sem retorno não tornam o número inválido.'],['Contato incorreto','Não repetir a abordagem ao número informado como incorreto.']];
-  const guide=library.utils.aoa_to_sheet(info);guide['!cols']=[{wch:28},{wch:100}];library.utils.book_append_sheet(workbook,guide,'Orientações');
+    if(key==='motivo')return recoveryReasons[value] || workbookText(value);
+    if(key==='situacao_verificacao')return recoveryVerification[value] || workbookText(value);
+    return workbookText(value);
+  }));
+  const makeVisitSheet=source=>{
+    const sheet=library.utils.aoa_to_sheet([columns.map(c=>c[0]),...renderRows(source)]);
+    sheet['!cols']=columns.map(([,key])=>({wch:['nome_fantasia','razaosocial','endereco','vendedor','promotor','observacao','responsavel_encontrado','resultado_visita','proxima_acao','observacoes_campo'].includes(key)?32:['motivo','situacao_verificacao'].includes(key)?27:key===''?24:19}));
+    sheet['!autofilter']={ref:sheet['!ref']};
+    return sheet;
+  };
+  const owner=workbookText($('recovery-scope').selectedOptions[0]?.textContent || 'Todos os responsáveis');
+  const team=workbookText($('recovery-team').selectedOptions[0]?.textContent || 'Todas as equipes');
+  const reasonCounts=new Map(),verificationCounts=new Map(),sellerCounts=new Map();
+  for(const row of rows){
+    const reason=recoveryReasons[row.motivo] || String(row.motivo || 'Sem motivo');
+    const verification=recoveryVerification[row.situacao_verificacao] || String(row.situacao_verificacao || 'Sem situação');
+    reasonCounts.set(reason,(reasonCounts.get(reason)||0)+1);
+    verificationCounts.set(verification,(verificationCounts.get(verification)||0)+1);
+    const code=String(row.vendedor_codigo || 'Sem RCA'),name=String(row.vendedor || 'Vendedor não identificado');
+    const key=`${code}\u0000${name}`,current=sellerCounts.get(key) || {code,name,count:0};current.count++;sellerCounts.set(key,current);
+  }
+  const summary=[['RELATÓRIO DE CAMPO — RECUPERAÇÃO DE CLIENTES'],['Gerado em',localDate(generatedAt || new Date().toISOString(),true)],['Carteira',payload.kind==='seller'?'Vendedores':payload.kind==='promoter'?'Promotores':'Todas as carteiras'],['Responsável selecionado',owner],['Equipe',team],['Motivo filtrado',workbookText(recoveryReasons[payload.status] || 'Todos os motivos')],['Situação filtrada',workbookText(recoveryVerification[payload.verification] || 'Todas as situações')],['Clientes no arquivo',rows.length],[],['Resumo de verificação','Quantidade'],...Array.from(reasonCounts.entries()).sort((a,b)=>b[1]-a[1]).map(([label,count])=>[workbookText(label),count]),[],['Situação da conferência','Quantidade'],...Array.from(verificationCounts.entries()).sort((a,b)=>a[0].localeCompare(b[0],'pt-BR')).map(([label,count])=>[workbookText(label),count]),[],['Vendedor identificado','Código RCA','Clientes'],...Array.from(sellerCounts.values()).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(item=>[workbookText(item.name),workbookText(item.code),item.count])];
+  const workbook=library.utils.book_new();
+  const panel=library.utils.aoa_to_sheet(summary);panel['!cols']=[{wch:42},{wch:34},{wch:16}];
+  library.utils.book_append_sheet(workbook,panel,'Resumo');
+  library.utils.book_append_sheet(workbook,makeVisitSheet(rows),'Roteiro completo');
+  if(payload.kind!=='promoter'){
+    const bySeller=new Map();
+    for(const row of rows){
+      const code=String(row.vendedor_codigo || 'Sem RCA'),name=String(row.vendedor || 'Vendedor não identificado');
+      const list=bySeller.get(code) || {name,rows:[]};list.rows.push(row);bySeller.set(code,list);
+    }
+    const usedTabs=new Set(['Resumo','Roteiro completo','Orientações'].map(name=>name.toLocaleLowerCase('pt-BR')));
+    for(const [code,item] of Array.from(bySeller.entries()).sort((a,b)=>a[1].name.localeCompare(b[1].name,'pt-BR'))){
+      const base=`${code} ${item.name}`.replace(/[\\/?*\[\]:]/g,' ').slice(0,31) || 'Vendedor';
+      let tab=base,sequence=2;
+      while(usedTabs.has(tab.toLocaleLowerCase('pt-BR'))){const suffix=` ${sequence++}`;tab=`${base.slice(0,31-suffix.length)}${suffix}`;}
+      usedTabs.add(tab.toLocaleLowerCase('pt-BR'));
+      library.utils.book_append_sheet(workbook,makeVisitSheet(item.rows),tab);
+    }
+  }
+  const info=[['Como usar o relatório de campo — Prime Distribuição'],['1. Identificação','O código do cliente, CNPJ, endereço, telefones, vendedor e RCA identificam cada visita.'],['2. Planejamento','Use as abas individuais por vendedor para repassar somente a carteira atribuída a cada pessoa.'],['3. Registro da visita','Preencha data, responsável encontrado, resultado, telefone corrigido, decisão de retomar contato, próxima ação e observações.'],['4. Atualizar o cadastro','A planilha é um roteiro de campo. Para gravar o telefone oficial, use “Atualizar WhatsApp de um cliente” no atendimento Elma.'],['5. Sem resposta','48 horas sem retorno não tornam o telefone inválido. Confirme presencialmente antes de substituir o número.'],['6. Número incorreto','Não repita a abordagem ao número informado como incorreto; confirme um contato válido em campo.'],['7. Retomar o atendimento','Depois de confirmar responsável e telefone, retome por texto no WhatsApp. A assistente interpreta apenas mensagens escritas.'],['Gerado em',localDate(generatedAt || new Date().toISOString(),true)],['Responsável selecionado',owner],['Equipe',team]];
+  const guide=library.utils.aoa_to_sheet(info);guide['!cols']=[{wch:32},{wch:105}];library.utils.book_append_sheet(workbook,guide,'Orientações');
   return workbook;
 }
 async function exportRecovery(e) {
@@ -235,10 +273,12 @@ async function exportRecovery(e) {
     if(!data.rows.length){$('recovery-export-status').textContent='Nenhum cliente encontrado para esses filtros. Nenhum arquivo foi gerado.';return;}
     if(data.truncated===true)throw new Error('A lista excedeu o limite de exportação. Selecione uma equipe ou um responsável para gerar a lista completa.');
     if(!window.XLSX?.utils)throw new Error('O gerador de planilhas não carregou. Atualize a página e tente novamente.');
-    const book=recoveryWorkbook(data.rows,payload,window.XLSX);
+    const book=recoveryWorkbook(data.rows,payload,window.XLSX,data.generated_at);
     const stamp=new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
-    window.XLSX.writeFile(book,`verificacao-contatos-${payload.kind}-${stamp}.xlsx`,{bookType:'xlsx'});
-    $('recovery-export-status').textContent=`Planilha gerada com ${safeCount(data.rows.length)} ${data.rows.length===1?'cliente':'clientes'}.`;
+    const owner=payload.kind==='seller' && payload.scope!=='*' ? $('recovery-scope').selectedOptions[0]?.textContent || 'vendedor' : payload.team ? $('recovery-team').selectedOptions[0]?.textContent || 'equipe' : 'todos-responsaveis';
+    const slug=String(owner).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60) || 'equipe';
+    window.XLSX.writeFile(book,`relatorio-campo-${slug}-${stamp}.xlsx`,{bookType:'xlsx'});
+    $('recovery-export-status').textContent=`Relatório gerado com ${safeCount(data.rows.length)} ${data.rows.length===1?'cliente':'clientes'}, com resumo e abas por vendedor identificado.`;
   }catch(err){if(epoch===loadEpoch)$('recovery-export-status').textContent=`Não foi possível gerar a planilha: ${err.message}`;}
   finally{setBusy(false);}
 }
