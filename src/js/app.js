@@ -1,7 +1,7 @@
 import { changedDimensionRows, clientSummaryNeedsRefresh } from './dimension-sync.mjs?v=20261103-1';
 import { createPlanningPanel } from './planning.mjs?v=20261110-financial-pdf';
 import { createCommercialHealthPanel } from './commercial-health.mjs?v=20261106-health-suppliers';
-import { createExpensePanel } from './expenses.mjs?v=11';
+import { createExpensePanel } from './expenses.mjs?v=12';
 import { startRefreshProgress } from './refresh-progress.mjs?v=20261023-compact';
 import * as DashboardGoals from './dashboard-goals.mjs?v=20261111-audit';
 import { isVendorRankingEligible } from "./vendor-ranking.mjs?v=20261001-all-rankings";

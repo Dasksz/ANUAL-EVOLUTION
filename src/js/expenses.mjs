@@ -70,7 +70,7 @@ export function createExpensePanel({root, client}) {
     const chartsRoot = root.querySelector('[data-expense-charts]');
     const table = root.querySelector('tbody');
     const more = root.querySelector('[data-expense-more]');
-    const selections = {supervisor: new Set(), coordenador: new Set(), city: new Set(), category: new Set()};
+    const selections = {supervisor: new Set(), coordenador: new Set(), gerente: new Set(), city: new Set(), category: new Set()};
     let entries = [];
     let charts = [];
     let syncedAt = '';
@@ -112,11 +112,11 @@ export function createExpensePanel({root, client}) {
     }
 
     function selectedRows(period) {
-        const hasPersonFilter = selections.supervisor.size || selections.coordenador.size;
+        const hasPersonFilter = selections.supervisor.size || selections.coordenador.size || selections.gerente.size;
         return entries.filter(row => {
-            const group = normalized(row.role).startsWith('supervisor') ? 'supervisor' : 'coordenador';
+            const group = normalized(row.role).split(/\s+/)[0];
             return row.date.startsWith(period) &&
-                (!hasPersonFilter || selections[group].has(normalized(row.person))) &&
+                (!hasPersonFilter || selections[group]?.has(normalized(row.person))) &&
                 (!selections.city.size || selections.city.has(normalized(row.city || 'Sem cidade'))) &&
                 (!selections.category.size || selections.category.has(normalized(row.category || 'Sem categoria')));
         });
@@ -281,7 +281,7 @@ export function createExpensePanel({root, client}) {
             ['wallet', 'Gasto no mês', currency(total(current)), comparison + ' vs. ' + monthLabel(previous)],
             ['calendar', 'Gasto no mês anterior', currency(total(prior)), monthLabel(previous)],
             ['person', 'Pessoa com maior gasto', leading(people)],
-            ['team', 'Setor com maior gasto', leading(expenseGroups(current.map(row => ({...row, sector: normalized(row.role).includes('merchandising') ? 'Merchandising' : 'Comercial'})), [], 'sector', 'Sem setor'))],
+            ['team', 'Setor com maior gasto', leading(expenseGroups(current.map(row => ({...row, sector: normalized(row.role).startsWith('gerente') ? 'Gerência' : normalized(row.role).includes('merchandising') ? 'Merchandising' : 'Comercial'})), [], 'sector', 'Sem setor'))],
             ['pin', 'Cidade com maior gasto', leading(cities, 'Sem cidade')],
             ['tag', 'Categoria com maior gasto', leading(categories, 'Sem categoria')],
         ];
@@ -310,6 +310,7 @@ export function createExpensePanel({root, client}) {
         const visible = entries.filter(row => periods.includes(row.date.slice(0, 7)));
         renderOptions('supervisor', visible.filter(row => normalized(row.role).startsWith('supervisor')).map(row => row.person), 'Supervisores');
         renderOptions('coordenador', visible.filter(row => normalized(row.role).startsWith('coordenador')).map(row => row.person), 'Coordenadores');
+        renderOptions('gerente', visible.filter(row => normalized(row.role).startsWith('gerente')).map(row => row.person), 'Gerentes');
         renderOptions('city', visible.map(row => row.city || 'Sem cidade'), 'Cidades');
         renderOptions('category', visible.map(row => row.category || 'Sem categoria'), 'Categorias');
         limit = 100;
