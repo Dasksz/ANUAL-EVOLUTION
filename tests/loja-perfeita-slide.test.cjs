@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'../src/js/presentation.js'),'utf8').split('// --- Loja Perfeita Slide Logic ---')[1];
 function setup(){
- const ids=['filial','supervisor','vendedor','rede','cidade','pesquisador','cliente','reset-btn','loading','content','ranking-tbody','kpi-nota','kpi-auditorias','kpi-perfeitas','tbody','table-count'];
+ const ids=['filial','supervisor','coordenador','vendedor','rede','cidade','pesquisador','cliente','reset-btn','loading','content','ranking-tbody','kpi-nota','kpi-auditorias','kpi-perfeitas','tbody','table-count'];
  const els=Object.fromEntries(ids.map(id=>['lp-slide-'+id,{value:'',dataset:{},classList:{add(){},remove(){}},innerHTML:'',textContent:'',events:{},addEventListener(k,cb){this.events[k]=cb;}}]));
  const calls=[];let pending=[];let delayed=false;
  const payload=(name='MAX')=>({filter_options:{combinations:[{filiais:'05',supervisores:'RÔMULO',vendedores:'GIULIANO',redes:'REDE X',cidades:'ILHEUS',pesquisadores:'MAX'},{filiais:'08',supervisores:'TIAGO',vendedores:'DEVISON',redes:null,cidades:'ITABUNA',pesquisadores:'<x>'}],filiais:['05','08'],supervisores:['RÔMULO'],vendedores:['GIULIANO'],redes:['REDE X'],cidades:['ILHEUS'],pesquisadores:['MAX','<x>']},researcher_ranking:[{researcher:name,clients:2,avg_score:75}],kpis:{avg_score:75,total_audits:2,perfect_stores:1},chart_data:[],clients:[]});
